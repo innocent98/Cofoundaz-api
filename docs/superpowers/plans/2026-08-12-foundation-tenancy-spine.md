@@ -132,7 +132,7 @@ import app.db.models  # noqa: F401  (registers all tables on Base.metadata)
 from app.db.session import get_db
 from app.main import app
 
-TEST_URL = settings.TEST_DATABASE_URL or "postgresql://cofoundaz:cofoundaz@localhost:5432/cofoundaz_test"
+TEST_URL = settings.TEST_DATABASE_URL or "postgresql://user:password@localhost:5433/cofoundaz_test"
 
 
 @pytest.fixture(scope="session")
@@ -176,12 +176,15 @@ mkdir -p app/db/models && touch app/db/models/__init__.py
 
 - [ ] **Step 7: Ensure a test database exists**
 
-Run:
+The compose Postgres (service `db`) runs on host port **5433** with user/password
+`user`/`password`, and `.env` already sets
+`TEST_DATABASE_URL=postgresql://user:password@localhost:5433/cofoundaz_test`.
+The `cofoundaz_test` database has been pre-created by the controller. If you need
+to recreate it:
 ```bash
-make docker-up   # starts Postgres from docker-compose
-docker compose exec -T db psql -U cofoundaz -c "CREATE DATABASE cofoundaz_test;" || true
+docker compose up -d db redis
+docker exec cofoundaz-api_db psql -U user -d cofoundaz-api_db -c "CREATE DATABASE cofoundaz_test;" || true
 ```
-(If credentials differ, set `TEST_DATABASE_URL` in `.env`.)
 
 - [ ] **Step 8: Run test to verify it passes**
 
