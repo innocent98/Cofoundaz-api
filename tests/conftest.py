@@ -1,38 +1,43 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
-from app.main import app
+from app.core.config import settings
 from app.db.base import Base
+import app.db.models  # noqa: F401  (registers all tables on Base.metadata)
 from app.db.session import get_db
+from app.main import app
 
-# Test database
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TEST_URL = settings.TEST_DATABASE_URL or "postgresql://user:password@localhost:5433/cofoundaz_test"
 
 
-@pytest.fixture(scope="function")
-def db():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
+@pytest.fixture(scope="session")
+def engine():
+    eng = create_engine(TEST_URL, pool_pre_ping=True)
+    Base.metadata.drop_all(eng)
+    Base.metadata.create_all(eng)
+    yield eng
+    Base.metadata.drop_all(eng)
+    eng.dispose()
+
+
+@pytest.fixture()
+def db(engine):
+    connection = engine.connect()
+    trans = connection.begin()
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
-        yield db
+        yield session
     finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
+        session.close()
+        trans.rollback()
+        connection.close()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def client(db):
-    def override_get_db():
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
+    app.dependency_overrides[get_db] = lambda: db
+    with TestClient(app) as c:
+        yield c
     app.dependency_overrides.clear()

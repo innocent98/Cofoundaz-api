@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
+    TEST_DATABASE_URL: Optional[str] = None  # e.g. postgresql://.../cofoundaz_test
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
