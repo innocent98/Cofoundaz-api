@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,8 @@ TEST_URL = (
 def engine() -> Iterator[Engine]:
     eng = create_engine(TEST_URL, pool_pre_ping=True)
     Base.metadata.drop_all(eng)
+    with eng.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
     Base.metadata.create_all(eng)
     yield eng
     Base.metadata.drop_all(eng)
