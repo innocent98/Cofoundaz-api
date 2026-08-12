@@ -2,7 +2,7 @@
 
 ## What shipped
 
-- Commit: (this task's commit) — "feat(auth): DB-backed get_current_user dependency"
+- Commit: `365b000` — "feat(auth): DB-backed get_current_user dependency"
 - Branch: `design/auth-onboarding-foundation`
 - Task 14 of the Foundation & Tenancy Spine plan
   (`.superpowers/sdd/2026-08-12-foundation-tenancy-spine/task-14-brief.md`).
