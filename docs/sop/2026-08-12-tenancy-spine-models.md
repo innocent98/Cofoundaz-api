@@ -123,15 +123,20 @@ this task, not touched by it.
 
 ## Operate / roll back
 
-- Pure schema/model addition, no migration applied yet (Task 13 will generate the Alembic
-  revision). No deployment or runtime config changes.
-- To roll back: revert the commit. `tests/conftest.py`'s `citext` extension bootstrap is safe to
-  leave in place even without these models (idempotent `CREATE EXTENSION IF NOT EXISTS`).
+- **Update (Task 13):** these tables now have a real Alembic migration —
+  `alembic/versions/0001_initial_schema.py` — see
+  `docs/sop/2026-08-12-initial-alembic-migration.md`. Roll back via
+  `alembic downgrade -1`, not just a commit revert, once that migration has been
+  applied to an environment.
+- To roll back (pre-migration/model-only revert): `tests/conftest.py`'s `citext`
+  extension bootstrap is safe to leave in place even without these models
+  (idempotent `CREATE EXTENSION IF NOT EXISTS`).
 
 ## Follow-ups
 
-- Task 13: generate the Alembic migration for `users`, `user_profiles`, `startups`,
-  `startup_profiles`, `memberships` (this task deliberately does not touch Alembic).
+- ~~Task 13: generate the Alembic migration for `users`, `user_profiles`,
+  `startups`, `startup_profiles`, `memberships`.~~ Done — see
+  `docs/sop/2026-08-12-initial-alembic-migration.md`.
 - Tasks 14–15: security deps (password hashing, JWT) and RBAC will build on `User` /
   `Membership.role`.
 - The `_Sample` test-only table in `tests/db/test_mixins.py` (flagged as an optional Task 12

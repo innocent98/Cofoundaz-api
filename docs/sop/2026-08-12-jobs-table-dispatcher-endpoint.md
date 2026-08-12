@@ -106,13 +106,16 @@ $ poetry run isort --check-only <same files>
   migration/deploy step yet), new router mount. No config or env changes.
 - To roll back: revert this task's commit. No data migration concerns since no
   Alembic migration was created.
-- The `jobs` table will get a real Alembic migration in Task 13 — this SOP should
-  be updated (or a new one added) at that point to reference the migration file.
+- **Update (Task 13):** the `jobs` table now has a real Alembic migration —
+  `alembic/versions/0001_initial_schema.py` — see
+  `docs/sop/2026-08-12-initial-alembic-migration.md`. Roll back via
+  `alembic downgrade -1`, not just a commit revert, once that migration has been
+  applied to an environment.
 
 ## Follow-ups
 
-- Task 13 adds the Alembic migration for `jobs` (and other models accumulated so
-  far).
+- ~~Task 13 adds the Alembic migration for `jobs` (and other models accumulated so
+  far).~~ Done — see `docs/sop/2026-08-12-initial-alembic-migration.md`.
 - A real worker to drain `queued` rows and transition status
   (`queued → running → succeeded|failed|cancelled`) is planned for Modules 05/06;
   `JobDispatcher.enqueue` is intentionally a synchronous stub until then.

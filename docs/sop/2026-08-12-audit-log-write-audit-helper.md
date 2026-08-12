@@ -104,14 +104,17 @@ Success: no issues found in 2 source files
   migration/deploy step yet), no config or env changes.
 - To roll back: revert this task's commit. No data migration concerns since no
   Alembic migration was created.
-- The `audit_log` table will get a real Alembic migration in Task 13 alongside
-  `jobs` and the tenancy models — this SOP should be updated (or a new one added)
-  at that point to reference the migration file.
+- **Update (Task 13):** the `audit_log` table now has a real Alembic migration —
+  `alembic/versions/0001_initial_schema.py` — see
+  `docs/sop/2026-08-12-initial-alembic-migration.md`. Roll back via
+  `alembic downgrade -1`, not just a commit revert, once that migration has been
+  applied to an environment.
 
 ## Follow-ups
 
-- Task 13 adds the Alembic migration for `audit_log` (and other models accumulated
-  so far).
+- ~~Task 13 adds the Alembic migration for `audit_log` (and other models
+  accumulated so far).~~ Done — see
+  `docs/sop/2026-08-12-initial-alembic-migration.md`.
 - No read/query endpoint yet — only the write path (`write_audit`) exists per this
   task's scope. A future task will likely add an admin-facing read endpoint
   (e.g. `GET /audit-log` filtered by `startup_id` or `actor_user_id`, using the
