@@ -2,10 +2,15 @@ import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.envelope import error_response
 from app.core.errors import register_exception_handlers
 from app.core.logger import log
 
@@ -33,6 +38,23 @@ app = FastAPI(
 )
 
 register_exception_handlers(app)
+
+# Rate limiting
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
+)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content=error_response("RATE_LIMITED", "Too many requests. Slow down a moment."),
+        headers={"Retry-After": "60"},
+    )
+
 
 # CORS middleware
 app.add_middleware(
