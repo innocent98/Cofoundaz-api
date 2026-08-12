@@ -2,8 +2,8 @@
 
 ## What shipped
 
-- Commit: (this task's commit — see subject
-  `feat(db): initial Alembic migration for foundation schema`)
+- Commit: `7af08b1` — `feat(db): initial Alembic migration for foundation schema`
+  (fix round 1: `tests/test_migrations.py` strengthened — see below)
 - Branch: `design/auth-onboarding-foundation`
 - Task 13 of the Foundation & Tenancy Spine plan
   (`.superpowers/sdd/2026-08-12-foundation-tenancy-spine/task-13-brief.md`).
@@ -117,19 +117,28 @@ Test:
 ```
 $ poetry run pytest tests/test_migrations.py -v
 tests/test_migrations.py::test_alembic_upgrade_head_runs PASSED
+tests/test_migrations.py::test_migration_creates_all_expected_tables PASSED
 ```
-Note (documented as a known limitation of this test's design, not a defect): with
-zero migrations present, `alembic upgrade head` is a no-op and exits 0, so the
-brief's Step 3 ("run test, expect FAIL — no migration exists yet") does not
-actually fail — the test only starts to exercise `upgrade()` meaningfully once a
-migration file exists. Left as specified in the brief since it's still a valid,
-useful regression test (it will fail if the migration is later broken or
-deleted).
+Note (documented as a known limitation of `test_alembic_upgrade_head_runs`'s
+design, not a defect): with zero migrations present, `alembic upgrade head` is
+a no-op and exits 0, so the brief's Step 3 ("run test, expect FAIL — no
+migration exists yet") does not actually fail — the test only starts to
+exercise `upgrade()` meaningfully once a migration file exists. On a
+persistent dev DB already at head, it's likewise a no-op and catches little on
+its own. Left in place (it's still a valid regression guard — it will fail if
+`upgrade head` is later broken), but per fix-round-1 review feedback, a second
+test, `test_migration_creates_all_expected_tables`, was added: it uses the
+session-scoped `engine` fixture from `tests/conftest.py` (which runs
+`Base.metadata.create_all()` against the `cofoundaz_test` DB) and asserts all 7
+expected table names are present via `sqlalchemy.inspect(engine)`. This gives
+real signal regardless of the dev DB's migration state. Sanity-checked by
+temporarily adding a bogus table name to the `expected` set — confirmed the
+test fails with a clear `AssertionError` — then restored.
 
 Full suite:
 ```
 $ poetry run pytest
-29 passed
+30 passed
 ```
 
 Scoped lint/format (touched files only — repo-wide `make lint`/`make format`
