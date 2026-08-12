@@ -45,6 +45,13 @@ would be inconsistent and hard to reference in future migrations.
   - `client` (function-scoped): builds a `TestClient` that overrides the
     `get_db` FastAPI dependency to yield the same `db` session, so
     request-scoped DB access in a test shares the test's transaction.
+  - The models-registration import is `import app.db.models as _models  #
+    noqa: F401` (aliased, not a bare `import app.db.models`) so it doesn't
+    collide with the module-level `app` name bound by `from app.main import
+    app` — both imports take effect (models still register on
+    `Base.metadata`; the FastAPI instance is still imported), and the file
+    is `ruff`/`mypy` clean (isort-ordered imports, typed fixtures returning
+    `Iterator[Engine]` / `Iterator[Session]` / `Iterator[TestClient]`).
 - **`app/db/models/__init__.py`**: left empty (already existed from the
   scaffold) — Task 12 will populate it with model imports so
   `Base.metadata.create_all` picks up real tables. With zero models
@@ -110,6 +117,17 @@ Additional checks performed:
 - `git stash`-verified that the pre-existing `ruff`/`mypy` findings in
   `app/core/config.py` (12 ruff, 4 mypy errors) predate this change and are
   out of scope for Task 1.
+- **Correction (fix round 1):** `tests/conftest.py` itself was NOT lint/type
+  clean at initial commit `85f5689` — `import app.db.models` sat between two
+  `from … import …` lines, rebinding the module-level name `app` and
+  colliding with `from app.main import app` (mypy `no-redef`), plus a ruff
+  `I001` unsorted-imports finding and mypy `no-untyped-def` on all three
+  fixtures. Fixed in commit (below): aliased the models import
+  (`import app.db.models as _models  # noqa: F401`), reordered imports to
+  satisfy isort, and added `Iterator[...]` return annotations to `engine`,
+  `db`, and `client`. `poetry run ruff check tests/conftest.py` and
+  `poetry run mypy tests/conftest.py` are now both clean. The pre-existing
+  `app/core/config.py` debt noted above remains untouched and out of scope.
 
 ## Operate / roll back
 
