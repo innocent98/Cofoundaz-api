@@ -1,10 +1,12 @@
 import time
+from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -16,7 +18,9 @@ from app.core.logger import log
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time
@@ -40,6 +44,9 @@ app = FastAPI(
 register_exception_handlers(app)
 
 # Rate limiting
+# key_func is per-IP for now. Once auth context exists (Plan 2), switch to a
+# per-user key (e.g. user id from the JWT, falling back to remote address for
+# unauthenticated requests) so limits track the caller rather than the source IP.
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
@@ -55,6 +62,11 @@ async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JS
         headers={"Retry-After": "60"},
     )
 
+
+# SlowAPIMiddleware is what actually enforces `default_limits` (and any
+# @limiter.limit(...) decorators) on every request; without it, app.state.limiter
+# and the handler above are registered but never invoked.
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware
 app.add_middleware(
@@ -73,7 +85,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
-def root():
+def root() -> dict[str, str]:
     return {
         "message": f"Welcome to {settings.PROJECT_NAME} API",
         "version": settings.VERSION,
@@ -82,11 +94,11 @@ def root():
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
     return {"status": "healthy"}
 
 
-def start():
+def start() -> None:
     """Entry point for poetry script."""
     import uvicorn
 

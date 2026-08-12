@@ -1,4 +1,4 @@
-from app.db.models.job import JobStatus
+from app.db.models.enums import JobStatus
 from app.platform.jobs import JobDispatcher
 
 

@@ -98,6 +98,14 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-v --strict-markers --cov=app --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    # Third-party py3.14 asyncio DeprecationWarnings from pytest_asyncio/fastapi/slowapi
+    # internals (the venv runs Python 3.14; the project targets 3.11). These flood the
+    # run and aren't actionable from app code. First-party `app.*` warnings are left
+    # visible (no blanket "ignore::DeprecationWarning").
+    "ignore:.*iscoroutinefunction.*:DeprecationWarning",
+    "ignore:.*get_event_loop_policy.*:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["app"]

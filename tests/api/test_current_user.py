@@ -1,5 +1,5 @@
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -38,5 +38,21 @@ def test_missing_user_401(db):
     app = _mini_app()
     app.dependency_overrides[get_db] = lambda: db
     token = create_access_token(str(uuid.uuid4()))
+    resp = TestClient(app).get("/whoami", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 401
+
+
+def test_soft_deleted_user_401(db):
+    """A valid token for a user whose account has since been soft-deleted must not
+    authenticate — get_current_user filters out rows with deleted_at set."""
+    user = create_user(db, email="gone@ami.com")
+    db.commit()
+    app = _mini_app()
+    app.dependency_overrides[get_db] = lambda: db
+    token = create_access_token(str(user.id), expires_delta=timedelta(minutes=5))
+
+    user.deleted_at = datetime.now(UTC)
+    db.commit()
+
     resp = TestClient(app).get("/whoami", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 401

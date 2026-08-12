@@ -46,3 +46,11 @@ class MembershipStatus(str, enum.Enum):
     active = "active"
     suspended = "suspended"
     removed = "removed"
+
+
+class JobStatus(str, enum.Enum):
+    queued = "queued"
+    running = "running"
+    succeeded = "succeeded"
+    failed = "failed"
+    cancelled = "cancelled"

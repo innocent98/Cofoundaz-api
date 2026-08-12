@@ -2,7 +2,8 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.db.models.job import Job, JobStatus
+from app.db.models.enums import JobStatus
+from app.db.models.job import Job
 
 
 class JobDispatcher:

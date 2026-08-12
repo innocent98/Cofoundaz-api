@@ -152,12 +152,39 @@ run predating this task (see Concerns).
 - Task 15 (RBAC/tenancy) will build membership/role checks on top of the `User` object returned
   here.
 - `app/api/deps.py` test coverage is currently only the 2 brief-mandated cases (valid token,
-  unknown user). Consider adding explicit coverage for: expired token, malformed/non-UUID `sub`
-  claim (exercises the `ValueError` branch added in the deviation above), and `get_optional_user`'s
-  both branches, when Task 15 wires up real endpoints that use it.
+  unknown user) plus the soft-delete case added below. Still open: expired token, malformed/
+  non-UUID `sub` claim (exercises the `ValueError` branch added in the deviation above), and
+  `get_optional_user`'s both branches — deferred (see DEFER list in the final-review fix wave).
 - **Pre-existing, out-of-scope working-tree drift**: `app/api/v1/endpoints/health.py`,
   `app/core/logger.py`, and `app/core/security.py` were already modified (uncommitted, formatting
   only) in the working tree before this task started — confirmed via `git diff HEAD` on those
   files, unrelated to this task's changes. Left untouched and uncommitted, consistent with keeping
   this task's diff limited to `app/api/deps.py` and `tests/api/test_current_user.py`. Worth a
   dedicated commit (or `git checkout` to discard) before it causes confusion in a future task.
+  **Resolved** in the final-review fix wave below (formatting/typing debt cleared repo-wide).
+
+## Update — 2026-08-12 final-review fix wave
+
+**What shipped**: `get_current_user` looked up `User` by id with no `deleted_at` filter, so a
+still-valid JWT for a soft-deleted account could authenticate. Fixed in `app/api/deps.py` by
+adding `.filter(User.id == subject, User.deleted_at.is_(None))` (previously just `User.id ==
+subject`), with an inline comment noting that `status`-based enforcement (disabled/locked users)
+is explicitly **not** implemented here — that's a Plan 2 follow-up, tracked separately from this
+soft-delete fix.
+
+**Test** (TDD): added `test_soft_deleted_user_401` to `tests/api/test_current_user.py` — creates a
+user, mints a valid token, sets `user.deleted_at = datetime.now(UTC)` and commits, then asserts
+the `/whoami` mini-app route returns 401 for that still-otherwise-valid token. Confirmed RED first
+(temporarily reverted the `deps.py` filter back to `User.id == subject` only → test failed with
+`assert 200 == 401`), then GREEN after restoring the `deleted_at` filter.
+
+**Scope note**: per the fix-wave brief, `status`-based checks (e.g. `UserStatus.disabled` /
+`UserStatus.locked`) are explicitly deferred to Plan 2 and were not added here — only the
+`deleted_at` (hard soft-delete) filter shipped in this pass.
+
+**Files touched**: `app/api/deps.py` (+1 filter clause, +comment),
+`tests/api/test_current_user.py` (+1 test).
+
+**Verification**: `poetry run pytest tests/api/test_current_user.py -v` → 3 passed. Full suite and
+`make lint` results are in
+`.superpowers/sdd/2026-08-12-foundation-tenancy-spine/final-fix-report.md`.

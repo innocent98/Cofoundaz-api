@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/{job_id}")
-def get_job(job_id: uuid.UUID, db: Session = Depends(get_db)):  # noqa: B008
+def get_job(job_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, Any]:  # noqa: B008
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise NotFound()

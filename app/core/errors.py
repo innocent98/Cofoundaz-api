@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -10,7 +12,13 @@ class AppError(Exception):
     message = "Something went wrong."
     http_status = 400
 
-    def __init__(self, code=None, message=None, http_status=None, field_errors=None):
+    def __init__(
+        self,
+        code: str | None = None,
+        message: str | None = None,
+        http_status: int | None = None,
+        field_errors: list[dict[str, Any]] | None = None,
+    ) -> None:
         self.code = code or self.code
         self.message = message or self.message
         self.http_status = http_status or self.http_status
@@ -65,14 +73,14 @@ class NotFound(AppError):  # noqa: N818
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
-    async def _app_error(_: Request, exc: AppError):
+    async def _app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.http_status,
             content=error_response(exc.code, exc.message, exc.field_errors),
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(_: Request, exc: RequestValidationError):
+    async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         field_errors = [
             {"field": ".".join(str(p) for p in e["loc"] if p != "body"), "message": e["msg"]}
             for e in exc.errors()

@@ -1,5 +1,5 @@
 from pydantic import EmailStr, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -72,9 +72,10 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_EMAIL: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 
-settings = Settings()
+# mypy flags this as missing required args (SECRET_KEY, DATABASE_URL, etc.) because
+# pydantic-settings resolves them from the environment/.env at runtime, not from the
+# constructor call site — a known false positive with disallow_untyped_defs strictness.
+settings = Settings()  # type: ignore[call-arg]

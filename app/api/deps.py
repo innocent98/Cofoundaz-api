@@ -33,7 +33,10 @@ def get_current_user(
         subject = uuid.UUID(user_id)
     except (JWTError, ValueError) as exc:
         raise Unauthorized() from exc
-    user = db.query(User).filter(User.id == subject).first()
+    # Exclude soft-deleted users so a still-valid token for a deleted account can't
+    # authenticate. Status-based enforcement (disabled/locked users) is a Plan 2
+    # follow-up — not implemented here.
+    user = db.query(User).filter(User.id == subject, User.deleted_at.is_(None)).first()
     if user is None:
         raise Unauthorized()
     return user

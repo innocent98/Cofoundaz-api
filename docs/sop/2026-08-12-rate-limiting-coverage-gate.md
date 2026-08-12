@@ -112,11 +112,49 @@ contributes zero mypy errors.
   the auth/onboarding plan once there are enough endpoints for a meaningful threshold.
 - No route currently opts into a tighter-than-default limit via `@limiter.limit(...)`; future
   endpoints (e.g. login, password reset) should apply explicit stricter limits.
-- `SlowAPIMiddleware` is not registered — if per-route `@limiter.limit(...)` decorators are added
-  later, confirm whether they need it (slowapi's decorator-based usage generally works without the
-  middleware; the middleware is mainly needed for enforcing `default_limits` on undecorated
-  routes).
+- ~~`SlowAPIMiddleware` is not registered...~~ — **fixed, see Update below.**
 - **Pre-existing, out-of-scope working-tree drift** (carried over from prior tasks' SOPs, still
   unresolved): `app/api/v1/endpoints/health.py`, `app/core/logger.py`, and `app/core/security.py`
   remain modified/uncommitted in the working tree, unrelated to this task. Left untouched to keep
   this task's diff scoped to Task 16 files.
+
+## Update — 2026-08-12 final-review fix wave
+
+**What shipped**: `app.state.limiter` was registered with `default_limits` but the request
+pipeline never called into slowapi's checker, because `SlowAPIMiddleware` was never added to the
+app — `default_limits` silently never tripped on undecorated routes, and the `RateLimitExceeded`
+handler was dead code. Fixed in `app/main.py:69` by adding
+`from slowapi.middleware import SlowAPIMiddleware` and `app.add_middleware(SlowAPIMiddleware)`
+right after the `RateLimitExceeded` handler registration, with a comment noting `key_func=
+get_remote_address` (per-IP) is deliberate for now — per-user keying is a Plan 2 follow-up once
+requests carry resolved auth context.
+
+**Why the middleware matters** (confirmed empirically, not just by reading docs): slowapi's
+`@limiter.limit(...)` decorator calls `Limiter._check_request_limit` directly at call time, so
+decorated routes were already being checked without the middleware. `default_limits`, however,
+are only evaluated by `SlowAPIMiddleware.dispatch` (`slowapi/middleware.py`) — with the middleware
+absent, a `Limiter(default_limits=["2/minute"])` on an undecorated route let unlimited requests
+through. Verified via a throwaway script hitting an undecorated route with/without the middleware:
+`with_middleware=False → [200, 200, 200]`, `with_middleware=True → [200, 200, 429]`.
+
+**Test**: replaced the hollow `tests/api/test_rate_limit.py::test_limiter_registered`-only file
+(kept that assertion) with two real tests, both building a mini `FastAPI` app with its own
+`Limiter` + `SlowAPIMiddleware` + the same `RateLimitExceeded` handler shape as `app/main.py`:
+- `test_exceeding_limit_returns_429_with_envelope_and_retry_after` — a route decorated
+  `@limiter.limit("2/minute")`, called 3×; asserts the 3rd call is 429 with `Retry-After: 60` and
+  envelope body `{"error": {"code": "RATE_LIMITED", ...}}`.
+- `test_default_limits_enforced_on_undecorated_route_via_middleware` — the actual regression case:
+  an **undecorated** route relying solely on `default_limits=["2/minute"]`, called 3×; asserts
+  `[200, 200, 429]`. This is the test that would have caught the original bug (the decorator-based
+  test above passes even without the middleware, since the decorator enforces independently).
+
+TDD: confirmed RED by commenting out `app.add_middleware(SlowAPIMiddleware)` in the test's mini
+app — `test_default_limits_enforced_on_undecorated_route_via_middleware` failed
+(`assert [200, 200, 200] == [200, 200, 429]`) — then GREEN after restoring it.
+
+**Files touched**: `app/main.py` (+`SlowAPIMiddleware` import and registration, +comment),
+`tests/api/test_rate_limit.py` (2 new tests, existing `test_limiter_registered` kept).
+
+**Verification**: `poetry run pytest tests/api/test_rate_limit.py -v` → 3 passed. Full suite and
+`make lint` results are in
+`.superpowers/sdd/2026-08-12-foundation-tenancy-spine/final-fix-report.md`.
