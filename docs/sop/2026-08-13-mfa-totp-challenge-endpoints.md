@@ -3,6 +3,8 @@
 ## What shipped
 
 - Commit: `4468a4c` — `feat(auth): TOTP MFA setup/verify + challenge endpoints`
+- Fix commit: `0463aaa` — `fix(auth): audit trail on MFA enable and challenge
+  success/failure` (coordinator review, fix round 1)
 - Branch: `feat/auth-endpoints`
 - Task 9 of the Auth Endpoints plan
   (`.superpowers/sdd/2026-08-13-auth-endpoints/task-9-brief.md`).
@@ -58,18 +60,31 @@ requires on every route (precedent: `registration.py`, `login.py`). Ran
 `black` after writing the file — it reformatted two multi-line boolean/call
 expressions for line length only, no logic change.
 
-No audit-log (`write_audit`) or event-bus calls were added — the brief's spec
-didn't call for them on these three routes (unlike `signup`/`login`, which do
-audit). Flagging as a possible gap, not adding unrequested side effects during
-this task — see Follow-ups.
+**Fix round 1** (coordinator review, commit `0463aaa`): the initial cut had
+no `write_audit` calls, unlike `login.py`'s `auth.login.success`/
+`auth.login.failed` posture. Added, mirroring that pattern:
+- `totp_verify`: `write_audit(db, "auth.mfa.enabled", actor_user_id=user.id)`
+  before the commit, on the enable path only (no IP — no `Request` param was
+  in scope for that handler and one wasn't added just for this).
+- `challenge`: `write_audit(db, "auth.mfa.challenge.failed",
+  actor_user_id=user.id, ip=ip)` on a bad TOTP/backup code, committed
+  **before** `raise MfaInvalidCode()` (same commit-before-raise ordering
+  `login.py` uses for `auth.login.failed`, otherwise the row rolls back with
+  the request); `write_audit(db, "auth.mfa.challenge.success", ...)` on
+  success, before the existing commit. The two earlier failure branches
+  (bad/expired ticket; ticket resolves but no matching/MFA-configured user)
+  stay unaudited — there's no real user to attribute those rows to.
 
 ## What's involved
 
 - `app/api/v1/endpoints/auth/mfa.py` (new) — the three routes.
 - `app/api/v1/endpoints/auth/__init__.py` (modified) — mounts `mfa.router`.
-- `tests/api/auth/test_mfa_endpoints.py` (new) — 3 tests: setup→verify enables
-  MFA and returns 10 backup codes, challenge with a valid TOTP code issues
-  tokens, challenge with a wrong code returns 401 `MFA_INVALID_CODE`.
+- `tests/api/auth/test_mfa_endpoints.py` (new; extended in fix round 1) — 3
+  tests: setup→verify enables MFA and returns 10 backup codes, challenge with
+  a valid TOTP code issues tokens (now also asserts an
+  `auth.mfa.challenge.success` `AuditLog` row exists), challenge with a wrong
+  code returns 401 `MFA_INVALID_CODE` (now also asserts an
+  `auth.mfa.challenge.failed` `AuditLog` row exists).
 - No new DB models, no migration — reuses `User.mfa_secret`/`mfa_type`/
   `mfa_enabled_at` and `MfaBackupCode` from the Task 8 auth-tables migration.
 - Consumed, unmodified: `app/services/auth/mfa.py` (Task 8),
@@ -111,6 +126,19 @@ poetry run ruff check app tests         -> All checks passed!
 poetry run mypy app                     -> Success: no issues found in 51 source files
 ```
 
+Fix round 1 re-verification (after adding audit trail, commit `0463aaa`):
+```
+$ poetry run pytest tests/api/auth/test_mfa_endpoints.py -v
+3 passed
+
+$ poetry run pytest -q
+86 passed   (same count — fix round added assertions to existing tests, no
+             new test functions; no regressions)
+
+$ make lint
+-> all four checks clean, same as above
+```
+
 ## Operate / roll back
 
 - Pure additive change: new router mount, no migration, no config/env
@@ -132,11 +160,6 @@ poetry run mypy app                     -> Success: no issues found in 51 source
   guess (backup codes are 10 digits, lower brute-force risk) — worth a
   tighter per-ticket or per-IP limit in the hardening pass mentioned in the
   Task 7 SOP's follow-ups.
-- No `write_audit` calls on TOTP enable or MFA challenge success/failure,
-  unlike `login.py`'s `auth.login.success`/`auth.login.failed`. An audit trail
-  for "MFA was enabled on this account" and "MFA challenge failed N times"
-  would help incident response; flagging for a follow-up task rather than
-  adding unrequested side effects here.
 - No endpoint to disable MFA or regenerate backup codes without going through
   `totp/setup`→`totp/verify` again (which rotates the secret). Not in this
   task's scope per the brief.
