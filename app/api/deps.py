@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
 
@@ -34,10 +35,11 @@ def get_current_user(
     except (JWTError, ValueError) as exc:
         raise Unauthorized() from exc
     # Exclude soft-deleted users so a still-valid token for a deleted account can't
-    # authenticate. Status-based enforcement (disabled/locked users) is a Plan 2
-    # follow-up — not implemented here.
+    # authenticate.
     user = db.query(User).filter(User.id == subject, User.deleted_at.is_(None)).first()
     if user is None:
+        raise Unauthorized()
+    if user.status == UserStatus.disabled:
         raise Unauthorized()
     return user
 
