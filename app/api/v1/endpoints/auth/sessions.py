@@ -18,15 +18,16 @@ from app.services.auth.sessions import (
 router = APIRouter()
 
 
-def _read_refresh(request: Request, payload: RefreshRequest) -> str:
-    return request.cookies.get(settings.REFRESH_COOKIE_NAME) or (payload.refresh_token or "")
+def _read_refresh(request: Request, payload: RefreshRequest | None) -> str:
+    body_token = payload.refresh_token if payload else None
+    return request.cookies.get(settings.REFRESH_COOKIE_NAME) or (body_token or "")
 
 
 @router.post("/refresh")
 def refresh(
-    payload: RefreshRequest,
     request: Request,
     response: Response,
+    payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     raw = _read_refresh(request, payload)
@@ -45,9 +46,9 @@ def refresh(
 
 @router.post("/logout")
 def logout(
-    payload: RefreshRequest,
     request: Request,
     response: Response,
+    payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     raw = _read_refresh(request, payload)

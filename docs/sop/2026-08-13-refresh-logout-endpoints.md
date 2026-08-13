@@ -25,8 +25,9 @@ renew an expiring access token or to log out server-side. This task closes that 
 
 - `_read_refresh(request, payload) -> str` — shared helper: cookie
   (`request.cookies.get(settings.REFRESH_COOKIE_NAME)`) takes precedence, falls back to
-  `payload.refresh_token`, defaults to `""` if neither is present. Used by both routes so
-  cookie-vs-body precedence can't drift between them.
+  `payload.refresh_token` (`payload` may be `None` — see fix round 1 below), defaults to
+  `""` if neither is present. Used by both routes so cookie-vs-body precedence can't drift
+  between them.
 - `POST /refresh`: reads the raw token via `_read_refresh`; empty → `Unauthorized` (401).
   Otherwise calls `rotate_refresh(db, raw, ip=..., user_agent=...)` — which itself raises
   `Unauthorized` on an already-rotated/revoked/expired token (see Task 4's reuse-detection
@@ -106,3 +107,62 @@ mypy app                     -> Success: no issues found in 52 source files
   brute-forcing becomes a concern (entropy is 384 bits per Task 4, so low priority).
 - `revoke_all_for_user` ("log out everywhere") exists in the service layer but has no HTTP
   endpoint yet — out of scope for this task, likely a settings/security-page feature later.
+
+## Update — fix round 1: bodyless cookie-only requests returned 422
+
+**What shipped**: `payload: RefreshRequest` was a required body parameter on both routes.
+FastAPI validates and rejects a request with no JSON body *before* the handler (and
+therefore `_read_refresh`) ever runs, returning 422 `Field required`. This broke the
+cookie transport entirely — a browser `fetch(url, {credentials: 'include'})` call that
+relies solely on the `httponly` cookie and sends no body never reached the cookie-reading
+logic. Caught in code review, not by the original 3 tests (all of which pass an explicit
+body).
+
+**Why (root cause)**: declaring a Pydantic model parameter with no default makes FastAPI
+treat the request body as required at the OpenAPI/validation layer, independent of what
+the handler body does with it. The dual-transport design (cookie *or* body) was only
+implemented inside the handler — the route signature itself still demanded a body.
+
+**Fix**: `payload: RefreshRequest | None = None` on both `refresh` and `logout` (moved
+after the non-default `request`/`response` params to satisfy Python's argument-ordering
+rule). Verified in isolation before touching the endpoint file: a minimal FastAPI route
+with this signature returns 200 with `payload=None` on a bodyless POST, 200 with a parsed
+model on `json={}`, and 200 with a parsed model on a populated body — so no case
+regresses. `_read_refresh` updated to treat `payload=None` the same as
+`payload.refresh_token=None` (falls through to the empty-string default). Cookie-first
+precedence is unchanged.
+
+**Tests added** (`tests/api/auth/test_sessions_endpoints.py`, all send no `json=` arg):
+`test_refresh_cookie_only_no_body`, `test_logout_no_body_no_cookie_is_200`,
+`test_refresh_no_body_no_cookie_is_401`. Confirmed each failed against the pre-fix code
+first (`git stash` the fix, re-run — all 3 failed with the reported 422/`Field required`),
+then passed after the fix.
+
+**Test-infra note**: `test_refresh_cookie_only_no_body` sets the refresh cookie explicitly
+via `client.cookies.set(settings.REFRESH_COOKIE_NAME, refresh, path="/api/v1/auth")`
+rather than relying on the `TestClient`'s cookie jar to auto-carry the `Set-Cookie` from
+the preceding `/login` call. Investigated why: httpx 0.27's cookie jar stores a cookie
+from a single-label host (`testserver`, the `TestClient` default) under domain
+`testserver.local`, and the domain-matching check on the next outgoing request silently
+fails to reattach it — a jar quirk unrelated to this endpoint's own cookie-reading code,
+confirmed with a standalone repro script before deciding to set the cookie explicitly in
+the test instead of chasing the jar behavior.
+
+**Files touched**: `app/api/v1/endpoints/auth/sessions.py` (`payload` made optional on
+both routes, `_read_refresh` handles `None`), `tests/api/auth/test_sessions_endpoints.py`
+(+3 tests, +`settings` import).
+
+**Verification**:
+```
+$ poetry run pytest tests/api/auth/test_sessions_endpoints.py -v
+6 passed
+```
+```
+$ poetry run pytest -q
+92 passed
+```
+(89 pre-fix + 3 new, no regressions.)
+```
+$ make lint
+black/isort/ruff/mypy all clean (52 source files)
+```
