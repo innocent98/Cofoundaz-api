@@ -146,3 +146,65 @@ mypy app                    -> Success: no issues found in 44 source files
 - No rate limiting on `rotate_refresh` itself in this task — brute-forcing/guessing refresh
   tokens is defended by entropy (384 bits) rather than rate limiting; if that changes, rate
   limiting belongs on the endpoint layer (Task 16 already added `slowapi` for exactly this).
+
+## Update — fix round 1: TOCTOU race in `rotate_refresh`
+
+**What shipped**: the original `rotate_refresh` read the session row, checked
+`rotated_at`/`revoked_at`/`expires_at` in Python, then wrote `rotated_at = now` — a
+read-then-write with a window where two concurrent callers on the *same* refresh token could
+both observe `rotated_at IS NULL` before either had written, both pass the check, and both
+successfully rotate. This defeated the entire reuse-detection guarantee: a stolen token used
+concurrently with the legitimate client wouldn't reliably revoke anything.
+
+**Why (root cause)**: the "is this token still live" decision and the "consume it" write were
+two separate steps under READ COMMITTED isolation, with no lock held across them.
+
+**Fix**: made consumption atomic — the liveness check is now the `WHERE` clause of the
+consuming `UPDATE` itself, not a prior `SELECT`:
+```python
+claimed = (
+    db.query(AuthSession)
+    .filter(
+        AuthSession.id == session.id,
+        AuthSession.rotated_at.is_(None),
+        AuthSession.revoked_at.is_(None),
+        AuthSession.expires_at >= now,
+    )
+    .update({AuthSession.rotated_at: now}, synchronize_session=False)
+)
+```
+`claimed == 0` (already rotated/revoked/expired, or a concurrent caller just won the row) is
+treated as reuse: revoke the whole family, raise `Unauthorized`. `claimed == 1` means this call
+owns the row and proceeds to issue a new pair in the same family. Postgres's row-level locking
+on the `UPDATE` makes this correct regardless of the callers' `SELECT` interleaving — a second
+concurrent `UPDATE` on the same row blocks until the first transaction ends, then re-evaluates
+its `WHERE` against the committed result.
+
+**Accepted tradeoff**: a legitimate concurrent double-submit (not theft, e.g. a client retry
+racing itself) still gets the whole family revoked, including the token the "winning" call just
+issued — the server can't distinguish a race from theft, so both are treated as "burn the
+family, force re-login." This matches standard refresh-token-rotation practice.
+
+**Test**: `tests/services/auth/test_sessions_concurrency.py` —
+`test_concurrent_rotate_of_same_token_only_one_winner`. Can't use the shared `db` fixture (one
+connection, one never-committing savepoint, invisible across connections); instead runs two
+real, independently-committing `Session`s against the `engine` fixture's connection pool, two
+threads synchronized on a `threading.Barrier(2)` immediately before both call `rotate_refresh`
+on the same raw token. Asserts exactly one thread succeeds and one raises `AppError`, and that
+every session in the family (including the winner's new one) ends up revoked. Verified against
+the *un*fixed code first (4/4 runs reproduced two successes, no revocation — the exact bug the
+reviewer found), then against the fix (5/5 runs clean).
+
+**Also in this pass**: `app/core/config.py`'s `REFRESH_COOKIE_SAMESITE` was an unconstrained
+`str` — a misconfigured env value would only surface as a broken `Set-Cookie` header at
+runtime. Added a `field_validator` that lowercases and restricts to `{"lax", "strict",
+"none"}`, raising at `Settings()` construction time instead. Tests in `tests/test_config.py`.
+
+**Files touched**: `app/services/auth/sessions.py` (`rotate_refresh` rewritten),
+`app/core/config.py` (+validator), `tests/services/auth/test_sessions_concurrency.py` (new),
+`tests/test_config.py` (+5 tests).
+
+**Verification**: `poetry run pytest tests/services/auth/test_sessions.py -v` → 9 passed
+(unchanged, no test needed updating). `poetry run pytest tests/services/auth/
+test_sessions_concurrency.py -v` → 1 passed, run 5x clean. `poetry run pytest -q` → 63 passed
+(no regressions). `make lint` → black/isort/ruff/mypy all clean.

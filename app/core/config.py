@@ -50,6 +50,16 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
+    @field_validator("REFRESH_COOKIE_SAMESITE")
+    @classmethod
+    def validate_refresh_cookie_samesite(cls, v: str) -> str:
+        normalized = v.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError(
+                f"REFRESH_COOKIE_SAMESITE must be one of 'lax', 'strict', 'none' (got {v!r})"
+            )
+        return normalized
+
     # Database
     DATABASE_URL: str
     DATABASE_POOL_SIZE: int = 5

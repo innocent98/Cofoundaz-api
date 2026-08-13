@@ -57,17 +57,41 @@ def rotate_refresh(
         .filter(AuthSession.refresh_token_hash == hash_token(raw_refresh))
         .first()
     )
-    now = datetime.now(UTC)
     if session is None:
         raise Unauthorized()
-    # Reuse detection: a token already rotated/revoked, or expired -> revoke the family.
-    if session.rotated_at is not None or session.revoked_at is not None or session.expires_at < now:
+
+    now = datetime.now(UTC)
+    # Atomic claim: consume this exact row only if it's still live. A plain
+    # read-then-write here is a TOCTOU race -- two concurrent callers can both read
+    # `rotated_at IS NULL` before either writes, and both would pass. Conditioning the
+    # UPDATE itself on the same predicate makes only one concurrent claimant's UPDATE
+    # matched (Postgres row-locks the row for the transaction; the loser's UPDATE
+    # blocks until the winner commits/rolls back, then re-evaluates against the
+    # now-committed row and matches zero rows).
+    claimed = (
+        db.query(AuthSession)
+        .filter(
+            AuthSession.id == session.id,
+            AuthSession.rotated_at.is_(None),
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at >= now,
+        )
+        .update({AuthSession.rotated_at: now}, synchronize_session=False)
+    )
+    if claimed == 0:
+        # Already rotated/revoked/expired by the time we tried to claim it, or a
+        # concurrent caller just won the race for this exact token -- either way this is
+        # a reuse signal. Revoke every session in the family, including one a concurrent
+        # winner may have just issued in the same family: a legitimate concurrent
+        # double-submit logs the whole family out, same as actual token theft. We can't
+        # tell the two apart, so we don't try.
         _revoke_family(db, session.family_id)
         raise Unauthorized()
+
     user = db.query(User).filter(User.id == session.user_id).first()
     if user is None:
         raise Unauthorized()
-    session.rotated_at = now
+
     access, raw = issue_token_pair(
         db, user, ip=ip, user_agent=user_agent, family_id=session.family_id
     )
