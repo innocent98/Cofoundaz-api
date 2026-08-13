@@ -1,0 +1,132 @@
+# SOP: Forgot / reset password endpoints
+
+## What shipped
+
+- Commit: `<fill after commit>` — `feat(auth): forgot/reset password endpoints`
+- Branch: `feat/auth-endpoints`
+- Task 11 of the Auth Endpoints plan
+  (`.superpowers/sdd/2026-08-13-auth-endpoints/task-11-brief.md`).
+
+`POST /api/v1/auth/password/forgot` and `POST /api/v1/auth/password/reset` — self-service
+password recovery over the `password_reset` token purpose (Task 7's `AuthToken`
+infrastructure) and the session-revocation helper (Task 4's `revoke_all_for_user`).
+
+## Why
+
+Users who forget their password had no recovery path — `EmailTaken`/`InvalidCredentials`
+existed for signup/login, but nothing let a locked-out user regain access without support
+intervention. This closes that gap while defending against account enumeration, a common
+attack against forgot-password flows (an attacker probing arbitrary emails to learn which
+ones have accounts).
+
+## How
+
+**`app/api/v1/endpoints/auth/password.py`** (new):
+
+- `POST /password/forgot` — looks up the user by email. If found: first calls
+  `invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)` (marks any
+  still-live prior reset tokens as consumed, mirroring `registration.py::_send_verification`'s
+  use of the same helper for email-verification tokens) so only the newest reset link is
+  ever valid, then issues a fresh 1-hour `password_reset` token (`issue_auth_token`),
+  emails it (`get_email_sender().send(...)`,
+  console backend in dev/test — see `app/platform/email.py`), writes an
+  `auth.password.reset_requested` audit row, commits. **Always** returns the same 200
+  `{sent: true, message: "If that email has an account, a reset link is on its way."}` —
+  identical status and body whether or not the email exists, so a client (or attacker)
+  cannot distinguish a known email from an unknown one. Matches the existing no-enumeration
+  precedent in `registration.py::resend`.
+- `POST /password/reset` — validates password strength first
+  (`validate_password_strength`, raises `WeakPassword` → 422) *before* touching the token,
+  so a weak-password attempt doesn't burn a valid reset token. Then `consume_auth_token`
+  (raises `TokenInvalid` → 400 on bad/expired/already-used tokens), sets
+  `user.password_hash = get_password_hash(...)`, calls `revoke_all_for_user(db, user.id)`
+  to force re-login on every device/session (a password reset is the standard trigger for
+  "log out everywhere" — otherwise a session hijacked before the reset stays valid after
+  it), writes an `auth.password.reset` audit row, commits, returns `{reset: true}`.
+
+Both routes accept `request: Request` and pass `ip=request.client.host if
+request.client else None` into `write_audit` — added beyond the brief's literal snippet to
+match the established convention from `login.py`/`mfa.py`/`registration.py`, all of which
+audit-log security-sensitive events with the requester's IP. (A prior task, MFA endpoints,
+originally shipped *without* this and needed a follow-up fix commit `0463aaa` — added it
+here up front instead of repeating that gap.)
+
+**`app/api/v1/endpoints/auth/__init__.py`** (modified): added `password` to the import and
+`router.include_router(password.router)`, extending the existing aggregation pattern.
+
+## What's involved
+
+- `app/api/v1/endpoints/auth/password.py` (new) — `forgot`/`reset` routes.
+- `app/api/v1/endpoints/auth/__init__.py` (modified) — mounts `password.router`.
+- `tests/api/auth/test_password_endpoints.py` (new, 3 tests, verbatim from the brief) —
+  generic-response-for-unknown-email, reset updates password + revokes all sessions, weak
+  password rejected with 422.
+- Consumes (no changes): `app/services/auth/tokens.py::issue_auth_token/consume_auth_token`,
+  `app/services/auth/password.py::validate_password_strength`,
+  `app/services/auth/sessions.py::revoke_all_for_user`, `app/core/security.py::
+  get_password_hash`, `app/platform/email.py::EmailMessage/get_email_sender`,
+  `app/platform/audit.py::write_audit`, `app/schemas/auth.py::ForgotPasswordRequest/
+  ResetPasswordRequest`, `app/core/envelope.py::success_response`.
+- No new DB models, no migration, no config changes.
+
+## Verification
+
+RED (routes not mounted):
+```
+$ poetry run pytest tests/api/auth/test_password_endpoints.py -v
+FAILED test_forgot_is_generic_for_unknown - assert 404 == 200
+FAILED test_reset_updates_password_and_revokes_sessions - assert 404 == 200
+FAILED test_reset_weak_password_rejected - assert 404 == 422
+3 failed
+```
+
+GREEN:
+```
+$ poetry run pytest tests/api/auth/test_password_endpoints.py -v
+3 passed
+```
+
+Full suite:
+```
+$ poetry run pytest -q
+95 passed
+```
+(92 pre-existing + 3 new, no regressions, no unexpected new passes.)
+
+Lint:
+```
+$ make lint
+black --check app tests      -> All done! 94 files would be left unchanged.
+isort --check-only app tests -> clean
+ruff check app tests         -> All checks passed!
+mypy app                     -> Success: no issues found in 53 source files
+```
+
+No-enumeration smoke check (manual, against an email with no account):
+```
+POST /api/v1/auth/password/forgot {"email": "no-such-user@example.com"}
+-> 200 {"data": {"sent": true, "message": "If that email has an account, a reset link is on its way."}, "meta": null}
+```
+Identical shape and status to the known-email path exercised by the test suite (the
+`sent`/`message` fields never vary; the only difference is the DB write + email send, both
+server-side and unobservable to the caller).
+
+## Operate / roll back
+
+- Pure additive route wiring over already-shipped services (token issuance/consumption,
+  password hashing, session revocation) — no migration, no config change. Roll back by
+  reverting the shipping commit.
+- `_RESET_TTL = timedelta(hours=1)` — reset links expire after 1 hour; adjust in
+  `app/api/v1/endpoints/auth/password.py` if the product requirement changes.
+- Reset emails go through `get_email_sender()` — console backend by default
+  (`EMAIL_BACKEND` unset/non-`smtp`), so in dev/test the token is only visible in logs, not
+  actually emailed. No action needed to "operate" this beyond the existing SMTP config for
+  production email delivery.
+
+## Follow-ups
+
+- No per-endpoint rate limit on `/password/forgot` yet — same acknowledged gap noted in the
+  refresh/logout SOP; only the app-wide default limiter applies (disabled entirely in
+  tests). Worth a dedicated per-IP limit given this endpoint is a classic
+  enumeration/abuse target (mass reset-email spam against arbitrary addresses), even though
+  the response itself doesn't leak account existence.
