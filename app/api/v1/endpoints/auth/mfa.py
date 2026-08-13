@@ -10,6 +10,7 @@ from app.core.errors import MfaInvalidCode
 from app.db.models.enums import MfaType
 from app.db.models.user import User
 from app.db.session import get_db
+from app.platform.audit import write_audit
 from app.schemas.auth import MfaChallengeRequest, TotpVerifyRequest
 from app.services.auth import mfa
 from app.services.auth.sessions import issue_token_pair, set_refresh_cookie
@@ -43,6 +44,7 @@ def totp_verify(
     user.mfa_type = MfaType.totp
     user.mfa_enabled_at = datetime.now(UTC)
     codes = mfa.generate_backup_codes(db, user)
+    write_audit(db, "auth.mfa.enabled", actor_user_id=user.id)
     db.commit()
     return success_response({"enabled": True, "backup_codes": codes})
 
@@ -60,18 +62,19 @@ def challenge(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.mfa_secret:
         raise MfaInvalidCode()
+    ip = request.client.host if request.client else None
     ok = mfa.verify_totp(
         mfa.decrypt_secret(user.mfa_secret), payload.code
     ) or mfa.consume_backup_code(db, user, payload.code)
     if not ok:
+        write_audit(db, "auth.mfa.challenge.failed", actor_user_id=user.id, ip=ip)
+        db.commit()
         raise MfaInvalidCode()
     user.last_login_at = datetime.now(UTC)
     access, refresh = issue_token_pair(
-        db,
-        user,
-        ip=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
+        db, user, ip=ip, user_agent=request.headers.get("user-agent")
     )
+    write_audit(db, "auth.mfa.challenge.success", actor_user_id=user.id, ip=ip)
     db.commit()
     set_refresh_cookie(response, refresh)
     return success_response({"access_token": access, "refresh_token": refresh})

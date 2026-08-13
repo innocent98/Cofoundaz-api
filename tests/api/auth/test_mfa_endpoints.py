@@ -6,6 +6,7 @@ from cryptography.fernet import Fernet
 
 from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash
+from app.db.models.audit import AuditLog
 from app.db.models.enums import MfaType, UserStatus
 from app.services.auth import mfa
 from tests.factories import create_user
@@ -54,6 +55,12 @@ def test_challenge_with_totp_issues_tokens(client, db):
     r = client.post("/api/v1/auth/mfa/challenge", json={"mfa_ticket": ticket, "code": code})
     assert r.status_code == 200, r.text
     assert r.json()["data"]["access_token"]
+    audit = (
+        db.query(AuditLog)
+        .filter(AuditLog.actor_user_id == u.id, AuditLog.action == "auth.mfa.challenge.success")
+        .first()
+    )
+    assert audit is not None
 
 
 def test_challenge_bad_code_401(client, db):
@@ -71,3 +78,9 @@ def test_challenge_bad_code_401(client, db):
     r = client.post("/api/v1/auth/mfa/challenge", json={"mfa_ticket": ticket, "code": "000000"})
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "MFA_INVALID_CODE"
+    audit = (
+        db.query(AuditLog)
+        .filter(AuditLog.actor_user_id == u.id, AuditLog.action == "auth.mfa.challenge.failed")
+        .first()
+    )
+    assert audit is not None
