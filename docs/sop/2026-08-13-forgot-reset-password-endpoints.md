@@ -2,7 +2,7 @@
 
 ## What shipped
 
-- Commit: `<fill after commit>` — `feat(auth): forgot/reset password endpoints`
+- Commit: `2016aa6` — `feat(auth): forgot/reset password endpoints`
 - Branch: `feat/auth-endpoints`
 - Task 11 of the Auth Endpoints plan
   (`.superpowers/sdd/2026-08-13-auth-endpoints/task-11-brief.md`).
