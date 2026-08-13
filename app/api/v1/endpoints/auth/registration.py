@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.envelope import success_response
 from app.core.errors import EmailTaken
+from app.core.redis import get_redis
 from app.core.security import get_password_hash
 from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User, UserProfile
@@ -23,6 +24,7 @@ from app.services.auth.tokens import (
 
 router = APIRouter()
 _VERIFY_TTL = timedelta(hours=24)
+_RESEND_COOLDOWN_SECONDS = 60
 
 
 def _send_verification(db: Session, user: User) -> None:
@@ -79,13 +81,19 @@ def verify(payload: TokenRequest, db: Session = Depends(get_db)) -> dict[str, An
 
 @router.post("/verify/resend")
 def resend(payload: EmailRequest, db: Session = Depends(get_db)) -> dict[str, Any]:  # noqa: B008
-    user = (
-        db.query(User)
-        .filter(User.email == payload.email, User.status == UserStatus.pending_verification)
-        .first()
-    )
-    if user is not None:
-        _send_verification(db, user)
-        db.commit()
-    # Generic response regardless of whether the email exists — avoids account enumeration.
+    cooldown_key = f"verify_resend_cooldown:{payload.email}"
+    # setex(..., nx=True): only the first caller within the 60s window actually claims the
+    # key and proceeds to issue+send; every other caller (or a throttled retry) is a no-op
+    # but still gets the identical generic response below -- no enumeration signal either way.
+    if get_redis().set(cooldown_key, "1", ex=_RESEND_COOLDOWN_SECONDS, nx=True):
+        user = (
+            db.query(User)
+            .filter(User.email == payload.email, User.status == UserStatus.pending_verification)
+            .first()
+        )
+        if user is not None:
+            _send_verification(db, user)
+            db.commit()
+    # Generic response regardless of whether the email exists or was throttled — avoids
+    # account enumeration.
     return success_response({"sent": True})

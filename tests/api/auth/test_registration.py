@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 
 from app.api.v1.endpoints.auth import registration as registration_module
+from app.core.redis import get_redis
 from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User
 from app.platform.email import ConsoleEmailSender
@@ -68,6 +69,9 @@ def test_resend_is_generic_for_unknown_email(client):
 
 def test_resend_invalidates_prior_unconsumed_verification_token(client, db, monkeypatch):
     sender = _install_recording_sender(monkeypatch)
+    # This test depends on the resend actually firing (not throttled), so clear any
+    # cooldown key a prior run within the last 60s may have left behind for this email.
+    get_redis().delete("verify_resend_cooldown:old@x.com")
     u = create_user(db, email="old@x.com", status=UserStatus.pending_verification)
     old_raw = issue_auth_token(db, u, AuthTokenPurpose.email_verification, timedelta(hours=24))
     db.flush()
@@ -93,3 +97,21 @@ def test_resend_does_not_email_already_active_user(client, db, monkeypatch):
     assert r.status_code == 200
     assert r.json()["data"] == {"sent": True}  # still the generic response — no enumeration
     assert sender.sent == []  # but nothing was actually sent
+
+
+def test_resend_is_throttled_60s_per_email(client, db, monkeypatch):
+    sender = _install_recording_sender(monkeypatch)
+    email = "throttle-resend@x.com"
+    get_redis().delete(f"verify_resend_cooldown:{email}")
+    create_user(db, email=email, status=UserStatus.pending_verification)
+
+    first = client.post("/api/v1/auth/verify/resend", json={"email": email})
+    assert first.status_code == 200
+    assert len(sender.sent) == 1
+
+    second = client.post("/api/v1/auth/verify/resend", json={"email": email})
+    assert second.status_code == 200
+    assert second.json() == first.json()  # byte-identical generic response
+    assert len(sender.sent) == 1  # no second send — still throttled
+
+    get_redis().delete(f"verify_resend_cooldown:{email}")

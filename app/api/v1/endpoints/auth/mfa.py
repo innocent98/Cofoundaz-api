@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.envelope import success_response
-from app.core.errors import MfaInvalidCode
+from app.core.errors import AppError, MfaInvalidCode
 from app.db.models.enums import MfaType
 from app.db.models.user import User
 from app.db.session import get_db
@@ -23,6 +23,12 @@ def totp_setup(
     user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    if user.mfa_type == MfaType.totp:
+        raise AppError(
+            code="MFA_ALREADY_ENABLED",
+            message="Two-factor is already on. Turn it off before setting it up again.",
+            http_status=409,
+        )
     secret = mfa.generate_totp_secret()
     user.mfa_secret = mfa.encrypt_secret(secret)  # pending until verify
     db.commit()

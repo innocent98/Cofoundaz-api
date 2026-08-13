@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from app.core.redis import get_redis
 from app.core.security import get_password_hash, verify_password
 from app.db.models.auth import AuthSession, AuthToken
 from app.db.models.enums import AuthTokenPurpose, UserStatus
@@ -33,6 +34,29 @@ def test_forgot_disabled_account_is_generic_and_issues_no_token(client, db):
         .all()
     )
     assert tokens == []
+
+
+def test_forgot_is_throttled_60s_per_email(client, db):
+    email = "throttle-forgot@x.com"
+    get_redis().delete(f"password_reset_cooldown:{email}")
+    u = create_user(db, email=email, status=UserStatus.active)
+    db.flush()
+
+    first = client.post("/api/v1/auth/password/forgot", json={"email": email})
+    assert first.status_code == 200
+
+    second = client.post("/api/v1/auth/password/forgot", json={"email": email})
+    assert second.status_code == 200
+    assert second.json() == first.json()  # byte-identical generic response
+
+    tokens = (
+        db.query(AuthToken)
+        .filter(AuthToken.user_id == u.id, AuthToken.purpose == AuthTokenPurpose.password_reset)
+        .all()
+    )
+    assert len(tokens) == 1  # second request was throttled -- no second token issued
+
+    get_redis().delete(f"password_reset_cooldown:{email}")
 
 
 def test_reset_updates_password_and_revokes_sessions(client, db):

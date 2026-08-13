@@ -38,6 +38,26 @@ def test_totp_setup_then_verify_enables(client, db):
     assert u.mfa_type == MfaType.totp and u.mfa_secret and u.mfa_enabled_at
 
 
+def test_totp_setup_rejected_when_already_enabled(client, db):
+    secret = mfa.generate_totp_secret()
+    encrypted = mfa.encrypt_secret(secret)
+    u = create_user(
+        db,
+        email="already@x.com",
+        status=UserStatus.active,
+        mfa_type=MfaType.totp,
+        mfa_secret=encrypted,
+        mfa_enabled_at=datetime.now(UTC),
+        password_hash=get_password_hash("password1"),
+    )
+    db.flush()
+    r = client.post("/api/v1/auth/mfa/totp/setup", headers=_auth_headers(u))
+    assert r.status_code == 409, r.text
+    assert r.json()["error"]["code"] == "MFA_ALREADY_ENABLED"
+    db.refresh(u)
+    assert u.mfa_secret == encrypted  # untouched -- live secret not overwritten
+
+
 def test_challenge_with_totp_issues_tokens(client, db):
     secret = mfa.generate_totp_secret()
     u = create_user(

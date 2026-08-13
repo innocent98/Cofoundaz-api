@@ -22,6 +22,11 @@ def me(
         db.query(Membership, Startup)
         .join(Startup, Startup.id == Membership.startup_id)
         .filter(Membership.user_id == user.id, Membership.status == MembershipStatus.active)
+        # Deterministic order: earliest-created membership first, with `id` as a stable
+        # tiebreaker for rows created in the same instant (e.g. same transaction, where
+        # Postgres `now()` is transaction-scoped and can tie). Without this, `.all()` has
+        # no defined order and `active_workspace_id` below could vary between calls.
+        .order_by(Membership.created_at, Membership.id)
         .all()
     )
     memberships = [{"startup_id": str(s.id), "name": s.name, "role": m.role.value} for m, s in rows]

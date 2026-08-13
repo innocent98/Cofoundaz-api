@@ -41,17 +41,30 @@ def issue_auth_token(db: Session, user: User, purpose: AuthTokenPurpose, ttl: ti
 
 
 def consume_auth_token(db: Session, purpose: AuthTokenPurpose, raw: str) -> User:
+    now = datetime.now(UTC)
+    # Atomic claim, same pattern as `sessions.rotate_refresh`: a read-then-write here is a
+    # TOCTOU race -- two concurrent callers (e.g. a doubly-submitted verify/reset request)
+    # can both read `consumed_at IS NULL` before either writes, and both would pass.
+    # Conditioning the UPDATE itself on the same predicate makes only one concurrent
+    # claimant's UPDATE match a row.
+    claimed = (
+        db.query(AuthToken)
+        .filter(
+            AuthToken.token_hash == hash_token(raw),
+            AuthToken.purpose == purpose,
+            AuthToken.consumed_at.is_(None),
+            AuthToken.expires_at >= now,
+        )
+        .update({AuthToken.consumed_at: now}, synchronize_session=False)
+    )
+    if claimed == 0:
+        raise TokenInvalid()
     row = (
         db.query(AuthToken)
         .filter(AuthToken.token_hash == hash_token(raw), AuthToken.purpose == purpose)
         .first()
     )
-    now = datetime.now(UTC)
-    if row is None or row.consumed_at is not None or row.expires_at < now:
-        raise TokenInvalid()
-    row.consumed_at = now
-    db.flush()
-    user = db.query(User).filter(User.id == row.user_id).first()
+    user = db.query(User).filter(User.id == row.user_id).first() if row else None
     if user is None:
         raise TokenInvalid()
     return user
