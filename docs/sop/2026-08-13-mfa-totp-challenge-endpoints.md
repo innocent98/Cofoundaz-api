@@ -163,3 +163,42 @@ $ make lint
 - No endpoint to disable MFA or regenerate backup codes without going through
   `totp/setup`→`totp/verify` again (which rotates the secret). Not in this
   task's scope per the brief.
+
+## Update — final whole-branch review fix wave: reject TOTP re-setup when already enabled
+
+**What was wrong**: `totp_setup` unconditionally overwrote `user.mfa_secret` with a fresh
+pending secret, even for a user already enrolled (`mfa_type == MfaType.totp`). Calling
+`/mfa/totp/setup` a second time silently broke the user's live authenticator app — their old
+secret was gone and their existing 6-digit codes stopped validating, with no error surfaced.
+
+**Fix**: `app/api/v1/endpoints/auth/mfa.py::totp_setup` — added a guard at the top of the
+handler: if `user.mfa_type == MfaType.totp`, raise an inline `AppError(code=
+"MFA_ALREADY_ENABLED", message="Two-factor is already on. Turn it off before setting it up
+again.", http_status=409)` before touching `mfa_secret`. A user still at `MfaType.none`
+(never enrolled, or mid-enrollment — setup called but verify not yet completed) is unaffected
+and can still call setup repeatedly to regenerate the pending secret before verifying, exactly
+as before this fix — `mfa_type` only flips to `totp` inside `totp_verify`, so the guard can't
+false-positive on an in-progress-but-unverified setup.
+
+**Test added**: `test_totp_setup_rejected_when_already_enabled` — creates a user already
+enrolled in TOTP (`mfa_type=totp`, `mfa_secret` set, `mfa_enabled_at` set), calls
+`/mfa/totp/setup`, asserts 409 `MFA_ALREADY_ENABLED` and that `user.mfa_secret` is byte-identical
+to what it was before the call. Confirmed RED first (`assert 200 == 409`, secret was silently
+regenerated) against the pre-fix handler. The pre-existing
+`test_totp_setup_then_verify_enables` (a `MfaType.none` user running setup→verify) continues to
+pass unchanged, covering the "still works for a non-enrolled user" side of the guard.
+
+**Verification**:
+```
+$ poetry run pytest tests/api/auth/test_mfa_endpoints.py -v
+4 passed   (was 3)
+
+$ poetry run pytest -q
+109 passed   (104 pre-wave + 5 across all four fixes in this wave)
+
+$ make lint
+-> all four checks clean
+```
+
+**Files touched**: `app/api/v1/endpoints/auth/mfa.py` (`AppError` import, guard at the top of
+`totp_setup`), `tests/api/auth/test_mfa_endpoints.py` (+1 test), this SOP.

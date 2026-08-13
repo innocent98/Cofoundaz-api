@@ -112,3 +112,42 @@ mypy app                     -> Success: no issues found in 54 source files
   onboarding-state decisions on the frontend.
 - No pagination/limit on the memberships query — fine while a founder belongs to a
   handful of startups; revisit if that assumption changes.
+
+## Update — final whole-branch review fix wave: deterministic `active_workspace_id`
+
+**What was wrong**: the membership query had no `ORDER BY`, so `active_workspace_id =
+memberships[0]["startup_id"]` picked whichever row Postgres happened to return first for a
+multi-membership user — undefined and not guaranteed stable across calls (in practice, tends to
+follow physical/insertion row order, which is exactly what the new regression test exercises to
+prove the bug: a later-created membership inserted first came back first).
+
+**Fix**: `app/api/v1/endpoints/auth/me.py::me` — added
+`.order_by(Membership.created_at, Membership.id)` to the `Membership`/`Startup` join query.
+`created_at` expresses the intended "earliest-created membership is the default workspace"
+semantics; `Membership.id` is a stable tiebreaker for rows created in the same instant (in
+practice: two memberships inserted in the same test transaction, where Postgres `now()` is
+transaction-scoped and ties for every row inserted in it — a real scenario the regression test
+had to work around by setting `created_at` explicitly rather than relying on wall-clock spacing).
+
+**Test added**: `test_me_active_workspace_id_is_deterministic_across_calls` — creates two active
+memberships with explicit, distinct `created_at` values, inserted in the *reverse* of that
+created-at order (so insertion order disagrees with the intended order), then calls `GET /me`
+five times and asserts every response returns the earlier-created startup's id. Confirmed RED
+first (`assert '4414...' == '7c04...'` — the later-created, first-inserted membership won)
+against the pre-fix query.
+
+**Verification**:
+```
+$ poetry run pytest tests/api/auth/test_me.py -v
+3 passed   (was 2)
+
+$ poetry run pytest -q
+109 passed   (104 pre-wave + 5 across all four fixes in this wave)
+
+$ make lint
+-> all four checks clean
+```
+
+**Files touched**: `app/api/v1/endpoints/auth/me.py` (`.order_by(...)` added to the membership
+query), `tests/api/auth/test_me.py` (+1 test, +`Membership`/`MembershipStatus`/`datetime`
+imports), this SOP.

@@ -141,3 +141,44 @@ poetry run mypy app                     -> Success: no issues found in 49 source
 - Email content is a bare token, no branded template — acceptable for the
   current dev/console email backend; revisit before SMTP goes live in
   production.
+
+## Update — final whole-branch review fix wave: 60s per-email resend throttle
+
+**What was wrong**: `POST /verify/resend` had no cooldown — a caller (or attacker) could spam
+the endpoint for the same email with no rate limit beyond the app-wide default, email-bombing
+the target once real SMTP is wired (spec §6.1 calls for resend "rate-limited 60s"). Flagged
+above as a follow-up at the time; closed now in the final fix wave that also touched
+`password.py::forgot`, `mfa.py::totp_setup`, and `tokens.py::consume_auth_token`.
+
+**Fix**: `resend` now gates the issue+send behind
+`get_redis().set(f"verify_resend_cooldown:{email}", "1", ex=60, nx=True)` — same
+`app.core.redis.get_redis()` primitive `mfa.py::issue_mfa_ticket` already uses for its `setex`
+call. Using `SET NX` (atomic claim) rather than a literal check-then-`SETEX` avoids a TOCTOU race
+between two concurrent resend calls for the same email both seeing "no cooldown key yet" and both
+sending — same atomic-claim reasoning already applied to `rotate_refresh`/`consume_auth_token`
+elsewhere in this codebase. On a throttled call, the block is skipped entirely (no DB query, no
+token issue, no email) but the handler still returns the exact same `{sent: true}` — response is
+byte-identical across unknown-email, throttled-known-email, and fresh-known-email, preserving the
+no-enumeration guarantee.
+
+**Test added**: `test_resend_is_throttled_60s_per_email` — two resend calls for the same email;
+asserts the second call returns byte-identical JSON to the first and `ConsoleEmailSender.sent`
+stays at length 1 (no second send). Confirmed RED first (`assert 2 == 1` on `sender.sent`) against
+the pre-fix handler.
+
+**Regression note**: the pre-existing `test_resend_invalidates_prior_unconsumed_verification_token`
+reuses a hardcoded email (`old@x.com`) and asserts the resend actually fires — running the full
+suite twice within 60s (e.g. iterating locally) now trips its own leftover cooldown key from the
+prior run. Fixed by clearing that key at the top of the test
+(`get_redis().delete("verify_resend_cooldown:old@x.com")`), matching the isolation pattern used by
+the new throttle test. No test asserted the same email twice inside one run, so this is purely a
+cross-run artifact, not a bug in the throttle logic itself.
+
+**Verification**: `poetry run pytest tests/api/auth/test_registration.py -v` → 9 passed (was 8);
+full suite 109 passed (104 pre-wave + 5 across all four fixes in this wave); `make lint` clean. Ran
+the full suite twice back-to-back (within the 60s cooldown window) to confirm no Redis-state
+flakiness — both green.
+
+**Files touched**: `app/api/v1/endpoints/auth/registration.py` (`get_redis` import, cooldown gate
+in `resend`), `tests/api/auth/test_registration.py` (+1 test, +`get_redis` import, +cooldown clear
+in the pre-existing invalidation test), this SOP.

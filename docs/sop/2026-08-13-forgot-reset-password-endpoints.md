@@ -187,3 +187,45 @@ mypy app                     -> Success: no issues found in 53 source files
 **Files touched (fix round 1)**: `app/api/v1/endpoints/auth/password.py` (`UserStatus`
 import + status gate on `forgot`, comment updated), `tests/api/auth/test_password_endpoints.py`
 (+1 test, +`AuthToken` import), this SOP.
+
+## Update — fix round 2 (final whole-branch review fix wave): 60s per-email forgot throttle
+
+**What was wrong**: `POST /password/forgot` had no cooldown — same class of gap as
+`registration.py::resend` (spec §6.1 calls for resend "rate-limited 60s"; `forgot` shares the
+identical no-enumeration shape and same email-bombing exposure once real SMTP is wired). Flagged
+in the Task 11 SOP's original follow-ups; closed now alongside the sibling fix to `resend`,
+`mfa.py::totp_setup`, and `tokens.py::consume_auth_token`.
+
+**Fix**: `forgot` now gates the issue+send behind
+`get_redis().set(f"password_reset_cooldown:{email}", "1", ex=60, nx=True)` — same
+`app.core.redis.get_redis()` primitive `mfa.py::issue_mfa_ticket` uses for its `setex` call, and
+the same atomic `SET NX` approach used for the sibling `resend` fix (avoids the TOCTOU race a
+literal check-then-`SETEX` would have between two concurrent forgot calls for the same email). On
+a throttled call, the block — including the existing `disabled`-account status gate from fix
+round 1 — is skipped entirely, but the handler still returns the identical generic
+`{sent: true, message: ...}` body. Response stays byte-identical across unknown-email,
+disabled-account, throttled-known-email, and fresh-known-email — the no-enumeration guarantee
+from fix round 1 is preserved, just with one more case folded into it.
+
+**Test added**: `test_forgot_is_throttled_60s_per_email` — two forgot calls for the same email;
+asserts the second call returns byte-identical JSON to the first and that only one `AuthToken`
+row (`purpose=password_reset`) exists for that user afterward. Confirmed RED first
+(`assert 2 == 1` on the token count) against the pre-fix handler.
+
+**Verification**:
+```
+$ poetry run pytest tests/api/auth/test_password_endpoints.py -v
+6 passed   (was 4)
+
+$ poetry run pytest -q
+109 passed   (104 pre-wave + 5 across all four fixes in this wave)
+
+$ make lint
+-> all four checks clean
+```
+Ran the full suite twice back-to-back (within the 60s cooldown window) to confirm no Redis-state
+flakiness across repeated runs — both green.
+
+**Files touched (fix round 2)**: `app/api/v1/endpoints/auth/password.py` (`get_redis` import,
+cooldown gate in `forgot`), `tests/api/auth/test_password_endpoints.py` (+1 test, +`get_redis`
+import), this SOP.

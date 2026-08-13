@@ -153,3 +153,71 @@ seams are honest 501s, not silent gaps):
 - **`poetry.lock` is gitignored repo-wide** — new deps (`pyotp`, `cryptography`) live only in
   `pyproject.toml`; flagged in Task 6's review as an infra/reproducible-build risk worth revisiting
   outside this plan's scope.
+
+## Update — final whole-branch review fix wave (4 fixes, one commit-set)
+
+A whole-branch review after Task 14 landed found four issues, all fixed in one pass (each with
+its own RED test first). Three have dedicated SOP updates; the fourth (`tokens.py`, which never
+had its own SOP — see the "Verification/reset tokens" table row above, commit `671b73a`, no SOP
+column) is recorded here instead of a new file.
+
+| Fix | Surface | Detail |
+|---|---|---|
+| A | `registration.py::resend`, `password.py::forgot` | 60s per-email Redis cooldown (spec §6.1) — see `2026-08-13-signup-verify-resend-endpoints.md` and `2026-08-13-forgot-reset-password-endpoints.md` |
+| B | `me.py::me` | Deterministic `active_workspace_id` via `.order_by(Membership.created_at, Membership.id)` — see `2026-08-13-me-identity-endpoint.md` |
+| C | `mfa.py::totp_setup` | Reject re-setup when already enrolled (409 `MFA_ALREADY_ENABLED`) — see `2026-08-13-mfa-totp-challenge-endpoints.md` |
+| D | `tokens.py::consume_auth_token` | Atomic conditional-`UPDATE` claim, replacing read-check-write — detailed below |
+
+**Fix D — `consume_auth_token` TOCTOU**: the original implementation read the `AuthToken` row,
+checked `consumed_at is None and expires_at >= now` in Python, then wrote `consumed_at`. Two
+concurrent callers consuming the same token (e.g. a doubly-submitted `/verify` or `/password/reset`
+request) could both pass the Python check before either wrote, letting a single-use token be
+consumed twice — the same class of race `sessions.py::rotate_refresh` was already hardened against
+(see `2026-08-13-refresh-token-session-service.md`'s TOCTOU note). Fixed by conditioning the
+`UPDATE` itself on the same predicate (`token_hash`, `purpose`, `consumed_at IS NULL`, `expires_at
+>= now`) via `.update(..., synchronize_session=False)` and checking the returned row count — only
+one concurrent claimant's `UPDATE` can match, exactly mirroring `rotate_refresh`'s pattern. All
+three pre-existing token tests (`tests/services/auth/test_tokens.py`: consume-once → second call
+fails, wrong-purpose rejected, expired rejected) pass unchanged against the new implementation — no
+observable behavior change for the single-caller case, only for the race.
+
+**Test added**: `tests/services/auth/test_tokens_concurrency.py::
+test_concurrent_consume_of_same_token_only_one_winner` — same structure as
+`test_sessions_concurrency.py`'s `rotate_refresh` race test (two threads on independent, real
+`Session`s against the shared test-DB `engine`, synchronized with a `threading.Barrier`, since the
+per-test `db` fixture's single never-committing transaction can't reproduce a cross-connection
+race). Confirmed RED first: with the pre-fix read-check-write code, both threads won
+(`assert 2 == 1` failed with `[(True, None), (True, None)]`); with the fix, exactly one thread wins
+and the other raises `TokenInvalid`.
+
+**Verification** (whole fix wave):
+```
+$ poetry run pytest -q
+109 passed   (104 pre-wave + 5 new: 1 per fix for A/B/C/D, plus A covers two endpoints
+              with one test each = signup/password suites +1 test apiece)
+
+$ make lint
+black  -> all files unchanged
+isort  -> clean
+ruff   -> all checks passed
+mypy   -> success, no issues
+```
+Ran the full suite twice back-to-back (within the new 60s Redis cooldown window) to rule out
+cross-run Redis-state flakiness from Fix A — both green. One pre-existing test
+(`test_resend_invalidates_prior_unconsumed_verification_token`) needed a one-line fix (clear its
+own cooldown key at the top) once Fix A's cooldown made it sensitive to being re-run within 60s of
+itself — see the signup/resend SOP's update section for detail.
+
+**Files changed (whole wave)**: `app/api/v1/endpoints/auth/registration.py`,
+`app/api/v1/endpoints/auth/password.py`, `app/api/v1/endpoints/auth/me.py`,
+`app/api/v1/endpoints/auth/mfa.py`, `app/services/auth/tokens.py`,
+`tests/api/auth/test_registration.py`, `tests/api/auth/test_password_endpoints.py`,
+`tests/api/auth/test_me.py`, `tests/api/auth/test_mfa_endpoints.py`,
+`tests/services/auth/test_tokens_concurrency.py` (new), plus the SOP updates listed above and
+the stale "Plan 2" line fixed in `docs/sop/2026-08-12-rate-limiting-coverage-gate.md`.
+
+**Operate / roll back**: no migrations, no config changes. Fix A requires Redis reachable at
+`settings.REDIS_URL` for `resend`/`forgot` to work at all now (previously optional for those two
+routes) — matches the existing `mfa.py::challenge` precedent, which already hard-depends on Redis.
+Roll back by reverting this fix-set's commit(s); each fix is independent and could also be reverted
+individually if only one needs to be pulled.
