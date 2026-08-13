@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.envelope import success_response
 from app.core.security import get_password_hash
-from app.db.models.enums import AuthTokenPurpose
+from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.audit import write_audit
@@ -30,7 +30,7 @@ def forgot(
     payload: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)  # noqa: B008
 ) -> dict[str, Any]:
     user = db.query(User).filter(User.email == payload.email).first()
-    if user is not None:
+    if user is not None and user.status != UserStatus.disabled:
         invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)
         raw = issue_auth_token(db, user, AuthTokenPurpose.password_reset, _RESET_TTL)
         get_email_sender().send(
@@ -47,7 +47,8 @@ def forgot(
             ip=request.client.host if request.client else None,
         )
         db.commit()
-    # Same response either way — no enumeration.
+    # Same response in all cases (unknown email, disabled account, active account) —
+    # no enumeration. Only the internal side effects above are gated.
     return success_response({"sent": True, "message": _GENERIC_SENT_MESSAGE})
 
 

@@ -23,7 +23,8 @@ ones have accounts).
 
 **`app/api/v1/endpoints/auth/password.py`** (new):
 
-- `POST /password/forgot` — looks up the user by email. If found: first calls
+- `POST /password/forgot` — looks up the user by email. If found **and not
+  `UserStatus.disabled`** (see fix round 1 below): first calls
   `invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)` (marks any
   still-live prior reset tokens as consumed, mirroring `registration.py::_send_verification`'s
   use of the same helper for email-verification tokens) so only the newest reset link is
@@ -32,9 +33,10 @@ ones have accounts).
   console backend in dev/test — see `app/platform/email.py`), writes an
   `auth.password.reset_requested` audit row, commits. **Always** returns the same 200
   `{sent: true, message: "If that email has an account, a reset link is on its way."}` —
-  identical status and body whether or not the email exists, so a client (or attacker)
-  cannot distinguish a known email from an unknown one. Matches the existing no-enumeration
-  precedent in `registration.py::resend`.
+  identical status and body across all three cases (unknown email, disabled account, active
+  account), so a client (or attacker) cannot distinguish any of them. Matches the existing
+  no-enumeration precedent in `registration.py::resend`. `pending_verification` users are
+  *not* excluded — only `disabled`, matching `login.py`'s own status check.
 - `POST /password/reset` — validates password strength first
   (`validate_password_strength`, raises `WeakPassword` → 422) *before* touching the token,
   so a weak-password attempt doesn't burn a valid reset token. Then `consume_auth_token`
@@ -58,9 +60,10 @@ here up front instead of repeating that gap.)
 
 - `app/api/v1/endpoints/auth/password.py` (new) — `forgot`/`reset` routes.
 - `app/api/v1/endpoints/auth/__init__.py` (modified) — mounts `password.router`.
-- `tests/api/auth/test_password_endpoints.py` (new, 3 tests, verbatim from the brief) —
-  generic-response-for-unknown-email, reset updates password + revokes all sessions, weak
-  password rejected with 422.
+- `tests/api/auth/test_password_endpoints.py` (new, 4 tests: 3 verbatim from the brief +
+  1 added in fix round 1) — generic-response-for-unknown-email, reset updates password +
+  revokes all sessions, weak password rejected with 422, disabled account gets the generic
+  response but no token issued.
 - Consumes (no changes): `app/services/auth/tokens.py::issue_auth_token/consume_auth_token`,
   `app/services/auth/password.py::validate_password_strength`,
   `app/services/auth/sessions.py::revoke_all_for_user`, `app/core/security.py::
@@ -130,3 +133,57 @@ server-side and unobservable to the caller).
   tests). Worth a dedicated per-IP limit given this endpoint is a classic
   enumeration/abuse target (mass reset-email spam against arbitrary addresses), even though
   the response itself doesn't leak account existence.
+
+## Update — fix round 1: `forgot` issued reset tokens to disabled accounts
+
+**What was wrong**: `forgot`'s gate was `if user is not None:`, so a `disabled` account
+(deactivated by an admin, or self-locked) got a live `password_reset` token and email just
+like an active account. `login.py` already blocks `UserStatus.disabled` at the credential
+check, and the sibling `registration.py::resend` endpoint already establishes the
+status-filtering precedent for this exact no-enumeration shape (only sends a fresh
+verification email to `UserStatus.pending_verification` users) — `forgot` should have
+matched that pattern from the start but didn't, since the brief's literal code snippet
+didn't filter on status at all. Caught in code review, not by the original 3 tests (none
+of which used a disabled user).
+
+**Fix**: `app/api/v1/endpoints/auth/password.py::forgot` — gate changed to `if user is not
+None and user.status != UserStatus.disabled:`. The response line stays *outside* that
+block and unconditional, so the 200 body/status is byte-identical across unknown-email,
+disabled-account, and active-account requests — only the internal side effects (token
+issue, email send, audit write, commit) are gated. `pending_verification` is deliberately
+left able to reset (not excluded) — the fix only adds the one check `login.py` itself
+enforces.
+
+**Test added** (`tests/api/auth/test_password_endpoints.py`):
+`test_forgot_disabled_account_is_generic_and_issues_no_token` — creates a `UserStatus.disabled`
+user, calls `/password/forgot` with their email, asserts (a) the response body is exactly
+`{"sent": true, "message": "If that email has an account, a reset link is on its way."}`
+(same as the unknown-email case) and (b) querying `AuthToken` filtered by that user's `id`
++ `purpose=password_reset` returns `[]` — no token was persisted.
+
+**Confirmed RED first**: `git stash`ed just the fix (`app/api/v1/endpoints/auth/password.py`),
+ran the new test alone against the pre-fix code — failed exactly as expected
+(`assert [<AuthToken ...>] == []`, i.e. a token *was* issued for the disabled user).
+Restored the fix (`git stash pop`), reran — passed.
+
+**Verification**:
+```
+$ poetry run pytest tests/api/auth/test_password_endpoints.py -v
+4 passed
+```
+```
+$ poetry run pytest -q
+96 passed
+```
+(95 pre-fix + 1 new, no regressions, no unexpected new passes.)
+```
+$ make lint
+black --check app tests      -> All done! 94 files would be left unchanged.
+isort --check-only app tests -> clean
+ruff check app tests         -> All checks passed!
+mypy app                     -> Success: no issues found in 53 source files
+```
+
+**Files touched (fix round 1)**: `app/api/v1/endpoints/auth/password.py` (`UserStatus`
+import + status gate on `forgot`, comment updated), `tests/api/auth/test_password_endpoints.py`
+(+1 test, +`AuthToken` import), this SOP.
