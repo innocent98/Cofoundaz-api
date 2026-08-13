@@ -10,6 +10,22 @@ from app.db.models.user import User
 from app.services.auth.sessions import hash_token
 
 
+def invalidate_unconsumed_tokens(db: Session, user: User, purpose: AuthTokenPurpose) -> None:
+    """Mark all of a user's not-yet-consumed tokens for `purpose` as consumed.
+
+    Callers issuing a fresh token (e.g. signup / resend-verification) should call
+    this first so that only the newest token for that purpose remains valid —
+    otherwise every previously-issued, still-unexpired token stays usable
+    indefinitely alongside the new one.
+    """
+    db.query(AuthToken).filter(
+        AuthToken.user_id == user.id,
+        AuthToken.purpose == purpose,
+        AuthToken.consumed_at.is_(None),
+    ).update({"consumed_at": datetime.now(UTC)}, synchronize_session=False)
+    db.flush()
+
+
 def issue_auth_token(db: Session, user: User, purpose: AuthTokenPurpose, ttl: timedelta) -> str:
     raw = secrets.token_urlsafe(32)
     db.add(

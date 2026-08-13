@@ -15,13 +15,18 @@ from app.platform.email import EmailMessage, get_email_sender
 from app.platform.events import event_bus
 from app.schemas.auth import EmailRequest, SignupRequest, TokenRequest
 from app.services.auth.password import validate_password_strength
-from app.services.auth.tokens import consume_auth_token, issue_auth_token
+from app.services.auth.tokens import (
+    consume_auth_token,
+    invalidate_unconsumed_tokens,
+    issue_auth_token,
+)
 
 router = APIRouter()
 _VERIFY_TTL = timedelta(hours=24)
 
 
 def _send_verification(db: Session, user: User) -> None:
+    invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.email_verification)
     raw = issue_auth_token(db, user, AuthTokenPurpose.email_verification, _VERIFY_TTL)
     get_email_sender().send(
         EmailMessage(

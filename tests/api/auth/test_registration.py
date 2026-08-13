@@ -1,9 +1,24 @@
+import re
 from datetime import timedelta
 
+import pytest
+
+from app.api.v1.endpoints.auth import registration as registration_module
 from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User
+from app.platform.email import ConsoleEmailSender
 from app.services.auth.tokens import issue_auth_token
 from tests.factories import create_user
+
+
+def _install_recording_sender(monkeypatch: pytest.MonkeyPatch) -> ConsoleEmailSender:
+    """`get_email_sender()` returns a *new* ConsoleEmailSender on every call, so a
+    shared instance can't be observed via the factory. Patch the registration
+    module's bound reference to always hand back the same instance, so its
+    `.sent` list accumulates across calls within a test."""
+    sender = ConsoleEmailSender()
+    monkeypatch.setattr(registration_module, "get_email_sender", lambda: sender)
+    return sender
 
 
 def test_signup_creates_pending_user(client, db):
@@ -49,3 +64,32 @@ def test_verify_bad_token(client):
 def test_resend_is_generic_for_unknown_email(client):
     r = client.post("/api/v1/auth/verify/resend", json={"email": "ghost@x.com"})
     assert r.status_code == 200  # no enumeration
+
+
+def test_resend_invalidates_prior_unconsumed_verification_token(client, db, monkeypatch):
+    sender = _install_recording_sender(monkeypatch)
+    u = create_user(db, email="old@x.com", status=UserStatus.pending_verification)
+    old_raw = issue_auth_token(db, u, AuthTokenPurpose.email_verification, timedelta(hours=24))
+    db.flush()
+
+    r = client.post("/api/v1/auth/verify/resend", json={"email": "old@x.com"})
+    assert r.status_code == 200
+    assert len(sender.sent) == 1
+    new_raw = re.search(r"<code>(.+?)</code>", sender.sent[-1].html).group(1)  # type: ignore[union-attr]
+
+    stale = client.post("/api/v1/auth/verify", json={"token": old_raw})
+    assert stale.status_code == 400
+    assert stale.json()["error"]["code"] == "TOKEN_INVALID"
+
+    fresh = client.post("/api/v1/auth/verify", json={"token": new_raw})
+    assert fresh.status_code == 200
+
+
+def test_resend_does_not_email_already_active_user(client, db, monkeypatch):
+    sender = _install_recording_sender(monkeypatch)
+    create_user(db, email="active@x.com", status=UserStatus.active)
+
+    r = client.post("/api/v1/auth/verify/resend", json={"email": "active@x.com"})
+    assert r.status_code == 200
+    assert r.json()["data"] == {"sent": True}  # still the generic response — no enumeration
+    assert sender.sent == []  # but nothing was actually sent
