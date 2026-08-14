@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     MFA_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
 
     # Providers
-    EMAIL_BACKEND: str = "console"  # console | smtp
+    EMAIL_BACKEND: str = "console"  # console | smtp | file
+    EMAIL_FILE_DIR: str = "./var/mail"  # where FileEmailSender writes captured emails (dev/e2e)
     STORAGE_BACKEND: str = "local"  # local
     LOCAL_STORAGE_DIR: str = "./var/storage"
 
