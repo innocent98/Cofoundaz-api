@@ -34,3 +34,17 @@ def test_logo_rejects_non_image(client, db):
         files={"file": ("x.txt", io.BytesIO(b"nope"), "text/plain")},
     )
     assert r.status_code == 422
+
+
+def test_logo_rejects_oversized_file(client, db):
+    u, h = _auth(db)
+    db.commit()
+    client.get("/api/v1/onboarding/state", headers=h)
+    oversized = b"\x89PNG\r\n" + b"0" * (2 * 1024 * 1024 + 10)
+    r = client.post(
+        "/api/v1/onboarding/logo",
+        headers=h,
+        files={"file": ("logo.png", io.BytesIO(oversized), "image/png")},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"

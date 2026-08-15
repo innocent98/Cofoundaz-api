@@ -15,6 +15,7 @@ from app.services.onboarding.workspace import resolve_or_create_workspace
 router = APIRouter()
 _ALLOWED = {"image/png": "png", "image/jpeg": "jpg", "image/svg+xml": "svg", "image/webp": "webp"}
 _MAX_BYTES = 2 * 1024 * 1024
+_CHUNK_BYTES = 64 * 1024
 
 
 @router.post("/logo")
@@ -25,9 +26,14 @@ async def upload_logo(
 ) -> dict[str, Any]:
     if file.content_type not in _ALLOWED:
         raise AppError("VALIDATION_ERROR", "Logo must be a PNG, JPG, SVG, or WebP image.", 422)
-    content = await file.read()
-    if len(content) > _MAX_BYTES:
-        raise AppError("VALIDATION_ERROR", "Logo must be 2 MB or smaller.", 422)
+    content = b""
+    while True:
+        chunk = await file.read(_CHUNK_BYTES)
+        if not chunk:
+            break
+        content += chunk
+        if len(content) > _MAX_BYTES:
+            raise AppError("VALIDATION_ERROR", "Logo must be 2 MB or smaller.", 422)
     startup = resolve_or_create_workspace(db, user)
     ext = _ALLOWED[file.content_type]
     key = f"logos/{startup.id}/{uuid.uuid4().hex}.{ext}"
