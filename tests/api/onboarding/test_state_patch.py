@@ -48,3 +48,31 @@ def test_patch_goals_max_3(client, db):
         json={"step": 4, "goals": ["a", "b", "c", "d"]},
     )
     assert r.status_code == 422  # more than 3 goals rejected
+
+
+def test_patch_step4_saves_goals_and_notes(client, db):
+    u, h = _auth(db)
+    db.commit()
+    client.get("/api/v1/onboarding/state", headers=h)
+    r = client.patch(
+        "/api/v1/onboarding/state",
+        headers=h,
+        json={"step": 4, "goals": ["Get first customers"], "notes": "solo founder"},
+    )
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["goals"] == ["Get first customers"]
+    assert data["notes"] == "solo founder"
+
+
+def test_patch_explicit_null_goals_is_noop(client, db):
+    u, h = _auth(db)
+    db.commit()
+    client.get("/api/v1/onboarding/state", headers=h)
+    r = client.patch(
+        "/api/v1/onboarding/state",
+        headers=h,
+        json={"step": 4, "goals": None},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["goals"] == []
