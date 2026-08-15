@@ -127,7 +127,9 @@ handler was dead code. Fixed in `app/main.py:69` by adding
 `from slowapi.middleware import SlowAPIMiddleware` and `app.add_middleware(SlowAPIMiddleware)`
 right after the `RateLimitExceeded` handler registration, with a comment noting `key_func=
 get_remote_address` (per-IP) is deliberate for now — per-user keying is a Plan 2 follow-up once
-requests carry resolved auth context.
+requests carry resolved auth context. **(Superseded — per-user keying landed in Task 14 of the
+Auth Endpoints plan; see `docs/sop/2026-08-13-auth-endpoints.md` and the "Follow-ups" note
+below.)**
 
 **Why the middleware matters** (confirmed empirically, not just by reading docs): slowapi's
 `@limiter.limit(...)` decorator calls `Limiter._check_request_limit` directly at call time, so

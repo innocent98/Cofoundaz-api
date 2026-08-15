@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     MFA_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
 
     # Providers
-    EMAIL_BACKEND: str = "console"  # console | smtp
+    EMAIL_BACKEND: str = "console"  # console | smtp | file
+    EMAIL_FILE_DIR: str = "./var/mail"  # where FileEmailSender writes captured emails (dev/e2e)
     STORAGE_BACKEND: str = "local"  # local
     LOCAL_STORAGE_DIR: str = "./var/storage"
 
@@ -49,6 +50,16 @@ class Settings(BaseSettings):
         elif isinstance(v, list | str):
             return v
         raise ValueError(v)
+
+    @field_validator("REFRESH_COOKIE_SAMESITE")
+    @classmethod
+    def validate_refresh_cookie_samesite(cls, v: str) -> str:
+        normalized = v.lower()
+        if normalized not in {"lax", "strict", "none"}:
+            raise ValueError(
+                f"REFRESH_COOKIE_SAMESITE must be one of 'lax', 'strict', 'none' (got {v!r})"
+            )
+        return normalized
 
     # Database
     DATABASE_URL: str

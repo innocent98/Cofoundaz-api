@@ -188,3 +188,13 @@ the `/whoami` mini-app route returns 401 for that still-otherwise-valid token. C
 **Verification**: `poetry run pytest tests/api/test_current_user.py -v` → 3 passed. Full suite and
 `make lint` results are in
 `.superpowers/sdd/2026-08-12-foundation-tenancy-spine/final-fix-report.md`.
+
+## Update — 2026-08-13 disabled-user enforcement (Auth Endpoints plan, Task 8)
+
+The `status`-based follow-up flagged above as "Plan 2 — not implemented" has now shipped:
+`get_current_user` raises `Unauthorized()` for `status == UserStatus.disabled`, checked right
+before `return user`. `UserStatus.locked` is not separately enforced here — a locked account's
+lockout is time-bounded (`locked_until`) and only meaningful at login time, not for an
+already-issued token. Full detail in
+`docs/sop/2026-08-13-login-lockout-mfa-gate.md`, which also adds the `POST /auth/login` endpoint
+this check pairs with.

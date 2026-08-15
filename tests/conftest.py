@@ -47,6 +47,11 @@ def db(engine: Engine) -> Iterator[Session]:
 @pytest.fixture()
 def client(db: Session) -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: db
+    # Disable the live SlowAPI limiter for endpoint tests: as the auth suite grows,
+    # many requests per test run could otherwise trip the shared 120/min default
+    # limit and produce flaky 429s unrelated to what's under test.
+    app.state.limiter.enabled = False
     with TestClient(app) as c:
         yield c
+    app.state.limiter.enabled = True
     app.dependency_overrides.clear()

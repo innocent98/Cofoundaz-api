@@ -54,3 +54,13 @@ class JobStatus(str, enum.Enum):
     succeeded = "succeeded"
     failed = "failed"
     cancelled = "cancelled"
+
+
+class AuthTokenPurpose(str, enum.Enum):
+    email_verification = "email_verification"
+    password_reset = "password_reset"
+
+
+class OAuthProvider(str, enum.Enum):
+    google = "google"
+    apple = "apple"

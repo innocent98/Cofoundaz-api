@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#
+# Live end-to-end runner for the auth API.
+#
+# Boots a REAL uvicorn server against an isolated `cofoundaz_e2e` Postgres DB
+# (migrated from zero) and live Redis, with EMAIL_BACKEND=file so the e2e suite
+# can read one-time tokens back out of captured emails. Runs the sanity + smoke
+# + journey layers, then tears the server down.
+#
+# Usage:  scripts/e2e_run.sh
+# Requires: docker compose (db + redis), poetry, a populated .env (SECRET_KEY,
+#           MFA_ENCRYPTION_KEY).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# --- config (override via env) ---
+PG_USER="${E2E_PG_USER:-user}"
+PG_PASSWORD="${E2E_PG_PASSWORD:-password}"
+PG_HOST="${E2E_PG_HOST:-localhost}"
+PG_PORT="${E2E_PG_PORT:-5433}"
+ADMIN_DB="${E2E_ADMIN_DB:-cofoundaz-api_db}"
+E2E_DB="${E2E_DB:-cofoundaz_e2e}"
+PORT="${E2E_PORT:-8010}"
+MAIL_DIR="${E2E_MAIL_DIR:-./var/mail-e2e}"
+
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${E2E_DB}"
+export EMAIL_BACKEND="file"
+export EMAIL_FILE_DIR="${MAIL_DIR}"
+export RATE_LIMIT_PER_MINUTE="100000"   # keep the limiter in the path but out of the way of journeys
+export E2E_BASE_URL="http://127.0.0.1:${PORT}"
+export E2E_MAIL_DIR="${MAIL_DIR}"
+
+# The e2e server talks plain HTTP, so a Secure cookie would (correctly) never be
+# sent back by the client — relax it here to exercise real cookie-transport, the
+# same way a local dev server over http:// would be configured.
+export REFRESH_COOKIE_SECURE="False"
+
+# Self-contained MFA: generate an ephemeral Fernet key so the run never depends on
+# a populated .env. (Note: a real deployment MUST set a persistent MFA_ENCRYPTION_KEY.)
+export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+
+SERVER_PID=""
+SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"
+
+cleanup() {
+  if [[ -n "${SERVER_PID}" ]] && kill -0 "${SERVER_PID}" 2>/dev/null; then
+    echo "==> stopping server (pid ${SERVER_PID})"
+    kill "${SERVER_PID}" 2>/dev/null || true
+    wait "${SERVER_PID}" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+echo "==> [sanity] docker db + redis up"
+docker compose up -d db redis >/dev/null
+for _ in $(seq 1 20); do
+  docker compose exec -T db pg_isready -U "${PG_USER}" >/dev/null 2>&1 && break
+  sleep 1
+done
+
+echo "==> [sanity] recreate ${E2E_DB} (clean state)"
+docker compose exec -T db psql -U "${PG_USER}" -d "${ADMIN_DB}" \
+  -c "DROP DATABASE IF EXISTS ${E2E_DB};" -c "CREATE DATABASE ${E2E_DB};" >/dev/null
+
+echo "==> [sanity] alembic upgrade head on ${E2E_DB}"
+poetry run alembic upgrade head >/dev/null
+
+echo "==> [sanity] app imports"
+poetry run python -c "import app.main" >/dev/null
+
+echo "==> [sanity] fresh mail dir ${MAIL_DIR}"
+rm -rf "${MAIL_DIR}" && mkdir -p "${MAIL_DIR}"
+
+echo "==> launching uvicorn on :${PORT}"
+poetry run uvicorn app.main:app --host 127.0.0.1 --port "${PORT}" --no-access-log \
+  >"${SERVER_LOG}" 2>&1 &
+SERVER_PID=$!
+
+echo "==> [sanity] waiting for /health"
+ready=""
+for _ in $(seq 1 40); do
+  if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then ready="1"; break; fi
+  if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
+    echo "!! server died during startup — log:"; tail -30 "${SERVER_LOG}"; exit 1
+  fi
+  sleep 0.5
+done
+if [[ -z "${ready}" ]]; then
+  echo "!! server never became healthy — log:"; tail -30 "${SERVER_LOG}"; exit 1
+fi
+echo "==> server healthy"
+
+echo "==> running e2e suite (smoke + journeys)"
+set +e
+poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider
+CODE=$?
+set -e
+
+echo "==> server log tail:"; tail -15 "${SERVER_LOG}" || true
+exit "${CODE}"
