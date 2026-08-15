@@ -1,9 +1,15 @@
 import sys
+from typing import TYPE_CHECKING
+
 from loguru import logger
+
 from app.core.config import settings
 
+if TYPE_CHECKING:
+    from loguru import Logger
 
-def setup_logging():
+
+def setup_logging() -> "Logger":
     logger.remove()
 
     log_level = "DEBUG" if settings.ENVIRONMENT == "development" else "INFO"

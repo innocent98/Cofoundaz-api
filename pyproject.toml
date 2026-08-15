@@ -33,6 +33,8 @@ gunicorn = "^23.0.0"
 psycopg2-binary = "^2.9.10"
 redis = "^5.0.0"
 slowapi = "^0.1.9"
+pyotp = "^2.10.0"
+cryptography = "^50.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
@@ -55,7 +57,7 @@ start = "app.main:start"
 line-length = 100
 target-version = ["py311"]
 include = "\\.pyi?$"
-exclude = """
+exclude = '''
 /(
     \.git
     | \.hg
@@ -68,7 +70,7 @@ exclude = """
     | dist
     | alembic
 )/
-"""
+'''
 
 [tool.isort]
 profile = "black"
@@ -98,3 +100,15 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "-v --strict-markers --cov=app --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    # Third-party py3.14 asyncio DeprecationWarnings from pytest_asyncio/fastapi/slowapi
+    # internals (the venv runs Python 3.14; the project targets 3.11). These flood the
+    # run and aren't actionable from app code. First-party `app.*` warnings are left
+    # visible (no blanket "ignore::DeprecationWarning").
+    "ignore:.*iscoroutinefunction.*:DeprecationWarning",
+    "ignore:.*get_event_loop_policy.*:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/main.py", "alembic/*"]

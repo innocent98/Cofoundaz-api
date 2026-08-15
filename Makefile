@@ -1,6 +1,6 @@
 # Makefile for cofoundaz-api
 
-.PHONY: help install dev-install run test lint format clean docker-build docker-up docker-down migrate shell
+.PHONY: help install dev-install run test test-cov e2e lint format clean docker-build docker-up docker-down migrate shell
 
 help:
 	@echo "Available commands:"
@@ -33,6 +33,9 @@ test:
 
 test-cov:
 	poetry run pytest --cov=app --cov-report=html --cov-report=term
+
+e2e:
+	./scripts/e2e_run.sh
 
 lint:
 	poetry run black --check app tests
