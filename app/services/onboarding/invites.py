@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import InviteEmailMismatch, NotFound, TokenInvalid
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
@@ -87,7 +87,7 @@ def create_invitations(
     return {"created": created, "skipped": skipped}
 
 
-def preview_invitation(db: Session, token: str) -> dict:
+def preview_invitation(db: Session, token: str) -> dict[str, Any]:
     inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
     if inv is None:
         raise NotFound()
@@ -100,3 +100,36 @@ def preview_invitation(db: Session, token: str) -> dict:
         "email": inv.email,
         "status": inv.status.value,
     }
+
+
+def accept_invitation(db: Session, user: User, token: str) -> Membership:
+    inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
+    now = datetime.now(UTC)
+    if inv is None or inv.status != InvitationStatus.pending or inv.expires_at < now:
+        raise TokenInvalid()
+    if user.email.lower() != inv.email.lower():
+        raise InviteEmailMismatch()
+    existing = (
+        db.query(Membership)
+        .filter(Membership.user_id == user.id, Membership.startup_id == inv.startup_id)
+        .first()
+    )
+    if existing is None:
+        existing = Membership(
+            user_id=user.id,
+            startup_id=inv.startup_id,
+            role=inv.role,
+            status=MembershipStatus.active,
+            invited_by=inv.invited_by,
+            joined_at=now,
+        )
+        db.add(existing)
+    inv.status = InvitationStatus.accepted
+    inv.accepted_at = now
+    inv.accepted_user_id = user.id
+    db.flush()
+    event_bus.publish(
+        "workspace.member.joined",
+        {"startup_id": str(inv.startup_id), "user_id": str(user.id), "role": inv.role.value},
+    )
+    return existing
