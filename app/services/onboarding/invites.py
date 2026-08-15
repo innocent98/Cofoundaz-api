@@ -4,11 +4,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import NotFound
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
-from app.db.models.user import User
+from app.db.models.user import User, UserProfile
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
@@ -84,3 +85,18 @@ def create_invitations(
         created.append(email)
     db.flush()
     return {"created": created, "skipped": skipped}
+
+
+def preview_invitation(db: Session, token: str) -> dict:
+    inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
+    if inv is None:
+        raise NotFound()
+    startup = db.query(Startup).filter(Startup.id == inv.startup_id).first()
+    inviter = db.query(UserProfile).filter(UserProfile.user_id == inv.invited_by).first()
+    return {
+        "startup_name": startup.name if startup else None,
+        "role": inv.role.value,
+        "inviter_name": inviter.full_name if inviter else None,
+        "email": inv.email,
+        "status": inv.status.value,
+    }
