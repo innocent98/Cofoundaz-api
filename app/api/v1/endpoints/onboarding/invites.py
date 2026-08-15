@@ -9,7 +9,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.onboarding import InvitesRequest
 from app.services.onboarding.invites import create_invitations
-from app.services.onboarding.workspace import resolve_or_create_workspace
+from app.services.onboarding.workspace import ensure_draft, resolve_or_create_workspace
 
 router = APIRouter()
 
@@ -21,6 +21,7 @@ def post_invites(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = resolve_or_create_workspace(db, user)
+    ensure_draft(startup)
     result = create_invitations(db, startup, user, [i.model_dump() for i in payload.invites])
     db.commit()
     return success_response(result)

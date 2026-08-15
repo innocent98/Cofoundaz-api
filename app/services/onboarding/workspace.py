@@ -3,6 +3,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import OnboardingAlreadyComplete
 from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
@@ -39,6 +40,11 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
         "workspace.created", {"startup_id": str(startup.id), "created_by": str(user.id)}
     )
     return startup
+
+
+def ensure_draft(startup: Startup) -> None:
+    if startup.profile.onboarding_completed_at is not None:
+        raise OnboardingAlreadyComplete()
 
 
 def serialize_state(db: Session, startup: Startup, user: User) -> dict[str, Any]:

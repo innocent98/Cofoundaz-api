@@ -76,6 +76,11 @@ class OnboardingIncomplete(AppError):  # noqa: N818
     message = "A few things are still needed before we can build your workspace."
 
 
+class OnboardingAlreadyComplete(AppError):  # noqa: N818
+    code, http_status = "ONBOARDING_ALREADY_COMPLETE", 409
+    message = "Onboarding is already complete."
+
+
 class InviteEmailMismatch(AppError):  # noqa: N818
     code, http_status = "INVITE_EMAIL_MISMATCH", 403
     message = "This invitation was sent to a different email address."

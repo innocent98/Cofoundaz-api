@@ -16,6 +16,22 @@ def _auth(db):
     return u, {"Authorization": f"Bearer {create_access_token(str(u.id))}"}
 
 
+def _complete(client, h):
+    client.get("/api/v1/onboarding/state", headers=h)
+    client.patch("/api/v1/onboarding/state", headers=h, json={"step": 1, "full_name": "Ada"})
+    client.patch("/api/v1/onboarding/state", headers=h, json={"step": 2, "name": "Cofoundaz"})
+    client.patch(
+        "/api/v1/onboarding/state",
+        headers=h,
+        json={"step": 3, "industry": "Fintech", "stage": "idea"},
+    )
+    client.patch(
+        "/api/v1/onboarding/state", headers=h, json={"step": 4, "goals": ["Get first customers"]}
+    )
+    r = client.post("/api/v1/onboarding/complete", headers=h)
+    assert r.status_code == 200, r.text
+
+
 def _install_recording_sender(monkeypatch: pytest.MonkeyPatch) -> ConsoleEmailSender:
     """`get_email_sender()` returns a *new* ConsoleEmailSender on every call, so a
     shared instance can't be observed via the factory. Patch the invites service
@@ -74,3 +90,16 @@ def test_invites_dedupe_pending(client, db):
     assert r.status_code == 200
     assert r.json()["data"]["skipped"] == ["dup@x.com"]
     assert db.query(Invitation).filter(Invitation.email == "dup@x.com").count() == 1
+
+
+def test_invites_after_completion_is_409(client, db):
+    u, h = _auth(db)
+    db.commit()
+    _complete(client, h)
+    r = client.post(
+        "/api/v1/onboarding/invites",
+        headers=h,
+        json={"invites": [{"email": "late@x.com", "role": "team_member"}]},
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["error"]["code"] == "ONBOARDING_ALREADY_COMPLETE"

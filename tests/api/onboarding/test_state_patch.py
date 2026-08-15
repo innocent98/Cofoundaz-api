@@ -10,6 +10,22 @@ def _auth(db):
     return u, {"Authorization": f"Bearer {create_access_token(str(u.id))}"}
 
 
+def _complete(client, h):
+    client.get("/api/v1/onboarding/state", headers=h)
+    client.patch("/api/v1/onboarding/state", headers=h, json={"step": 1, "full_name": "Ada"})
+    client.patch("/api/v1/onboarding/state", headers=h, json={"step": 2, "name": "Cofoundaz"})
+    client.patch(
+        "/api/v1/onboarding/state",
+        headers=h,
+        json={"step": 3, "industry": "Fintech", "stage": "idea"},
+    )
+    client.patch(
+        "/api/v1/onboarding/state", headers=h, json={"step": 4, "goals": ["Get first customers"]}
+    )
+    r = client.post("/api/v1/onboarding/complete", headers=h)
+    assert r.status_code == 200, r.text
+
+
 def test_patch_step1_saves_founder_profile(client, db):
     u, h = _auth(db)
     db.commit()
@@ -76,3 +92,16 @@ def test_patch_explicit_null_goals_is_noop(client, db):
     )
     assert r.status_code == 200, r.text
     assert r.json()["data"]["goals"] == []
+
+
+def test_patch_after_completion_is_409(client, db):
+    u, h = _auth(db)
+    db.commit()
+    _complete(client, h)
+    r = client.patch(
+        "/api/v1/onboarding/state",
+        headers=h,
+        json={"step": 2, "name": "Renamed Co"},
+    )
+    assert r.status_code == 409, r.text
+    assert r.json()["error"]["code"] == "ONBOARDING_ALREADY_COMPLETE"
