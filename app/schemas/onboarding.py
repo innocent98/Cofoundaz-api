@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.db.models.enums import BusinessModel, StartupStage
+from app.db.models.enums import BusinessModel, MembershipRole, StartupStage
 
 
 class OnboardingStatePatch(BaseModel):
@@ -26,7 +26,7 @@ class OnboardingStatePatch(BaseModel):
 
 class InviteItem(BaseModel):
     email: str
-    role: str
+    role: MembershipRole
 
 
 class InvitesRequest(BaseModel):

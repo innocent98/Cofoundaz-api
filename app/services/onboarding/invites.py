@@ -34,8 +34,14 @@ def create_invitations(
     db: Session, startup: Startup, inviter: User, items: list[dict]
 ) -> dict[str, Any]:
     created, skipped = [], []
+    # Prod runs with autoflush=False (app/db/session.py), so a per-item DB query
+    # below would not see an Invitation added earlier in this same loop. Track
+    # emails already handled in this call so repeats within one request are caught
+    # even without a flush.
+    handled_this_call: set[str] = set()
     for item in items:
         email, role = item["email"], MembershipRole(item["role"])
+        email_key = email.lower()
         pending = (
             db.query(Invitation)
             .filter(
@@ -45,9 +51,14 @@ def create_invitations(
             )
             .first()
         )
-        if pending is not None or _is_active_member_email(db, startup, email):
+        if (
+            email_key in handled_this_call
+            or pending is not None
+            or _is_active_member_email(db, startup, email)
+        ):
             skipped.append(email)
             continue
+        handled_this_call.add(email_key)
         raw = secrets.token_urlsafe(32)
         db.add(
             Invitation(
