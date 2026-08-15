@@ -7,6 +7,8 @@ from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.db.models.user import User
 from app.db.session import get_db
+from app.schemas.onboarding import OnboardingStatePatch
+from app.services.onboarding.steps import apply_step
 from app.services.onboarding.workspace import resolve_or_create_workspace, serialize_state
 
 router = APIRouter()
@@ -18,6 +20,19 @@ def get_state(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = resolve_or_create_workspace(db, user)
+    body = serialize_state(db, startup, user)
+    db.commit()
+    return success_response(body)
+
+
+@router.patch("/state")
+def patch_state(
+    payload: OnboardingStatePatch,
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = resolve_or_create_workspace(db, user)
+    apply_step(db, startup, user, payload)
     body = serialize_state(db, startup, user)
     db.commit()
     return success_response(body)
