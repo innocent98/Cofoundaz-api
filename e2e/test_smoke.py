@@ -30,6 +30,13 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/auth/me",
         "/api/v1/auth/password/forgot",
         "/api/v1/auth/mfa/totp/setup",
+        # onboarding surface
+        "/api/v1/onboarding/state",
+        "/api/v1/onboarding/logo",
+        "/api/v1/onboarding/invites",
+        "/api/v1/onboarding/complete",
+        "/api/v1/invitations/{token}",
+        "/api/v1/invitations/accept",
     ]:
         assert p in paths, f"missing route {p}"
 
@@ -61,3 +68,15 @@ def test_seams_return_501(http: httpx.Client):
         r = http.post(path, json={})
         assert r.status_code == 501, path
         assert r.json()["error"]["code"] == "FEATURE_NOT_ENABLED"
+
+
+def test_onboarding_state_requires_auth(http: httpx.Client):
+    # The wizard surface is protected — no token → 401.
+    assert http.get("/api/v1/onboarding/state").status_code == 401
+
+
+def test_invitation_preview_unknown_token_404(http: httpx.Client):
+    # Public preview endpoint answers cleanly (404) for a bogus token.
+    r = http.get("/api/v1/invitations/definitely-not-a-real-token")
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
