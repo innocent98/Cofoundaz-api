@@ -5,7 +5,7 @@ from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStat
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.services.auth.sessions import hash_token
-from tests.factories import create_invitation, create_startup, create_user
+from tests.factories import create_invitation, create_membership, create_startup, create_user
 
 
 def _verified(db, email):
@@ -87,3 +87,40 @@ def test_accept_expired_400(client, db):
         headers={"Authorization": f"Bearer {create_access_token(str(invitee.id))}"},
     )
     assert r.status_code == 400
+
+
+def test_accept_already_member_is_idempotent(client, db):
+    owner = create_user(db, email="f4@x.com")
+    s = create_startup(db, owner=owner, name="X")
+    invitee = _verified(db, "already@x.com")
+    create_membership(db, invitee, s, role=MembershipRole.mentor)
+    create_invitation(
+        db,
+        s,
+        email="already@x.com",
+        role=MembershipRole.mentor,
+        inviter=owner,
+        token_hash=hash_token("tok4"),
+    )
+    db.commit()
+    r = client.post(
+        "/api/v1/invitations/accept",
+        json={"token": "tok4"},
+        headers={"Authorization": f"Bearer {create_access_token(str(invitee.id))}"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()["data"]
+    assert body["startup_id"] == str(s.id)
+    assert body["role"] == MembershipRole.mentor.value
+
+    count = (
+        db.query(Membership)
+        .filter(Membership.user_id == invitee.id, Membership.startup_id == s.id)
+        .count()
+    )
+    assert count == 1
+
+    inv = db.query(Invitation).filter(Invitation.token_hash == hash_token("tok4")).one()
+    assert inv.status == InvitationStatus.accepted
+    assert inv.accepted_at is not None
+    assert inv.accepted_user_id == invitee.id
