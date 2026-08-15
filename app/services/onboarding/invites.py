@@ -91,6 +91,10 @@ def preview_invitation(db: Session, token: str) -> dict[str, Any]:
     inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
     if inv is None:
         raise NotFound()
+    if inv.status != InvitationStatus.pending or inv.expires_at < datetime.now(UTC):
+        # Same 404 as an unknown token — don't leak whether a token existed but expired
+        # or was already used (matches accept_invitation's pending/expiry check).
+        raise NotFound()
     startup = db.query(Startup).filter(Startup.id == inv.startup_id).first()
     inviter = db.query(UserProfile).filter(UserProfile.user_id == inv.invited_by).first()
     return {
