@@ -33,11 +33,17 @@ allow this pre-named draft state.
 
 **4-step wizard, one PATCH endpoint.** `OnboardingStatePatch` (`app/schemas/onboarding.py`)
 carries all four steps' fields as optionals in one schema; `apply_step()`
-(`app/services/onboarding/steps.py`) writes only the fields relevant to the given `step`
-(1=founder profile, 2=startup name/description/website, 3=industry/business_model/stage,
-4=goals/notes). `goals` and `role_title` are treated as non-nullable-if-present: an
-explicit `{"goals": null}` is a no-op rather than a `NOT NULL` constraint violation (fixed
-in Task 5 after a live-reproduced 500).
+(`app/services/onboarding/steps.py`) is a plain autosave — it writes *every* field the
+client actually set (`exclude_unset=True`) to its mapped target (founder profile /
+startup / startup profile), regardless of which `step` was sent. `step` itself is used
+only to advance `onboarding_step`, the resumable-wizard cursor (`max(current, patch.step)`,
+so it never regresses) — it does not gate which fields get written. Grouping fields into
+"step 1 = founder profile, step 2 = startup name…" is a client-side UI/UX convention, not
+something the server enforces; a client is free to send `{"step": 1, "name": "..."}` and
+`name` will be written. Field-level correctness is pydantic's job: enums are validated
+(`business_model`, `stage`), and `goals` is capped at 3 items. `goals` and `role_title` are
+treated as non-nullable-if-present: an explicit `{"goals": null}` is a no-op rather than a
+`NOT NULL` constraint violation (fixed in Task 5 after a live-reproduced 500).
 
 **Logo upload** (`POST /onboarding/logo`) streams the multipart body in 64 KB chunks with
 an early abort past `_MAX_BYTES` (2 MB) so an oversized upload can't buffer unbounded
@@ -106,9 +112,9 @@ them yet (Modules 05/06); this task proves the dispatch contract, not execution.
 - `app/services/onboarding/complete.py` — `complete_onboarding`, `_gate`.
 - `app/schemas/onboarding.py` — `OnboardingStatePatch`, `InviteItem`, `InvitesRequest`,
   `AcceptRequest`.
-- `app/core/errors.py` — `OnboardingIncomplete` (422), `InviteEmailMismatch` (403),
-  `AlreadyMember` (409, defined for future use — accept is currently idempotent rather
-  than erroring), `EmailNotVerified` (403).
+- `app/core/errors.py` — `OnboardingIncomplete` (422), `OnboardingAlreadyComplete` (409,
+  fix wave below), `InviteEmailMismatch` (403), `AlreadyMember` (409, defined for future
+  use — accept is currently idempotent rather than erroring), `EmailNotVerified` (403).
 - `app/api/deps.py` — `get_verified_user` (wraps `get_current_user`, gates on
   `email_verified_at`).
 - `app/platform/jobs.py` — `JobDispatcher.enqueue` (v1 stub: persists `queued`, no worker).
@@ -173,3 +179,37 @@ them yet (Modules 05/06); this task proves the dispatch contract, not execution.
   existing row as-is rather than reactivating it or updating its role — out of scope for
   onboarding (belongs to Module 23 Team Collab), but worth noting: a removed-then-reinvited
   member currently gets a 200 with stale (removed) access rather than being restored.
+
+## Fix wave — 2026-08-15 (final whole-branch review)
+
+Two behavioral fixes shipped from the final `feat/onboarding` review, plus the `apply_step`
+wording correction above.
+
+**Guard mutating endpoints against an already-completed workspace.** `PATCH
+/onboarding/state`, `POST /onboarding/logo`, and `POST /onboarding/invites` previously kept
+resolving to and mutating the workspace even after `POST /onboarding/complete` had stamped
+`onboarding_completed_at` — a founder could rename the startup, re-upload a logo, or add
+invites post-completion, which onboarding (draft-only) should reject. Added
+`ensure_draft(startup)` (`app/services/onboarding/workspace.py`), called immediately after
+`resolve_or_create_workspace(...)` in all three mutating endpoints
+(`app/api/v1/endpoints/onboarding/state.py`, `logo.py`, `invites.py`); it raises the new
+`OnboardingAlreadyComplete` error (`app/core/errors.py`, `ONBOARDING_ALREADY_COMPLETE`, 409)
+when `startup.profile.onboarding_completed_at is not None`. `GET /state` and `POST
+/complete` are intentionally left unguarded — `GET` must keep working post-completion
+(`completed: true`), and `complete` already has its own idempotency check. Tests:
+`test_patch_after_completion_is_409`, `test_logo_upload_after_completion_is_409`,
+`test_invites_after_completion_is_409`.
+
+**`preview_invitation` now rejects expired/non-pending tokens (404), matching `accept`.**
+`GET /invitations/{token}` previously returned full details for *any* found row, including
+expired, accepted, or revoked invitations — inconsistent with `accept_invitation`'s
+`status != pending or expires_at < now` check, and with spec §4.4 (expired → 404).
+`preview_invitation` (`app/services/onboarding/invites.py`) now applies the same check and
+raises the same `NotFound()` (404) as an unknown token, so the response never leaks whether
+a token existed but expired vs. was never issued. Tests:
+`test_preview_expired_token_404`, `test_preview_accepted_token_404` (happy path unchanged:
+`test_preview_returns_invite_details`).
+
+**Verification:** full unit suite 148 passed (was 143 + 5 new); `make lint` clean; `make
+e2e` 19 passed, unaffected (the e2e journey completes onboarding once and never re-touches
+the mutating endpoints or previews an expired/accepted invite afterward).
