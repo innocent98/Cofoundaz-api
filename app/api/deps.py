@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.errors import AppError
+from app.core.errors import AppError, EmailNotVerified
 from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
@@ -54,3 +54,9 @@ def get_optional_user(
         return get_current_user(credentials, db)
     except AppError:
         return None
+
+
+def get_verified_user(user: User = Depends(get_current_user)) -> User:  # noqa: B008
+    if user.email_verified_at is None:
+        raise EmailNotVerified()
+    return user
