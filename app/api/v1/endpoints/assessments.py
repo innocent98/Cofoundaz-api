@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
+from app.db.models.assessment import Assessment
 from app.db.models.enums import MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -26,6 +28,20 @@ def _startup(db: Session, membership: Membership) -> Startup:
     return s
 
 
+def _assessment(db: Session, membership: Membership, assessment_id: uuid.UUID) -> Assessment:
+    a = (
+        db.query(Assessment)
+        .filter(
+            Assessment.id == assessment_id,
+            Assessment.startup_id == membership.startup_id,
+        )
+        .first()
+    )
+    if a is None:
+        raise NotFound()
+    return a
+
+
 @router.post("", status_code=201)
 def start_assessment(
     membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
@@ -44,3 +60,16 @@ def start_assessment(
             "next_question": serialize_question(nq),
         }
     )
+
+
+@router.get("/{assessment_id}/next-question")
+def get_next_question(
+    assessment_id: uuid.UUID,
+    membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    a = _assessment(db, membership, assessment_id)
+    startup = _startup(db, membership)
+    nq = next_question(ASSESSMENT_BANK, answered_map(db, a), startup)
+    return success_response({"next_question": serialize_question(nq)})
