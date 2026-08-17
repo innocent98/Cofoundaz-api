@@ -1,9 +1,11 @@
 # SOP — Startup Assessment (Plan 4)
 
-**What shipped** — The adaptive Startup Assessment: a versioned question bank (v1, 10
-questions across 5 dimensions), a `show_if`-driven adaptive engine that walks a founder
-through only the applicable questions, deterministic 0–100 scoring per dimension with a
-templated narrative, and 7 endpoints (`start`/`resume`, `next-question`, `answers`,
+**What shipped** — The adaptive Startup Assessment: a versioned question bank (v1, 11
+questions — `product_stage`, `product_confidence`, `market_clarity`, `market_research`,
+`has_revenue`, `mrr`, `runway_confidence`, `incorporated`, `ip_assigned`, `team_size`,
+`team_confidence` — across 5 dimensions), a `show_if`-driven adaptive engine that walks a
+founder through only the applicable questions, deterministic 0–100 scoring per dimension
+with a templated narrative, and 7 endpoints (`start`/`resume`, `next-question`, `answers`,
 `complete`, `list`, `detail`, `compare`). Completion flips `assessment_pending` off (initial
 assessments only), enqueues two stub recalculation jobs, and publishes an
 `assessment.completed` event. New `assessments` / `assessment_answers` /
@@ -91,10 +93,13 @@ pending assessment" onboarding signal.
 
 **Jobs and events.** On a winning completion: two `Job` rows via the existing v1
 `JobDispatcher` stub (`app/platform/jobs.py`) — `healthscore.recalculate` and
-`roadmap.replan`, both `payload={"startup_id", "assessment_id"}`, pollable at
-`GET /jobs/{id}` — plus an `assessment.completed` event on the log-only `event_bus`
-carrying the dimension scores. No worker drains either yet (same Modules 05/06 gap
-onboarding's jobs have).
+`roadmap.replan`, both `payload={"startup_id", "assessment_id"}`, persisted as `queued`
+rows (drained by a worker in Modules 05/06, same as onboarding's jobs — no worker exists
+yet) — plus an `assessment.completed` event on the log-only `event_bus` carrying the
+dimension scores. **Unlike onboarding**, the completion response does not currently return
+these jobs' ids (see "Known gaps" below) — they exist and are individually pollable at
+`GET /jobs/{id}` *if you already have the id* (e.g. from a DB query), but a caller who only
+has the HTTP response from `POST /complete` cannot discover them.
 
 ## What's involved
 
@@ -160,9 +165,15 @@ UUID path param and fail before the compare handler ever runs.
 - **Live E2E: 22 passed** (`make e2e`) — 21 prior (auth journeys + onboarding + smoke) +
   the new `test_assessment_journey`: founder signup→verify→login→onboard (4 steps)→
   complete→`/auth/me` for the workspace id→`POST /assessments` (start)→adaptive loop of
-  `GET next-question` / `POST answers` (answering each question by its returned `qtype`)
-  until `next_question` is `null`→`POST complete` (asserts all 5 dimension keys present, an
-  int `overall_provisional`, a non-empty `narrative`)→`GET /onboarding/state` confirms
+  `GET next-question` / `POST answers`, answering each `single_choice`/`multi_choice`
+  question with its **last** option (not the first) so the "yes"/most-advanced branch is
+  taken — this is what actually exercises the `show_if` gate over HTTP: `product_stage`→
+  `live` reveals `product_confidence`, `has_revenue`→`yes` reveals `mrr`, `incorporated`→
+  `yes` reveals `ip_assigned`. The test asserts more than the 8 unconditional questions were
+  answered and that the gated keys were among them, proving the adaptive engine's reveal
+  end-to-end rather than only ever walking the ungated path. Loop continues until
+  `next_question` is `null`→`POST complete` (asserts all 5 dimension keys present, an int
+  `overall_provisional`, a non-empty `narrative`)→`GET /onboarding/state` confirms
   `assessment_pending` flipped to `false`→`GET /assessments` shows the row `completed` with
   the matching `overall_provisional`→`GET /assessments/{id}` returns the grouped
   answers-by-dimension (count matches what was answered) and the same stored result.
@@ -244,3 +255,12 @@ reason for not fixing in-scope):**
   is **intentional**, not a gap to close — it avoids leaking which of those three states
   applies to an id a caller has no business probing. Documented here so a future reviewer
   doesn't "fix" it into three distinct error codes.
+- **`complete_assessment`'s response doesn't return `job_ids`** — an asymmetry with
+  `complete_onboarding` (`app/services/onboarding/complete.py`), which does return
+  `job_ids: [str(j1.id), str(j2.id)]`. `complete_assessment`'s `_result_dict`
+  (`app/services/assessment/service.py`) enqueues `healthscore.recalculate` and
+  `roadmap.replan` the same way but never surfaces their ids in the HTTP response, and there
+  is no list-jobs-by-startup route either — so an HTTP-only caller (a frontend, or this
+  task's e2e harness) cannot discover those two job ids to poll `GET /jobs/{id}` after
+  completing an assessment. Follow-up: add `job_ids` to `_result_dict` for parity with
+  onboarding, so the FE can poll the recalibrate jobs the same way it polls onboarding's.

@@ -36,15 +36,26 @@ def test_assessment_journey(base_url, make_verified_user):
             if nq is None:
                 break
             if nq["qtype"] == "single_choice":
-                val = nq["options"][0]["value"]
+                # Last option, not first: for the bank's gated questions the last option
+                # is the "yes"/"most-advanced" branch (product_stage->live,
+                # has_revenue->yes, incorporated->yes) that reveals a show_if-gated
+                # follow-up. Picking options[0] would only ever walk the 8 unconditional
+                # questions and never prove the adaptive engine reveals a gated one.
+                val = nq["options"][-1]["value"]
             elif nq["qtype"] == "multi_choice":
-                val = [nq["options"][0]["value"]]
+                val = [nq["options"][-1]["value"]]
             else:
                 val = vals[nq["qtype"]]
             ans = c.post(f"/api/v1/assessments/{aid}/answers", headers=wh,
                          json={"question_key": nq["key"], "value": val})
             assert ans.status_code == 200, ans.text
             answered_keys.append(nq["key"])
+
+        # The "always yes" branch above must have revealed at least one show_if-gated
+        # question over HTTP -- otherwise this only proves the 8 unconditional questions
+        # work, not the adaptive engine itself.
+        assert len(answered_keys) > 8
+        assert {"product_confidence", "mrr", "ip_assigned"} & set(answered_keys)
 
         done = c.post(f"/api/v1/assessments/{aid}/complete", headers=wh)
         assert done.status_code == 200, done.text
