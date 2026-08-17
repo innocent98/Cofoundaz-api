@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.errors import AppError
-from app.db.models.enums import Dimension
+from app.db.models.enums import BusinessModel, Dimension, StartupStage
 from app.services.assessment.bank import ASSESSMENT_BANK, QType, Question, question_by_key
 from app.services.assessment.engine import is_applicable, next_question, validate_answer
 from tests.factories import create_startup, create_user
@@ -33,7 +33,7 @@ def test_next_question_skips_inapplicable(db):
         "has_revenue": "no",
     }
     q2 = next_question(ASSESSMENT_BANK, answers, s)
-    assert q2.key != "mrr"  # mrr skipped
+    assert q2.key == "runway_confidence"  # mrr skipped, next applicable is runway_confidence
 
 
 def test_next_question_none_when_done(db):
@@ -59,6 +59,85 @@ def test_validate_answer_types():
     validate_answer(question_by_key(ASSESSMENT_BANK, "market_clarity"), 5)  # ok
     with pytest.raises(AppError):
         validate_answer(question_by_key(ASSESSMENT_BANK, "market_clarity"), 9)  # scale out of range
+
+
+# --- Extra coverage: v1 bank questions only use `answer` show_if conditions, so exercise
+# _cond's `field`/`all`/`any` branches (via the public is_applicable surface) with synthetic
+# show_if dicts on minimal questions built inline. ---
+
+_FIELD_STAGE_Q = Question(
+    "growth_specific",
+    Dimension.market,
+    "Market",
+    QType.SHORT_TEXT,
+    {"max": 0},
+    show_if={"field": "stage", "in": ["growth", "scale"]},
+)
+
+_FIELD_MODEL_Q = Question(
+    "b2b_specific",
+    Dimension.market,
+    "Market",
+    QType.SHORT_TEXT,
+    {"max": 0},
+    show_if={"field": "business_model", "eq": "b2b"},
+)
+
+_ALL_Q = Question(
+    "all_gated",
+    Dimension.market,
+    "Market",
+    QType.SHORT_TEXT,
+    {"max": 0},
+    show_if={
+        "all": [
+            {"field": "stage", "eq": "growth"},
+            {"answer": "has_revenue", "eq": "yes"},
+        ]
+    },
+)
+
+_ANY_Q = Question(
+    "any_gated",
+    Dimension.market,
+    "Market",
+    QType.SHORT_TEXT,
+    {"max": 0},
+    show_if={
+        "any": [
+            {"field": "stage", "eq": "idea"},
+            {"answer": "has_revenue", "eq": "yes"},
+        ]
+    },
+)
+
+
+def test_show_if_field_in(db):
+    growth = _startup(db, stage=StartupStage.growth)
+    idea = _startup(db, stage=StartupStage.idea)
+    unset = _startup(db)
+    assert is_applicable(_FIELD_STAGE_Q, {}, growth) is True
+    assert is_applicable(_FIELD_STAGE_Q, {}, idea) is False
+    assert is_applicable(_FIELD_STAGE_Q, {}, unset) is False
+
+
+def test_show_if_field_eq_unwraps_enum_value(db):
+    b2b = _startup(db, business_model=BusinessModel.b2b)
+    b2c = _startup(db, business_model=BusinessModel.b2c)
+    assert is_applicable(_FIELD_MODEL_Q, {}, b2b) is True
+    assert is_applicable(_FIELD_MODEL_Q, {}, b2c) is False
+
+
+def test_show_if_all_requires_every_condition(db):
+    s = _startup(db, stage=StartupStage.growth)
+    assert is_applicable(_ALL_Q, {"has_revenue": "yes"}, s) is True
+    assert is_applicable(_ALL_Q, {"has_revenue": "no"}, s) is False
+
+
+def test_show_if_any_requires_one_condition(db):
+    s = _startup(db, stage=StartupStage.growth)  # field cond ("idea") is False
+    assert is_applicable(_ANY_Q, {"has_revenue": "yes"}, s) is True
+    assert is_applicable(_ANY_Q, {"has_revenue": "no"}, s) is False
 
 
 # --- Extra coverage: the v1 bank has no multi_choice/short_text question, so exercise
