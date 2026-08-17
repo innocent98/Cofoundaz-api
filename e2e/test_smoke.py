@@ -37,6 +37,13 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/onboarding/complete",
         "/api/v1/invitations/{token}",
         "/api/v1/invitations/accept",
+        # assessment surface
+        "/api/v1/assessments",
+        "/api/v1/assessments/{assessment_id}/next-question",
+        "/api/v1/assessments/{assessment_id}/answers",
+        "/api/v1/assessments/{assessment_id}/complete",
+        "/api/v1/assessments/{assessment_id}",
+        "/api/v1/assessments/compare",
     ]:
         assert p in paths, f"missing route {p}"
 
@@ -80,3 +87,12 @@ def test_invitation_preview_unknown_token_404(http: httpx.Client):
     r = http.get("/api/v1/invitations/definitely-not-a-real-token")
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_assessments_requires_auth(http: httpx.Client):
+    # Assessment surface is protected — workspace header present but no token → 401.
+    r = http.get(
+        "/api/v1/assessments",
+        headers={"X-Workspace-Id": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert r.status_code == 401
