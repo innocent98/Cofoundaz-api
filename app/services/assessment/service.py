@@ -1,15 +1,20 @@
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.db.models.assessment import Assessment, AssessmentAnswer
+from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult
 from app.db.models.enums import AssessmentStatus, AssessmentType
 from app.db.models.startup import Startup
 from app.db.models.user import User
+from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
 from app.services.assessment.bank import ASSESSMENT_BANK, Question
 from app.services.assessment.engine import next_question, validate_answer
+from app.services.assessment.scoring import score
 
 
 def answered_map(db: Session, assessment: Assessment) -> dict[str, Any]:
@@ -88,3 +93,101 @@ def submit_answer(
     db.execute(stmt)
     db.flush()
     return next_question(ASSESSMENT_BANK, answered_map(db, assessment), startup)
+
+
+def _result_dict(
+    assessment_id: uuid.UUID,
+    dimension_scores: dict[str, int],
+    overall_provisional: int,
+    narrative: str,
+) -> dict[str, Any]:
+    return {
+        "assessment_id": str(assessment_id),
+        "status": "completed",
+        "dimension_scores": dimension_scores,
+        "overall_provisional": overall_provisional,
+        "narrative": narrative,
+    }
+
+
+def complete_assessment(db: Session, assessment: Assessment, startup: Startup) -> dict[str, Any]:
+    answers = answered_map(db, assessment)
+    nq = next_question(ASSESSMENT_BANK, answers, startup)
+    if nq is not None:
+        raise AppError(
+            "ASSESSMENT_INCOMPLETE",
+            f"'{nq.key}' still needs an answer before this assessment can be completed.",
+            422,
+            field_errors=[{"field": nq.key, "message": "Please answer this question."}],
+        )
+
+    now = datetime.now(UTC)
+    # Atomic claim: consume the in_progress -> completed transition only if this call is
+    # the one that finds it in_progress. A plain read-then-write here (check
+    # assessment.status, then write) is the same TOCTOU race as rotate_refresh
+    # (app/services/auth/sessions.py) -- two concurrent completions of the same fully
+    # answered assessment would both pass the check before either commits, and both would
+    # score + enqueue jobs + publish the event. Conditioning the UPDATE itself on
+    # status == in_progress makes only one concurrent caller's UPDATE match (Postgres
+    # row-locks the row for the transaction; the loser's UPDATE blocks until the winner
+    # commits, then re-evaluates against the now-committed row and matches zero rows).
+    claimed = (
+        db.query(Assessment)
+        .filter(Assessment.id == assessment.id, Assessment.status == AssessmentStatus.in_progress)
+        .update(
+            {"status": AssessmentStatus.completed, "completed_at": now}, synchronize_session=False
+        )
+    )
+    if claimed == 0:
+        # Already completed -- by us on a prior call, or by a concurrent caller that just
+        # won the race. Either way, return the stored result without re-scoring or
+        # re-enqueuing: the side effects below must fire exactly once.
+        stored = db.query(AssessmentResult).filter_by(assessment_id=assessment.id).first()
+        if stored is None:
+            # Lost the race but the winner hasn't committed its AssessmentResult yet from
+            # this transaction's point of view. Shouldn't happen with the blocking UPDATE
+            # above (the winner's commit is what unblocks us), but fail loudly rather than
+            # silently returning an empty result if it ever does.
+            raise AppError(
+                "ASSESSMENT_INCOMPLETE",
+                "This assessment is being completed by another request. Try again shortly.",
+                409,
+            )
+        return _result_dict(
+            assessment.id, stored.dimension_scores, stored.overall_provisional, stored.narrative
+        )
+
+    # We won the claim -- keep the in-memory object in sync with what we just committed.
+    assessment.status = AssessmentStatus.completed
+    assessment.completed_at = now
+
+    scored = score(ASSESSMENT_BANK, answers, startup)
+    db.add(
+        AssessmentResult(
+            assessment_id=assessment.id,
+            dimension_scores=scored["dimension_scores"],
+            overall_provisional=scored["overall_provisional"],
+            narrative=scored["narrative"],
+        )
+    )
+    if assessment.type == AssessmentType.initial:
+        startup.profile.assessment_pending = False
+
+    job_payload = {"startup_id": str(startup.id), "assessment_id": str(assessment.id)}
+    job_dispatcher.enqueue(db, "healthscore.recalculate", job_payload, startup.id)
+    job_dispatcher.enqueue(db, "roadmap.replan", job_payload, startup.id)
+    event_bus.publish(
+        "assessment.completed",
+        {
+            "assessment_id": str(assessment.id),
+            "startup_id": str(startup.id),
+            "dimension_scores": scored["dimension_scores"],
+        },
+    )
+    db.flush()
+    return _result_dict(
+        assessment.id,
+        scored["dimension_scores"],
+        scored["overall_provisional"],
+        scored["narrative"],
+    )

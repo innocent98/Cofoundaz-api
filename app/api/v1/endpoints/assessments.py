@@ -19,6 +19,7 @@ from app.services.assessment.bank import ASSESSMENT_BANK
 from app.services.assessment.engine import next_question
 from app.services.assessment.service import (
     answered_map,
+    complete_assessment,
     serialize_question,
     start_or_resume,
     submit_answer,
@@ -94,3 +95,17 @@ def post_answer(
     nq = submit_answer(db, a, startup, payload.question_key, payload.value)
     db.commit()
     return success_response({"next_question": serialize_question(nq)})
+
+
+@router.post("/{assessment_id}/complete")
+def post_complete_assessment(
+    assessment_id: uuid.UUID,
+    membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    a = _assessment(db, membership, assessment_id)
+    startup = _startup(db, membership)
+    result = complete_assessment(db, a, startup)
+    db.commit()
+    return success_response(result)
