@@ -14,9 +14,15 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.schemas.assessment import AnswerRequest
 from app.services.assessment.bank import ASSESSMENT_BANK
 from app.services.assessment.engine import next_question
-from app.services.assessment.service import answered_map, serialize_question, start_or_resume
+from app.services.assessment.service import (
+    answered_map,
+    serialize_question,
+    start_or_resume,
+    submit_answer,
+)
 
 router = APIRouter()
 
@@ -72,4 +78,19 @@ def get_next_question(
     a = _assessment(db, membership, assessment_id)
     startup = _startup(db, membership)
     nq = next_question(ASSESSMENT_BANK, answered_map(db, a), startup)
+    return success_response({"next_question": serialize_question(nq)})
+
+
+@router.post("/{assessment_id}/answers")
+def post_answer(
+    assessment_id: uuid.UUID,
+    payload: AnswerRequest,
+    membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    a = _assessment(db, membership, assessment_id)
+    startup = _startup(db, membership)
+    nq = submit_answer(db, a, startup, payload.question_key, payload.value)
+    db.commit()
     return success_response({"next_question": serialize_question(nq)})

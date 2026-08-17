@@ -2,11 +2,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.db.models.assessment import Assessment, AssessmentAnswer
 from app.db.models.enums import AssessmentStatus, AssessmentType
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.services.assessment.bank import ASSESSMENT_BANK, Question
+from app.services.assessment.engine import next_question, validate_answer
 
 
 def answered_map(db: Session, assessment: Assessment) -> dict[str, Any]:
@@ -56,3 +58,33 @@ def start_or_resume(db: Session, startup: Startup, user: User) -> Assessment:
     db.add(a)
     db.flush()
     return a
+
+
+def submit_answer(
+    db: Session, assessment: Assessment, startup: Startup, question_key: str, value: Any
+) -> Question | None:
+    if assessment.status != AssessmentStatus.in_progress:
+        raise AppError("INVALID_ANSWER", "This assessment is not in progress.", 422)
+    answers = answered_map(db, assessment)
+    current = next_question(ASSESSMENT_BANK, answers, startup)
+    if current is None or current.key != question_key:
+        raise AppError("INVALID_ANSWER", "That isn't the current question.", 422)
+    validate_answer(current, value)
+    row = (
+        db.query(AssessmentAnswer)
+        .filter(
+            AssessmentAnswer.assessment_id == assessment.id,
+            AssessmentAnswer.question_key == question_key,
+        )
+        .first()
+    )
+    if row is None:
+        db.add(
+            AssessmentAnswer(
+                assessment_id=assessment.id, question_key=question_key, value_json=value
+            )
+        )
+    else:
+        row.value_json = value
+    db.flush()
+    return next_question(ASSESSMENT_BANK, answered_map(db, assessment), startup)
