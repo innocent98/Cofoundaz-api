@@ -64,6 +64,48 @@ def test_answer_bad_value_422(client, db):
     assert r.json()["error"]["code"] == "INVALID_ANSWER"
 
 
+def test_answer_after_bank_exhausted_422(client, db):
+    """Once every applicable question is answered, next_question(...) returns None while
+    the assessment is still in_progress (nothing marks it completed here). submit_answer's
+    `current is None or current.key != question_key` gate must catch that `current is
+    None` case and 422 cleanly -- not raise (e.g. AttributeError on `current.key`)."""
+    u, s, h = _founder(db)
+    db.commit()
+    aid = client.post("/api/v1/assessments", headers=h).json()["data"]["assessment_id"]
+
+    # Answers chosen to skip every conditional follow-up question (product_confidence,
+    # mrr, ip_assigned), so this walks the whole bank in the minimum number of answers.
+    answers = [
+        ("product_stage", "idea"),
+        ("market_clarity", 3),
+        ("market_research", "none"),
+        ("has_revenue", "no"),
+        ("runway_confidence", 3),
+        ("incorporated", "no"),
+        ("team_size", "solo"),
+        ("team_confidence", 3),
+    ]
+    r = None
+    for key, value in answers:
+        r = client.post(
+            f"/api/v1/assessments/{aid}/answers",
+            headers=h,
+            json={"question_key": key, "value": value},
+        )
+        assert r.status_code == 200, r.text
+
+    assert r.json()["data"]["next_question"] is None  # bank exhausted
+
+    r = client.post(
+        f"/api/v1/assessments/{aid}/answers",
+        headers=h,
+        json={"question_key": "product_stage", "value": "idea"},
+    )
+
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "INVALID_ANSWER"
+
+
 def test_answer_not_in_progress_422(client, db):
     u, s, h = _founder(db)
     db.commit()

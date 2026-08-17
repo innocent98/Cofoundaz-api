@@ -1,5 +1,6 @@
 from typing import Any
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -70,21 +71,20 @@ def submit_answer(
     if current is None or current.key != question_key:
         raise AppError("INVALID_ANSWER", "That isn't the current question.", 422)
     validate_answer(current, value)
-    row = (
-        db.query(AssessmentAnswer)
-        .filter(
-            AssessmentAnswer.assessment_id == assessment.id,
-            AssessmentAnswer.question_key == question_key,
+    # Atomic upsert: a query-then-insert/update here would be a TOCTOU race — two
+    # concurrent submits of the SAME current question both pass the gate above, both
+    # try to INSERT, and the loser trips the (assessment_id, question_key) unique
+    # constraint as an uncaught IntegrityError (500). ON CONFLICT DO UPDATE pushes the
+    # dedup down to Postgres, so the race resolves to one row with no exception either
+    # side of the connection pool sees.
+    stmt = (
+        pg_insert(AssessmentAnswer)
+        .values(assessment_id=assessment.id, question_key=question_key, value_json=value)
+        .on_conflict_do_update(
+            index_elements=["assessment_id", "question_key"],
+            set_={"value_json": value},
         )
-        .first()
     )
-    if row is None:
-        db.add(
-            AssessmentAnswer(
-                assessment_id=assessment.id, question_key=question_key, value_json=value
-            )
-        )
-    else:
-        row.value_json = value
+    db.execute(stmt)
     db.flush()
     return next_question(ASSESSMENT_BANK, answered_map(db, assessment), startup)
