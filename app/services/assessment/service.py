@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -54,16 +55,35 @@ def start_or_resume(db: Session, startup: Startup, user: User) -> Assessment:
         .first()
         is not None
     )
-    a = Assessment(
-        startup_id=startup.id,
-        created_by=user.id,
-        type=AssessmentType.quarterly if has_completed else AssessmentType.initial,
-        status=AssessmentStatus.in_progress,
-        bank_version=ASSESSMENT_BANK.version,
-    )
-    db.add(a)
-    db.flush()
-    return a
+    # Insert-or-get: a plain read-then-insert here is a TOCTOU race -- two concurrent
+    # POST /assessments for the SAME startup both see no in_progress assessment above,
+    # both INSERT, and the loser trips the partial unique index
+    # uq_assessments_startup_in_progress as an uncaught IntegrityError (500). The intended
+    # behavior is RESUME, not error: wrap the INSERT in a SAVEPOINT so a unique violation
+    # only unwinds the savepoint (not the whole transaction), then re-select the
+    # now-committed winner's row.
+    try:
+        with db.begin_nested():
+            a = Assessment(
+                startup_id=startup.id,
+                created_by=user.id,
+                type=AssessmentType.quarterly if has_completed else AssessmentType.initial,
+                status=AssessmentStatus.in_progress,
+                bank_version=ASSESSMENT_BANK.version,
+            )
+            db.add(a)
+            db.flush()
+        return a
+    except IntegrityError:
+        # A concurrent caller won the race -- resume their in_progress assessment.
+        return (
+            db.query(Assessment)
+            .filter(
+                Assessment.startup_id == startup.id,
+                Assessment.status == AssessmentStatus.in_progress,
+            )
+            .one()
+        )
 
 
 def submit_answer(

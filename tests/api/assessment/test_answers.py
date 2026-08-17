@@ -15,6 +15,16 @@ def _founder(db):
     return u, s, h
 
 
+def _team_member(db, startup):
+    u = create_user(db, email_verified_at=datetime.now(UTC))
+    create_membership(db, u, startup, role=MembershipRole.team_member)
+    db.flush()
+    return {
+        "Authorization": f"Bearer {create_access_token(str(u.id))}",
+        "X-Workspace-Id": str(startup.id),
+    }
+
+
 def test_answer_advances_and_upserts(client, db):
     u, s, h = _founder(db)
     db.commit()
@@ -104,6 +114,21 @@ def test_answer_after_bank_exhausted_422(client, db):
 
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "INVALID_ANSWER"
+
+
+def test_answer_requires_founder(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    aid = client.post("/api/v1/assessments", headers=h).json()["data"]["assessment_id"]
+
+    member_h = _team_member(db, s)
+    db.commit()
+    r = client.post(
+        f"/api/v1/assessments/{aid}/answers",
+        headers=member_h,
+        json={"question_key": "product_stage", "value": "mvp"},
+    )
+    assert r.status_code == 403
 
 
 def test_answer_not_in_progress_422(client, db):

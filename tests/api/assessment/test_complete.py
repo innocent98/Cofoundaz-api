@@ -18,6 +18,16 @@ def _founder(db):
     return u, s, h
 
 
+def _team_member(db, startup):
+    u = create_user(db, email_verified_at=datetime.now(UTC))
+    create_membership(db, u, startup, role=MembershipRole.team_member)
+    db.flush()
+    return {
+        "Authorization": f"Bearer {create_access_token(str(u.id))}",
+        "X-Workspace-Id": str(startup.id),
+    }
+
+
 def _walk(client, h, aid):
     # Answer questions until none remain, using deterministic values.
     values = {"scale_1_5": 3, "numeric_currency": 1000, "short_text": "n/a"}
@@ -121,6 +131,18 @@ def test_complete_is_idempotent_no_reenqueue(client, db):
     assert db.query(Job).count() == before_jobs  # no new jobs
     assert len(event_bus.published) == before_events  # no re-fired event
     assert db.query(AssessmentResult).filter_by(assessment_id=aid).count() == 1  # not re-scored
+
+
+def test_complete_requires_founder(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    aid = client.post("/api/v1/assessments", headers=h).json()["data"]["assessment_id"]
+    _walk(client, h, aid)
+
+    member_h = _team_member(db, s)
+    db.commit()
+    r = client.post(f"/api/v1/assessments/{aid}/complete", headers=member_h)
+    assert r.status_code == 403
 
 
 def test_complete_cross_tenant_assessment_404(client, db):

@@ -15,6 +15,16 @@ def _founder(db):
     return u, s, h
 
 
+def _team_member(db, startup):
+    u = create_user(db, email_verified_at=datetime.now(UTC))
+    create_membership(db, u, startup, role=MembershipRole.team_member)
+    db.flush()
+    return {
+        "Authorization": f"Bearer {create_access_token(str(u.id))}",
+        "X-Workspace-Id": str(startup.id),
+    }
+
+
 def test_next_question_for_resume(client, db):
     u, s, h = _founder(db)
     db.commit()
@@ -22,6 +32,17 @@ def test_next_question_for_resume(client, db):
     r = client.get(f"/api/v1/assessments/{aid}/next-question", headers=h)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["next_question"]["key"] == "product_stage"
+
+
+def test_next_question_requires_founder(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    aid = client.post("/api/v1/assessments", headers=h).json()["data"]["assessment_id"]
+
+    member_h = _team_member(db, s)
+    db.commit()
+    r = client.get(f"/api/v1/assessments/{aid}/next-question", headers=member_h)
+    assert r.status_code == 403
 
 
 def test_next_question_foreign_assessment_404(client, db):
