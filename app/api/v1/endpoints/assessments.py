@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
 from app.db.models.enums import MembershipRole
@@ -29,7 +29,7 @@ def _startup(db: Session, membership: Membership) -> Startup:
 @router.post("", status_code=201)
 def start_assessment(
     membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
-    user: User = Depends(get_current_user),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
