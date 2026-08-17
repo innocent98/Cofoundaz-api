@@ -102,3 +102,28 @@ def test_multi_choice_sums_selected_and_caps_at_max():
     # (63 is what round(100 * 5/8) would give if the cap were NOT applied).
     out_capped = score(bank, {"growth_channels": ["seo", "ads"], "market_clarity": 1}, startup)
     assert out_capped["dimension_scores"]["market"] == 50
+
+
+def test_dimension_percentage_clamped_to_100_even_if_bank_misconfigured():
+    # Unlike MULTI_CHOICE, _points() does not itself cap SINGLE_CHOICE/SCALE_1_5 earned points
+    # at the question's own `max` — score() currently only stays <=100 because every option in
+    # the real bank happens to keep points <= max. A single misconfigured option (points > max)
+    # would silently produce a dimension score above 100, breaking the documented 0-100 contract
+    # Health Score / the radar & compare views rely on. This locks the clamp in structurally,
+    # independent of what the live bank data happens to contain.
+    overpowered = Question(
+        "misconfigured_choice",
+        Dimension.product,
+        "Product",
+        QType.SINGLE_CHOICE,
+        {"max": 5, "overpowered": 8},  # bug: option scores more than the question's own max
+        options=[{"value": "overpowered", "label": "Overpowered"}],
+    )
+    bank = Bank(version="test", questions=[overpowered])
+
+    class _Startup:
+        pass
+
+    out = score(bank, {"misconfigured_choice": "overpowered"}, _Startup())
+    # Unclamped this would be round(100 * 8/5) == 160.
+    assert out["dimension_scores"]["product"] == 100

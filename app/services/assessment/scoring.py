@@ -29,7 +29,8 @@ def score(bank: Bank, answers: dict, startup: Any) -> dict:
                 continue
             earned += _points(q, answers[q.key])
             maxsum += int(q.scoring["max"])
-        dim_scores[dim.value] = round(100 * earned / maxsum) if maxsum else 50
+        pct = round(100 * earned / maxsum) if maxsum else 50
+        dim_scores[dim.value] = min(100, max(0, pct))
 
     overall = round(sum(dim_scores.values()) / len(dim_scores))
     top = max(dim_scores, key=lambda d: dim_scores[d])
