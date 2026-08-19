@@ -92,7 +92,15 @@ def recompute_health_score(db: Session, startup: Startup, *,
     #    generate_recommendations(db, startup.id, dim_scores)
 
     db.flush()
-    hs = db.query(HealthScore).filter_by(startup_id=startup.id).first()
+    # populate_existing=True forces a refresh from the DB row we just upserted via
+    # raw Core (pg_insert), instead of silently returning the stale ORM-identity-mapped
+    # object that `prev` (queried earlier, pre-upsert) left in the session's identity map.
+    hs = (
+        db.query(HealthScore)
+        .filter_by(startup_id=startup.id)
+        .execution_options(populate_existing=True)
+        .first()
+    )
 
     # 5. Events
     event_bus.publish("healthscore.updated", {

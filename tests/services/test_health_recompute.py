@@ -44,6 +44,30 @@ def test_recompute_upserts_and_appends_history(db):
     assert db.query(HealthScoreHistory).filter_by(startup_id=s.id).count() == 2  # appended twice
 
 
+def test_recompute_returns_fresh_score_after_upsert(db):
+    # Regression test for identity-map staleness: `prev = db.query(HealthScore)...`
+    # loads the row into the session identity map BEFORE the raw-core
+    # on_conflict_do_update upsert runs. Without populate_existing on the final
+    # requery, the returned object would keep the OLD score even though the DB
+    # row was correctly updated.
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+
+    a1 = _complete_with_scores(db, s, {"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50})
+    a1.completed_at = datetime.now(UTC) - timedelta(minutes=5)
+    db.flush()
+    hs1 = recompute_health_score(db, s)
+    assert hs1.score == 50
+
+    a2 = _complete_with_scores(db, s, {"product": 90, "market": 90, "money": 90, "legal": 90, "team": 90})
+    a2.completed_at = datetime.now(UTC)
+    db.flush()
+    hs2 = recompute_health_score(db, s)
+
+    assert hs2.score == 90  # must reflect the NEW value, not the stale identity-mapped 50
+    assert db.query(HealthScore).filter_by(startup_id=s.id).one().score == 90
+
+
 def test_recompute_emits_updated_and_record(db, monkeypatch):
     # R3: a record requires a prior maximum to beat. Seed a lower prior history
     # point so the new (higher) score is a genuine record.
