@@ -96,6 +96,11 @@ class EmailNotVerified(AppError):  # noqa: N818
     message = "Please verify your email first."
 
 
+class RecommendationResolved(AppError):  # noqa: N818
+    code, http_status = "RECOMMENDATION_RESOLVED", 409
+    message = "That recommendation has already been actioned."
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:

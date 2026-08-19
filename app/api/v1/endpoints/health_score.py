@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -6,11 +7,12 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
+from app.db.models.enums import MembershipRole, RecommendationStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_workspace
+from app.db.tenancy import require_role, require_workspace
 from app.services.health_score import service as hs_service
 
 router = APIRouter()
@@ -80,3 +82,25 @@ def get_history(
             field_errors=[{"field": "range", "message": "Use 7d, 30d, 90d, or all."}],
         )
     return success_response(hs_service.get_history(db, _startup(db, membership), range))
+
+
+@router.post("/recommendations/{rec_id}/accept")
+def accept_recommendation(
+    rec_id: uuid.UUID,
+    membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(hs_service.resolve_recommendation(
+        db, _startup(db, membership), rec_id, RecommendationStatus.accepted))
+
+
+@router.post("/recommendations/{rec_id}/dismiss")
+def dismiss_recommendation(
+    rec_id: uuid.UUID,
+    membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(hs_service.resolve_recommendation(
+        db, _startup(db, membership), rec_id, RecommendationStatus.dismissed))

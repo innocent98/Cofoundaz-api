@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import NotFound, RecommendationResolved
 from app.db.models.assessment import Assessment, AssessmentResult
 from app.db.models.enums import AssessmentStatus, Dimension, RecommendationStatus
 from app.db.models.health_score import (
@@ -252,6 +252,27 @@ def list_recommendations(db: Session, startup: Startup, status_filter: str | Non
         q = q.filter(HealthRecommendation.status == RecommendationStatus.pending)
     rows = q.order_by(HealthRecommendation.priority.asc()).all()
     return [_serialize_rec(r) for r in rows]
+
+
+def resolve_recommendation(
+    db: Session, startup: Startup, rec_id: uuid.UUID, target: RecommendationStatus
+) -> dict:
+    row = (
+        db.query(HealthRecommendation)
+        .filter_by(id=rec_id, startup_id=startup.id)
+        .first()
+    )
+    if row is None:
+        raise NotFound()  # uniform 404 -- never leak cross-tenant existence
+    if row.status == target:
+        return _serialize_rec(row)  # idempotent
+    if row.status != RecommendationStatus.pending:
+        raise RecommendationResolved()  # accepted<->dismissed cross-transition
+    row.status = target
+    row.resolved_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(row)
+    return _serialize_rec(row)
 
 
 def get_history(db: Session, startup: Startup, range_key: str) -> list[dict]:
