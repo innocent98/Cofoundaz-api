@@ -88,8 +88,9 @@ def recompute_health_score(db: Session, startup: Startup, *,
     db.add(HealthScoreHistory(startup_id=startup.id, score=overall, dimension_scores=dim_scores,
                               delta=delta, trigger=trigger, config_version=HEALTH_CONFIG_VERSION))
 
-    # 4. Recommendations — added in Task 5:
-    #    generate_recommendations(db, startup.id, dim_scores)
+    # 4. Recommendations
+    from app.services.health_score.recommendations import generate_recommendations
+    generate_recommendations(db, startup.id, dim_scores)
 
     db.flush()
     # populate_existing=True forces a refresh from the DB row we just upserted via
