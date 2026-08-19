@@ -63,7 +63,9 @@ def list_recommendations(
 ) -> dict[str, Any]:
     if status is not None and status not in ("pending", "accepted", "dismissed"):
         raise AppError(
-            "VALIDATION_ERROR", "Unknown status.", 422,
+            "VALIDATION_ERROR",
+            "Unknown status.",
+            422,
             field_errors=[{"field": "status", "message": "Use pending, accepted, or dismissed."}],
         )
     return success_response(hs_service.list_recommendations(db, _startup(db, membership), status))
@@ -78,7 +80,9 @@ def get_history(
 ) -> dict[str, Any]:
     if range not in ("7d", "30d", "90d", "all"):
         raise AppError(
-            "VALIDATION_ERROR", "Unknown range.", 422,
+            "VALIDATION_ERROR",
+            "Unknown range.",
+            422,
             field_errors=[{"field": "range", "message": "Use 7d, 30d, 90d, or all."}],
         )
     return success_response(hs_service.get_history(db, _startup(db, membership), range))
@@ -91,8 +95,11 @@ def accept_recommendation(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response(hs_service.resolve_recommendation(
-        db, _startup(db, membership), rec_id, RecommendationStatus.accepted))
+    return success_response(
+        hs_service.resolve_recommendation(
+            db, _startup(db, membership), rec_id, RecommendationStatus.accepted
+        )
+    )
 
 
 @router.post("/recommendations/{rec_id}/dismiss")
@@ -102,5 +109,8 @@ def dismiss_recommendation(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response(hs_service.resolve_recommendation(
-        db, _startup(db, membership), rec_id, RecommendationStatus.dismissed))
+    return success_response(
+        hs_service.resolve_recommendation(
+            db, _startup(db, membership), rec_id, RecommendationStatus.dismissed
+        )
+    )

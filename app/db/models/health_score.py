@@ -15,8 +15,11 @@ class HealthScore(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "health_scores"
 
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"),
-        nullable=False, unique=True, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     band: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -29,8 +32,10 @@ class HealthScoreHistory(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "health_score_history"
 
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     dimension_scores: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -45,8 +50,10 @@ class HealthSignal(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "health_signals"
 
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     dimension: Mapped[str] = mapped_column(String(20), nullable=False)
     key: Mapped[str] = mapped_column(String(60), nullable=False)
@@ -59,8 +66,10 @@ class HealthRecommendation(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "health_recommendations"
 
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     dimension: Mapped[str] = mapped_column(String(20), nullable=False)
     key: Mapped[str] = mapped_column(String(60), nullable=False)
@@ -72,11 +81,10 @@ class HealthRecommendation(UUIDMixin, TimestampMixin, Base):
     )
     status: Mapped[RecommendationStatus] = mapped_column(
         Enum(RecommendationStatus, native_enum=False, length=12),
-        nullable=False, default=RecommendationStatus.pending,
+        nullable=False,
+        default=RecommendationStatus.pending,
     )
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("uq_recommendation_startup_key", "startup_id", "key", unique=True),
-    )
+    __table_args__ = (Index("uq_recommendation_startup_key", "startup_id", "key", unique=True),)

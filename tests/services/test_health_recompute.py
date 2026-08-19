@@ -32,8 +32,14 @@ _MINIMAL_ANSWERS = [
 
 def _complete_with_scores(db, startup, scores):
     a = create_assessment(db, startup, status=AssessmentStatus.completed)
-    db.add(AssessmentResult(assessment_id=a.id, dimension_scores=scores,
-                            overall_provisional=sum(scores.values()) // 5, narrative="n"))
+    db.add(
+        AssessmentResult(
+            assessment_id=a.id,
+            dimension_scores=scores,
+            overall_provisional=sum(scores.values()) // 5,
+            narrative="n",
+        )
+    )
     db.flush()
     return a
 
@@ -41,7 +47,9 @@ def _complete_with_scores(db, startup, scores):
 def test_recompute_writes_score_signals_history(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
-    _complete_with_scores(db, s, {"product": 80, "market": 60, "money": 40, "legal": 100, "team": 20})
+    _complete_with_scores(
+        db, s, {"product": 80, "market": 60, "money": 40, "legal": 100, "team": 20}
+    )
     hs = recompute_health_score(db, s, trigger="assessment_complete")
     assert hs.score == 60
     assert hs.band == "healthy"
@@ -59,7 +67,9 @@ def test_recompute_pending_when_no_assessment(db):
 def test_recompute_upserts_and_appends_history(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
-    _complete_with_scores(db, s, {"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50})
+    _complete_with_scores(
+        db, s, {"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50}
+    )
     recompute_health_score(db, s)
     recompute_health_score(db, s)
     assert db.query(HealthScore).filter_by(startup_id=s.id).count() == 1  # upsert, not duplicate
@@ -75,13 +85,17 @@ def test_recompute_returns_fresh_score_after_upsert(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
 
-    a1 = _complete_with_scores(db, s, {"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50})
+    a1 = _complete_with_scores(
+        db, s, {"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50}
+    )
     a1.completed_at = datetime.now(UTC) - timedelta(minutes=5)
     db.flush()
     hs1 = recompute_health_score(db, s)
     assert hs1.score == 50
 
-    a2 = _complete_with_scores(db, s, {"product": 90, "market": 90, "money": 90, "legal": 90, "team": 90})
+    a2 = _complete_with_scores(
+        db, s, {"product": 90, "market": 90, "money": 90, "legal": 90, "team": 90}
+    )
     a2.completed_at = datetime.now(UTC)
     db.flush()
     hs2 = recompute_health_score(db, s)
@@ -98,7 +112,9 @@ def test_recompute_emits_updated_and_record(db, monkeypatch):
     u = create_user(db)
     s = create_startup(db, owner=u)
     create_history(db, s, score=50, computed_at=datetime.now(UTC) - timedelta(days=2))
-    _complete_with_scores(db, s, {"product": 70, "market": 70, "money": 70, "legal": 70, "team": 70})
+    _complete_with_scores(
+        db, s, {"product": 70, "market": 70, "money": 70, "legal": 70, "team": 70}
+    )
     recompute_health_score(db, s)
     events = [e for e, _ in published]
     assert "healthscore.updated" in events
@@ -111,7 +127,9 @@ def test_first_score_is_not_a_record(db, monkeypatch):
     monkeypatch.setattr(event_bus, "publish", lambda e, p: published.append((e, p)))
     u = create_user(db)
     s = create_startup(db, owner=u)
-    _complete_with_scores(db, s, {"product": 70, "market": 70, "money": 70, "legal": 70, "team": 70})
+    _complete_with_scores(
+        db, s, {"product": 70, "market": 70, "money": 70, "legal": 70, "team": 70}
+    )
     recompute_health_score(db, s)
     events = [e for e, _ in published]
     assert "healthscore.updated" in events
@@ -143,6 +161,8 @@ def test_recompute_dropped_event(db, monkeypatch):
     s = create_startup(db, owner=u)
     # a prior history point 8 days ago at 80
     create_history(db, s, score=80, computed_at=datetime.now(UTC) - timedelta(days=8))
-    _complete_with_scores(db, s, {"product": 60, "market": 60, "money": 60, "legal": 60, "team": 60})
+    _complete_with_scores(
+        db, s, {"product": 60, "market": 60, "money": 60, "legal": 60, "team": 60}
+    )
     recompute_health_score(db, s)
     assert "healthscore.dropped" in [e for e, _ in published]

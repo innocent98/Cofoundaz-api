@@ -29,8 +29,7 @@ def latest_completed_result(db: Session, startup_id: uuid.UUID) -> AssessmentRes
     return db.execute(
         select(AssessmentResult)
         .join(Assessment, Assessment.id == AssessmentResult.assessment_id)
-        .where(Assessment.startup_id == startup_id,
-               Assessment.status == AssessmentStatus.completed)
+        .where(Assessment.startup_id == startup_id, Assessment.status == AssessmentStatus.completed)
         .order_by(Assessment.completed_at.desc())
         .limit(1)
     ).scalar_one_or_none()
@@ -40,21 +39,23 @@ def _delta_7d(db: Session, startup_id: uuid.UUID, current: int, now: datetime) -
     cutoff = now - timedelta(days=7)
     baseline = db.execute(
         select(HealthScoreHistory.score)
-        .where(HealthScoreHistory.startup_id == startup_id,
-               HealthScoreHistory.created_at <= cutoff)
-        .order_by(HealthScoreHistory.created_at.desc()).limit(1)
+        .where(HealthScoreHistory.startup_id == startup_id, HealthScoreHistory.created_at <= cutoff)
+        .order_by(HealthScoreHistory.created_at.desc())
+        .limit(1)
     ).scalar_one_or_none()
     if baseline is None:  # nothing older than 7d — fall back to earliest point
         baseline = db.execute(
             select(HealthScoreHistory.score)
             .where(HealthScoreHistory.startup_id == startup_id)
-            .order_by(HealthScoreHistory.created_at.asc()).limit(1)
+            .order_by(HealthScoreHistory.created_at.asc())
+            .limit(1)
         ).scalar_one_or_none()
     return current - baseline if baseline is not None else 0
 
 
-def recompute_health_score(db: Session, startup: Startup, *,
-                           trigger: str = "assessment_complete") -> HealthScore | None:
+def recompute_health_score(
+    db: Session, startup: Startup, *, trigger: str = "assessment_complete"
+) -> HealthScore | None:
     result = latest_completed_result(db, startup.id)
     if result is None:
         return None
@@ -70,37 +71,66 @@ def recompute_health_score(db: Session, startup: Startup, *,
     # reflects only points that existed before this call — the first-ever
     # score therefore has no prior_max and never emits a record.
     prior_max = db.execute(
-        select(HealthScoreHistory.score).where(HealthScoreHistory.startup_id == startup.id)
-        .order_by(HealthScoreHistory.score.desc()).limit(1)
+        select(HealthScoreHistory.score)
+        .where(HealthScoreHistory.startup_id == startup.id)
+        .order_by(HealthScoreHistory.score.desc())
+        .limit(1)
     ).scalar_one_or_none()
 
     # 1. Replace the signal set
     db.query(HealthSignal).filter_by(startup_id=startup.id).delete()
     for d in Dimension:
         v = dim_scores[d.value]
-        db.add(HealthSignal(startup_id=startup.id, dimension=d.value,
-                            key=f"assessment.{d.value}", value=v,
-                            contribution=round(v * DIMENSION_WEIGHTS[d.value], 2),
-                            source_ref=f"assessment:{result.assessment_id}"))
+        db.add(
+            HealthSignal(
+                startup_id=startup.id,
+                dimension=d.value,
+                key=f"assessment.{d.value}",
+                value=v,
+                contribution=round(v * DIMENSION_WEIGHTS[d.value], 2),
+                source_ref=f"assessment:{result.assessment_id}",
+            )
+        )
 
     # 2. Upsert the current score
-    stmt = pg_insert(HealthScore).values(
-        startup_id=startup.id, score=overall, band=band, dimension_scores=dim_scores,
-        source="assessment", config_version=HEALTH_CONFIG_VERSION,
-    ).on_conflict_do_update(
-        index_elements=["startup_id"],
-        set_={"score": overall, "band": band, "dimension_scores": dim_scores,
-              "config_version": HEALTH_CONFIG_VERSION},
+    stmt = (
+        pg_insert(HealthScore)
+        .values(
+            startup_id=startup.id,
+            score=overall,
+            band=band,
+            dimension_scores=dim_scores,
+            source="assessment",
+            config_version=HEALTH_CONFIG_VERSION,
+        )
+        .on_conflict_do_update(
+            index_elements=["startup_id"],
+            set_={
+                "score": overall,
+                "band": band,
+                "dimension_scores": dim_scores,
+                "config_version": HEALTH_CONFIG_VERSION,
+            },
+        )
     )
     db.execute(stmt)
 
     # 3. Append history
     delta = _delta_7d(db, startup.id, overall, now)
-    db.add(HealthScoreHistory(startup_id=startup.id, score=overall, dimension_scores=dim_scores,
-                              delta=delta, trigger=trigger, config_version=HEALTH_CONFIG_VERSION))
+    db.add(
+        HealthScoreHistory(
+            startup_id=startup.id,
+            score=overall,
+            dimension_scores=dim_scores,
+            delta=delta,
+            trigger=trigger,
+            config_version=HEALTH_CONFIG_VERSION,
+        )
+    )
 
     # 4. Recommendations
     from app.services.health_score.recommendations import generate_recommendations
+
     generate_recommendations(db, startup.id, dim_scores)
 
     db.flush()
@@ -115,18 +145,39 @@ def recompute_health_score(db: Session, startup: Startup, *,
     )
 
     # 5. Events
-    event_bus.publish("healthscore.updated", {
-        "startup_id": str(startup.id), "score": overall, "previous_score": previous_score,
-        "band": band, "delta_7d": delta, "computed_at": now.isoformat(),
-        "config_version": HEALTH_CONFIG_VERSION})
+    event_bus.publish(
+        "healthscore.updated",
+        {
+            "startup_id": str(startup.id),
+            "score": overall,
+            "previous_score": previous_score,
+            "band": band,
+            "delta_7d": delta,
+            "computed_at": now.isoformat(),
+            "config_version": HEALTH_CONFIG_VERSION,
+        },
+    )
     if delta <= -5:
-        event_bus.publish("healthscore.dropped", {
-            "startup_id": str(startup.id), "score": overall, "previous_score": previous_score,
-            "delta_7d": delta, "computed_at": now.isoformat()})
+        event_bus.publish(
+            "healthscore.dropped",
+            {
+                "startup_id": str(startup.id),
+                "score": overall,
+                "previous_score": previous_score,
+                "delta_7d": delta,
+                "computed_at": now.isoformat(),
+            },
+        )
     if prior_max is not None and overall > prior_max:
-        event_bus.publish("healthscore.record", {
-            "startup_id": str(startup.id), "score": overall, "previous_max": prior_max,
-            "computed_at": now.isoformat()})
+        event_bus.publish(
+            "healthscore.record",
+            {
+                "startup_id": str(startup.id),
+                "score": overall,
+                "previous_max": prior_max,
+                "computed_at": now.isoformat(),
+            },
+        )
     return hs
 
 
@@ -139,9 +190,12 @@ def get_overview(db: Session, startup: Startup) -> dict:
             db.commit()
     if hs is None:
         return {
-            "status": "pending_assessment", "score": None, "band": None,
+            "status": "pending_assessment",
+            "score": None,
+            "band": None,
             "message": "Complete your kickoff assessment to generate your Health Score.",
-            "dimensions": [], "top_recommendations": [],
+            "dimensions": [],
+            "top_recommendations": [],
         }
     now = datetime.now(UTC)
     delta = _delta_7d(db, startup.id, hs.score, now)
@@ -162,18 +216,29 @@ def get_overview(db: Session, startup: Startup) -> dict:
         f"Your weakest area is {DIMENSION_LABELS[weakest]}."
     )
     return {
-        "status": "ok", "score": hs.score, "band": hs.band, "delta_7d": delta,
-        "computed_at": hs.updated_at.isoformat(), "config_version": hs.config_version,
+        "status": "ok",
+        "score": hs.score,
+        "band": hs.band,
+        "delta_7d": delta,
+        "computed_at": hs.updated_at.isoformat(),
+        "config_version": hs.config_version,
         "dimensions": dims,
-        "top_recommendations": [_serialize_rec(r) for r in recs], "summary": summary,
+        "top_recommendations": [_serialize_rec(r) for r in recs],
+        "summary": summary,
     }
 
 
 def _serialize_rec(r: HealthRecommendation) -> dict:
     return {
-        "id": str(r.id), "dimension": r.dimension, "key": r.key, "title": r.title,
-        "body": r.body, "estimated_lift": r.estimated_lift, "effort": r.effort.value,
-        "status": r.status.value, "priority": r.priority,
+        "id": str(r.id),
+        "dimension": r.dimension,
+        "key": r.key,
+        "title": r.title,
+        "body": r.body,
+        "estimated_lift": r.estimated_lift,
+        "effort": r.effort.value,
+        "status": r.status.value,
+        "priority": r.priority,
     }
 
 
@@ -235,12 +300,16 @@ def get_benchmarks(db: Session, startup: Startup) -> dict:
     )
     if peers < MIN_COHORT_SIZE:
         return {
-            "status": "insufficient_data", "cohort": cohort,
-            "min_cohort_size": MIN_COHORT_SIZE, "percentiles": None,
+            "status": "insufficient_data",
+            "cohort": cohort,
+            "min_cohort_size": MIN_COHORT_SIZE,
+            "percentiles": None,
         }
     return {
-        "status": "insufficient_data", "cohort": cohort,
-        "min_cohort_size": MIN_COHORT_SIZE, "percentiles": None,
+        "status": "insufficient_data",
+        "cohort": cohort,
+        "min_cohort_size": MIN_COHORT_SIZE,
+        "percentiles": None,
     }
 
 
@@ -257,11 +326,7 @@ def list_recommendations(db: Session, startup: Startup, status_filter: str | Non
 def resolve_recommendation(
     db: Session, startup: Startup, rec_id: uuid.UUID, target: RecommendationStatus
 ) -> dict:
-    row = (
-        db.query(HealthRecommendation)
-        .filter_by(id=rec_id, startup_id=startup.id)
-        .first()
-    )
+    row = db.query(HealthRecommendation).filter_by(id=rec_id, startup_id=startup.id).first()
     if row is None:
         raise NotFound()  # uniform 404 -- never leak cross-tenant existence
     if row.status == target:

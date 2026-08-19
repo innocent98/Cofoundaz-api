@@ -10,17 +10,30 @@ def test_weights_sum_to_one():
 
 
 def test_weighted_overall_equal_weights():
-    assert weighted_overall({"product": 80, "market": 60, "money": 40, "legal": 100, "team": 20}) == 60
+    assert (
+        weighted_overall({"product": 80, "market": 60, "money": 40, "legal": 100, "team": 20}) == 60
+    )
 
 
 def test_weighted_overall_clamps_and_rounds():
-    assert weighted_overall({"product": 71, "market": 71, "money": 71, "legal": 71, "team": 72}) == 71
+    assert (
+        weighted_overall({"product": 71, "market": 71, "money": 71, "legal": 71, "team": 72}) == 71
+    )
 
 
-@pytest.mark.parametrize("score,band", [
-    (0, "at_risk"), (39, "at_risk"), (40, "needs_work"), (59, "needs_work"),
-    (60, "healthy"), (79, "healthy"), (80, "thriving"), (100, "thriving"),
-])
+@pytest.mark.parametrize(
+    "score,band",
+    [
+        (0, "at_risk"),
+        (39, "at_risk"),
+        (40, "needs_work"),
+        (59, "needs_work"),
+        (60, "healthy"),
+        (79, "healthy"),
+        (80, "thriving"),
+        (100, "thriving"),
+    ],
+)
 def test_band_boundaries(score, band):
     assert band_for(score) == band
 

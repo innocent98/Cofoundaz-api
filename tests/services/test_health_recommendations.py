@@ -38,8 +38,7 @@ def test_dedupe_by_key_on_regeneration(db):
 def test_never_resurrect_user_dismissed(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
-    create_recommendation(db, s, key="money.runway_model",
-                          status=RecommendationStatus.dismissed)
+    create_recommendation(db, s, key="money.runway_model", status=RecommendationStatus.dismissed)
     generate_recommendations(db, s.id, WEAK)
     db.flush()
     row = db.query(HealthRecommendation).filter_by(startup_id=s.id, key="money.runway_model").one()
@@ -49,8 +48,9 @@ def test_never_resurrect_user_dismissed(db):
 def test_accepted_left_untouched(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
-    create_recommendation(db, s, key="money.runway_model",
-                          status=RecommendationStatus.accepted, priority=9)
+    create_recommendation(
+        db, s, key="money.runway_model", status=RecommendationStatus.accepted, priority=9
+    )
     generate_recommendations(db, s.id, WEAK)
     db.flush()
     row = db.query(HealthRecommendation).filter_by(startup_id=s.id, key="money.runway_model").one()
@@ -64,6 +64,9 @@ def test_recovered_pending_is_deleted(db):
     db.flush()
     generate_recommendations(db, s.id, STRONG)
     db.flush()  # everything recovered
-    remaining = db.query(HealthRecommendation).filter_by(
-        startup_id=s.id, status=RecommendationStatus.pending).count()
+    remaining = (
+        db.query(HealthRecommendation)
+        .filter_by(startup_id=s.id, status=RecommendationStatus.pending)
+        .count()
+    )
     assert remaining == 0  # unacted pendings removed
