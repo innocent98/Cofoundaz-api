@@ -11,7 +11,10 @@ from app.db.models.enums import (
     InvitationStatus,
     MembershipRole,
     MembershipStatus,
+    RecommendationEffort,
+    RecommendationStatus,
 )
+from app.db.models.health_score import HealthRecommendation, HealthScore, HealthScoreHistory
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
@@ -98,6 +101,85 @@ def create_invitation(
     db.add(inv)
     db.flush()
     return inv
+
+
+def create_health_score(
+    db: Session,
+    startup: Startup,
+    *,
+    score: int = 70,
+    dimension_scores: dict | None = None,
+    band: str = "healthy",
+    config_version: int = 1,
+) -> HealthScore:
+    hs = HealthScore(
+        startup_id=startup.id,
+        score=score,
+        band=band,
+        dimension_scores=dimension_scores
+        or {"product": 70, "market": 70, "money": 70, "legal": 70, "team": 70},
+        source="assessment",
+        config_version=config_version,
+    )
+    db.add(hs)
+    db.flush()
+    return hs
+
+
+def create_history(
+    db: Session,
+    startup: Startup,
+    *,
+    score: int,
+    delta: int = 0,
+    computed_at: datetime | None = None,
+    trigger: str = "test",
+    dimension_scores: dict | None = None,
+    config_version: int = 1,
+) -> HealthScoreHistory:
+    h = HealthScoreHistory(
+        startup_id=startup.id,
+        score=score,
+        delta=delta,
+        trigger=trigger,
+        dimension_scores=dimension_scores or {"money": score},
+        config_version=config_version,
+    )
+    db.add(h)
+    db.flush()
+    if computed_at is not None:
+        h.created_at = computed_at
+        db.flush()
+    return h
+
+
+def create_recommendation(
+    db: Session,
+    startup: Startup,
+    *,
+    key: str,
+    dimension: str = "money",
+    status: RecommendationStatus = RecommendationStatus.pending,
+    priority: int = 1,
+    estimated_lift: int = 8,
+    effort: RecommendationEffort = RecommendationEffort.medium,
+    title: str = "t",
+    body: str = "b",
+) -> HealthRecommendation:
+    r = HealthRecommendation(
+        startup_id=startup.id,
+        dimension=dimension,
+        key=key,
+        title=title,
+        body=body,
+        estimated_lift=estimated_lift,
+        effort=effort,
+        status=status,
+        priority=priority,
+    )
+    db.add(r)
+    db.flush()
+    return r
 
 
 def create_auth_session(
