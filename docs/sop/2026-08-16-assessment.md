@@ -265,6 +265,7 @@ reason for not fixing in-scope):**
   completing an assessment. Follow-up: add `job_ids` to `_result_dict` for parity with
   onboarding, so the FE can poll the recalibrate jobs the same way it polls onboarding's.
 - **`healthscore.recalculate` stub retired (Module 06)** — as of Module 06, the
-  `healthscore.recalculate` / `healthscore.initialize` stub jobs are retired; the Health
-  Score is recomputed inline at assessment-complete instead (see
-  `docs/sop/2026-08-19-health-score.md`).
+  `healthscore.recalculate` job (enqueued here, at assessment-complete) was retired; the
+  Health Score is recomputed inline at assessment-complete instead. `healthscore.initialize`
+  (a separate stub, enqueued at *onboarding*-complete, not here) was **not** retired — it is
+  still enqueued and still unconsumed by design. See `docs/sop/2026-08-19-health-score.md`.

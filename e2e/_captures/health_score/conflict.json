@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RECOMMENDATION_RESOLVED",
+    "message": "That recommendation has already been actioned.",
+    "field_errors": []
+  }
+}

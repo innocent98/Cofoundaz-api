@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged)_
+_Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/health-score` (Module 06, PR pending)_
 
 ---
 
@@ -19,11 +19,11 @@ _Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged)_
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 3 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) |
-| 🟡 In progress | 1 | Health Score (Module 06) — design pass |
+| ✅ Shipped & certified | 4 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) · Health Score (Module 06) |
+| 🟡 In progress | 0 | — |
 | ⬜ Planned / next | — | Roadmap (05) · Today's Mission (04) · then remaining PRD modules |
 
-**Health at a glance:** ~34 endpoints · 209 unit tests (real Postgres) + 23 live E2E · ~97–98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~40 endpoints · 254 unit tests (real Postgres) + 24 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 ---
 
@@ -92,7 +92,7 @@ _Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged)_
 
 ---
 
-## 🟡 Module 06 — Health Score — *in progress (design pass)*
+## ✅ Module 06 — Health Score — *shipped (branch `feat/health-score`)*
 
 _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchmarks · ranked recommendations._
 
@@ -100,18 +100,17 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 - [x] Resolve computation/recompute model → **A: inline recompute + lazy-on-read, no worker**
 - [x] Reconcile dimension naming → **keep internal keys `product/market/money/legal/team` (reuse `Dimension` enum); "Financial" is `money`'s display label only**
 - [x] Signal-sourcing scope → **C: build `health_signals` now (assessment-derived), weights as static versioned config, defer `health_dimensions` table**
-- [x] Pre-assessment state → **A: honest pending empty-state (no row until first assessment; `initialize` is a no-op)**
+- [x] Pre-assessment state → **A: honest pending empty-state (no row until first assessment; `healthscore.initialize` still enqueued at onboarding-complete but stays unconsumed by design)**
 - [x] Recommendations engine scope → **A: rule-based + persisted (`health_recommendations`, dedupe, never resurrect dismissed)**
 - [x] Benchmarks scope → **A: honest empty-state with cohort-size gate (no aggregation pipeline built now)**
-- [ ] Band thresholds + weekly-delta / drop / record semantics — *proposed in design §5*
-- [ ] Give the `healthscore.initialize` / `healthscore.recalculate` stub jobs a real consumer
-- [ ] Spec written → self-review → user review gate → writing-plans
-- [ ] Endpoints: `GET /health-score` · `/dimensions/{dim}` · `/history?range` · `/benchmarks` · `/recommendations` · `POST /recommendations/{id}/{accept,dismiss}`
-- [ ] Data model: `health_scores` · `health_score_history` · `health_signals` + `health_recommendations` + migration `0005`
-- [ ] Events: `healthscore.updated` · `healthscore.dropped` · `healthscore.record`
-- [ ] Live E2E + SOP + **FE integration guide (captured live)**
-
-_(This section will expand into a task breakdown once the plan is written.)_
+- [x] Band thresholds + weekly-delta / drop / record semantics — implemented in `app/services/health_score/config.py` + `scoring.py`
+- [x] `healthscore.recalculate` stub replaced by the inline recompute at assessment-complete; `healthscore.initialize` (onboarding) intentionally left as an unconsumed stub — see `docs/sop/2026-08-19-health-score.md`
+- [x] Spec written → self-review → user review gate → writing-plans (`.superpowers/sdd/2026-08-19-health-score/`)
+- [x] Endpoints: `GET /health-score` · `/dimensions/{dim}` · `/history?range` · `/benchmarks` · `/recommendations` · `POST /recommendations/{id}/{accept,dismiss}`
+- [x] Data model: `health_scores` · `health_score_history` · `health_signals` + `health_recommendations` + migration `0005`
+- [x] Events: `healthscore.updated` · `healthscore.dropped` · `healthscore.record`
+- [x] Live E2E + SOP + **FE integration guide (captured live)** — `e2e/test_health_score.py`, `docs/sop/2026-08-19-health-score.md`, `docs/fe-integration-guide-health-score.md`
+- [ ] _Deferred:_ real benchmark cohort aggregation · async worker for the unconsumed stub jobs (Module 05) · AI-generated summary/recommendations (Module 03) — see SOP Follow-ups
 
 ---
 

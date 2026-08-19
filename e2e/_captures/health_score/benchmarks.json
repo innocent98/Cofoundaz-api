@@ -1,0 +1,12 @@
+{
+  "data": {
+    "status": "insufficient_data",
+    "cohort": {
+      "stage": "idea",
+      "industry": "Fintech"
+    },
+    "min_cohort_size": 5,
+    "percentiles": null
+  },
+  "meta": null
+}

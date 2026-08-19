@@ -44,6 +44,13 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/assessments/{assessment_id}/complete",
         "/api/v1/assessments/{assessment_id}",
         "/api/v1/assessments/compare",
+        # health-score surface
+        "/api/v1/health-score",
+        "/api/v1/health-score/dimensions/{dim}",
+        "/api/v1/health-score/history",
+        "/api/v1/health-score/benchmarks",
+        "/api/v1/health-score/recommendations",
+        "/api/v1/health-score/recommendations/{rec_id}/accept",
     ]:
         assert p in paths, f"missing route {p}"
 

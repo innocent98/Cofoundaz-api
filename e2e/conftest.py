@@ -77,6 +77,23 @@ def mailbox():
 
 
 @pytest.fixture()
+def capture():
+    """Writes a live response body to e2e/_captures/<group>/<name>.json.
+
+    These captured bodies are the SOURCE of truth for FE integration guides --
+    pasted verbatim from here, never retyped from memory.
+    """
+    base_dir = Path(__file__).parent / "_captures"
+
+    def _capture(group: str, name: str, resp: httpx.Response) -> None:
+        out_dir = base_dir / group
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.json").write_text(json.dumps(resp.json(), indent=2) + "\n")
+
+    return _capture
+
+
+@pytest.fixture()
 def make_verified_user(mailbox, unique_email):
     """Signs up + verifies a fresh user over HTTP; returns {email, password}."""
 
