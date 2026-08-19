@@ -4,7 +4,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.db.models.auth import AuthSession
-from app.db.models.enums import MembershipRole, MembershipStatus
+from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
+from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User, UserProfile
@@ -35,6 +36,31 @@ def create_membership(
     )
     db.add(m)
     return m
+
+
+def create_invitation(
+    db: Session,
+    startup: Startup,
+    *,
+    email: str = "invitee@example.com",
+    role: MembershipRole = MembershipRole.team_member,
+    inviter: User | None = None,
+    token_hash: str = "invtok",
+    status: InvitationStatus = InvitationStatus.pending,
+    expires_at: datetime | None = None,
+) -> Invitation:
+    inv = Invitation(
+        startup_id=startup.id,
+        email=email,
+        role=role,
+        token_hash=token_hash,
+        status=status,
+        invited_by=(inviter.id if inviter else startup.created_by),
+        expires_at=expires_at or datetime.now(UTC) + timedelta(days=14),
+    )
+    db.add(inv)
+    db.flush()
+    return inv
 
 
 def create_auth_session(

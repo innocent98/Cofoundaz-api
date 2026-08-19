@@ -71,6 +71,31 @@ class NotFound(AppError):  # noqa: N818
     message = "Not found."
 
 
+class OnboardingIncomplete(AppError):  # noqa: N818
+    code, http_status = "ONBOARDING_INCOMPLETE", 422
+    message = "A few things are still needed before we can build your workspace."
+
+
+class OnboardingAlreadyComplete(AppError):  # noqa: N818
+    code, http_status = "ONBOARDING_ALREADY_COMPLETE", 409
+    message = "Onboarding is already complete."
+
+
+class InviteEmailMismatch(AppError):  # noqa: N818
+    code, http_status = "INVITE_EMAIL_MISMATCH", 403
+    message = "This invitation was sent to a different email address."
+
+
+class AlreadyMember(AppError):  # noqa: N818
+    code, http_status = "ALREADY_MEMBER", 409
+    message = "That person is already on this workspace."
+
+
+class EmailNotVerified(AppError):  # noqa: N818
+    code, http_status = "EMAIL_NOT_VERIFIED", 403
+    message = "Please verify your email first."
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:

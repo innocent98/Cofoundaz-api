@@ -64,3 +64,10 @@ class AuthTokenPurpose(str, enum.Enum):
 class OAuthProvider(str, enum.Enum):
     google = "google"
     apple = "apple"
+
+
+class InvitationStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    expired = "expired"
+    revoked = "revoked"
