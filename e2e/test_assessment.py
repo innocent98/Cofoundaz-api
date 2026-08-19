@@ -2,6 +2,7 @@
 the adaptive assessment end-to-end and gets scored, with assessment_pending flipped
 and the recalc jobs enqueued.
 """
+
 import httpx
 
 
@@ -15,9 +16,16 @@ def test_assessment_journey(base_url, make_verified_user):
         c.get("/api/v1/onboarding/state", headers=auth)
         c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 1, "full_name": "Ada"})
         c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 2, "name": "Cofoundaz"})
-        c.patch("/api/v1/onboarding/state", headers=auth,
-                json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"})
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get first customers"]})
+        c.patch(
+            "/api/v1/onboarding/state",
+            headers=auth,
+            json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"},
+        )
+        c.patch(
+            "/api/v1/onboarding/state",
+            headers=auth,
+            json={"step": 4, "goals": ["Get first customers"]},
+        )
         c.post("/api/v1/onboarding/complete", headers=auth)
 
         # Discover the workspace id from /auth/me, then take the assessment.
@@ -32,7 +40,9 @@ def test_assessment_journey(base_url, make_verified_user):
         vals = {"scale_1_5": 3, "numeric_currency": 1000, "short_text": "n/a"}
         answered_keys = []
         while True:
-            nq = c.get(f"/api/v1/assessments/{aid}/next-question", headers=wh).json()["data"]["next_question"]
+            nq = c.get(f"/api/v1/assessments/{aid}/next-question", headers=wh).json()["data"][
+                "next_question"
+            ]
             if nq is None:
                 break
             if nq["qtype"] == "single_choice":
@@ -46,8 +56,11 @@ def test_assessment_journey(base_url, make_verified_user):
                 val = [nq["options"][-1]["value"]]
             else:
                 val = vals[nq["qtype"]]
-            ans = c.post(f"/api/v1/assessments/{aid}/answers", headers=wh,
-                         json={"question_key": nq["key"], "value": val})
+            ans = c.post(
+                f"/api/v1/assessments/{aid}/answers",
+                headers=wh,
+                json={"question_key": nq["key"], "value": val},
+            )
             assert ans.status_code == 200, ans.text
             answered_keys.append(nq["key"])
 
@@ -63,6 +76,14 @@ def test_assessment_journey(base_url, make_verified_user):
         assert set(result["dimension_scores"]) == {"product", "market", "money", "legal", "team"}
         assert isinstance(result["overall_provisional"], int)
         assert result["narrative"]
+
+        # Compare against itself: single completed id returns one scored entry.
+        compare = c.get("/api/v1/assessments/compare", params={"ids": aid}, headers=wh)
+        assert compare.status_code == 200, compare.text
+        cdata = compare.json()["data"]
+        assert isinstance(cdata, list) and len(cdata) == 1
+        assert cdata[0]["id"] == aid
+        assert set(cdata[0]["dimension_scores"]) == {"product", "market", "money", "legal", "team"}
 
         # assessment_pending flipped off.
         state = c.get("/api/v1/onboarding/state", headers=auth).json()["data"]

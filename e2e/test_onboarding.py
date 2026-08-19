@@ -2,6 +2,8 @@
 signs up + accepts, then completes onboarding and gets the two queued jobs.
 """
 
+import io
+
 import httpx
 
 
@@ -22,6 +24,15 @@ def test_full_onboarding_journey(base_url, make_verified_user, mailbox, unique_e
             "/api/v1/onboarding/state", headers=h, json={"step": 1, "full_name": "Ada Founder"}
         )
         founder.patch("/api/v1/onboarding/state", headers=h, json={"step": 2, "name": "Cofoundaz"})
+
+        logo = founder.post(
+            "/api/v1/onboarding/logo",
+            headers=h,
+            files={"file": ("logo.png", io.BytesIO(b"\x89PNG\r\n\x1a\n"), "image/png")},
+        )
+        assert logo.status_code == 200, logo.text
+        assert logo.json()["data"]["logo_url"]
+
         founder.patch(
             "/api/v1/onboarding/state",
             headers=h,
@@ -41,6 +52,15 @@ def test_full_onboarding_journey(base_url, make_verified_user, mailbox, unique_e
         )
         assert inv.status_code == 200 and teammate_email in inv.json()["data"]["created"]
         invite_token = mailbox.latest_token_for(teammate_email, subject_contains="invited")
+
+        # Public preview -- no auth required, and must be readable before acceptance.
+        preview = founder.get(f"/api/v1/invitations/{invite_token}")
+        assert preview.status_code == 200, preview.text
+        pdata = preview.json()["data"]
+        assert pdata["email"] == teammate_email
+        assert pdata["role"] == "team_member"
+        assert pdata["status"] == "pending"
+        assert pdata["startup_name"] == "Cofoundaz"
 
     # Teammate signs up + verifies + accepts (separate client / user). Their email
     # MUST equal the invited email, because acceptance is email-bound — so sign up
