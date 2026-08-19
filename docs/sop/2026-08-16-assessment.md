@@ -264,3 +264,7 @@ reason for not fixing in-scope):**
   task's e2e harness) cannot discover those two job ids to poll `GET /jobs/{id}` after
   completing an assessment. Follow-up: add `job_ids` to `_result_dict` for parity with
   onboarding, so the FE can poll the recalibrate jobs the same way it polls onboarding's.
+- **`healthscore.recalculate` stub retired (Module 06)** — as of Module 06, the
+  `healthscore.recalculate` / `healthscore.initialize` stub jobs are retired; the Health
+  Score is recomputed inline at assessment-complete instead (see
+  `docs/sop/2026-08-19-health-score.md`).

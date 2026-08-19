@@ -4,8 +4,30 @@ from app.db.models.assessment import AssessmentResult
 from app.db.models.enums import AssessmentStatus
 from app.db.models.health_score import HealthScore, HealthScoreHistory, HealthSignal
 from app.platform.events import event_bus
+from app.services.assessment.bank import ASSESSMENT_BANK
+from app.services.assessment.service import complete_assessment
 from app.services.health_score.service import recompute_health_score
-from tests.factories import create_assessment, create_history, create_startup, create_user
+from tests.factories import (
+    create_answer,
+    create_assessment,
+    create_history,
+    create_startup,
+    create_user,
+)
+
+# Chosen to skip every conditional follow-up question, same set used by
+# tests/services/assessment/test_complete_concurrency.py, so the assessment is fully
+# (and minimally) answered.
+_MINIMAL_ANSWERS = [
+    ("product_stage", "idea"),
+    ("market_clarity", 3),
+    ("market_research", "none"),
+    ("has_revenue", "no"),
+    ("runway_confidence", 3),
+    ("incorporated", "no"),
+    ("team_size", "solo"),
+    ("team_confidence", 3),
+]
 
 
 def _complete_with_scores(db, startup, scores):
@@ -94,6 +116,24 @@ def test_first_score_is_not_a_record(db, monkeypatch):
     events = [e for e, _ in published]
     assert "healthscore.updated" in events
     assert "healthscore.record" not in events
+
+
+def test_complete_assessment_triggers_health_score(db):
+    # Integration test: complete_assessment (assessment service) must trigger the
+    # Health Score recompute inline, in the same transaction, without going through a
+    # job queue -- as of Module 06 the healthscore.recalculate stub job is retired.
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    a = create_assessment(db, s, creator=u, bank_version=ASSESSMENT_BANK.version)
+    for key, value in _MINIMAL_ANSWERS:
+        create_answer(db, a, question_key=key, value=value)
+    db.flush()
+
+    complete_assessment(db, a, s)
+
+    assert db.query(HealthScore).filter_by(startup_id=s.id).count() == 1
+    hs = db.query(HealthScore).filter_by(startup_id=s.id).one()
+    assert hs.score is not None
 
 
 def test_recompute_dropped_event(db, monkeypatch):

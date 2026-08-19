@@ -160,6 +160,10 @@ them yet (Modules 05/06); this task proves the dispatch contract, not execution.
   nothing yet clears it; the flag exists so the assessment module has a signal to key off.
 - **Job execution** (Modules 05/06) — `roadmap.generate` / `healthscore.initialize` are
   persisted as `queued` and never move to `running`/`done`; no worker exists yet.
+- **`healthscore.initialize` stub retired (Module 06)** — as of Module 06, the
+  `healthscore.recalculate` / `healthscore.initialize` stub jobs are retired; the Health
+  Score is recomputed inline at assessment-complete instead (see
+  `docs/sop/2026-08-19-health-score.md`).
 
 **Parked during review (deliberate, tracked risk — not blocking, revisit if traffic grows):**
 - **Concurrent workspace-create race** (Task 3): `resolve_or_create_workspace` is
