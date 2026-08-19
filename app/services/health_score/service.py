@@ -6,11 +6,20 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.db.models.assessment import Assessment, AssessmentResult
-from app.db.models.enums import AssessmentStatus, Dimension
-from app.db.models.health_score import HealthScore, HealthScoreHistory, HealthSignal
+from app.db.models.enums import AssessmentStatus, Dimension, RecommendationStatus
+from app.db.models.health_score import (
+    HealthRecommendation,
+    HealthScore,
+    HealthScoreHistory,
+    HealthSignal,
+)
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
-from app.services.health_score.config import DIMENSION_WEIGHTS, HEALTH_CONFIG_VERSION
+from app.services.health_score.config import (
+    DIMENSION_LABELS,
+    DIMENSION_WEIGHTS,
+    HEALTH_CONFIG_VERSION,
+)
 from app.services.health_score.scoring import band_for, weighted_overall
 
 
@@ -117,3 +126,50 @@ def recompute_health_score(db: Session, startup: Startup, *,
             "startup_id": str(startup.id), "score": overall, "previous_max": prior_max,
             "computed_at": now.isoformat()})
     return hs
+
+
+def get_overview(db: Session, startup: Startup) -> dict:
+    hs = db.query(HealthScore).filter_by(startup_id=startup.id).first()
+    if hs is None:
+        # lazy-on-read: compute if a completed assessment exists, else pending
+        if latest_completed_result(db, startup.id) is not None:
+            hs = recompute_health_score(db, startup, trigger="lazy_read")
+            db.commit()
+    if hs is None:
+        return {
+            "status": "pending_assessment", "score": None, "band": None,
+            "message": "Complete your kickoff assessment to generate your Health Score.",
+            "dimensions": [], "top_recommendations": [],
+        }
+    now = datetime.now(UTC)
+    delta = _delta_7d(db, startup.id, hs.score, now)
+    dims = [
+        {"key": k, "label": DIMENSION_LABELS[k], "score": v, "band": band_for(v)}
+        for k, v in hs.dimension_scores.items()
+    ]
+    recs = (
+        db.query(HealthRecommendation)
+        .filter_by(startup_id=startup.id, status=RecommendationStatus.pending)
+        .order_by(HealthRecommendation.priority.asc())
+        .limit(3)
+        .all()
+    )
+    weakest = min(hs.dimension_scores, key=lambda k: hs.dimension_scores[k])
+    summary = (
+        f"Your Health Score is {hs.score} ({hs.band.replace('_', ' ')}). "
+        f"Your weakest area is {DIMENSION_LABELS[weakest]}."
+    )
+    return {
+        "status": "ok", "score": hs.score, "band": hs.band, "delta_7d": delta,
+        "computed_at": hs.updated_at.isoformat(), "config_version": hs.config_version,
+        "dimensions": dims,
+        "top_recommendations": [_serialize_rec(r) for r in recs], "summary": summary,
+    }
+
+
+def _serialize_rec(r: HealthRecommendation) -> dict:
+    return {
+        "id": str(r.id), "dimension": r.dimension, "key": r.key, "title": r.title,
+        "body": r.body, "estimated_lift": r.estimated_lift, "effort": r.effort.value,
+        "status": r.status.value, "priority": r.priority,
+    }
