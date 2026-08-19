@@ -71,3 +71,22 @@ class InvitationStatus(str, enum.Enum):
     accepted = "accepted"
     expired = "expired"
     revoked = "revoked"
+
+
+class AssessmentType(str, enum.Enum):
+    initial = "initial"
+    quarterly = "quarterly"
+
+
+class AssessmentStatus(str, enum.Enum):
+    in_progress = "in_progress"
+    completed = "completed"
+    abandoned = "abandoned"
+
+
+class Dimension(str, enum.Enum):
+    product = "product"
+    market = "market"
+    money = "money"
+    legal = "legal"
+    team = "team"

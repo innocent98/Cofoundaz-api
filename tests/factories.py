@@ -3,8 +3,15 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.db.models.assessment import Assessment, AssessmentAnswer
 from app.db.models.auth import AuthSession
-from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
+from app.db.models.enums import (
+    AssessmentStatus,
+    AssessmentType,
+    InvitationStatus,
+    MembershipRole,
+    MembershipStatus,
+)
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
@@ -26,6 +33,36 @@ def create_startup(db: Session, *, owner: User, name: str = "Acme", **kw) -> Sta
     db.add(s)
     db.flush()
     return s
+
+
+def create_assessment(
+    db: Session,
+    startup: Startup,
+    *,
+    creator: User | None = None,
+    type: AssessmentType = AssessmentType.initial,
+    status: AssessmentStatus = AssessmentStatus.in_progress,
+    bank_version: str = "v1",
+) -> Assessment:
+    a = Assessment(
+        startup_id=startup.id,
+        type=type,
+        status=status,
+        bank_version=bank_version,
+        created_by=(creator.id if creator else startup.created_by),
+    )
+    db.add(a)
+    db.flush()
+    return a
+
+
+def create_answer(
+    db: Session, assessment: Assessment, *, question_key: str, value: object
+) -> AssessmentAnswer:
+    ans = AssessmentAnswer(assessment_id=assessment.id, question_key=question_key, value_json=value)
+    db.add(ans)
+    db.flush()
+    return ans
 
 
 def create_membership(

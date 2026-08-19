@@ -1,3 +1,4 @@
+from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401
 from app.db.models.invitation import Invitation  # noqa: F401
