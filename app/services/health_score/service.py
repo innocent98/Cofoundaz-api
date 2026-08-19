@@ -20,6 +20,7 @@ from app.services.health_score.config import (
     DIMENSION_LABELS,
     DIMENSION_WEIGHTS,
     HEALTH_CONFIG_VERSION,
+    MIN_COHORT_SIZE,
 )
 from app.services.health_score.scoring import band_for, weighted_overall
 
@@ -215,6 +216,42 @@ def get_dimension(db: Session, startup: Startup, dim: str) -> dict:
         "trend": trend,
         "recommendations": [_serialize_rec(r) for r in recs],
     }
+
+
+def get_benchmarks(db: Session, startup: Startup) -> dict:
+    cohort = {
+        "stage": startup.stage.value if startup.stage else None,
+        "industry": startup.industry,
+    }
+    # Cohort size counts peer startups sharing stage+industry that have a health score.
+    # Real percentile aggregation is deferred to a later iteration; for now the
+    # cohort-size gate is exercised but both branches return the insufficient_data
+    # shape until that aggregation exists.
+    peers = (
+        db.query(HealthScore)
+        .join(Startup, Startup.id == HealthScore.startup_id)
+        .filter(Startup.stage == startup.stage, Startup.industry == startup.industry)
+        .count()
+    )
+    if peers < MIN_COHORT_SIZE:
+        return {
+            "status": "insufficient_data", "cohort": cohort,
+            "min_cohort_size": MIN_COHORT_SIZE, "percentiles": None,
+        }
+    return {
+        "status": "insufficient_data", "cohort": cohort,
+        "min_cohort_size": MIN_COHORT_SIZE, "percentiles": None,
+    }
+
+
+def list_recommendations(db: Session, startup: Startup, status_filter: str | None) -> list[dict]:
+    q = db.query(HealthRecommendation).filter_by(startup_id=startup.id)
+    if status_filter:
+        q = q.filter(HealthRecommendation.status == RecommendationStatus(status_filter))
+    else:
+        q = q.filter(HealthRecommendation.status == RecommendationStatus.pending)
+    rows = q.order_by(HealthRecommendation.priority.asc()).all()
+    return [_serialize_rec(r) for r in rows]
 
 
 def get_history(db: Session, startup: Startup, range_key: str) -> list[dict]:

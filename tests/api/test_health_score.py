@@ -175,3 +175,49 @@ def test_history_bad_range_422(client, db):
     assert r.status_code == 422, r.text
     body = r.json()
     assert body["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_benchmarks_insufficient_cohort(client, db):
+    u, s, h = _founder(db)
+    a = create_assessment(db, s, creator=u, bank_version=ASSESSMENT_BANK.version)
+    for key, value in _MINIMAL_ANSWERS:
+        create_answer(db, a, question_key=key, value=value)
+    db.flush()
+
+    complete_assessment(db, a, s)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/benchmarks", headers=h)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["status"] == "insufficient_data"
+    assert data["percentiles"] is None
+    assert "min_cohort_size" in data
+    assert data["cohort"] == {"stage": s.stage.value if s.stage else None, "industry": s.industry}
+
+
+def test_recommendations_list_default_pending(client, db):
+    u, s, h = _founder(db)
+    a = create_assessment(db, s, creator=u, bank_version=ASSESSMENT_BANK.version)
+    for key, value in _MINIMAL_ANSWERS:
+        create_answer(db, a, question_key=key, value=value)
+    db.flush()
+
+    complete_assessment(db, a, s)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/recommendations", headers=h)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert len(data) >= 1
+    assert all(x["status"] == "pending" for x in data)
+
+
+def test_recommendations_bad_status_422(client, db):
+    _u, _s, h = _founder(db)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/recommendations?status=nope", headers=h)
+    assert r.status_code == 422, r.text
+    body = r.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"

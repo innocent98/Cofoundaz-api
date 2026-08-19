@@ -43,6 +43,30 @@ def get_dimension(
     return success_response(hs_service.get_dimension(db, _startup(db, membership), dim))
 
 
+@router.get("/benchmarks")
+def get_benchmarks(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(hs_service.get_benchmarks(db, _startup(db, membership)))
+
+
+@router.get("/recommendations")
+def list_recommendations(
+    status: str | None = Query(None),  # noqa: B008
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    if status is not None and status not in ("pending", "accepted", "dismissed"):
+        raise AppError(
+            "VALIDATION_ERROR", "Unknown status.", 422,
+            field_errors=[{"field": "status", "message": "Use pending, accepted, or dismissed."}],
+        )
+    return success_response(hs_service.list_recommendations(db, _startup(db, membership), status))
+
+
 @router.get("/history")
 def get_history(
     range: str = Query("30d"),  # noqa: B008
