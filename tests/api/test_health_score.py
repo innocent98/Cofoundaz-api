@@ -101,3 +101,77 @@ def test_overview_lazy_computes_when_row_missing(client, db):
     assert isinstance(data["score"], int)
 
     assert db.query(HealthScore).filter_by(startup_id=s.id).count() == 1
+
+
+def test_dimension_detail(client, db):
+    u, s, h = _founder(db)
+    a = create_assessment(db, s, creator=u, bank_version=ASSESSMENT_BANK.version)
+    for key, value in _MINIMAL_ANSWERS:
+        create_answer(db, a, question_key=key, value=value)
+    db.flush()
+
+    complete_assessment(db, a, s)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/dimensions/money", headers=h)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["key"] == "money"
+    assert data["label"] == "Financial"
+    assert isinstance(data["score"], int)
+    assert data["band"] is not None
+    assert isinstance(data["signals"], list)
+    assert len(data["signals"]) >= 1
+    for sig in data["signals"]:
+        assert set(sig) == {"key", "value", "contribution", "source_ref"}
+        assert isinstance(sig["value"], float)
+        assert isinstance(sig["contribution"], float)
+    assert isinstance(data["trend"], list)
+    assert len(data["trend"]) >= 1
+    assert isinstance(data["recommendations"], list)
+
+
+def test_dimension_unknown_key_404(client, db):
+    _u, _s, h = _founder(db)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/dimensions/nope", headers=h)
+    assert r.status_code == 404, r.text
+
+
+def test_history_range(client, db):
+    u, s, h = _founder(db)
+    a = create_assessment(db, s, creator=u, bank_version=ASSESSMENT_BANK.version)
+    for key, value in _MINIMAL_ANSWERS:
+        create_answer(db, a, question_key=key, value=value)
+    db.flush()
+
+    complete_assessment(db, a, s)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/history?range=30d", headers=h)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    for row in data:
+        assert set(row) == {"score", "dimension_scores", "delta", "computed_at"}
+
+
+def test_history_default_range(client, db):
+    _u, _s, h = _founder(db)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/history", headers=h)
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json()["data"], list)
+
+
+def test_history_bad_range_422(client, db):
+    _u, _s, h = _founder(db)
+    db.commit()
+
+    r = client.get("/api/v1/health-score/history?range=bogus", headers=h)
+    assert r.status_code == 422, r.text
+    body = r.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"

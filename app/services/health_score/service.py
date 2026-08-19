@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from app.core.errors import NotFound
 from app.db.models.assessment import Assessment, AssessmentResult
 from app.db.models.enums import AssessmentStatus, Dimension, RecommendationStatus
 from app.db.models.health_score import (
@@ -173,3 +174,61 @@ def _serialize_rec(r: HealthRecommendation) -> dict:
         "body": r.body, "estimated_lift": r.estimated_lift, "effort": r.effort.value,
         "status": r.status.value, "priority": r.priority,
     }
+
+
+_RANGES: dict[str, int | None] = {"7d": 7, "30d": 30, "90d": 90, "all": None}
+
+
+def get_dimension(db: Session, startup: Startup, dim: str) -> dict:
+    if dim not in DIMENSION_LABELS:
+        raise NotFound()
+    hs = db.query(HealthScore).filter_by(startup_id=startup.id).first()
+    score = hs.dimension_scores.get(dim) if hs else None
+    signals = db.query(HealthSignal).filter_by(startup_id=startup.id, dimension=dim).all()
+    recs = (
+        db.query(HealthRecommendation)
+        .filter_by(startup_id=startup.id, dimension=dim, status=RecommendationStatus.pending)
+        .order_by(HealthRecommendation.priority.asc())
+        .all()
+    )
+    trend = [
+        {"score": h.dimension_scores.get(dim), "computed_at": h.created_at.isoformat()}
+        for h in db.query(HealthScoreHistory)
+        .filter_by(startup_id=startup.id)
+        .order_by(HealthScoreHistory.created_at.asc())
+        .all()
+    ]
+    return {
+        "key": dim,
+        "label": DIMENSION_LABELS[dim],
+        "score": score,
+        "band": band_for(score) if score is not None else None,
+        "signals": [
+            {
+                "key": s.key,
+                "value": float(s.value),
+                "contribution": float(s.contribution),
+                "source_ref": s.source_ref,
+            }
+            for s in signals
+        ],
+        "trend": trend,
+        "recommendations": [_serialize_rec(r) for r in recs],
+    }
+
+
+def get_history(db: Session, startup: Startup, range_key: str) -> list[dict]:
+    days = _RANGES[range_key]
+    q = db.query(HealthScoreHistory).filter_by(startup_id=startup.id)
+    if days is not None:
+        q = q.filter(HealthScoreHistory.created_at >= datetime.now(UTC) - timedelta(days=days))
+    rows = q.order_by(HealthScoreHistory.created_at.asc()).all()
+    return [
+        {
+            "score": h.score,
+            "dimension_scores": h.dimension_scores,
+            "delta": h.delta,
+            "computed_at": h.created_at.isoformat(),
+        }
+        for h in rows
+    ]
