@@ -90,3 +90,15 @@ class Dimension(str, enum.Enum):
     money = "money"
     legal = "legal"
     team = "team"
+
+
+class RecommendationEffort(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class RecommendationStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    dismissed = "dismissed"

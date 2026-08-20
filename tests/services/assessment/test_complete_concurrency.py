@@ -10,11 +10,17 @@ Regression target: complete_assessment claims the in_progress -> completed trans
 with an UPDATE ... WHERE status = 'in_progress' conditioned on the very predicate it's
 about to flip -- the same pattern as rotate_refresh (app/services/auth/sessions.py). Two
 concurrent completions of the same fully-answered assessment must score, write the
-AssessmentResult, and enqueue the recalibrate jobs EXACTLY ONCE. A plain
-read-then-write ("if assessment.status == in_progress: ...") would let both callers pass
-the check before either commits, double-scoring and double-enqueuing. This test fails
-against that naive version (two AssessmentResult rows / four jobs) and passes against
-the atomic claim.
+AssessmentResult, recompute the Health Score, and enqueue the roadmap.replan job EXACTLY
+ONCE. A plain read-then-write ("if assessment.status == in_progress: ...") would let both
+callers pass the check before either commits, double-scoring and double-enqueuing/
+double-recomputing. This test fails against that naive version (two AssessmentResult
+rows / two roadmap.replan jobs / two HealthScoreHistory rows) and passes against the
+atomic claim.
+
+As of Module 06 the Health Score is recomputed inline within complete_assessment
+instead of via a healthscore.recalculate job (see docs/sop/2026-08-19-health-score.md),
+so this test also asserts exactly one HealthScore/HealthScoreHistory row rather than a
+healthscore.recalculate job.
 """
 
 import threading
@@ -25,6 +31,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.assessment import Assessment, AssessmentResult
 from app.db.models.enums import AssessmentStatus, AssessmentType
+from app.db.models.health_score import HealthScore, HealthScoreHistory
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -116,9 +123,15 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
             jobs = verify.query(Job).filter(Job.startup_id == startup_id).all()
             types = sorted(j.type for j in jobs)
             assert types == [
-                "healthscore.recalculate",
                 "roadmap.replan",
-            ], f"expected exactly one set of jobs enqueued (not one per racer), got {types}"
+            ], f"expected exactly one roadmap.replan job (not one per racer), got {types}"
+
+            assert (
+                verify.query(HealthScore).filter_by(startup_id=startup_id).count() == 1
+            ), "exactly one HealthScore row, not one per racer"
+            assert (
+                verify.query(HealthScoreHistory).filter_by(startup_id=startup_id).count() == 1
+            ), "exactly one HealthScoreHistory row (one recompute), not one per racer"
 
             completed_events = [
                 e

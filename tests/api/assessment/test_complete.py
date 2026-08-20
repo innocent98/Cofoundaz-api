@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from app.core.security import create_access_token
 from app.db.models.assessment import AssessmentResult
 from app.db.models.enums import AssessmentStatus, JobStatus, MembershipRole
+from app.db.models.health_score import HealthScore
 from app.db.models.job import Job
 from app.platform.events import event_bus
 from tests.factories import create_assessment, create_membership, create_startup, create_user
@@ -83,13 +84,20 @@ def test_complete_scores_and_sideeffects(client, db):
     db.refresh(s.profile)
     assert s.profile.assessment_pending is False  # initial type flips it
 
+    # As of Module 06 the Health Score is recomputed inline (see
+    # test_health_recompute.py::test_complete_assessment_triggers_health_score), not via
+    # a healthscore.recalculate job -- that stub job is retired. roadmap.replan is
+    # still enqueued for Module 05 to consume.
     jobs = db.query(Job).filter(Job.status == JobStatus.queued).all()
     types = {j.type for j in jobs}
-    assert {"healthscore.recalculate", "roadmap.replan"} <= types
+    assert "healthscore.recalculate" not in types
+    assert "roadmap.replan" in types
     for j in jobs:
-        if j.type in {"healthscore.recalculate", "roadmap.replan"}:
+        if j.type == "roadmap.replan":
             assert j.payload["startup_id"] == str(s.id)
             assert j.payload["assessment_id"] == aid
+
+    assert db.query(HealthScore).filter_by(startup_id=s.id).count() == 1
 
     assert event_bus.published[-1][0] == "assessment.completed"
     assert event_bus.published[-1][1]["assessment_id"] == aid

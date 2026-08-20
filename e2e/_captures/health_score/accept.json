@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "3d1a3a35-a918-4e88-9ccb-858aae7197b5",
+    "dimension": "legal",
+    "key": "legal.incorporate",
+    "title": "Complete incorporation",
+    "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
+    "estimated_lift": 9,
+    "effort": "high",
+    "status": "accepted",
+    "priority": 1
+  },
+  "meta": null
+}

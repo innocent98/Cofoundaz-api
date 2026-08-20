@@ -1,0 +1,11 @@
+{
+  "data": {
+    "status": "pending_assessment",
+    "score": null,
+    "band": null,
+    "message": "Complete your kickoff assessment to generate your Health Score.",
+    "dimensions": [],
+    "top_recommendations": []
+  },
+  "meta": null
+}

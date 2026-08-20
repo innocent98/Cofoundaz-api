@@ -194,7 +194,9 @@ def complete_assessment(db: Session, assessment: Assessment, startup: Startup) -
         startup.profile.assessment_pending = False
 
     job_payload = {"startup_id": str(startup.id), "assessment_id": str(assessment.id)}
-    job_dispatcher.enqueue(db, "healthscore.recalculate", job_payload, startup.id)
+    from app.services.health_score.service import recompute_health_score
+
+    recompute_health_score(db, startup, trigger="assessment_complete")
     job_dispatcher.enqueue(db, "roadmap.replan", job_payload, startup.id)
     event_bus.publish(
         "assessment.completed",

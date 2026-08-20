@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "score": 31,
+      "dimension_scores": {
+        "team": 50,
+        "legal": 0,
+        "money": 43,
+        "market": 38,
+        "product": 25
+      },
+      "delta": 0,
+      "computed_at": "2026-08-19T17:06:37.249921+00:00"
+    }
+  ],
+  "meta": null
+}
