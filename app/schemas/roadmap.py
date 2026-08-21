@@ -3,7 +3,7 @@ from datetime import date
 
 from pydantic import BaseModel, field_validator
 
-from app.db.models.enums import RoadmapStatus
+from app.db.models.enums import RoadmapStatus, TaskEffort
 
 
 class PhaseCreate(BaseModel):
@@ -50,6 +50,36 @@ class MilestoneUpdate(BaseModel):
     def _reject_explicit_null(
         cls, v: str | int | RoadmapStatus | None
     ) -> str | int | RoadmapStatus:
+        if v is None:
+            raise ValueError("This field cannot be null.")
+        return v
+
+
+class TaskCreate(BaseModel):
+    milestone_id: uuid.UUID
+    title: str
+    description: str | None = None
+    effort: TaskEffort | None = None
+    status: RoadmapStatus | None = None
+    assignee_id: uuid.UUID | None = None
+    due_on: date | None = None
+    order: int | None = None
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    effort: TaskEffort | None = None
+    status: RoadmapStatus | None = None
+    assignee_id: uuid.UUID | None = None
+    due_on: date | None = None
+    order: int | None = None
+
+    @field_validator("title", "effort", "status", "order")
+    @classmethod
+    def _reject_explicit_null(
+        cls, v: str | int | TaskEffort | RoadmapStatus | None
+    ) -> str | int | TaskEffort | RoadmapStatus:
         if v is None:
             raise ValueError("This field cannot be null.")
         return v

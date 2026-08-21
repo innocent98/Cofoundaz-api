@@ -8,22 +8,36 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import JobStatus, MembershipRole, MembershipStatus, RoadmapStatus
+from app.db.models.enums import (
+    JobStatus,
+    MembershipRole,
+    MembershipStatus,
+    RoadmapStatus,
+    TaskEffort,
+)
 from app.db.models.membership import Membership
-from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
-from app.schemas.roadmap import MilestoneCreate, MilestoneUpdate, PhaseCreate, PhaseUpdate
+from app.schemas.roadmap import (
+    MilestoneCreate,
+    MilestoneUpdate,
+    PhaseCreate,
+    PhaseUpdate,
+    TaskCreate,
+    TaskUpdate,
+)
 from app.services.roadmap.service import (
     generate_roadmap,
     milestone_overdue,
     person_ref,
     recompute_milestone_progress,
     serialize_tree,
+    task_overdue,
 )
 
 router = APIRouter()
@@ -123,6 +137,36 @@ def _milestone_out(db: Session, m: RoadmapMilestone) -> dict[str, Any]:
         "progress": m.progress,
         "overdue": milestone_overdue(m),
         "order": m.order,
+    }
+
+
+def _task(db: Session, membership: Membership, task_id: uuid.UUID) -> RoadmapTask:
+    roadmap = _require_roadmap(db, membership)
+    t = (
+        db.query(RoadmapTask)
+        .join(RoadmapMilestone, RoadmapTask.milestone_id == RoadmapMilestone.id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .filter(RoadmapTask.id == task_id, RoadmapPhase.roadmap_id == roadmap.id)
+        .first()
+    )
+    if t is None:
+        raise NotFound()
+    return t
+
+
+def _task_out(db: Session, t: RoadmapTask) -> dict[str, Any]:
+    return {
+        "id": str(t.id),
+        "milestone_id": str(t.milestone_id),
+        "title": t.title,
+        "description": t.description,
+        "effort": t.effort.value,
+        "status": t.status.value,
+        "assignee": person_ref(db, t.assignee_id),
+        "due_on": t.due_on.isoformat() if t.due_on else None,
+        "overdue": task_overdue(t),
+        "order": t.order,
+        "depends_on": [],
     }
 
 
@@ -286,5 +330,74 @@ def delete_milestone_ep(
 ) -> dict[str, Any]:
     m = _milestone(db, membership, milestone_id)
     db.delete(m)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/tasks", status_code=201)
+def create_task_ep(
+    body: TaskCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    milestone = _milestone(db, membership, body.milestone_id)  # 404 if foreign
+    _validate_member(db, membership, body.assignee_id, "assignee_id")
+    order = (
+        body.order
+        if body.order is not None
+        else _next_order(db, RoadmapTask, milestone_id=milestone.id)
+    )
+    t = RoadmapTask(
+        milestone_id=milestone.id,
+        title=body.title,
+        description=body.description,
+        effort=body.effort or TaskEffort.medium,
+        status=body.status or RoadmapStatus.todo,
+        assignee_id=body.assignee_id,
+        due_on=body.due_on,
+        order=order,
+    )
+    db.add(t)
+    db.flush()
+    recompute_milestone_progress(db, milestone)
+    db.commit()
+    return success_response(_task_out(db, t))
+
+
+@router.patch("/tasks/{task_id}")
+def update_task_ep(
+    task_id: uuid.UUID,
+    body: TaskUpdate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    t = _task(db, membership, task_id)
+    fields = body.model_dump(exclude_unset=True)
+    if "assignee_id" in fields:
+        _validate_member(db, membership, fields["assignee_id"], "assignee_id")
+    for field, value in fields.items():
+        setattr(t, field, value)
+    db.flush()
+    milestone = db.query(RoadmapMilestone).filter_by(id=t.milestone_id).one()
+    recompute_milestone_progress(db, milestone)
+    db.commit()
+    return success_response(_task_out(db, t))
+
+
+@router.delete("/tasks/{task_id}")
+def delete_task_ep(
+    task_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    t = _task(db, membership, task_id)
+    milestone_id = t.milestone_id
+    db.delete(t)
+    db.flush()
+    milestone = db.query(RoadmapMilestone).filter_by(id=milestone_id).one()
+    recompute_milestone_progress(db, milestone)
     db.commit()
     return success_response({"deleted": True})
