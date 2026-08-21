@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/health-score` (Module 06, PR pending)_
+_Last reconciled: 2026-08-20 · `main` @ `0f8523c` (PRs #1–#6 merged)_
 
 ---
 
@@ -92,7 +92,7 @@ _Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/
 
 ---
 
-## ✅ Module 06 — Health Score — *shipped (branch `feat/health-score`)*
+## ✅ Module 06 — Health Score — *shipped (PR #6, merged `0f8523c`)*
 
 _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchmarks · ranked recommendations._
 
