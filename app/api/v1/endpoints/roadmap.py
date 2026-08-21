@@ -7,17 +7,24 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import NotFound
-from app.db.models.enums import JobStatus, MembershipRole
+from app.core.errors import AppError, NotFound
+from app.db.models.enums import JobStatus, MembershipRole, MembershipStatus, RoadmapStatus
 from app.db.models.membership import Membership
-from app.db.models.roadmap import Roadmap, RoadmapPhase
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
+from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
-from app.schemas.roadmap import PhaseCreate, PhaseUpdate
-from app.services.roadmap.service import generate_roadmap, serialize_tree
+from app.schemas.roadmap import MilestoneCreate, MilestoneUpdate, PhaseCreate, PhaseUpdate
+from app.services.roadmap.service import (
+    generate_roadmap,
+    milestone_overdue,
+    person_ref,
+    recompute_milestone_progress,
+    serialize_tree,
+)
 
 router = APIRouter()
 _editor = require_role(MembershipRole.founder, MembershipRole.team_member)
@@ -65,6 +72,57 @@ def _phase_out(p: RoadmapPhase) -> dict[str, Any]:
         "order": p.order,
         "starts_on": p.starts_on.isoformat() if p.starts_on else None,
         "ends_on": p.ends_on.isoformat() if p.ends_on else None,
+    }
+
+
+def _validate_member(
+    db: Session, membership: Membership, user_id: uuid.UUID | None, field: str
+) -> None:
+    if user_id is None:
+        return
+    ok = (
+        db.query(Membership)
+        .filter(
+            Membership.startup_id == membership.startup_id,
+            Membership.user_id == user_id,
+            Membership.status == MembershipStatus.active,
+        )
+        .first()
+    )
+    if ok is None:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "That user is not a member of this workspace.",
+            422,
+            field_errors=[{"field": field, "message": "Not an active member."}],
+        )
+
+
+def _milestone(db: Session, membership: Membership, milestone_id: uuid.UUID) -> RoadmapMilestone:
+    roadmap = _require_roadmap(db, membership)
+    m = (
+        db.query(RoadmapMilestone)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .filter(RoadmapMilestone.id == milestone_id, RoadmapPhase.roadmap_id == roadmap.id)
+        .first()
+    )
+    if m is None:
+        raise NotFound()
+    return m
+
+
+def _milestone_out(db: Session, m: RoadmapMilestone) -> dict[str, Any]:
+    return {
+        "id": str(m.id),
+        "phase_id": str(m.phase_id),
+        "title": m.title,
+        "description": m.description,
+        "due_on": m.due_on.isoformat() if m.due_on else None,
+        "owner": person_ref(db, m.owner_id),
+        "status": m.status.value,
+        "progress": m.progress,
+        "overdue": milestone_overdue(m),
+        "order": m.order,
     }
 
 
@@ -149,5 +207,84 @@ def delete_phase(
 ) -> dict[str, Any]:
     p = _phase(db, membership, phase_id)
     db.delete(p)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/milestones", status_code=201)
+def create_milestone_ep(
+    body: MilestoneCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    phase = _phase(db, membership, body.phase_id)  # 404 if foreign/unknown
+    _validate_member(db, membership, body.owner_id, "owner_id")
+    order = (
+        body.order
+        if body.order is not None
+        else _next_order(db, RoadmapMilestone, phase_id=phase.id)
+    )
+    m = RoadmapMilestone(
+        phase_id=phase.id,
+        title=body.title,
+        description=body.description,
+        due_on=body.due_on,
+        owner_id=body.owner_id,
+        status=body.status or RoadmapStatus.todo,
+        progress=0,
+        order=order,
+    )
+    db.add(m)
+    db.flush()
+    if m.status == RoadmapStatus.done:
+        m.progress = 100
+    db.commit()
+    return success_response(_milestone_out(db, m))
+
+
+@router.patch("/milestones/{milestone_id}")
+def update_milestone_ep(
+    milestone_id: uuid.UUID,
+    body: MilestoneUpdate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    m = _milestone(db, membership, milestone_id)
+    was_done = m.status == RoadmapStatus.done
+    fields = body.model_dump(exclude_unset=True)
+    if "owner_id" in fields:
+        _validate_member(db, membership, fields["owner_id"], "owner_id")
+    for field, value in fields.items():
+        setattr(m, field, value)
+    db.flush()
+    # keep progress honest if the milestone itself was flipped and has no tasks
+    recompute_milestone_progress(db, m)
+    now_done = m.status == RoadmapStatus.done
+    if now_done and not was_done:
+        roadmap = _require_roadmap(db, membership)
+        event_bus.publish(
+            "roadmap.milestone.completed",
+            {
+                "startup_id": str(membership.startup_id),
+                "roadmap_id": str(roadmap.id),
+                "milestone_id": str(m.id),
+                "title": m.title,
+            },
+        )
+    db.commit()
+    return success_response(_milestone_out(db, m))
+
+
+@router.delete("/milestones/{milestone_id}")
+def delete_milestone_ep(
+    milestone_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    m = _milestone(db, membership, milestone_id)
+    db.delete(m)
     db.commit()
     return success_response({"deleted": True})
