@@ -114,9 +114,34 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 ---
 
+## 🟡 Module 05 — Roadmap — *in progress (decomposed into 3 slices)*
+
+_Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
+
+**Slice 1 — Core** — *designed; spec `docs/superpowers/specs/2026-08-21-roadmap-core-design.md`*
+- [x] Scope split + locked decisions (stage-only catalog · role-based access · generate honors job contract inline · derived progress/explicit status · inline+lazy)
+- [ ] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
+- [ ] Migration `0006_roadmap`
+- [ ] `require_roles(founder, team_member)` editor dep + tenancy resolvers
+- [ ] Template catalog + `generate_roadmap` (create-once `ON CONFLICT` + race test) + `roadmap.generated`
+- [ ] `recompute_milestone_progress` + `GET /roadmap` (tree serialize + lazy generate)
+- [ ] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
+- [ ] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
+- [ ] Live E2E + SOP + FE integration guide (captured live)
+- [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
+
+**Slice 2 — Dependencies + Templates** — *planned*
+- [ ] `POST /roadmap/tasks/{id}/dependencies` + cycle detection · dependency graph read
+- [ ] `GET /roadmap/templates` gallery + `POST /roadmap/templates/{id}/apply` (non-destructive merge)
+- [ ] Industry template variants (Fintech/B2C/Nigeria overlays)
+
+**Slice 3 — AI Re-plan** — *planned*
+- [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 05 — Roadmap** (gives the `roadmap.generate` / `roadmap.replan` jobs a consumer)
 - [ ] **Module 04 — Today's Mission**
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
