@@ -43,8 +43,12 @@ def test_complete_enqueues_two_jobs(client, db):
     assert r.status_code == 200, r.text
     data = r.json()["data"]
     assert len(data["job_ids"]) == 2 and data["assessment_pending"] is True
-    types = {j.type for j in db.query(Job).filter(Job.status == JobStatus.queued).all()}
-    assert {"roadmap.generate", "healthscore.initialize"} <= types
+    statuses = {j.type: j.status for j in db.query(Job).all()}
+    # roadmap.generate now runs inline during onboarding-complete, so its job
+    # is recorded as already succeeded; healthscore.initialize is still an
+    # unconsumed queued stub (Health Score is pending until the assessment).
+    assert statuses["roadmap.generate"] == JobStatus.succeeded
+    assert statuses["healthscore.initialize"] == JobStatus.queued
 
 
 def test_complete_is_idempotent(client, db):
