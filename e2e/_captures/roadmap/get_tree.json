@@ -1,0 +1,146 @@
+{
+  "data": {
+    "roadmap": {
+      "id": "176f0c77-3225-42a2-ae76-498b19fbb647",
+      "stage": "validation",
+      "template_key": "stage.validation",
+      "generated_at": "2026-08-21T17:37:00.826215+00:00"
+    },
+    "current_stage": "validation",
+    "phases": [
+      {
+        "id": "24da44bd-3423-4b4f-b048-26f5e32a2dfb",
+        "name": "Validation",
+        "order": 0,
+        "starts_on": "2026-08-21",
+        "ends_on": "2026-10-02",
+        "milestones": [
+          {
+            "id": "acbf5f5e-d7c0-47b0-ad9a-8f9049a7bf13",
+            "title": "Validate demand",
+            "description": null,
+            "due_on": "2026-09-04",
+            "owner": null,
+            "status": "todo",
+            "progress": 0,
+            "overdue": false,
+            "order": 0,
+            "dependency_count": 0,
+            "tasks": [
+              {
+                "id": "06cbd34c-ec41-45c9-afaf-ba621d740b4e",
+                "title": "Run 10 customer interviews",
+                "description": null,
+                "effort": "medium",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 0,
+                "depends_on": []
+              },
+              {
+                "id": "4e866fb3-6be6-4780-9e35-baea71333e7b",
+                "title": "Synthesize problem hypotheses",
+                "description": null,
+                "effort": "small",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 1,
+                "depends_on": []
+              }
+            ]
+          },
+          {
+            "id": "477443ce-740e-4a94-9207-7b2afe9889eb",
+            "title": "Pricing test",
+            "description": null,
+            "due_on": "2026-09-25",
+            "owner": null,
+            "status": "todo",
+            "progress": 0,
+            "overdue": false,
+            "order": 1,
+            "dependency_count": 0,
+            "tasks": [
+              {
+                "id": "b1282df8-3008-4adc-8397-c0c8e0879d93",
+                "title": "Draft 3 pricing options",
+                "description": null,
+                "effort": "small",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 0,
+                "depends_on": []
+              },
+              {
+                "id": "9cfabc6f-b709-4513-9b89-cd1edb4299f8",
+                "title": "Run a willingness-to-pay test",
+                "description": null,
+                "effort": "medium",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 1,
+                "depends_on": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "561adcb5-1065-4a5d-be10-d320cafbc1b9",
+        "name": "Build MVP",
+        "order": 1,
+        "starts_on": "2026-10-02",
+        "ends_on": "2026-11-27",
+        "milestones": [
+          {
+            "id": "b5f1f191-3bdf-47d2-ac45-0084f24dbb34",
+            "title": "Core flow",
+            "description": null,
+            "due_on": "2026-10-30",
+            "owner": null,
+            "status": "todo",
+            "progress": 0,
+            "overdue": false,
+            "order": 0,
+            "dependency_count": 0,
+            "tasks": [
+              {
+                "id": "c255204d-b5b7-4632-993b-d24a26d003f3",
+                "title": "Define the core user journey",
+                "description": null,
+                "effort": "medium",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 0,
+                "depends_on": []
+              },
+              {
+                "id": "bd17f701-4a59-4d79-9a54-b10eea65cf31",
+                "title": "Build the happy path",
+                "description": null,
+                "effort": "large",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 1,
+                "depends_on": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

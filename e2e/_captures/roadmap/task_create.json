@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "7e8edffd-2354-448a-bad5-f465cbdb910e",
+    "milestone_id": "19d264f8-f639-4a59-a260-ca26512d7905",
+    "title": "Custom task",
+    "description": null,
+    "effort": "medium",
+    "status": "todo",
+    "assignee": null,
+    "due_on": null,
+    "overdue": false,
+    "order": 0,
+    "depends_on": []
+  },
+  "meta": null
+}
