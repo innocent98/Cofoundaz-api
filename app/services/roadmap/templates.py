@@ -1,6 +1,8 @@
+from typing import Any
+
 ROADMAP_TEMPLATE_VERSION = 1
 
-STAGE_TEMPLATES = {
+STAGE_TEMPLATES: dict[str, Any] = {
     "idea": {
         "key": "stage.idea",
         "phases": [
