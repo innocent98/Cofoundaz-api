@@ -1,0 +1,42 @@
+from typing import Any
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_verified_user
+from app.core.envelope import success_response
+from app.core.errors import NotFound
+from app.db.models.membership import Membership
+from app.db.models.roadmap import Roadmap
+from app.db.models.startup import Startup
+from app.db.models.user import User
+from app.db.session import get_db
+from app.db.tenancy import require_workspace
+from app.services.roadmap.service import generate_roadmap, serialize_tree
+
+router = APIRouter()
+
+
+def _startup(db: Session, membership: Membership) -> Startup:
+    s = db.query(Startup).filter(Startup.id == membership.startup_id).first()
+    if s is None:
+        raise NotFound()
+    return s
+
+
+def _roadmap(db: Session, membership: Membership) -> Roadmap | None:
+    return db.query(Roadmap).filter(Roadmap.startup_id == membership.startup_id).first()
+
+
+@router.get("")
+def get_roadmap(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    roadmap = _roadmap(db, membership)
+    if roadmap is None:
+        roadmap = generate_roadmap(db, startup, actor=user)
+    db.commit()
+    return success_response(serialize_tree(db, roadmap, startup))
