@@ -235,3 +235,15 @@ but were not exercised by the live E2E journey — see the FE guide's verificati
   from `date.today()` in the server's local/UTC date, not the workspace's configured timezone
   (no such setting exists yet). Fine at current scale; revisit once workspace-level timezone
   preferences exist.
+- **Events published before `db.commit()`** — `roadmap.generated` (fired at the end of
+  `generate_roadmap`) and `roadmap.milestone.completed` (fired in the `PATCH /milestones/{id}`
+  handler) are published *before* the enclosing `db.commit()`. Harmless with the current
+  in-process `LogEventBus`, but when a real/at-least-once event bus lands (Module 20), these
+  publishes should move to an after-commit hook to avoid emitting a phantom event if the commit
+  fails.
+- **`GET /roadmap` is member-readable but lazily generates** — `GET /roadmap` gates on
+  `require_workspace` (any active member, including mentor), and silently generates a roadmap
+  if none exists — so a read-only mentor hitting a not-yet-generated workspace can trigger a
+  write. Benign today (onboarding pre-generates the roadmap at completion, and the
+  `ON CONFLICT` claim is idempotent), and matches the spec's "lazy-generates if missing" on the
+  member route; noted for awareness.

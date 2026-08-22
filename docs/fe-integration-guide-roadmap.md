@@ -223,10 +223,12 @@ exercised by the live E2E journey — verified only by the unit suite
 }
 ```
 
-**Field-nesting trap:** this single-milestone response has no `tasks` array (unlike the same
-milestone nested inside `GET /roadmap`'s tree, §1, which does). Fetch `GET /roadmap` (or a
+**Field-nesting trap:** this single-milestone response has no `tasks` array and no
+`dependency_count` field (unlike the same milestone nested inside `GET /roadmap`'s tree, §1,
+which includes both). The single-milestone create/patch responses return the flat shape with
+`phase_id`, `status`, `progress`, `overdue`, and `order` only. Fetch `GET /roadmap` (or a
 future single-milestone-with-tasks endpoint, not built in Slice 1) if you need this milestone's
-tasks right after creating it — don't expect `tasks: []` to appear here.
+tasks and dependency count right after creating it.
 
 A milestone can be created (or later patched) directly to `status: "done"` with zero tasks —
 `progress` snaps to `100` in that case (see §7), not `0`.
