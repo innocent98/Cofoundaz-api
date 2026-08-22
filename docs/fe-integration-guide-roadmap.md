@@ -1,4 +1,4 @@
-# FE Integration Guide — Roadmap (Module 05, Slice 1)
+# FE Integration Guide — Roadmap (Module 05, Slices 1–2)
 
 All request/response bodies below are pasted **verbatim** from live captures taken by
 `e2e/test_roadmap.py` running against a real server (`make e2e`) — see
@@ -122,15 +122,92 @@ a contract change.
 **`overdue` on a milestone with no `due_on` is always `false`**, not an error — treat `null`
 `due_on` as "no deadline set," not "overdue by default."
 
-### `depends_on` and `dependency_count` are always empty in Slice 1
+### `depends_on` and `dependency_count` — populated on the tree since Slice 2
 
-Every task carries `depends_on: []` and every milestone carries `dependency_count: 0` in every
-capture in this guide. This is **not** a bug or a sign nothing has dependencies yet by chance —
-Slice 1 creates the `roadmap_task_dependencies` table but nothing writes to it. Both fields are
-present now, at these constant values, purely so the **shape** is stable — Slice 2 will start
-populating them without changing the field names or types the FE already renders against. Build
-any "this task is blocked" / "N dependencies" UI now against these fields, but expect it to stay
-inert (always unblocked, always zero) until Slice 2 ships.
+In Slice 1, every task carried `depends_on: []` and every milestone carried
+`dependency_count: 0` unconditionally — the `roadmap_task_dependencies` table existed but
+nothing wrote to it. **As of Slice 2, `GET /roadmap`'s tree populates both fields for real**: a
+task's `depends_on` is the list of task ids it depends on (see §6 for how those edges are
+created), and a milestone's `dependency_count` is how many of its own tasks have at least one
+dependency. `e2e/_captures/roadmap/get_tree_with_deps.json` — the "Custom phase" → "Custom
+milestone" slice of the same tree used throughout this guide, captured **after** creating one
+dependency edge (`"Task A"` depends on `"Task B"`, see §6):
+
+```json
+{
+  "id": "0a075905-5250-4670-8f56-54c148d16d5f",
+  "title": "Custom milestone",
+  "description": null,
+  "due_on": null,
+  "owner": null,
+  "status": "done",
+  "progress": 0,
+  "overdue": false,
+  "order": 0,
+  "dependency_count": 1,
+  "tasks": [
+    {
+      "id": "6a2f2215-dd73-4674-bab4-cc63c86124e2",
+      "title": "Custom task",
+      "description": null,
+      "effort": "medium",
+      "status": "in_progress",
+      "assignee": null,
+      "due_on": null,
+      "overdue": false,
+      "order": 0,
+      "depends_on": []
+    },
+    {
+      "id": "3d697a19-1157-448b-99e4-4e4897b1c16c",
+      "title": "Task A",
+      "description": null,
+      "effort": "medium",
+      "status": "todo",
+      "assignee": null,
+      "due_on": null,
+      "overdue": false,
+      "order": 1,
+      "depends_on": ["b936223d-2dd7-47f4-8cf9-d7136048d04d"]
+    },
+    {
+      "id": "b936223d-2dd7-47f4-8cf9-d7136048d04d",
+      "title": "Task B",
+      "description": null,
+      "effort": "medium",
+      "status": "todo",
+      "assignee": null,
+      "due_on": null,
+      "overdue": false,
+      "order": 2,
+      "depends_on": []
+    }
+  ]
+}
+```
+
+Note `"Task A"`'s `depends_on` holds `"Task B"`'s **task id** (`b936223d-...`), and the
+milestone's `dependency_count` is `1` — counting *tasks with at least one dependency*, not the
+total number of edges. Note too that `"Task A"` still shows `status: "todo"` with an unmet
+dependency, and `"Custom milestone"` shows `status: "done"` despite one of its own tasks being
+`todo` — Slice 2 stores and exposes the graph but does not enforce it: nothing blocks a
+`status` transition on an unmet dependency, and a milestone's own `status` (an explicit founder
+override that can be set independently of its tasks' completion, see §4) is independent of both.
+Don't infer "blocked" state or gray out a task client-side from `depends_on` alone unless that's
+a deliberate UX choice — the backend will never reject the transition.
+
+### Field-nesting trap: `depends_on` is a tree-only field — task-CRUD responses always return `[]`
+
+**This is the single most important trap in this update.** `depends_on` is populated on the
+**tree** (`GET /roadmap`, above) but the single-task `POST /roadmap/tasks` and
+`PATCH /roadmap/tasks/{id}` responses (§5) still hardcode `depends_on: []` regardless of what
+dependencies actually exist for that task — they were not wired to the dependency graph in
+Slice 2. Concretely: if `"Task A"` genuinely depends on `"Task B"`, a `PATCH
+/roadmap/tasks/{task_a_id}` (e.g. to change its `title`) returns `"depends_on": []` in that same
+response, even though `GET /roadmap` immediately after would show `"depends_on":
+["<task_b_id>"]` for the identical task. **Never read a task's dependencies from a task-CRUD
+response.** Read them from the tree (`GET /roadmap`, this section) or from
+`GET /roadmap/dependencies` (§6) — both are the source of truth; the flat task shape is not.
 
 ---
 
@@ -188,7 +265,7 @@ the two template-generated phases `0` and `1`) via a `MAX(order)+1` computation 
 roadmap. `starts_on`/`ends_on` are `null` unless supplied — a hand-created phase has no implied
 date range the way template phases do.
 
-`PATCH /roadmap/phases/{id}` is not separately captured here (see the cross-tenant 404 in §6,
+`PATCH /roadmap/phases/{id}` is not separately captured here (see the cross-tenant 404 in §8,
 which exercises this route's tenancy guard rather than a successful edit), but accepts the same
 fields as create (`name`, `order`, `starts_on`, `ends_on`) as a partial update. **Sending an
 explicit `null` for `name` or `order` is rejected with `422`** — see §5, the same
@@ -231,11 +308,11 @@ future single-milestone-with-tasks endpoint, not built in Slice 1) if you need t
 tasks and dependency count right after creating it.
 
 A milestone can be created (or later patched) directly to `status: "done"` with zero tasks —
-`progress` snaps to `100` in that case (see §7), not `0`.
+`progress` snaps to `100` in that case (see §5), not `0`.
 
 `e2e/_captures/roadmap/milestone_complete.json` (`PATCH /roadmap/milestones/{id}`,
 `{"status": "done"}`, called after the milestone's one task was already marked `done` — see
-§7's ordering) — status `200`:
+§5's ordering) — status `200`:
 
 ```json
 {
@@ -394,7 +471,261 @@ in PATCH" rule.
 
 ---
 
-## 6. Auth boundary: mentor read-only, cross-tenant 404
+## 6. Task dependencies — `POST`/`DELETE /roadmap/tasks/{id}/dependencies`, `GET /roadmap/dependencies`
+
+**New in Slice 2.** A dependency edge means "this task depends on that task" —
+`POST /roadmap/tasks/{task_id}/dependencies` with body `{"depends_on_task_id": "<uuid>"}`
+records that `task_id` depends on `depends_on_task_id`. Both ids must be real tasks in the
+caller's own roadmap (cross-tenant or unknown ids 404, same guard as every other roadmap
+lookup — see §8).
+
+`e2e/_captures/roadmap/dependency_create.json` (`POST /roadmap/tasks/{task_a_id}/dependencies`,
+`{"depends_on_task_id": "<task_b_id>"}`, first time this edge is created) — status `201`:
+
+```json
+{
+  "data": {
+    "task_id": "3d697a19-1157-448b-99e4-4e4897b1c16c",
+    "depends_on_task_id": "b936223d-2dd7-47f4-8cf9-d7136048d04d"
+  },
+  "meta": null
+}
+```
+
+**Creating the exact same edge again returns `200`, not `201` and not an error** — dependency
+creation is idempotent by design (`add_dependency()` checks for the existing row before
+inserting). The response body is identical either way; only the status code differs. Don't
+treat a `200` here as a failure — it means "this dependency already existed," which is a normal,
+expected outcome for a client that retries.
+
+### `409 DEPENDENCY_CYCLE` — the exact error shape
+
+`e2e/_captures/roadmap/dependency_cycle.json` (`POST /roadmap/tasks/{task_b_id}/dependencies`,
+`{"depends_on_task_id": "<task_a_id>"}` — the **reverse** of the edge above, attempted after
+`task_a` already depends on `task_b`) — status `409`:
+
+```json
+{
+  "error": {
+    "code": "DEPENDENCY_CYCLE",
+    "message": "That would create a loop — Task A already depends on Task B.",
+    "field_errors": []
+  }
+}
+```
+
+(That `—` is a literal em dash, "—", just JSON-escaped in the raw capture file — render it
+as-is.) **The `message` names the specific two tasks in the conflict, by title** — "`{the task
+named by depends_on_task_id}` already depends on `{the task named by task_id}`" — not a generic
+"a cycle would form." Surface this message directly to the founder rather than writing your own
+generic "can't add that dependency" copy; it tells them exactly which existing relationship is
+blocking the new one. A task depending directly on itself (`depends_on_task_id == task_id`) is
+a separate, simpler case — `422 VALIDATION_ERROR` (same shape as §5's explicit-null 422), not
+`409 DEPENDENCY_CYCLE`, since it's a shape error the request itself is malformed, not a graph
+conflict.
+
+`DELETE /roadmap/tasks/{task_id}/dependencies/{depends_on_task_id}` removes one edge —
+`{"data": {"deleted": true}, "meta": null}` on success, `404 NOT_FOUND` if that exact edge
+doesn't exist (not separately captured — same uniform-404 shape as §8). This route was exercised
+by the unit suite; not independently re-captured live since its response shape is identical to
+every other `{"deleted": true}` delete across this API.
+
+### `GET /roadmap/dependencies` — the full graph
+
+`e2e/_captures/roadmap/dependencies_graph.json` (trimmed to 2 of 9 `nodes` here — see the full
+file for all task/milestone/phase context in the roadmap):
+
+```json
+{
+  "data": {
+    "nodes": [
+      {
+        "task_id": "7f7735cb-578f-4fe2-9168-763d00188ac4",
+        "title": "Run 10 customer interviews",
+        "milestone_id": "af46d3db-f34a-484a-b67d-12a63bd5d56e",
+        "milestone_title": "Validate demand",
+        "phase_id": "274f0137-69e5-4174-845d-e8d85beab569",
+        "phase_name": "Validation"
+      }
+      // ... 8 more nodes, one per task in the roadmap, same shape
+    ],
+    "edges": [
+      {
+        "task_id": "3d697a19-1157-448b-99e4-4e4897b1c16c",
+        "depends_on_task_id": "b936223d-2dd7-47f4-8cf9-d7136048d04d"
+      }
+    ],
+    "list": [
+      {
+        "task": "Task A",
+        "depends_on": "Task B"
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+**`nodes` is every task in the roadmap** (not just ones with dependencies) — one entry per task,
+each carrying its own id/title plus its parent milestone and phase's id/title/name, flattened so
+a graph-rendering UI doesn't need to walk the tree separately to label nodes. **`edges` is every
+dependency edge**, in the same `{task_id, depends_on_task_id}` shape as the create/delete
+routes above. **`list` is a denormalized, human-readable duplicate of `edges`** — `{"task": "Task
+A", "depends_on": "Task B"}` by title, not id — provided so a simple "N dependencies" list view
+can render directly without cross-referencing `nodes` by id. Build a graph visualization from
+`nodes` + `edges`; build a plain list view from `list` alone.
+
+---
+
+## 7. Template gallery — `GET /roadmap/templates`, `GET /roadmap/templates/{id}`, `POST /roadmap/templates/{id}/apply`
+
+**New in Slice 2.** Separate from the one stage template auto-generated at onboarding (§1) —
+this is an opt-in catalog of 6 named, industry-tagged packs a founder can browse and layer onto
+their *existing* roadmap on demand. Read routes (`GET /templates`, `GET /templates/{id}`) are
+open to any active member (including mentor); `POST /templates/{id}/apply` requires
+`founder`/`team_member`, same split as every other roadmap write.
+
+`e2e/_captures/roadmap/templates_list.json` (`GET /roadmap/templates`) — status `200`:
+
+```json
+{
+  "data": [
+    {
+      "id": "validation-sprint",
+      "title": "Validation sprint",
+      "stage": "validation",
+      "category": "Fintech",
+      "milestone_count": 2,
+      "task_count": 3,
+      "applied": false
+    },
+    {
+      "id": "mvp-build",
+      "title": "MVP build",
+      "stage": "build",
+      "category": "Fintech",
+      "milestone_count": 1,
+      "task_count": 2,
+      "applied": false
+    },
+    {
+      "id": "pre-seed-raise",
+      "title": "Pre-seed raise",
+      "stage": null,
+      "category": "General",
+      "milestone_count": 2,
+      "task_count": 4,
+      "applied": false
+    }
+    // ... "go-to-market", "company-formation", "scale-playbook" omitted here,
+    // same shape — see the full capture for all 6 gallery templates.
+  ],
+  "meta": null
+}
+```
+
+`GET /templates` returns a flat **array** as `data` (not wrapped in an object with a `templates`
+key) — 6 items today, always in the same fixed catalog order. **`stage` can be `null`** (e.g.
+`pre-seed-raise`, `company-formation`) for templates that aren't tied to one specific startup
+stage — render those without a stage badge rather than treating `null` as an error or defaulting
+it to something. **`applied`** reflects whether *this workspace's* roadmap already has that
+template's id in its `applied_template_keys` — it's per-roadmap state, not a global flag, and
+starts `false` for every template on a fresh roadmap.
+
+### Preview — the full phase/milestone/task breakdown before applying
+
+`e2e/_captures/roadmap/template_preview.json` (`GET /roadmap/templates/mvp-build`) — status `200`:
+
+```json
+{
+  "data": {
+    "id": "mvp-build",
+    "title": "MVP build",
+    "stage": "build",
+    "category": "Fintech",
+    "milestone_count": 1,
+    "task_count": 2,
+    "phases": [
+      {
+        "name": "MVP",
+        "milestones": [
+          {
+            "title": "Core flow shipped",
+            "tasks": [
+              {
+                "title": "Build the core feature",
+                "effort": "large"
+              },
+              {
+                "title": "Instrument analytics",
+                "effort": "small"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+The preview's `phases[].milestones[].tasks[]` shape has **no ids** (nothing has been created
+yet — this is a read-only preview of the static catalog entry) and **no `due_on`/`starts_on`/
+`ends_on`** (those are computed relative to `date.today()` only at apply time, not shown in the
+preview). Use this to render a "here's what applying this template will add" confirmation
+screen before the founder commits. `GET /templates/{unknown_id}` 404s `NOT_FOUND` (not
+separately captured — same uniform shape as every other roadmap 404).
+
+### Apply — fresh `201` vs. already-applied `200`
+
+`e2e/_captures/roadmap/template_apply.json` (`POST /roadmap/templates/mvp-build/apply`, first
+call) — status `201`:
+
+```json
+{
+  "data": {
+    "already_applied": false,
+    "added": {
+      "phases": 1,
+      "milestones": 1,
+      "tasks": 2
+    }
+  },
+  "meta": null
+}
+```
+
+`e2e/_captures/roadmap/template_apply_noop.json` (`POST /roadmap/templates/mvp-build/apply`,
+second call on the same roadmap) — status `200`:
+
+```json
+{
+  "data": {
+    "already_applied": true,
+    "added": {
+      "phases": 0,
+      "milestones": 0,
+      "tasks": 0
+    }
+  },
+  "meta": null
+}
+```
+
+**Applying is additive and non-destructive** — it appends the template's phases after the
+roadmap's existing ones (new phases get the next available `order`); it never edits, reorders,
+or removes anything already in the roadmap. **Applying the same template a second time is a
+safe no-op**, not an error and not a duplicate — `already_applied: true` with `added` all zeros.
+Use `already_applied` (not the HTTP status code) to decide whether to show "Template applied!"
+vs. "Already applied" copy — both are success responses. After either response, `GET /roadmap`
+(§1) or the phase list will reflect the new content (on a fresh apply) — the apply response
+itself only reports counts, not the created phase/milestone/task bodies; re-fetch the tree to
+render them.
+
+---
+
+## 8. Auth boundary: mentor read-only, cross-tenant 404
 
 ### `403` — mentor attempting a write
 
@@ -467,9 +798,23 @@ Every row below was exercised **live**, over real HTTP, against a real Postgres-
 | team_member can write (in `_editor`) | ✅ |
 | mentor can read but not write → `403 FORBIDDEN` | ✅ |
 | Cross-tenant phase/milestone lookup → uniform `404 NOT_FOUND` | ✅ |
-| `depends_on` / `dependency_count` always empty/zero in Slice 1 | ✅ (implicit in every capture above) |
+| `POST /tasks/{id}/dependencies` — fresh edge, `201` | ✅ |
+| `POST /tasks/{id}/dependencies` — duplicate edge, idempotent `200` | ⬜ (unit-tested only, not in the live E2E journey) |
+| `POST /tasks/{id}/dependencies` — self-dependency → `422 VALIDATION_ERROR` | ⬜ (unit-tested only) |
+| `POST /tasks/{id}/dependencies` — reverse edge → `409 DEPENDENCY_CYCLE` (exact message) | ✅ |
+| `DELETE /tasks/{id}/dependencies/{depends_on_task_id}` | ⬜ (unit-tested only, not in the live E2E journey) |
+| `GET /roadmap/dependencies` — graph (`nodes`/`edges`/`list`) | ✅ |
+| `GET /roadmap`'s tree `depends_on` / `dependency_count` populated after a real edge exists | ✅ |
+| Single-task CRUD response (`_task_out`) still returns `depends_on: []` regardless of real edges | ✅ (implicit — every `task_create`/`task_patch` capture in §5 predates the dependency step, and the endpoint hardcodes `[]` unconditionally per the source, not just per this run's ordering) |
+| `GET /roadmap/templates` — gallery list (+ `applied` flag) | ✅ |
+| `GET /roadmap/templates/{id}` — preview | ✅ |
+| `GET /roadmap/templates/{unknown_id}` → `404 NOT_FOUND` | ⬜ (unit-tested only) |
+| `POST /roadmap/templates/{id}/apply` — fresh apply, `201` + real `added` counts | ✅ |
+| `POST /roadmap/templates/{id}/apply` — re-apply, idempotent `200` + `already_applied: true` | ✅ |
+| `GET /roadmap/templates` reflects `applied: true` after a real apply | ✅ |
 
 Rows marked ⬜ are covered by the unit suite (`tests/api/test_roadmap_phases.py`,
-`test_roadmap_milestones.py`, `test_roadmap_tasks.py`) but not independently re-asserted over
-live HTTP in `e2e/test_roadmap.py` — safe to build against, just not double-verified
-end-to-end.
+`test_roadmap_milestones.py`, `test_roadmap_tasks.py`, `test_roadmap_dependencies_api.py`,
+`test_roadmap_templates_gallery.py`, `test_roadmap_apply_api.py`) but not independently
+re-asserted over live HTTP in `e2e/test_roadmap.py` — safe to build against, just not
+double-verified end-to-end.
