@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-20 · `main` @ `0f8523c` (PRs #1–#6 merged)_
+_Last reconciled: 2026-08-22 · branch `feat/roadmap` (Module 05 Slice 1 complete, unmerged)_
 
 ---
 
@@ -20,10 +20,10 @@ _Last reconciled: 2026-08-20 · `main` @ `0f8523c` (PRs #1–#6 merged)_
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & certified | 4 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) · Health Score (Module 06) |
-| 🟡 In progress | 0 | — |
-| ⬜ Planned / next | — | Roadmap (05) · Today's Mission (04) · then remaining PRD modules |
+| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) done, Slices 2–3 remain |
+| ⬜ Planned / next | — | Today's Mission (04) · then remaining PRD modules |
 
-**Health at a glance:** ~40 endpoints · 254 unit tests (real Postgres) + 24 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~51 endpoints · 304 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 ---
 
@@ -118,16 +118,16 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
-**Slice 1 — Core** — *designed; spec `docs/superpowers/specs/2026-08-21-roadmap-core-design.md`*
+**Slice 1 — Core** — *shipped (branch `feat/roadmap`, unmerged; commits `58cc6a5`..`03f4299`)*
 - [x] Scope split + locked decisions (stage-only catalog · role-based access · generate honors job contract inline · derived progress/explicit status · inline+lazy)
-- [ ] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
-- [ ] Migration `0006_roadmap`
-- [ ] `require_roles(founder, team_member)` editor dep + tenancy resolvers
-- [ ] Template catalog + `generate_roadmap` (create-once `ON CONFLICT` + race test) + `roadmap.generated`
-- [ ] `recompute_milestone_progress` + `GET /roadmap` (tree serialize + lazy generate)
-- [ ] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
-- [ ] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
-- [ ] Live E2E + SOP + FE integration guide (captured live)
+- [x] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
+- [x] Migration `0006_roadmap`
+- [x] `require_roles(founder, team_member)` editor dep + tenancy resolvers
+- [x] Template catalog + `generate_roadmap` (create-once `ON CONFLICT` + race test) + `roadmap.generated`
+- [x] `recompute_milestone_progress` + `GET /roadmap` (tree serialize + lazy generate)
+- [x] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
+- [x] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
+- [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
 - [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
 
 **Slice 2 — Dependencies + Templates** — *planned*
