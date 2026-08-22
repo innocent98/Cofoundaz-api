@@ -2,12 +2,13 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import AppError, NotFound
+from app.core.errors import AppError, DependencyCycle, NotFound
 from app.db.models.enums import (
     JobStatus,
     MembershipRole,
@@ -16,7 +17,13 @@ from app.db.models.enums import (
     TaskEffort,
 )
 from app.db.models.membership import Membership
-from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
+from app.db.models.roadmap import (
+    Roadmap,
+    RoadmapMilestone,
+    RoadmapPhase,
+    RoadmapTask,
+    RoadmapTaskDependency,
+)
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
@@ -24,6 +31,7 @@ from app.db.tenancy import require_role, require_workspace
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.schemas.roadmap import (
+    DependencyCreate,
     MilestoneCreate,
     MilestoneUpdate,
     PhaseCreate,
@@ -31,6 +39,7 @@ from app.schemas.roadmap import (
     TaskCreate,
     TaskUpdate,
 )
+from app.services.roadmap.dependencies import add_dependency, would_create_cycle
 from app.services.roadmap.service import (
     generate_roadmap,
     milestone_overdue,
@@ -399,5 +408,59 @@ def delete_task_ep(
     db.flush()
     milestone = db.query(RoadmapMilestone).filter_by(id=milestone_id).one()
     recompute_milestone_progress(db, milestone)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/tasks/{task_id}/dependencies", status_code=201)
+def create_dependency_ep(
+    task_id: uuid.UUID,
+    body: DependencyCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    dependent = _task(db, membership, task_id)  # 404 if foreign
+    if body.depends_on_task_id == dependent.id:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "A task cannot depend on itself.",
+            422,
+            field_errors=[
+                {"field": "depends_on_task_id", "message": "A task cannot depend on itself."}
+            ],
+        )
+    dependency = _task(db, membership, body.depends_on_task_id)  # 404 if foreign
+    roadmap = _require_roadmap(db, membership)
+    if would_create_cycle(db, roadmap.id, dependent.id, dependency.id):
+        raise DependencyCycle(
+            message=(
+                f"That would create a loop — {dependency.title} already depends on "
+                f"{dependent.title}."
+            )
+        )
+    _row, created = add_dependency(db, dependent.id, dependency.id)
+    db.commit()
+    payload = {"task_id": str(dependent.id), "depends_on_task_id": str(dependency.id)}
+    return JSONResponse(status_code=(201 if created else 200), content=success_response(payload))
+
+
+@router.delete("/tasks/{task_id}/dependencies/{depends_on_task_id}")
+def delete_dependency_ep(
+    task_id: uuid.UUID,
+    depends_on_task_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    dependent = _task(db, membership, task_id)  # 404 if foreign
+    edge = (
+        db.query(RoadmapTaskDependency)
+        .filter_by(task_id=dependent.id, depends_on_task_id=depends_on_task_id)
+        .first()
+    )
+    if edge is None:
+        raise NotFound()
+    db.delete(edge)
     db.commit()
     return success_response({"deleted": True})

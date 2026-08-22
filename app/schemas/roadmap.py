@@ -83,3 +83,7 @@ class TaskUpdate(BaseModel):
         if v is None:
             raise ValueError("This field cannot be null.")
         return v
+
+
+class DependencyCreate(BaseModel):
+    depends_on_task_id: uuid.UUID
