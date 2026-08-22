@@ -11,17 +11,19 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-22 · branch `feat/roadmap` (Module 05 Slice 1 complete, unmerged)_
+_Last reconciled: 2026-08-22 · `main` @ `5fef521` (PRs #1–#7 merged)_
 
 ---
 
 ## Snapshot
 
+**PRD module tally: 26 total** — 3 fully complete (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 in progress (05 Roadmap, Slice 1/3 shipped) · 22 not started (02·03·04·08–26).
+
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 4 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) · Health Score (Module 06) |
-| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) done, Slices 2–3 remain |
-| ⬜ Planned / next | — | Today's Mission (04) · then remaining PRD modules |
+| ✅ Shipped & certified | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
+| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) **merged PR #7**; Slices 2–3 remain |
+| ⬜ Planned / next | 22 | Roadmap Slice 2 · Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
 **Health at a glance:** ~51 endpoints · 304 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
@@ -118,7 +120,7 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
-**Slice 1 — Core** — *shipped (branch `feat/roadmap`, unmerged; commits `58cc6a5`..`03f4299`)*
+**Slice 1 — Core** — *✅ merged (PR #7, `5fef521`)*
 - [x] Scope split + locked decisions (stage-only catalog · role-based access · generate honors job contract inline · derived progress/explicit status · inline+lazy)
 - [x] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
 - [x] Migration `0006_roadmap`
