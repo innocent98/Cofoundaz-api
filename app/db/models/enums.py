@@ -102,3 +102,15 @@ class RecommendationStatus(str, enum.Enum):
     pending = "pending"
     accepted = "accepted"
     dismissed = "dismissed"
+
+
+class RoadmapStatus(str, enum.Enum):
+    todo = "todo"
+    in_progress = "in_progress"
+    done = "done"
+
+
+class TaskEffort(str, enum.Enum):
+    small = "small"
+    medium = "medium"
+    large = "large"

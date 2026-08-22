@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/health-score` (Module 06, PR pending)_
+_Last reconciled: 2026-08-22 · branch `feat/roadmap` (Module 05 Slice 1 complete, unmerged)_
 
 ---
 
@@ -20,10 +20,10 @@ _Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & certified | 4 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) · Health Score (Module 06) |
-| 🟡 In progress | 0 | — |
-| ⬜ Planned / next | — | Roadmap (05) · Today's Mission (04) · then remaining PRD modules |
+| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) done, Slices 2–3 remain |
+| ⬜ Planned / next | — | Today's Mission (04) · then remaining PRD modules |
 
-**Health at a glance:** ~40 endpoints · 254 unit tests (real Postgres) + 24 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~51 endpoints · 304 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 ---
 
@@ -92,7 +92,7 @@ _Last reconciled: 2026-08-19 · `main` @ `e3582fe` (PRs #1–#5 merged) + `feat/
 
 ---
 
-## ✅ Module 06 — Health Score — *shipped (branch `feat/health-score`)*
+## ✅ Module 06 — Health Score — *shipped (PR #6, merged `0f8523c`)*
 
 _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchmarks · ranked recommendations._
 
@@ -114,9 +114,34 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 ---
 
+## 🟡 Module 05 — Roadmap — *in progress (decomposed into 3 slices)*
+
+_Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
+
+**Slice 1 — Core** — *shipped (branch `feat/roadmap`, unmerged; commits `58cc6a5`..`03f4299`)*
+- [x] Scope split + locked decisions (stage-only catalog · role-based access · generate honors job contract inline · derived progress/explicit status · inline+lazy)
+- [x] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
+- [x] Migration `0006_roadmap`
+- [x] `require_roles(founder, team_member)` editor dep + tenancy resolvers
+- [x] Template catalog + `generate_roadmap` (create-once `ON CONFLICT` + race test) + `roadmap.generated`
+- [x] `recompute_milestone_progress` + `GET /roadmap` (tree serialize + lazy generate)
+- [x] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
+- [x] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
+- [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
+- [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
+
+**Slice 2 — Dependencies + Templates** — *planned*
+- [ ] `POST /roadmap/tasks/{id}/dependencies` + cycle detection · dependency graph read
+- [ ] `GET /roadmap/templates` gallery + `POST /roadmap/templates/{id}/apply` (non-destructive merge)
+- [ ] Industry template variants (Fintech/B2C/Nigeria overlays)
+
+**Slice 3 — AI Re-plan** — *planned*
+- [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 05 — Roadmap** (gives the `roadmap.generate` / `roadmap.replan` jobs a consumer)
 - [ ] **Module 04 — Today's Mission**
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)

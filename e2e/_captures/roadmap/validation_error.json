@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "title",
+        "message": "Value error, This field cannot be null."
+      }
+    ]
+  }
+}

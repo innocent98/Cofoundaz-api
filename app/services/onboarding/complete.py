@@ -4,10 +4,12 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import OnboardingIncomplete
+from app.db.models.enums import JobStatus
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.roadmap.service import generate_roadmap
 
 
 def _gate(startup: Startup, user: User) -> list[dict[str, str]]:
@@ -40,7 +42,9 @@ def complete_onboarding(db: Session, startup: Startup, user: User) -> dict[str, 
     startup.profile.onboarding_completed_at = datetime.now(UTC)
     startup.profile.assessment_pending = True
 
+    generate_roadmap(db, startup, actor=user)
     j1 = job_dispatcher.enqueue(db, "roadmap.generate", {"startup_id": str(startup.id)}, startup.id)
+    j1.status = JobStatus.succeeded
     j2 = job_dispatcher.enqueue(
         db, "healthscore.initialize", {"startup_id": str(startup.id)}, startup.id
     )

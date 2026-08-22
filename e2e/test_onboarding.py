@@ -82,13 +82,26 @@ def test_full_onboarding_journey(base_url, make_verified_user, mailbox, unique_e
         me = mate.get("/api/v1/auth/me", headers=_auth_header(maccess)).json()["data"]
         assert any(ms["name"] == "Cofoundaz" for ms in me["memberships"])
 
-    # Founder completes onboarding -> two queued jobs.
+    # Founder completes onboarding -> two jobs, but not both "queued" anymore:
+    # roadmap.generate now runs inline during onboarding-complete (see
+    # app/services/onboarding/complete.py), so its job is recorded as already
+    # succeeded; healthscore.initialize is still an unconsumed queued stub
+    # (Health Score stays pending until the assessment). Assert per job type
+    # rather than a single shared status, mirroring the unit test's fix
+    # (tests/api/onboarding/test_complete.py::test_complete_enqueues_two_jobs).
     with httpx.Client(base_url=base_url, timeout=10.0) as founder:
         access = founder.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
         done = founder.post("/api/v1/onboarding/complete", headers=_auth_header(access))
         assert done.status_code == 200, done.text
         data = done.json()["data"]
         assert len(data["job_ids"]) == 2 and data["assessment_pending"] is True
+        statuses_by_type = {}
         for jid in data["job_ids"]:
             job = founder.get(f"/api/v1/jobs/{jid}")
-            assert job.status_code == 200 and job.json()["data"]["status"] == "queued"
+            assert job.status_code == 200, job.text
+            job_data = job.json()["data"]
+            statuses_by_type[job_data["type"]] = job_data["status"]
+        assert statuses_by_type == {
+            "roadmap.generate": "succeeded",
+            "healthscore.initialize": "queued",
+        }

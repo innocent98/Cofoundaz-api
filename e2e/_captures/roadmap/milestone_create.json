@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "19d264f8-f639-4a59-a260-ca26512d7905",
+    "phase_id": "08cafc09-4950-497d-aa9a-22c17836511a",
+    "title": "Custom milestone",
+    "description": null,
+    "due_on": null,
+    "owner": null,
+    "status": "todo",
+    "progress": 0,
+    "overdue": false,
+    "order": 0
+  },
+  "meta": null
+}

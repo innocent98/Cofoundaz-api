@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -13,10 +13,14 @@ from app.db.models.enums import (
     MembershipStatus,
     RecommendationEffort,
     RecommendationStatus,
+    RoadmapStatus,
+    StartupStage,
+    TaskEffort,
 )
 from app.db.models.health_score import HealthRecommendation, HealthScore, HealthScoreHistory
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User, UserProfile
 
@@ -180,6 +184,84 @@ def create_recommendation(
     db.add(r)
     db.flush()
     return r
+
+
+def create_roadmap(
+    db: Session,
+    startup: Startup,
+    *,
+    stage: StartupStage = StartupStage.validation,
+    template_key: str = "stage.validation",
+    template_version: int = 1,
+) -> Roadmap:
+    r = Roadmap(
+        startup_id=startup.id,
+        stage=stage,
+        template_key=template_key,
+        template_version=template_version,
+    )
+    db.add(r)
+    db.flush()
+    return r
+
+
+def create_phase(
+    db: Session, roadmap: Roadmap, *, name: str = "Phase", order: int = 0
+) -> RoadmapPhase:
+    p = RoadmapPhase(roadmap_id=roadmap.id, name=name, order=order)
+    db.add(p)
+    db.flush()
+    return p
+
+
+def create_milestone(
+    db: Session,
+    phase: RoadmapPhase,
+    *,
+    title: str = "M",
+    status: RoadmapStatus = RoadmapStatus.todo,
+    progress: int = 0,
+    due_on: date | None = None,
+    owner: User | None = None,
+    order: int = 0,
+) -> RoadmapMilestone:
+    m = RoadmapMilestone(
+        phase_id=phase.id,
+        title=title,
+        status=status,
+        progress=progress,
+        due_on=due_on,
+        owner_id=(owner.id if owner else None),
+        order=order,
+    )
+    db.add(m)
+    db.flush()
+    return m
+
+
+def create_task(
+    db: Session,
+    milestone: RoadmapMilestone,
+    *,
+    title: str = "T",
+    effort: TaskEffort = TaskEffort.medium,
+    status: RoadmapStatus = RoadmapStatus.todo,
+    assignee: User | None = None,
+    due_on: date | None = None,
+    order: int = 0,
+) -> RoadmapTask:
+    t = RoadmapTask(
+        milestone_id=milestone.id,
+        title=title,
+        effort=effort,
+        status=status,
+        assignee_id=(assignee.id if assignee else None),
+        due_on=due_on,
+        order=order,
+    )
+    db.add(t)
+    db.flush()
+    return t
 
 
 def create_auth_session(
