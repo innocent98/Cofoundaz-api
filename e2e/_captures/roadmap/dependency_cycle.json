@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "DEPENDENCY_CYCLE",
+    "message": "That would create a loop \u2014 Task A already depends on Task B.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "data": {
+    "id": "mvp-build",
+    "title": "MVP build",
+    "stage": "build",
+    "category": "Fintech",
+    "milestone_count": 1,
+    "task_count": 2,
+    "phases": [
+      {
+        "name": "MVP",
+        "milestones": [
+          {
+            "title": "Core flow shipped",
+            "tasks": [
+              {
+                "title": "Build the core feature",
+                "effort": "large"
+              },
+              {
+                "title": "Instrument analytics",
+                "effort": "small"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

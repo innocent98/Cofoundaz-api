@@ -153,22 +153,48 @@
             "description": null,
             "due_on": null,
             "owner": null,
-            "status": "todo",
-            "progress": 100,
+            "status": "done",
+            "progress": 0,
             "overdue": false,
             "order": 0,
-            "dependency_count": 0,
+            "dependency_count": 1,
             "tasks": [
               {
                 "id": "6a2f2215-dd73-4674-bab4-cc63c86124e2",
                 "title": "Custom task",
                 "description": null,
                 "effort": "medium",
-                "status": "done",
+                "status": "in_progress",
                 "assignee": null,
                 "due_on": null,
                 "overdue": false,
                 "order": 0,
+                "depends_on": []
+              },
+              {
+                "id": "3d697a19-1157-448b-99e4-4e4897b1c16c",
+                "title": "Task A",
+                "description": null,
+                "effort": "medium",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 1,
+                "depends_on": [
+                  "b936223d-2dd7-47f4-8cf9-d7136048d04d"
+                ]
+              },
+              {
+                "id": "b936223d-2dd7-47f4-8cf9-d7136048d04d",
+                "title": "Task B",
+                "description": null,
+                "effort": "medium",
+                "status": "todo",
+                "assignee": null,
+                "due_on": null,
+                "overdue": false,
+                "order": 2,
                 "depends_on": []
               }
             ]

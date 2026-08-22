@@ -1,25 +1,25 @@
 {
   "data": {
     "roadmap": {
-      "id": "176f0c77-3225-42a2-ae76-498b19fbb647",
+      "id": "f9b5fd73-19da-44b8-8c4b-0701f65fba8d",
       "stage": "validation",
       "template_key": "stage.validation",
-      "generated_at": "2026-08-21T17:37:00.826215+00:00"
+      "generated_at": "2026-08-22T13:03:13.227186+00:00"
     },
     "current_stage": "validation",
     "phases": [
       {
-        "id": "24da44bd-3423-4b4f-b048-26f5e32a2dfb",
+        "id": "274f0137-69e5-4174-845d-e8d85beab569",
         "name": "Validation",
         "order": 0,
-        "starts_on": "2026-08-21",
-        "ends_on": "2026-10-02",
+        "starts_on": "2026-08-22",
+        "ends_on": "2026-10-03",
         "milestones": [
           {
-            "id": "acbf5f5e-d7c0-47b0-ad9a-8f9049a7bf13",
+            "id": "af46d3db-f34a-484a-b67d-12a63bd5d56e",
             "title": "Validate demand",
             "description": null,
-            "due_on": "2026-09-04",
+            "due_on": "2026-09-05",
             "owner": null,
             "status": "todo",
             "progress": 0,
@@ -28,7 +28,7 @@
             "dependency_count": 0,
             "tasks": [
               {
-                "id": "06cbd34c-ec41-45c9-afaf-ba621d740b4e",
+                "id": "7f7735cb-578f-4fe2-9168-763d00188ac4",
                 "title": "Run 10 customer interviews",
                 "description": null,
                 "effort": "medium",
@@ -40,7 +40,7 @@
                 "depends_on": []
               },
               {
-                "id": "4e866fb3-6be6-4780-9e35-baea71333e7b",
+                "id": "dfc21b4a-5ded-418b-96c8-a7825453f286",
                 "title": "Synthesize problem hypotheses",
                 "description": null,
                 "effort": "small",
@@ -54,10 +54,10 @@
             ]
           },
           {
-            "id": "477443ce-740e-4a94-9207-7b2afe9889eb",
+            "id": "8e2954de-76e0-48be-8083-bb3cb536c835",
             "title": "Pricing test",
             "description": null,
-            "due_on": "2026-09-25",
+            "due_on": "2026-09-26",
             "owner": null,
             "status": "todo",
             "progress": 0,
@@ -66,7 +66,7 @@
             "dependency_count": 0,
             "tasks": [
               {
-                "id": "b1282df8-3008-4adc-8397-c0c8e0879d93",
+                "id": "79442ac7-6e08-4df4-8721-2b73d324fbda",
                 "title": "Draft 3 pricing options",
                 "description": null,
                 "effort": "small",
@@ -78,7 +78,7 @@
                 "depends_on": []
               },
               {
-                "id": "9cfabc6f-b709-4513-9b89-cd1edb4299f8",
+                "id": "cca9587e-42ab-416a-9a87-d3c8cbcd78b9",
                 "title": "Run a willingness-to-pay test",
                 "description": null,
                 "effort": "medium",
@@ -94,17 +94,17 @@
         ]
       },
       {
-        "id": "561adcb5-1065-4a5d-be10-d320cafbc1b9",
+        "id": "19d06834-4e50-4ca7-92c0-7b916cc044d2",
         "name": "Build MVP",
         "order": 1,
-        "starts_on": "2026-10-02",
-        "ends_on": "2026-11-27",
+        "starts_on": "2026-10-03",
+        "ends_on": "2026-11-28",
         "milestones": [
           {
-            "id": "b5f1f191-3bdf-47d2-ac45-0084f24dbb34",
+            "id": "6d6f396f-6cab-4941-ba21-dab45f6c808f",
             "title": "Core flow",
             "description": null,
-            "due_on": "2026-10-30",
+            "due_on": "2026-10-31",
             "owner": null,
             "status": "todo",
             "progress": 0,
@@ -113,7 +113,7 @@
             "dependency_count": 0,
             "tasks": [
               {
-                "id": "c255204d-b5b7-4632-993b-d24a26d003f3",
+                "id": "2c5adc13-a0be-4eb3-8469-8d0cb218223f",
                 "title": "Define the core user journey",
                 "description": null,
                 "effort": "medium",
@@ -125,7 +125,7 @@
                 "depends_on": []
               },
               {
-                "id": "bd17f701-4a59-4d79-9a54-b10eea65cf31",
+                "id": "663eaa3c-f587-43ad-8070-5fc1c6e72d11",
                 "title": "Build the happy path",
                 "description": null,
                 "effort": "large",
