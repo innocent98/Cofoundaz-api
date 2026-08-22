@@ -132,10 +132,16 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
 - [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
 
-**Slice 2 — Dependencies + Templates** — *planned*
-- [ ] `POST /roadmap/tasks/{id}/dependencies` + cycle detection · dependency graph read
-- [ ] `GET /roadmap/templates` gallery + `POST /roadmap/templates/{id}/apply` (non-destructive merge)
-- [ ] Industry template variants (Fintech/B2C/Nigeria overlays)
+**Slice 2 — Dependencies + Templates** — *designed; spec `docs/superpowers/specs/2026-08-22-roadmap-deps-templates-design.md`*
+- [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
+- [ ] `GALLERY_TEMPLATES` static catalog (named, industry-tagged packs) + counts helper
+- [ ] Migration `0007_roadmap_applied_templates` (`applied_template_keys` JSONB on `roadmaps`)
+- [ ] `dependencies.py` — `would_create_cycle` (DFS reachability) + `add_dependency`
+- [ ] `POST`/`DELETE /roadmap/tasks/{id}/dependencies` (cycle → 409 `DEPENDENCY_CYCLE`, dup → idempotent 200)
+- [ ] `GET /roadmap/dependencies` graph + populate tree `depends_on`/`dependency_count`
+- [ ] `GET /roadmap/templates` gallery + `GET /roadmap/templates/{id}` preview
+- [ ] `POST /roadmap/templates/{id}/apply` (append + dedup + `roadmap.template.applied`)
+- [ ] Live E2E extension + SOP + FE integration guide update
 
 **Slice 3 — AI Re-plan** — *planned*
 - [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies
