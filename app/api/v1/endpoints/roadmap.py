@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -40,6 +40,7 @@ from app.schemas.roadmap import (
     TaskUpdate,
 )
 from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
+from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
 from app.services.roadmap.service import (
     generate_roadmap,
     milestone_overdue,
@@ -252,6 +253,70 @@ def get_dependencies(
             edges.append({"task_id": str(dependent), "depends_on_task_id": str(dep)})
             listing.append({"task": title_by_id.get(dependent), "depends_on": title_by_id.get(dep)})
     return success_response({"nodes": nodes, "edges": edges, "list": listing})
+
+
+@router.get("/templates")
+def list_templates(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _roadmap(db, membership)
+    applied = set(roadmap.applied_template_keys) if roadmap else set()
+    items = []
+    for tid, raw_tmpl in GALLERY_TEMPLATES.items():
+        tmpl = cast(dict[str, Any], raw_tmpl)
+        mc, tc = template_counts(tmpl)
+        items.append(
+            {
+                "id": tid,
+                "title": tmpl["title"],
+                "stage": tmpl["stage"],
+                "category": tmpl["category"],
+                "milestone_count": mc,
+                "task_count": tc,
+                "applied": tid in applied,
+            }
+        )
+    return success_response(items)
+
+
+@router.get("/templates/{template_id}")
+def preview_template(
+    template_id: str,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    raw_tmpl = GALLERY_TEMPLATES.get(template_id)
+    if raw_tmpl is None:
+        raise NotFound()
+    tmpl = cast(dict[str, Any], raw_tmpl)
+    mc, tc = template_counts(tmpl)
+    phases = [
+        {
+            "name": ph["name"],
+            "milestones": [
+                {
+                    "title": ms["title"],
+                    "tasks": [{"title": tk["title"], "effort": tk["effort"]} for tk in ms["tasks"]],
+                }
+                for ms in ph["milestones"]
+            ],
+        }
+        for ph in tmpl["phases"]
+    ]
+    return success_response(
+        {
+            "id": tmpl["id"],
+            "title": tmpl["title"],
+            "stage": tmpl["stage"],
+            "category": tmpl["category"],
+            "milestone_count": mc,
+            "task_count": tc,
+            "phases": phases,
+        }
+    )
 
 
 @router.post("/phases", status_code=201)
