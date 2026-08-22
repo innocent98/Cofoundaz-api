@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, cast
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -264,8 +264,7 @@ def list_templates(
     roadmap = _roadmap(db, membership)
     applied = set(roadmap.applied_template_keys) if roadmap else set()
     items = []
-    for tid, raw_tmpl in GALLERY_TEMPLATES.items():
-        tmpl = cast(dict[str, Any], raw_tmpl)
+    for tid, tmpl in GALLERY_TEMPLATES.items():
         mc, tc = template_counts(tmpl)
         items.append(
             {
@@ -288,10 +287,9 @@ def preview_template(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> Any:
-    raw_tmpl = GALLERY_TEMPLATES.get(template_id)
-    if raw_tmpl is None:
+    tmpl = GALLERY_TEMPLATES.get(template_id)
+    if tmpl is None:
         raise NotFound()
-    tmpl = cast(dict[str, Any], raw_tmpl)
     mc, tc = template_counts(tmpl)
     phases = [
         {

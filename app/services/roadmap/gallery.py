@@ -1,6 +1,8 @@
+from typing import Any
+
 GALLERY_TEMPLATE_VERSION = 1
 
-GALLERY_TEMPLATES = {
+GALLERY_TEMPLATES: dict[str, Any] = {
     "validation-sprint": {
         "id": "validation-sprint",
         "title": "Validation sprint",
