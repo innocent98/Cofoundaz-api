@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -109,6 +110,65 @@ def generate_roadmap(db: Session, startup: Startup, *, actor: User | None = None
         },
     )
     return roadmap
+
+
+def _max_phase_order(db: Session, roadmap_id: uuid.UUID) -> int:
+    val = db.query(func.max(RoadmapPhase.order)).filter_by(roadmap_id=roadmap_id).scalar()
+    return -1 if val is None else val
+
+
+def apply_template(db: Session, roadmap: Roadmap, tmpl: dict) -> dict:
+    """Append a gallery template's phase tree onto an existing roadmap.
+
+    Non-destructive: existing phases/milestones/tasks are untouched. New phases are
+    appended after the current max order. Callers are responsible for the dedup check
+    (`tmpl["id"] in roadmap.applied_template_keys`) before calling this -- it always
+    appends unconditionally.
+    """
+    base = date.today()
+    start_order = _max_phase_order(db, roadmap.id) + 1
+    phases = milestones = tasks = 0
+
+    for p_idx, ph in enumerate(tmpl["phases"]):
+        phase = RoadmapPhase(
+            roadmap_id=roadmap.id,
+            name=ph["name"],
+            order=start_order + p_idx,
+            starts_on=_weeks(base, ph["start_week"]),
+            ends_on=_weeks(base, ph["end_week"]),
+        )
+        db.add(phase)
+        db.flush()
+        phases += 1
+        for m_idx, ms in enumerate(ph["milestones"]):
+            milestone = RoadmapMilestone(
+                phase_id=phase.id,
+                title=ms["title"],
+                due_on=_weeks(base, ms["due_week"]),
+                status=RoadmapStatus.todo,
+                progress=0,
+                order=m_idx,
+            )
+            db.add(milestone)
+            db.flush()
+            milestones += 1
+            for t_idx, tk in enumerate(ms["tasks"]):
+                db.add(
+                    RoadmapTask(
+                        milestone_id=milestone.id,
+                        title=tk["title"],
+                        effort=TaskEffort(tk["effort"]),
+                        status=RoadmapStatus.todo,
+                        order=t_idx,
+                    )
+                )
+                tasks += 1
+
+    # Reassign (not mutate in place) -- JSONB dirty-tracking needs a new list object,
+    # an in-place .append() on the existing list would not be flagged as modified.
+    roadmap.applied_template_keys = [*roadmap.applied_template_keys, tmpl["id"]]
+    db.flush()
+    return {"phases": phases, "milestones": milestones, "tasks": tasks}
 
 
 def recompute_milestone_progress(db: Session, milestone: RoadmapMilestone) -> None:

@@ -42,6 +42,7 @@ from app.schemas.roadmap import (
 from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
 from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
 from app.services.roadmap.service import (
+    apply_template,
     generate_roadmap,
     milestone_overdue,
     person_ref,
@@ -314,6 +315,43 @@ def preview_template(
             "task_count": tc,
             "phases": phases,
         }
+    )
+
+
+@router.post("/templates/{template_id}/apply")
+def apply_template_ep(
+    template_id: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    tmpl = GALLERY_TEMPLATES.get(template_id)
+    if tmpl is None:
+        raise NotFound()
+    startup = _startup(db, membership)
+    roadmap = _roadmap(db, membership) or generate_roadmap(db, startup, actor=user)
+    if template_id in roadmap.applied_template_keys:
+        db.commit()
+        return success_response(
+            {
+                "already_applied": True,
+                "added": {"phases": 0, "milestones": 0, "tasks": 0},
+            }
+        )
+    added = apply_template(db, roadmap, tmpl)
+    event_bus.publish(
+        "roadmap.template.applied",
+        {
+            "startup_id": str(membership.startup_id),
+            "roadmap_id": str(roadmap.id),
+            "template_id": template_id,
+            "added": added,
+        },
+    )
+    db.commit()
+    return JSONResponse(
+        status_code=201,
+        content=success_response({"already_applied": False, "added": added}),
     )
 
 
