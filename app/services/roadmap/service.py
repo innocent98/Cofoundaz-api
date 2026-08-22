@@ -7,16 +7,11 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import RoadmapStatus, StartupStage, TaskEffort
-from app.db.models.roadmap import (
-    Roadmap,
-    RoadmapMilestone,
-    RoadmapPhase,
-    RoadmapTask,
-    RoadmapTaskDependency,
-)
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
+from app.services.roadmap.dependencies import dependency_map
 from app.services.roadmap.templates import ROADMAP_TEMPLATE_VERSION, STAGE_TEMPLATES
 
 
@@ -144,6 +139,7 @@ def person_ref(db: Session, user_id: uuid.UUID | None) -> dict | None:
 
 
 def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
+    dep_map = dependency_map(db, roadmap.id)  # {dependent_task_id: [dependency_id, ...]}
     phases = (
         db.query(RoadmapPhase).filter_by(roadmap_id=roadmap.id).order_by(RoadmapPhase.order).all()
     )
@@ -160,13 +156,7 @@ def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
             tasks = (
                 db.query(RoadmapTask).filter_by(milestone_id=m.id).order_by(RoadmapTask.order).all()
             )
-            dep_count = (
-                db.query(RoadmapTaskDependency)
-                .filter(RoadmapTaskDependency.task_id.in_([t.id for t in tasks]))
-                .count()
-                if tasks
-                else 0
-            )
+            dep_count = sum(1 for t in tasks if t.id in dep_map)
             out_milestones.append(
                 {
                     "id": str(m.id),
@@ -190,7 +180,7 @@ def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
                             "due_on": t.due_on.isoformat() if t.due_on else None,
                             "overdue": task_overdue(t),
                             "order": t.order,
-                            "depends_on": [],
+                            "depends_on": [str(d) for d in dep_map.get(t.id, [])],
                         }
                         for t in tasks
                     ],

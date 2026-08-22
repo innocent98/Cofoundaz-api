@@ -39,7 +39,7 @@ from app.schemas.roadmap import (
     TaskCreate,
     TaskUpdate,
 )
-from app.services.roadmap.dependencies import add_dependency, would_create_cycle
+from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
 from app.services.roadmap.service import (
     generate_roadmap,
     milestone_overdue,
@@ -209,6 +209,49 @@ def post_generate(
     job.status = JobStatus.succeeded
     db.commit()
     return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/dependencies")
+def get_dependencies(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _require_roadmap(db, membership)
+    rows = (
+        db.query(
+            RoadmapTask.id,
+            RoadmapTask.title,
+            RoadmapMilestone.id,
+            RoadmapMilestone.title,
+            RoadmapPhase.id,
+            RoadmapPhase.name,
+        )
+        .join(RoadmapMilestone, RoadmapTask.milestone_id == RoadmapMilestone.id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .filter(RoadmapPhase.roadmap_id == roadmap.id)
+        .all()
+    )
+    title_by_id = {r[0]: r[1] for r in rows}
+    nodes = [
+        {
+            "task_id": str(r[0]),
+            "title": r[1],
+            "milestone_id": str(r[2]),
+            "milestone_title": r[3],
+            "phase_id": str(r[4]),
+            "phase_name": r[5],
+        }
+        for r in rows
+    ]
+    dep_map = dependency_map(db, roadmap.id)
+    edges: list[dict[str, str]] = []
+    listing: list[dict[str, Any]] = []
+    for dependent, deps in dep_map.items():
+        for dep in deps:
+            edges.append({"task_id": str(dependent), "depends_on_task_id": str(dep)})
+            listing.append({"task": title_by_id.get(dependent), "depends_on": title_by_id.get(dep)})
+    return success_response({"nodes": nodes, "edges": edges, "list": listing})
 
 
 @router.post("/phases", status_code=201)
