@@ -297,9 +297,7 @@ def test_roadmap_journey(base_url, make_verified_user, mailbox, unique_email, ca
         # 14. Templates gallery -- mvp-build is listed, not yet applied.
         templates_list = c.get("/api/v1/roadmap/templates", headers=wh)
         assert templates_list.status_code == 200, templates_list.text
-        mvp_entry = next(
-            t for t in templates_list.json()["data"] if t["id"] == "mvp-build"
-        )
+        mvp_entry = next(t for t in templates_list.json()["data"] if t["id"] == "mvp-build")
         assert mvp_entry["applied"] is False
         capture("roadmap", "templates_list", templates_list)
 
