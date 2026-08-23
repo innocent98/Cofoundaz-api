@@ -101,6 +101,11 @@ class RecommendationResolved(AppError):  # noqa: N818
     message = "That recommendation has already been actioned."
 
 
+class DependencyCycle(AppError):  # noqa: N818
+    code, http_status = "DEPENDENCY_CYCLE", 409
+    message = "That change would create a dependency loop."
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:

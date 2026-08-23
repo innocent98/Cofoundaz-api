@@ -20,7 +20,13 @@ from app.db.models.enums import (
 from app.db.models.health_score import HealthRecommendation, HealthScore, HealthScoreHistory
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
-from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
+from app.db.models.roadmap import (
+    Roadmap,
+    RoadmapMilestone,
+    RoadmapPhase,
+    RoadmapTask,
+    RoadmapTaskDependency,
+)
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User, UserProfile
 
@@ -262,6 +268,15 @@ def create_task(
     db.add(t)
     db.flush()
     return t
+
+
+def create_dependency(
+    db: Session, dependent: RoadmapTask, depends_on: RoadmapTask
+) -> RoadmapTaskDependency:
+    d = RoadmapTaskDependency(task_id=dependent.id, depends_on_task_id=depends_on.id)
+    db.add(d)
+    db.flush()
+    return d
 
 
 def create_auth_session(

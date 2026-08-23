@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,6 +39,7 @@ class Roadmap(UUIDMixin, TimestampMixin, Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    applied_template_keys: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
 
 
 class RoadmapPhase(UUIDMixin, TimestampMixin, Base):

@@ -1,0 +1,11 @@
+{
+  "data": {
+    "already_applied": false,
+    "added": {
+      "phases": 1,
+      "milestones": 1,
+      "tasks": 2
+    }
+  },
+  "meta": null
+}

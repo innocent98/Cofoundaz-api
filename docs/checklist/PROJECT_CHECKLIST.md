@@ -11,19 +11,21 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-22 · branch `feat/roadmap` (Module 05 Slice 1 complete, unmerged)_
+_Last reconciled: 2026-08-22 · `feat/roadmap-deps-templates` branch (Roadmap Slice 2, on top of `main` @ `5fef521`, PRs #1–#7 merged)_
 
 ---
 
 ## Snapshot
 
+**PRD module tally: 26 total** — 3 fully complete (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 in progress (05 Roadmap, Slices 1–2/3 shipped) · 22 not started (02·03·04·08–26).
+
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 4 | Foundation/Tenancy · Auth (Module 01) · Onboarding (Module 01.6) · Assessment (Module 07) · Health Score (Module 06) |
-| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) done, Slices 2–3 remain |
-| ⬜ Planned / next | — | Today's Mission (04) · then remaining PRD modules |
+| ✅ Shipped & certified | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
+| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) **merged PR #7**; Slice 2 (dependencies + templates) **shipped on branch, not yet merged**; Slice 3 remains |
+| ⬜ Planned / next | 22 | Roadmap Slice 3 · Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~51 endpoints · 304 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~57 endpoints · 328 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 ---
 
@@ -118,7 +120,7 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
-**Slice 1 — Core** — *shipped (branch `feat/roadmap`, unmerged; commits `58cc6a5`..`03f4299`)*
+**Slice 1 — Core** — *✅ merged (PR #7, `5fef521`)*
 - [x] Scope split + locked decisions (stage-only catalog · role-based access · generate honors job contract inline · derived progress/explicit status · inline+lazy)
 - [x] Enums (`RoadmapStatus`, `TaskEffort`) + 5 models (`roadmaps`/`roadmap_phases`/`roadmap_milestones`/`roadmap_tasks`/`roadmap_task_dependencies`) + factories
 - [x] Migration `0006_roadmap`
@@ -130,10 +132,17 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
 - [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
 
-**Slice 2 — Dependencies + Templates** — *planned*
-- [ ] `POST /roadmap/tasks/{id}/dependencies` + cycle detection · dependency graph read
-- [ ] `GET /roadmap/templates` gallery + `POST /roadmap/templates/{id}/apply` (non-destructive merge)
-- [ ] Industry template variants (Fintech/B2C/Nigeria overlays)
+**Slice 2 — Dependencies + Templates** — *✅ done (branch `feat/roadmap-deps-templates`, Tasks 1–9; not yet merged to `main`)*
+- [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
+- [x] `GALLERY_TEMPLATES` static catalog (named, industry-tagged packs) + counts helper
+- [x] Migration `0007_roadmap_applied_templates` (`applied_template_keys` JSONB on `roadmaps`)
+- [x] `dependencies.py` — `would_create_cycle` (DFS reachability) + `add_dependency`
+- [x] `POST`/`DELETE /roadmap/tasks/{id}/dependencies` (cycle → 409 `DEPENDENCY_CYCLE`, dup → idempotent 200)
+- [x] `GET /roadmap/dependencies` graph + populate tree `depends_on`/`dependency_count`
+- [x] `GET /roadmap/templates` gallery + `GET /roadmap/templates/{id}` preview
+- [x] `POST /roadmap/templates/{id}/apply` (append + dedup + `roadmap.template.applied`)
+- [x] Live E2E extension + SOP + FE integration guide update — `e2e/test_roadmap.py` (extended), `docs/sop/2026-08-22-roadmap-deps-templates.md`, `docs/fe-integration-guide-roadmap.md` (updated)
+- [ ] _Deferred:_ `add_dependency`/`apply_template` no-row-lock race under concurrent double-calls (benign, same class as Slice 1's `_next_order`) · `roadmap.template.applied` has no consumer until Module 20
 
 **Slice 3 — AI Re-plan** — *planned*
 - [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies

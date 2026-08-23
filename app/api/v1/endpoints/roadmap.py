@@ -2,12 +2,13 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import AppError, NotFound
+from app.core.errors import AppError, DependencyCycle, NotFound
 from app.db.models.enums import (
     JobStatus,
     MembershipRole,
@@ -16,7 +17,13 @@ from app.db.models.enums import (
     TaskEffort,
 )
 from app.db.models.membership import Membership
-from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
+from app.db.models.roadmap import (
+    Roadmap,
+    RoadmapMilestone,
+    RoadmapPhase,
+    RoadmapTask,
+    RoadmapTaskDependency,
+)
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
@@ -24,6 +31,7 @@ from app.db.tenancy import require_role, require_workspace
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.schemas.roadmap import (
+    DependencyCreate,
     MilestoneCreate,
     MilestoneUpdate,
     PhaseCreate,
@@ -31,7 +39,10 @@ from app.schemas.roadmap import (
     TaskCreate,
     TaskUpdate,
 )
+from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
+from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
 from app.services.roadmap.service import (
+    apply_template,
     generate_roadmap,
     milestone_overdue,
     person_ref,
@@ -200,6 +211,148 @@ def post_generate(
     job.status = JobStatus.succeeded
     db.commit()
     return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/dependencies")
+def get_dependencies(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _require_roadmap(db, membership)
+    rows = (
+        db.query(
+            RoadmapTask.id,
+            RoadmapTask.title,
+            RoadmapMilestone.id,
+            RoadmapMilestone.title,
+            RoadmapPhase.id,
+            RoadmapPhase.name,
+        )
+        .join(RoadmapMilestone, RoadmapTask.milestone_id == RoadmapMilestone.id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .filter(RoadmapPhase.roadmap_id == roadmap.id)
+        .all()
+    )
+    title_by_id = {r[0]: r[1] for r in rows}
+    nodes = [
+        {
+            "task_id": str(r[0]),
+            "title": r[1],
+            "milestone_id": str(r[2]),
+            "milestone_title": r[3],
+            "phase_id": str(r[4]),
+            "phase_name": r[5],
+        }
+        for r in rows
+    ]
+    dep_map = dependency_map(db, roadmap.id)
+    edges: list[dict[str, str]] = []
+    listing: list[dict[str, Any]] = []
+    for dependent, deps in dep_map.items():
+        for dep in deps:
+            edges.append({"task_id": str(dependent), "depends_on_task_id": str(dep)})
+            listing.append({"task": title_by_id.get(dependent), "depends_on": title_by_id.get(dep)})
+    return success_response({"nodes": nodes, "edges": edges, "list": listing})
+
+
+@router.get("/templates")
+def list_templates(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _roadmap(db, membership)
+    applied = set(roadmap.applied_template_keys) if roadmap else set()
+    items = []
+    for tid, tmpl in GALLERY_TEMPLATES.items():
+        mc, tc = template_counts(tmpl)
+        items.append(
+            {
+                "id": tid,
+                "title": tmpl["title"],
+                "stage": tmpl["stage"],
+                "category": tmpl["category"],
+                "milestone_count": mc,
+                "task_count": tc,
+                "applied": tid in applied,
+            }
+        )
+    return success_response(items)
+
+
+@router.get("/templates/{template_id}")
+def preview_template(
+    template_id: str,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    tmpl = GALLERY_TEMPLATES.get(template_id)
+    if tmpl is None:
+        raise NotFound()
+    mc, tc = template_counts(tmpl)
+    phases = [
+        {
+            "name": ph["name"],
+            "milestones": [
+                {
+                    "title": ms["title"],
+                    "tasks": [{"title": tk["title"], "effort": tk["effort"]} for tk in ms["tasks"]],
+                }
+                for ms in ph["milestones"]
+            ],
+        }
+        for ph in tmpl["phases"]
+    ]
+    return success_response(
+        {
+            "id": tmpl["id"],
+            "title": tmpl["title"],
+            "stage": tmpl["stage"],
+            "category": tmpl["category"],
+            "milestone_count": mc,
+            "task_count": tc,
+            "phases": phases,
+        }
+    )
+
+
+@router.post("/templates/{template_id}/apply")
+def apply_template_ep(
+    template_id: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    tmpl = GALLERY_TEMPLATES.get(template_id)
+    if tmpl is None:
+        raise NotFound()
+    startup = _startup(db, membership)
+    roadmap = _roadmap(db, membership) or generate_roadmap(db, startup, actor=user)
+    if template_id in roadmap.applied_template_keys:
+        db.commit()
+        return success_response(
+            {
+                "already_applied": True,
+                "added": {"phases": 0, "milestones": 0, "tasks": 0},
+            }
+        )
+    added = apply_template(db, roadmap, tmpl)
+    event_bus.publish(
+        "roadmap.template.applied",
+        {
+            "startup_id": str(membership.startup_id),
+            "roadmap_id": str(roadmap.id),
+            "template_id": template_id,
+            "added": added,
+        },
+    )
+    db.commit()
+    return JSONResponse(
+        status_code=201,
+        content=success_response({"already_applied": False, "added": added}),
+    )
 
 
 @router.post("/phases", status_code=201)
@@ -399,5 +552,59 @@ def delete_task_ep(
     db.flush()
     milestone = db.query(RoadmapMilestone).filter_by(id=milestone_id).one()
     recompute_milestone_progress(db, milestone)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/tasks/{task_id}/dependencies", status_code=201)
+def create_dependency_ep(
+    task_id: uuid.UUID,
+    body: DependencyCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    dependent = _task(db, membership, task_id)  # 404 if foreign
+    if body.depends_on_task_id == dependent.id:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "A task cannot depend on itself.",
+            422,
+            field_errors=[
+                {"field": "depends_on_task_id", "message": "A task cannot depend on itself."}
+            ],
+        )
+    dependency = _task(db, membership, body.depends_on_task_id)  # 404 if foreign
+    roadmap = _require_roadmap(db, membership)
+    if would_create_cycle(db, roadmap.id, dependent.id, dependency.id):
+        raise DependencyCycle(
+            message=(
+                f"That would create a loop — {dependency.title} already depends on "
+                f"{dependent.title}."
+            )
+        )
+    _row, created = add_dependency(db, dependent.id, dependency.id)
+    db.commit()
+    payload = {"task_id": str(dependent.id), "depends_on_task_id": str(dependency.id)}
+    return JSONResponse(status_code=(201 if created else 200), content=success_response(payload))
+
+
+@router.delete("/tasks/{task_id}/dependencies/{depends_on_task_id}")
+def delete_dependency_ep(
+    task_id: uuid.UUID,
+    depends_on_task_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    dependent = _task(db, membership, task_id)  # 404 if foreign
+    edge = (
+        db.query(RoadmapTaskDependency)
+        .filter_by(task_id=dependent.id, depends_on_task_id=depends_on_task_id)
+        .first()
+    )
+    if edge is None:
+        raise NotFound()
+    db.delete(edge)
     db.commit()
     return success_response({"deleted": True})

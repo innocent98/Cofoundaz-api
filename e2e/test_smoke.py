@@ -60,6 +60,12 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/roadmap/milestones/{milestone_id}",
         "/api/v1/roadmap/tasks",
         "/api/v1/roadmap/tasks/{task_id}",
+        "/api/v1/roadmap/dependencies",
+        "/api/v1/roadmap/tasks/{task_id}/dependencies",
+        "/api/v1/roadmap/tasks/{task_id}/dependencies/{depends_on_task_id}",
+        "/api/v1/roadmap/templates",
+        "/api/v1/roadmap/templates/{template_id}",
+        "/api/v1/roadmap/templates/{template_id}/apply",
     ]:
         assert p in paths, f"missing route {p}"
 

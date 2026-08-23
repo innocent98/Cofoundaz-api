@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "id": "validation-sprint",
+      "title": "Validation sprint",
+      "stage": "validation",
+      "category": "Fintech",
+      "milestone_count": 2,
+      "task_count": 3,
+      "applied": false
+    },
+    {
+      "id": "mvp-build",
+      "title": "MVP build",
+      "stage": "build",
+      "category": "Fintech",
+      "milestone_count": 1,
+      "task_count": 2,
+      "applied": false
+    },
+    {
+      "id": "go-to-market",
+      "title": "Go-to-market",
+      "stage": "launch",
+      "category": "B2C",
+      "milestone_count": 1,
+      "task_count": 2,
+      "applied": false
+    },
+    {
+      "id": "pre-seed-raise",
+      "title": "Pre-seed raise",
+      "stage": null,
+      "category": "General",
+      "milestone_count": 2,
+      "task_count": 4,
+      "applied": false
+    },
+    {
+      "id": "company-formation",
+      "title": "Company formation",
+      "stage": null,
+      "category": "Nigeria",
+      "milestone_count": 2,
+      "task_count": 4,
+      "applied": false
+    },
+    {
+      "id": "scale-playbook",
+      "title": "Scale playbook",
+      "stage": "scale",
+      "category": "General",
+      "milestone_count": 1,
+      "task_count": 2,
+      "applied": false
+    }
+  ],
+  "meta": null
+}

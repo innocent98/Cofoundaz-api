@@ -3,7 +3,10 @@ auto-generates the roadmap inline, from `app/services/onboarding/complete.py`
 calling `generate_roadmap` synchronously), walks the full tree + phase/
 milestone/task CRUD + status-driven progress recompute, then proves the role
 boundary (team_member can edit, mentor can read but not write) and the
-cross-tenant 404 guard on phase/milestone lookups.
+cross-tenant 404 guard on phase/milestone lookups. It then covers Slice-2:
+task dependencies (create, cycle rejection, the whole-roadmap graph, and
+`depends_on` on the tree) and the template gallery (list, preview, apply,
+idempotent re-apply).
 
 Every response body along the way is captured to `e2e/_captures/roadmap/*.json`
 -- those files are the verbatim source for `docs/fe-integration-guide-roadmap.md`
@@ -228,3 +231,105 @@ def test_roadmap_journey(base_url, make_verified_user, mailbox, unique_email, ca
         )
         assert cross_milestone.status_code == 404, cross_milestone.text
         assert cross_milestone.json()["error"]["code"] == "NOT_FOUND"
+
+        # 10. Dependencies -- create two tasks under our (first founder's)
+        # milestone, then wire task_a -> depends on -> task_b.
+        task_a = c.post(
+            "/api/v1/roadmap/tasks",
+            headers=wh,
+            json={"milestone_id": milestone_id, "title": "Task A"},
+        )
+        assert task_a.status_code == 201, task_a.text
+        task_a_id = task_a.json()["data"]["id"]
+
+        task_b = c.post(
+            "/api/v1/roadmap/tasks",
+            headers=wh,
+            json={"milestone_id": milestone_id, "title": "Task B"},
+        )
+        assert task_b.status_code == 201, task_b.text
+        task_b_id = task_b.json()["data"]["id"]
+
+        dep_create = c.post(
+            f"/api/v1/roadmap/tasks/{task_a_id}/dependencies",
+            headers=wh,
+            json={"depends_on_task_id": task_b_id},
+        )
+        assert dep_create.status_code == 201, dep_create.text
+        assert dep_create.json()["data"] == {
+            "task_id": task_a_id,
+            "depends_on_task_id": task_b_id,
+        }
+        capture("roadmap", "dependency_create", dep_create)
+
+        # 11. The reverse edge (B depends on A) would close a loop -- rejected.
+        dep_cycle = c.post(
+            f"/api/v1/roadmap/tasks/{task_b_id}/dependencies",
+            headers=wh,
+            json={"depends_on_task_id": task_a_id},
+        )
+        assert dep_cycle.status_code == 409, dep_cycle.text
+        assert dep_cycle.json()["error"]["code"] == "DEPENDENCY_CYCLE"
+        capture("roadmap", "dependency_cycle", dep_cycle)
+
+        # 12. GET /roadmap/dependencies -- the whole-roadmap graph.
+        graph = c.get("/api/v1/roadmap/dependencies", headers=wh)
+        assert graph.status_code == 200, graph.text
+        graph_data = graph.json()["data"]
+        assert {"task_id": task_a_id, "depends_on_task_id": task_b_id} in graph_data["edges"]
+        assert any(n["task_id"] == task_a_id for n in graph_data["nodes"])
+        capture("roadmap", "dependencies_graph", graph)
+
+        # 13. Re-GET the tree -- task A's `depends_on` now lists task B (from
+        # `serialize_tree`'s dependency_map, not the stubbed task-CRUD output).
+        tree_with_deps = c.get("/api/v1/roadmap", headers=wh)
+        assert tree_with_deps.status_code == 200, tree_with_deps.text
+        all_tasks = [
+            t
+            for p in tree_with_deps.json()["data"]["phases"]
+            for m in p["milestones"]
+            for t in m["tasks"]
+        ]
+        our_task_a = next(t for t in all_tasks if t["id"] == task_a_id)
+        assert our_task_a["depends_on"] == [task_b_id]
+        capture("roadmap", "get_tree_with_deps", tree_with_deps)
+
+        # 14. Templates gallery -- mvp-build is listed, not yet applied.
+        templates_list = c.get("/api/v1/roadmap/templates", headers=wh)
+        assert templates_list.status_code == 200, templates_list.text
+        mvp_entry = next(t for t in templates_list.json()["data"] if t["id"] == "mvp-build")
+        assert mvp_entry["applied"] is False
+        capture("roadmap", "templates_list", templates_list)
+
+        # 15. Template preview -- full phase/milestone/task breakdown.
+        template_preview = c.get("/api/v1/roadmap/templates/mvp-build", headers=wh)
+        assert template_preview.status_code == 200, template_preview.text
+        assert template_preview.json()["data"]["id"] == "mvp-build"
+        capture("roadmap", "template_preview", template_preview)
+
+        # 16. Apply the template -- first application actually adds content.
+        template_apply = c.post("/api/v1/roadmap/templates/mvp-build/apply", headers=wh)
+        assert template_apply.status_code == 201, template_apply.text
+        apply_data = template_apply.json()["data"]
+        assert apply_data["already_applied"] is False
+        assert apply_data["added"]["phases"] >= 1
+        assert apply_data["added"]["milestones"] >= 1
+        assert apply_data["added"]["tasks"] >= 1
+        capture("roadmap", "template_apply", template_apply)
+
+        # 17. Re-apply -- idempotent no-op, already_applied.
+        template_apply_noop = c.post("/api/v1/roadmap/templates/mvp-build/apply", headers=wh)
+        assert template_apply_noop.status_code == 200, template_apply_noop.text
+        assert template_apply_noop.json()["data"] == {
+            "already_applied": True,
+            "added": {"phases": 0, "milestones": 0, "tasks": 0},
+        }
+        capture("roadmap", "template_apply_noop", template_apply_noop)
+
+        # 18. The gallery now reflects the applied state.
+        templates_list_after = c.get("/api/v1/roadmap/templates", headers=wh)
+        assert templates_list_after.status_code == 200, templates_list_after.text
+        mvp_entry_after = next(
+            t for t in templates_list_after.json()["data"] if t["id"] == "mvp-build"
+        )
+        assert mvp_entry_after["applied"] is True
