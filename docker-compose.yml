@@ -8,15 +8,26 @@ services:
       - ./app:/app/app
     env_file:
       - .env
+    environment:
+      # Inside the compose network the API reaches Postgres/Redis by SERVICE NAME,
+      # not localhost (localhost = the api container itself). These override the
+      # host-oriented URLs in .env so the container connects to the sibling services.
+      DATABASE_URL: postgresql://user:password@db:5432/cofoundaz-api_db
+      REDIS_URL: redis://redis:6379/0
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # Use python (always in the image) rather than curl (not installed) so the
+      # check reflects the app, not a missing binary. urlopen raises on non-2xx.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
   db:
     image: postgres:17-alpine
@@ -30,6 +41,12 @@ services:
     ports:
       - "5432:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d cofoundaz-api_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -37,6 +54,11 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
