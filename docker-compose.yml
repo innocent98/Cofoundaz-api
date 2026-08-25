@@ -8,6 +8,12 @@ services:
       - ./app:/app/app
     env_file:
       - .env
+    environment:
+      # Inside the compose network the API reaches Postgres/Redis by SERVICE NAME,
+      # not localhost (localhost = the api container itself). These override the
+      # host-oriented URLs in .env so the container connects to the sibling services.
+      DATABASE_URL: postgresql://user:password@db:5432/cofoundaz-api_db
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - db
       - redis
