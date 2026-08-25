@@ -45,24 +45,36 @@ The two run contexts need different addresses, so each lives in its correct laye
 
 | File | Change |
 |---|---|
-| `docker-compose.yml` | new `api.environment` with `DATABASE_URL=…@db:5432/…`, `REDIS_URL=redis://redis:6379/0` |
+| `docker-compose.yml` | new `api.environment` with `DATABASE_URL=…@db:5432/…`, `REDIS_URL=redis://redis:6379/0`; `db`/`redis` healthchecks + `api.depends_on: condition: service_healthy`; api healthcheck switched `curl` → `python` |
 | `.env` (local, gitignored) | host-side ports `5433→5432`, `6378→6379` (DATABASE_URL, REDIS_URL, TEST_DATABASE_URL) |
 | `.env.example` | comment explaining host-vs-container addressing |
+
+### Startup ordering + healthchecks (added in the same pass)
+
+- **`db` healthcheck** (`pg_isready`) + **`redis` healthcheck** (`redis-cli ping`), and the `api`
+  now `depends_on: { db: service_healthy, redis: service_healthy }` — so on a cold
+  `docker compose up` the API waits until Postgres/Redis actually accept connections, not just
+  until the containers exist (avoids a startup race that could reproduce a transient version of
+  this same error).
+- **API healthcheck fixed:** it used `curl`, which is **not installed in the image**, so the
+  container was permanently marked `unhealthy` (`exec: "curl": not found`) even though `/health`
+  returned `200`. Switched to `python -c "urllib.request.urlopen(...)"` (Python is always in the
+  image). All three services now report `healthy`.
 
 ## Verification
 
 - From inside the container: `db:5432` / `redis:6379` reachable; `localhost:5433` / `:6378` refused.
 - After `docker compose up -d api`: `printenv DATABASE_URL` → `…@db:5432/…`.
 - `POST /api/v1/auth/signup` → **`201`** with the standard envelope (was `500`).
+- Cold `docker compose up -d`: `db Waiting → Healthy`, `redis Waiting → Healthy`, then api starts;
+  `docker compose ps` → all three `healthy`.
 
 ## Operate / roll back
 
-- Apply: `docker compose up -d api` (recreates the container with the new env).
-- Roll back: revert the `docker-compose.yml` `environment:` block.
+- Apply: `docker compose up -d` (recreates with the new env + health gating).
+- Roll back: revert the `docker-compose.yml` `environment:` / `healthcheck` / `depends_on` changes.
 
 ## Follow-ups (non-blocking)
 
-- Consider a `db` healthcheck + `depends_on: condition: service_healthy` so the API waits for
-  Postgres to accept connections on cold `docker compose up` (avoids a startup race).
 - If a host Postgres already occupies `5432`, republish the compose db on a free host port and
   update `.env` host-side URLs to match (the container override is unaffected).
