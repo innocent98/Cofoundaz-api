@@ -154,7 +154,11 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [ ] **Module 04 — Today's Mission**
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
+- [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
+
+**Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
 
 ---
 
