@@ -97,7 +97,7 @@ def test_full_onboarding_journey(base_url, make_verified_user, mailbox, unique_e
         assert len(data["job_ids"]) == 2 and data["assessment_pending"] is True
         statuses_by_type = {}
         for jid in data["job_ids"]:
-            job = founder.get(f"/api/v1/jobs/{jid}")
+            job = founder.get(f"/api/v1/jobs/{jid}", headers=_auth_header(access))
             assert job.status_code == 200, job.text
             job_data = job.json()["data"]
             statuses_by_type[job_data["type"]] = job_data["status"]
