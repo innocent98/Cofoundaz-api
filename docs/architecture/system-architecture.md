@@ -228,7 +228,7 @@ stateDiagram-v2
 | Module | Method | Path | Auth |
 |---|---|---|---|
 | health | GET | `/health` · `/api/v1/health` | public |
-| jobs | GET | `/api/v1/jobs/{job_id}` | ⚠️ **public — no auth** (see §10) |
+| jobs | GET | `/api/v1/jobs/{job_id}` | member of the job's workspace (fixed 2026-08-26) |
 | auth | POST | `/auth/signup` · `/auth/verify` · `/auth/verify/resend` | public |
 | auth | POST | `/auth/login` · `/auth/mfa/challenge` · `/auth/refresh` · `/auth/logout` | public (credential/token) |
 | auth | POST | `/auth/password/forgot` · `/auth/password/reset` | public |
@@ -269,7 +269,7 @@ Being explicit here stops a diagram implying a shipped feature.
 ## 8. Open questions
 
 **Blocking nothing today, worth deciding before the surface grows:**
-- **`GET /jobs/{job_id}` is unauthenticated and cross-tenant readable** (🟡 CODE `jobs.py:16`). Job IDs are UUIDv4 (unguessable) and payloads are trivial now, but this should require auth + workspace scoping before any job carries sensitive result data. → **backend / security**
+- ✅ **RESOLVED (2026-08-26)** — ~~`GET /jobs/{job_id}` was unauthenticated and cross-tenant readable~~. Now requires a verified user + active membership of the job's workspace; uniform 404 otherwise (`jobs.py`, `docs/sop/2026-08-26-jobs-endpoint-auth.md`).
 - **Roadmap milestone/task status has no transition guard** — `PATCH` does a generic `setattr`, so any status → any status (`roadmap.py:456`). Intentional (founder freedom) or should `done`→`todo` etc. be constrained? → **product**
 - **Dead enum states** (§5.3): should `MembershipStatus.suspended/removed`, `InvitationStatus.expired/revoked`, `AssessmentStatus.abandoned` be wired (they imply features — member suspension, invite revocation, assessment abandonment), or removed from the enums to stop implying capability? → **product / backend**
 - **Concurrent double-apply / double-add-dependency** have no row lock (benign under single-user editing; noted in SOPs). Revisit if multi-editor concurrency becomes real. → **backend**
@@ -287,7 +287,7 @@ Being explicit here stops a diagram implying a shipped feature.
 | Endpoint inventory (55 routes) | 🟡 CODE — extracted from `app/api/v1/endpoints/` (2026-08-25) |
 | Data model (22 tables, 17 enums, state machines) | 🟡 CODE — `app/db/models/` + migrations |
 | Events (14) / jobs (3) / seams | 🟡 CODE — `event_bus.publish` / `job_dispatcher.enqueue` call sites |
-| `GET /jobs/{id}` has no auth | 🟡 CODE — `jobs.py:16`, read directly this pass |
+| `GET /jobs/{id}` tenancy | 🟢 LIVE — secured 2026-08-26 (member-of-workspace, uniform 404); 5 tests + e2e |
 | Auth/Onboarding/Assessment exact response bodies | ⚠️ UNVERIFIED as captures — behaviour is 🟢 LIVE (their E2E journeys pass) but payloads not yet written to `_captures/`; shapes above are 🟡 CODE |
 | Anything requiring a real provider (SMTP send, OAuth, payments) | ⚠️ UNVERIFIED — not wired (§7) |
 
@@ -301,7 +301,7 @@ Checked doc/claim vs. reality this sync. Nothing was silently "fixed" — confli
 |---|---|---|---|
 | "~57 endpoints" | `README.md` | 55 under `/api/v1` + 2 top-level = 57 | ✅ accurate |
 | "328 unit tests" | `README.md` | 313 test **functions**; **328 passing cases** (parametrization) | 🟡 imprecise wording — both numbers true; prefer "313 tests / 328 cases" |
-| `GET /jobs/{job_id}` is a normal protected endpoint | (implied by "jobs" being workspace work) | **No auth dependency** — public, cross-tenant readable | ⚠️ **real gap** — see §8 |
+| `GET /jobs/{job_id}` unauthenticated | drift found this sync | **Was** public/cross-tenant; **now** member-scoped, uniform 404 | ✅ resolved 2026-08-26 |
 | Status enums model real lifecycles | enum definitions | 8 enum values across 5 enums are **never written** by any code path (§5.3) | ⚠️ drift — enums over-state capability |
 | "roadmap.generate is an async job" | the `202 {job_id}` contract | Runs **inline**, job hand-set to `succeeded`; no worker | 🟡 contract-shaped, synchronous in truth (documented in §3) |
 | Roadmap status follows todo→in_progress→done | the enum's natural reading | `PATCH` enforces **no** transition graph (any→any) | 🟡 drift — behaviour looser than the enum implies |
