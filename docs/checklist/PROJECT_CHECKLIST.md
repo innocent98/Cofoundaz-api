@@ -11,19 +11,21 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-27 · `chore/production-deployment-hardening` branch (production deployment hardening + code/quality/security scanning wave: docker-compose.prod.yml, hardened Dockerfile, 10-job CI, CodeQL workflow, Dependabot, CD workflow, readiness endpoint — PR #18, not yet merged), merged with `main` at Roadmap Slice 3 (PR #16)_
+_Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and Module 04 Today's Mission (migration `0009`, PR #17) merged to `main`; migration chain linearised `0007 → 0008 → 0009`. Merged into `chore/production-deployment-hardening` (production deployment hardening + code/quality/security scanning wave — PR #18, open)._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 4 fully complete (01 Auth+Onboarding · 05 Roadmap · 06 Health Score · 07 Assessment) · 21 not started (02·03·04·08–26).
+**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) · 21 not started (02·03·08–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 4 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) |
+| ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
 | 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 21 | Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ⬜ Planned / next | 21 | Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+
+**Health at a glance:** ~63 endpoints · 398 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 **Health at a glance:** ~60 endpoints · 353 unit tests (real Postgres) + 26 live E2E · 98.39% coverage · black/isort/ruff (incl. C901)/mypy clean · pylint 9.94/10 · radon average complexity **A (2.30)**, every module MI **A** · bandit / hadolint / `trivy config` / checkov all exit 0 · zero AI-attribution trailers.
 
@@ -116,7 +118,7 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 ---
 
-## ✅ Module 05 — Roadmap — *complete, all 3 slices shipped (branch `feat/roadmap-replan`, not yet merged to `main`)*
+## ✅ Module 05 — Roadmap — *complete, all 3 slices merged to `main` (Slice 3 via PR #16)*
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
@@ -132,7 +134,7 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
 - [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
 
-**Slice 2 — Dependencies + Templates** — *✅ done (branch `feat/roadmap-deps-templates`, Tasks 1–9; not yet merged to `main`)*
+**Slice 2 — Dependencies + Templates** — *✅ done, merged to `main`*
 - [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
 - [x] `GALLERY_TEMPLATES` static catalog (named, industry-tagged packs) + counts helper
 - [x] Migration `0007_roadmap_applied_templates` (`applied_template_keys` JSONB on `roadmaps`)
@@ -144,7 +146,7 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E extension + SOP + FE integration guide update — `e2e/test_roadmap.py` (extended), `docs/sop/2026-08-22-roadmap-deps-templates.md`, `docs/fe-integration-guide-roadmap.md` (updated)
 - [ ] _Deferred:_ `add_dependency`/`apply_template` no-row-lock race under concurrent double-calls (benign, same class as Slice 1's `_next_order`) · `roadmap.template.applied` has no consumer until Module 20
 
-**Slice 3 — AI Re-plan** — *✅ done (branch `feat/roadmap-replan`, Tasks 1–7; not yet merged to `main`)* — 2026-08-27
+**Slice 3 — AI Re-plan** — *✅ done, merged to `main` (PR #16, Tasks 1–7)* — 2026-08-27
 - [x] Scope + locked decisions (slip-and-cascade along dependency DAG · stateless preview + deterministic apply · `roadmap_replans` history table + milestone marker columns · templated reason v1 · `roadmap.replan` job stays an unconsumed stub)
 - [x] Migration `0008_roadmap_replan` (`roadmap_replans` table + `last_replanned_at`/`last_replan_reason` on `roadmap_milestones`) + `RoadmapReplan` model
 - [x] `detect_drift` + `compute_replan` cascade engine (`REPLAN_BUFFER_DAYS = 7`, milestone-precedence DAG, max-not-sum shift propagation, templated reason)
@@ -157,10 +159,36 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 
 ---
 
-## ✅ Deployment & Infrastructure — *shipped 2026-08-27, uncommitted working tree*
+## ✅ Module 04 — Today's Mission — *shipped, merged to `main` (PR #17)*
+
+_A daily 1–3 task mission generated lazily-on-read from the founder's roadmap · complete/snooze/reorder/reject · custom tasks · derived streak · history + weekly % · settings. Read-only against the roadmap; migration `0009`._
+
+**Design (brainstorming) — locked decisions:**
+- [x] Generation → **inline + lazy-on-read** (`GET /missions/today` generates today's mission if none exists; no cron/worker — 06:00 cron + push deferred to Module 20)
+- [x] Roadmap link → **soft, unconstrained** `mission_tasks.roadmap_task_id` (nullable UUID, **no FK**) — mission is a snapshot, decoupled from roadmap tables
+- [x] Streak → **derived, not stored** (consecutive completed days ending today/yesterday)
+- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored rationale deferred to Module 03
+- [x] Spec → self-review → plan (7 TDD tasks) — `docs/superpowers/specs/2026-08-26-todays-mission-design.md`, `docs/superpowers/plans/2026-08-26-todays-mission.md`
+
+**Build (subagent-driven, Tasks 1–7):**
+- [x] Enums (`MissionStatus`, `MissionTaskStatus`) + 3 models (`missions`/`mission_tasks`/`mission_settings`) + factories
+- [x] Migration `0009_mission` (sibling of `0008_roadmap_replan` off `0007`; merge revision reconciles later)
+- [x] Generation service — `get_or_generate_today` (read-only roadmap selection + carry-forward snoozed + templated reasons) + derived `streak`
+- [x] `GET /missions/today` (lazy-gen + `no_roadmap` empty-state + weekends-off empty mission + streak)
+- [x] `GET`/`PATCH /missions/settings` (defaults lazily created · `mission_size` clamp 1–3 → 422)
+- [x] `POST /missions/tasks` (custom task, appended) + `PATCH /missions/tasks/{id}` (complete/snooze/reorder/reject)
+- [x] Events: `mission.task.completed` · `mission.completed` · `mission.streak.milestone` (7/30/100)
+- [x] `GET /missions/history` (per-day completed/total + rolling weekly completion %)
+- [x] Access: reads = any member (mentor incl.) · writes = founder/team_member (mentor → 403) · cross-workspace → uniform 404
+- [x] Live E2E (`e2e/test_mission.py`, 6 captures) + smoke openapi surface (5 mission paths)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
+- [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
+
+## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
-all verified locally; nothing has touched a real VPS or GitHub Actions yet. See
+verified locally, and the CI workflows have now had a first real run on GitHub
+(which found four defects, since fixed). Nothing has touched a real VPS. See
 `docs/sop/2026-08-27-production-deployment-hardening.md`._
 
 - [x] `docker-compose.prod.yml` — no host-published Postgres/Redis, `migrate` one-shot gated by
@@ -263,7 +291,6 @@ all verified locally; nothing has touched a real VPS or GitHub Actions yet. See
 
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 04 — Today's Mission**
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
 - [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`

@@ -11,6 +11,8 @@ from app.db.models.enums import (
     InvitationStatus,
     MembershipRole,
     MembershipStatus,
+    MissionStatus,
+    MissionTaskStatus,
     RecommendationEffort,
     RecommendationStatus,
     RoadmapStatus,
@@ -20,6 +22,7 @@ from app.db.models.enums import (
 from app.db.models.health_score import HealthRecommendation, HealthScore, HealthScoreHistory
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
+from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.roadmap import (
     Roadmap,
     RoadmapMilestone,
@@ -278,6 +281,63 @@ def create_dependency(
     db.add(d)
     db.flush()
     return d
+
+
+def create_mission(
+    db: Session,
+    startup: Startup,
+    *,
+    mission_date: date | None = None,
+    generated_by: str = "system",
+    status: MissionStatus = MissionStatus.pending,
+) -> Mission:
+    m = Mission(
+        startup_id=startup.id,
+        mission_date=mission_date if mission_date is not None else date.today(),
+        generated_by=generated_by,
+        status=status,
+    )
+    db.add(m)
+    db.flush()
+    return m
+
+
+def create_mission_task(
+    db: Session,
+    mission: Mission,
+    *,
+    title: str = "T",
+    effort: TaskEffort = TaskEffort.medium,
+    status: MissionTaskStatus = MissionTaskStatus.todo,
+    order: int = 0,
+    roadmap_task_id: uuid.UUID | None = None,
+) -> MissionTask:
+    t = MissionTask(
+        mission_id=mission.id,
+        title=title,
+        effort=effort,
+        status=status,
+        order=order,
+        roadmap_task_id=roadmap_task_id,
+    )
+    db.add(t)
+    db.flush()
+    return t
+
+
+def create_mission_settings(
+    db: Session,
+    startup: Startup,
+    *,
+    mission_size: int = 3,
+    weekend_missions: bool = False,
+) -> MissionSettings:
+    st = MissionSettings(
+        startup_id=startup.id, mission_size=mission_size, weekend_missions=weekend_missions
+    )
+    db.add(st)
+    db.flush()
+    return st
 
 
 def create_replan(
