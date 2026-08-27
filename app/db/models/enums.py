@@ -114,3 +114,15 @@ class TaskEffort(str, enum.Enum):
     small = "small"
     medium = "medium"
     large = "large"
+
+
+class MissionStatus(str, enum.Enum):
+    pending = "pending"
+    complete = "complete"
+
+
+class MissionTaskStatus(str, enum.Enum):
+    todo = "todo"
+    done = "done"
+    snoozed = "snoozed"
+    rejected = "rejected"

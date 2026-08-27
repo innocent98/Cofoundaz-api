@@ -1,0 +1,8 @@
+{
+  "data": {
+    "mission_size": 3,
+    "delivery_time": "06:00:00",
+    "weekend_missions": false
+  },
+  "meta": null
+}
