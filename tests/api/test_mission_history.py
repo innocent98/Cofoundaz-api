@@ -77,9 +77,9 @@ def test_history_total_excludes_rejected_tasks(client, db):
 
 
 def test_weekly_completion_pct_over_rolling_seven_days(client, db):
-    # Window = the last 7 days ending today (inclusive). 4 missions inside the
-    # window (3 complete, 1 pending) => 75%. A complete mission 10 days back is
-    # outside the window and must not move the number.
+    # Window = the last 7 days ending today (inclusive). 4 *non-empty* missions
+    # inside the window (3 complete, 1 pending) => 75%. A complete mission 10 days
+    # back is outside the window and must not move the number.
     _u, s, h = _member(db)
     for d, status in (
         (1, MissionStatus.complete),
@@ -87,15 +87,49 @@ def test_weekly_completion_pct_over_rolling_seven_days(client, db):
         (3, MissionStatus.complete),
         (4, MissionStatus.pending),
     ):
-        create_mission(db, s, mission_date=date.today() - timedelta(days=d), status=status)
-    create_mission(
+        m = create_mission(db, s, mission_date=date.today() - timedelta(days=d), status=status)
+        create_mission_task(db, m, title="t", status=MissionTaskStatus.todo)
+    out = create_mission(
         db, s, mission_date=date.today() - timedelta(days=10), status=MissionStatus.complete
     )
+    create_mission_task(db, out, title="t", status=MissionTaskStatus.done)
     db.commit()
 
     r = client.get("/api/v1/missions/history", headers=h)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["weekly_completion_pct"] == 75
+
+
+def test_weekly_pct_excludes_empty_weekend_missions(client, db):
+    # A weekends-off founder who opens the app on Sat/Sun materialises empty,
+    # perpetually-`pending` weekend missions (0 tasks). Those must NOT count against
+    # the rate: 5 complete non-empty missions + 2 empty pending => 100%, not ~71%.
+    _u, s, h = _member(db)
+    for d in range(1, 6):
+        m = create_mission(
+            db, s, mission_date=date.today() - timedelta(days=d), status=MissionStatus.complete
+        )
+        create_mission_task(db, m, title="done", status=MissionTaskStatus.done)
+    for d in (6, 0):  # today-6 and today, both empty + pending
+        create_mission(db, s, mission_date=date.today() - timedelta(days=d))
+    db.commit()
+
+    r = client.get("/api/v1/missions/history", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["weekly_completion_pct"] == 100
+
+
+def test_weekly_pct_empty_only_window_is_zero(client, db):
+    # Every mission in the window has zero non-rejected tasks -> denominator filters
+    # to 0 -> 0%, not a divide-by-zero.
+    _u, s, h = _member(db)
+    for d in (1, 2):
+        create_mission(db, s, mission_date=date.today() - timedelta(days=d))
+    db.commit()
+
+    r = client.get("/api/v1/missions/history", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["weekly_completion_pct"] == 0
 
 
 def test_history_empty_returns_zero_pct_no_crash(client, db):

@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import func
+from sqlalchemy import exists, func
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus, TaskEffort
@@ -206,18 +206,30 @@ def serialize_mission(db: Session, mission: Mission, streak: int) -> dict:
 
 
 def _weekly_completion_pct(db: Session, startup: Startup) -> int:
-    """Share (rounded %) of the workspace's missions in the last 7 days (ending
-    today, inclusive) that reached `complete`.
+    """Share (rounded %) of the workspace's *non-empty* missions in the last 7 days
+    (ending today, inclusive) that reached `complete`.
 
-    The denominator is missions that actually *exist* in the window, not 7 -- a
-    weekends-off day simply has no mission and doesn't count against the founder.
-    Returns 0 for an empty window (no divide-by-zero)."""
+    Only missions with at least one non-`rejected` task count -- toward both the
+    numerator and the denominator. This deliberately excludes the empty, perpetually
+    `pending` mission that a weekends-off day materialises (`get_or_generate_today`
+    creates the row, then the weekend branch returns it task-less): counting those
+    would punish exactly the "weekends off" behaviour the product intends. An
+    all-rejected mission is excluded for the same reason. A genuinely-complete
+    mission always has >=1 `done` task, so it is never excluded. Returns 0 when the
+    filtered window is empty (no divide-by-zero -- the short-circuit is applied
+    AFTER the non-empty filter)."""
     today = _today()
     window_start = today - timedelta(days=_WEEKLY_WINDOW_DAYS - 1)
+    has_actionable_task = (
+        exists()
+        .where(MissionTask.mission_id == Mission.id)
+        .where(MissionTask.status != MissionTaskStatus.rejected)
+    )
     in_window = (
         Mission.startup_id == startup.id,
         Mission.mission_date >= window_start,
         Mission.mission_date <= today,
+        has_actionable_task,
     )
     total = db.query(Mission).filter(*in_window).count()
     if total == 0:
