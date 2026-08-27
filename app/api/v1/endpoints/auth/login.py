@@ -54,7 +54,12 @@ def login(
     if user.mfa_type != MfaType.none:
         ticket = issue_mfa_ticket(user.id)
         db.commit()
-        return success_response({"mfa_required": True, "mfa_ticket": ticket, "access_token": None})
+        # nosec B105 - not a hardcoded password. Bandit pattern-matches the
+        # "access_token" dict key; the value is literally None because MFA is
+        # still pending and no token has been issued yet.
+        return success_response(
+            {"mfa_required": True, "mfa_ticket": ticket, "access_token": None}  # nosec B105
+        )
 
     user.last_login_at = now
     access, refresh = issue_token_pair(

@@ -2,33 +2,81 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Cancel superseded PR runs (pushing three times to a PR should not run three
+  # full pipelines). Do NOT cancel on main: CD is gated on the CI run for a main
+  # commit, and cancelling it would leave that commit permanently un-deployable.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege by default. Jobs that need more (SARIF upload) opt in locally.
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "2.2.1"
+  # NOTE: service images are pinned inline in each job below (postgres:17-alpine)
+  # rather than via env vars - the `env` context is not available inside a job's
+  # `services:` block. Keep them in step with docker-compose.prod.yml by hand.
+  # CI previously ran Postgres 15 while production ran 17; a whole major version
+  # of behaviour difference was tested nowhere.
 
 jobs:
+  # ------------------------------------------------------------------------- #
+  lint:
+    name: Lint & type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: black
+        run: poetry run black --check app tests
+
+      - name: isort
+        run: poetry run isort --check-only app tests
+
+      - name: ruff
+        run: poetry run ruff check app tests
+
+      - name: mypy
+        # `make lint` has always run mypy; CI never did. That gap let type
+        # regressions land on main and only surface for whoever next ran the
+        # Makefile target locally. Verified passing on the current tree
+        # ("Success: no issues found in 91 source files"), so this is a real
+        # gate from day one, not an aspiration.
+        run: poetry run mypy app
+
+  # ------------------------------------------------------------------------- #
   test:
+    name: Unit tests
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
       redis:
-        image: redis:7
-        ports:
-          - 6379:6379
+        image: redis:7-alpine
+        ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -36,52 +84,677 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
 
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.8.4
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+      - name: Create the pytest database
+        # tests/conftest.py drops and recreates every table in TEST_DATABASE_URL,
+        # so it must be a different database from the app's.
+        env:
+          PGPASSWORD: test_password
+        run: |
+          psql -h localhost -U test_user -d test_db -c "CREATE DATABASE cofoundaz_test;"
 
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: pytest
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/cofoundaz_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-secret-key-not-used-outside-ci
+          FIRST_SUPERUSER_EMAIL: admin@test.com
+          FIRST_SUPERUSER_PASSWORD: testpassword
+          LOG_FILE_PATH: ""
+        # Threshold is 95, against 98.28% measured on the tree this gate was
+        # added to. The gap is deliberate slack: a tight 98 would fail CI for
+        # adding a single lightly-covered module, which trains people to lower
+        # the number. 95 still fails loudly on a real regression. Raise it when
+        # coverage is durably higher, never lower it to make a red build green.
+        run: poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=95
 
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          retention-days: 7
 
-    - name: Install project
-      run: poetry install --no-interaction
+  # ------------------------------------------------------------------------- #
+  migrations:
+    name: Migrations (fresh DB, round-trip, drift)
+    runs-on: ubuntu-latest
 
-    - name: Run linting
-      run: |
-        poetry run black --check app tests
-        poetry run isort --check-only app tests
-        poetry run ruff check app tests
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: migrations_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-    - name: Run tests
-      env:
-        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/0
-        SECRET_KEY: test-secret-key-for-ci
-        FIRST_SUPERUSER_EMAIL: admin@test.com
-        FIRST_SUPERUSER_PASSWORD: testpassword
-      run: |
-        poetry run pytest --cov=app --cov-report=xml --cov-report=html
+    env:
+      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/migrations_db
+      SECRET_KEY: ci-secret-key-not-used-outside-ci
+      FIRST_SUPERUSER_EMAIL: admin@test.com
+      FIRST_SUPERUSER_PASSWORD: testpassword
+      LOG_FILE_PATH: ""
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: Exactly one alembic head
+        # Two heads means two branches of history both claim to be "latest", and
+        # `alembic upgrade head` fails at deploy time - on the VPS, mid-deploy,
+        # which is the worst possible place to discover it. Usually caused by two
+        # PRs each adding a revision off the same parent.
+        run: |
+          HEADS=$(poetry run alembic heads | grep -c '(head)')
+          echo "alembic heads found: $HEADS"
+          poetry run alembic heads
+          if [ "$HEADS" -ne 1 ]; then
+            echo "::error::Expected exactly 1 alembic head, found $HEADS. Merge them with 'alembic merge'."
+            exit 1
+          fi
+
+      - name: Upgrade from an empty database
+        # The deploy-time path. If this fails, the migrate service in
+        # docker-compose.prod.yml exits non-zero and the API never starts.
+        run: poetry run alembic upgrade head
+
+      - name: Schema matches the models (no un-generated migration)
+        # Catches the classic "changed a model, forgot to autogenerate" bug.
+        # Without it the drift only surfaces as a runtime UndefinedColumn error
+        # in production.
+        run: poetry run alembic check
+
+      - name: Downgrade to base, then upgrade again
+        # Proves the downgrades are real. All 7 revisions implement genuine
+        # downgrade bodies (op.drop_table / op.drop_index, not `pass`), which is
+        # what makes the documented rollback procedure trustworthy. A migration
+        # you cannot reverse is a one-way door in production.
+        run: |
+          poetry run alembic downgrade base
+          poetry run alembic upgrade head
+
+  # ------------------------------------------------------------------------- #
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: Write a CI .env
+        # scripts/e2e_run.sh boots the real app, and app/core/config.py reads
+        # .env via Pydantic Settings. The script sets DATABASE_URL / EMAIL_BACKEND
+        # itself but not SECRET_KEY or the superuser fields, so Settings would
+        # fail to validate without this file. These are throwaway CI values.
+        run: |
+          cat > .env <<'ENVEOF'
+          PROJECT_NAME=cofoundaz-api
+          ENVIRONMENT=development
+          SECRET_KEY=ci-e2e-secret-key-not-used-outside-ci
+          ALGORITHM=HS256
+          DATABASE_URL=postgresql://user:password@localhost:5432/cofoundaz-api_db
+          REDIS_URL=redis://localhost:6379/0
+          FIRST_SUPERUSER_EMAIL=admin@test.com
+          FIRST_SUPERUSER_PASSWORD=testpassword
+          LOG_FILE_PATH=
+          ENVEOF
+
+      - name: Run the e2e suite
+        # Drives the project's own runner rather than a CI-only reimplementation,
+        # so what CI proves is what a developer reproduces locally with `make e2e`.
+        # The script brings up db+redis via `docker compose` (present on
+        # ubuntu-latest), migrates a scratch `cofoundaz_e2e` database from zero,
+        # boots real uvicorn on :8010, and tears it all down.
+        run: ./scripts/e2e_run.sh
+
+      - name: Upload e2e captures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-captures
+          path: e2e/_captures/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------------- #
+  security:
+    name: Security (secrets, SAST, dependencies)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed to publish Semgrep findings to the repository Security tab.
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # gitleaks scans history, not just the working tree. A secret committed
+          # and then "removed" in a later commit is still in the history and still
+          # compromised; a shallow clone would miss exactly that case.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      # --- 1. Secrets ------------------------------------------------------- #
+      - name: gitleaks (committed secrets)
+        # Run as a pinned container rather than the marketplace action: the
+        # action requires GITLEAKS_LICENSE for organisation-owned repos, and the
+        # container has no such condition.
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            detect --source /repo --redact --verbose --no-banner
+
+      # --- 2. SAST ---------------------------------------------------------- #
+      #
+      # ORDERING IS LOAD-BEARING: every SCANNER runs before any SARIF upload.
+      #
+      # The first real CI run proved why. A SARIF upload failed (private repo, no
+      # GHAS), and because the upload sat between the scanners, GitHub marked the
+      # job failed and SKIPPED every step after it - bandit and pip-audit never
+      # ran at all. The job was red, so nothing shipped; but had anyone "fixed"
+      # that upload with a bare continue-on-error, the job would have gone GREEN
+      # with two blocking security gates silently not executing.
+      #
+      # Scanners first, uploads last. An upload can then never suppress a gate.
+      - name: Semgrep (source patterns)
+        run: |
+          pipx install semgrep
+          semgrep scan \
+            --config p/python \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/jwt \
+            --config p/secrets \
+            --severity ERROR \
+            --error \
+            --metrics off \
+            --sarif --output semgrep.sarif \
+            app/
+
+      # --- 3. Python-specific SAST ------------------------------------------ #
+      - name: bandit (Python SAST)
+        # Complements Semgrep rather than duplicating it. Bandit is Python-aware
+        # and ships checks the public Semgrep rulesets do not carry: weak crypto
+        # primitives (md5/sha1 for security use), `subprocess` with shell=True,
+        # `assert` used for control flow (stripped under `python -O`), insecure
+        # tempfile creation, and yaml.load without a SafeLoader.
+        #
+        # Scoped to app/ - tests legitimately use `assert` everywhere.
+        #
+        # BLOCKS. Verified clean on the current tree (exit 0). The three original
+        # findings were all false positives and carry inline `# nosec <ID>`
+        # annotations with written reasons AT THE SITE.
+        run: poetry run bandit -r app/ --quiet
+
+      # --- 4. Dependencies -------------------------------------------------- #
+      - name: pip-audit (dependency CVEs)
+        # Audits the exact locked PRODUCTION dependency set (--only main), not
+        # the dev tooling, so a finding here is something that actually ships.
+        #
+        # Poetry 2.x moved `export` into a plugin, hence the explicit self add.
+        #
+        # This gate BLOCKS. Accepted CVEs are listed one-per-line with a reason
+        # in .github/security/pip-audit-ignores.txt - an explicit, reviewable
+        # file rather than `continue-on-error: true`.
+        run: |
+          poetry self add poetry-plugin-export
+          poetry export --without-hashes --only main -f requirements.txt -o requirements-prod.txt
+          pipx install pip-audit
+          IGNORES=""
+          while read -r line; do
+            id="${line%%#*}"; id="$(echo "$id" | tr -d '[:space:]')"
+            [ -n "$id" ] && IGNORES="$IGNORES --ignore-vuln $id"
+          done < .github/security/pip-audit-ignores.txt
+          echo "Suppressed advisories: ${IGNORES:-none}"
+          # shellcheck disable=SC2086
+          pip-audit -r requirements-prod.txt --progress-spinner=off $IGNORES
+
+      # --- 5. Publish to the Security tab (BEST EFFORT) --------------------- #
+      - name: Publish Semgrep findings
+        id: sarif_semgrep
+        # continue-on-error, but NOT as a way to hide a scanner failure - the
+        # scanners above have already run and already failed the job on findings
+        # via their exit codes. This only tolerates the UPLOAD being impossible,
+        # which on a private repo without GitHub Advanced Security it is.
+        # The next step makes that visible rather than silent.
+        if: always() && hashFiles('semgrep.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Report code-scanning availability
+        if: always()
+        env:
+          OUTCOME: ${{ steps.sarif_semgrep.outcome }}
+        run: |
+          if [ "${OUTCOME}" = "failure" ]; then
+            echo "::warning title=Code scanning upload unavailable::Semgrep findings were NOT uploaded to the Security tab. This repository is private and GitHub Advanced Security is not enabled. Findings are still ENFORCED - the Semgrep step above fails the build on any ERROR-severity finding. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
+            {
+              echo "### Code scanning upload unavailable"
+              echo ""
+              echo "Semgrep SARIF was **not** uploaded to the Security tab: this repo is private and"
+              echo "GitHub Advanced Security is not enabled."
+              echo ""
+              echo "**Findings are still enforced by exit code** - this is a lost *view*, not a lost *gate*."
+              echo ""
+              echo "To get the Security tab: make the repo public (free) or buy GHAS."
+              echo "See \`docs/deployment/GITHUB_ACTIONS_SETUP.md\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Code scanning upload OK."
+          fi
+
+  # ------------------------------------------------------------------------- #
+  quality:
+    name: Quality (pylint, complexity, Dockerfile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: pylint
+        # BLOCKS. `pylint` was already a declared dev dependency that CI never
+        # ran - decoration rather than a gate. It is wired up here with a scoped
+        # configuration in pyproject.toml ([tool.pylint]) that disables only what
+        # ruff/black/mypy already own plus known SQLAlchemy false positives; every
+        # disable carries a written reason there.
+        #
+        # Threshold measured, not invented: the current tree scores 9.94/10 under
+        # that configuration (down from 527 raw messages to 15 real ones). 9.5
+        # leaves room for a genuinely imperfect change to land without a red
+        # build, while still failing on a real slide in quality.
+        run: poetry run pylint app --fail-under=9.5
+
+      - name: Complexity & maintainability report (radon)
+        # REPORT-ONLY - radon prints, it does not gate. The complexity GATE is
+        # ruff's C901 in the `lint` job (max-complexity = 12, measured against a
+        # current worst of 11), so there is exactly one enforcer and no chance of
+        # two tools disagreeing about the same number.
+        #
+        # This exists so the trend is visible in the job log: current baseline is
+        # average complexity A (2.30) across 301 blocks, with every module's
+        # maintainability index rated A.
+        run: |
+          echo "::group::Cyclomatic complexity (blocks rated B or worse)"
+          poetry run radon cc app -n B -s --total-average
+          echo "::endgroup::"
+          echo "::group::Maintainability index (modules rated below A)"
+          poetry run radon mi app -n B
+          echo "(no rows above means every module is rated A)"
+          echo "::endgroup::"
+
+      - name: hadolint (Dockerfile)
+        # BLOCKS, at the strictest threshold (`info`, set in .hadolint.yaml).
+        # Verified clean on the current Dockerfile. Exactly one rule is ignored
+        # there - DL3008, apt version pinning - with a written justification;
+        # DL3066 was FIXED rather than ignored (USER is now numeric 1000:1000).
+        # PINNED TO v3.5.0 DELIBERATELY: that release ships hadolint v2.15.1,
+        # the exact version verified locally. v3.1.0 shipped hadolint v2.12.0,
+        # which does not resolve the `ARG PYTHON_IMAGE` default in `FROM
+        # ${PYTHON_IMAGE}` and therefore reported DL3006 ("always tag the version
+        # of an image explicitly") against a base image that IS pinned - by
+        # digest. Local passed, CI failed, on the same file and the same config.
+        #
+        # Fixed by matching versions rather than by adding DL3006 to
+        # .hadolint.yaml: suppressing it would mask a genuinely untagged FROM
+        # added later. A gate that disagrees between local and CI is worse than
+        # no gate, so the versions must track.
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: info
+
+  # ------------------------------------------------------------------------- #
+  iac-scan:
+    name: IaC & repo scanning (Trivy fs/config, Checkov)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # ALL SCANS FIRST, UPLOADS LAST - see the note in the `security` job. On
+      # the first real CI run a failed SARIF upload sat mid-job and caused the
+      # `trivy config` gate and Checkov to be SKIPPED entirely.
+
+      - name: Trivy fs (SARIF)
+        # REPORT-ONLY. Finds a DIFFERENT set from the image scan in `build`: it
+        # reads poetry.lock, so it sees the locked dependency graph including
+        # advisories with NO fix available (e.g. ecdsa CVE-2024-23342, which the
+        # image scan hides behind --ignore-unfixed). Also runs the secret scanner.
+        #
+        # It does not BLOCK because pip-audit already gates on the same
+        # dependency CVEs; the value here is the wider view.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          format: sarif
+          output: trivy-fs.sarif
+          severity: HIGH,CRITICAL
+
+      - name: Trivy config (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config.sarif
+          severity: MEDIUM,HIGH,CRITICAL
+
+      - name: Fail on IaC misconfiguration
+        # BLOCKS - and green today (0 misconfigurations on this Dockerfile), so
+        # it is a free ratchet against the hardening eroding.
+        #
+        # SCOPE NOTE: `trivy config` supports Dockerfile, Kubernetes, Terraform,
+        # CloudFormation and Helm. It has NO docker-compose scanner, so the two
+        # compose files are NOT covered here despite being IaC. Neither does
+        # Checkov (no docker_compose framework). Workflow files are covered by
+        # actionlint + shellcheck. See docs/deployment/DEPLOYMENT_GUIDE.md.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: table
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Checkov (GitHub Actions workflows)
+        # BLOCKS. Green today (47 passed / 0 failed / 1 documented skip).
+        #
+        # SCOPE - READ BEFORE ASSUMING IT COVERS COMPOSE: Checkov 3.3.15 has no
+        # `docker_compose` framework at all. Run against the compose files under
+        # the generic `yaml` framework it emits no check_type and no results
+        # whatsoever - not "few findings", literally no policies apply. A job
+        # pointed at compose here could never fail, which is worse than no job.
+        #
+        # What it DOES add is workflow security POLICY, which actionlint does not
+        # do (actionlint is syntax and typing). On first run it caught CKV_GHA_7
+        # against cd.yml's workflow_dispatch input - see the documented inline
+        # skip there for why that one is a false positive for this design.
+        run: |
+          pipx install checkov
+          checkov --directory .github --framework github_actions \
+            --compact --quiet --output cli
+
+      # --- Publish to the Security tab (BEST EFFORT) ------------------------ #
+      # Guarded on hashFiles() as well as continue-on-error: if an earlier scan
+      # step is ever skipped, its SARIF will not exist, and an unguarded upload
+      # would fail with "Path does not exist" - which is precisely what happened
+      # on the first run and masked the real cause.
+      - name: Publish Trivy fs findings
+        id: sarif_fs
+        if: always() && hashFiles('trivy-fs.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: trivy-fs.sarif
+          # Distinct category per scan mode so the Security tab keeps three
+          # separate Trivy result sets instead of each overwriting the last.
+          category: trivy-fs
+
+      - name: Publish Trivy config findings
+        id: sarif_config
+        if: always() && hashFiles('trivy-config.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      - name: Report code-scanning availability
+        if: always()
+        env:
+          FS: ${{ steps.sarif_fs.outcome }}
+          CFG: ${{ steps.sarif_config.outcome }}
+        run: |
+          if [ "${FS}" = "failure" ] || [ "${CFG}" = "failure" ]; then
+            echo "::warning title=Code scanning upload unavailable::Trivy SARIF was NOT uploaded to the Security tab (private repo without GitHub Advanced Security). Findings are still ENFORCED by exit code in the scan steps above. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
+            {
+              echo "### Code scanning upload unavailable"
+              echo ""
+              echo "Trivy SARIF was **not** uploaded (private repo, GHAS not enabled)."
+              echo "Gates still enforced by exit code - a lost *view*, not a lost *gate*."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Code scanning upload OK (fs=${FS} config=${CFG})."
+          fi
+
+  # ------------------------------------------------------------------------- #
+  dependency-review:
+    name: Dependency review (PR only)
+    # Two conditions, both required:
+    #
+    #  1. pull_request only - it diffs the dependency manifest between base and
+    #     head, and there is no "before" on a push to main.
+    #
+    #  2. The repository must actually support it. dependency-review needs the
+    #     Dependency Graph, which on a PRIVATE repo requires GitHub Advanced
+    #     Security. Without it the action fails with "Dependency review is not
+    #     supported on this repository" - which is what happened on the first
+    #     real run. A permanently-red job trains people to ignore red, so this
+    #     SKIPS instead.
+    #
+    # It re-enables automatically if the repo is made public (code scanning and
+    # the dependency graph are free there), or immediately by setting the
+    # repository variable ENABLE_CODE_SCANNING=true once GHAS is purchased.
+    # See docs/deployment/GITHUB_ACTIONS_SETUP.md.
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Review dependency changes
+        # Catches a vulnerable or badly-licensed dependency at the moment it is
+        # INTRODUCED. pip-audit already scans the whole tree, but on a PR that is
+        # too late to be cheap: it tells you main is vulnerable after the merge.
+        # This blocks the PR that would cause it.
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+          # Copyleft licences would oblige this project to publish its source.
+          # Flagged for a human decision, not silently accepted.
+          deny-licenses: GPL-3.0, AGPL-3.0, LGPL-3.0
+
+  # ------------------------------------------------------------------------- #
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    # Needs the coverage.xml produced by `test` so Sonar reports on the SAME
+    # coverage run that gates the build, rather than recomputing and disagreeing.
+    needs: [test]
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Check whether SonarCloud is enabled
+        id: gate
+        # Job-level `env` IS visible to a step's `if`, which is what makes this
+        # skip-cleanly pattern work. Without the guard, every run of this repo
+        # would fail red on a missing secret for a service nobody has set up.
+        run: |
+          if [ -n "${SONAR_TOKEN}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "SONAR_TOKEN is not set - skipping." >> "$GITHUB_STEP_SUMMARY"
+            echo "See docs/deployment/GITHUB_ACTIONS_SETUP.md -> Enabling SonarCloud." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          # Sonar needs full history to attribute issues to authors and to compute
+          # "new code" correctly; a shallow clone makes every line look new.
+          fetch-depth: 0
+
+      - name: Download coverage from the test job
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-xml
+
+      - name: SonarCloud scan
+        if: steps.gate.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ------------------------------------------------------------------------- #
+  build:
+    name: Build image & scan
+    runs-on: ubuntu-latest
+    # The image is only built once everything that can invalidate it is green.
+    # Trivy runs after the build because it scans the resolved image filesystem;
+    # Semgrep (in `security`) scans source patterns. They are complementary, not
+    # redundant - neither finds what the other finds.
+    needs: [lint, quality, test, migrations, e2e, security, iac-scan]
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          # Built and loaded locally, never pushed. CI proves the image builds
+          # and is scannable; publishing is CD's job (.github/workflows/cd.yml).
+          push: false
+          load: true
+          tags: cofoundaz-api:ci
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            VERSION=ci-${{ github.run_number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test the built image
+        # A green `docker build` only proves the layers assembled. This proves the
+        # interpreter, the venv, and the app package actually work together -
+        # catching, for example, a dependency dropped from the runtime stage.
+        run: |
+          docker run --rm \
+            -e SECRET_KEY=ci -e DATABASE_URL=postgresql://u:p@h:5432/d \
+            -e FIRST_SUPERUSER_EMAIL=a@b.com -e FIRST_SUPERUSER_PASSWORD=x \
+            -e LOG_FILE_PATH= \
+            cofoundaz-api:ci python -c "import app.main; print('app imports OK')"
+          docker run --rm cofoundaz-api:ci alembic --help > /dev/null
+          echo "alembic CLI present in image OK"
+
+      - name: Generate SBOM (CycloneDX)
+        # A Software Bill of Materials for the image that was just built. Its
+        # value is retrospective: when the next critical CVE lands, "are we
+        # affected, and which build first shipped it?" is answerable from stored
+        # SBOMs in seconds instead of by rebuilding old commits.
+        #
+        # Generated from the IMAGE, not from poetry.lock, so it records what
+        # actually ships - OS packages included. Verified locally: CycloneDX 1.7,
+        # 174 components (173 libraries + 1 operating-system entry), ~300 KB.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: cofoundaz-api:ci
+          format: cyclonedx
+          output: sbom.cdx.json
+          # An SBOM is an inventory, not a scan: no severity filter and no
+          # exit-code, so it can never fail the build.
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom-cyclonedx-${{ github.sha }}
+          path: sbom.cdx.json
+          # Longer than the 7-day coverage retention: the point of an SBOM is to
+          # answer questions about builds you shipped a while ago.
+          retention-days: 90
+
+      - name: Trivy (image CVEs)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: cofoundaz-api:ci
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+
+      - name: Publish Trivy findings
+        id: sarif_image
+        # Best-effort and guarded, same reasoning as the other jobs: the gate is
+        # the separate "Fail on HIGH/CRITICAL" step below, which runs regardless.
+        if: always() && hashFiles('trivy.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: trivy.sarif
+          # Distinct from trivy-fs / trivy-config in the trivy-repo job, so the
+          # three scan modes stay as three separate result sets in the Security
+          # tab rather than overwriting one another.
+          category: trivy-image
+
+      - name: Fail on HIGH/CRITICAL
+        # `if: always()` so a best-effort upload failure above can never skip the
+        # gate. Losing the Security tab must not mean losing the veto.
+        if: always()
+        # Deliberately a SEPARATE step from the SARIF-producing scan above, so
+        # findings always reach the Security tab even when the gate fails. A
+        # single scan step with exit-code:1 would abort before the upload and
+        # hide the very detail needed to triage.
+        #
+        # ignore-unfixed: a CVE with no released fix cannot be actioned by
+        # upgrading; blocking every deploy on it just teaches people to bypass
+        # the gate. Those are tracked via the Security tab instead.
+        # Documented exceptions live in .trivyignore.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: cofoundaz-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore

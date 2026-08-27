@@ -1,0 +1,30 @@
+# Accepted image CVEs for the Trivy gate in .github/workflows/ci.yml
+#
+# Format: one CVE ID per line. `#` starts a comment.
+#
+# RULES:
+#   1. Every entry needs a reason and a review date. No bare IDs.
+#   2. Adding a line here ships a known-vulnerable image. If you cannot justify
+#      it in writing, fix it instead: rebuild on a newer base digest (the usual
+#      fix for an OS-package CVE) or bump the Python dependency.
+#   3. The CI gate already passes --ignore-unfixed, so anything reaching this
+#      file HAS a released fix and is being consciously deferred. That is a
+#      higher bar than "it's noisy".
+#   4. Review at the stated date and delete the entry once the fix is in.
+#
+# The usual fix for an OS-level finding is NOT an entry here - it is refreshing
+# the base image digest in the Dockerfile:
+#
+#   docker buildx imagetools inspect python:3.11-slim-bookworm
+#
+# ---------------------------------------------------------------------------
+# CURRENT STATUS: nothing suppressed.
+# ---------------------------------------------------------------------------
+# This gate has not yet been run against a published image in CI - Trivy is not
+# installed on the machine where this pipeline was authored, so the first real
+# result will come from the first CI run. Expect Python-package findings
+# matching those listed in .github/security/pip-audit-ignores.txt (starlette,
+# python-multipart), since Trivy reads the same dist-info metadata.
+#
+# Do not pre-emptively add entries here to make that first run green. Read the
+# findings, then decide.

@@ -1,10 +1,10 @@
 {
   "data": {
     "roadmap": {
-      "id": "0af33300-772d-425c-b425-b9aeae4b14ad",
+      "id": "e6f9843e-4c2e-4367-a010-7753c5479bf5",
       "stage": "validation",
       "template_key": "stage.validation",
-      "generated_at": "2026-08-27T10:40:55.138376+00:00",
+      "generated_at": "2026-08-27T20:38:55.426769+00:00",
       "drift": {
         "slipped_count": 0
       }
@@ -12,14 +12,14 @@
     "current_stage": "validation",
     "phases": [
       {
-        "id": "2b13719d-9a22-4f82-8bcc-dd7ed9951d67",
+        "id": "c8dc2f56-f18e-4f8d-beb1-4d5097930b91",
         "name": "Validation",
         "order": 0,
         "starts_on": "2026-08-27",
         "ends_on": "2026-10-08",
         "milestones": [
           {
-            "id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1",
+            "id": "9b8b118f-316a-4354-a1f9-d0f5b1b35b3c",
             "title": "Validate demand",
             "description": null,
             "due_on": "2026-09-03",
@@ -30,12 +30,12 @@
             "order": 0,
             "dependency_count": 0,
             "replanned": {
-              "at": "2026-08-27T10:40:55.190314+00:00",
+              "at": "2026-08-27T20:38:55.488386+00:00",
               "reason": "10 days overdue and not yet done."
             },
             "tasks": [
               {
-                "id": "434855af-3832-4ec5-8baf-de9dc218a84e",
+                "id": "ecb3684e-3cb6-49be-b98a-cc10e16fef96",
                 "title": "Run 10 customer interviews",
                 "description": null,
                 "effort": "medium",
@@ -47,7 +47,7 @@
                 "depends_on": []
               },
               {
-                "id": "db214be0-78e6-4d2e-87ca-4c7e68004d61",
+                "id": "ac0a0414-ec78-4f1d-882d-31bd4448ad9a",
                 "title": "Synthesize problem hypotheses",
                 "description": null,
                 "effort": "small",
@@ -61,7 +61,7 @@
             ]
           },
           {
-            "id": "abd13ca4-325f-495d-9152-e1bca65901de",
+            "id": "e409ad9d-4437-4afb-9465-c1b635f68167",
             "title": "Pricing test",
             "description": null,
             "due_on": "2026-10-01",
@@ -74,7 +74,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "8dcc3c01-a399-4477-bc15-b6a06f181d75",
+                "id": "5f13c49a-70b5-4406-8b39-d2737e5fa64b",
                 "title": "Draft 3 pricing options",
                 "description": null,
                 "effort": "small",
@@ -86,7 +86,7 @@
                 "depends_on": []
               },
               {
-                "id": "fb73213a-eb78-421c-a434-3e3a00aab303",
+                "id": "b61df04c-7380-4f59-93f3-3bf3328d6eb9",
                 "title": "Run a willingness-to-pay test",
                 "description": null,
                 "effort": "medium",
@@ -102,14 +102,14 @@
         ]
       },
       {
-        "id": "7c7df3aa-f07c-4913-809d-0faa83b89785",
+        "id": "fe50b690-d0ff-4d3b-b0bd-8e7378d6ff40",
         "name": "Build MVP",
         "order": 1,
         "starts_on": "2026-10-08",
         "ends_on": "2026-12-03",
         "milestones": [
           {
-            "id": "d5463ce0-9594-4ea2-b78c-e39d83904b0c",
+            "id": "f9b36bf9-79c2-4fd6-91c2-11ee7c8f61d9",
             "title": "Core flow",
             "description": null,
             "due_on": "2026-11-05",
@@ -122,7 +122,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "98013c10-8914-4cab-8718-474fadea8cab",
+                "id": "0e5d60bf-59cb-48ca-a718-a25f1ab8e595",
                 "title": "Define the core user journey",
                 "description": null,
                 "effort": "medium",
@@ -134,7 +134,7 @@
                 "depends_on": []
               },
               {
-                "id": "5ee5e14e-fd14-4d81-b3a6-d2df208f3602",
+                "id": "17a4e291-d51e-4a60-81c4-c0b4e7bda38a",
                 "title": "Build the happy path",
                 "description": null,
                 "effort": "large",

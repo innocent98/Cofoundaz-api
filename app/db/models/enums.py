@@ -58,7 +58,8 @@ class JobStatus(str, enum.Enum):
 
 class AuthTokenPurpose(str, enum.Enum):
     email_verification = "email_verification"
-    password_reset = "password_reset"
+    # nosec B105 - an enum member naming a token PURPOSE, not a password value.
+    password_reset = "password_reset"  # nosec B105
 
 
 class OAuthProvider(str, enum.Enum):

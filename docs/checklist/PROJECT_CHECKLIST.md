@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and Module 04 Today's Mission (migration `0009`, PR #17) merged to `main`; migration chain linearised `0007 → 0008 → 0009`._
+_Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and Module 04 Today's Mission (migration `0009`, PR #17) merged to `main`; migration chain linearised `0007 → 0008 → 0009`. Merged into `chore/production-deployment-hardening` (production deployment hardening + code/quality/security scanning wave — PR #18, open)._
 
 ---
 
@@ -27,6 +27,7 @@ _Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and M
 
 **Health at a glance:** ~63 endpoints · 398 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
+**Health at a glance:** ~60 endpoints · 353 unit tests (real Postgres) + 26 live E2E · 98.39% coverage · black/isort/ruff (incl. C901)/mypy clean · pylint 9.94/10 · radon average complexity **A (2.30)**, every module MI **A** · bandit / hadolint / `trivy config` / checkov all exit 0 · zero AI-attribution trailers.
 
 ---
 
@@ -183,6 +184,109 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
 - [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
+## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
+
+_Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
+verified locally, and the CI workflows have now had a first real run on GitHub
+(which found four defects, since fixed). Nothing has touched a real VPS. See
+`docs/sop/2026-08-27-production-deployment-hardening.md`._
+
+- [x] `docker-compose.prod.yml` — no host-published Postgres/Redis, `migrate` one-shot gated by
+      `service_completed_successfully`, resource limits, json-file log rotation, own compose
+      project name (`cofoundaz-api-prod`) so `down -v` can't touch the dev stack's volumes
+- [x] `docker-compose.yml` made honestly dev-only
+- [x] Production `Dockerfile` rewritten — Poetry 2.2.1 (was 1.8.4, couldn't read the
+      lock-version 2.1 lockfile), tini + gunicorn/uvicorn workers, `libpq-dev`/pip/setuptools/wheel
+      removed from the runtime image (396 MB → 376 MB)
+- [x] `poetry.lock` un-gitignored and git-staged for reproducible builds
+- [x] `.dockerignore` inverted to deny-by-default; `.env.production.example` added; real-looking
+      `SECRET_KEY` in `.env.example` replaced with a placeholder
+- [x] CI (`ci.yml`): 1 job → **10**. First pass took it to 6 — `lint` (now incl. mypy), `test` on Postgres 17 with a 95%
+      coverage gate, `migrations` (single-head + fresh upgrade + `alembic check` + downgrade
+      round-trip), `e2e`, `security` (gitleaks + Semgrep + pip-audit), `build` (image + smoke +
+      Trivy); plus a shared `setup-python-poetry` composite action, SHA-pinned actions,
+      least-privilege `permissions:` and concurrency groups. The scanning wave added 4 more —
+      `quality`, `trivy-repo`, `dependency-review`, `sonarcloud` — leaving 8 jobs fully parallel,
+      `sonarcloud` on `needs: [test]`, and `build` on
+      `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`
+- [x] `GET /api/v1/health/ready` — checks Postgres + Redis, `503` naming the failed dependency,
+      no DSN leak (7 tests); `/health` kept as a cheap liveness check
+- [x] Security-exception scaffolding — `.trivyignore` / `.github/security/pip-audit-ignores.txt`
+      created, currently suppress nothing
+- [x] Semgrep (CI ruleset, severity ERROR) verified clean locally — exit 0, no findings
+- [ ] **Code scanning** — `codeql.yml` authored, `actionlint` clean, **NEVER EXECUTED**
+      (CodeQL cannot run locally). Own workflow: needs a weekly cron, which in
+      `ci.yml` would run the whole pipeline weekly). Python `security-and-quality`
+      suite, report-only. Complements Semgrep: CodeQL does interprocedural
+      dataflow/taint tracking, Semgrep is single-window pattern matching
+- [x] **Quality scanning** — `quality` job: pylint wired up at last (it was a
+      declared dev dep CI never ran) with a scoped `[tool.pylint]` config,
+      **9.94/10** measured, gate `--fail-under=9.5`; radon complexity/MI report
+      (301 blocks, average **A (2.30)**, every module MI **A**); hadolint on the
+      Dockerfile at the strictest threshold
+- [x] Complexity gate via ruff `C901` (`max-complexity = 12`; measured worst is
+      `validate_answer` at 11) — one enforcer, radon reports only
+- [x] **bandit** Python SAST in the `security` job — 3 findings, all false
+      positives, fixed with inline `# nosec` + written reasons; now exits 0
+- [x] **hadolint** — DL3066 FIXED (`USER 1000:1000`, not ignored); only DL3008
+      ignored, with justification in `.hadolint.yaml`. Exits 0
+- [x] **Trivy beyond the image** — `trivy fs` (report-only; finds the locked graph
+      incl. unfixable `ecdsa CVE-2024-23342`, plus 0 secrets) and `trivy config`
+      (BLOCKS; **0 misconfigurations** on the hardened Dockerfile)
+- [x] **SBOM** — CycloneDX 1.7 from the built image, **174 components** (173 library +
+      1 operating-system), ~301 KB — generated and counted locally
+- [ ] SBOM as a *workflow artifact* (`sbom-cyclonedx-<sha>`, 90-day retention) —
+      **NOT VERIFIED**, never uploaded; likewise the SLSA provenance + SBOM
+      attestations CD attaches to the GHCR manifest, since no GHCR push has happened.
+      cosign signing was deliberately declined — CD deploys the digest it just built,
+      and without a `cosign verify` gate that can refuse a deploy a signature is ceremony
+- [ ] **`dependency-review`** job on pull requests — authored (blocks a PR that
+      *introduces* a high-severity or copyleft-licensed dependency); **NEVER EXECUTED**,
+      it needs a real PR to diff a manifest against a base commit
+- [ ] **`.github/dependabot.yml`** — pip / github-actions / docker, authored; what keeps
+      the SHA and digest pins moving rather than rotting (pinning *without* an update
+      mechanism is strictly worse than not pinning). **NEVER RUN** — needs enabling, and
+      the Docker digest PRs specifically need confirming (see follow-ups)
+- [x] Distinct SARIF `category:` per scan mode (semgrep / codeql / trivy-fs /
+      trivy-config / trivy-image) so Security-tab results don't overwrite
+- [x] All **18** Action SHA pins verified against the live GitHub API — zero
+      mismatches; every action input validated against its pinned `action.yml`
+- [x] `make quality` / `make scan` / `make sbom` reproduce the CI scanning locally —
+      `make quality` exit 0; `make scan` runs 6 stages (bandit PASS, Semgrep PASS,
+      gitleaks "no leaks found", `trivy config` PASS, `trivy fs` 7 HIGH and continues
+      as report-only, `trivy image` 6 HIGH → exit 1, blocking as designed)
+- [x] `bandit ^1.9.4` + `radon ^6.0.1` added as dev deps — resolution clean, **8 installs,
+      0 updates** to existing packages; `pylint` was already declared but CI never ran it
+- [x] **`python-multipart` 0.0.20 → 0.0.32** (approved) — only that package moved
+      (122 packages before and after). `trivy image` **6 → 3**, `pip-audit`
+      **16 → 10**, `trivy fs` **7 → 4**. Live consumer is the `/onboarding/logo`
+      multipart upload (not login, which is a JSON body); re-verified via 4 logo
+      unit tests, 11 auth e2e journeys and the onboarding upload journey
+- [x] **Checkov** wired for `github_actions` — **47 passed / 0 failed / 1
+      documented skip**; caught `CKV_GHA_7` on `cd.yml` first run. NOT used for
+      compose: Checkov 3.3.15 has no `docker_compose` framework (verified — zero
+      results), so a compose job there could never fail
+- [x] **VPS target spec CONFIRMED at 4 vCPU / 8 GB / 80 GB SSD** — restated in
+      `docker-compose.prod.yml` and `docs/deployment/` as a confirmed spec rather
+      than an assumption. Nominal CPU sums to 4.5 but `api` and `migrate` are
+      mutually exclusive (`service_completed_successfully`), so real peaks are
+      2.5 (migrating) and **exactly 4.0** (steady state); memory 5632M of 8192M
+      leaves 2560M for host + page cache. Connections 42/100 (42%)
+- [ ] **SonarCloud** — `sonar-project.properties` committed but INERT; the job
+      skips cleanly until a `SONAR_TOKEN` secret exists. Needs a SonarCloud
+      account (could not be created here)
+- [x] `.gitleaksignore` baselines the one historical `SECRET_KEY` committed to `.env.example` in
+      `36ee5d51`; gitleaks over all 158 commits then passes clean
+- [x] Full production stack verified locally end-to-end — migration gate, resource limits
+      (`docker inspect`), read-only rootfs, graceful shutdown (1s, exit 0), readiness
+      `200`→`503` on Redis outage
+- [ ] `cd.yml` (build/push GHCR + SSH deploy + automatic rollback) — authored, `actionlint` /
+      `shellcheck` clean, **never executed on GitHub**
+- [ ] _Deferred:_ Trivy/pip-audit CVE debt (`python-multipart`, `starlette`, `ecdsa` via
+      `python-jose`) — CI expected red until triaged · real VPS deploy (SSH, nginx, UFW, GHCR
+      push/pull) never attempted · CPU reservations are no-ops outside Swarm (memory
+      reservations do apply) · `UvicornWorker` deprecated upstream (works on uvicorn 0.32.1)
+
 ---
 
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
@@ -204,6 +308,48 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [ ] `compare` error distinction (in-progress vs not-found) if FE needs it
 - [ ] `team_size` scoring tie edge case
 - [ ] `MFA_ENCRYPTION_KEY` must be set per environment (empty → 500)
-- [ ] Commit `poetry.lock` (currently gitignored) before reproducible deploy
+- [x] Commit `poetry.lock` (currently gitignored) before reproducible deploy — *un-gitignored and
+      git-staged 2026-08-27; still needs an actual commit, nothing is committed yet*
 - [ ] `LocalStorage` returns a filesystem path, not an HTTP URL — `logo_url` not FE-renderable until a URL-returning storage backend lands
 - [ ] No async worker draining `jobs` yet (Modules 05/06 decide)
+- [ ] Trivy: **3 HIGH** remaining (all `starlette` 0.46.2; was 6 before the
+      `python-multipart` bump). 0 CRITICAL, zero OS-package findings. Nothing
+      suppressed in `.trivyignore`; CI's `build` job is expected red until triaged
+- [ ] `pip-audit`: **10 advisories** remaining — `starlette` (9) + `ecdsa` 0.19.2
+      (`PYSEC-2026-1325`, no fix, via `python-jose`); was 16. Nothing suppressed
+      in `.github/security/pip-audit-ignores.txt`
+- [ ] Migrate `python-jose` → `PyJWT` to drop the unfixable `ecdsa` advisory
+      (`CVE-2024-23342` / `PYSEC-2026-1325`, the Minerva attack — surfaced by
+      `trivy fs`, hidden from the image scan by `--ignore-unfixed`)
+- [ ] Refactor `validate_answer` (`app/services/assessment/engine.py`) so ruff's
+      `max-complexity` can drop 12 → the common default of 10. It is the only
+      function above 10
+- [ ] Enable SonarCloud (create project, replace the CHANGE_ME `projectKey` /
+      `organization`, add `SONAR_TOKEN`) — see `docs/deployment/GITHUB_ACTIONS_SETUP.md`
+- [ ] Triage the first CodeQL baseline, then decide whether to promote it from
+      report-only to blocking via branch-protection code-scanning requirements
+- [ ] Confirm Dependabot actually opens Docker **digest** PRs — the digest lives in
+      an `ARG PYTHON_IMAGE=...` default rather than a bare `FROM` literal, which its
+      Docker parser is not guaranteed to follow. If nothing appears within two
+      weeks of enabling, refresh by hand and treat as unverified
+- [ ] **Both compose files remain unscanned by any IaC tool.** `trivy config`
+      targets Dockerfile/K8s/Terraform/CloudFormation/Helm; Checkov 3.3.15 has no
+      `docker_compose` framework at all. Closing this needs a compose-specific
+      linter, not another general IaC scanner
+- [ ] `starlette` 0.46.2 — **3 HIGH** still blocking `trivy image`. Stays pinned
+      even with fastapi 0.141.1, so it needs real compatibility work (starlette
+      1.x is a major version, not a drop-in)
+- [ ] CodeQL, `dependency-review` and SonarCloud have **never executed** — none can
+      run locally; first signal comes from the first GitHub Actions run/PR
+- [ ] The `SECRET_KEY` committed to `.env.example` in `36ee5d51` is public in git history and must
+      be treated as compromised — confirm no deployed environment ever used it; clearing it from
+      history needs `git-filter-repo` + force-push + everyone re-cloning
+- [ ] Production deploy path (`docker-compose.prod.yml`, hardened `Dockerfile`, `cd.yml`) has
+      never been exercised against a real VPS — no SSH deploy, no nginx, no UFW, no GHCR
+      push/pull; the workflows have never executed on GitHub
+- [ ] `deploy.resources.reservations.cpus` is declarative-only outside Swarm (verified
+      `CpuShares`/`CpuQuota`/`CpuPeriod` all `0` on Compose v2.40.3) — memory reservations do apply
+- [ ] `uvicorn.workers.UvicornWorker` is deprecated upstream in favour of the `uvicorn-worker`
+      package — works today on uvicorn 0.32.1
+- [ ] Local venv runs Python 3.14 while the project targets 3.11 (CI uses 3.11) — pre-existing,
+      not introduced by the deployment hardening pass

@@ -1,0 +1,78 @@
+# Dependabot configuration.
+#
+# WHY THIS EXISTS: this repo pins GitHub Actions to full commit SHAs and the
+# Docker base image to a digest. That is the correct posture - a tag is mutable
+# and `actions/checkout@v5` can be re-pointed at any commit by whoever controls
+# the tag. But pinning without a mechanism to move the pin is strictly WORSE than
+# not pinning: within months you are running a base image with months of unpatched
+# CVEs, confidently and reproducibly.
+#
+# Dependabot is what makes pinning sustainable. It opens a PR that moves the pin,
+# CI proves the move is safe, and a human merges it.
+
+version: 2
+updates:
+  # --- Python dependencies (reads poetry.lock, which is now tracked) ----------
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      # One PR for the whole dev toolchain. Individually they generate constant
+      # low-value noise; grouped, they are a single review that CI either passes
+      # or does not.
+      dev-tooling:
+        dependency-type: development
+        patterns: ["*"]
+      # Patch/minor for production deps grouped too. MAJOR bumps are deliberately
+      # NOT grouped - they get their own PR because they need real review.
+      production-minor:
+        dependency-type: production
+        update-types: ["minor", "patch"]
+
+  # --- GitHub Actions (moves the SHA pins) -----------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # --- Docker base image (moves the digest pin) ------------------------------
+  # Dependabot reads the FROM line in Dockerfile and proposes a new digest when
+  # python:3.11-slim-bookworm is rebuilt. This is the mechanism that keeps OS-level
+  # CVEs at zero - the current image has none, and that is only true while the
+  # digest keeps moving.
+  #
+  # NOTE: the digest lives in an `ARG PYTHON_IMAGE=...` default rather than a bare
+  # FROM literal. Dependabot's Docker parser handles ARG-based FROM in most cases
+  # but is not guaranteed to; if no digest PRs appear within two weeks of enabling
+  # this, refresh it by hand (see the comment block at the top of the Dockerfile)
+  # and treat that as UNVERIFIED until a PR is actually observed.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(docker)"

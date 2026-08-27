@@ -52,11 +52,49 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> [sanity] docker db + redis up"
-docker compose up -d db redis >/dev/null
-for _ in $(seq 1 20); do
-  docker compose exec -T db pg_isready -U "${PG_USER}" >/dev/null 2>&1 && break
+# `--wait` blocks until both services report HEALTHY via their compose
+# healthchecks, rather than merely "started". This is the primary gate.
+#
+# Why this matters (found the hard way on a cold CI runner): the previous
+# version polled `pg_isready` in a loop that `break`s on success but FELL
+# THROUGH SILENTLY when it never succeeded - so a timeout looked identical to
+# success. Worse, on a FIRST-EVER start Postgres runs initdb, which boots a
+# temporary internal server; `pg_isready` can answer "accepting connections"
+# against THAT, after which initdb stops it to start the real one. The wait
+# passed and the very next psql hit nothing:
+#
+#   psql: error: connection to server on socket "...PGSQL.5432" failed:
+#         No such file or directory
+#
+# It never reproduced locally because the dev volume already existed, so initdb
+# never ran. Reproduced locally only after `docker compose down -v`.
+if ! docker compose up -d --wait db redis; then
+  echo "!! docker compose up --wait failed for db/redis" >&2
+  docker compose ps
+  docker compose logs --tail=50 db redis
+  exit 1
+fi
+
+# Belt and braces: prove the REAL server answers a REAL query on the admin
+# database - which is exactly what the next command needs. A healthcheck can pass
+# against initdb's temporary server; `SELECT 1` on the target database cannot.
+echo "==> [sanity] waiting for Postgres to accept queries on ${ADMIN_DB}"
+db_ready=""
+for _ in $(seq 1 30); do
+  if docker compose exec -T db psql -U "${PG_USER}" -d "${ADMIN_DB}" -c "SELECT 1;" >/dev/null 2>&1; then
+    db_ready="1"; break
+  fi
   sleep 1
 done
+# FAIL LOUDLY on timeout. The whole point of the original bug was that this
+# branch did not exist and the script carried on into a guaranteed failure with
+# a confusing error thirty lines later.
+if [[ -z "${db_ready}" ]]; then
+  echo "!! Postgres never accepted a query on ${ADMIN_DB} after 30s" >&2
+  docker compose ps
+  docker compose logs --tail=50 db
+  exit 1
+fi
 
 echo "==> [sanity] recreate ${E2E_DB} (clean state)"
 docker compose exec -T db psql -U "${PG_USER}" -d "${ADMIN_DB}" \

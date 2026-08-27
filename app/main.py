@@ -120,7 +120,12 @@ def start() -> None:
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        # nosec B104 - binding all interfaces is REQUIRED inside a container:
+        # the container network namespace is the isolation boundary, and
+        # docker-compose.prod.yml publishes this only to 127.0.0.1 on the host,
+        # with nginx in front. Binding 127.0.0.1 here would make the container
+        # unreachable from outside its own namespace.
+        host="0.0.0.0",  # nosec B104
         port=settings.SERVER_PORT,
         reload=True if settings.ENVIRONMENT == "development" else False,
     )

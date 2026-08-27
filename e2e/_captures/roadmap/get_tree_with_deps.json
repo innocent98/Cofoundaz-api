@@ -1,10 +1,10 @@
 {
   "data": {
     "roadmap": {
-      "id": "7ae25168-5056-4263-8817-6c4befaaba09",
+      "id": "90911766-ca29-4a86-887b-26834ff176a1",
       "stage": "validation",
       "template_key": "stage.validation",
-      "generated_at": "2026-08-27T10:40:53.695888+00:00",
+      "generated_at": "2026-08-27T20:38:53.914138+00:00",
       "drift": {
         "slipped_count": 0
       }
@@ -12,14 +12,14 @@
     "current_stage": "validation",
     "phases": [
       {
-        "id": "329692ec-4895-43ee-ad5c-490d9bcfa46e",
+        "id": "44b7624b-f32b-4968-b403-917c1c85f5ca",
         "name": "Validation",
         "order": 0,
         "starts_on": "2026-08-27",
         "ends_on": "2026-10-08",
         "milestones": [
           {
-            "id": "ba662661-76e3-4d41-9835-b5aa4903f547",
+            "id": "9c1ca87a-ff30-4df5-804f-a30c01e3540f",
             "title": "Validate demand",
             "description": null,
             "due_on": "2026-09-10",
@@ -32,7 +32,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "11856bd0-d85c-495c-ad12-0bab4236e43e",
+                "id": "50a75484-1339-4f24-8022-cfed16842717",
                 "title": "Run 10 customer interviews",
                 "description": null,
                 "effort": "medium",
@@ -44,7 +44,7 @@
                 "depends_on": []
               },
               {
-                "id": "3018ee1a-8c55-4fb2-a4a6-50c06377585c",
+                "id": "917cace1-7700-4bc6-a308-235a6c93ede7",
                 "title": "Synthesize problem hypotheses",
                 "description": null,
                 "effort": "small",
@@ -58,7 +58,7 @@
             ]
           },
           {
-            "id": "53a3acce-496b-40a6-8701-d5418bdec404",
+            "id": "9989de79-c027-40f1-aa79-8ced478ee276",
             "title": "Pricing test",
             "description": null,
             "due_on": "2026-10-01",
@@ -71,7 +71,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "227ca2a2-6ef1-4cea-9bcd-cbf849d722a6",
+                "id": "2ad54c5c-0297-496e-bca9-a015e42b0a45",
                 "title": "Draft 3 pricing options",
                 "description": null,
                 "effort": "small",
@@ -83,7 +83,7 @@
                 "depends_on": []
               },
               {
-                "id": "529131de-e2fc-404c-bb3a-2c66a3b891c9",
+                "id": "2f6253d1-cfa7-4197-b2b7-74751eaa23b8",
                 "title": "Run a willingness-to-pay test",
                 "description": null,
                 "effort": "medium",
@@ -99,14 +99,14 @@
         ]
       },
       {
-        "id": "d1992c79-988f-47a1-a01b-6e422b3cc60b",
+        "id": "ec3fa127-7320-475b-a36d-d25461da6329",
         "name": "Build MVP",
         "order": 1,
         "starts_on": "2026-10-08",
         "ends_on": "2026-12-03",
         "milestones": [
           {
-            "id": "7cd18580-cd93-46f2-912f-6f4153cc3dfa",
+            "id": "d45b4b57-ef0f-469c-9ae4-e118b933ae23",
             "title": "Core flow",
             "description": null,
             "due_on": "2026-11-05",
@@ -119,7 +119,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "dcbd7aa3-766b-4c17-97e9-1fabb60c2efe",
+                "id": "003b0731-91f2-44f5-9376-568bafd348cc",
                 "title": "Define the core user journey",
                 "description": null,
                 "effort": "medium",
@@ -131,7 +131,7 @@
                 "depends_on": []
               },
               {
-                "id": "737fdbef-3fda-4058-8590-41f6bfecd787",
+                "id": "3a3f9349-0101-418c-998c-9bc10da0afb4",
                 "title": "Build the happy path",
                 "description": null,
                 "effort": "large",
@@ -147,14 +147,14 @@
         ]
       },
       {
-        "id": "4e2600fd-c9fa-4708-9a84-8a3e906d0727",
+        "id": "11cd0828-4c1a-4757-a7db-9ce2a227379d",
         "name": "Custom phase",
         "order": 2,
         "starts_on": null,
         "ends_on": null,
         "milestones": [
           {
-            "id": "27cac904-f872-412e-b637-5f4c9bbd5d36",
+            "id": "e392022b-3339-40fb-972b-2aaaf38eb27e",
             "title": "Custom milestone",
             "description": null,
             "due_on": null,
@@ -167,7 +167,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "ebf9f7fa-982a-48f1-a521-53946f088c7e",
+                "id": "b17a0c5c-3ca1-4422-9c47-4dccf8f7bd3c",
                 "title": "Custom task",
                 "description": null,
                 "effort": "medium",
@@ -179,7 +179,7 @@
                 "depends_on": []
               },
               {
-                "id": "447936bd-e074-44c1-96b9-733973b87777",
+                "id": "0f5ad5fb-6f78-4a97-93e5-4183ba518447",
                 "title": "Task A",
                 "description": null,
                 "effort": "medium",
@@ -189,11 +189,11 @@
                 "overdue": false,
                 "order": 1,
                 "depends_on": [
-                  "e761eb68-8814-4741-9174-392c441c1e8b"
+                  "df052b9c-f922-45c0-b9b6-7073f2dc938b"
                 ]
               },
               {
-                "id": "e761eb68-8814-4741-9174-392c441c1e8b",
+                "id": "df052b9c-f922-45c0-b9b6-7073f2dc938b",
                 "title": "Task B",
                 "description": null,
                 "effort": "medium",

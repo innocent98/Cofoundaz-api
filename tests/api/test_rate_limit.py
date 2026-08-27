@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from slowapi import Limiter
@@ -81,3 +81,56 @@ def test_default_limits_enforced_on_undecorated_route_via_middleware():
     client = TestClient(mini)
     codes = [client.get("/undecorated").status_code for _ in range(3)]
     assert codes == [200, 200, 429]
+
+
+def test_default_limits_reach_routes_registered_via_include_router():
+    """Regression test for the FastAPI 0.137 `_IncludedRouter` breakage.
+
+    The test above proves default_limits work on a route declared DIRECTLY on the
+    app. That is not the shape app/main.py actually uses: every real endpoint is
+    mounted with `include_router(api_router, prefix="/api/v1")`, and that
+    distinction turned out to be the whole bug.
+
+    FastAPI 0.137.0 changed `include_router()` to wrap included routes in an
+    internal `_IncludedRouter` container instead of flattening them into
+    `app.routes`. slowapi's SlowAPIMiddleware finds the endpoint for the current
+    request by iterating `app.routes` and matching entries that expose
+    `.endpoint`; `_IncludedRouter` exposes neither, so every included route
+    became invisible to the limiter and silently stopped being rate limited -
+    the entire /api/v1 surface, auth included - while `/health` (declared with
+    @app.get) kept working and every existing test stayed green.
+
+    pyproject pins fastapi <0.137.0 for exactly this reason. This test is what
+    makes that pin self-enforcing: raise the ceiling without fixing the
+    interaction and this fails, instead of the API silently losing rate limiting.
+    """
+    mini = FastAPI()
+    limiter = Limiter(key_func=get_remote_address, default_limits=["2/minute"])
+    mini.state.limiter = limiter
+    mini.add_middleware(SlowAPIMiddleware)
+
+    @mini.exception_handler(RateLimitExceeded)
+    async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+        return JSONResponse(
+            status_code=429,
+            content=error_response("RATE_LIMITED", "Too many requests. Slow down a moment."),
+            headers={"Retry-After": "60"},
+        )
+
+    router = APIRouter()
+
+    @router.get("/via-router")
+    def via_router() -> dict:
+        return {"ok": True}
+
+    # The load-bearing line: mounted through a router with a prefix, exactly as
+    # app/main.py mounts api_router - not declared directly on the app.
+    mini.include_router(router, prefix="/api/v1")
+
+    client = TestClient(mini)
+    codes = [client.get("/api/v1/via-router").status_code for _ in range(3)]
+    assert codes == [200, 200, 429], (
+        "default_limits did not reach a route registered via include_router - "
+        "SlowAPIMiddleware can no longer resolve included routes. Check whether "
+        "fastapi has been upgraded to >=0.137.0 (see the pin in pyproject.toml)."
+    )

