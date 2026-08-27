@@ -21,6 +21,7 @@ from app.db.models.roadmap import (
     Roadmap,
     RoadmapMilestone,
     RoadmapPhase,
+    RoadmapReplan,
     RoadmapTask,
     RoadmapTaskDependency,
 )
@@ -649,3 +650,31 @@ def replan_apply(
     result = apply_replan(db, roadmap, user, body.change_ids)
     db.commit()
     return success_response(result)
+
+
+@router.get("/replan/history")
+def replan_history(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _require_roadmap(db, membership)
+    rows = (
+        db.query(RoadmapReplan)
+        .filter_by(roadmap_id=roadmap.id)
+        .order_by(RoadmapReplan.created_at.desc())
+        .all()
+    )
+    return success_response(
+        [
+            {
+                "id": str(r.id),
+                "change_count": r.change_count,
+                "summary": r.summary,
+                "applied_by": person_ref(db, r.applied_by),
+                "created_at": r.created_at.isoformat(),
+                "changes": r.changes,
+            }
+            for r in rows
+        ]
+    )
