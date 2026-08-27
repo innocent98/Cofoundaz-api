@@ -24,6 +24,7 @@ from app.platform.events import event_bus
 _DEFAULT_MISSION_SIZE = 3
 _WEEKEND_ISO_WEEKDAYS = (5, 6)  # Saturday, Sunday (date.weekday())
 _STREAK_MILESTONES = (7, 30, 100)
+_WEEKLY_WINDOW_DAYS = 7  # "this week" = the last 7 days ending today (inclusive)
 
 # The only reject-reason chips the FE offers -- kept here (not in the schema) so
 # the endpoint and any future caller validate against one source of truth.
@@ -201,6 +202,83 @@ def serialize_mission(db: Session, mission: Mission, streak: int) -> dict:
         "status": mission.status.value,
         "streak": streak,
         "tasks": [serialize_task(t) for t in tasks],
+    }
+
+
+def _weekly_completion_pct(db: Session, startup: Startup) -> int:
+    """Share (rounded %) of the workspace's missions in the last 7 days (ending
+    today, inclusive) that reached `complete`.
+
+    The denominator is missions that actually *exist* in the window, not 7 -- a
+    weekends-off day simply has no mission and doesn't count against the founder.
+    Returns 0 for an empty window (no divide-by-zero)."""
+    today = _today()
+    window_start = today - timedelta(days=_WEEKLY_WINDOW_DAYS - 1)
+    in_window = (
+        Mission.startup_id == startup.id,
+        Mission.mission_date >= window_start,
+        Mission.mission_date <= today,
+    )
+    total = db.query(Mission).filter(*in_window).count()
+    if total == 0:
+        return 0
+    completed = (
+        db.query(Mission).filter(*in_window, Mission.status == MissionStatus.complete).count()
+    )
+    return round(completed / total * 100)
+
+
+def _history_counts(db: Session, startup: Startup) -> dict[uuid.UUID, tuple[int, int]]:
+    """`mission_id -> (completed, total)` for every mission in the workspace, in one
+    grouped query.
+
+    `total` counts tasks that are NOT `rejected`; `completed` counts `done`. This
+    keeps the row coherent with `complete_task`'s all-done check (which also ignores
+    `rejected`): a mission whose only unfinished work was rejected reads as fully
+    done (e.g. 1/1) rather than a contradictory 1/2-but-complete."""
+    rows = (
+        db.query(
+            MissionTask.mission_id,
+            func.count(MissionTask.id)
+            .filter(MissionTask.status == MissionTaskStatus.done)
+            .label("completed"),
+            func.count(MissionTask.id)
+            .filter(MissionTask.status != MissionTaskStatus.rejected)
+            .label("total"),
+        )
+        .join(Mission, MissionTask.mission_id == Mission.id)
+        .filter(Mission.startup_id == startup.id)
+        .group_by(MissionTask.mission_id)
+        .all()
+    )
+    return {mission_id: (completed, total) for mission_id, completed, total in rows}
+
+
+def mission_history(db: Session, startup: Startup) -> dict:
+    """Every mission for the workspace, newest first, each with `completed`/`total`
+    task counts and its `status`, plus the rolling 7-day completion percentage.
+
+    Read-only: unlike `get_or_generate_today` this never creates today's mission --
+    it reports the missions that already exist (which is why a mission only appears
+    here once `/today` or a task action has materialised it)."""
+    missions = (
+        db.query(Mission)
+        .filter(Mission.startup_id == startup.id)
+        .order_by(Mission.mission_date.desc())
+        .all()
+    )
+    counts = _history_counts(db, startup)
+    return {
+        "missions": [
+            {
+                "mission_date": m.mission_date.isoformat(),
+                "completed": counts.get(m.id, (0, 0))[0],
+                "total": counts.get(m.id, (0, 0))[1],
+                "status": m.status.value,
+            }
+            for m in missions
+        ],
+        "weekly_completion_pct": _weekly_completion_pct(db, startup),
     }
 
 

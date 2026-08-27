@@ -21,6 +21,7 @@ from app.services.mission.service import (
     add_custom_task,
     complete_task,
     get_or_generate_today,
+    mission_history,
     reject_task,
     reorder_task,
     serialize_mission,
@@ -83,6 +84,17 @@ def get_today(
     if m is None:
         return success_response({"status": "no_roadmap"})
     return success_response(serialize_mission(db, m, streak(db, startup)))
+
+
+@router.get("/history")
+def get_history(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    # Read-only: reports existing missions newest-first; does not generate today's.
+    startup = _startup(db, membership)
+    return success_response(mission_history(db, startup))
 
 
 @router.get("/settings")
