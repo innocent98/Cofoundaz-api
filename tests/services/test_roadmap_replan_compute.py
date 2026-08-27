@@ -85,3 +85,36 @@ def test_done_milestone_is_not_drift(db):
     db.flush()
     assert detect_drift(db, roadmap) == []
     assert compute_replan(db, roadmap) == []
+
+
+def test_reason_names_dependency_when_cascade_dominates_own_slip(db):
+    # M is only 1 day overdue (a small self-slip), but it also depends on an
+    # upstream milestone U with a much larger slip. The applied new_due must
+    # reflect U's bigger shift, and the reason must say so — not just report
+    # M's own tiny overdue count as if that were what moved it.
+    roadmap, phase = _rm(db)
+    u = create_milestone(
+        db,
+        phase,
+        title="Upstream",
+        due_on=date.today() - timedelta(days=20),
+        status=RoadmapStatus.todo,
+    )
+    m = create_milestone(
+        db,
+        phase,
+        title="Downstream",
+        due_on=date.today() - timedelta(days=1),
+        status=RoadmapStatus.todo,
+    )
+    tu = create_task(db, u)
+    tm = create_task(db, m)
+    create_dependency(db, tm, tu)  # tm depends on tu => u precedes m
+    db.flush()
+    changes = {c.milestone_id: c for c in compute_replan(db, roadmap)}
+    u_shift = (changes[u.id].new_due - u.due_on).days
+    m_shift = (changes[m.id].new_due - m.due_on).days
+    assert m_shift == u_shift  # M's shift is driven entirely by U's larger cascade
+    assert m_shift > 1  # strictly more than M's own 1-day slip would produce
+    assert "Upstream" in changes[m.id].reason
+    assert "dependency" in changes[m.id].reason

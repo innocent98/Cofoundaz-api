@@ -119,11 +119,23 @@ def compute_replan(db: Session, roadmap: Roadmap) -> list[Change]:
         m = milestones[mid]
         if s <= 0 or m.due_on is None:
             continue
-        if base_shift.get(mid, 0) > 0:
-            reason = f"{(today - m.due_on).days} days overdue and not yet done."
+        own_shift = base_shift.get(mid, 0)
+        winner = max_upstream.get(mid)
+        if winner is None:
+            # own slip is the sole driver of the shift
+            overdue_days = (today - m.due_on).days
+            reason = f"{overdue_days} days overdue and not yet done."
         else:
-            up_id = max_upstream.get(mid)
-            up_title = milestones[up_id].title if up_id is not None else "an upstream milestone"
-            reason = f"Shifts {s} days with its dependency '{up_title}'."
+            # an upstream milestone's shift is what actually drove `s`
+            up_title = milestones[winner].title
+            if own_shift > 0:
+                # also self-slipped, but the cascade is the bigger mover — say both
+                overdue_days = (today - m.due_on).days
+                reason = (
+                    f"{overdue_days} days overdue; shifts {s} days with its "
+                    f"dependency '{up_title}'."
+                )
+            else:
+                reason = f"Shifts {s} days with its dependency '{up_title}'."
         changes.append(Change(mid, mid, m.title, m.due_on, m.due_on + timedelta(days=s), reason))
     return changes
