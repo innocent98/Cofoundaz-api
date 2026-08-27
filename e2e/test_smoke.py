@@ -66,6 +66,9 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/roadmap/templates",
         "/api/v1/roadmap/templates/{template_id}",
         "/api/v1/roadmap/templates/{template_id}/apply",
+        "/api/v1/roadmap/replan/preview",
+        "/api/v1/roadmap/replan/apply",
+        "/api/v1/roadmap/replan/history",
         # mission ("Today's Mission") surface
         "/api/v1/missions/today",
         "/api/v1/missions/tasks",

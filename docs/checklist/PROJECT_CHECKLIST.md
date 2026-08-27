@@ -11,22 +11,22 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-27 · `feat/todays-mission` branch (Module 04 Today's Mission, migration `0009`; branched off `main` — not yet merged). NB: the parallel `feat/roadmap-deps-templates`/Slice-3 build edits this same file on its own branch; the `_Last reconciled_` line + snapshot counts get a merge reconcile when those branches land._
+_Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and Module 04 Today's Mission (migration `0009`, PR #17) merged to `main`; migration chain linearised `0007 → 0008 → 0009`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 3 fully complete & merged (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 shipped-on-branch (04 Today's Mission, not yet merged) · 1 in progress (05 Roadmap, Slices 1–2/3) · 21 not started (02·03·08–26).
+**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) · 21 not started (02·03·08–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
-| ✅ Shipped on branch (not yet merged) | 1 | Today's Mission (04) — `feat/todays-mission`, full module + live E2E |
-| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) **merged PR #7**; Slice 2 (dependencies + templates) **shipped on branch, not yet merged**; Slice 3 remains |
-| ⬜ Planned / next | 20 | Roadmap Slice 3 · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
+| 🟡 In progress | 0 | — |
+| ⬜ Planned / next | 21 | Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~63 endpoints · 380 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~63 endpoints · 398 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+
 
 ---
 
@@ -117,7 +117,7 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 ---
 
-## 🟡 Module 05 — Roadmap — *in progress (decomposed into 3 slices)*
+## ✅ Module 05 — Roadmap — *complete, all 3 slices merged to `main` (Slice 3 via PR #16)*
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
@@ -133,7 +133,7 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
 - [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
 
-**Slice 2 — Dependencies + Templates** — *✅ done (branch `feat/roadmap-deps-templates`, Tasks 1–9; not yet merged to `main`)*
+**Slice 2 — Dependencies + Templates** — *✅ done, merged to `main`*
 - [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
 - [x] `GALLERY_TEMPLATES` static catalog (named, industry-tagged packs) + counts helper
 - [x] Migration `0007_roadmap_applied_templates` (`applied_template_keys` JSONB on `roadmaps`)
@@ -145,12 +145,20 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E extension + SOP + FE integration guide update — `e2e/test_roadmap.py` (extended), `docs/sop/2026-08-22-roadmap-deps-templates.md`, `docs/fe-integration-guide-roadmap.md` (updated)
 - [ ] _Deferred:_ `add_dependency`/`apply_template` no-row-lock race under concurrent double-calls (benign, same class as Slice 1's `_next_order`) · `roadmap.template.applied` has no consumer until Module 20
 
-**Slice 3 — AI Re-plan** — *planned*
-- [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies
+**Slice 3 — AI Re-plan** — *✅ done, merged to `main` (PR #16, Tasks 1–7)* — 2026-08-27
+- [x] Scope + locked decisions (slip-and-cascade along dependency DAG · stateless preview + deterministic apply · `roadmap_replans` history table + milestone marker columns · templated reason v1 · `roadmap.replan` job stays an unconsumed stub)
+- [x] Migration `0008_roadmap_replan` (`roadmap_replans` table + `last_replanned_at`/`last_replan_reason` on `roadmap_milestones`) + `RoadmapReplan` model
+- [x] `detect_drift` + `compute_replan` cascade engine (`REPLAN_BUFFER_DAYS = 7`, milestone-precedence DAG, max-not-sum shift propagation, templated reason)
+- [x] `apply_replan` (recompute-on-apply, stale `change_id` → skipped, markers + one history row + `roadmap.replanned` event)
+- [x] `POST /roadmap/replan/preview` (member) + `POST /roadmap/replan/apply {change_ids[]}` (editor)
+- [x] `GET /roadmap/replan/history` + tree `roadmap.drift.slipped_count` + per-milestone `replanned` marker
+- [x] Live E2E (26 passed) + smoke surface — `e2e/test_roadmap_replan.py`
+- [x] SOP + FE integration guide update + checklist reconcile — `docs/sop/2026-08-26-roadmap-replan.md`, `docs/fe-integration-guide-roadmap.md` (updated)
+- [ ] _Deferred:_ AI-authored rationale (Module 03) · notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job permanently unconsumed (by design) · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids` not deduped on apply — see SOP Follow-ups
 
 ---
 
-## ✅ Module 04 — Today's Mission — *shipped on branch `feat/todays-mission` (not yet merged to `main`)*
+## ✅ Module 04 — Today's Mission — *shipped, merged to `main` (PR #17)*
 
 _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap · complete/snooze/reorder/reject · custom tasks · derived streak · history + weekly % · settings. Read-only against the roadmap; migration `0009`._
 

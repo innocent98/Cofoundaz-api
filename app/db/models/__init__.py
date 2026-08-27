@@ -15,6 +15,7 @@ from app.db.models.roadmap import (  # noqa: F401
     Roadmap,
     RoadmapMilestone,
     RoadmapPhase,
+    RoadmapReplan,
     RoadmapTask,
     RoadmapTaskDependency,
 )

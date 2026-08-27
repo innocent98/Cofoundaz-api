@@ -199,6 +199,9 @@ def person_ref(db: Session, user_id: uuid.UUID | None) -> dict | None:
 
 
 def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
+    from app.services.roadmap.replan import detect_drift  # local import avoids a cycle
+
+    slipped = len(detect_drift(db, roadmap))
     dep_map = dependency_map(db, roadmap.id)  # {dependent_task_id: [dependency_id, ...]}
     phases = (
         db.query(RoadmapPhase).filter_by(roadmap_id=roadmap.id).order_by(RoadmapPhase.order).all()
@@ -229,6 +232,11 @@ def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
                     "overdue": milestone_overdue(m),
                     "order": m.order,
                     "dependency_count": dep_count,
+                    "replanned": (
+                        {"at": m.last_replanned_at.isoformat(), "reason": m.last_replan_reason}
+                        if m.last_replanned_at
+                        else None
+                    ),
                     "tasks": [
                         {
                             "id": str(t.id),
@@ -262,6 +270,7 @@ def serialize_tree(db: Session, roadmap: Roadmap, startup: Startup) -> dict:
             "stage": roadmap.stage.value,
             "template_key": roadmap.template_key,
             "generated_at": roadmap.generated_at.isoformat(),
+            "drift": {"slipped_count": slipped},
         },
         "current_stage": startup.stage.value if startup.stage else None,
         "phases": out_phases,

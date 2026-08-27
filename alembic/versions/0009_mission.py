@@ -18,11 +18,11 @@ no lock on any existing table:
     — one row per startup holding mission-generation preferences
     (mission_size, delivery_time, weekend_missions).
 
-This revision's down_revision is 0007_roadmap_applied_templates, the same
-parent as the parallel 0008_roadmap_replan migration (owned by a different
-in-flight task) — 0008 and 0009 are intentional siblings off 0007, not a
-chain; a later merge revision reconciles the two heads. Do not rebase this
-migration onto 0008.
+This revision chains off 0008_roadmap_replan. It and 0008 were authored in
+parallel as siblings off 0007 (each in its own worktree); at merge time
+(Roadmap Slice 3 / PR #16 landed first) 0009's down_revision was repointed
+from 0007 to 0008 so the history is a linear 0007 → 0008 → 0009 with a
+single head, rather than two branches off 0007.
 
 All three tables are brand new — this migration takes no lock on any
 existing table (missions/mission_settings add FKs to the existing startups
@@ -57,7 +57,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0009_mission"
-down_revision = "0007_roadmap_applied_templates"
+down_revision = "0008_roadmap_replan"
 branch_labels = None
 depends_on = None
 
