@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -11,9 +11,12 @@ from app.db.models.roadmap import (
     Roadmap,
     RoadmapMilestone,
     RoadmapPhase,
+    RoadmapReplan,
     RoadmapTask,
     RoadmapTaskDependency,
 )
+from app.db.models.user import User
+from app.platform.events import event_bus
 
 REPLAN_BUFFER_DAYS = 7
 
@@ -139,3 +142,60 @@ def compute_replan(db: Session, roadmap: Roadmap) -> list[Change]:
                 reason = f"Shifts {s} days with its dependency '{up_title}'."
         changes.append(Change(mid, mid, m.title, m.due_on, m.due_on + timedelta(days=s), reason))
     return changes
+
+
+def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uuid.UUID]) -> dict:
+    proposal = {c.change_id: c for c in compute_replan(db, roadmap)}
+    now = datetime.now(UTC)
+    applied: list[str] = []
+    skipped: list[str] = []
+    snapshot: list[dict] = []
+
+    for cid in change_ids:
+        c = proposal.get(cid)
+        if c is None:
+            skipped.append(str(cid))
+            continue
+        m = db.get(RoadmapMilestone, c.milestone_id)
+        assert m is not None  # proposal was just derived from live milestones
+        m.due_on = c.new_due
+        m.last_replanned_at = now
+        m.last_replan_reason = c.reason
+        applied.append(str(cid))
+        snapshot.append(
+            {
+                "milestone_id": str(c.milestone_id),
+                "title": c.title,
+                "old_due": c.old_due.isoformat(),
+                "new_due": c.new_due.isoformat(),
+                "reason": c.reason,
+            }
+        )
+
+    replan_id: str | None = None
+    summary: str | None = None
+    if applied:
+        n = len(applied)
+        summary = f"Re-planned {n} milestone{'s' if n != 1 else ''}"
+        replan = RoadmapReplan(
+            roadmap_id=roadmap.id,
+            applied_by=actor.id,
+            change_count=n,
+            changes=snapshot,
+            summary=summary,
+        )
+        db.add(replan)
+        db.flush()
+        replan_id = str(replan.id)
+        event_bus.publish(
+            "roadmap.replanned",
+            {
+                "startup_id": str(roadmap.startup_id),
+                "roadmap_id": str(roadmap.id),
+                "replan_id": replan_id,
+                "change_count": n,
+                "applied_by": str(actor.id),
+            },
+        )
+    db.flush()
+    return {"applied": applied, "skipped": skipped, "replan_id": replan_id, "summary": summary}
