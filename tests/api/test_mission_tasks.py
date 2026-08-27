@@ -4,6 +4,7 @@ from app.core.security import create_access_token
 from app.db.models.enums import MembershipRole, MissionStatus, RoadmapStatus, StartupStage
 from app.db.models.mission import Mission, MissionTask
 from app.platform import events as events_mod
+from app.services.mission.service import streak
 from tests.factories import (
     create_membership,
     create_milestone,
@@ -71,6 +72,26 @@ def test_post_custom_task_requires_editor_role(client, db):
 
     r = client.post("/api/v1/missions/tasks", json={"title": "Nope"}, headers=h)
     assert r.status_code == 403, r.text
+
+
+def test_custom_task_with_no_roadmap_creates_mission(client, db):
+    _u, s, h = _member(db)
+    db.commit()
+
+    r = client.post("/api/v1/missions/tasks", json={"title": "Jot this down"}, headers=h)
+    assert r.status_code == 200, r.text
+    task = r.json()["data"]
+    assert task["title"] == "Jot this down"
+    assert task["roadmap_task_id"] is None
+    assert task["status"] == "todo"
+    assert task["order"] == 0
+
+    mission = db.query(Mission).filter_by(startup_id=s.id, mission_date=date.today()).first()
+    assert mission is not None
+    assert mission.generated_by == "user"
+    assert mission.status == MissionStatus.pending
+    rows = db.query(MissionTask).filter_by(mission_id=mission.id).all()
+    assert len(rows) == 1
 
 
 def test_complete_task_sets_done_and_emits_event(client, db, monkeypatch):
@@ -154,6 +175,66 @@ def test_rejected_task_does_not_block_mission_completion(client, db, monkeypatch
     mission = db.query(Mission).filter_by(startup_id=s.id, mission_date=date.today()).first()
     assert mission.status == MissionStatus.complete
     assert any(e == "mission.completed" and p["mission_id"] == str(mission.id) for e, p in events)
+
+
+def test_reject_last_task_completes_mission(client, db, monkeypatch):
+    events = _capture_events(monkeypatch)
+    _u, s, h = _member(db)
+    _seed_roadmap(db, s, mission_size=3, task_count=3)
+    db.commit()
+
+    r0 = client.get("/api/v1/missions/today", headers=h)
+    tasks = r0.json()["data"]["tasks"]
+    assert len(tasks) == 3
+    complete_ids = [tasks[0]["id"], tasks[1]["id"]]
+    reject_id = tasks[2]["id"]
+
+    for tid in complete_ids:
+        r = client.patch(f"/api/v1/missions/tasks/{tid}", json={"action": "complete"}, headers=h)
+        assert r.status_code == 200, r.text
+
+    mission = db.query(Mission).filter_by(startup_id=s.id, mission_date=date.today()).first()
+    assert mission.status == MissionStatus.pending  # third task still open
+
+    r = client.patch(
+        f"/api/v1/missions/tasks/{reject_id}",
+        json={"action": "reject", "reject_reason": "Doesn't apply"},
+        headers=h,
+    )
+    assert r.status_code == 200, r.text
+
+    db.refresh(mission)
+    assert mission.status == MissionStatus.complete
+
+    completed_events = [
+        p for e, p in events if e == "mission.completed" and p["mission_id"] == str(mission.id)
+    ]
+    assert len(completed_events) == 1
+    # streak reflects the now-complete day
+    assert streak(db, s) == 1
+
+
+def test_reject_all_tasks_does_not_complete_mission(client, db, monkeypatch):
+    events = _capture_events(monkeypatch)
+    _u, s, h = _member(db)
+    _seed_roadmap(db, s, mission_size=2, task_count=2)
+    db.commit()
+
+    r0 = client.get("/api/v1/missions/today", headers=h)
+    tasks = r0.json()["data"]["tasks"]
+    assert len(tasks) == 2
+
+    for t in tasks:
+        r = client.patch(
+            f"/api/v1/missions/tasks/{t['id']}",
+            json={"action": "reject", "reject_reason": "Already done"},
+            headers=h,
+        )
+        assert r.status_code == 200, r.text
+
+    mission = db.query(Mission).filter_by(startup_id=s.id, mission_date=date.today()).first()
+    assert mission.status == MissionStatus.pending
+    assert not any(e == "mission.completed" for e, _ in events)
 
 
 def test_complete_action_is_idempotent(client, db, monkeypatch):

@@ -313,6 +313,60 @@ def add_custom_task(
     return task
 
 
+def _maybe_complete_mission(db: Session, mission: Mission) -> None:
+    """Flip `mission` to complete once every non-rejected task is done, emit
+    `mission.completed`, and check the streak-milestone crossing.
+
+    Shared by `complete_task` and `reject_task` -- either action can clear the
+    last blocker (a mission with 2 done + 1 rejected is just as complete as one
+    with all 3 done). Guarded so a mission where *every* task is rejected and
+    none is done never falsely flips to complete (that would inflate the
+    streak for a day the founder did zero work on).
+    """
+    if mission.status == MissionStatus.complete:
+        return
+
+    remaining = (
+        db.query(MissionTask)
+        .filter(
+            MissionTask.mission_id == mission.id,
+            MissionTask.status.notin_([MissionTaskStatus.done, MissionTaskStatus.rejected]),
+        )
+        .count()
+    )
+    if remaining != 0:
+        return
+
+    done_count = (
+        db.query(MissionTask)
+        .filter(MissionTask.mission_id == mission.id, MissionTask.status == MissionTaskStatus.done)
+        .count()
+    )
+    if done_count == 0:
+        return
+
+    mission.status = MissionStatus.complete
+    db.flush()
+
+    event_bus.publish(
+        "mission.completed",
+        {
+            "startup_id": str(mission.startup_id),
+            "mission_id": str(mission.id),
+            "mission_date": mission.mission_date.isoformat(),
+        },
+    )
+
+    startup = db.query(Startup).filter_by(id=mission.startup_id).first()
+    if startup is not None:
+        new_streak = streak(db, startup)
+        if new_streak in _STREAK_MILESTONES:
+            event_bus.publish(
+                "mission.streak.milestone",
+                {"startup_id": str(mission.startup_id), "streak": new_streak},
+            )
+
+
 def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTask:
     """Mark `task` done and cascade: mission-complete + streak-milestone events.
 
@@ -335,32 +389,8 @@ def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTa
     )
 
     mission = db.query(Mission).filter_by(id=task.mission_id).first()
-    if mission is not None and mission.status != MissionStatus.complete:
-        remaining = (
-            db.query(MissionTask)
-            .filter(
-                MissionTask.mission_id == mission.id,
-                MissionTask.status.notin_([MissionTaskStatus.done, MissionTaskStatus.rejected]),
-            )
-            .count()
-        )
-        if remaining == 0:
-            mission.status = MissionStatus.complete
-            db.flush()
-            event_bus.publish(
-                "mission.completed",
-                {
-                    "startup_id": str(startup.id),
-                    "mission_id": str(mission.id),
-                    "mission_date": mission.mission_date.isoformat(),
-                },
-            )
-            new_streak = streak(db, startup)
-            if new_streak in _STREAK_MILESTONES:
-                event_bus.publish(
-                    "mission.streak.milestone",
-                    {"startup_id": str(startup.id), "streak": new_streak},
-                )
+    if mission is not None:
+        _maybe_complete_mission(db, mission)
     return task
 
 
@@ -377,7 +407,14 @@ def reorder_task(db: Session, task: MissionTask, order: int) -> MissionTask:
 
 
 def reject_task(db: Session, task: MissionTask, reject_reason: str) -> MissionTask:
+    """Reject `task`, then re-check mission completion -- rejecting the last
+    remaining blocker (with at least one other task already done) completes
+    the mission just as surely as completing it would."""
     task.status = MissionTaskStatus.rejected
     task.reject_reason = reject_reason
     db.flush()
+
+    mission = db.query(Mission).filter_by(id=task.mission_id).first()
+    if mission is not None:
+        _maybe_complete_mission(db, mission)
     return task
