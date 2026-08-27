@@ -157,7 +157,13 @@ def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uu
             skipped.append(str(cid))
             continue
         m = db.get(RoadmapMilestone, c.milestone_id)
-        assert m is not None  # proposal was just derived from live milestones
+        # The proposal was derived from these same live milestones moments ago, so
+        # this narrows the Optional for mypy rather than guarding a real case.
+        # Bandit flags it (B101) because `python -O` strips asserts: under -O this
+        # line vanishes and a None would fall through to the attribute writes below.
+        # Kept as an assert rather than a silent `continue` so that a violated
+        # invariant stays loud; the service is not run with -O.
+        assert m is not None  # nosec B101
         m.due_on = c.new_due
         m.last_replanned_at = now
         m.last_replan_reason = c.reason

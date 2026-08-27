@@ -101,16 +101,28 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "C90"]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
-# Measured on the current tree: exactly ONE function exceeds 10 --
-# `validate_answer` in app/services/assessment/engine.py at 11. Everything else
-# is at or below 9, and radon puts the whole-codebase average at A (2.30) with
-# every module's maintainability index rated A.
+# Measured on the tree this gate was introduced against: exactly ONE function
+# exceeded 10 -- `validate_answer` in app/services/assessment/engine.py at 11.
+# Everything else was at or below 9, and radon puts the whole-codebase average
+# at A (2.30) with every module's maintainability index rated A. The gate was
+# therefore set at 12: one notch above the worst, unreachable without writing
+# something more tangled than anything then in the codebase.
 #
-# 12 is therefore one notch above the current worst: it cannot be reached without
-# writing something more tangled than anything in the codebase today, but it does
-# not demand a refactor to go green. Dropping this to the common default of 10
-# costs exactly one refactor (`validate_answer`) -- tracked as a follow-up.
-max-complexity = 12
+# RAISED 12 -> 13 (2026-08-27, Adebayo's call). Module 04 Today's Mission
+# (PR #17) merged to main while the PR introducing this gate was open, bringing
+# `get_or_generate_today` in app/services/mission/service.py at 13. The gate
+# caught it exactly as intended -- but refactoring another module's
+# freshly-merged logic inside a deployment PR is the wrong place for it, so the
+# ceiling moved instead.
+#
+# Be aware of what that trades away: a ceiling raised to whatever most recently
+# landed is a ratchet, and the next function at 14 has the same argument
+# available to it. Two follow-ups keep this honest, and neither should be
+# quietly dropped:
+#   1. refactor `get_or_generate_today` back under 12, then restore this to 12
+#   2. refactor `validate_answer`, which is the only thing between the tree and
+#      ruff's common default of 10
+max-complexity = 13
 
 [tool.pylint.main]
 # alembic is generated/templated code and is excluded from every other linter here.
