@@ -10,17 +10,24 @@ snapshot that already copied its title/effort.
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus
+from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus, TaskEffort
 from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.db.models.startup import Startup
+from app.platform.events import event_bus
 
 _DEFAULT_MISSION_SIZE = 3
 _WEEKEND_ISO_WEEKDAYS = (5, 6)  # Saturday, Sunday (date.weekday())
+_STREAK_MILESTONES = (7, 30, 100)
+
+# The only reject-reason chips the FE offers -- kept here (not in the schema) so
+# the endpoint and any future caller validate against one source of truth.
+VALID_REJECT_REASONS = frozenset({"Already done", "Wrong priority", "Doesn't apply"})
 
 
 def _today() -> date:
@@ -173,23 +180,108 @@ def streak(db: Session, startup: Startup) -> int:
     return count
 
 
+def serialize_task(t: MissionTask) -> dict:
+    return {
+        "id": str(t.id),
+        "roadmap_task_id": str(t.roadmap_task_id) if t.roadmap_task_id else None,
+        "title": t.title,
+        "reason": t.reason,
+        "effort": t.effort.value,
+        "status": t.status.value,
+        "order": t.order,
+        "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+        "reject_reason": t.reject_reason,
+    }
+
+
 def serialize_mission(db: Session, mission: Mission, streak: int) -> dict:
     tasks = db.query(MissionTask).filter_by(mission_id=mission.id).order_by(MissionTask.order).all()
     return {
         "mission_date": mission.mission_date.isoformat(),
         "status": mission.status.value,
         "streak": streak,
-        "tasks": [
-            {
-                "id": str(t.id),
-                "roadmap_task_id": str(t.roadmap_task_id) if t.roadmap_task_id else None,
-                "title": t.title,
-                "reason": t.reason,
-                "effort": t.effort.value,
-                "status": t.status.value,
-                "order": t.order,
-                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
-            }
-            for t in tasks
-        ],
+        "tasks": [serialize_task(t) for t in tasks],
     }
+
+
+def add_custom_task(
+    db: Session, mission: Mission, title: str, effort: TaskEffort | None = None
+) -> MissionTask:
+    """Append a user-authored task to `mission` -- no roadmap link, appended order."""
+    max_order = db.query(func.max(MissionTask.order)).filter_by(mission_id=mission.id).scalar()
+    next_order = 0 if max_order is None else max_order + 1
+    task = MissionTask(
+        mission_id=mission.id,
+        roadmap_task_id=None,
+        title=title,
+        effort=effort or TaskEffort.medium,
+        order=next_order,
+        status=MissionTaskStatus.todo,
+    )
+    db.add(task)
+    db.flush()
+    return task
+
+
+def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTask:
+    """Mark `task` done and cascade: mission-complete + streak-milestone events."""
+    task.status = MissionTaskStatus.done
+    task.completed_at = datetime.now(UTC)
+    db.flush()
+
+    event_bus.publish(
+        "mission.task.completed",
+        {
+            "startup_id": str(startup.id),
+            "mission_id": str(task.mission_id),
+            "task_id": str(task.id),
+        },
+    )
+
+    mission = db.query(Mission).filter_by(id=task.mission_id).first()
+    if mission is not None and mission.status != MissionStatus.complete:
+        remaining = (
+            db.query(MissionTask)
+            .filter(
+                MissionTask.mission_id == mission.id,
+                MissionTask.status.notin_([MissionTaskStatus.done, MissionTaskStatus.rejected]),
+            )
+            .count()
+        )
+        if remaining == 0:
+            mission.status = MissionStatus.complete
+            db.flush()
+            event_bus.publish(
+                "mission.completed",
+                {
+                    "startup_id": str(startup.id),
+                    "mission_id": str(mission.id),
+                    "mission_date": mission.mission_date.isoformat(),
+                },
+            )
+            new_streak = streak(db, startup)
+            if new_streak in _STREAK_MILESTONES:
+                event_bus.publish(
+                    "mission.streak.milestone",
+                    {"startup_id": str(startup.id), "streak": new_streak},
+                )
+    return task
+
+
+def snooze_task(db: Session, task: MissionTask) -> MissionTask:
+    task.status = MissionTaskStatus.snoozed
+    db.flush()
+    return task
+
+
+def reorder_task(db: Session, task: MissionTask, order: int) -> MissionTask:
+    task.order = order
+    db.flush()
+    return task
+
+
+def reject_task(db: Session, task: MissionTask, reject_reason: str) -> MissionTask:
+    task.status = MissionTaskStatus.rejected
+    task.reject_reason = reject_reason
+    db.flush()
+    return task
