@@ -329,8 +329,11 @@ def create_mission_settings(
     startup: Startup,
     *,
     mission_size: int = 3,
+    weekend_missions: bool = False,
 ) -> MissionSettings:
-    st = MissionSettings(startup_id=startup.id, mission_size=mission_size)
+    st = MissionSettings(
+        startup_id=startup.id, mission_size=mission_size, weekend_missions=weekend_missions
+    )
     db.add(st)
     db.flush()
     return st
