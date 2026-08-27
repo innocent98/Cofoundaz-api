@@ -135,7 +135,18 @@ jobs:
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
-          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+          # github.repository preserves the repository's own casing
+          # ("innocent98/Cofoundaz-api"), but a Docker reference's path component
+          # MUST be lowercase. docker/metadata-action lowercases it silently when
+          # deriving tags, so the PUSH lands at .../cofoundaz-api while a ref built
+          # from the raw variable names .../Cofoundaz-api -- malformed AND
+          # nonexistent. That mismatch failed the first real CD run.
+          #
+          # `tr` rather than bash's ${VAR,,}: the latter needs bash 4+, so it
+          # cannot be exercised on a macOS dev machine (bash 3.2) and silently
+          # breaks under sh. This form is portable and locally testable.
+          IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_REF="${REGISTRY}/${IMAGE_LC}@${DIGEST}"
           echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
           echo "Deploying image: ${IMAGE_REF}"
 
@@ -170,7 +181,11 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${MANUAL_TAG}" ]; then
-            REF="${REGISTRY}/${IMAGE_NAME}:${MANUAL_TAG}"
+            # Lowercased for the same reason as the digest path in
+            # build-and-push: the registry holds .../cofoundaz-api, never
+            # .../Cofoundaz-api.
+            IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+            REF="${REGISTRY}/${IMAGE_LC}:${MANUAL_TAG}"
             echo "Manual deploy (rollback path) of ${REF}"
           else
             REF="${BUILT_REF}"

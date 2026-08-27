@@ -253,6 +253,48 @@ them as tested:
 | The SBOM as a **workflow artifact** | Generated locally from the built image only; never uploaded, and never attached to a GHCR image | The first `build` job — check for artifact `sbom-cyclonedx-<sha>` |
 | SLSA provenance / SBOM attestations on the GHCR manifest | No GHCR push was performed | `docker buildx imagetools inspect --format '{{ json .Provenance }}'` after the first CD run |
 
+## What the first real CD run taught us (2026-08-27, `main` @ `abce971`)
+
+PR #18 merged with CI fully green, which triggered the first ever execution of `cd.yml`.
+
+**`Build & push to GHCR` succeeded.** The image really was built and pushed:
+`ghcr.io/innocent98/cofoundaz-api:latest` and `:sha-abce971`. That closes several
+NOT-VERIFIED rows above — GHCR push, the SBOM as a workflow artifact, and the image
+build under CD rather than CI.
+
+**`Deploy to production VPS` failed on its own guard, and the guard was right:**
+
+```
+Refusing to deploy malformed image reference:
+  ghcr.io/innocent98/Cofoundaz-api@sha256:6e4e76ab...
+```
+
+Root cause: `IMAGE_NAME` comes from `${{ github.repository }}`, which preserves the
+repository's own casing — `innocent98/Cofoundaz-api`, with a capital C. A Docker
+reference's path component must be lowercase. `docker/metadata-action` lowercases it
+**silently** when deriving tags, so the push landed at `.../cofoundaz-api` while the
+deploy job assembled `.../Cofoundaz-api` from the raw variable. That reference is both
+malformed and points at nothing.
+
+Two things worth keeping from this:
+
+- The failure was caught by the reference-shape check added as defence-in-depth against
+  the `workflow_dispatch` rollback input. It was written to constrain operator-supplied
+  text; it caught a bug in the workflow's own construction instead. It failed on the
+  runner with a clear message rather than as an opaque `docker pull` error on the VPS.
+- The mismatch was only observable across two jobs. `metadata-action`'s silent
+  lowercasing makes the push succeed, so nothing upstream of the deploy step is red.
+
+Fixed by lowercasing explicitly at both assembly sites (digest path and rollback path)
+with `tr '[:upper:]' '[:lower:]'` rather than bash's `${VAR,,}` — the latter needs
+bash 4+, so it cannot be exercised on a macOS dev machine (bash 3.2) and degrades
+silently under `sh`. Both paths verified locally against the real digest and the
+validation regex before pushing.
+
+**Still NOT VERIFIED:** everything past the reference resolution — the SSH connection,
+`docker pull` on the VPS, the migration step, the readiness gate, and the rollback trap.
+Those need the VPS secrets and a real host.
+
 ## What the first real CI run taught us (2026-08-27, PR #18)
 
 The docs above marked the workflows "NOT VERIFIED — never executed on GitHub". They have now
