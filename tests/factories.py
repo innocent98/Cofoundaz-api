@@ -24,6 +24,7 @@ from app.db.models.roadmap import (
     Roadmap,
     RoadmapMilestone,
     RoadmapPhase,
+    RoadmapReplan,
     RoadmapTask,
     RoadmapTaskDependency,
 )
@@ -277,6 +278,35 @@ def create_dependency(
     db.add(d)
     db.flush()
     return d
+
+
+def create_replan(
+    db: Session,
+    roadmap: Roadmap,
+    *,
+    applied_by: User | uuid.UUID | None = None,
+    change_count: int = 1,
+    changes: list | None = None,
+    summary: str = "Re-planned 1 milestone",
+) -> RoadmapReplan:
+    # `applied_by` is a real FK to `users.id` (NOT NULL) — a raw startup_id
+    # would violate the constraint, so create a real user when none is given.
+    if applied_by is None:
+        applied_by_id = create_user(db).id
+    elif isinstance(applied_by, User):
+        applied_by_id = applied_by.id
+    else:
+        applied_by_id = applied_by
+    r = RoadmapReplan(
+        roadmap_id=roadmap.id,
+        applied_by=applied_by_id,
+        change_count=change_count,
+        changes=changes or [],
+        summary=summary,
+    )
+    db.add(r)
+    db.flush()
+    return r
 
 
 def create_auth_session(

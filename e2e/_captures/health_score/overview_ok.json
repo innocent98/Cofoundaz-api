@@ -4,7 +4,7 @@
     "score": 31,
     "band": "at_risk",
     "delta_7d": 0,
-    "computed_at": "2026-08-19T17:06:37.249921+00:00",
+    "computed_at": "2026-08-27T20:38:43.884250+00:00",
     "config_version": 1,
     "dimensions": [
       {
@@ -40,7 +40,7 @@
     ],
     "top_recommendations": [
       {
-        "id": "3d1a3a35-a918-4e88-9ccb-858aae7197b5",
+        "id": "ac7b50d4-c764-431e-97c6-dd9ce7446f1f",
         "dimension": "legal",
         "key": "legal.incorporate",
         "title": "Complete incorporation",
@@ -51,7 +51,7 @@
         "priority": 1
       },
       {
-        "id": "12ea1f3f-95d9-4d14-b5f3-06f2cf73188c",
+        "id": "fdc535c1-1d9b-4a35-9d6b-f65ff1e3bfde",
         "dimension": "legal",
         "key": "legal.founder_agreement",
         "title": "Sign a founders' agreement",
@@ -62,7 +62,7 @@
         "priority": 2
       },
       {
-        "id": "79bed755-5479-4307-b046-6d29ede340c0",
+        "id": "a70d5fbd-e664-4480-89cf-8d9ea7c45fad",
         "dimension": "product",
         "key": "product.define_mvp",
         "title": "Define your MVP scope",

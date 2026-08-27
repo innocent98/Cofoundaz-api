@@ -87,3 +87,7 @@ class TaskUpdate(BaseModel):
 
 class DependencyCreate(BaseModel):
     depends_on_task_id: uuid.UUID
+
+
+class ReplanApply(BaseModel):
+    change_ids: list[uuid.UUID]

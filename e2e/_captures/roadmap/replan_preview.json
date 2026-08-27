@@ -1,0 +1,16 @@
+{
+  "data": {
+    "drift_count": 1,
+    "changes": [
+      {
+        "change_id": "9b8b118f-316a-4354-a1f9-d0f5b1b35b3c",
+        "milestone_id": "9b8b118f-316a-4354-a1f9-d0f5b1b35b3c",
+        "title": "Validate demand",
+        "old_due": "2026-08-17",
+        "new_due": "2026-09-03",
+        "reason": "10 days overdue and not yet done."
+      }
+    ]
+  },
+  "meta": null
+}

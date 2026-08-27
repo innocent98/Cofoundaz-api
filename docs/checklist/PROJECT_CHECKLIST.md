@@ -11,21 +11,21 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-27 · production deployment hardening pass **plus a code/quality/security scanning wave**, on an uncommitted working tree on `main` (docker-compose.prod.yml, hardened Dockerfile, **10-job CI**, CodeQL workflow, Dependabot, CD workflow, readiness endpoint — nothing committed yet)_
+_Last reconciled: 2026-08-27 · `chore/production-deployment-hardening` branch (production deployment hardening + code/quality/security scanning wave: docker-compose.prod.yml, hardened Dockerfile, 10-job CI, CodeQL workflow, Dependabot, CD workflow, readiness endpoint — PR #18, not yet merged), merged with `main` at Roadmap Slice 3 (PR #16)_
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 3 fully complete (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 in progress (05 Roadmap, Slices 1–2/3 shipped) · 22 not started (02·03·04·08–26).
+**PRD module tally: 26 total** — 4 fully complete (01 Auth+Onboarding · 05 Roadmap · 06 Health Score · 07 Assessment) · 21 not started (02·03·04·08–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
-| 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) **merged PR #7**; Slice 2 (dependencies + templates) **shipped on branch, not yet merged**; Slice 3 remains |
-| ⬜ Planned / next | 22 | Roadmap Slice 3 · Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ✅ Shipped & certified | 4 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) |
+| 🟡 In progress | 0 | — |
+| ⬜ Planned / next | 21 | Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~57 endpoints · 338 unit tests (real Postgres) + 25 live E2E · 98.29% coverage · black/isort/ruff (incl. C901)/mypy clean · pylint 9.94/10 · radon average complexity **A (2.30)**, every module MI **A** · bandit / hadolint / `trivy config` all exit 0 · zero AI-attribution trailers.
+**Health at a glance:** ~60 endpoints · 353 unit tests (real Postgres) + 26 live E2E · 98.39% coverage · black/isort/ruff (incl. C901)/mypy clean · pylint 9.94/10 · radon average complexity **A (2.30)**, every module MI **A** · bandit / hadolint / `trivy config` / checkov all exit 0 · zero AI-attribution trailers.
 
 ---
 
@@ -116,7 +116,7 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 
 ---
 
-## 🟡 Module 05 — Roadmap — *in progress (decomposed into 3 slices)*
+## ✅ Module 05 — Roadmap — *complete, all 3 slices shipped (branch `feat/roadmap-replan`, not yet merged to `main`)*
 
 _Decomposed in brainstorming: each slice = its own spec → plan → build → PR._
 
@@ -144,8 +144,16 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] Live E2E extension + SOP + FE integration guide update — `e2e/test_roadmap.py` (extended), `docs/sop/2026-08-22-roadmap-deps-templates.md`, `docs/fe-integration-guide-roadmap.md` (updated)
 - [ ] _Deferred:_ `add_dependency`/`apply_template` no-row-lock race under concurrent double-calls (benign, same class as Slice 1's `_next_order`) · `roadmap.template.applied` has no consumer until Module 20
 
-**Slice 3 — AI Re-plan** — *planned*
-- [ ] Drift detection · `POST /roadmap/replan/preview` (before/after diff) · `POST /roadmap/replan/apply {change_ids[]}` (consume `roadmap.replan`) · `roadmap.replanned` event · never auto-applies
+**Slice 3 — AI Re-plan** — *✅ done (branch `feat/roadmap-replan`, Tasks 1–7; not yet merged to `main`)* — 2026-08-27
+- [x] Scope + locked decisions (slip-and-cascade along dependency DAG · stateless preview + deterministic apply · `roadmap_replans` history table + milestone marker columns · templated reason v1 · `roadmap.replan` job stays an unconsumed stub)
+- [x] Migration `0008_roadmap_replan` (`roadmap_replans` table + `last_replanned_at`/`last_replan_reason` on `roadmap_milestones`) + `RoadmapReplan` model
+- [x] `detect_drift` + `compute_replan` cascade engine (`REPLAN_BUFFER_DAYS = 7`, milestone-precedence DAG, max-not-sum shift propagation, templated reason)
+- [x] `apply_replan` (recompute-on-apply, stale `change_id` → skipped, markers + one history row + `roadmap.replanned` event)
+- [x] `POST /roadmap/replan/preview` (member) + `POST /roadmap/replan/apply {change_ids[]}` (editor)
+- [x] `GET /roadmap/replan/history` + tree `roadmap.drift.slipped_count` + per-milestone `replanned` marker
+- [x] Live E2E (26 passed) + smoke surface — `e2e/test_roadmap_replan.py`
+- [x] SOP + FE integration guide update + checklist reconcile — `docs/sop/2026-08-26-roadmap-replan.md`, `docs/fe-integration-guide-roadmap.md` (updated)
+- [ ] _Deferred:_ AI-authored rationale (Module 03) · notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job permanently unconsumed (by design) · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids` not deduped on apply — see SOP Follow-ups
 
 ---
 
