@@ -224,7 +224,13 @@ def add_custom_task(
 
 
 def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTask:
-    """Mark `task` done and cascade: mission-complete + streak-milestone events."""
+    """Mark `task` done and cascade: mission-complete + streak-milestone events.
+
+    Idempotent -- re-completing an already-done task is a no-op (no event
+    re-fires, `completed_at` isn't clobbered with a fresh timestamp).
+    """
+    if task.status == MissionTaskStatus.done:
+        return task
     task.status = MissionTaskStatus.done
     task.completed_at = datetime.now(UTC)
     db.flush()

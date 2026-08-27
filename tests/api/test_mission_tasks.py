@@ -128,6 +128,55 @@ def test_complete_last_task_completes_mission(client, db, monkeypatch):
     assert not any(e == "mission.streak.milestone" for e, _ in events)
 
 
+def test_rejected_task_does_not_block_mission_completion(client, db, monkeypatch):
+    events = _capture_events(monkeypatch)
+    _u, s, h = _member(db)
+    _seed_roadmap(db, s, mission_size=2, task_count=2)
+    db.commit()
+
+    r0 = client.get("/api/v1/missions/today", headers=h)
+    tasks = r0.json()["data"]["tasks"]
+    assert len(tasks) == 2
+    reject_id, complete_id = tasks[0]["id"], tasks[1]["id"]
+
+    r1 = client.patch(
+        f"/api/v1/missions/tasks/{reject_id}",
+        json={"action": "reject", "reject_reason": "Wrong priority"},
+        headers=h,
+    )
+    assert r1.status_code == 200, r1.text
+
+    r2 = client.patch(
+        f"/api/v1/missions/tasks/{complete_id}", json={"action": "complete"}, headers=h
+    )
+    assert r2.status_code == 200, r2.text
+
+    mission = db.query(Mission).filter_by(startup_id=s.id, mission_date=date.today()).first()
+    assert mission.status == MissionStatus.complete
+    assert any(e == "mission.completed" and p["mission_id"] == str(mission.id) for e, p in events)
+
+
+def test_complete_action_is_idempotent(client, db, monkeypatch):
+    events = _capture_events(monkeypatch)
+    _u, s, h = _member(db)
+    _seed_roadmap(db, s, mission_size=3, task_count=3)
+    db.commit()
+
+    r0 = client.get("/api/v1/missions/today", headers=h)
+    task_id = r0.json()["data"]["tasks"][0]["id"]
+
+    r1 = client.patch(f"/api/v1/missions/tasks/{task_id}", json={"action": "complete"}, headers=h)
+    assert r1.status_code == 200, r1.text
+    completed_at_first = r1.json()["data"]["completed_at"]
+
+    r2 = client.patch(f"/api/v1/missions/tasks/{task_id}", json={"action": "complete"}, headers=h)
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["data"]["completed_at"] == completed_at_first
+
+    completed_events = [e for e, _ in events if e == "mission.task.completed"]
+    assert len(completed_events) == 1
+
+
 def test_streak_milestone_fires_at_seven(client, db, monkeypatch):
     events = _capture_events(monkeypatch)
     _u, s, h = _member(db)
