@@ -257,36 +257,94 @@ What the committed configuration already decides for you:
 
 ---
 
-## 9. CodeQL, dependency-review and Dependabot — nothing to configure
+## 9. Code scanning on a PRIVATE repo — the GHAS constraint
 
-These three need **no secrets**. They run on the automatic `GITHUB_TOKEN` plus the
-`security-events: write` / `pull-requests: write` permissions already declared in the workflows.
+**Verified the hard way on the first real CI run.** This repository is **private**, and on a
+private repository GitHub's code-scanning API and the Dependency Graph are part of **GitHub
+Advanced Security (GHAS)**, a paid add-on. Without it:
 
-| Feature | Where | Configuration needed |
+```
+Dependency review: "Dependency review is not supported on this repository.
+  Please ensure that Dependency graph is enabled along with GitHub Advanced Security"
+CodeQL / SARIF uploads: "Resource not accessible by integration"
+```
+
+### What this does and does not cost you
+
+| | Without GHAS (today) | With GHAS, or public repo |
 |---|---|---|
-| **CodeQL** | `.github/workflows/codeql.yml` — its own workflow, because it needs a weekly `schedule:` (`cron: "17 4 * * 1"`) that would otherwise drag the whole 10-job CI pipeline along with it | None. Report-only; findings appear in the Security tab. |
-| **`dependency-review`** | a PR-only job in `ci.yml`; `fail-on-severity: high`, denies `GPL-3.0` / `AGPL-3.0` / `LGPL-3.0` | None. Uses `pull-requests: write` to comment on failure. |
-| **Dependabot** | `.github/dependabot.yml` — `pip`, `github-actions` and `docker`, weekly | Enable Dependabot in Settings → Code security if it is not already on for the repo. |
+| Semgrep, bandit, gitleaks, pip-audit, Trivy, Checkov | **Still block the build** on findings, via exit code | Same, plus results in the Security tab |
+| Security tab / SARIF | Not available | Available |
+| CodeQL | **Skips cleanly** | Runs |
+| dependency-review | **Skips cleanly** | Runs |
 
-Two things to check after enabling, because neither has been observed:
+**You lose a view, not a gate.** Every scanner that blocked before still blocks. That is a
+deliberate design constraint of this pipeline, and it is why the SARIF upload steps are
+`continue-on-error` while the scanners themselves are not.
 
-> **NOT VERIFIED —** CodeQL has never run (it cannot run locally; it needs GitHub Actions), and
-> `dependency-review-action` has never run (it needs a real pull request to diff a manifest
-> against a base commit). Verification is the first push to `develop` and the first PR.
+> **The failure mode this replaced — worth understanding before changing it.**
+> On the first run the SARIF upload steps sat *between* the scanners. When an upload failed,
+> GitHub marked the job failed and **skipped every later step**: `bandit` and `pip-audit` never
+> ran in `security`, and `trivy config` and Checkov never ran in `iac-scan`. Four blocking
+> gates silently did not execute. The job was red so nothing shipped — but had anyone
+> "fixed" it with a bare `continue-on-error` on the upload, those jobs would have gone
+> **green with no scanning at all**.
+>
+> The fix is structural, not cosmetic: **every scanner now runs before any upload**, and the
+> uploads are last, best-effort, and guarded on `hashFiles()`. An upload can no longer
+> suppress a gate. Do not reorder these steps.
 
-> **NOT VERIFIED — check this one deliberately.** The Docker base-image digest lives in an
-> `ARG PYTHON_IMAGE=…` default rather than a bare `FROM` literal. Dependabot's Docker parser
-> handles ARG-based `FROM` in most cases but is **not guaranteed to**. If no digest PRs appear
-> within **two weeks** of enabling Dependabot, refresh the digest by hand and treat the Docker
-> ecosystem as unverified until a PR is actually observed.
+### Turning code scanning on
 
-**Why Dependabot is not optional housekeeping.** This repo pins Actions to full commit SHAs and
-the base image to a digest. Pinning **without** a mechanism to move the pin is strictly worse
-than not pinning: within months you are running a base image with months of unpatched CVEs,
-confidently and reproducibly. Dependabot opens the PR, CI proves the move is safe, a human
-merges it.
+Two routes, and the doc's job is to let you choose:
+
+**Route A — make the repository public.** Code scanning, CodeQL and the Dependency Graph are
+**free on public repositories**. Costs nothing; exposes the source. CodeQL and
+dependency-review re-enable **automatically** — their job conditions test
+`github.event.repository.private == false`.
+
+**Route B — buy GitHub Advanced Security.** Keeps the repo private. GHAS is licensed per
+*active committer* and is available on GitHub Enterprise (and as Secret Protection / Code
+Security SKUs). **Pricing is not reproduced here because it changes** — check
+<https://github.com/pricing> or your Enterprise account team. After enabling it, set a
+repository **variable**:
+
+```
+Settings → Secrets and variables → Actions → Variables → New repository variable
+  Name:  ENABLE_CODE_SCANNING
+  Value: true
+```
+
+That single variable turns CodeQL and dependency-review back on. Nothing else changes.
+
+**Route C — do nothing.** Entirely reasonable. The scanners keep blocking; you review findings
+in the job logs rather than the Security tab. Nothing is unprotected.
+
+### Why those two jobs skip rather than fail
+
+A permanently-red job trains people to ignore red. CodeQL and dependency-review therefore carry
+a job-level `if:` and report as **skipped** when neither condition is met — a visibly inactive
+job, not a broken one.
 
 ---
+
+## 9a. `ENABLE_CODE_SCANNING` — optional repository variable
+
+| | |
+|---|---|
+| **Type** | Repository **variable** (not a secret — it holds no sensitive value) |
+| **Value** | `true` to force CodeQL + dependency-review on |
+| **Needed?** | No. Only after enabling GHAS on a private repo. |
+| **Ignored when** | The repo is public — those jobs already run. |
+
+---
+
+## 9b. Dependabot — nothing to configure
+
+`.github/dependabot.yml` is committed and needs no secrets. Dependabot's version updates work on
+private repositories **without** GHAS (it is *Dependabot alerts*, which read the Dependency
+Graph, that need GHAS on a private repo). Enable it under
+**Settings → Code security → Dependabot version updates**.
 
 ## 10. Setup checklist
 

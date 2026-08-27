@@ -253,6 +253,100 @@ them as tested:
 | The SBOM as a **workflow artifact** | Generated locally from the built image only; never uploaded, and never attached to a GHCR image | The first `build` job — check for artifact `sbom-cyclonedx-<sha>` |
 | SLSA provenance / SBOM attestations on the GHCR manifest | No GHCR push was performed | `docker buildx imagetools inspect --format '{{ json .Provenance }}'` after the first CD run |
 
+## What the first real CI run taught us (2026-08-27, PR #18)
+
+The docs above marked the workflows "NOT VERIFIED — never executed on GitHub". They have now
+executed. Four green (lint, test, migrations, sonarcloud), five failed, build skipped. Four
+distinct root causes, all fixed forward on the same branch.
+
+### 1. The repo is private and has no GitHub Advanced Security — and the failure CASCADED
+
+`dependency-review` reported *"Dependency review is not supported on this repository"*; every
+`upload-sarif` step reported *"Resource not accessible by integration"*. On a **private** repo,
+code scanning and the Dependency Graph are paid GHAS features.
+
+The important part was not the upload failing — it was **what the failure did to the job**.
+The upload steps sat *between* the scanners, so when one failed GitHub skipped every later
+step:
+
+| Job | Ran | **Silently skipped** |
+|---|---|---|
+| `security` | gitleaks, Semgrep | **bandit, pip-audit** |
+| `iac-scan` | Trivy fs | **Trivy config (blocking), Checkov (blocking)** |
+
+Four blocking gates never executed. The jobs were red so nothing shipped — but a bare
+`continue-on-error` on the uploads would have turned them **green with no scanning at all**.
+That is the dangerous version of this bug, and it is the one an unwary fix produces.
+
+**Fix (structural, not cosmetic):** every scanner now runs *before* any upload; uploads are
+last, `continue-on-error`, and guarded on `hashFiles()`. A failed upload can no longer suppress
+a gate. A dedicated step then logs a visible warning and step-summary entry saying findings are
+enforced by exit code but not uploaded — rather than a silent tolerance someone later mistakes
+for flakiness. CodeQL and dependency-review now **skip cleanly** (a permanently-red job trains
+people to ignore red), re-enabling automatically if the repo goes public or via an
+`ENABLE_CODE_SCANNING=true` repository variable. Costs and both routes are documented in
+`docs/deployment/GITHUB_ACTIONS_SETUP.md`.
+
+### 2. `Path does not exist: trivy-config.sarif` was a symptom, not the cause
+
+Reproduced locally: Trivy **does** write a valid SARIF even with zero findings (642 bytes). The
+file was missing in CI only because the scan step had been *skipped* by cause 1, while its
+upload carried `if: always()` and ran anyway. Both fixed — uploads are now guarded on the file
+actually existing, so this failure mode cannot recur even if a scan is skipped for another
+reason.
+
+### 3. hadolint version skew — local passed, CI failed, same file and config
+
+CI reported `DL3006 "Always tag the version of an image explicitly"` on both `FROM
+${PYTHON_IMAGE}` lines. Local hadolint **2.15.1** exits 0 on the same input. Confirmed by
+running both versions against the same Dockerfile and config:
+
+| hadolint | Result |
+|---|---|
+| **v2.12.0** (shipped by `hadolint-action@v3.1.0`) | DL3006 ×2 → **exit 1** |
+| **v2.15.1** (shipped by `hadolint-action@v3.5.0`, == local) | no output → **exit 0** |
+
+2.12.0 does not resolve the `ARG PYTHON_IMAGE` default, so `FROM ${PYTHON_IMAGE}` reads as an
+untagged image — against a base that is pinned by *digest*.
+
+**Fixed by pinning the action to v3.5.0**, not by adding DL3006 to `.hadolint.yaml`.
+Suppressing it would mask a genuinely untagged `FROM` added later. A gate that disagrees
+between local and CI is worse than no gate, so the versions must track — and the pin now
+carries a comment saying so.
+
+### 4. A real race in `scripts/e2e_run.sh`, only visible on a cold runner
+
+```
+==> [sanity] recreate cofoundaz_e2e (clean state)
+psql: error: connection to server on socket ".../.s.PGSQL.5432" failed: No such file or directory
+```
+
+~1.3s after the db container started. Two compounding defects, both genuine harness bugs rather
+than CI quirks:
+
+1. The `pg_isready` loop `break`s on success but **fell through silently** on timeout — a
+   timeout was indistinguishable from success.
+2. On a **first-ever** start Postgres runs `initdb`, which boots a *temporary* internal server.
+   `pg_isready` can answer "accepting connections" against that, after which initdb stops it to
+   start the real one. The wait passed; the next `psql` hit nothing.
+
+It never reproduced locally because the dev volume already existed, so `initdb` never ran.
+
+**Fix:** gate on the compose healthcheck via `docker compose up -d --wait`, then prove the real
+server answers a real `SELECT 1` on the admin database — which is exactly what the next command
+needs, and which initdb's temporary server cannot satisfy. The fallback loop now **fails loudly
+with `docker compose ps` and logs** instead of falling through. `make e2e` is unchanged.
+
+**Verified both ways.** Reproduced the cold start in an isolated compose project
+(`COMPOSE_PROJECT_NAME=cfz-coldstart`) so `initdb` genuinely ran: **25 passed**. Forced the wait
+to never succeed: **exit 1 with `!! Postgres never accepted a query ... after 30s`**, rather
+than the previous silent fall-through.
+
+> The shared dev Postgres volume was deliberately **not** wiped to reproduce this, despite that
+> being the obvious route: it holds two concurrent worktree sessions' databases
+> (`cofoundaz_mission_dev` has 28 tables). An isolated compose project reproduces the cold-start
+> condition exactly and destroys nothing shared.
+
 ## Operate / roll back
 
 - **Nothing is committed.** This is a working-tree pass; review with `git status` / `git diff`

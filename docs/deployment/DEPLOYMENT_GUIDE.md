@@ -375,6 +375,23 @@ make `build` unreachable on a push to `main`.
 | `sonarcloud` | `needs: [test]`. Downloads the coverage artifact and scans — **only when `SONAR_TOKEN` exists**, skipping cleanly otherwise | **NOT VERIFIED —** no SonarCloud account was created; `sonar-project.properties` still carries `CHANGE_ME` placeholders. The skip-cleanly path is by construction (job-level `env` + a step `if` gate), not observed. Enablement steps: `GITHUB_ACTIONS_SETUP.md` → "Enabling SonarCloud". |
 | `build` | `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`. Builds the image, smoke-tests it, generates a **CycloneDX SBOM**, Trivy-scans HIGH/CRITICAL `--ignore-unfixed`, uploads SARIF, **then** a separate failing gate step | Trivy 0.74.0: 6 HIGH — see §10. SBOM generated locally from the built image: **CycloneDX 1.7, 174 components** (173 library + 1 operating-system), ~301 KB. **NOT VERIFIED —** the SBOM has never been uploaded as a workflow artifact. |
 
+### Code scanning needs GHAS on a private repo — gates are unaffected
+
+**Verified on the first real CI run.** This repo is private, so SARIF upload and the Dependency
+Graph require GitHub Advanced Security. Consequences, and the limit of them:
+
+- Every scanner below that **BLOCKS still blocks** — enforcement is by exit code, not by upload.
+- The **Security tab is unavailable**; SARIF uploads are best-effort and log a visible warning.
+- **CodeQL and dependency-review skip cleanly** rather than sitting permanently red.
+
+Re-enable by making the repo public (free) or by setting `ENABLE_CODE_SCANNING=true` after
+buying GHAS. Both routes are in `docs/deployment/GITHUB_ACTIONS_SETUP.md` §9.
+
+> **Do not reorder the scanning steps.** Scanners run *before* uploads on purpose. When the
+> uploads sat first, a failed upload skipped `bandit`, `pip-audit`, `trivy config` and Checkov —
+> four blocking gates that silently never ran. Uploads are last, best-effort, and guarded on the
+> SARIF file existing.
+
 ### What blocks and what only reports — the deliberate split
 
 Not every scanner gates the build, and which ones do was an explicit decision rather than an
