@@ -12,25 +12,42 @@
 # To suppress nothing, leave this file with comments only - that is the goal state.
 #
 # ---------------------------------------------------------------------------
-# CURRENT STATUS: nothing suppressed.
+# CURRENT STATUS: one entry. 9 of the original 10 advisories were FIXED, not
+# suppressed, by upgrading fastapi 0.115.14 -> 0.136.3 and starlette
+# 0.46.2 -> 1.6.0 (and earlier, python-multipart 0.0.20 -> 0.0.32).
 # ---------------------------------------------------------------------------
-# `pip-audit` on the current lockfile reports 16 advisories across 3 packages:
 #
-#   starlette         0.46.2   9 advisories  (fixes exist: 0.47.2 -> 1.3.1)
-#   python-multipart  0.0.20   6 advisories  (fixes exist: 0.0.22 -> 0.0.31)
-#   ecdsa             0.19.2   1 advisory    (PYSEC-2026-1325, NO fix available)
+# PYSEC-2026-1325 - ecdsa 0.19.2
+# ---------------------------------------------------------------------------
+# WHAT: the Minerva attack. ecdsa is written in pure Python and cannot execute
+# in constant time, so an attacker able to measure signing/verification timing
+# precisely may be able to recover the private key.
 #
-# These are deliberately NOT suppressed here. They are real, they are fixable
-# (except ecdsa), and suppressing them on day one would make this gate
-# decorative. The dependency bumps are a separate, reviewable change:
+# WHY IT IS SUPPRESSED RATHER THAN FIXED: there is no fixed version. The
+# `Fix Versions` column in the pip-audit report is empty - upstream's position
+# is that constant-time operation is out of scope for a pure-Python
+# implementation. No version bump can clear this. Blocking every deploy on an
+# advisory that cannot be actioned by upgrading does not make the system safer;
+# it teaches people to bypass the gate, which does make it less safe.
 #
-#   - starlette/python-multipart come in transitively via fastapi. Upgrading
-#     means moving fastapi forward and re-running the full suite; starlette 1.x
-#     is a major version and is NOT a drop-in for fastapi 0.115.
-#   - ecdsa comes in via python-jose. It has no fix available, so the real
-#     remediation is migrating off python-jose (PyJWT is the usual replacement),
-#     not a version bump.
+# EXPOSURE: ecdsa arrives transitively via python-jose, which this codebase uses
+# only for HS256 (see ALGORITHM in app/core/config.py). HS256 is HMAC-SHA256 -
+# symmetric, no elliptic curve involved - so the vulnerable code path is not
+# reached on the current configuration. This is the reason the risk is
+# acceptable, and it is also the thing that would stop being true: switching
+# ALGORITHM to any ES* curve algorithm makes this advisory live and immediate.
 #
-# Until that change lands, this job WILL fail. That is the correct signal - see
-# docs/deployment/DEPLOYMENT_GUIDE.md ("Known security debt") for the triage
-# decision and the two options for unblocking.
+# THE REAL FIX: migrate python-jose -> PyJWT, which drops ecdsa from the tree
+# entirely. Sized at 3 files / 5 call sites - app/core/security.py (encode),
+# app/api/deps.py (decode), app/main.py (decode in the rate-limit key function),
+# plus JWTError -> PyJWTError. Two gotchas: PyJWT >= 2.10 requires `sub` to be a
+# string and this codebase passes a UUID, and PyJWT validates exp/nbf by
+# default. It touches authentication, so it wants the full auth e2e suite behind
+# it and its own PR - not a bundled drive-by.
+#
+# REVIEW DATE: 2026-11-27 (3 months). At review, check whether ecdsa has shipped
+# a fix, and whether the python-jose -> PyJWT migration has landed. If neither,
+# re-justify or do the migration - do not silently extend the date.
+#
+# DECIDED: 2026-08-27, Adebayo, on PR #18.
+PYSEC-2026-1325
