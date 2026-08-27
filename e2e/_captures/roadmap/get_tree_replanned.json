@@ -1,10 +1,10 @@
 {
   "data": {
     "roadmap": {
-      "id": "7ae25168-5056-4263-8817-6c4befaaba09",
+      "id": "0af33300-772d-425c-b425-b9aeae4b14ad",
       "stage": "validation",
       "template_key": "stage.validation",
-      "generated_at": "2026-08-27T10:40:53.695888+00:00",
+      "generated_at": "2026-08-27T10:40:55.138376+00:00",
       "drift": {
         "slipped_count": 0
       }
@@ -12,27 +12,30 @@
     "current_stage": "validation",
     "phases": [
       {
-        "id": "329692ec-4895-43ee-ad5c-490d9bcfa46e",
+        "id": "2b13719d-9a22-4f82-8bcc-dd7ed9951d67",
         "name": "Validation",
         "order": 0,
         "starts_on": "2026-08-27",
         "ends_on": "2026-10-08",
         "milestones": [
           {
-            "id": "ba662661-76e3-4d41-9835-b5aa4903f547",
+            "id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1",
             "title": "Validate demand",
             "description": null,
-            "due_on": "2026-09-10",
+            "due_on": "2026-09-03",
             "owner": null,
             "status": "todo",
             "progress": 0,
             "overdue": false,
             "order": 0,
             "dependency_count": 0,
-            "replanned": null,
+            "replanned": {
+              "at": "2026-08-27T10:40:55.190314+00:00",
+              "reason": "10 days overdue and not yet done."
+            },
             "tasks": [
               {
-                "id": "11856bd0-d85c-495c-ad12-0bab4236e43e",
+                "id": "434855af-3832-4ec5-8baf-de9dc218a84e",
                 "title": "Run 10 customer interviews",
                 "description": null,
                 "effort": "medium",
@@ -44,7 +47,7 @@
                 "depends_on": []
               },
               {
-                "id": "3018ee1a-8c55-4fb2-a4a6-50c06377585c",
+                "id": "db214be0-78e6-4d2e-87ca-4c7e68004d61",
                 "title": "Synthesize problem hypotheses",
                 "description": null,
                 "effort": "small",
@@ -58,7 +61,7 @@
             ]
           },
           {
-            "id": "53a3acce-496b-40a6-8701-d5418bdec404",
+            "id": "abd13ca4-325f-495d-9152-e1bca65901de",
             "title": "Pricing test",
             "description": null,
             "due_on": "2026-10-01",
@@ -71,7 +74,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "227ca2a2-6ef1-4cea-9bcd-cbf849d722a6",
+                "id": "8dcc3c01-a399-4477-bc15-b6a06f181d75",
                 "title": "Draft 3 pricing options",
                 "description": null,
                 "effort": "small",
@@ -83,7 +86,7 @@
                 "depends_on": []
               },
               {
-                "id": "529131de-e2fc-404c-bb3a-2c66a3b891c9",
+                "id": "fb73213a-eb78-421c-a434-3e3a00aab303",
                 "title": "Run a willingness-to-pay test",
                 "description": null,
                 "effort": "medium",
@@ -99,14 +102,14 @@
         ]
       },
       {
-        "id": "d1992c79-988f-47a1-a01b-6e422b3cc60b",
+        "id": "7c7df3aa-f07c-4913-809d-0faa83b89785",
         "name": "Build MVP",
         "order": 1,
         "starts_on": "2026-10-08",
         "ends_on": "2026-12-03",
         "milestones": [
           {
-            "id": "7cd18580-cd93-46f2-912f-6f4153cc3dfa",
+            "id": "d5463ce0-9594-4ea2-b78c-e39d83904b0c",
             "title": "Core flow",
             "description": null,
             "due_on": "2026-11-05",
@@ -119,7 +122,7 @@
             "replanned": null,
             "tasks": [
               {
-                "id": "dcbd7aa3-766b-4c17-97e9-1fabb60c2efe",
+                "id": "98013c10-8914-4cab-8718-474fadea8cab",
                 "title": "Define the core user journey",
                 "description": null,
                 "effort": "medium",
@@ -131,7 +134,7 @@
                 "depends_on": []
               },
               {
-                "id": "737fdbef-3fda-4058-8590-41f6bfecd787",
+                "id": "5ee5e14e-fd14-4d81-b3a6-d2df208f3602",
                 "title": "Build the happy path",
                 "description": null,
                 "effort": "large",
@@ -140,68 +143,6 @@
                 "due_on": null,
                 "overdue": false,
                 "order": 1,
-                "depends_on": []
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "id": "4e2600fd-c9fa-4708-9a84-8a3e906d0727",
-        "name": "Custom phase",
-        "order": 2,
-        "starts_on": null,
-        "ends_on": null,
-        "milestones": [
-          {
-            "id": "27cac904-f872-412e-b637-5f4c9bbd5d36",
-            "title": "Custom milestone",
-            "description": null,
-            "due_on": null,
-            "owner": null,
-            "status": "done",
-            "progress": 0,
-            "overdue": false,
-            "order": 0,
-            "dependency_count": 1,
-            "replanned": null,
-            "tasks": [
-              {
-                "id": "ebf9f7fa-982a-48f1-a521-53946f088c7e",
-                "title": "Custom task",
-                "description": null,
-                "effort": "medium",
-                "status": "in_progress",
-                "assignee": null,
-                "due_on": null,
-                "overdue": false,
-                "order": 0,
-                "depends_on": []
-              },
-              {
-                "id": "447936bd-e074-44c1-96b9-733973b87777",
-                "title": "Task A",
-                "description": null,
-                "effort": "medium",
-                "status": "todo",
-                "assignee": null,
-                "due_on": null,
-                "overdue": false,
-                "order": 1,
-                "depends_on": [
-                  "e761eb68-8814-4741-9174-392c441c1e8b"
-                ]
-              },
-              {
-                "id": "e761eb68-8814-4741-9174-392c441c1e8b",
-                "title": "Task B",
-                "description": null,
-                "effort": "medium",
-                "status": "todo",
-                "assignee": null,
-                "due_on": null,
-                "overdue": false,
-                "order": 2,
                 "depends_on": []
               }
             ]
