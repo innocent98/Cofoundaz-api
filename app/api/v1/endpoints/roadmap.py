@@ -36,11 +36,13 @@ from app.schemas.roadmap import (
     MilestoneUpdate,
     PhaseCreate,
     PhaseUpdate,
+    ReplanApply,
     TaskCreate,
     TaskUpdate,
 )
 from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
 from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
+from app.services.roadmap.replan import apply_replan, compute_replan, detect_drift
 from app.services.roadmap.service import (
     apply_template,
     generate_roadmap,
@@ -608,3 +610,42 @@ def delete_dependency_ep(
     db.delete(edge)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.post("/replan/preview")
+def replan_preview(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _require_roadmap(db, membership)
+    changes = compute_replan(db, roadmap)
+    return success_response(
+        {
+            "drift_count": len(detect_drift(db, roadmap)),
+            "changes": [
+                {
+                    "change_id": str(c.change_id),
+                    "milestone_id": str(c.milestone_id),
+                    "title": c.title,
+                    "old_due": c.old_due.isoformat(),
+                    "new_due": c.new_due.isoformat(),
+                    "reason": c.reason,
+                }
+                for c in changes
+            ],
+        }
+    )
+
+
+@router.post("/replan/apply")
+def replan_apply(
+    body: ReplanApply,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    roadmap = _require_roadmap(db, membership)
+    result = apply_replan(db, roadmap, user, body.change_ids)
+    db.commit()
+    return success_response(result)
