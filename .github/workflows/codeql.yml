@@ -52,6 +52,24 @@ jobs:
   analyze:
     name: Analyze (python)
     runs-on: ubuntu-latest
+    # CodeQL writes results through the code-scanning API, which on a PRIVATE
+    # repo requires GitHub Advanced Security. Without it every step fails with
+    # "Resource not accessible by integration" - which is exactly what the first
+    # real run produced. A job that is red forever teaches people that red is
+    # normal, so this SKIPS cleanly instead of failing.
+    #
+    # It turns itself back on when either becomes true:
+    #   - the repository is made PUBLIC (code scanning is free on public repos), or
+    #   - the repository variable ENABLE_CODE_SCANNING is set to "true" after
+    #     purchasing GHAS.
+    #
+    # Nothing else needs changing. See docs/deployment/GITHUB_ACTIONS_SETUP.md.
+    #
+    # NOTE: CodeQL is the ONLY scanner affected this way. Semgrep, bandit,
+    # gitleaks, pip-audit, Trivy and Checkov all run on their own exit codes and
+    # keep blocking the build with or without GHAS - only their Security-tab
+    # upload is lost.
+    if: github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true'
     # CodeQL on a large repo can outrun the 6h default; this fails fast instead.
     timeout-minutes: 30
     permissions:

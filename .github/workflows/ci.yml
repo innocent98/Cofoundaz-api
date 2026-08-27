@@ -271,6 +271,17 @@ jobs:
             detect --source /repo --redact --verbose --no-banner
 
       # --- 2. SAST ---------------------------------------------------------- #
+      #
+      # ORDERING IS LOAD-BEARING: every SCANNER runs before any SARIF upload.
+      #
+      # The first real CI run proved why. A SARIF upload failed (private repo, no
+      # GHAS), and because the upload sat between the scanners, GitHub marked the
+      # job failed and SKIPPED every step after it - bandit and pip-audit never
+      # ran at all. The job was red, so nothing shipped; but had anyone "fixed"
+      # that upload with a bare continue-on-error, the job would have gone GREEN
+      # with two blocking security gates silently not executing.
+      #
+      # Scanners first, uploads last. An upload can then never suppress a gate.
       - name: Semgrep (source patterns)
         run: |
           pipx install semgrep
@@ -286,13 +297,6 @@ jobs:
             --sarif --output semgrep.sarif \
             app/
 
-      - name: Publish Semgrep findings
-        if: always()
-        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
-        with:
-          sarif_file: semgrep.sarif
-          category: semgrep
-
       # --- 3. Python-specific SAST ------------------------------------------ #
       - name: bandit (Python SAST)
         # Complements Semgrep rather than duplicating it. Bandit is Python-aware
@@ -301,14 +305,11 @@ jobs:
         # `assert` used for control flow (stripped under `python -O`), insecure
         # tempfile creation, and yaml.load without a SafeLoader.
         #
-        # Scoped to app/ - tests legitimately use `assert` everywhere, and
-        # scanning them would generate hundreds of findings that are correct
-        # usage, which is how a gate gets ignored.
+        # Scoped to app/ - tests legitimately use `assert` everywhere.
         #
         # BLOCKS. Verified clean on the current tree (exit 0). The three original
         # findings were all false positives and carry inline `# nosec <ID>`
-        # annotations with written reasons AT THE SITE - so a NEW occurrence of
-        # the same rule anywhere else still fails.
+        # annotations with written reasons AT THE SITE.
         run: poetry run bandit -r app/ --quiet
 
       # --- 4. Dependencies -------------------------------------------------- #
@@ -320,8 +321,7 @@ jobs:
         #
         # This gate BLOCKS. Accepted CVEs are listed one-per-line with a reason
         # in .github/security/pip-audit-ignores.txt - an explicit, reviewable
-        # file rather than `continue-on-error: true`, so silencing a finding is
-        # a deliberate diff someone has to approve.
+        # file rather than `continue-on-error: true`.
         run: |
           poetry self add poetry-plugin-export
           poetry export --without-hashes --only main -f requirements.txt -o requirements-prod.txt
@@ -334,6 +334,43 @@ jobs:
           echo "Suppressed advisories: ${IGNORES:-none}"
           # shellcheck disable=SC2086
           pip-audit -r requirements-prod.txt --progress-spinner=off $IGNORES
+
+      # --- 5. Publish to the Security tab (BEST EFFORT) --------------------- #
+      - name: Publish Semgrep findings
+        id: sarif_semgrep
+        # continue-on-error, but NOT as a way to hide a scanner failure - the
+        # scanners above have already run and already failed the job on findings
+        # via their exit codes. This only tolerates the UPLOAD being impossible,
+        # which on a private repo without GitHub Advanced Security it is.
+        # The next step makes that visible rather than silent.
+        if: always() && hashFiles('semgrep.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Report code-scanning availability
+        if: always()
+        env:
+          OUTCOME: ${{ steps.sarif_semgrep.outcome }}
+        run: |
+          if [ "${OUTCOME}" = "failure" ]; then
+            echo "::warning title=Code scanning upload unavailable::Semgrep findings were NOT uploaded to the Security tab. This repository is private and GitHub Advanced Security is not enabled. Findings are still ENFORCED - the Semgrep step above fails the build on any ERROR-severity finding. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
+            {
+              echo "### Code scanning upload unavailable"
+              echo ""
+              echo "Semgrep SARIF was **not** uploaded to the Security tab: this repo is private and"
+              echo "GitHub Advanced Security is not enabled."
+              echo ""
+              echo "**Findings are still enforced by exit code** - this is a lost *view*, not a lost *gate*."
+              echo ""
+              echo "To get the Security tab: make the repo public (free) or buy GHAS."
+              echo "See \`docs/deployment/GITHUB_ACTIONS_SETUP.md\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Code scanning upload OK."
+          fi
 
   # ------------------------------------------------------------------------- #
   quality:
@@ -383,7 +420,18 @@ jobs:
         # Verified clean on the current Dockerfile. Exactly one rule is ignored
         # there - DL3008, apt version pinning - with a written justification;
         # DL3066 was FIXED rather than ignored (USER is now numeric 1000:1000).
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        # PINNED TO v3.5.0 DELIBERATELY: that release ships hadolint v2.15.1,
+        # the exact version verified locally. v3.1.0 shipped hadolint v2.12.0,
+        # which does not resolve the `ARG PYTHON_IMAGE` default in `FROM
+        # ${PYTHON_IMAGE}` and therefore reported DL3006 ("always tag the version
+        # of an image explicitly") against a base image that IS pinned - by
+        # digest. Local passed, CI failed, on the same file and the same config.
+        #
+        # Fixed by matching versions rather than by adding DL3006 to
+        # .hadolint.yaml: suppressing it would mask a genuinely untagged FROM
+        # added later. A gate that disagrees between local and CI is worse than
+        # no gate, so the versions must track.
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: Dockerfile
           config: .hadolint.yaml
@@ -399,19 +447,18 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      # --- filesystem scan: lockfile + secrets ------------------------------ #
+      # ALL SCANS FIRST, UPLOADS LAST - see the note in the `security` job. On
+      # the first real CI run a failed SARIF upload sat mid-job and caused the
+      # `trivy config` gate and Checkov to be SKIPPED entirely.
+
       - name: Trivy fs (SARIF)
-        # REPORT-ONLY, deliberately. This finds a DIFFERENT set from the image
-        # scan in `build`: it reads poetry.lock, so it sees the locked dependency
-        # graph including advisories with NO fix available (e.g. ecdsa
-        # CVE-2024-23342, the Minerva attack, which arrives via python-jose and
-        # the image scan hides behind --ignore-unfixed). It also runs the secret
-        # scanner over the working tree.
+        # REPORT-ONLY. Finds a DIFFERENT set from the image scan in `build`: it
+        # reads poetry.lock, so it sees the locked dependency graph including
+        # advisories with NO fix available (e.g. ecdsa CVE-2024-23342, which the
+        # image scan hides behind --ignore-unfixed). Also runs the secret scanner.
         #
-        # It does not BLOCK because pip-audit in the `security` job already gates
-        # on the same dependency CVEs. Two blocking gates for one finding set is
-        # noise; the value here is the wider view, which belongs in the Security
-        # tab where an unfixable CVE can be tracked rather than bypassed.
+        # It does not BLOCK because pip-audit already gates on the same
+        # dependency CVEs; the value here is the wider view.
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
@@ -421,17 +468,6 @@ jobs:
           output: trivy-fs.sarif
           severity: HIGH,CRITICAL
 
-      - name: Publish Trivy fs findings
-        if: always()
-        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
-        with:
-          sarif_file: trivy-fs.sarif
-          # Distinct category per scan mode, so the Security tab keeps three
-          # separate result sets (trivy-fs / trivy-config / trivy-image) instead
-          # of each upload overwriting the last.
-          category: trivy-fs
-
-      # --- IaC / misconfiguration scan -------------------------------------- #
       - name: Trivy config (SARIF)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -441,24 +477,15 @@ jobs:
           output: trivy-config.sarif
           severity: MEDIUM,HIGH,CRITICAL
 
-      - name: Publish Trivy config findings
-        if: always()
-        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
-        with:
-          sarif_file: trivy-config.sarif
-          category: trivy-config
-
       - name: Fail on IaC misconfiguration
-        # BLOCKS - and it is green today (Trivy reports 0 misconfigurations on
-        # this Dockerfile), so this is a free ratchet that stops the hardening
-        # from silently eroding.
+        # BLOCKS - and green today (0 misconfigurations on this Dockerfile), so
+        # it is a free ratchet against the hardening eroding.
         #
         # SCOPE NOTE: `trivy config` supports Dockerfile, Kubernetes, Terraform,
-        # CloudFormation and Helm. It does NOT have a docker-compose
-        # misconfiguration scanner, so docker-compose.yml and
-        # docker-compose.prod.yml are NOT covered here despite being IaC. The
-        # workflow files are covered by actionlint + shellcheck instead. Verified
-        # by running it locally: only Dockerfiles appear in its target list.
+        # CloudFormation and Helm. It has NO docker-compose scanner, so the two
+        # compose files are NOT covered here despite being IaC. Neither does
+        # Checkov (no docker_compose framework). Workflow files are covered by
+        # actionlint + shellcheck. See docs/deployment/DEPLOYMENT_GUIDE.md.
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: config
@@ -467,42 +494,89 @@ jobs:
           severity: MEDIUM,HIGH,CRITICAL
           exit-code: "1"
 
-
-      # --- GitHub Actions workflow security policy ------------------------- #
       - name: Checkov (GitHub Actions workflows)
-        # BLOCKS. Green today (47 passed / 0 failed / 1 documented skip), so it is
-        # a free ratchet.
+        # BLOCKS. Green today (47 passed / 0 failed / 1 documented skip).
         #
-        # SCOPE - READ THIS BEFORE ASSUMING IT COVERS COMPOSE:
-        # Checkov was added to close the docker-compose gap that `trivy config`
-        # leaves. It CANNOT close it. Checkov 3.3.15 has no `docker_compose`
-        # framework at all (its frameworks are terraform, cloudformation,
-        # kubernetes, helm, dockerfile, github_actions, ansible, secrets, sast,
-        # ...). Run against the compose files under the generic `yaml` framework
-        # it emits no check_type and no results whatsoever - not "few findings",
-        # literally no policies apply. A job pointed at compose here could never
-        # fail, which is worse than no job.
+        # SCOPE - READ BEFORE ASSUMING IT COVERS COMPOSE: Checkov 3.3.15 has no
+        # `docker_compose` framework at all. Run against the compose files under
+        # the generic `yaml` framework it emits no check_type and no results
+        # whatsoever - not "few findings", literally no policies apply. A job
+        # pointed at compose here could never fail, which is worse than no job.
         #
-        # What it DOES add is real and was worth keeping: workflow security
-        # POLICY, which actionlint does not do (actionlint is syntax and typing).
-        # On first run it caught CKV_GHA_7 against cd.yml's workflow_dispatch
-        # input - see the documented inline skip there for why that one is a
-        # false positive for this design.
-        #
-        # docker-compose.yml / docker-compose.prod.yml therefore remain unscanned
-        # by any IaC tool. See docs/deployment/DEPLOYMENT_GUIDE.md.
+        # What it DOES add is workflow security POLICY, which actionlint does not
+        # do (actionlint is syntax and typing). On first run it caught CKV_GHA_7
+        # against cd.yml's workflow_dispatch input - see the documented inline
+        # skip there for why that one is a false positive for this design.
         run: |
           pipx install checkov
           checkov --directory .github --framework github_actions \
             --compact --quiet --output cli
 
+      # --- Publish to the Security tab (BEST EFFORT) ------------------------ #
+      # Guarded on hashFiles() as well as continue-on-error: if an earlier scan
+      # step is ever skipped, its SARIF will not exist, and an unguarded upload
+      # would fail with "Path does not exist" - which is precisely what happened
+      # on the first run and masked the real cause.
+      - name: Publish Trivy fs findings
+        id: sarif_fs
+        if: always() && hashFiles('trivy-fs.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: trivy-fs.sarif
+          # Distinct category per scan mode so the Security tab keeps three
+          # separate Trivy result sets instead of each overwriting the last.
+          category: trivy-fs
+
+      - name: Publish Trivy config findings
+        id: sarif_config
+        if: always() && hashFiles('trivy-config.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      - name: Report code-scanning availability
+        if: always()
+        env:
+          FS: ${{ steps.sarif_fs.outcome }}
+          CFG: ${{ steps.sarif_config.outcome }}
+        run: |
+          if [ "${FS}" = "failure" ] || [ "${CFG}" = "failure" ]; then
+            echo "::warning title=Code scanning upload unavailable::Trivy SARIF was NOT uploaded to the Security tab (private repo without GitHub Advanced Security). Findings are still ENFORCED by exit code in the scan steps above. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
+            {
+              echo "### Code scanning upload unavailable"
+              echo ""
+              echo "Trivy SARIF was **not** uploaded (private repo, GHAS not enabled)."
+              echo "Gates still enforced by exit code - a lost *view*, not a lost *gate*."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Code scanning upload OK (fs=${FS} config=${CFG})."
+          fi
+
   # ------------------------------------------------------------------------- #
   dependency-review:
     name: Dependency review (PR only)
-    # Only meaningful on a pull request: it diffs the dependency manifest between
-    # the base and head commits. There is no "before" to compare against on a
-    # push to main.
-    if: github.event_name == 'pull_request'
+    # Two conditions, both required:
+    #
+    #  1. pull_request only - it diffs the dependency manifest between base and
+    #     head, and there is no "before" on a push to main.
+    #
+    #  2. The repository must actually support it. dependency-review needs the
+    #     Dependency Graph, which on a PRIVATE repo requires GitHub Advanced
+    #     Security. Without it the action fails with "Dependency review is not
+    #     supported on this repository" - which is what happened on the first
+    #     real run. A permanently-red job trains people to ignore red, so this
+    #     SKIPS instead.
+    #
+    # It re-enables automatically if the repo is made public (code scanning and
+    # the dependency graph are free there), or immediately by setting the
+    # repository variable ENABLE_CODE_SCANNING=true once GHAS is purchased.
+    # See docs/deployment/GITHUB_ACTIONS_SETUP.md.
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -650,7 +724,11 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Publish Trivy findings
-        if: always()
+        id: sarif_image
+        # Best-effort and guarded, same reasoning as the other jobs: the gate is
+        # the separate "Fail on HIGH/CRITICAL" step below, which runs regardless.
+        if: always() && hashFiles('trivy.sarif') != ''
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
           sarif_file: trivy.sarif
@@ -660,6 +738,9 @@ jobs:
           category: trivy-image
 
       - name: Fail on HIGH/CRITICAL
+        # `if: always()` so a best-effort upload failure above can never skip the
+        # gate. Losing the Security tab must not mean losing the veto.
+        if: always()
         # Deliberately a SEPARATE step from the SARIF-producing scan above, so
         # findings always reach the Security tab even when the gate fails. A
         # single scan step with exit-code:1 would abort before the upload and
