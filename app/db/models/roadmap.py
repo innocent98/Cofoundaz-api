@@ -79,6 +79,10 @@ class RoadmapMilestone(UUIDMixin, TimestampMixin, Base):
     )
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_replanned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_replan_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
 
 class RoadmapTask(UUIDMixin, TimestampMixin, Base):
@@ -107,6 +111,23 @@ class RoadmapTask(UUIDMixin, TimestampMixin, Base):
     )
     due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class RoadmapReplan(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "roadmap_replans"
+
+    roadmap_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("roadmaps.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    applied_by: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    change_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    changes: Mapped[list] = mapped_column(JSONB, nullable=False)
+    summary: Mapped[str] = mapped_column(String(200), nullable=False)
 
 
 class RoadmapTaskDependency(Base):

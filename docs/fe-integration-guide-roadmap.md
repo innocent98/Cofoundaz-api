@@ -1,10 +1,10 @@
-# FE Integration Guide — Roadmap (Module 05, Slices 1–2)
+# FE Integration Guide — Roadmap (Module 05, Slices 1–3)
 
 All request/response bodies below are pasted **verbatim** from live captures taken by
-`e2e/test_roadmap.py` running against a real server (`make e2e`) — see
-`e2e/_captures/roadmap/*.json`. Nothing here is retyped from memory or invented. IDs in the
-examples are real ids from that ephemeral test run (not hand-written placeholders) — they will
-differ on every real request, but the shapes are exact.
+`e2e/test_roadmap.py` and `e2e/test_roadmap_replan.py` running against a real server
+(`make e2e`) — see `e2e/_captures/roadmap/*.json`. Nothing here is retyped from memory or
+invented. IDs in the examples are real ids from that ephemeral test run (not hand-written
+placeholders) — they will differ on every real request, but the shapes are exact.
 
 Base path: `/api/v1/roadmap`. Every route requires a Bearer access token
 (`Authorization: Bearer <token>`) and an `X-Workspace-Id` header identifying the active
@@ -106,6 +106,11 @@ manual edits:
   be `null` inside a non-null owner/assignee object if that user has no profile `full_name` set.
 - `phases[].milestones[].tasks[]` — three levels deep, always present as arrays (empty array,
   never omitted, for a phase/milestone with no children).
+- **New in Slice 3:** `roadmap.drift` (`{"slipped_count": <n>}`) is nested **inside the `roadmap`
+  object**, as a sibling of `id`/`stage`/`template_key`/`generated_at` — **not** a top-level
+  sibling of `phases`/`current_stage`. Read it as `data.roadmap.drift.slipped_count`, not
+  `data.drift`. Each milestone also gains `"replanned": {"at": "...", "reason": "..."} | null` —
+  see §9 for both, with live captures.
 
 ### `progress` and `overdue` are backend-derived — never write them
 
@@ -774,6 +779,223 @@ from local state," the same guidance as Health Score's identical cross-tenant pa
 
 ---
 
+## 9. AI Re-plan — `POST /replan/preview`, `POST /replan/apply`, `GET /replan/history`
+
+**New in Slice 3.** A re-plan is a co-pilot proposal, never an automatic action: `preview` is a
+`POST` that **changes nothing** (it's a `POST` rather than a `GET` only to match the PRD's verb
+and mirror the rest of roadmap's read/write split — treat it as a pure read for caching/retry
+purposes), and `apply` **never runs on its own** — nothing auto-triggers a re-plan server-side.
+A founder (or team_member) must explicitly call `preview` to see the proposal, then explicitly
+call `apply` with the specific `change_ids` they chose to accept. `preview` and `history` are
+open to any active member (mentor included, read-only); `apply` requires `founder`/`team_member`
+— same editor split as every other roadmap write.
+
+### `POST /roadmap/replan/preview` — the proposal, read-only
+
+`e2e/_captures/roadmap/replan_preview.json` (called after one milestone's `due_on` was `PATCH`ed
+10 days into the past to force a slip) — status `200`:
+
+```json
+{
+  "data": {
+    "drift_count": 1,
+    "changes": [
+      {
+        "change_id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1",
+        "milestone_id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1",
+        "title": "Validate demand",
+        "old_due": "2026-08-17",
+        "new_due": "2026-09-03",
+        "reason": "10 days overdue and not yet done."
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+**`change_id == milestone_id`** — a milestone has at most one proposed shift, so there's no
+separate id space to track; use either interchangeably to key a diff-row UI, but pass whichever
+you use back as `change_id` in `apply`'s `change_ids` array (below). `drift_count` counts every
+slipped milestone (`due_on < today` and not yet `done`), which can be `>=` `changes.length` — a
+slipped milestone still gets its own base shift even if the cascade math nets `0` shift for some
+other reason; in practice for the current engine every drifted milestone produces a change, but
+don't assume the two counts are always equal by contract. **No drift → `changes: []`, `200`, not
+an error** — this is the common steady-state response for a roadmap that hasn't slipped; render
+an empty/"you're on track" state, not a spinner or error banner.
+
+`reason` is a **templated string**, not a stable enum — three shapes exist today (own-slip only,
+cascade only, both), and the exact wording may grow more shapes over time (see the SOP's Follow-
+ups on AI-authored rationale). Render it as opaque prose; don't parse or pattern-match it
+client-side.
+
+### `POST /roadmap/replan/apply` — commit selected changes
+
+Body: `{"change_ids": ["<uuid>", ...]}` — pass the `change_id`s (== `milestone_id`s) the founder
+chose to accept from the preview's `changes` array. A founder can accept a subset — omit any
+`change_id` they want to leave alone.
+
+`e2e/_captures/roadmap/replan_apply.json` (`{"change_ids": ["7150d76c-9214-4cf1-88c2-a598e7cc81b1"]}`,
+applying the one change from the preview above) — status `200`:
+
+```json
+{
+  "data": {
+    "applied": [
+      "7150d76c-9214-4cf1-88c2-a598e7cc81b1"
+    ],
+    "skipped": [],
+    "replan_id": "6bc26405-ce3d-48ee-b751-8d0476f7df99",
+    "summary": "Re-planned 1 milestone"
+  },
+  "meta": null
+}
+```
+
+**`apply` recomputes the proposal from current state — it never trusts a client-held diff.** If
+anything about the roadmap changed between your `preview` call and this `apply` call (a task got
+completed, a dependency was removed, someone else manually re-dated the milestone), a `change_id`
+that's no longer valid is silently dropped into `skipped` rather than applied against stale data.
+**Always render both `applied` and `skipped`** after a call — don't assume every requested
+`change_id` landed in `applied` just because the call returned `200`. `replan_id`/`summary` are
+`null` when nothing in `change_ids` was still valid (`applied: []`) — that's a `200` empty-state
+too, not an error; no history row is written and no event fires for an all-stale/empty apply.
+**Re-applying the same `change_ids` a second time is safe** — the milestones are no longer
+shifting (already at their target `due_on`), so the fresh proposal omits them and they come back
+`skipped`, not double-applied.
+
+After a successful apply, `GET /roadmap` (§1) reflects the new `due_on` and the milestone's
+`replanned` marker (below) — the apply response itself only returns ids/counts, not the updated
+milestone bodies; re-fetch the tree to render the new dates.
+
+### `GET /roadmap/replan/history` — past re-plans, newest first
+
+`e2e/_captures/roadmap/replan_history.json` — status `200`:
+
+```json
+{
+  "data": [
+    {
+      "id": "6bc26405-ce3d-48ee-b751-8d0476f7df99",
+      "change_count": 1,
+      "summary": "Re-planned 1 milestone",
+      "applied_by": {
+        "id": "7bc9cb23-2620-4c9e-bb5d-b9ce134acf7c",
+        "name": "Ada Founder"
+      },
+      "created_at": "2026-08-27T10:40:55.183930+00:00",
+      "changes": [
+        {
+          "title": "Validate demand",
+          "reason": "10 days overdue and not yet done.",
+          "new_due": "2026-09-03",
+          "old_due": "2026-08-17",
+          "milestone_id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1"
+        }
+      ]
+    }
+  ],
+  "meta": null
+}
+```
+
+`data` is a flat **array**, newest-first by `created_at` — one entry per `apply` call that
+committed at least one change (empty/all-stale applies never appear here). `applied_by` is the
+same `{"id", "name"}` shape as milestone `owner`/task `assignee` elsewhere in this guide, never a
+bare uuid. `changes` inside each history row is the **snapshot at the time of that apply** —
+note the key order/shape here (`title`, `reason`, `new_due`, `old_due`, `milestone_id`) is
+whatever the JSONB blob happened to serialize as; don't rely on key ordering, only on the keys
+themselves, which match the `changes[]` entries from `preview`/`apply` minus `change_id` (the
+history snapshot doesn't carry a separate `change_id` — use `milestone_id` if you need to
+correlate a past change back to a specific milestone).
+
+### `GET /roadmap` tree — `drift` summary + per-milestone `replanned` marker
+
+`e2e/_captures/roadmap/get_tree_replanned.json` (captured immediately after the apply above) —
+trimmed to the re-planned milestone and its untouched sibling:
+
+```json
+{
+  "data": {
+    "roadmap": {
+      "id": "0af33300-772d-425c-b425-b9aeae4b14ad",
+      "stage": "validation",
+      "template_key": "stage.validation",
+      "generated_at": "2026-08-27T10:40:55.138376+00:00",
+      "drift": {
+        "slipped_count": 0
+      }
+    },
+    "current_stage": "validation",
+    "phases": [
+      {
+        "id": "2b13719d-9a22-4f82-8bcc-dd7ed9951d67",
+        "name": "Validation",
+        "order": 0,
+        "starts_on": "2026-08-27",
+        "ends_on": "2026-10-08",
+        "milestones": [
+          {
+            "id": "7150d76c-9214-4cf1-88c2-a598e7cc81b1",
+            "title": "Validate demand",
+            "description": null,
+            "due_on": "2026-09-03",
+            "owner": null,
+            "status": "todo",
+            "progress": 0,
+            "overdue": false,
+            "order": 0,
+            "dependency_count": 0,
+            "replanned": {
+              "at": "2026-08-27T10:40:55.190314+00:00",
+              "reason": "10 days overdue and not yet done."
+            },
+            "tasks": [ /* ...unchanged, see get_tree_replanned.json for the full array... */ ]
+          },
+          {
+            "id": "abd13ca4-325f-495d-9152-e1bca65901de",
+            "title": "Pricing test",
+            "due_on": "2026-10-01",
+            "replanned": null
+            /* ...rest of the untouched milestone, same shape as §1... */
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+**Two field-nesting traps here, both important:**
+
+1. **`drift` lives inside `roadmap`, not at the top level.** Read
+   `data.roadmap.drift.slipped_count` — there is no `data.drift`. This is the count that powers
+   the PRD's *"{n} tasks have slipped..."* banner; `0` means render nothing (or an "on track"
+   state), not a `0` badge that reads as an error.
+2. **`replanned` is a tree-only field, same trap shape as Slice 2's `depends_on`.** It appears on
+   each milestone inside `GET /roadmap`'s nested tree, but the single-milestone
+   `POST`/`PATCH /roadmap/milestones/{id}` responses (§4) do **not** include a `replanned` key at
+   all (not even `null`) — that flat shape wasn't extended for this field. **Read a milestone's
+   re-plan marker from the tree, never from a milestone-CRUD response.**
+
+`replanned` is `null` for any milestone that has never been shifted by an apply (the common
+case) — treat `null` as "never re-planned," not an error or a loading state. Once set, it is
+**never cleared automatically** — a milestone that gets manually edited back to an earlier due
+date, or that slips again later and gets re-planned again, simply overwrites `at`/`reason` with
+the newest apply's values; there is no history of *prior* markers on the milestone itself (use
+`GET /replan/history`, above, for the full audit trail across every apply).
+
+### UX note: re-plan is a two-step, human-gated flow — never render it as automatic
+
+Because `apply` never runs unless a human explicitly calls it with explicit `change_ids`, the FE
+should **always show the `preview` proposal as a review/diff screen the founder must actively
+accept** (per the PRD's AI Re-plan view) — never poll `preview` in the background and silently
+`apply` its result. A `drift.slipped_count > 0` on the tree is a signal to *offer* the re-plan
+flow (e.g. a banner with a "Review re-plan" CTA), not a trigger to change anything on its own.
+
+---
+
 ## Verification table
 
 Every row below was exercised **live**, over real HTTP, against a real Postgres-backed server
@@ -812,9 +1034,20 @@ Every row below was exercised **live**, over real HTTP, against a real Postgres-
 | `POST /roadmap/templates/{id}/apply` — fresh apply, `201` + real `added` counts | ✅ |
 | `POST /roadmap/templates/{id}/apply` — re-apply, idempotent `200` + `already_applied: true` | ✅ |
 | `GET /roadmap/templates` reflects `applied: true` after a real apply | ✅ |
+| `POST /roadmap/replan/preview` — drift + cascade proposal after forcing a slip | ✅ |
+| `POST /roadmap/replan/preview` — no-drift empty `changes: []` | ⬜ (unit-tested only, `test_preview_no_drift_empty`) |
+| `POST /roadmap/replan/apply` — applies selected `change_ids`, `replan_id` + `summary` returned | ✅ |
+| `POST /roadmap/replan/apply` — stale `change_id` skipped, re-apply idempotent | ⬜ (unit-tested only, `test_apply_skips_stale_change_id` / `test_reapply_is_idempotent`) |
+| `POST /roadmap/replan/apply` — mentor (non-editor) → `403 FORBIDDEN` | ⬜ (unit-tested only, `test_apply_forbidden_for_mentor`) |
+| `GET /roadmap/replan/history` — lists an applied re-plan with `applied_by` + `changes` snapshot | ✅ |
+| `GET /roadmap` tree — `roadmap.drift.slipped_count` before (>0) and after (reduced) an apply | ✅ |
+| `GET /roadmap` tree — milestone `replanned` marker `null` before, populated after | ✅ |
+| Cascade: downstream milestone shifts with its slipped upstream dependency | ⬜ (unit-tested only, `test_downstream_dependency_shifts`) |
+| Cascade: diamond dependency shifts by `max`, not sum, of its two upstreams | ⬜ (unit-tested only, `test_diamond_shifts_by_max_not_sum`) |
 
 Rows marked ⬜ are covered by the unit suite (`tests/api/test_roadmap_phases.py`,
 `test_roadmap_milestones.py`, `test_roadmap_tasks.py`, `test_roadmap_dependencies_api.py`,
-`test_roadmap_templates_gallery.py`, `test_roadmap_apply_api.py`) but not independently
-re-asserted over live HTTP in `e2e/test_roadmap.py` — safe to build against, just not
-double-verified end-to-end.
+`test_roadmap_templates_gallery.py`, `test_roadmap_apply_api.py`, `test_roadmap_replan_api.py`,
+`tests/services/test_roadmap_replan_compute.py`, `test_roadmap_replan_apply.py`) but not
+independently re-asserted over live HTTP in `e2e/test_roadmap.py` / `e2e/test_roadmap_replan.py`
+— safe to build against, just not double-verified end-to-end.
