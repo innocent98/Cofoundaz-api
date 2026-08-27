@@ -11,21 +11,22 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-22 · `feat/roadmap-deps-templates` branch (Roadmap Slice 2, on top of `main` @ `5fef521`, PRs #1–#7 merged)_
+_Last reconciled: 2026-08-27 · `feat/todays-mission` branch (Module 04 Today's Mission, migration `0009`; branched off `main` — not yet merged). NB: the parallel `feat/roadmap-deps-templates`/Slice-3 build edits this same file on its own branch; the `_Last reconciled_` line + snapshot counts get a merge reconcile when those branches land._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 3 fully complete (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 in progress (05 Roadmap, Slices 1–2/3 shipped) · 22 not started (02·03·04·08–26).
+**PRD module tally: 26 total** — 3 fully complete & merged (01 Auth+Onboarding · 06 Health Score · 07 Assessment) · 1 shipped-on-branch (04 Today's Mission, not yet merged) · 1 in progress (05 Roadmap, Slices 1–2/3) · 21 not started (02·03·08–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
+| ✅ Shipped & certified (merged) | 3 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) |
+| ✅ Shipped on branch (not yet merged) | 1 | Today's Mission (04) — `feat/todays-mission`, full module + live E2E |
 | 🟡 In progress | 1 | Roadmap (05) — Slice 1 (core) **merged PR #7**; Slice 2 (dependencies + templates) **shipped on branch, not yet merged**; Slice 3 remains |
-| ⬜ Planned / next | 22 | Roadmap Slice 3 · Today's Mission (04) · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ⬜ Planned / next | 20 | Roadmap Slice 3 · Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~57 endpoints · 328 unit tests (real Postgres) + 25 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
+**Health at a glance:** ~63 endpoints · 380 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
 
 ---
 
@@ -149,9 +150,35 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 
 ---
 
+## ✅ Module 04 — Today's Mission — *shipped on branch `feat/todays-mission` (not yet merged to `main`)*
+
+_A daily 1–3 task mission generated lazily-on-read from the founder's roadmap · complete/snooze/reorder/reject · custom tasks · derived streak · history + weekly % · settings. Read-only against the roadmap; migration `0009`._
+
+**Design (brainstorming) — locked decisions:**
+- [x] Generation → **inline + lazy-on-read** (`GET /missions/today` generates today's mission if none exists; no cron/worker — 06:00 cron + push deferred to Module 20)
+- [x] Roadmap link → **soft, unconstrained** `mission_tasks.roadmap_task_id` (nullable UUID, **no FK**) — mission is a snapshot, decoupled from roadmap tables
+- [x] Streak → **derived, not stored** (consecutive completed days ending today/yesterday)
+- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored rationale deferred to Module 03
+- [x] Spec → self-review → plan (7 TDD tasks) — `docs/superpowers/specs/2026-08-26-todays-mission-design.md`, `docs/superpowers/plans/2026-08-26-todays-mission.md`
+
+**Build (subagent-driven, Tasks 1–7):**
+- [x] Enums (`MissionStatus`, `MissionTaskStatus`) + 3 models (`missions`/`mission_tasks`/`mission_settings`) + factories
+- [x] Migration `0009_mission` (sibling of `0008_roadmap_replan` off `0007`; merge revision reconciles later)
+- [x] Generation service — `get_or_generate_today` (read-only roadmap selection + carry-forward snoozed + templated reasons) + derived `streak`
+- [x] `GET /missions/today` (lazy-gen + `no_roadmap` empty-state + weekends-off empty mission + streak)
+- [x] `GET`/`PATCH /missions/settings` (defaults lazily created · `mission_size` clamp 1–3 → 422)
+- [x] `POST /missions/tasks` (custom task, appended) + `PATCH /missions/tasks/{id}` (complete/snooze/reorder/reject)
+- [x] Events: `mission.task.completed` · `mission.completed` · `mission.streak.milestone` (7/30/100)
+- [x] `GET /missions/history` (per-day completed/total + rolling weekly completion %)
+- [x] Access: reads = any member (mentor incl.) · writes = founder/team_member (mentor → 403) · cross-workspace → uniform 404
+- [x] Live E2E (`e2e/test_mission.py`, 6 captures) + smoke openapi surface (5 mission paths)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
+- [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 04 — Today's Mission**
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
 - [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
