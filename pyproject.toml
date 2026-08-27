@@ -12,7 +12,38 @@ packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.0"
+# fastapi >= 0.133.0 is the FIRST release that drops the starlette upper bound
+# (0.128.3 still capped at <1.0.0, so it cannot reach the fixed starlette).
+# Verified against PyPI metadata for every fastapi release from 0.115.0 up.
+# Range rather than caret: Poetry's caret on a 0.x version pins the MINOR
+# (^0.133.0 == >=0.133.0,<0.134.0), which would block ordinary patch upgrades.
+# UPPER BOUND <0.137.0 IS A HARD REQUIREMENT, NOT CONSERVATISM. See below.
+#
+# Lower bound: 0.133.0 is the first release to drop the starlette upper bound
+# (0.128.3 still capped at <1.0.0, so it cannot reach the fixed starlette).
+#
+# Upper bound: fastapi 0.137.0 introduced `_IncludedRouter`, which wraps routes
+# registered via `include_router()` in a container object instead of flattening
+# them into `app.routes`. slowapi's SlowAPIMiddleware resolves the current
+# endpoint by iterating `app.routes` and matching entries that expose
+# `.endpoint`; a `_IncludedRouter` exposes neither, so from 0.137.0 onward EVERY
+# route under `include_router` becomes invisible to it and silently loses rate
+# limiting. For this app that is the entire /api/v1 surface - auth included.
+#
+# Verified empirically at 135 requests against a 120/minute limit:
+#   fastapi 0.115.14 + starlette 0.46.2 -> first 429 at request 121  (works)
+#   fastapi 0.141.1  + starlette 1.6.0  -> 0 x 429                   (dead)
+#   /health (declared with @app.get, not via a router) keeps limiting on both,
+#   which is exactly why the unit tests did not catch it.
+#
+# Range rather than caret: Poetry's caret on a 0.x version pins the MINOR
+# (^0.133.0 == >=0.133.0,<0.134.0), which would block ordinary patch upgrades.
+fastapi = ">=0.133.0,<0.137.0"
+# Declared DIRECTLY, though it arrives via fastapi, to make the security floor
+# explicit and enforceable: starlette < 1.3.1 carries 9 advisories
+# (PYSEC-2026-161/1941/1942/2280/2281/248/249). 1.3.1 is the highest fix version
+# required among them. Do not lower this floor.
+starlette = ">=1.3.1,<2.0.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 pydantic = "^2.11.0"
 pydantic-settings = "^2.9.0"
