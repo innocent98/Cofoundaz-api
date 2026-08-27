@@ -477,7 +477,7 @@ suite but were **not** re-asserted over live HTTP; the shape source is named.
 | `GET /missions/today` — weekends-off empty mission (`tasks: []`) | ⬜ | derived from code (`serialize_mission`); unit-tested, **not captured live** |
 | `roadmap_task_id`/`reason` populated on roadmap tasks, `null` on custom | ✅ | `today.json` (populated) + `task_create.json` (null) |
 | `GET /missions/settings` — defaults, `delivery_time` as `"06:00:00"` | ✅ | `settings.json` |
-| `PATCH /missions/settings` — `{"weekend_missions": true}` → 200 | ✅ | (asserted on weekend days; body identical to `settings.json`) |
+| `PATCH /missions/settings` — `{"weekend_missions": true}` → 200 | ⬜ | live **only on weekend runs** — the journey flips it only on Sat/Sun, and the captures were taken on a Thursday (2026-08-27), so this PATCH was **not exercised** in the capture run; body derived (identical to `settings.json` with `weekend_missions: true`); unit-tested |
 | `PATCH /missions/settings` — `mission_size` outside 1–3 → `422` | ⬜ | derived from `AppError`; unit-tested (`test_mission_today.py`) |
 | `POST /missions/tasks` — custom task, `roadmap_task_id: null`, appended `order` | ✅ | `task_create.json` |
 | `PATCH /missions/tasks/{id}` — `complete`, sets `completed_at`, flips mission | ✅ | `task_complete.json` |
