@@ -1,0 +1,310 @@
+# PRODUCTION stack for a single Docker-Compose VPS, behind nginx.
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# ---------------------------------------------------------------------------
+# TARGET SPEC (CONFIRMED): 4 vCPU / 8 GB RAM / 80 GB SSD
+# ---------------------------------------------------------------------------
+# This is the confirmed production target, not an assumption. Every limit below
+# is derived from it. If a host ever differs, re-derive rather than guessing -
+# the full arithmetic is in docs/deployment/DEPLOYMENT_GUIDE.md.
+#
+#   service    cpu limit   mem limit   mem reservation
+#   api        2.0         2048M       1024M
+#   db         1.5         3072M       1024M
+#   redis      0.5          512M        128M
+#   migrate    0.5          512M          -      (one-shot)
+#   ------------------------------------------------------------------
+#   nominal    4.5         6144M
+#
+# THE NOMINAL TOTAL IS NOT A REAL PEAK. `api` and `migrate` can never run at the
+# same time: api declares `depends_on: migrate: condition:
+# service_completed_successfully`, so migrate has EXITED before api starts. The
+# two states that actually occur are:
+#
+#   during migration :  db 1.5 + redis 0.5 + migrate 0.5 = 2.5 CPU / 4096M
+#   steady state     :  db 1.5 + redis 0.5 + api     2.0 = 4.0 CPU / 5632M
+#
+# So the naive 4.5 CPU sum - which would be a 12.5% oversubscription of 4 vCPU -
+# is unreachable, and steady state lands exactly on 4.0. Worth stating plainly
+# because someone auditing this file WILL add the column up and worry.
+#
+# (Even if it were reachable, CPU limits are ceilings rather than reservations:
+# oversubscribing them throttles under contention, it does not fail to schedule.
+# Memory limits are the ones that kill.)
+#
+# 2560M (31%) is left unallocated at steady state for the host kernel, nginx,
+# sshd, and - most importantly - the page cache Postgres depends on for read
+# performance. Committing 100% of RAM to container limits is how a VPS starts
+# OOM-killing.
+#
+# CONNECTION ARITHMETIC (the constraint people miss):
+#   api workers (WEB_CONCURRENCY)      = 4
+#   SQLAlchemy per worker              = DATABASE_POOL_SIZE 5 + MAX_OVERFLOW 5 = 10
+#   worst case from the API            = 4 x 10 = 40 connections
+#   + migrate one-shot                 = ~2
+#   Postgres max_connections           = 100
+#   => ~58 spare for psql, pg_dump, and monitoring.
+# Raising WEB_CONCURRENCY without raising max_connections is how you get
+# "FATAL: sorry, too many clients already" under load.
+
+# Distinct compose PROJECT name. This is not cosmetic: the project name prefixes
+# every volume and network, so sharing it with docker-compose.yml (which defaults
+# to the directory name, `cofoundaz-api`) means `down -v` on ONE stack destroys
+# the OTHER stack's Postgres volume. Keep these two names different forever.
+name: cofoundaz-api-prod
+
+x-logging: &default-logging
+  # Without this, json-file logs grow unbounded and eventually fill the disk -
+  # which takes down Postgres and the host, not just the noisy container.
+  # 10MB x 3 files x 4 services caps container logs at ~120MB.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ------------------------------------------------------------------------- #
+  # Migrations: one-shot, runs to completion BEFORE the API starts.
+  # ------------------------------------------------------------------------- #
+  migrate:
+    # Same image as the api service, by design: migrations must run with exactly
+    # the alembic revisions that shipped in the build being deployed.
+    #
+    # Deliberately NO `build:` block here even though the api service has one.
+    # Two services declaring a build for the SAME image tag makes buildx export
+    # both concurrently and fail with `image ... already exists`. The api service
+    # owns the build; this service consumes the resulting tag.
+    image: ${API_IMAGE:-ghcr.io/innocent98/cofoundaz-api:latest}
+    container_name: cofoundaz-api-prod_migrate
+    command: ["alembic", "upgrade", "head"]
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_FILE_PATH: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    # A one-shot must NOT restart: alembic is not idempotent under concurrent
+    # runs, and a restart loop on a failed migration would hammer the database.
+    # A non-zero exit here correctly blocks the api service from starting.
+    restart: "no"
+    networks:
+      - backend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ------------------------------------------------------------------------- #
+  # API
+  # ------------------------------------------------------------------------- #
+  api:
+    image: ${API_IMAGE:-ghcr.io/innocent98/cofoundaz-api:latest}
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+        VERSION: ${APP_VERSION:-0.0.0}
+    container_name: cofoundaz-api-prod_api
+    # NO source bind-mount. The image is the unit of deployment; mounting source
+    # over it means the running code is not the code that was built, tested and
+    # scanned in CI.
+    ports:
+      # Bound to LOOPBACK, not 0.0.0.0. nginx terminates TLS on 443 and proxies
+      # to 127.0.0.1:8000. Publishing on 0.0.0.0 would expose the API directly on
+      # the VPS's public IP on plain HTTP, bypassing TLS, the security headers,
+      # and the edge rate limiting - and Docker's iptables rules bypass UFW, so
+      # a "closed" firewall would not save you.
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      # Log to stderr only; Docker's json-file driver above owns rotation.
+      LOG_FILE_PATH: ""
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        # The API never starts against an un-migrated schema. `service_started`
+        # would race; only `service_completed_successfully` actually waits for
+        # alembic to finish AND exit 0.
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # The container filesystem is immutable at runtime. Anything that needs to
+    # write is an explicit mount below. This turns a file-write vulnerability
+    # from persistent code execution into an error.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      # LOCAL_STORAGE_DIR (./var/storage) - user uploads. Must survive a
+      # container recreate, so a named volume, not the writable layer.
+      - app_storage:/app/var/storage
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # Liveness (cheap, no dependencies). Readiness is checked by the deploy
+      # gate against /api/v1/health/ready - see docs/deployment/.
+      test: ["CMD", "python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # Must exceed the image's gunicorn --graceful-timeout (30s), or SIGKILL
+    # arrives mid-drain and in-flight requests are dropped on every deploy.
+    stop_grace_period: 60s
+    networks:
+      - backend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "1.0"
+          memory: 1024M
+
+  # ------------------------------------------------------------------------- #
+  # Postgres
+  # ------------------------------------------------------------------------- #
+  db:
+    image: postgres:17-alpine
+    container_name: cofoundaz-api-prod_db
+    # NO `ports:`. Postgres is reachable only on the internal compose network.
+    # Publishing 5432 would put the database on the public internet: Docker
+    # writes its own iptables DOCKER chain that is consulted BEFORE UFW's rules,
+    # so `ufw deny 5432` does not block a published container port.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # scram-sha-256 rather than the md5 default: md5 password hashes are
+      # trivially crackable if a dump of pg_authid ever leaks.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    command:
+      - postgres
+      # Tuned for the 3 GB limit on this service. These are env-driven so a
+      # differently-sized VPS can be tuned without editing this file.
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+      # ~25% of the container's memory limit: the classic starting point.
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-768MB}
+      # What the planner assumes the OS page cache holds. Not an allocation -
+      # setting it too low makes the planner avoid index scans it should use.
+      - -c
+      - effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-2GB}
+      # PER SORT, not per connection - a single query can use several. 8MB x
+      # 100 connections x a few sorts each is why this stays small.
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}
+      # SSD: random reads cost roughly the same as sequential, unlike the
+      # spinning-disk default of 4.0.
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - wal_compression=on
+      # Log any statement slower than 1s so slow queries are findable in
+      # `docker compose logs db` without turning on full statement logging.
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Postgres needs time for a clean shutdown checkpoint; killing it early
+    # forces crash recovery on the next boot and lengthens the outage.
+    stop_grace_period: 60s
+    networks:
+      - backend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 3072M
+        reservations:
+          cpus: "0.5"
+          memory: 1024M
+
+  # ------------------------------------------------------------------------- #
+  # Redis
+  # ------------------------------------------------------------------------- #
+  redis:
+    image: redis:7-alpine
+    container_name: cofoundaz-api-prod_redis
+    # NO `ports:` - same reasoning as Postgres.
+    command:
+      - redis-server
+      # maxmemory is set BELOW the container limit (384M vs 512M) on purpose:
+      # Redis must hit its own eviction policy and evict keys before the kernel's
+      # OOM killer reaches it. If maxmemory == the container limit, Redis gets
+      # killed instead of evicting.
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-384mb}
+      # Every key this app writes to Redis carries a TTL (MFA tickets: 5min;
+      # signup-resend and forgot-password cooldowns: TTL'd on write). volatile-ttl
+      # therefore evicts the nearest-to-expiry key first, which is the least
+      # damaging thing to lose. allkeys-lru could evict a live MFA ticket while
+      # a nearly-expired cooldown survives.
+      - --maxmemory-policy
+      - volatile-ttl
+      # Persistence is OFF, deliberately. Redis holds no durable state here -
+      # only short-lived auth tickets and rate-limit cooldowns. The cost of a
+      # restart is that a user mid-MFA re-enters their password; the cost of
+      # keeping RDB/AOF on is fork-pause latency and disk churn for nothing.
+      # If durable state is ever added to Redis, this MUST be revisited.
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    volumes:
+      # Unused while persistence is off, but kept so that turning appendonly on
+      # later writes to a volume rather than silently into the container layer.
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - backend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_storage:

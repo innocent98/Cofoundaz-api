@@ -1,11 +1,42 @@
+# DEVELOPMENT stack. Not for a VPS.
+#
+# What makes this a development file, deliberately:
+#   - the API source is bind-mounted, so edits are live
+#   - Postgres and Redis publish to the host, so psql / redis-cli / pytest /
+#     scripts/e2e_run.sh can reach them from your machine
+#   - credentials are the well-known throwaway user/password pair
+#   - no resource limits, because your laptop is not the constraint
+#
+# Every one of those is a liability in production. The production stack is
+# docker-compose.prod.yml - see docs/deployment/DEPLOYMENT_GUIDE.md.
+
 services:
   api:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_SHA: dev
+        VERSION: dev
+    image: cofoundaz-api:dev
     container_name: cofoundaz-api_api
+    # Dev overrides the image's gunicorn CMD with a single reloading uvicorn:
+    # gunicorn's prefork model does not reload, and 4 workers on a laptop is
+    # just noise. Production uses the image's own CMD.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app/app
+      # Migrations are edited as often as app code in this project; without this
+      # you would have to rebuild the image to run a new revision in the container.
+      - ./alembic:/app/alembic
     env_file:
       - .env
     environment:
@@ -23,6 +54,7 @@ services:
     healthcheck:
       # Use python (always in the image) rather than curl (not installed) so the
       # check reflects the app, not a missing binary. urlopen raises on non-2xx.
+      # Liveness only - see /api/v1/health/ready for the dependency-aware check.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
@@ -39,6 +71,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
+      # Published so pytest (TEST_DATABASE_URL) and scripts/e2e_run.sh can reach
+      # it from the host. Development only - the production stack must never
+      # publish Postgres.
       - "5432:5432"
     restart: unless-stopped
     healthcheck:
@@ -51,6 +86,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: cofoundaz-api_redis
+    volumes:
+      - redis_data:/data
     ports:
       - "6379:6379"
     restart: unless-stopped
@@ -62,3 +99,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
