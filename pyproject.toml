@@ -16,7 +16,7 @@ fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 pydantic = "^2.11.0"
 pydantic-settings = "^2.9.0"
-python-multipart = "^0.0.20"
+python-multipart = ">=0.0.32,<0.1.0"
 python-dotenv = "^1.1.0"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
@@ -49,6 +49,8 @@ pylint = "^3.3.0"
 pre-commit = "^4.0.0"
 ipython = "^8.29.0"
 ruff = "^0.8.0"
+bandit = "^1.9.4"
+radon = "^6.0.1"
 
 [tool.poetry.scripts]
 start = "app.main:start"
@@ -91,8 +93,65 @@ target-version = "py311"
 exclude = [".git", ".venv", "alembic"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+# C90 = mccabe cyclomatic complexity (rule C901). Enforced here rather than via a
+# separate tool so there is exactly ONE complexity gate, running in the existing
+# lint job at no extra cost. radon is used for REPORTING (cc/mi summaries in the
+# quality job); ruff is what actually blocks.
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "C90"]
 ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+# Measured on the current tree: exactly ONE function exceeds 10 --
+# `validate_answer` in app/services/assessment/engine.py at 11. Everything else
+# is at or below 9, and radon puts the whole-codebase average at A (2.30) with
+# every module's maintainability index rated A.
+#
+# 12 is therefore one notch above the current worst: it cannot be reached without
+# writing something more tangled than anything in the codebase today, but it does
+# not demand a refactor to go green. Dropping this to the common default of 10
+# costs exactly one refactor (`validate_answer`) -- tracked as a follow-up.
+max-complexity = 12
+
+[tool.pylint.main]
+# alembic is generated/templated code and is excluded from every other linter here.
+ignore = ["alembic"]
+# pylint is slow single-threaded; use all cores in CI.
+jobs = 0
+
+[tool.pylint."messages control"]
+# pylint runs ALONGSIDE ruff/black/mypy, so anything those already own is turned
+# off here. Left on, they produced 512 of 527 messages -- noise that trains people
+# to ignore the tool. Each disable is a deliberate, justified choice:
+#
+#   C0114/C0115/C0116  missing docstrings (324 msgs). This codebase documents the
+#                      non-obvious with block comments rather than blanket
+#                      docstrings. Enforcing them now means 324 stub docstrings,
+#                      which is worse than none.
+#   C0103              invalid-name (64). ruff's `N` ruleset already enforces
+#                      naming, and pylint objects to pydantic Settings' ALL_CAPS
+#                      fields, which are required by that library.
+#   C0301              line-too-long (12). black owns line length (100).
+#   R0903              too-few-public-methods (41). SQLAlchemy models and pydantic
+#                      schemas legitimately have no public methods.
+#   W0613              unused-argument (32). FastAPI injects dependencies that a
+#                      handler may not reference by name.
+#   R0801              duplicate-code (6). Fires on structurally identical ORM
+#                      column declarations across models, which is the correct
+#                      way to write them.
+#   E1136/E1102        SQLAlchemy 2.0 false positives -- astroid cannot resolve
+#                      `Mapped[...]` subscripting or the dynamic `func.now`
+#                      namespace. Both are library limitations, not defects.
+#   C0415              import-outside-toplevel (8). Deliberate lazy imports.
+disable = [
+    "C0114", "C0115", "C0116",
+    "C0103",
+    "C0301",
+    "R0903",
+    "W0613",
+    "R0801",
+    "E1136", "E1102",
+    "C0415",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

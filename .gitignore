@@ -42,8 +42,13 @@ coverage.xml
 .pytest_cache/
 
 # Environments
+# Deny every .env variant, then re-allow the committed templates. A bare `.env`
+# rule does NOT cover `.env.production` -- which is exactly the file that holds
+# the production database password and SECRET_KEY.
 .env
-.env.local
+.env.*
+!.env.example
+!.env.production.example
 .venv
 env/
 venv/
@@ -52,7 +57,8 @@ env.bak/
 venv.bak/
 
 # Poetry
-poetry.lock
+# poetry.lock is INTENTIONALLY TRACKED: it is what makes container builds and CI
+# reproducible. Do not re-ignore it.
 
 # IDEs
 .vscode/
@@ -90,3 +96,6 @@ dmypy.json
 
 # SDD scratch workspace (ledger, briefs, review packages)
 .superpowers/
+
+# git worktrees for parallel module builds (local only)
+.worktrees/
