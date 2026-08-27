@@ -1,0 +1,21 @@
+# hadolint configuration for the CI `quality` job.
+#
+# Only ONE rule is ignored, and it is a deliberate trade rather than noise
+# suppression. Everything else hadolint reports is treated as a real finding.
+
+ignored:
+  # DL3008 - "Pin versions in apt get install".
+  #
+  # The only apt package this image installs is `tini`. Pinning it
+  # (`tini=0.19.0-1`) would be MORE fragile, not less: Debian's archive keeps
+  # only the current version of a package, so the moment bookworm ships a
+  # security update for tini the pinned build stops working entirely -- the exact
+  # class of breakage the rule is meant to prevent, arriving instead as a hard
+  # build failure at the worst time.
+  #
+  # Reproducibility is already handled at a stronger layer: the base image is
+  # pinned by DIGEST, so the apt package set is fixed for a given digest. Bumping
+  # the digest is the deliberate, reviewable act that also moves tini.
+  - DL3008
+
+failure-threshold: info

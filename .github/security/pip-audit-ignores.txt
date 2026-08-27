@@ -1,0 +1,36 @@
+# Accepted dependency advisories for the pip-audit gate in .github/workflows/ci.yml
+#
+# Format: one advisory ID per line. Everything after `#` is a comment.
+#
+# RULES:
+#   1. Every entry needs a reason and a review date. No bare IDs.
+#   2. An entry is a decision to SHIP a known vulnerability. It is not a way to
+#      make CI green - if you cannot write a defensible reason, fix the dependency.
+#   3. Re-check every entry at its review date. Suppressions rot: a CVE with no
+#      fix today usually has one in three months.
+#
+# To suppress nothing, leave this file with comments only - that is the goal state.
+#
+# ---------------------------------------------------------------------------
+# CURRENT STATUS: nothing suppressed.
+# ---------------------------------------------------------------------------
+# `pip-audit` on the current lockfile reports 16 advisories across 3 packages:
+#
+#   starlette         0.46.2   9 advisories  (fixes exist: 0.47.2 -> 1.3.1)
+#   python-multipart  0.0.20   6 advisories  (fixes exist: 0.0.22 -> 0.0.31)
+#   ecdsa             0.19.2   1 advisory    (PYSEC-2026-1325, NO fix available)
+#
+# These are deliberately NOT suppressed here. They are real, they are fixable
+# (except ecdsa), and suppressing them on day one would make this gate
+# decorative. The dependency bumps are a separate, reviewable change:
+#
+#   - starlette/python-multipart come in transitively via fastapi. Upgrading
+#     means moving fastapi forward and re-running the full suite; starlette 1.x
+#     is a major version and is NOT a drop-in for fastapi 0.115.
+#   - ecdsa comes in via python-jose. It has no fix available, so the real
+#     remediation is migrating off python-jose (PyJWT is the usual replacement),
+#     not a version bump.
+#
+# Until that change lands, this job WILL fail. That is the correct signal - see
+# docs/deployment/DEPLOYMENT_GUIDE.md ("Known security debt") for the triage
+# decision and the two options for unblocking.

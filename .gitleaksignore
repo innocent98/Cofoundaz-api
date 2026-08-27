@@ -1,0 +1,43 @@
+# Gitleaks baseline for the CI `security` job (.github/workflows/ci.yml).
+#
+# Format: one FINGERPRINT per line -> commit:file:rule:line
+#
+# RULES:
+#   1. Only HISTORICAL findings belong here - leaks that are already committed
+#      and therefore cannot be removed without rewriting published history.
+#   2. A NEW secret must never be added here. Rotate it and remove it instead.
+#   3. Every entry states what the value was, whether it is considered
+#      compromised, and what was done about it.
+#
+# ---------------------------------------------------------------------------
+# 36ee5d513c1ca05d2a8896b1c2c7c1b9cccbc687:.env.example:generic-api-key:12
+# ---------------------------------------------------------------------------
+# WHAT: a concrete 64-hex SECRET_KEY committed to `.env.example` on 2026-07-30.
+#
+# STATUS: treated as COMPROMISED. It sat in a public-facing example file, so it
+# must be assumed known. It signs JWTs, so anything that ever ran with it could
+# have had tokens forged against it.
+#
+# ACTION TAKEN (2026-08-27): the value was replaced in the working tree with an
+# obviously-invalid placeholder plus the `openssl rand -hex 32` command that
+# generates a real one. `.gitignore` now denies `.env.*` with only the two
+# `*.example` templates re-allowed, so a real env file cannot follow it in.
+#
+# WHY IT IS STILL SUPPRESSED: the commit is already in history. Removing it
+# requires a force-push that rewrites published history and breaks every clone -
+# not something to do silently as part of a deploy change. The finding is
+# acknowledged here instead.
+#
+# DECISION (2026-08-27, Adebayo): ROTATE, DO NOT PURGE. Production generates its
+# own SECRET_KEY on the server (see .env.production.example), so the committed
+# value is never the key any deployed environment runs with. Once it signs
+# nothing, the copy left in history is a dead 64-hex string and clearing it buys
+# no security - while a git-filter-repo force-push would rewrite published
+# history and break every existing clone and open PR. The cost is real and the
+# benefit is zero, so the finding stays acknowledged here.
+#
+# THIS DOES NOT EXPIRE: if some environment is later found to have run with this
+# key, rotating that environment's SECRET_KEY is still mandatory (it logs out
+# every user). The decision above is that history surgery is unnecessary, not
+# that the value is safe to use.
+36ee5d513c1ca05d2a8896b1c2c7c1b9cccbc687:.env.example:generic-api-key:12

@@ -1,0 +1,91 @@
+name: CodeQL
+
+# WHY THIS IS A SEPARATE WORKFLOW AND NOT A JOB IN ci.yml
+# -------------------------------------------------------
+# CodeQL needs a `schedule:` trigger so the Security tab holds a CURRENT baseline
+# rather than only whatever the last PR happened to touch. Advisories are added to
+# the query packs continuously, so code that was clean in June can be flagged in
+# August without a single line changing.
+#
+# Putting that cron in ci.yml would run the ENTIRE pipeline weekly - spinning up
+# Postgres and Redis service containers, running the e2e suite, and building an
+# image - to get one analysis. A separate file gets a separate trigger set and its
+# own concurrency group.
+#
+# WHY CODEQL IS NOT REDUNDANT WITH SEMGREP
+# -----------------------------------------
+# They fail differently, which is the point of running both:
+#
+#   Semgrep (in ci.yml `security`) is syntactic PATTERN MATCHING. It is fast and
+#   excellent at "this shape of code is wrong" - `verify=False`, a hardcoded key,
+#   a dangerous call. It reasons about one place at a time, so it cannot see that
+#   an unvalidated path parameter three functions away reaches an open().
+#
+#   CodeQL builds a relational database of the code and runs INTERPROCEDURAL
+#   DATAFLOW / TAINT TRACKING queries over it. It follows a value from a source
+#   (a request parameter) through assignments, function boundaries and returns to
+#   a sink (a query, a file open, a subprocess), and reports the path. That finds
+#   injection and SSRF classes Semgrep structurally cannot, because the source and
+#   the sink are never in the same pattern window.
+#
+# The cost is speed: CodeQL takes minutes where Semgrep takes seconds. That is
+# exactly why Semgrep blocks the build and this reports to the Security tab.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Mondays 04:17 UTC. Deliberately not on the hour - GitHub heavily throttles
+    # cron at :00, and a delayed weekly baseline is a stale weekly baseline.
+    - cron: "17 4 * * 1"
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    # CodeQL on a large repo can outrun the 6h default; this fails fast instead.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # Required to publish results to the Security tab.
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          languages: python
+          # `security-and-quality` = the security suite PLUS maintainability and
+          # correctness queries. The default `security` suite alone would miss the
+          # quality half, and this repo has no other interprocedural analysis.
+          queries: security-and-quality
+          # Python needs no compilation, so CodeQL uses its `none` build mode and
+          # extracts directly from source - no build step required below.
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          category: "/language:python"
+          # REPORT-ONLY, by design. This job does not gate the build.
+          #
+          # A brand-new CodeQL rollout has no triaged baseline, and the
+          # `security-and-quality` suite is broad. Blocking merges on its first
+          # run is how teams end up disabling CodeQL within a fortnight. Findings
+          # land in the Security tab and on PR diffs, where they can be triaged
+          # and dismissed with a reason.
+          #
+          # Promote to blocking once the baseline is triaged: add
+          # `github/codeql-action/upload-sarif` with a failure threshold, or turn
+          # on branch protection's code-scanning requirement for this category.
+          upload: always

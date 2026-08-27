@@ -1,0 +1,330 @@
+name: CD
+
+# Build once, push to GHCR, deploy that exact image to the VPS.
+#
+# The image is built ONE time and deployed by immutable digest. Rebuilding at
+# deploy time - or deploying `latest` - means the artifact that was tested is not
+# necessarily the artifact that runs.
+#
+# Required repository/environment secrets are documented in
+# docs/deployment/GITHUB_ACTIONS_SETUP.md.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    # checkov:skip=CKV_GHA_7:Input cannot affect build output - see reasoning below.
+    #
+    # CKV_GHA_7 requires workflow_dispatch inputs to be empty, because an input
+    # that influences a build breaks the SLSA guarantee that the build output is
+    # determined solely by the source. That does not apply here, and the design
+    # makes it structurally impossible rather than merely unlikely:
+    #
+    #   1. `build-and-push` is SKIPPED whenever image_tag is set
+    #      (`if: github.event.inputs.image_tag == ''`). When this input has a
+    #      value, no build runs at all - so no build output exists for it to
+    #      affect. The input only selects an ALREADY-BUILT image.
+    #   2. The image reference is assembled from the trusted `${REGISTRY}` and
+    #      `${IMAGE_NAME}` env values; the input supplies only the tag portion.
+    #      It cannot redirect the pull to a different registry or repository.
+    #   3. The assembled reference is regex-validated before use, and the tag
+    #      character class excludes `/` and `@`, so it cannot break out of the
+    #      repository path.
+    #   4. workflow_dispatch requires write access on the repository.
+    #
+    # This input is the manual rollback path (docs/deployment/ROLLBACK.md).
+    # Removing it to satisfy the check would delete the rollback mechanism and
+    # make the system less safe, not more.
+    inputs:
+      image_tag:
+        description: >-
+          Deploy an EXISTING GHCR tag instead of building (e.g. sha-a1b2c3d).
+          This is the manual rollback path - see docs/deployment/ROLLBACK.md.
+        required: false
+        type: string
+
+concurrency:
+  # Never let two production deploys race: they would fight over the same
+  # .env.production and could interleave `compose up` calls.
+  # cancel-in-progress is FALSE on purpose - cancelling a half-finished deploy
+  # leaves the VPS in an unknown state, which is worse than queueing.
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ------------------------------------------------------------------------- #
+  build-and-push:
+    name: Build & push to GHCR
+    runs-on: ubuntu-latest
+    # Skip the build entirely when redeploying an existing tag (rollback).
+    if: github.event.inputs.image_tag == ''
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.ref.outputs.image_ref }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build & push
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ github.ref_type == 'tag' && github.ref_name || format('sha-{0}', github.sha) }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # BuildKit attaches a SLSA provenance attestation (what built this, from
+          # which commit, with which inputs) and an SBOM attestation to the pushed
+          # manifest. Both travel WITH the image in GHCR and can be read back with
+          # `docker buildx imagetools inspect --format '{{ json .Provenance }}'`.
+          provenance: true
+          sbom: true
+          #
+          # DELIBERATELY NOT ADDING cosign KEYLESS SIGNING.
+          # A signature is only worth the verification step that enforces it, and
+          # for this topology there is nothing left for it to prove: CD resolves
+          # the digest from the build it just ran and the VPS pulls THAT digest.
+          # A digest is content-addressed, so the registry cannot serve different
+          # bytes under it - which is the exact tampering a signature would catch.
+          # Without an admission controller or a `cosign verify` gate that can
+          # actually refuse a deploy, signing here is ceremony that looks like
+          # security. Revisit if images are ever consumed by a third party, or if
+          # a policy engine enters the picture.
+
+      - name: Resolve the immutable digest
+        id: ref
+        # Deploy by DIGEST, not by tag. A tag is a mutable pointer - `sha-abc123`
+        # can in principle be re-pushed. A digest is content-addressed, so what
+        # the VPS pulls is byte-identical to what was just built and scanned.
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "Deploying image: ${IMAGE_REF}"
+
+  # ------------------------------------------------------------------------- #
+  deploy:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    # `always()` so the rollback path (workflow_dispatch with an image_tag, where
+    # build-and-push is skipped) still runs. The explicit failure check below
+    # stops a FAILED build from ever reaching the VPS.
+    if: always() && needs.build-and-push.result != 'failure' && needs.build-and-push.result != 'cancelled'
+
+    # Gives you the manual approval gate, the deploy history, and per-environment
+    # secrets. Configure required reviewers on the `production` environment in
+    # repo Settings for a human to hold the door.
+    environment:
+      name: production
+      # A repository/environment VARIABLE, not a secret: the `secrets` context is
+      # not available in `environment.url`, and a public base URL is not a secret.
+      # Set it under Settings -> Environments -> production -> Variables.
+      url: ${{ vars.APP_URL }}
+
+    steps:
+      - name: Choose the image to deploy
+        id: target
+        env:
+          BUILT_REF: ${{ needs.build-and-push.outputs.image_ref }}
+          MANUAL_TAG: ${{ github.event.inputs.image_tag }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TAG}" ]; then
+            REF="${REGISTRY}/${IMAGE_NAME}:${MANUAL_TAG}"
+            echo "Manual deploy (rollback path) of ${REF}"
+          else
+            REF="${BUILT_REF}"
+            echo "Deploying freshly built ${REF}"
+          fi
+          if [ -z "${REF}" ]; then
+            echo "::error::No image reference resolved - refusing to deploy."
+            exit 1
+          fi
+          # Defence in depth: workflow_dispatch input is operator-supplied text
+          # that ends up in a `docker pull` on the VPS. Constrain it to the shape
+          # of a real image reference before it leaves this runner.
+          if ! printf '%s' "${REF}" | grep -qE '^[a-z0-9./_-]+(:[A-Za-z0-9._-]+|@sha256:[a-f0-9]{64})$'; then
+            echo "::error::Refusing to deploy malformed image reference: ${REF}"
+            exit 1
+          fi
+          echo "image_ref=${REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          IMAGE_REF: ${{ steps.target.outputs.image_ref }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GHCR_USER: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          # Values are passed as environment variables, NOT interpolated with
+          # ${{ }} into the script body. Interpolation happens before the remote
+          # shell runs, which would bake the GHCR token into the literal command
+          # text sent over the wire and into any command trace.
+          envs: IMAGE_REF,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN
+          command_timeout: 15m
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            cd "${DEPLOY_PATH}"
+
+            COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.production"
+            HEALTH_URL="http://127.0.0.1:$(grep -E '^API_PORT=' .env.production | cut -d= -f2 || echo 8000)/api/v1/health/ready"
+
+            echo "==> [1/6] Recording the currently deployed image for rollback"
+            # Read from the RUNNING container, not from .env.production: if a
+            # previous deploy failed after editing the file but before restarting,
+            # the file is a lie and the container is the truth.
+            # Resolve the container via compose rather than a hardcoded name, so
+            # renaming a service or the project cannot silently break rollback.
+            PREV_CID="$(${COMPOSE} ps -q api 2>/dev/null || true)"
+            PREVIOUS_IMAGE=""
+            if [ -n "${PREV_CID}" ]; then
+              PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "${PREV_CID}" 2>/dev/null || true)"
+            fi
+            if [ -z "${PREVIOUS_IMAGE}" ]; then
+              PREVIOUS_IMAGE="$(grep -E '^API_IMAGE=' .env.production | cut -d= -f2- || true)"
+            fi
+            echo "    previous: ${PREVIOUS_IMAGE:-<none - first deploy>}"
+            echo "    new     : ${IMAGE_REF}"
+
+            echo "==> [2/6] Authenticating to GHCR and pulling"
+            printf '%s' "${GHCR_TOKEN}" \
+              | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            docker pull "${IMAGE_REF}"
+
+            echo "==> [3/6] Pinning API_IMAGE in .env.production"
+            cp .env.production ".env.production.bak"
+            if grep -qE '^API_IMAGE=' .env.production; then
+              sed -i "s|^API_IMAGE=.*|API_IMAGE=${IMAGE_REF}|" .env.production
+            else
+              echo "API_IMAGE=${IMAGE_REF}" >> .env.production
+            fi
+
+            rollback() {
+              echo "!!! DEPLOY FAILED - rolling back to ${PREVIOUS_IMAGE:-previous}"
+              if [ -n "${PREVIOUS_IMAGE}" ]; then
+                sed -i "s|^API_IMAGE=.*|API_IMAGE=${PREVIOUS_IMAGE}|" .env.production
+                # The old image may have been pruned; make sure it is present.
+                docker pull "${PREVIOUS_IMAGE}" 2>/dev/null || true
+                # --no-deps is ESSENTIAL here. Without it, compose would honour
+                # api's depends_on and re-run the `migrate` one-shot using the
+                # OLD image. The database is already at the NEW head, and older
+                # alembic code does not know that revision, so the migrate step
+                # would fail with "Can't locate revision" and take the rollback
+                # down with it. Rolling back the code without rolling back the
+                # schema is the intended behaviour - it assumes migrations are
+                # backward-compatible for one release, which is why the
+                # downgrade round-trip is gated in CI.
+                ${COMPOSE} up -d --no-deps --no-build api
+                echo "    rolled back; verifying the OLD image is healthy"
+                for _ in $(seq 1 20); do
+                  if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
+                    echo "    rollback healthy"; break
+                  fi
+                  sleep 3
+                done
+              else
+                echo "    no previous image recorded - cannot auto-roll back."
+                cp ".env.production.bak" .env.production
+              fi
+              echo "--- api logs (last 80) ---"
+              ${COMPOSE} logs --tail=80 api || true
+              exit 1
+            }
+            trap rollback ERR
+
+            echo "==> [4/6] Running migrations (one-shot, must exit 0)"
+            # Run migrations BEFORE swapping the API. `up` on the one-shot exits
+            # with the service's own code thanks to --exit-code-from.
+            ${COMPOSE} up --no-build --exit-code-from migrate migrate
+
+            echo "==> [5/6] Starting the new API"
+            ${COMPOSE} up -d --no-build --remove-orphans
+
+            echo "==> [6/6] Waiting for readiness (DB + Redis, not just a live port)"
+            READY=""
+            for _ in $(seq 1 40); do
+              if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
+                READY=1; break
+              fi
+              sleep 3
+            done
+            if [ -z "${READY}" ]; then
+              echo "::error::Readiness never returned 200 after ~120s"
+              false   # triggers the ERR trap -> rollback
+            fi
+
+            trap - ERR
+            rm -f ".env.production.bak"
+
+            echo "==> Deployed successfully"
+            curl -fsS "${HEALTH_URL}"
+            echo
+            # Reclaim disk from superseded images. `until=72h` deliberately keeps
+            # recent ones so a manual rollback to yesterday's build still has a
+            # local image to start from.
+            docker image prune -af --filter "until=72h" || true
+
+      - name: Deployment summary
+        if: always()
+        env:
+          IMAGE_REF: ${{ steps.target.outputs.image_ref }}
+          RESULT: ${{ job.status }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          {
+            echo "### Production deploy: ${RESULT}"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| image | \`${IMAGE_REF}\` |"
+            echo "| commit | \`${COMMIT_SHA}\` |"
+            echo "| actor | ${ACTOR} |"
+          } >> "$GITHUB_STEP_SUMMARY"
