@@ -95,6 +95,28 @@ def test_patch_settings_rejects_out_of_range_mission_size(client, db):
     assert body["error"]["field_errors"][0]["field"] == "mission_size"
 
 
+def test_patch_settings_rejects_zero_mission_size(client, db):
+    _u, _s, h = _member(db)
+    db.commit()
+
+    r = client.patch("/api/v1/missions/settings", json={"mission_size": 0}, headers=h)
+    assert r.status_code == 422, r.text
+    body = r.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["field_errors"][0]["field"] == "mission_size"
+
+
+def test_patch_settings_rejects_negative_mission_size(client, db):
+    _u, _s, h = _member(db)
+    db.commit()
+
+    r = client.patch("/api/v1/missions/settings", json={"mission_size": -1}, headers=h)
+    assert r.status_code == 422, r.text
+    body = r.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["field_errors"][0]["field"] == "mission_size"
+
+
 def test_patch_settings_requires_editor_role(client, db):
     _u, _s, h = _member(db, role=MembershipRole.mentor)
     db.commit()
