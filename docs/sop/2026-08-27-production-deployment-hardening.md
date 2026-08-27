@@ -347,6 +347,123 @@ than the previous silent fall-through.
 > (`cofoundaz_mission_dev` has 28 tables). An isolated compose project reproduces the cold-start
 > condition exactly and destroys nothing shared.
 
+## Dependency upgrade: fastapi + starlette (clearing 9 advisories)
+
+Adebayo chose "fix the dependencies, then merge". Done, but not the way it looked
+from the outside - the obvious upgrade silently disables rate limiting.
+
+### Result
+
+| Scanner | Before | After |
+|---|---|---|
+| `pip-audit` (locked prod deps) | **10** | **1** |
+| `trivy image` (HIGH/CRITICAL, the CI gate) | **3** | **0** |
+| `trivy fs` (lockfile, incl. unfixed) | **4** | **1** |
+
+All 9 `starlette` advisories cleared. The 1 remaining is `ecdsa`
+`PYSEC-2026-1325` / `CVE-2024-23342`, which has no fix and is left deliberately.
+
+Landed: `fastapi 0.115.14 -> 0.136.3`, `starlette 0.46.2 -> 1.6.0`, plus one new
+transitive (`annotated-doc`). Nothing else moved.
+
+### The upgrade window is bounded at BOTH ends, and the top bound is the interesting one
+
+```
+fastapi = ">=0.133.0,<0.137.0"
+starlette = ">=1.3.1,<2.0.0"
+```
+
+**Lower bound.** 0.133.0 is the first fastapi release to drop the starlette upper
+bound. 0.128.3 still capped at `<1.0.0`, so nothing below 0.133.0 can reach a
+fixed starlette at all. Verified against PyPI metadata for every fastapi release
+from 0.115.0 up.
+
+**Upper bound - a real breakage, found by testing rather than by reading.**
+fastapi **0.137.0** introduced `_IncludedRouter`, which wraps routes registered
+via `include_router()` in a container object instead of flattening them into
+`app.routes`. slowapi's `SlowAPIMiddleware` resolves the endpoint for the current
+request by iterating `app.routes` and matching entries that expose `.endpoint`.
+A `_IncludedRouter` exposes neither, so from 0.137.0 **every route mounted
+through a router becomes invisible to the limiter and silently stops being rate
+limited.**
+
+For this app that is the entire `/api/v1` surface - auth, onboarding, assessments,
+roadmap, everything. Measured at 135 requests against a 120/minute limit:
+
+| Configuration | `/health` (`@app.get`) | `/api/v1/health` (`include_router`) |
+|---|---|---|
+| fastapi 0.115.14 + starlette 0.46.2 (before) | first 429 at **#121** | first 429 at **#121** |
+| fastapi 0.141.1 + starlette 1.6.0 (naive upgrade) | first 429 at **#121** | **never - 0 x 429** |
+| fastapi 0.136.3 + starlette 1.6.0 (**shipped**) | first 429 at **#121** | first 429 at **#121** |
+
+Note the middle row: `/health` keeps working because it is declared directly with
+`@app.get`. That is precisely why the whole suite stayed green - **405 unit tests,
+27 e2e, all passing, with the API's rate limiting entirely disabled.** The
+existing rate-limit tests only exercised routes declared on the app.
+
+Confirmed under gunicorn too, not just pytest: 700 concurrent requests against
+the production stack produced 480 x 200 + 220 x 429 - exactly 4 workers x 120.
+
+### What makes the pin self-enforcing
+
+`tests/api/test_rate_limit.py::test_default_limits_reach_routes_registered_via_include_router`
+mounts a route through `include_router` and asserts the default limit trips.
+Verified to **fail on fastapi 0.141.1** with a diagnostic naming the pin, and pass
+on 0.136.3. Raising the ceiling without fixing the interaction now breaks a test
+instead of silently removing rate limiting.
+
+### The starlette 1.0 major itself was a non-event
+
+Every removal in the 1.0 release notes was checked against this codebase and
+slowapi, and none applies: `on_startup`/`on_event`/`add_event_handler` (no event
+hooks here), `@app.route`/`@app.websocket_route`/`@app.middleware` decorators (not
+used), `iscoroutinefunction_or_partial` (not used by us or slowapi),
+`Jinja2Templates` (not used). `@app.exception_handler` **is** used, but FastAPI
+defines its own in `fastapi.applications` rather than inheriting Starlette's.
+`BaseHTTPMiddleware` and `RequestResponseEndpoint` - which both `LoggingMiddleware`
+and slowapi depend on - are not in the removal list and still exist.
+
+slowapi 0.1.10 declares no starlette constraint at all (only `limits>=2.3`), so it
+neither blocks resolution nor protects against this. That is exactly why the
+breakage had to be found by measurement.
+
+### Largest safe upgrade, if someone wants to go further
+
+**fastapi 0.136.3 is the ceiling without code changes.** Going to 0.137.0+ needs
+one of: a patched `_find_route_handler` that descends into `_IncludedRouter`, a
+slowapi release that supports it, or replacing slowapi with limiter middleware
+that resolves the endpoint from `scope["route"]` rather than by scanning
+`app.routes`. None of that was in scope here.
+
+### Pre-existing bug found while verifying (NOT caused by the upgrade)
+
+The 429 body is slowapi's default `{"error":"Rate limit exceeded: 120 per 1 minute"}`
+with **no `Retry-After` header** - not the app's documented envelope
+(`error.code == "RATE_LIMITED"`). Confirmed **identical on the old versions**, so
+it predates this work: `SlowAPIMiddleware` looks up `app.exception_handlers`
+directly and does not find FastAPI's registered handler for default-limit
+violations. Any FE integration guide promising `RATE_LIMITED` is wrong today.
+Tracked as a follow-up; deliberately not fixed here.
+
+### Sizing the `python-jose` -> PyJWT migration (for the unfixable `ecdsa`)
+
+`ecdsa` arrives solely via `python-jose`, and has no fix. The migration surface is
+small and worth knowing precisely:
+
+| File | Usage |
+|---|---|
+| `app/core/security.py` | 1 x `jwt.encode` |
+| `app/api/deps.py` | 1 x `jwt.decode`, catches `JWTError` |
+| `app/main.py` | 1 x `jwt.decode` (the rate-limit key function), catches `JWTError` |
+
+**3 files, 1 encode, 2 decodes, 2 exception catches.** PyJWT's `encode`/`decode`
+signatures match jose's, so the mechanical change is an import swap plus
+`JWTError` -> `PyJWTError`. Two things to watch: PyJWT >= 2.10 **requires `sub` to
+be a string** (tokens here carry a UUID, so it must be `str()`-cast at issue time),
+and PyJWT validates `exp`/`nbf` by default. Estimate: a small change, but it
+touches authentication, so it needs the full auth e2e suite behind it rather than
+being bundled into an unrelated PR.
+
 ## Operate / roll back
 
 - **Nothing is committed.** This is a working-tree pass; review with `git status` / `git diff`

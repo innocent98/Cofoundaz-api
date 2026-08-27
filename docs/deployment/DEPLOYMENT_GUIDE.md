@@ -797,6 +797,47 @@ unchanged and is the only blocker.
 Nothing is suppressed: `.trivyignore` and `.github/security/pip-audit-ignores.txt` contain
 **only comments** explaining the policy.
 
+### fastapi + starlette upgrade — SHIPPED, and the trap in it
+
+`fastapi 0.115.14 → 0.136.3` and `starlette 0.46.2 → 1.6.0`, clearing all 9
+starlette advisories.
+
+| Scanner | Before | After |
+|---|---|---|
+| `pip-audit` | 10 | **1** |
+| `trivy image` (CI gate) | 3 | **0** |
+| `trivy fs` | 4 | **1** |
+
+The 1 remaining is `ecdsa` (no fix available) — see below.
+
+> **Do not raise the `fastapi` ceiling above `<0.137.0` without reading this.**
+>
+> fastapi 0.137.0 wraps `include_router()` routes in an internal `_IncludedRouter`
+> instead of flattening them into `app.routes`. slowapi's `SlowAPIMiddleware`
+> finds the current endpoint by scanning `app.routes` for entries exposing
+> `.endpoint`, which `_IncludedRouter` does not — so **every `/api/v1/*` route
+> silently stops being rate limited.** Auth included.
+>
+> Measured at 135 requests against a 120/min limit: on fastapi 0.141.1 the
+> `/api/v1` route never returned a single 429, while `/health` (declared with
+> `@app.get`, not through a router) kept limiting normally — which is why all 405
+> unit tests and 27 e2e tests passed with rate limiting disabled.
+>
+> `tests/api/test_rate_limit.py::test_default_limits_reach_routes_registered_via_include_router`
+> now guards the pin: it fails on 0.137+ with a diagnostic naming the constraint.
+>
+> Going above 0.136.3 requires real work — patching slowapi's route resolution,
+> waiting for a slowapi release that understands `_IncludedRouter`, or replacing
+> slowapi with middleware that reads `scope["route"]` instead of scanning routes.
+
+Verified under the production stack, not just pytest: 700 concurrent requests
+produced 480 × 200 and 220 × 429 — exactly `WEB_CONCURRENCY` (4) × 120.
+
+**Known pre-existing bug (not from this upgrade):** the 429 body is slowapi's
+default `{"error":"Rate limit exceeded: ..."}` with no `Retry-After`, not the
+app's `RATE_LIMITED` envelope. Confirmed identical on the pre-upgrade versions.
+Any FE guide promising `error.code == "RATE_LIMITED"` is inaccurate today.
+
 ### `python-multipart` 0.0.20 → 0.0.32 — SHIPPED, and what it actually fixed
 
 Approved and landed. `pyproject.toml` now pins `python-multipart = ">=0.0.32,<0.1.0"` — an
