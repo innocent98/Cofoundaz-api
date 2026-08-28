@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-27 · Roadmap Slice 3 (migration `0008`, PR #16) and Module 04 Today's Mission (migration `0009`, PR #17) merged to `main`; migration chain linearised `0007 → 0008 → 0009`. Merged into `chore/production-deployment-hardening` (production deployment hardening + code/quality/security scanning wave — PR #18, open)._
+_Last reconciled: 2026-08-28 · `feat/staging-pipeline-env-encryption` (staging gate + env encryption; branched off `main` @ `bbd59a6` with PRs #18 and #25 merged)_
 
 ---
 
@@ -272,6 +272,24 @@ verified locally, and the CI workflows have now had a first real run on GitHub
       mutually exclusive (`service_completed_successfully`), so real peaks are
       2.5 (migrating) and **exactly 4.0** (steady state); memory 5632M of 8192M
       leaves 2560M for host + page cache. Connections 42/100 (42%)
+- [x] **Staging → production gated pipeline** (2026-08-28) — CD restructured to
+      `build-and-push` → `staging-deploy` → `staging-e2e` → `production-deploy`;
+      production requires an explicitly-green staging gate and deploys the SAME
+      digest staging proved, not a rebuild. Both deploys share one composite
+      action (`.github/actions/deploy-stack`) so the logic cannot drift
+- [x] **Encrypted environment files** — `scripts/env.sh` (6 subcommands, 3-tier key
+      discovery, AES-256-CBC + PBKDF2 100k), `make env-*` wrappers, `.gitignore`
+      re-allows `*.enc` while still denying `.env` / `.env.staging` /
+      `.env.production` / `.env.key` (proved with `git add --dry-run`)
+- [x] **Two corrections to earlier assumptions** — `DEPLOY_PATH` is now a
+      per-GitHub-Environment secret so no server path lives in the repo (the
+      documented `/opt/cofoundaz-api` never existed); and the deployed env file
+      is `.env`, not `.env.production`, throughout compose/Makefile/docs
+- [x] **Live staging E2E gate** — `E2E_REMOTE=1` auto-deselects mailbox-dependent
+      tests by fixture closure, prints every deselection, and errors if that would
+      leave zero tests. Verified `13 passed, 14 deselected` against a live server
+- [x] `docs/deployment/ENV_ENCRYPTION.md` + DEPLOYMENT_GUIDE / GITHUB_ACTIONS_SETUP /
+      ROLLBACK updated; SOP `docs/sop/2026-08-28-staging-pipeline-env-encryption.md`
 - [ ] **SonarCloud** — `sonar-project.properties` committed but INERT; the job
       skips cleanly until a `SONAR_TOKEN` secret exists. Needs a SonarCloud
       account (could not be created here)
@@ -339,6 +357,19 @@ verified locally, and the CI workflows have now had a first real run on GitHub
 - [ ] `starlette` 0.46.2 — **3 HIGH** still blocking `trivy image`. Stays pinned
       even with fastapi 0.141.1, so it needs real compatibility work (starlette
       1.x is a major version, not a drop-in)
+- [ ] **Only 13 of 27 e2e tests gate production.** The other 14 need
+      `EMAIL_FILE_DIR` on the same machine as the test run (they reach the
+      `mailbox` fixture, mostly via `make_verified_user`), which a remote runner
+      does not have. They still run in CI against a local server. Widening needs
+      mail-dir transport over SSH or an on-VPS runner
+- [ ] **No secret has been created yet.** `.env.staging.enc` / `.env.production.enc`
+      do not exist and `ENV_ENCRYPTION_KEY` is not in GitHub — the one-time setup
+      in `docs/deployment/ENV_ENCRYPTION.md` §4 is Adebayo's to run
+- [ ] `APP_URL` must be set as a **staging** environment variable, not only
+      production — the staging gate uses it as `E2E_BASE_URL`
+- [ ] The staging/production deploy path has **never run against a real VPS** — no
+      SSH deploy, no scp, no GHCR pull from a server; CD has never executed in its
+      three-job shape
 - [ ] CodeQL, `dependency-review` and SonarCloud have **never executed** — none can
       run locally; first signal comes from the first GitHub Actions run/PR
 - [ ] The `SECRET_KEY` committed to `.env.example` in `36ee5d51` is public in git history and must

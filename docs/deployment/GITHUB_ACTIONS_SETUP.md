@@ -1,35 +1,56 @@
 # GitHub Actions Setup — cofoundaz-api
 
 > **Type:** deployment reference · **Covers:** every secret and variable the CI, CD and CodeQL
-> workflows read, how to generate it, and where it goes · **Last verified:** 2026-08-27
+> workflows read, how to generate it, and where it goes · **Last verified:** 2026-08-28
 
 Every value below was read out of `.github/workflows/ci.yml`, `.github/workflows/cd.yml` and
 `.github/workflows/codeql.yml`. If a workflow references something not listed here, that is a
 bug in this document — fix it.
 
-> **NOT VERIFIED —** none of the three workflows has ever executed on GitHub. All pass
-> `actionlint 1.7.12` with `shellcheck 0.11.0` integration (exit 0 on `ci.yml`, `cd.yml`,
-> `codeql.yml` and the composite action). Static validation is not execution. Verification is
-> the first push to `develop` (CI + CodeQL), the first pull request (`dependency-review`), and
-> the first push to `main` (CD). The most likely first-run failure is **not** a missing secret
-> — it is the security gate; see "Known security debt" in `DEPLOYMENT_GUIDE.md`.
+> **NOT VERIFIED — the current shapes.** `actionlint` exits 0 on every workflow plus the
+> composite actions (re-run 2026-08-28) with `shellcheck 0.11.0` integration, and `shellcheck`
+> is clean on `scripts/env.sh`. But **`cd.yml` has never executed on GitHub in its current
+> three-job `staging-deploy` → `staging-e2e` → `production-deploy` shape**, and nothing has ever
+> run against a real VPS — no SSH deploy, no scp, no GHCR pull from a server. **No staging box
+> existed at the time of this verification pass.** Static validation is not execution.
+> Verification is the next push to `develop` (CI + CodeQL), the next pull request
+> (`dependency-review`), and the next push to `main` (the full CD chain).
 
 ---
 
 ## 1. What needs configuring, at a glance
 
+**Everything the deploy needs is now a PER-ENVIRONMENT value.** There are two GitHub
+Environments — `staging` and `production` — and every row in the first block below must be set
+**separately under each of them**. Setting a value once at repository level does not work: CD's
+`staging-deploy` and `production-deploy` jobs read `${{ secrets.X }}` while targeting their own
+environment, so each resolves that environment's copy.
+
 | Where | Item | Type |
 |---|---|---|
-| Environment `production` | `VPS_HOST` | secret |
-| Environment `production` | `VPS_USERNAME` | secret |
-| Environment `production` | `VPS_SSH_KEY` | secret |
-| Environment `production` | `VPS_PORT` | secret (optional — defaults to 22) |
-| Environment `production` | `DEPLOY_PATH` | secret |
-| Environment `production` | `GHCR_PULL_USERNAME` | secret |
-| Environment `production` | `GHCR_PULL_TOKEN` | secret |
-| Environment `production` | `APP_URL` | **variable, not secret** |
+| Environments `staging` **and** `production` | `VPS_HOST` | secret |
+| Environments `staging` **and** `production` | `VPS_USERNAME` | secret |
+| Environments `staging` **and** `production` | `VPS_SSH_KEY` | secret |
+| Environments `staging` **and** `production` | `VPS_PORT` | secret (optional — defaults to 22) |
+| Environments `staging` **and** `production` | `DEPLOY_PATH` | secret |
+| Environments `staging` **and** `production` | `ENV_ENCRYPTION_KEY` | secret |
+| Environments `staging` **and** `production` | `GHCR_PULL_USERNAME` | secret |
+| Environments `staging` **and** `production` | `GHCR_PULL_TOKEN` | secret |
+| Environments `staging` **and** `production` | `APP_URL` | **variable, not secret** |
 | Repository | `SONAR_TOKEN` | secret — **OPTIONAL** (§8). Absent = the `sonarcloud` job skips cleanly. |
-| Automatic | `GITHUB_TOKEN` | provided by GitHub |
+| Automatic | `GITHUB_TOKEN` | provided by GitHub — CD's `build-and-push` uses it for the GHCR push |
+
+That is **8 secrets × 2 environments**, plus one variable per environment.
+
+**`ENV_ENCRYPTION_KEY` may legitimately hold the SAME value in both environments** — people
+assume it has to differ, and it does not. One key encrypts both `.env.staging.enc` and
+`.env.production.enc`; what is being defended against is "someone cloned the repo", not
+"staging operators must not read production". If you *do* want that separation, use two keys and
+set each environment's secret accordingly — nothing else in the pipeline cares.
+
+**The `staging` environment's `APP_URL` does double duty.** It supplies `environment.url` on the
+deployment *and* `E2E_BASE_URL` for the `staging-e2e` gate, which fails fast when it is empty.
+It must therefore be the **publicly reachable staging base URL**, or the gate cannot run.
 
 **CI needs no secrets to pass.** Every credential in `ci.yml` is a hardcoded throwaway
 (`ci-secret-key-not-used-outside-ci`, `test_user` / `test_password`) written inline in the
@@ -41,20 +62,24 @@ repository-level secret named `CI_<SERVICE>_<THING>` — never reuse a productio
 
 ---
 
-## 2. Create the `production` environment first
+## 2. Create BOTH environments first
 
-Settings → Environments → **New environment** → name it exactly `production`.
+Settings → Environments → **New environment**, twice, named exactly `staging` and `production`.
 
-The name is not arbitrary — `cd.yml` declares `environment: name: production`, and that is
-what gives you:
+The names are not arbitrary — `cd.yml` declares `environment: name: staging` on both
+`staging-deploy` and `staging-e2e`, and `environment: name: production` on `production-deploy`.
+That is what gives you:
 
-- **Required reviewers** — a human approval gate before the deploy job touches the VPS.
-  Configure this. It is the cheapest safety net in the whole pipeline.
-- **Deployment history** — a record of what went out and when.
-- **Scoped secrets** — the VPS credentials are readable only by jobs targeting this
-  environment, not by every workflow in the repo.
+- **Required reviewers** — a human approval gate before a deploy job touches the VPS. Configure
+  this on **`production`**. It is the cheapest safety net in the whole pipeline. Leaving
+  `staging` un-gated is the point: staging is what production is gated *on*.
+- **Deployment history** — a record of what went out, where, and when.
+- **Scoped secrets** — each environment's VPS credentials are readable only by jobs targeting
+  that environment.
+- **Per-environment `DEPLOY_PATH`** — which is why no server path appears anywhere in this
+  repository. See `DEPLOYMENT_GUIDE.md` §2.
 
-Optionally restrict the environment to the `main` branch and `v*.*.*` tags, matching CD's
+Optionally restrict both environments to the `main` branch and `v*.*.*` tags, matching CD's
 triggers.
 
 ---
@@ -85,8 +110,13 @@ ssh -i ~/.ssh/cofoundaz_deploy deploy@<vps-host> 'docker compose version'   # mu
 ```
 
 The deploy user must be in the `docker` group. **Do not use `root`** — the deploy script
-issues `docker` commands, `cd`s into `${DEPLOY_PATH}`, and edits `.env.production`; none of
+issues `docker` commands, `cd`s into `${DEPLOY_PATH}`, and edits `${DEPLOY_PATH}/.env`; none of
 that needs root, and running as root means one leaked key is full host compromise.
+
+**Do this once per host.** Staging and production are separate boxes with separate
+`VPS_HOST`/`VPS_SSH_KEY` secrets. A single keypair installed on both hosts is acceptable and
+simplest; two keypairs (one per environment) narrows the blast radius of a leak from both stacks
+to one. Either way, the private half goes into **each** environment's `VPS_SSH_KEY` secret.
 
 **3. Harden sshd** — `PasswordAuthentication no`, `PermitRootLogin no`.
 
@@ -107,9 +137,10 @@ then remove the old public key from `~/.ssh/authorized_keys` on the VPS. In that
 
 ## 4. GHCR pull token
 
-The VPS pulls the image from `ghcr.io` at deploy time. **The GHCR package is private by
-default**, so the host needs credentials of its own — the runner's `GITHUB_TOKEN` cannot be
-used there, it does not leave the runner.
+**Each** VPS pulls the image from `ghcr.io` at deploy time. **The GHCR package is private by
+default**, so every host needs credentials of its own — the runner's `GITHUB_TOKEN` cannot be
+used there, it does not leave the runner. `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are
+therefore set on **both** environments; one PAT reused across both is fine.
 
 > **NOT VERIFIED —** no GHCR push or pull was performed. Verification: on the VPS, run
 > `printf '%s' "<token>" | docker login ghcr.io -u <user> --password-stdin` followed by
@@ -140,12 +171,13 @@ consumed with `--password-stdin`, never as an argv argument.
 
 ## 5. Every secret, in detail
 
-All of these live under **Settings → Environments → `production` → Environment secrets**.
+Set every one of these **twice** — once under **Settings → Environments → `staging` →
+Environment secrets**, and once under **`production`**.
 
 ### `VPS_HOST`
 
-The hostname or IP of the production VPS. Prefer a DNS name over a literal IP — replacing the
-box then means a DNS change, not a secret edit.
+The hostname or IP of that environment's VPS. Prefer a DNS name over a literal IP — replacing
+the box then means a DNS change, not a secret edit.
 
 ### `VPS_USERNAME`
 
@@ -162,28 +194,62 @@ The SSH port. `cd.yml` uses `${{ secrets.VPS_PORT || 22 }}`, so omit it entirely
 
 ### `DEPLOY_PATH`
 
-Absolute path to the deploy directory on the VPS — e.g. `/opt/cofoundaz-api`. The deploy
-script `cd`s here and expects to find:
+Absolute path to that environment's stack directory on the VPS.
+
+**This value lives only in the secret.** No deploy path appears anywhere in this repository —
+`cd.yml` and `.github/actions/deploy-stack/action.yml` read `${{ secrets.DEPLOY_PATH }}` and
+nothing else. An earlier version of this document named `/opt/cofoundaz-api` as the canonical
+path; **that path never existed on any host**, and a repo-side path going stale without anything
+failing is exactly what the per-environment secret prevents.
+
+| Environment | The value that environment's secret currently holds |
+|---|---|
+| `staging` | `/opt/cofoundaz-staging` |
+| `production` | `/opt/cofoundaz` |
+
+Those are secret *values*, not repository constants. Change a secret and the deploy follows.
+
+The deploy `cd`s into this directory and scp's two files into it on **every** deploy:
 
 ```
-${DEPLOY_PATH}/docker-compose.prod.yml
-${DEPLOY_PATH}/.env.production          # chmod 600, owned by the deploy user
+${DEPLOY_PATH}/docker-compose.prod.yml   # from the commit being deployed
+${DEPLOY_PATH}/.env                      # chmod 600 — decrypted on the runner from .env.<env>.enc
 ```
 
-The script **writes** to `.env.production` (it pins `API_IMAGE` to the deployed digest, and
-takes a `.env.production.bak` alongside it), so the deploy user needs write permission on both
-the file and its directory.
+**The deployed filename is `.env`, not `.env.production`.** The `.env.<env>` names exist only on
+a developer machine, where both environments must coexist without colliding. The script also
+**writes** to `${DEPLOY_PATH}/.env` — it pins `API_IMAGE` to the deployed digest, and the ERR
+trap rewrites it during a rollback — so the deploy user needs write permission on both the file
+and its directory. (There is **no** `.bak` file; rollback restores `API_IMAGE` in place from the
+image read off the running container.)
+
+Only the directory itself, owned by the deploy user, has to pre-exist.
+
+### `ENV_ENCRYPTION_KEY`
+
+The AES key for `.env.<environment>.enc`. `deploy-stack` decrypts `.env.staging.enc` or
+`.env.production.enc` **on the runner**, writes it out as `.env`, scp's that, and deletes it from
+the runner in an `if: always()` step.
+
+**It may legitimately be the same value in both environments.** One key encrypts both files; the
+threat model is a cloned repository, not staging-versus-production separation. Use two keys only
+if you want that separation.
+
+The decrypt step **hard-fails** if the `.enc` file is missing, if the key is unset or wrong, or
+if the decrypted plaintext holds fewer than 5 variables. It warns when `CHANGE_ME` survives into
+the plaintext. Generate and manage the key with `scripts/env.sh` / `make env-*` — the full
+workflow is in **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)**.
 
 ### `GHCR_PULL_USERNAME` / `GHCR_PULL_TOKEN`
 
-See §4.
+See §4. Set on both environments.
 
 ---
 
-## 6. `APP_URL` — a variable, not a secret
+## 6. `APP_URL` — a variable, not a secret, and it gates production
 
-**Settings → Environments → `production` → Environment variables** (the *Variables* tab,
-beside Secrets).
+**Settings → Environments → `staging` → Environment variables**, and again under
+`production` (the *Variables* tab, beside Secrets).
 
 ```yaml
 environment:
@@ -197,16 +263,25 @@ Two reasons it is a variable:
    during authoring. Using `secrets.APP_URL` there is a workflow error, not a style choice.
 2. A public base URL is not a secret.
 
-Value: the public origin, e.g. `https://api.yourdomain.com`. It renders as the clickable link
-on the deployment in the Actions UI.
+Value: that environment's public origin, e.g. `https://api.yourdomain.com` for production and
+`https://staging-api.yourdomain.com` for staging. It renders as the clickable link on the
+deployment in the Actions UI.
+
+> **The `staging` value is load-bearing.** `staging-e2e` sets
+> `E2E_BASE_URL: ${{ vars.APP_URL }}` and fails the job immediately if it is empty. It must be
+> the **publicly reachable staging base URL** — the GitHub runner has to be able to reach it, so
+> a loopback or private address will not do. Get this wrong and production is unreachable,
+> because `production-deploy` requires `needs.staging-e2e.result == 'success'`.
 
 ---
 
 ## 7. `GITHUB_TOKEN` — nothing to configure
 
-Provided automatically. `cd.yml`'s `build-and-push` job requests `packages: write` to push to
-GHCR; CI requests `security-events: write` only in the jobs that upload SARIF. Everything else
-runs on the default `contents: read`.
+Provided automatically, at the **repository** level — nothing to set per environment.
+`cd.yml`'s `build-and-push` job requests `packages: write` to push to GHCR; CI requests
+`security-events: write` only in the jobs that upload SARIF. Everything else runs on the default
+`contents: read`. The VPS-side pull uses `GHCR_PULL_TOKEN` instead (§4); `GITHUB_TOKEN` never
+leaves the runner.
 
 You do not create this token, but you may need to **allow it to write packages**: Settings →
 Actions → General → Workflow permissions. If the first GHCR push fails with a 403, that
@@ -350,16 +425,23 @@ Graph, that need GHAS on a private repo). Enable it under
 
 Work top to bottom. Nothing here depends on a green CI run.
 
-- [ ] Create the `production` environment.
-- [ ] Add **required reviewers** to it.
-- [ ] Generate the SSH keypair (§3); confirm you can SSH in with it **before** adding secrets.
-- [ ] Confirm the deploy user is in the `docker` group and `docker compose version` works.
+- [ ] Create **both** environments: `staging` and `production`.
+- [ ] Add **required reviewers** to `production`. Leave `staging` un-gated.
+- [ ] Generate the SSH keypair(s) (§3); confirm you can SSH into **each** host with it **before**
+      adding secrets.
+- [ ] Confirm the deploy user on each host is in the `docker` group and `docker compose version`
+      works.
+- [ ] Create the deploy directory on each host, owned by the deploy user. Its absolute path is
+      that environment's `DEPLOY_PATH` value — it is not written down in this repo.
 - [ ] Create the GHCR PAT with `read:packages` only, with an expiry (§4).
-- [ ] `docker login ghcr.io` on the VPS by hand and confirm a `docker pull` works.
-- [ ] Add all 7 secrets to the `production` environment.
-- [ ] Add `APP_URL` as an environment **variable**.
-- [ ] Place `docker-compose.prod.yml` and a completed `.env.production` (mode 0600) at
-      `${DEPLOY_PATH}`.
+- [ ] `docker login ghcr.io` on **each** VPS by hand and confirm a `docker pull` works.
+- [ ] Generate the AES key (`make env-generate-key`), fill in `.env.staging` and
+      `.env.production` locally, encrypt both, and commit **only** the two `.enc` files. See
+      [ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md).
+- [ ] Add all **8 secrets to `staging`** and all **8 to `production`** — including
+      `ENV_ENCRYPTION_KEY` (the same value in both is fine).
+- [ ] Add `APP_URL` as an environment **variable** on both. The `staging` value must be the
+      publicly reachable staging base URL, or the E2E gate cannot run.
 - [ ] Enable Dependabot for the repo (Settings → Code security), then check within two weeks
       that Docker **digest** PRs actually appear — see §9.
 - [ ] *(Optional)* Enable SonarCloud and add `SONAR_TOKEN` — §8. Skipping this is fine; the job
@@ -367,7 +449,11 @@ Work top to bottom. Nothing here depends on a green CI run.
 - [ ] Push to `develop` and watch CI. Expect the security gate to be red — see §11.
 - [ ] Confirm the Security tab shows five distinct result sets: `trivy-fs`, `trivy-config`,
       `trivy-image`, `semgrep`, and CodeQL's `/language:python`.
-- [ ] Only once CI on `develop` is understood, merge to `main` to trigger CD.
+- [ ] Only once CI on `develop` is understood, merge to `main` to trigger CD. Expect the chain
+      `build-and-push` → `staging-deploy` → `staging-e2e` → `production-deploy`, with
+      `production-deploy` waiting on your approval. The gate should report **13 passed, 14
+      deselected** — see `DEPLOYMENT_GUIDE.md` for exactly which tests those are and what the
+      gate therefore does *not* prove.
 
 ---
 
@@ -404,7 +490,7 @@ CI is **10 jobs**. Eight run fully in parallel with no `needs:`; `sonarcloud` ne
 | `lint` | black, isort, ruff (**incl. C901** complexity, `max-complexity = 12`), mypy | All green — mypy: *"Success: no issues found in 91 source files"*. Measured worst: `validate_answer` at **11** |
 | `test` | `pytest --cov-fail-under=95` on postgres:17 + redis:7; uploads `coverage.xml` | **338 passed, 98.29% coverage** |
 | `migrations` | exactly one alembic head, upgrade from empty, `alembic check` drift, downgrade-base round-trip | 1 head (`0007_roadmap_applied_templates`) |
-| `e2e` | `scripts/e2e_run.sh` | **25 passed** |
+| `e2e` | `scripts/e2e_run.sh` against a locally booted server | **The full 27-test suite.** CD's live staging gate runs only 13 of these; the other 14 need a local mail directory. See `DEPLOYMENT_GUIDE.md`. |
 | `security` | gitleaks (full history), Semgrep (SARIF → Security tab), **bandit** (`-r app/`), pip-audit | Semgrep exit 0 (no findings); gitleaks exit 0 after baselining one historical `SECRET_KEY` in `.gitleaksignore`; **bandit exit 0** — its 3 original findings were all false positives and now carry inline `# nosec` annotations with reasons at the site |
 | `quality` | **pylint** `--fail-under=9.5`, **radon** report, **hadolint** | pylint **9.94/10, 15 messages** (7.48 and 527 messages before the scoped `[tool.pylint]` config); radon **average A (2.30)** over 301 blocks, every module's MI rated **A**; hadolint **exit 0** |
 | `trivy-repo` | `trivy fs` (lockfile + secrets, **report-only**) and `trivy config` (IaC, **blocks**) | `trivy fs`: **7 HIGH, 0 CRITICAL**, **0 secrets**; `trivy config`: **0 misconfigurations** |
@@ -436,17 +522,25 @@ Two notes on CI hygiene worth preserving:
 |---|---|---|
 | `GHCR_PULL_TOKEN` | At its expiry — 90 days is reasonable | Update the secret **and** re-run `docker login` on the VPS. |
 | `SONAR_TOKEN` *(if enabled)* | At its expiry | Only affects the optional `sonarcloud` job; if it lapses the job fails rather than skipping, since the secret still exists but is invalid. Delete the secret to go back to a clean skip. |
-| `VPS_SSH_KEY` | On personnel change or suspected compromise | New key → `ssh-copy-id` → update secret → deploy to confirm → **then** remove the old public key. |
-| `SECRET_KEY` (in `.env.production`, not GitHub) | On suspected leak | Logs every user out immediately. |
-| `POSTGRES_PASSWORD` (in `.env.production`) | Deliberate rotations only | `ALTER USER` inside Postgres **and** update the file together — the env var is read only at initdb. |
+| `VPS_SSH_KEY` | On personnel change or suspected compromise | New key → `ssh-copy-id` → update the secret **on both environments** → deploy to confirm → **then** remove the old public key. |
+| `ENV_ENCRYPTION_KEY` | Quarterly, or on suspected leak | `./scripts/env.sh rotate <env>` re-encrypts under a fresh key. Update the secret on **both** environments if they share one key, commit the new `.enc` files, then redeploy. Verified locally: rotation invalidates the old key. |
+| `SECRET_KEY` (inside the encrypted env, not GitHub) | On suspected leak | Logs every user out immediately. Edit `.env.<env>` locally → re-encrypt → commit → redeploy. |
+| `POSTGRES_PASSWORD` (inside the encrypted env) | Deliberate rotations only | `ALTER USER` inside Postgres **and** update the file together — the env var is read only at initdb. |
 | `MFA_ENCRYPTION_KEY` | **Never** | Not rotatable in place. Rotating permanently locks out every MFA-enrolled user. |
 
 **Never delete an environment's secrets to "start clean."** Add the new value, confirm a
 deploy, then remove the old one.
 
+**Values inside the env file are rotated locally, never on the server.** CD scp's `.env` from
+the committed ciphertext on every deploy, so a hand edit on the VPS is overwritten by the next
+one. The correct sequence is always: edit `.env.<env>` locally → re-encrypt → commit → redeploy.
+
 ---
 
 ## Related documents
 
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** — the full operator's manual.
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** — the full operator's manual, including the
+  three-stage CD pipeline and exactly what the staging E2E gate covers.
+- **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)** — generating the key, encrypting, decrypting,
+  verifying, rotating, diffing.
 - **[ROLLBACK.md](./ROLLBACK.md)** — what to do when a deploy goes wrong.
