@@ -42,13 +42,34 @@ coverage.xml
 .pytest_cache/
 
 # Environments
-# Deny every .env variant, then re-allow the committed templates. A bare `.env`
-# rule does NOT cover `.env.production` -- which is exactly the file that holds
-# the production database password and SECRET_KEY.
+# Deny every .env variant, then re-allow ONLY what is safe to commit. A bare
+# `.env` rule does NOT cover `.env.production` -- which is exactly the file that
+# holds the production database password and SECRET_KEY.
+#
+# Order matters: git applies the LAST matching pattern, so the broad `.env.*`
+# denial must come before the `!` re-allows.
+#
+# COMMITTED (safe):
+#   .env.example, .env.production.example  -- templates, placeholders only
+#   .env.staging.enc, .env.production.enc  -- AES-256-CBC ciphertext; committing
+#                                             these is the entire point of the
+#                                             env-encryption pattern
+# NEVER COMMITTED:
+#   .env             -- what actually lands on the VPS
+#   .env.staging     -- plaintext working copy
+#   .env.production  -- plaintext working copy
+#   .env.key         -- the AES key itself. Committing this alongside the .enc
+#                       files would make the encryption worthless.
+#
+# Verify after editing (all six must behave):
+#   git check-ignore -v .env .env.staging .env.production .env.key
+#   git check-ignore -v .env.staging.enc .env.production.enc   # must NOT match
 .env
 .env.*
 !.env.example
 !.env.production.example
+!.env.staging.enc
+!.env.production.enc
 .venv
 env/
 venv/

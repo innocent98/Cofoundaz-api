@@ -1,6 +1,15 @@
 # PRODUCTION stack for a single Docker-Compose VPS, behind nginx.
 #
-#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#   ON THE VPS:  docker compose -f docker-compose.prod.yml --env-file .env up -d
+#   LOCALLY:     make prod-up      (uses .env.production, not the dev .env)
+#
+# THE ENV FILE ON THE SERVER IS `.env`. Not `.env.production` - that name only
+# exists on a developer machine, where both environments must coexist without
+# colliding. CD decrypts `.env.<env>.enc` on the runner and scp's the result to
+# $DEPLOY_PATH/.env, so the same compose file serves staging and production and
+# the environment is decided entirely by which `.env` is present.
+# `--env-file .env` is stated explicitly rather than relying on compose's
+# implicit default, so the command reads the same as what CD runs.
 #
 # ---------------------------------------------------------------------------
 # TARGET SPEC (CONFIRMED): 4 vCPU / 8 GB RAM / 80 GB SSD
@@ -79,7 +88,15 @@ services:
     container_name: cofoundaz-api-prod_migrate
     command: ["alembic", "upgrade", "head"]
     env_file:
-      - .env.production
+      # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
+      # only value ever used in a real deploy.
+      #
+      # The override exists purely so the prod stack can be exercised on a
+      # developer machine without clobbering the DEV `.env` that
+      # docker-compose.yml uses. `make prod-*` sets
+      # STACK_ENV_FILE=.env.production for exactly that reason. Never set it on
+      # the server.
+      - ${STACK_ENV_FILE:-.env}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
@@ -122,7 +139,15 @@ services:
       # a "closed" firewall would not save you.
       - "127.0.0.1:${API_PORT:-8000}:8000"
     env_file:
-      - .env.production
+      # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
+      # only value ever used in a real deploy.
+      #
+      # The override exists purely so the prod stack can be exercised on a
+      # developer machine without clobbering the DEV `.env` that
+      # docker-compose.yml uses. `make prod-*` sets
+      # STACK_ENV_FILE=.env.production for exactly that reason. Never set it on
+      # the server.
+      - ${STACK_ENV_FILE:-.env}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0

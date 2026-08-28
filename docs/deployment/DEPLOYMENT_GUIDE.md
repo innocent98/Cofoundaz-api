@@ -1,7 +1,7 @@
 # Deployment Guide — cofoundaz-api
 
 > **Type:** deployment reference · **Stack:** FastAPI + Postgres 17 + Redis 7 on a single
-> Docker-Compose VPS behind nginx · **Last verified:** 2026-08-27
+> Docker-Compose VPS behind nginx · **Last verified:** 2026-08-28
 
 This is the operator's manual for running `cofoundaz-api` in production. It documents the
 image, the compose stack, the CI/CD pipeline, and the runbooks for the things that go wrong.
@@ -31,6 +31,7 @@ run, and correct this document afterwards.
 | Stack | `docker-compose.prod.yml`, compose project `cofoundaz-api-prod`: `migrate` (one-shot), `api`, `db`, `redis`. |
 | Edge | nginx on the host terminates TLS and proxies to `127.0.0.1:${API_PORT}`. The API is **not** published on `0.0.0.0`. |
 | Registry | GHCR — `ghcr.io/innocent98/cofoundaz-api`. Deploys use the **immutable digest**, not a tag. |
+| Environments | **Two** stacks — `staging` and `production` — running the *same* image digest. They differ only in the `.env` each receives and in the per-environment GitHub secrets (`DEPLOY_PATH`, `VPS_*`, `ENV_ENCRYPTION_KEY`, `GHCR_PULL_*`). No server path appears anywhere in this repository. See §2. |
 
 ### Image hardening — what was verified
 
@@ -62,11 +63,99 @@ will need moving before a uvicorn major bump.
 
 ---
 
-## 2. VPS provisioning and prerequisites
+## 2. Environments, the deploy path, and VPS prerequisites
 
-> **NOT VERIFIED —** this entire section. No VPS was provisioned. Verification is: run these
-> steps on a fresh host and confirm `docker compose version` ≥ v2 and `make prod-config`
-> renders without warnings.
+### Two environments, one image
+
+There are **two** VPS stacks — **staging** and **production**. Both run
+`docker-compose.prod.yml`, both pull the **same image digest**, and they differ in exactly two
+things: the `.env` each receives, and the per-environment GitHub secrets that tell CD where to
+put it.
+
+**The repository does not know either server path.** `DEPLOY_PATH` is a **secret on the GitHub
+Environment**, so the `staging` environment resolves one path and `production` another.
+`cd.yml` and `.github/actions/deploy-stack/action.yml` read `${{ secrets.DEPLOY_PATH }}` and
+nothing else.
+
+That is deliberate, and it is a correction. Earlier versions of this guide named
+`/opt/cofoundaz-api` as *the* deploy directory. **That path never existed on any host** — which
+is precisely the failure mode the per-environment secret removes. A path written into the repo
+drifts silently the moment a server is built differently, and nothing fails until a deploy does.
+If you need to know where a stack lives, read the secret, not this document.
+
+| Environment | `DEPLOY_PATH` — the *value that environment's secret currently holds* |
+|---|---|
+| `staging` | `/opt/cofoundaz-staging` |
+| `production` | `/opt/cofoundaz` |
+
+Those are values of a secret, **not** paths this repo hardcodes anywhere. Change the secret and
+the deploy follows.
+
+### The env file on the server is `.env` — not `.env.production`
+
+This is the single most confusable part of the setup, so read the whole table.
+
+| File | Where it lives | In git? | What it is |
+|---|---|---|---|
+| `.env` | `${DEPLOY_PATH}/.env` on the VPS | **No** — gitignored | **The deployed environment.** `docker-compose.prod.yml` reads it. CD rewrites it on every deploy. |
+| `.env.staging` / `.env.production` | a developer machine only | **No** — gitignored | Plaintext working copies. Two names so one developer can hold both environments at once without collision. |
+| `.env.staging.enc` / `.env.production.enc` | repo root | **Yes — committed** | AES-256-CBC ciphertext of the two files above. |
+| `.env.key` | a developer machine only | **No** — gitignored | The AES key. Committing it beside the `.enc` files would defeat the entire exercise. |
+| `.env.example`, `.env.production.example` | repo root | **Yes** | Templates. Placeholders only. |
+
+CD's flow, per environment (`.github/actions/deploy-stack/action.yml`):
+`.env.<env>.enc` → decrypted **on the runner** with that environment's `ENV_ENCRYPTION_KEY`
+→ written out as **`.env`** → `chmod 600` → scp'd to `${DEPLOY_PATH}` → **deleted from the
+runner** in an `if: always()` step.
+
+The decrypt step refuses to continue if the ciphertext is missing, if the key is unset, if
+decryption fails, or if the plaintext contains fewer than 5 variables — a truncated environment
+is never deployed. It **warns** (rather than fails) when `CHANGE_ME` survives into the plaintext.
+
+**Verified** on 2026-08-28: `git add --dry-run` proves `.env`, `.env.staging`, `.env.production`
+and `.env.key` are **blocked** by `.gitignore`, while `.env.staging.enc`, `.env.production.enc`,
+`.env.example` and `.env.production.example` are **addable**. That ignore rule is what keeps a
+production credential file out of the repository — do not weaken it.
+
+The full encrypt / decrypt / verify / rotate workflow lives in
+**[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)**, not here.
+
+### `STACK_ENV_FILE` — why local prod-stack testing uses a different filename
+
+`docker-compose.prod.yml` declares `env_file: - ${STACK_ENV_FILE:-.env}`.
+
+- **On the server**, `STACK_ENV_FILE` is never set, so it resolves to **`.env`** — the file CD
+  just shipped. This is the only value used in a real deploy. **Never set it on the server.**
+- **On a laptop**, `.env` is already taken by the **dev** stack (`docker-compose.yml`). So
+  `make prod-*` runs
+  `STACK_ENV_FILE=.env.production docker compose -f docker-compose.prod.yml --env-file .env.production …`,
+  and therefore never reads or overwrites the dev `.env`.
+
+Get a local `.env.production` with `make env-decrypt-production`
+(`./scripts/env.sh decrypt production`).
+
+**Verified** on 2026-08-28: `docker compose config` parses cleanly in **both** shapes — the
+server shape (`--env-file .env`) and the local shape
+(`STACK_ENV_FILE=.env.production --env-file .env.production`).
+
+### Env encryption tooling, in one line
+
+`scripts/env.sh` has six subcommands — `generate-key`, `encrypt <env>`, `decrypt <env>`,
+`verify <env>`, `rotate <env>`, `diff` — wrapped by `make env-*` targets. Key discovery is
+three-tier: `$ENV_ENCRYPTION_KEY` → `.env.key` → interactive prompt. Crypto is AES-256-CBC with
+PBKDF2 at 100,000 iterations.
+
+**Verified** on 2026-08-28, a full round-trip on fake data in a scratch directory:
+encrypt → decrypt is byte-identical; `verify` passes; a **wrong key exits 1 and leaves no
+partial file**; `rotate` invalidates the old key; `diff` masks values; and the `CHANGE_ME`
+warning fires. `shellcheck` is clean on `scripts/env.sh`.
+
+### VPS provisioning and prerequisites
+
+> **NOT VERIFIED —** this entire subsection. No VPS was provisioned, and **no staging box
+> existed at the time of this verification pass**. Verification is: run these steps on a fresh
+> host and confirm `docker compose version` ≥ v2 and `make prod-config` renders without
+> warnings.
 
 ### Target spec — CONFIRMED
 
@@ -82,19 +171,22 @@ carries the full arithmetic and how to re-derive it if a host ever differs.
 | A non-root `deploy` user | In the `docker` group. **Do not deploy as root** — one leaked SSH key would otherwise mean full host compromise. |
 | nginx | Terminates TLS on 443, proxies to `127.0.0.1:${API_PORT}`. |
 | `curl` | The deploy script polls readiness with it. |
-| Deploy directory | `${DEPLOY_PATH}` (e.g. `/opt/cofoundaz-api`), owned by the deploy user. Must contain `docker-compose.prod.yml` and `.env.production`. |
+| Deploy directory | `${DEPLOY_PATH}` — supplied by the **per-environment** GitHub secret, one value for `staging` and another for `production`. Owned by the deploy user. CD ships `docker-compose.prod.yml` and `.env` into it on every deploy. |
 
-### Files that must exist on the VPS
+### Files in the deploy directory
 
 ```
 ${DEPLOY_PATH}/
-├── docker-compose.prod.yml     # copied from the repo
-└── .env.production             # chmod 600, owned by the deploy user, NEVER in git
+├── docker-compose.prod.yml     # scp'd by CD on every deploy, from the commit being deployed
+└── .env                        # scp'd by CD, chmod 600, NEVER in git
 ```
 
-`.gitignore` denies `.env` and `.env.*` and re-allows only `.env.example` and
-`.env.production.example`. That rule is what keeps a production credential file out of the
-repository — do not weaken it.
+**CD writes both files on every deploy.** They do not need to be placed by hand for CD to work
+— only the directory itself, owned by the deploy user, has to exist.
+
+`.gitignore` denies `.env` and `.env.*` and re-allows only `.env.example`,
+`.env.production.example`, `.env.staging.enc` and `.env.production.enc` — verified above with
+`git add --dry-run`.
 
 ---
 
@@ -134,25 +226,37 @@ ssh -L 15432:localhost:5432 deploy@vps   # then point psql at localhost:15432
 
 ## 4. First-time deploy walkthrough
 
-> **NOT VERIFIED —** steps 1–6 were never executed against a VPS. The compose behaviour in
-> step 5 (ordering, migrations, readiness) *was* verified locally; the SSH/host parts were not.
+Do this **for staging first, then production.** Everything below is per environment; the only
+things that differ are the `DEPLOY_PATH` and the `.env.<env>` you fill in.
 
-**1. Prepare the deploy directory.**
+> **NOT VERIFIED —** steps 1–6 were never executed against a VPS, and no staging box existed at
+> the time of this verification pass. The compose behaviour in step 5 (ordering, migrations,
+> readiness) *was* verified locally; the SSH/host parts were not.
+
+**1. Prepare the deploy directory.** Use that environment's `DEPLOY_PATH` value — do not copy a
+path out of this document.
 
 ```bash
 ssh deploy@vps
-sudo mkdir -p /opt/cofoundaz-api && sudo chown deploy:deploy /opt/cofoundaz-api
+DEPLOY_PATH=<the value of that environment's DEPLOY_PATH secret>
+sudo mkdir -p "${DEPLOY_PATH}" && sudo chown deploy:deploy "${DEPLOY_PATH}"
 ```
 
-**2. Copy the compose file and the env template.** Copy `docker-compose.prod.yml` and
-`.env.production.example` from the repo to `${DEPLOY_PATH}`.
+**2. Nothing to copy by hand.** CD scp's `docker-compose.prod.yml` and `.env` into
+`${DEPLOY_PATH}` on every deploy. The steps below describe the manual first bring-up; from then
+on the pipeline owns both files.
 
-**3. Fill in `.env.production`.**
+**3. Fill in the environment locally, then encrypt it.** Work on `.env.staging` or
+`.env.production` **on your machine** — never on the server.
 
 ```bash
-cp .env.production.example .env.production
+cp .env.production.example .env.production      # or .env.staging
 chmod 600 .env.production
+# fill in every CHANGE_ME, then:
+make env-encrypt-production                     # -> .env.production.enc  (commit the .enc)
 ```
+
+Commit **only** the `.enc`. Full workflow: **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)**.
 
 Every `CHANGE_ME` must be replaced. The generators are documented inline in the template.
 Two of them are **not rotatable in place** and deserve a second read:
@@ -174,10 +278,12 @@ ever verify), and exact `BACKEND_CORS_ORIGINS` with no wildcard and no trailing 
 printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u <ghcr-user> --password-stdin
 ```
 
-**5. Bring the stack up.**
+**5. Bring the stack up.** On the server the env file is `.env` — get it there either by
+running a CD deploy, or, for a manual first bring-up, by decrypting locally and scp'ing the
+result to `${DEPLOY_PATH}/.env`.
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
 Verified startup ordering (locally): `db` becomes healthy → `migrate` runs all 7 revisions →
@@ -312,7 +418,8 @@ findable in `docker compose logs db` without full statement logging).
 | `POSTGRES_MAX_CONNECTIONS` | ≥ `WEB_CONCURRENCY × 10 + 20` headroom. |
 | Sum of all memory limits | Leave ≥ 25% of host RAM unallocated. |
 
-Every one of these is an env var in `.env.production` — no compose edit required.
+Every one of these is an env var in the environment file — `.env` on the server, `.env.<env>` on your machine. No compose edit required. Change it locally, re-encrypt, commit,
+redeploy: a hand edit on the server is overwritten by the next deploy.
 
 > **NOT VERIFIED —** limits were confirmed *applied* but never **stress-tested**. The local
 > Docker VM has 2.35 GiB RAM and 2 CPUs, smaller than the 4 vCPU / 8 GB baseline, so `docker
@@ -335,11 +442,13 @@ and the backup section below extended.
 
 ## 6. The CI/CD flow, end to end
 
-> **NOT VERIFIED —** none of the three workflows (`ci.yml`, `cd.yml`, `codeql.yml`) has ever
-> run on GitHub. All pass `actionlint 1.7.12` with `shellcheck 0.11.0` integration (exit 0 on
-> all three plus the composite action, and the shellcheck integration was confirmed live by
-> feeding actionlint a deliberately-bad script and seeing SC2086 reported). Static validation
-> is not execution. The first push is the verification run.
+> **NOT VERIFIED — the current shapes.** `ci.yml` and `cd.yml` have executed on GitHub in
+> *earlier* shapes (that is where the GHAS constraint and the lowercase-image-name bug were
+> found), but **`cd.yml` has never run as the three-job staging-gated pipeline described below**,
+> and `codeql.yml` has never run at all. `actionlint` exits 0 on every workflow plus the
+> composite actions (re-run 2026-08-28), with `shellcheck 0.11.0` integration — confirmed live
+> by feeding actionlint a deliberately-bad script and seeing SC2086 reported. Static validation
+> is not execution. The next push is the verification run.
 
 ### CI — `.github/workflows/ci.yml`
 
@@ -365,15 +474,15 @@ make `build` unreachable on a push to `main`.
 | Job | What it does | Local verification |
 |---|---|---|
 | `lint` | black, isort, ruff — now including **C901** (mccabe complexity) — and **mypy** | All green. mypy: *"Success: no issues found in 91 source files"*. Measured worst complexity: `validate_answer` in `app/services/assessment/engine.py` at **11**; everything else ≤ 9. |
-| `test` | `postgres:17-alpine` + `redis:7-alpine` services, `pytest --cov-fail-under=95`, uploads `coverage.xml` as an artifact | **338 passed, 98.29% coverage** (baseline before this work: 331 passed, 98%). |
-| `migrations` | exactly-one-head check, upgrade from empty, `alembic check` (model/schema drift), then `downgrade base` + `upgrade head` | 1 head (`0007_roadmap_applied_templates`), 0 extra. |
-| `e2e` | writes a CI `.env`, runs `scripts/e2e_run.sh` | **25 passed.** |
-| `security` | gitleaks (full history), Semgrep (SARIF → Security tab), **bandit** (`-r app/`), pip-audit on `poetry export --only main` | gitleaks exit 0 after baselining one historical `SECRET_KEY`; Semgrep 1.157.0 exit 0, no findings; **bandit exit 0**; pip-audit red — see §10. |
+| `test` | `postgres:17-alpine` + `redis:7-alpine` services, `pytest --cov-fail-under=95`, uploads `coverage.xml` as an artifact | **406 passed, 98.25% coverage** (re-verified 2026-08-28 after `main` merged Roadmap Slice 3 and Today's Mission). |
+| `migrations` | exactly-one-head check, upgrade from empty, `alembic check` (model/schema drift), then `downgrade base` + `upgrade head` | Exactly 1 head, 0 drift (re-verified 2026-08-28). |
+| `e2e` | writes a CI `.env`, runs `scripts/e2e_run.sh` against a locally booted server | **The full 27-test suite.** This is where the 14 mailbox-dependent journeys are covered; CD's live staging gate runs only the other 13 — see the CD section below. |
+| `security` | gitleaks (full history), Semgrep (SARIF → Security tab), **bandit** (`-r app/`), pip-audit on `poetry export --only main` | gitleaks exit 0 after baselining one historical `SECRET_KEY`; Semgrep 1.157.0 exit 0, no findings; **bandit exit 0**; pip-audit red on **1** remaining advisory (`ecdsa`, no fix available) — see §10. |
 | `quality` | **pylint** `--fail-under=9.5`, **radon** `cc`/`mi` report, **hadolint** on the `Dockerfile` | pylint **9.94/10, 15 messages remaining**; radon **average complexity A (2.30)** across 301 blocks with every module's maintainability index rated **A**; hadolint **exit 0** at `failure-threshold: info`. |
-| `trivy-repo` | `trivy fs` (locked dependency graph + secret scan, report-only) and `trivy config` (IaC misconfiguration, blocking) | `trivy fs`: **7 HIGH, 0 CRITICAL**, and **0 secrets found**. `trivy config`: **0 misconfigurations** on the Dockerfile. |
+| `trivy-repo` | `trivy fs` (locked dependency graph + secret scan, report-only) and `trivy config` (IaC misconfiguration, blocking) | `trivy fs`: **1 HIGH, 0 CRITICAL** (the unfixable `ecdsa` advisory), and **0 secrets found** (re-verified 2026-08-28, after the starlette upgrade cleared the rest). `trivy config`: **0 misconfigurations** on the Dockerfile. |
 | `dependency-review` | **PR-only.** `fail-on-severity: high`; denies `GPL-3.0`, `AGPL-3.0`, `LGPL-3.0` | **NOT VERIFIED —** the action requires a real pull request to diff a manifest against a base commit and cannot be run locally. Verification is the first PR into `develop`. |
 | `sonarcloud` | `needs: [test]`. Downloads the coverage artifact and scans — **only when `SONAR_TOKEN` exists**, skipping cleanly otherwise | **NOT VERIFIED —** no SonarCloud account was created; `sonar-project.properties` still carries `CHANGE_ME` placeholders. The skip-cleanly path is by construction (job-level `env` + a step `if` gate), not observed. Enablement steps: `GITHUB_ACTIONS_SETUP.md` → "Enabling SonarCloud". |
-| `build` | `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`. Builds the image, smoke-tests it, generates a **CycloneDX SBOM**, Trivy-scans HIGH/CRITICAL `--ignore-unfixed`, uploads SARIF, **then** a separate failing gate step | Trivy 0.74.0: 6 HIGH — see §10. SBOM generated locally from the built image: **CycloneDX 1.7, 174 components** (173 library + 1 operating-system), ~301 KB. **NOT VERIFIED —** the SBOM has never been uploaded as a workflow artifact. |
+| `build` | `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`. Builds the image, smoke-tests it, generates a **CycloneDX SBOM**, Trivy-scans HIGH/CRITICAL `--ignore-unfixed`, uploads SARIF, **then** a separate failing gate step | Trivy 0.74.0: **0 findings** as of 2026-08-28 — the starlette upgrade cleared all of them; see §10. SBOM generated locally from the built image: **CycloneDX 1.7, 174 components** (173 library + 1 operating-system), ~301 KB. **NOT VERIFIED —** the SBOM has never been uploaded as a workflow artifact. |
 
 ### Code scanning needs GHAS on a private repo — gates are unaffected
 
@@ -579,54 +688,212 @@ commits and waiting. All three skip `.worktrees` and `htmlcov` (gitignored workt
 
 ### CD — `.github/workflows/cd.yml`
 
+> **NOT VERIFIED — the current shape.** CI and CD have both executed on GitHub before (that is
+> where the GHAS constraint below and the lowercase-image-name bug were found), but **CD has
+> never run in its current three-job shape**, and no part of it has ever touched a real VPS: no
+> SSH deploy, no scp, no GHCR pull from a server. **No staging box existed at the time of this
+> verification pass.** `actionlint` exits 0 on all workflows and `shellcheck` is clean on
+> `scripts/env.sh` (2026-08-28). Static validation is not execution.
+
 Triggers: push to `main`, tags `v*.*.*`, and `workflow_dispatch` with an optional `image_tag`
-input (the manual rollback path — see `ROLLBACK.md`).
+input (the manual rollback path — see `ROLLBACK.md`). One `concurrency` group covers the whole
+pipeline: `cd-pipeline`, `cancel-in-progress: false`.
+
+**CD is a three-stage gated pipeline. Production is unreachable except through a green live
+staging E2E run.**
 
 ```
-build-and-push (skipped when image_tag is supplied)
-  └─ GHCR push, tags sha-<short> / semver / latest, provenance + sbom
-  └─ resolve the immutable DIGEST
-       ↓
-deploy   environment: production   concurrency: cd-production (cancel-in-progress: FALSE)
-  1. record the previous image from the RUNNING container (compose ps -q api)
-  2. docker login ghcr → docker pull
-  3. pin API_IMAGE in .env.production
-  4. run migrations one-shot, --exit-code-from migrate
-  5. compose up -d
-  6. poll /api/v1/health/ready for up to ~120s
-  ── ERR trap on any failure: restore previous API_IMAGE, restart,
-     re-verify health, dump last 80 api log lines, exit 1
+build-and-push  ──►  staging-deploy  ──►  staging-e2e  ──►  production-deploy
+(skipped when        environment:         environment:      environment:
+ image_tag is         staging              staging           production
+ supplied)                                                   (manual approval)
 ```
 
-Design points that matter:
+| Job | The condition that gates it |
+|---|---|
+| `build-and-push` | `if: github.event.inputs.image_tag == ''` — skipped entirely on the rollback path. Pushes to GHCR, then resolves the **immutable digest**. |
+| `staging-deploy` | `if: always() && needs.build-and-push.result != 'failure' && … != 'cancelled'`. `always()` is what keeps the rollback path alive when the build is skipped; the explicit checks stop a **failed** build from ever reaching a VPS. |
+| `staging-e2e` | `if: needs.staging-deploy.result == 'success'` |
+| `production-deploy` | `if: needs.staging-deploy.result == 'success' && needs.staging-e2e.result == 'success'` — **both conditions explicit**, so a skipped or cancelled gate can never be mistaken for a pass. |
+
+**Production deploys the same digest staging proved.** `production-deploy` takes its
+`image_ref` from `needs.staging-deploy.outputs.image_ref`. It does **not** rebuild. Staging and
+production therefore run byte-identical artifacts, and the only difference between them is which
+`.env` each received.
+
+**Both deploys call one composite action**, `.github/actions/deploy-stack`. Two copies of ~100
+lines of deploy shell would drift, and the copy that drifts is the one you find out about during
+an incident.
+
+**`production` keeps its manual approval gate** via the `production` GitHub Environment —
+configure required reviewers under Settings → Environments → production.
+
+#### What `deploy-stack` does, per environment
+
+```
+1. decrypt .env.<env>.enc ON THE RUNNER  →  write it out as `.env`  →  chmod 600
+2. scp `.env` + docker-compose.prod.yml  →  ${DEPLOY_PATH}
+3. record the previous image from the RUNNING container (compose ps -q api)
+4. docker login ghcr.io  →  docker pull <digest>
+5. pin API_IMAGE in `.env`
+6. migrations one-shot, --exit-code-from migrate
+7. compose up -d --no-build --remove-orphans
+8. poll /api/v1/health/ready, 40 × 3s (~120s)
+── ERR trap on any failure: restore the previous API_IMAGE in `.env`,
+   `compose up -d --no-deps --no-build api`, re-verify health,
+   dump the last 80 api log lines, exit 1
+9. docker image prune -af --filter "until=72h"
+── if: always() — delete the decrypted `.env` from the runner
+```
+
+Design points that matter, all preserved from the single-environment version:
 
 - **Deploy by digest, not tag.** A tag is a mutable pointer; a digest is content-addressed, so
   what the VPS pulls is byte-identical to what was built and scanned.
-- **The previous image is read from the running container**, not from `.env.production`. If a
-  prior deploy failed after editing the file but before restarting, the file is a lie and the
-  container is the truth. It resolves via `compose ps -q api` rather than a hardcoded
-  container name, so renaming a service cannot silently break rollback.
-- **`concurrency: cancel-in-progress: false`** — cancelling a half-finished deploy leaves the
-  VPS in an unknown state, which is worse than queueing.
-- **`environment: production`** gives you the manual approval gate (configure required
-  reviewers), the deploy history, and per-environment secrets.
-- `docker image prune -af --filter "until=72h"` at the end reclaims disk but deliberately
-  keeps recent images, so a manual rollback to yesterday's build still has a local image.
+- **The previous image is read from the running container**, not from `.env`. The `.env` was
+  just overwritten by scp, so it cannot know what is currently serving. It resolves via
+  `compose ps -q api` rather than a hardcoded container name, so renaming a service cannot
+  silently break rollback.
+- **`--no-deps` on the rollback is essential.** Without it, compose honours `api`'s `depends_on`
+  and re-runs the `migrate` one-shot on the **old** image against a database already at the
+  **new** head. Alembic fails with "Can't locate revision" and takes the rollback down with it.
+- **The image name is lowercased** wherever a registry reference is assembled.
+  `github.repository` preserves the repository's own casing (`innocent98/Cofoundaz-api`), but a
+  Docker reference path must be lowercase. That mismatch failed the first real CD run; it is now
+  fixed on both the digest path and the manual-tag path.
+- **`concurrency: cancel-in-progress: false`** — cancelling a half-finished deploy leaves a VPS
+  in an unknown state, which is worse than queueing.
+- `docker image prune -af --filter "until=72h"` reclaims disk but deliberately keeps recent
+  images, so a manual rollback to yesterday's build still has a local image.
+
+#### The live staging E2E gate — what it proves, and what it does not
+
+This is the part not to oversell, so it is written plainly.
+
+The `e2e/` suite has **27 tests**. Against a **deployed** staging, only **13 can run.** The
+other **14 cannot**: they read one-time tokens out of file-captured emails (`EMAIL_BACKEND=file`
+plus `EMAIL_FILE_DIR`), and that directory is on the **VPS**, not on the GitHub runner. They
+depend on the `mailbox` fixture — most of them transitively, via `make_verified_user`, which
+consumes `mailbox` internally.
+
+`e2e/conftest.py` supports **`E2E_REMOTE=1`**, which:
+
+- automatically **deselects** every test whose fixture closure includes `mailbox` or
+  `make_verified_user`;
+- prints each deselected nodeid with the reason (`deselected (needs local mail dir): …`);
+- raises `pytest.UsageError` if that would leave **zero** tests — a gate that verifies nothing
+  must **fail**, not pass;
+- and, as a backstop, the `mailbox` fixture itself raises in remote mode.
+
+The CD job additionally **fails on pytest exit code 5** ("no tests collected"). That is a
+deliberate divergence from the house template, which treats exit 5 as success so projects
+*without* an e2e suite are not blocked. This project has a suite, so exit 5 means the selection
+broke and nothing was verified.
+
+**Verified** on 2026-08-28 against a live HTTP server: **`13 passed, 14 deselected`.**
+
+**The 13 that gate production**
+
+| Test |
+|---|
+| `e2e/test_journey.py::test_duplicate_email_409` |
+| `e2e/test_journey.py::test_weak_password_422` |
+| `e2e/test_journey.py::test_forgot_is_generic_for_unknown_email` |
+| `e2e/test_smoke.py::test_health_ok` |
+| `e2e/test_smoke.py::test_api_health_ok` |
+| `e2e/test_smoke.py::test_openapi_served` |
+| `e2e/test_smoke.py::test_me_requires_auth` |
+| `e2e/test_smoke.py::test_unknown_route_404` |
+| `e2e/test_smoke.py::test_validation_error_is_enveloped` |
+| `e2e/test_smoke.py::test_seams_return_501` |
+| `e2e/test_smoke.py::test_onboarding_state_requires_auth` |
+| `e2e/test_smoke.py::test_invitation_preview_unknown_token_404` |
+| `e2e/test_smoke.py::test_assessments_requires_auth` |
+
+**The 14 that do NOT gate production** — deselected remotely; they **do** run in local
+`make e2e` and in the CI `e2e` job on every push
+
+| Test |
+|---|
+| `e2e/test_assessment.py::test_assessment_journey` |
+| `e2e/test_health_score.py::test_health_score_journey` |
+| `e2e/test_journey.py::test_signup_verify_login_me` |
+| `e2e/test_journey.py::test_mfa_enable_then_challenge_login` |
+| `e2e/test_journey.py::test_refresh_rotation_and_reuse_revokes_family` |
+| `e2e/test_journey.py::test_cookie_only_refresh` |
+| `e2e/test_journey.py::test_forgot_reset_then_login_with_new_password` |
+| `e2e/test_journey.py::test_password_reset_revokes_existing_sessions` |
+| `e2e/test_journey.py::test_login_lockout_after_5_fails` |
+| `e2e/test_journey.py::test_resend_is_throttled_within_60s` |
+| `e2e/test_mission.py::test_mission_journey` |
+| `e2e/test_onboarding.py::test_full_onboarding_journey` |
+| `e2e/test_roadmap.py::test_roadmap_journey` |
+| `e2e/test_roadmap_replan.py::test_roadmap_replan_journey` |
+
+**Be blunt about what this means.** The remote gate proves the deployment is **alive**,
+**correctly wired**, **serving its OpenAPI**, and **enforcing auth, validation and 404
+behaviour** against the artifact that is about to reach production. It does **not** exercise
+signup-verify, MFA, password reset, refresh rotation, onboarding, roadmap, mission or assessment
+journeys against that artifact.
+
+Those journeys are **not unverified** — the CI `e2e` job runs the full suite against a locally
+booted server on every push. They are simply not verified *against the deployed artifact*.
+
+**The concrete path to widening it**, either of:
+
+- ship the staging mail directory to the runner — e.g. `rsync` `EMAIL_FILE_DIR` over SSH between
+  the signup call and the token read; or
+- run the suite **on the VPS**, where the mail directory is local.
+
+> **NOT VERIFIED —** neither widening approach has been implemented or attempted. Both are
+> proposals. Do not read them as existing capability.
+
+The job writes a step summary counting what ran and what was deselected, and uploads
+`staging-e2e.log` / `staging-e2e.xml` as an artifact with 14-day retention.
+
+#### The rate-limiter reset — a restart, not a Redis flush
+
+Before the gate runs, `staging-e2e` SSHes in and runs
+`docker compose -f docker-compose.prod.yml --env-file .env restart api`, then re-waits on
+readiness.
+
+The house template flushes rate-limit keys out of Redis. **That would be a no-op here.**
+Verified: `app.state.limiter._storage` is `MemoryStorage` — the app builds its slowapi `Limiter`
+with **no `storage_uri`**, so limiter state lives in each gunicorn worker's memory, not in Redis.
+Restarting the `api` service is what actually clears it.
+
+Without the reset, a redeploy that reuses warm workers can start the E2E run partway through a
+120/minute budget and fail on 429s that have nothing to do with the change under test.
+
+#### `E2E_BASE_URL` comes from the `APP_URL` variable
+
+`staging-e2e` sets `E2E_BASE_URL: ${{ vars.APP_URL }}` and fails fast when it is empty. The
+**`staging` environment's `APP_URL` must therefore be the publicly reachable staging base URL**,
+or the gate cannot run at all. It is the same variable that supplies `environment.url` on the
+deployment.
 
 ### House-default deviation: GHCR pull, not scp-tarball
 
-This project deploys by **GHCR pull**, which differs from the usual scp-tarball default.
+This project deploys by **GHCR pull**, which differs from the house template's scp-tarball
+default. The deviation is deliberate and stated in `cd.yml` itself.
 
-| | GHCR pull (this project) | scp tarball |
+| | GHCR pull (this project) | scp `docker save` tarball (template) |
 |---|---|---|
-| VPS needs GHCR auth | **Yes** — `GHCR_PULL_TOKEN` on the host | No |
+| VPS needs GHCR auth | **Yes** — `GHCR_PULL_TOKEN` on each host | No |
 | Network dependency at deploy time | **ghcr.io must be reachable** | GitHub runner → VPS only |
 | Rollback source | GHCR + local image cache (72h prune window) | previous tarball on disk |
 | Layer reuse on pull | Yes — only changed layers transfer | Full image every time |
+| SBOM / SLSA provenance attestations | Travel **with** the manifest in GHCR | **Nowhere to live** — a tarball has no manifest to attach them to |
 
-The tradeoff is deliberate: faster deploys and a real registry, at the cost of a runtime
-dependency on ghcr.io and a PAT living on the VPS. If ghcr.io is down, you cannot deploy —
-but you *can* still roll back to any image still in the local cache.
+Two reasons drive the choice. A **digest is content-addressed**, so the registry cannot serve
+different bytes under it — the same guarantee the tarball gets from being physically copied,
+without copying it. And BuildKit's **SBOM and SLSA provenance attestations** are pushed alongside
+the GHCR manifest; a `docker save` tarball has no place to carry them, so switching to tarballs
+would silently drop the supply-chain evidence.
+
+The cost is real and worth stating: a **GHCR credential on every VPS**, and a **network
+dependency on ghcr.io at deploy time**. If ghcr.io is down you cannot deploy — but you *can*
+still roll back to any image still in the local cache.
 
 ### Image provenance — and why there is no cosign signature
 
@@ -702,12 +969,22 @@ uptime monitor read.
 - All 7 revisions implement **real downgrade bodies** (`op.drop_table` / `op.drop_index`, not
   `pass`) — verified. That is what makes the rollback procedure in `ROLLBACK.md` trustworthy.
 
-Run migrations by hand against the prod stack:
+Run migrations by hand.
+
+**Locally**, against the prod stack on your machine:
 
 ```bash
 make prod-migrate
-# = docker compose -f docker-compose.prod.yml --env-file .env.production \
-#     up --no-build --exit-code-from migrate migrate
+# = STACK_ENV_FILE=.env.production docker compose -f docker-compose.prod.yml \
+#     --env-file .env.production up --no-build --exit-code-from migrate migrate
+```
+
+**On the VPS**, where the env file is `.env`:
+
+```bash
+cd "${DEPLOY_PATH}"
+docker compose -f docker-compose.prod.yml --env-file .env \
+  up --no-build --exit-code-from migrate migrate
 ```
 
 Rollback procedure: see **[ROLLBACK.md](./ROLLBACK.md)**.
@@ -735,9 +1012,9 @@ It does not use trust auth. Any non-interactive script — a backup cron especia
 
 ```bash
 cd "${DEPLOY_PATH}"
-set -a; . ./.env.production; set +a
+set -a; . ./.env; set +a
 
-docker compose -f docker-compose.prod.yml --env-file .env.production \
+docker compose -f docker-compose.prod.yml --env-file .env \
   exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db \
   pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -Fc \
   > "backups/cofoundaz-$(date -u +%Y%m%dT%H%M%SZ).dump"
@@ -754,14 +1031,14 @@ pre-restore snapshot is unrecoverable.
 ```bash
 # 1. safety snapshot (the command above)
 # 2. stop the API so nothing writes mid-restore
-docker compose -f docker-compose.prod.yml --env-file .env.production stop api
+docker compose -f docker-compose.prod.yml --env-file .env stop api
 # 3. restore
-docker compose -f docker-compose.prod.yml --env-file .env.production \
+docker compose -f docker-compose.prod.yml --env-file .env \
   exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db \
   pg_restore -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --clean --if-exists \
   < backups/<chosen>.dump
 # 4. bring the API back and confirm readiness
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d api
+docker compose -f docker-compose.prod.yml --env-file .env up -d api
 curl -fsS http://127.0.0.1:8000/api/v1/health/ready
 ```
 
@@ -925,9 +1202,12 @@ That caps container logs at roughly 120MB. Without it, logs grow unbounded and e
 fill the disk, which takes down Postgres and the host, not just the noisy container.
 
 ```bash
-make prod-logs                                    # tail everything
-docker compose -f docker-compose.prod.yml --env-file .env.production logs -f --tail=100 api
-docker compose -f docker-compose.prod.yml --env-file .env.production logs db | grep duration   # slow queries (>1s)
+make prod-logs                                    # LOCAL prod stack (uses .env.production)
+
+# On the VPS, where the env file is `.env`:
+cd "${DEPLOY_PATH}"
+docker compose -f docker-compose.prod.yml --env-file .env logs -f --tail=100 api
+docker compose -f docker-compose.prod.yml --env-file .env logs db | grep duration   # slow queries (>1s)
 ```
 
 **Production sets `LOG_FILE_PATH=` (empty).** `app/core/logger.py` makes the loguru file sink
@@ -948,13 +1228,13 @@ var is ever lost the app starts rather than crash-looping.
 **First check the exit reason:**
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production ps -a
-docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail=100 api
+docker compose -f docker-compose.prod.yml --env-file .env ps -a
+docker compose -f docker-compose.prod.yml --env-file .env logs --tail=100 api
 ```
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Exits immediately with a Pydantic `ValidationError` | A required env var is missing — `SECRET_KEY`, `DATABASE_URL`, `FIRST_SUPERUSER_EMAIL`, `FIRST_SUPERUSER_PASSWORD`. Pydantic Settings validates at **import time**, so the container exits with a clear error rather than starting broken. This is intended fail-fast. | Fix `.env.production`, `up -d` again. |
+| Exits immediately with a Pydantic `ValidationError` | A required env var is missing — `SECRET_KEY`, `DATABASE_URL`, `FIRST_SUPERUSER_EMAIL`, `FIRST_SUPERUSER_PASSWORD`. Pydantic Settings validates at **import time**, so the container exits with a clear error rather than starting broken. This is intended fail-fast. | Fix `.env.<env>` locally, re-encrypt, commit, redeploy. For an emergency, edit `${DEPLOY_PATH}/.env` and `up -d` — but that edit is overwritten on the next deploy. |
 | `PermissionError` writing a log file | `LOG_FILE_PATH` is set to a path. The rootfs is read-only. | Set `LOG_FILE_PATH=` empty. |
 | `EROFS` / read-only filesystem on upload | Something is writing outside `/tmp` or `app_storage`. | `LOCAL_STORAGE_DIR` must stay under `./var/storage`. |
 | `api` never starts, no logs | `migrate` did not exit 0 — `depends_on` is correctly blocking. | See the next runbook. |
@@ -968,7 +1248,7 @@ separate concerns.
 
 1. Establish where the schema actually is:
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env.production \
+   docker compose -f docker-compose.prod.yml --env-file .env \
      run --rm migrate alembic current
    ```
 2. Read the `migrate` logs to see which revision failed and whether it was transactional.
@@ -983,7 +1263,7 @@ partially-applied revision.
 Symptom: `FATAL: sorry, too many clients already`.
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production \
+docker compose -f docker-compose.prod.yml --env-file .env \
   exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db \
   psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
   -c "SELECT count(*), state FROM pg_stat_activity GROUP BY state;"
@@ -996,8 +1276,9 @@ Re-check the §5 arithmetic. Almost always one of:
 - Idle-in-transaction sessions are leaking — find them in `pg_stat_activity` and fix the
   code path, not the limit.
 
-Immediate mitigation: lower `WEB_CONCURRENCY` in `.env.production` and
-`up -d --no-build api`. Then fix the arithmetic properly.
+Immediate mitigation: lower `WEB_CONCURRENCY` in `${DEPLOY_PATH}/.env` and
+`up -d --no-build api`. Then make the same change in `.env.<env>` locally, re-encrypt and commit
+— otherwise the next deploy reverts it.
 
 ### Disk full
 
@@ -1026,7 +1307,7 @@ delete the Postgres data volume.
 ```bash
 curl -fsS http://127.0.0.1:8000/api/v1/health/ready | jq .revision
 docker inspect --format '{{.Config.Image}}' \
-  "$(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q api)"
+  "$(docker compose -f docker-compose.prod.yml --env-file .env ps -q api)"
 ```
 
 ---
@@ -1056,7 +1337,8 @@ on purpose, after taking a backup.
 This stack is sized for one VPS. In rough order of what to reach for:
 
 **1. Vertical first (no architecture change).** Every knob is an env var. Resize the VPS,
-re-derive §5, update `.env.production`, `up -d`. This is the cheapest option by a wide margin
+re-derive §5, update `.env.<env>` locally, re-encrypt, commit, redeploy. This is the cheapest
+option by a wide margin
 and covers a lot of growth.
 
 **2. Raise `WEB_CONCURRENCY`.** Bounded by CPU *and* by the connection arithmetic. Raise
@@ -1086,6 +1368,8 @@ volume to object storage.
 ## Related documents
 
 - **[GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md)** — every secret and variable, how to
-  generate it, and its scope.
+  generate it, and its scope. All of them are now **per-environment**.
+- **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)** — the `scripts/env.sh` workflow: generate a key,
+  encrypt, decrypt, verify, rotate, diff.
 - **[ROLLBACK.md](./ROLLBACK.md)** — automatic rollback, manual rollback, and the migration
   rollback path.

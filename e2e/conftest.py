@@ -9,6 +9,25 @@ this harness can read one-time tokens back out of captured emails.
 Config via env:
   E2E_BASE_URL   default http://127.0.0.1:8010
   E2E_MAIL_DIR   default ./var/mail-e2e   (must match the server's EMAIL_FILE_DIR)
+  E2E_REMOTE     set to 1 when running against a DEPLOYED environment
+
+REMOTE MODE (E2E_REMOTE=1)
+--------------------------
+Against a deployed staging box the HTTP side works unchanged - httpx just points
+at E2E_BASE_URL. The MAILBOX side does not: `EMAIL_FILE_DIR` is a directory on
+the VPS, and this harness reads it from the local filesystem. A test that signs
+up a user and needs the verification token out of a captured email therefore
+cannot run remotely without shipping the mail directory back to the runner.
+
+Rather than pretend otherwise, remote mode DESELECTS every test whose fixture
+closure includes `mailbox` (directly, or transitively via `make_verified_user`)
+and prints exactly which ones were dropped and why. The remaining tests still
+run for real and still fail the build for real.
+
+This is deliberately automatic rather than a hand-maintained marker list: a new
+test that needs a mailbox is excluded the moment it is written, instead of
+silently failing in CD months later. See
+docs/deployment/DEPLOYMENT_GUIDE.md for which tests gate production.
 """
 
 import json
@@ -22,7 +41,55 @@ import pytest
 
 BASE_URL = os.environ.get("E2E_BASE_URL", "http://127.0.0.1:8010")
 MAIL_DIR = os.environ.get("E2E_MAIL_DIR", "./var/mail-e2e")
+REMOTE = os.environ.get("E2E_REMOTE", "").strip().lower() in {"1", "true", "yes"}
+
+# Fixtures that can only work when the mail directory is on the SAME machine as
+# the test run. `make_verified_user` is included because it consumes `mailbox`
+# internally - most journey tests reach the mailbox through it without naming it.
+_MAILBOX_FIXTURES = frozenset({"mailbox", "make_verified_user"})
 _TOKEN_RE = re.compile(r"<code>([^<]+)</code>")
+
+
+def pytest_collection_modifyitems(config, items):
+    """In remote mode, deselect tests that need a local mail directory.
+
+    Deselected rather than skipped so they are reported as "deselected" in the
+    summary and cannot be mistaken for passes. The list is printed in full: a
+    gate whose coverage silently shrinks is worse than no gate.
+    """
+    if not REMOTE:
+        return
+
+    keep, dropped = [], []
+    for item in items:
+        if _MAILBOX_FIXTURES & set(getattr(item, "fixturenames", ())):
+            dropped.append(item)
+        else:
+            keep.append(item)
+
+    if dropped:
+        config.hook.pytest_deselected(items=dropped)
+        items[:] = keep
+
+    reporter = config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        reporter.write_line("")
+        reporter.write_line(
+            f"E2E_REMOTE=1: deselected {len(dropped)} mailbox-dependent test(s); "
+            f"{len(keep)} will run against {BASE_URL}",
+            yellow=True,
+        )
+        for item in dropped:
+            reporter.write_line(f"  deselected (needs local mail dir): {item.nodeid}")
+        reporter.write_line("")
+
+    if not keep:
+        # Every test was dropped. Refuse to report a green run against a
+        # deployed environment on the strength of zero assertions.
+        raise pytest.UsageError(
+            "E2E_REMOTE=1 deselected every collected test - the remote gate would "
+            "have passed without asserting anything. Refusing to continue."
+        )
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +114,20 @@ def unique_email():
 
 @pytest.fixture()
 def mailbox():
-    """Reads captured emails from the file email backend."""
+    """Reads captured emails from the file email backend.
+
+    Only usable when EMAIL_FILE_DIR is on this machine. Remote runs deselect
+    every test that reaches this fixture, so arriving here in remote mode means
+    the deselection logic missed something - fail loudly rather than emit a
+    confusing "no token email found" further down.
+    """
+    if REMOTE:
+        raise RuntimeError(
+            "The `mailbox` fixture cannot work with E2E_REMOTE=1: EMAIL_FILE_DIR "
+            "lives on the deployed host, not on this runner. This test should "
+            "have been deselected - see pytest_collection_modifyitems in "
+            "e2e/conftest.py."
+        )
 
     def _latest_token_for(email: str, *, subject_contains: str | None = None) -> str:
         files = sorted(Path(MAIL_DIR).glob("*.json"))
