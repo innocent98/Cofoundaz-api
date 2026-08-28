@@ -1,0 +1,236 @@
+name: "Deploy the compose stack to a VPS"
+description: >-
+  Decrypts the environment's .env, ships it plus the compose file to
+  $DEPLOY_PATH, pulls the GHCR image by digest, migrates, waits on readiness,
+  and rolls back to the previously running image on any failure.
+
+  Factored into a composite action because staging and production run the
+  IDENTICAL sequence and differ only in which GitHub Environment supplies the
+  secrets. Two copies of ~100 lines of deploy shell would drift, and the copy
+  that drifts is the one you find out about during an incident.
+
+inputs:
+  environment:
+    description: "staging | production. Selects .env.<environment>.enc and labels the log output."
+    required: true
+  image_ref:
+    description: "Fully-qualified image reference, normally pinned by @sha256 digest."
+    required: true
+  vps_host:
+    required: true
+    description: "VPS hostname or IP."
+  vps_username:
+    required: true
+    description: "SSH user (a non-root deploy user in the docker group)."
+  vps_ssh_key:
+    required: true
+    description: "Private SSH key for that user."
+  vps_port:
+    required: false
+    default: "22"
+    description: "SSH port."
+  deploy_path:
+    required: true
+    description: >-
+      Absolute path of the stack directory on the VPS, e.g. /opt/cofoundaz or
+      /opt/cofoundaz-staging. Supplied per GitHub Environment so the path never
+      appears in the repository - which is exactly how the previous hardcoded
+      value went stale.
+  env_encryption_key:
+    required: true
+    description: "AES key for .env.<environment>.enc. See docs/deployment/ENV_ENCRYPTION.md."
+  ghcr_username:
+    required: true
+    description: "GHCR user for the VPS-side docker login."
+  ghcr_token:
+    required: true
+    description: "PAT with read:packages."
+
+runs:
+  using: composite
+  steps:
+    - name: Decrypt the environment file
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        ENV_ENCRYPTION_KEY: ${{ inputs.env_encryption_key }}
+      run: |
+        set -euo pipefail
+        ENC=".env.${ENVIRONMENT}.enc"
+
+        # Hard failure, not a warning. The template tolerates a missing .enc on
+        # the theory that the server already has a good .env. That is a trap: a
+        # deploy would then silently run against whatever stale environment
+        # happens to be on the box, which is unauditable and unreproducible.
+        # If the ciphertext or the key is missing, the deploy is not
+        # deterministic and must not proceed.
+        if [ ! -f "${ENC}" ]; then
+          echo "::error::${ENC} not found. Encrypt it first: ./scripts/env.sh encrypt ${ENVIRONMENT}"
+          exit 1
+        fi
+        if [ -z "${ENV_ENCRYPTION_KEY}" ]; then
+          echo "::error::ENV_ENCRYPTION_KEY is not set for the ${ENVIRONMENT} environment."
+          exit 1
+        fi
+
+        # Written as `.env` because that is the filename the VPS expects -
+        # docker-compose.prod.yml reads `.env`. The `.env.<env>` naming exists
+        # only on developer machines, where both environments coexist.
+        if ! openssl enc -aes-256-cbc -d -pbkdf2 -iter 100000 \
+              -in "${ENC}" -out .env -pass fd:3 3<<<"${ENV_ENCRYPTION_KEY}"; then
+          rm -f .env
+          echo "::error::Failed to decrypt ${ENC}. Wrong ENV_ENCRYPTION_KEY for ${ENVIRONMENT}?"
+          exit 1
+        fi
+        chmod 600 .env
+
+        # Sanity-check the plaintext without printing any of it.
+        VARS=$(grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' .env || true)
+        if [ "${VARS:-0}" -lt 5 ]; then
+          rm -f .env
+          echo "::error::Decrypted ${ENC} but it contains only ${VARS} variables - refusing to deploy a truncated environment."
+          exit 1
+        fi
+        echo "Decrypted ${ENC} -> .env (${VARS} variables)"
+
+        if grep -q 'CHANGE_ME' .env; then
+          echo "::warning::The decrypted ${ENVIRONMENT} .env still contains CHANGE_ME placeholders."
+        fi
+
+    - name: Ship .env and the compose file to the VPS
+      uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+      with:
+        host: ${{ inputs.vps_host }}
+        username: ${{ inputs.vps_username }}
+        key: ${{ inputs.vps_ssh_key }}
+        port: ${{ inputs.vps_port }}
+        # docker-compose.prod.yml travels with the deploy so the stack
+        # definition on the box always matches the commit being deployed.
+        # The image itself does NOT: it is pulled from GHCR by digest.
+        source: ".env,docker-compose.prod.yml"
+        target: ${{ inputs.deploy_path }}
+        overwrite: true
+
+    - name: Deploy over SSH
+      uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      env:
+        IMAGE_REF: ${{ inputs.image_ref }}
+        DEPLOY_PATH: ${{ inputs.deploy_path }}
+        GHCR_USER: ${{ inputs.ghcr_username }}
+        GHCR_TOKEN: ${{ inputs.ghcr_token }}
+        STACK_ENV: ${{ inputs.environment }}
+      with:
+        host: ${{ inputs.vps_host }}
+        username: ${{ inputs.vps_username }}
+        key: ${{ inputs.vps_ssh_key }}
+        port: ${{ inputs.vps_port }}
+        # Values arrive as environment variables rather than being interpolated
+        # with ${{ }} into the script body: interpolation happens before the
+        # remote shell runs, which would bake the GHCR token into the literal
+        # command text sent over the wire and into any trace.
+        envs: IMAGE_REF,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN,STACK_ENV
+        command_timeout: 15m
+        script_stop: true
+        script: |
+          set -euo pipefail
+
+          cd "${DEPLOY_PATH}"
+
+          # `.env` - the deployed filename. Not `.env.production`.
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          HEALTH_URL="http://127.0.0.1:$(grep -E '^API_PORT=' .env | cut -d= -f2 || echo 8000)/api/v1/health/ready"
+
+          echo "==> [${STACK_ENV}] [1/6] Recording the currently deployed image for rollback"
+          # Read from the RUNNING container, not from .env: the .env was just
+          # overwritten by scp, so it cannot know what is currently serving.
+          # Resolve via compose rather than a hardcoded container name so
+          # renaming a service cannot silently break rollback.
+          PREV_CID="$(${COMPOSE} ps -q api 2>/dev/null || true)"
+          PREVIOUS_IMAGE=""
+          if [ -n "${PREV_CID}" ]; then
+            PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "${PREV_CID}" 2>/dev/null || true)"
+          fi
+          echo "    previous: ${PREVIOUS_IMAGE:-<none - first deploy>}"
+          echo "    new     : ${IMAGE_REF}"
+
+          echo "==> [${STACK_ENV}] [2/6] Authenticating to GHCR and pulling by digest"
+          printf '%s' "${GHCR_TOKEN}" \
+            | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+          docker pull "${IMAGE_REF}"
+
+          echo "==> [${STACK_ENV}] [3/6] Pinning API_IMAGE in .env"
+          # The freshly-scp'd .env comes from the committed ciphertext and has no
+          # API_IMAGE, so this appends it. On redeploys it replaces the old value.
+          if grep -qE '^API_IMAGE=' .env; then
+            sed -i "s|^API_IMAGE=.*|API_IMAGE=${IMAGE_REF}|" .env
+          else
+            echo "API_IMAGE=${IMAGE_REF}" >> .env
+          fi
+
+          rollback() {
+            echo "!!! [${STACK_ENV}] DEPLOY FAILED - rolling back to ${PREVIOUS_IMAGE:-previous}"
+            if [ -n "${PREVIOUS_IMAGE}" ]; then
+              sed -i "s|^API_IMAGE=.*|API_IMAGE=${PREVIOUS_IMAGE}|" .env
+              # The old image may have been pruned; make sure it is present.
+              docker pull "${PREVIOUS_IMAGE}" 2>/dev/null || true
+              # --no-deps is ESSENTIAL. Without it compose honours api's
+              # depends_on and re-runs the `migrate` one-shot on the OLD image.
+              # The database is already at the NEW head, which older alembic code
+              # does not know, so migrate fails with "Can't locate revision" and
+              # takes the rollback down with it. Rolling back code without
+              # rolling back schema is intended - it assumes migrations stay
+              # backward-compatible for one release, which is why CI gates the
+              # downgrade round-trip.
+              ${COMPOSE} up -d --no-deps --no-build api
+              echo "    rolled back; verifying the OLD image is healthy"
+              for _ in $(seq 1 20); do
+                if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
+                  echo "    rollback healthy"; break
+                fi
+                sleep 3
+              done
+            else
+              echo "    no previous image recorded - cannot auto-roll back."
+            fi
+            echo "--- api logs (last 80) ---"
+            ${COMPOSE} logs --tail=80 api || true
+            exit 1
+          }
+          trap rollback ERR
+
+          echo "==> [${STACK_ENV}] [4/6] Running migrations (one-shot, must exit 0)"
+          ${COMPOSE} up --no-build --exit-code-from migrate migrate
+
+          echo "==> [${STACK_ENV}] [5/6] Starting the new API"
+          ${COMPOSE} up -d --no-build --remove-orphans
+
+          echo "==> [${STACK_ENV}] [6/6] Waiting for readiness (DB + Redis, not just a live port)"
+          READY=""
+          for _ in $(seq 1 40); do
+            if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
+              READY=1; break
+            fi
+            sleep 3
+          done
+          if [ -z "${READY}" ]; then
+            echo "::error::[${STACK_ENV}] readiness never returned 200 after ~120s"
+            false   # triggers the ERR trap -> rollback
+          fi
+
+          trap - ERR
+
+          echo "==> [${STACK_ENV}] deployed successfully"
+          curl -fsS "${HEALTH_URL}"
+          echo
+          # Reclaim disk from superseded images. `until=72h` deliberately keeps
+          # recent ones so a manual rollback to yesterday's build still has a
+          # local image to start from.
+          docker image prune -af --filter "until=72h" || true
+
+    - name: Remove the decrypted .env from the runner
+      if: always()
+      shell: bash
+      # The runner is ephemeral, but `if: always()` costs nothing and means a
+      # failed deploy does not leave plaintext secrets sitting in the workspace
+      # for any later step (or a debug tmate session) to read.
+      run: rm -f .env

@@ -1,13 +1,27 @@
 name: CD
 
-# Build once, push to GHCR, deploy that exact image to the VPS.
+# Build once -> deploy staging -> gate on live staging E2E -> deploy production.
 #
-# The image is built ONE time and deployed by immutable digest. Rebuilding at
-# deploy time - or deploying `latest` - means the artifact that was tested is not
-# necessarily the artifact that runs.
+#   build-and-push  ->  staging-deploy  ->  staging-e2e  ->  production-deploy
 #
-# Required repository/environment secrets are documented in
-# docs/deployment/GITHUB_ACTIONS_SETUP.md.
+# The image is built ONE time and deployed by immutable digest, to BOTH
+# environments. Staging and production therefore run byte-identical artifacts;
+# the only difference is which `.env` each receives. Rebuilding per environment -
+# or deploying `latest` - would mean the thing E2E approved is not provably the
+# thing production runs.
+#
+# DELIBERATE DEVIATION FROM THE TEMPLATE: the template scp's a `docker save`
+# tarball to each host. We keep GHCR + digest pull instead, because a digest is
+# content-addressed (the registry cannot serve different bytes under it) and
+# because the SBOM and SLSA provenance attestations BuildKit pushes alongside the
+# manifest have nowhere to live in a tarball. The cost is a GHCR credential on
+# each VPS and a network dependency on ghcr.io at deploy time.
+#
+# Per-environment secrets - including DEPLOY_PATH - come from GitHub
+# Environments, so no server path appears anywhere in this repository. That is
+# on purpose: the previously hardcoded path is exactly what went stale.
+#
+# Secrets are documented in docs/deployment/GITHUB_ACTIONS_SETUP.md.
 
 on:
   push:
@@ -45,11 +59,11 @@ on:
         type: string
 
 concurrency:
-  # Never let two production deploys race: they would fight over the same
-  # .env.production and could interleave `compose up` calls.
+  # One pipeline at a time. Two runs would fight over the same `.env` on each
+  # box and could interleave `compose up` calls.
   # cancel-in-progress is FALSE on purpose - cancelling a half-finished deploy
-  # leaves the VPS in an unknown state, which is worse than queueing.
-  group: cd-production
+  # leaves a VPS in an unknown state, which is worse than queueing.
+  group: cd-pipeline
   cancel-in-progress: false
 
 permissions:
@@ -151,26 +165,23 @@ jobs:
           echo "Deploying image: ${IMAGE_REF}"
 
   # ------------------------------------------------------------------------- #
-  deploy:
-    name: Deploy to production VPS
+  staging-deploy:
+    name: Deploy to staging
     runs-on: ubuntu-latest
     needs: [build-and-push]
-    # `always()` so the rollback path (workflow_dispatch with an image_tag, where
-    # build-and-push is skipped) still runs. The explicit failure check below
-    # stops a FAILED build from ever reaching the VPS.
+    # `always()` keeps the rollback path alive (workflow_dispatch with an
+    # image_tag skips build-and-push). The explicit checks stop a FAILED build
+    # from ever reaching a VPS.
     if: always() && needs.build-and-push.result != 'failure' && needs.build-and-push.result != 'cancelled'
-
-    # Gives you the manual approval gate, the deploy history, and per-environment
-    # secrets. Configure required reviewers on the `production` environment in
-    # repo Settings for a human to hold the door.
     environment:
-      name: production
-      # A repository/environment VARIABLE, not a secret: the `secrets` context is
-      # not available in `environment.url`, and a public base URL is not a secret.
-      # Set it under Settings -> Environments -> production -> Variables.
+      name: staging
       url: ${{ vars.APP_URL }}
+    outputs:
+      image_ref: ${{ steps.target.outputs.image_ref }}
 
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
       - name: Choose the image to deploy
         id: target
         env:
@@ -204,132 +215,177 @@ jobs:
           fi
           echo "image_ref=${REF}" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy over SSH
+      - name: Deploy the staging stack
+        uses: ./.github/actions/deploy-stack
+        with:
+          environment: staging
+          image_ref: ${{ steps.target.outputs.image_ref }}
+          vps_host: ${{ secrets.VPS_HOST }}
+          vps_username: ${{ secrets.VPS_USERNAME }}
+          vps_ssh_key: ${{ secrets.VPS_SSH_KEY }}
+          vps_port: ${{ secrets.VPS_PORT || 22 }}
+          deploy_path: ${{ secrets.DEPLOY_PATH }}
+          env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
+          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
+          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
+
+  # ------------------------------------------------------------------------- #
+  staging-e2e:
+    name: Live E2E against deployed staging
+    runs-on: ubuntu-latest
+    needs: [staging-deploy]
+    if: needs.staging-deploy.result == 'success'
+    environment:
+      name: staging
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: "3.11"
+          poetry-version: "2.2.1"
+
+      - name: Reset the staging rate limiter
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
-          IMAGE_REF: ${{ steps.target.outputs.image_ref }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          GHCR_USER: ${{ secrets.GHCR_PULL_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          # Values are passed as environment variables, NOT interpolated with
-          # ${{ }} into the script body. Interpolation happens before the remote
-          # shell runs, which would bake the GHCR token into the literal command
-          # text sent over the wire and into any command trace.
-          envs: IMAGE_REF,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN
-          command_timeout: 15m
-          script_stop: true
+          envs: DEPLOY_PATH
           script: |
             set -euo pipefail
-
             cd "${DEPLOY_PATH}"
-
-            COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.production"
-            HEALTH_URL="http://127.0.0.1:$(grep -E '^API_PORT=' .env.production | cut -d= -f2 || echo 8000)/api/v1/health/ready"
-
-            echo "==> [1/6] Recording the currently deployed image for rollback"
-            # Read from the RUNNING container, not from .env.production: if a
-            # previous deploy failed after editing the file but before restarting,
-            # the file is a lie and the container is the truth.
-            # Resolve the container via compose rather than a hardcoded name, so
-            # renaming a service or the project cannot silently break rollback.
-            PREV_CID="$(${COMPOSE} ps -q api 2>/dev/null || true)"
-            PREVIOUS_IMAGE=""
-            if [ -n "${PREV_CID}" ]; then
-              PREVIOUS_IMAGE="$(docker inspect --format '{{.Config.Image}}' "${PREV_CID}" 2>/dev/null || true)"
-            fi
-            if [ -z "${PREVIOUS_IMAGE}" ]; then
-              PREVIOUS_IMAGE="$(grep -E '^API_IMAGE=' .env.production | cut -d= -f2- || true)"
-            fi
-            echo "    previous: ${PREVIOUS_IMAGE:-<none - first deploy>}"
-            echo "    new     : ${IMAGE_REF}"
-
-            echo "==> [2/6] Authenticating to GHCR and pulling"
-            printf '%s' "${GHCR_TOKEN}" \
-              | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
-            docker pull "${IMAGE_REF}"
-
-            echo "==> [3/6] Pinning API_IMAGE in .env.production"
-            cp .env.production ".env.production.bak"
-            if grep -qE '^API_IMAGE=' .env.production; then
-              sed -i "s|^API_IMAGE=.*|API_IMAGE=${IMAGE_REF}|" .env.production
-            else
-              echo "API_IMAGE=${IMAGE_REF}" >> .env.production
-            fi
-
-            rollback() {
-              echo "!!! DEPLOY FAILED - rolling back to ${PREVIOUS_IMAGE:-previous}"
-              if [ -n "${PREVIOUS_IMAGE}" ]; then
-                sed -i "s|^API_IMAGE=.*|API_IMAGE=${PREVIOUS_IMAGE}|" .env.production
-                # The old image may have been pruned; make sure it is present.
-                docker pull "${PREVIOUS_IMAGE}" 2>/dev/null || true
-                # --no-deps is ESSENTIAL here. Without it, compose would honour
-                # api's depends_on and re-run the `migrate` one-shot using the
-                # OLD image. The database is already at the NEW head, and older
-                # alembic code does not know that revision, so the migrate step
-                # would fail with "Can't locate revision" and take the rollback
-                # down with it. Rolling back the code without rolling back the
-                # schema is the intended behaviour - it assumes migrations are
-                # backward-compatible for one release, which is why the
-                # downgrade round-trip is gated in CI.
-                ${COMPOSE} up -d --no-deps --no-build api
-                echo "    rolled back; verifying the OLD image is healthy"
-                for _ in $(seq 1 20); do
-                  if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
-                    echo "    rollback healthy"; break
-                  fi
-                  sleep 3
-                done
-              else
-                echo "    no previous image recorded - cannot auto-roll back."
-                cp ".env.production.bak" .env.production
-              fi
-              echo "--- api logs (last 80) ---"
-              ${COMPOSE} logs --tail=80 api || true
-              exit 1
-            }
-            trap rollback ERR
-
-            echo "==> [4/6] Running migrations (one-shot, must exit 0)"
-            # Run migrations BEFORE swapping the API. `up` on the one-shot exits
-            # with the service's own code thanks to --exit-code-from.
-            ${COMPOSE} up --no-build --exit-code-from migrate migrate
-
-            echo "==> [5/6] Starting the new API"
-            ${COMPOSE} up -d --no-build --remove-orphans
-
-            echo "==> [6/6] Waiting for readiness (DB + Redis, not just a live port)"
-            READY=""
+            # The template flushes rate-limit keys out of Redis. That would be a
+            # NO-OP here: this app builds its slowapi Limiter without a
+            # storage_uri, so limiter state is MemoryStorage inside each gunicorn
+            # worker - verified locally (type(limiter._storage) is MemoryStorage).
+            # Restarting the api service is what actually clears it.
+            #
+            # Without this, a redeploy that reuses warm workers can start the E2E
+            # run partway through a 120/minute budget and fail on 429s that have
+            # nothing to do with the change under test.
+            docker compose -f docker-compose.prod.yml --env-file .env restart api
             for _ in $(seq 1 40); do
-              if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
-                READY=1; break
+              if curl -fsS --max-time 5 "http://127.0.0.1:$(grep -E '^API_PORT=' .env | cut -d= -f2 || echo 8000)/api/v1/health/ready" >/dev/null 2>&1; then
+                echo "staging api back up after limiter reset"; exit 0
               fi
               sleep 3
             done
-            if [ -z "${READY}" ]; then
-              echo "::error::Readiness never returned 200 after ~120s"
-              false   # triggers the ERR trap -> rollback
+            echo "::error::staging api did not come back after the limiter reset"
+            exit 1
+
+      - name: Run the live E2E gate
+        env:
+          # Points the existing e2e/ suite at the DEPLOYED staging API instead of
+          # a locally booted uvicorn. Same suite, same assertions.
+          E2E_BASE_URL: ${{ vars.APP_URL }}
+          # Remote mode: e2e/conftest.py deselects every test whose fixture
+          # closure needs the mailbox, because EMAIL_FILE_DIR lives on the VPS
+          # and this runner cannot read it. It prints exactly which tests were
+          # dropped, and errors out if that would leave nothing to run.
+          E2E_REMOTE: "1"
+        run: |
+          set -euo pipefail
+          if [ -z "${E2E_BASE_URL}" ]; then
+            echo "::error::APP_URL variable is not set for the staging environment - cannot run the live gate."
+            exit 1
+          fi
+          # -o addopts="" clears the unit-suite defaults from pyproject.toml
+          # (coverage, --strict-markers), which do not apply to a remote run.
+          poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider \
+            --junitxml=staging-e2e.xml 2>&1 | tee staging-e2e.log
+          ec=${PIPESTATUS[0]}
+
+          # A gate that no-ops is worse than no gate. The template treats pytest
+          # exit 5 ("no tests collected") as success so projects without an e2e
+          # suite are not blocked; we have a suite, so exit 5 here means the
+          # selection broke and NOTHING was verified. Fail on it.
+          if [ "$ec" -eq 5 ]; then
+            echo "::error::pytest collected no tests. The staging gate verified nothing - failing deliberately."
+            exit 1
+          fi
+          exit "$ec"
+
+      - name: Summarise what the gate actually covered
+        if: always()
+        run: |
+          {
+            echo "### Live staging E2E"
+            echo ""
+            if [ -f staging-e2e.log ]; then
+              PASSED=$(grep -cE '^e2e/.* PASSED' staging-e2e.log || true)
+              DESEL=$(grep -cE 'deselected \(needs local mail dir\)' staging-e2e.log || true)
+              echo "| metric | count |"
+              echo "|---|---|"
+              echo "| ran against deployed staging | ${PASSED:-0} |"
+              echo "| deselected (need a local mail dir) | ${DESEL:-0} |"
+              echo ""
+              echo "Deselected tests do **not** gate production. They need"
+              echo "\`EMAIL_FILE_DIR\` on the same machine as the test run, which a"
+              echo "remote runner does not have. See docs/deployment/DEPLOYMENT_GUIDE.md."
+            else
+              echo "No log produced - the job failed before pytest ran."
             fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
-            trap - ERR
-            rm -f ".env.production.bak"
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-e2e
+          path: |
+            staging-e2e.log
+            staging-e2e.xml
+          if-no-files-found: warn
+          retention-days: 14
 
-            echo "==> Deployed successfully"
-            curl -fsS "${HEALTH_URL}"
-            echo
-            # Reclaim disk from superseded images. `until=72h` deliberately keeps
-            # recent ones so a manual rollback to yesterday's build still has a
-            # local image to start from.
-            docker image prune -af --filter "until=72h" || true
+  # ------------------------------------------------------------------------- #
+  production-deploy:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    needs: [staging-deploy, staging-e2e]
+    # Production is reachable ONLY through a green staging gate. Both conditions
+    # are explicit rather than relying on job ordering, so a skipped or cancelled
+    # staging-e2e cannot be mistaken for a pass.
+    if: needs.staging-deploy.result == 'success' && needs.staging-e2e.result == 'success'
+
+    # The `production` GitHub Environment supplies its own DEPLOY_PATH, VPS_*,
+    # and ENV_ENCRYPTION_KEY, and carries the manual approval gate. Configure
+    # required reviewers under Settings -> Environments -> production.
+    environment:
+      name: production
+      # A repository/environment VARIABLE, not a secret: the `secrets` context is
+      # not available in `environment.url`, and a public base URL is not a secret.
+      url: ${{ vars.APP_URL }}
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Deploy the production stack
+        uses: ./.github/actions/deploy-stack
+        with:
+          environment: production
+          # The SAME digest staging just proved. Not a rebuild.
+          image_ref: ${{ needs.staging-deploy.outputs.image_ref }}
+          vps_host: ${{ secrets.VPS_HOST }}
+          vps_username: ${{ secrets.VPS_USERNAME }}
+          vps_ssh_key: ${{ secrets.VPS_SSH_KEY }}
+          vps_port: ${{ secrets.VPS_PORT || 22 }}
+          deploy_path: ${{ secrets.DEPLOY_PATH }}
+          env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
+          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
+          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
 
       - name: Deployment summary
         if: always()
         env:
-          IMAGE_REF: ${{ steps.target.outputs.image_ref }}
+          IMAGE_REF: ${{ needs.staging-deploy.outputs.image_ref }}
           RESULT: ${{ job.status }}
           COMMIT_SHA: ${{ github.sha }}
           ACTOR: ${{ github.actor }}
@@ -342,4 +398,5 @@ jobs:
             echo "| image | \`${IMAGE_REF}\` |"
             echo "| commit | \`${COMMIT_SHA}\` |"
             echo "| actor | ${ACTOR} |"
+            echo "| gated by | live staging E2E |"
           } >> "$GITHUB_STEP_SUMMARY"
