@@ -150,12 +150,18 @@ $(PROD_ENV_FILE):
 prod-config: $(PROD_ENV_FILE)
 	$(PROD_COMPOSE) config
 
+# API_PORT is read with sed, not `grep ... | cut ... || echo 8000`: in a pipeline
+# the `||` tests the LAST command's status and `cut` exits 0 on empty input, so a
+# missing API_PORT silently produced `http://127.0.0.1:/api/v1/health/ready`
+# rather than the intended default. That became load-bearing the moment staging
+# started running on a different port (8001) from production (8000).
 prod-up: $(PROD_ENV_FILE)
 	$(PROD_COMPOSE) up -d
 	@echo "Waiting for readiness (DB + Redis)..."
-	@for i in $$(seq 1 40); do \
-		if curl -fsS --max-time 5 http://127.0.0.1:$$(grep -E "^API_PORT=" $(PROD_ENV_FILE) | cut -d= -f2 || echo 8000)/api/v1/health/ready >/dev/null 2>&1; then \
-			echo "READY:"; curl -s http://127.0.0.1:$$(grep -E "^API_PORT=" $(PROD_ENV_FILE) | cut -d= -f2 || echo 8000)/api/v1/health/ready; echo; exit 0; \
+	@PORT=$$(sed -n 's/^API_PORT=//p' $(PROD_ENV_FILE) | tail -n 1); PORT=$${PORT:-8000}; \
+	for i in $$(seq 1 40); do \
+		if curl -fsS --max-time 5 http://127.0.0.1:$$PORT/api/v1/health/ready >/dev/null 2>&1; then \
+			echo "READY on :$$PORT"; curl -s http://127.0.0.1:$$PORT/api/v1/health/ready; echo; exit 0; \
 		fi; sleep 3; \
 	done; \
 	echo "NOT READY after ~120s -- last 60 log lines:"; $(PROD_COMPOSE) logs --tail=60 api; exit 1

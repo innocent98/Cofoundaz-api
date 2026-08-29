@@ -57,11 +57,45 @@
 # Raising WEB_CONCURRENCY without raising max_connections is how you get
 # "FATAL: sorry, too many clients already" under load.
 
-# Distinct compose PROJECT name. This is not cosmetic: the project name prefixes
-# every volume and network, so sharing it with docker-compose.yml (which defaults
-# to the directory name, `cofoundaz-api`) means `down -v` on ONE stack destroys
-# the OTHER stack's Postgres volume. Keep these two names different forever.
-name: cofoundaz-api-prod
+# ---------------------------------------------------------------------------
+# ONE FILE, TWO STACKS ON ONE HOST
+# ---------------------------------------------------------------------------
+# This VPS runs production AND staging side by side:
+#
+#   environment   DEPLOY_PATH               COMPOSE_PROJECT_NAME     API_PORT
+#   production    /opt/cofoundaz            cofoundaz-api-prod       8000
+#   staging       /opt/cofoundaz-staging    cofoundaz-api-staging    8001
+#
+# Three things have to differ per stack or the second one cannot start, and the
+# environment file is what supplies all three:
+#
+#   1. THE COMPOSE PROJECT NAME. It prefixes every container, network and volume
+#      compose creates. Two stacks sharing it are, to compose, ONE stack - the
+#      second `up` adopts and reconfigures the first's containers, and a `down -v`
+#      on either destroys the other's Postgres volume.
+#   2. CONTAINER NAMES. There are deliberately no `container_name:` keys below.
+#      A fixed container_name is GLOBAL to the Docker daemon, not scoped to the
+#      project, so the second stack fails with "container name is already in use"
+#      no matter what the project is called. Without the key, compose derives
+#      `<project>-<service>-<n>`, which is unique per stack for free.
+#      Nothing addresses these containers by name: the deploy action, the
+#      Makefile and the runbooks all resolve them with
+#      `docker compose ... ps -q <service>`, which works under any project name.
+#   3. THE PUBLISHED HOST PORT. Both stacks publish on 127.0.0.1, so they collide
+#      unless API_PORT differs. nginx routes by Host header to the right port.
+#
+# Named volumes are project-scoped as `<project>_<volume>`, which is what keeps
+# the two Postgres data directories apart. That separation is load-bearing enough
+# to be worth checking rather than trusting - `docker volume ls` after bringing
+# both up must show `cofoundaz-api-prod_postgres_data` and
+# `cofoundaz-api-staging_postgres_data` as two distinct volumes.
+#
+# `name:` is interpolated rather than fixed. Compose ALSO reads
+# COMPOSE_PROJECT_NAME natively from the env file, so the two mechanisms agree by
+# construction - they read the same variable. The default keeps production's
+# project name exactly what it has always been, so an existing prod stack is not
+# silently renamed (which would orphan its volumes) by this change.
+name: ${COMPOSE_PROJECT_NAME:-cofoundaz-api-prod}
 
 x-logging: &default-logging
   # Without this, json-file logs grow unbounded and eventually fill the disk -
@@ -85,7 +119,6 @@ services:
     # both concurrently and fail with `image ... already exists`. The api service
     # owns the build; this service consumes the resulting tag.
     image: ${API_IMAGE:-ghcr.io/innocent98/cofoundaz-api:latest}
-    container_name: cofoundaz-api-prod_migrate
     command: ["alembic", "upgrade", "head"]
     env_file:
       # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
@@ -127,16 +160,22 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-local}
         VERSION: ${APP_VERSION:-0.0.0}
-    container_name: cofoundaz-api-prod_api
     # NO source bind-mount. The image is the unit of deployment; mounting source
     # over it means the running code is not the code that was built, tested and
     # scanned in CI.
     ports:
       # Bound to LOOPBACK, not 0.0.0.0. nginx terminates TLS on 443 and proxies
-      # to 127.0.0.1:8000. Publishing on 0.0.0.0 would expose the API directly on
-      # the VPS's public IP on plain HTTP, bypassing TLS, the security headers,
-      # and the edge rate limiting - and Docker's iptables rules bypass UFW, so
-      # a "closed" firewall would not save you.
+      # to 127.0.0.1:${API_PORT}. Publishing on 0.0.0.0 would expose the API
+      # directly on the VPS's public IP on plain HTTP, bypassing TLS, the
+      # security headers, and the edge rate limiting - and Docker's iptables
+      # rules bypass UFW, so a "closed" firewall would not save you.
+      #
+      # API_PORT MUST DIFFER PER STACK on a shared host: production 8000,
+      # staging 8001. Both stacks binding 127.0.0.1:8000 is a hard bind failure
+      # on the second one. The default is production's value, so a staging .env
+      # that forgets to set API_PORT fails loudly at `up` rather than quietly
+      # stealing production's port - see docs/deployment/NGINX_TLS.md for the
+      # port map nginx proxies to.
       - "127.0.0.1:${API_PORT:-8000}:8000"
     env_file:
       # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
@@ -205,7 +244,6 @@ services:
   # ------------------------------------------------------------------------- #
   db:
     image: postgres:17-alpine
-    container_name: cofoundaz-api-prod_db
     # NO `ports:`. Postgres is reachable only on the internal compose network.
     # Publishing 5432 would put the database on the public internet: Docker
     # writes its own iptables DOCKER chain that is consulted BEFORE UFW's rules,
@@ -276,7 +314,6 @@ services:
   # ------------------------------------------------------------------------- #
   redis:
     image: redis:7-alpine
-    container_name: cofoundaz-api-prod_redis
     # NO `ports:` - same reasoning as Postgres.
     command:
       - redis-server

@@ -281,10 +281,17 @@ partially-applied revision.
 | Editing `.env.<env>` locally and forgetting to re-encrypt | The `.enc` is what deploys. An un-encrypted change ships nothing. `make env-verify` checks both files still decrypt. |
 | Rolling production back without looking at staging | Both stacks run the same digest, so both are affected. |
 
-The compose project name is `cofoundaz-api-prod`, deliberately different from the dev stack's
-`cofoundaz-api`. That separation is what stops a prod `down -v` from destroying the dev
-Postgres volume — a failure mode that was hit for real before the rename, and verified fixed
-after it. Do not "tidy up" the two names into one.
+The compose project name comes from `COMPOSE_PROJECT_NAME` in each stack's `.env` —
+`cofoundaz-api-prod` for production (also the compose-file default), `cofoundaz-api-staging`
+for staging — and both are deliberately different from the dev stack's `cofoundaz-api`. That
+separation is what stops a `down -v` in one stack from destroying another's Postgres volume:
+a failure mode that was hit for real between prod and dev before the rename, verified fixed
+after it, and re-verified across prod and staging on 2026-08-29. Do not "tidy up" any two of
+these names into one.
+
+Concretely, if a rollback has you running compose by hand: **check `COMPOSE_PROJECT_NAME` in
+the `.env` you are pointing at before typing any command with `-v` in it.** The wrong value
+does not error — it silently addresses the other environment's volumes.
 
 ---
 
