@@ -10,6 +10,8 @@ then filling to `mission_settings.mission_size` (default 3).
 import uuid
 from datetime import date, timedelta
 
+import pytest
+
 from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus
 from app.db.models.mission import MissionTask
 from app.services.mission import service as mission_service
@@ -27,7 +29,35 @@ from tests.factories import (
 )
 
 
-def test_generates_from_roadmap_tasks(db):
+@pytest.fixture
+def weekday(monkeypatch):
+    """Pin the service's notion of "today" to a weekday.
+
+    `get_or_generate_today` materialises an EMPTY mission on Sat/Sun when
+    `weekend_missions` is off -- the product's "weekends off" rule. Every
+    generation test below asserts on the tasks that were drawn, so without this
+    they pass Monday to Friday and fail every Saturday and Sunday. That is a
+    latent red CI on two days in seven, and it is why this suite failed on
+    2026-08-29 (a Saturday) while nothing had changed.
+
+    The shift is FORWARD (Sat/Sun -> Monday), never backward: a backward shift
+    would land on the same date as the `date.today() - 1 day` prior mission that
+    `test_carries_forward_snoozed_tasks_first` creates, and the service selects
+    priors with `mission_date < today` (strictly), so that mission would stop
+    being found. On a weekday this fixture is a no-op and pins today to itself,
+    so Monday-to-Friday behaviour is byte-identical to before.
+
+    e2e/test_mission.py already compensates for the same guard against the live
+    server clock; this brings the unit tests in line with it.
+    """
+    day = date.today()
+    while day.weekday() in (5, 6):
+        day += timedelta(days=1)
+    monkeypatch.setattr(mission_service, "_today", lambda: day)
+    return day
+
+
+def test_generates_from_roadmap_tasks(weekday, db):
     s = create_startup(db, owner=create_user(db))
     r = create_roadmap(db, s)
     ph = create_phase(db, r)
@@ -51,7 +81,7 @@ def test_no_roadmap_returns_none(db):
     assert get_or_generate_today(db, s) is None
 
 
-def test_generation_is_idempotent(db):
+def test_generation_is_idempotent(weekday, db):
     s = create_startup(db, owner=create_user(db))
     r = create_roadmap(db, s)
     ph = create_phase(db, r)
@@ -66,7 +96,7 @@ def test_generation_is_idempotent(db):
     assert db.query(MissionTask).filter_by(mission_id=a.id).count() == 1
 
 
-def test_respects_mission_settings_size(db):
+def test_respects_mission_settings_size(weekday, db):
     s = create_startup(db, owner=create_user(db))
     create_mission_settings(db, s, mission_size=1)
     r = create_roadmap(db, s)
@@ -81,7 +111,7 @@ def test_respects_mission_settings_size(db):
     assert db.query(MissionTask).filter_by(mission_id=mission.id).count() == 1
 
 
-def test_orders_by_milestone_due_date_then_phase_then_milestone_then_task_order(db):
+def test_orders_by_milestone_due_date_then_phase_then_milestone_then_task_order(weekday, db):
     s = create_startup(db, owner=create_user(db))
     create_mission_settings(db, s, mission_size=2)
     r = create_roadmap(db, s)
@@ -105,7 +135,7 @@ def test_orders_by_milestone_due_date_then_phase_then_milestone_then_task_order(
     assert [t.title for t in tasks] == ["EarlyTask", "LateTask"]
 
 
-def test_excludes_done_roadmap_tasks(db):
+def test_excludes_done_roadmap_tasks(weekday, db):
     s = create_startup(db, owner=create_user(db))
     r = create_roadmap(db, s)
     ph = create_phase(db, r)
@@ -120,7 +150,7 @@ def test_excludes_done_roadmap_tasks(db):
     assert [t.title for t in tasks] == ["Todo"]
 
 
-def test_carries_forward_snoozed_tasks_first(db):
+def test_carries_forward_snoozed_tasks_first(weekday, db):
     s = create_startup(db, owner=create_user(db))
     create_mission_settings(db, s, mission_size=2)
     r = create_roadmap(db, s)
