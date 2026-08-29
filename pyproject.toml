@@ -78,7 +78,7 @@ email-validator = "^2.2.0"
 # an httpx client, so 0.28's removals (`proxies=`, `app=`) do not apply here.
 httpx = "^0.28.1"
 python-dateutil = "^2.8.2"
-gunicorn = "^23.0.0"
+gunicorn = ">=23,<27"
 psycopg2-binary = "^2.9.10"
 redis = "^5.0.0"
 slowapi = "^0.1.9"
