@@ -51,8 +51,10 @@ class SMTPEmailSender:
             raise RuntimeError(
                 "EMAILS_FROM_EMAIL is not set, so the SMTP backend cannot build a From "
                 "header and every message would be rejected by the receiving MTA. Set "
-                "EMAILS_FROM_EMAIL (and optionally EMAILS_FROM_NAME), or use "
-                "EMAIL_BACKEND=console/file."
+                "EMAILS_FROM_EMAIL (and optionally EMAILS_FROM_NAME). Deliberately not "
+                "suggesting a different EMAIL_BACKEND as a workaround: `console` drops "
+                "mail on the floor and `file` writes one-time tokens to disk, so both "
+                "are dev-only."
             )
 
         m = emails.Message(

@@ -33,7 +33,15 @@ avoided it:
 
 So the entire production process model shipped unexercised. A gunicorn major bump, a removed
 flag, or a worker class deprecated out from under us would first have been discovered on the
-VPS. This is not hypothetical — see the PR #24 finding below, which this gate is what caught.
+VPS.
+
+This is not hypothetical — see the PR #24 finding below. To be precise about provenance,
+because it matters: **that defect was found by hand**, by bringing the production compose
+stack up on 26.2.0, *not* by the gate. The gate as first written ran `docker run` with a
+writable root filesystem, so the control-socket write succeeded and there was nothing to
+see. That gap has since been closed — the gate now runs with `--read-only`, the same tmpfs
+and `no-new-privileges` as `docker-compose.prod.yml`, and asserts a clean boot — and it now
+**does** fail on 26.2.0 automatically (verified; see Verification).
 
 ### 2. `emails` 1.x made the `mail_from` address non-optional — and it was already broken
 
@@ -96,7 +104,15 @@ user-defined network, and asserts:
    rather than grepped — readiness answers 200 with a per-dependency breakdown, so a
    substring match would sail past a dead database
 7. no worker respawns while serving
-8. SIGTERM drains to **exit code 0**, well inside the grace period. Not 137.
+8. **the boot is clean** — no gunicorn `[ERROR]`/`[WARNING]` at all. Scoped to gunicorn's
+   own log format, so an application-level loguru error cannot trip it, and checked *before*
+   shutdown because gunicorn 23.x logs a normal drain at ERROR
+9. SIGTERM drains to **exit code 0**, well inside the grace period. Not 137.
+
+The container runs under **production's runtime posture**, not a convenient one: `--read-only`,
+`--tmpfs /tmp:size=64m,mode=1777`, `--security-opt no-new-privileges:true`, mirroring
+`docker-compose.prod.yml`. This is load-bearing rather than cosmetic — the only real defect
+found this week was visible *only* under a read-only rootfs.
 
 **A user-defined network rather than GitHub Actions `services:`**, deliberately: service
 containers publish on the *runner's* localhost, which a container cannot reach without
@@ -110,9 +126,12 @@ run through it:
 |---|---|
 | `CMD` hardcodes `--workers 2`, ignores `WEB_CONCURRENCY` | fails: "gunicorn booted 2 workers, expected 3" |
 | PID 1 swallows SIGTERM | fails: "SIGKILLed (exit 137) after 8s" |
+| real image built at gunicorn 26.2.0 | fails: "gunicorn logged ERROR/WARNING during a healthy boot" |
 
 The second image **passed every other assertion** — healthy, `/health` 200, readiness 200,
-correct worker count — which is precisely why the shutdown assertion had to exist.
+correct worker count — which is precisely why the shutdown assertion had to exist. The third
+is PR #24's real defect, and it likewise passes healthy, both endpoints, worker count and
+graceful shutdown; only the read-only rootfs plus the clean-boot assertion catch it.
 
 ### `emails` — raise, don't cast
 
@@ -145,8 +164,10 @@ verified rather than assumed:
 - **no `str()`, f-string or `%`-format of an enum member anywhere in `app/`.** The only
   `str()` calls are on UUIDs and pydantic error locations.
 - pydantic serialises by `.value`, unchanged.
-- all **25 live API response captures** in `e2e/_captures/` are identical to the committed
-  ones once UUIDs and timestamps are normalised — zero enum serialisation drift on the wire.
+- of the 38 tracked files in `e2e/_captures/`, the run regenerated **25**; all 25 are
+  identical to the committed versions once UUIDs and timestamps are normalised — zero enum
+  serialisation drift on the wire. The other 13 were not rewritten by this run, so they are
+  stated as what they are: not evidence either way.
 
 ### The weekend fixture
 
@@ -171,7 +192,7 @@ this brings the unit suite in line with it.
 | `tests/platform/test_email.py` | +4 SMTP tests; module goes to 100% coverage |
 | `app/db/models/enums.py` | 19 × `(str, enum.Enum)` → `(enum.StrEnum)` |
 | `tests/services/test_mission_generate.py` | `weekday` fixture + applied to 6 tests |
-| `pyproject.toml` / `poetry.lock` | `emails` + 8 dev-tooling constraints |
+| `pyproject.toml` / `poetry.lock` | `emails` + 8 dev-tooling constraints, floors raised to the **verified** versions (dependabot's ranges left `emails` 0.6 resolvable — the exact version the fix exists for) |
 | `.pre-commit-config.yaml` | hook revs realigned to the lockfile after the dev bump |
 
 **No CI gate, coverage threshold, lint rule, severity level or scanner was weakened.** The
@@ -202,6 +223,9 @@ gunicorn 25.1.0 added a control socket, **on by default**, which tries to create
 `$HOME/.gunicorn/`. Our production container sets `read_only: true` and runs as UID 1000, so
 that write can never succeed. Non-fatal — the container is healthy and serves traffic — but it
 is a permanently-failing subsystem announcing itself at ERROR on every deploy.
+
+This is now caught automatically: the gate runs with `--read-only` and asserts a clean boot,
+and a 26.2.0 build fails it. Found by hand first, then turned into a gate.
 
 **The fix**, verified to produce a clean boot (0 ERROR/WARNING, readiness 200, graceful stop
 exit 0) on the real production stack — add one flag to the Dockerfile `CMD`:
@@ -251,7 +275,8 @@ Local, 2026-08-29, all against the pinned project toolchain via `poetry run`:
 | e2e | **27 passed** against a real server |
 | `make scan` | bandit, Semgrep, gitleaks, `trivy config`, Checkov, `trivy image` — all green |
 | `pip-audit` (production set, py3.11 markers) | **no known vulnerabilities, 1 documented ignore** |
-| `scripts/image_cmd_check.sh` | **PASSED**, ~15s incl. dependency startup |
+| `scripts/image_cmd_check.sh` (gunicorn 23.0.0, read-only rootfs) | **PASSED**, ~15s incl. dependency startup |
+| same gate against a gunicorn 26.2.0 build | **FAILS** on the control-socket ERROR, as intended |
 | `pre-commit` black / isort / ruff hooks | resolve and run; ruff hook binary reports **0.16.5**, matching the lockfile |
 
 Suite history across the branch: 400 passed + 6 failed → 406 → 410. Coverage 98.05% → 98.25%

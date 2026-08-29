@@ -58,7 +58,10 @@ EXPECTED_WORKERS="${EXPECTED_WORKERS:-3}"
 # What the Dockerfile bakes in, asserted separately without a second boot.
 EXPECTED_DEFAULT_WORKERS="${EXPECTED_DEFAULT_WORKERS:-4}"
 
-HOST_PORT="${IMAGE_CHECK_PORT:-18010}"
+# Derived from the PID rather than fixed, so two concurrent runs on one machine
+# (e.g. `make ci-local` stage 7 while `make image-check` is going) cannot collide
+# on a published port. A fixed port made the second run die at `docker run`.
+HOST_PORT="${IMAGE_CHECK_PORT:-$((18000 + ($$ % 900)))}"
 # Mirrors docker-compose.prod.yml's stop_grace_period. The point is to give the
 # app the same room production gives it, then assert it did not need all of it.
 STOP_TIMEOUT="${IMAGE_CHECK_STOP_TIMEOUT:-60}"
@@ -86,16 +89,16 @@ fail() {
   echo "---- container state ----" >&2
   docker inspect --format \
     'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
-    "${API}" 2>&1 >&2 || true
+    "${API}" >&2 2>&1 || true
   echo "---- processes in the container ----" >&2
-  docker top "${API}" 2>&1 >&2 || echo "(container not running)" >&2
+  docker top "${API}" >&2 2>&1 || echo "(container not running)" >&2
   echo "---- last 60 lines of api logs ----" >&2
-  docker logs --tail 60 "${API}" 2>&1 >&2 || true
+  docker logs --tail 60 "${API}" >&2 2>&1 || true
   echo "---- healthcheck probe output ----" >&2
   docker inspect --format '{{if .State.Health}}{{range .State.Health.Log}}exit={{.ExitCode}} out={{.Output}}{{end}}{{end}}' \
-    "${API}" 2>&1 >&2 || true
+    "${API}" >&2 2>&1 || true
   echo "---- db logs ----" >&2
-  docker logs --tail 20 "${PG}" 2>&1 >&2 || true
+  docker logs --tail 20 "${PG}" >&2 2>&1 || true
   exit 1
 }
 
@@ -103,7 +106,10 @@ cleanup() {
   docker rm -f "${API}" "${PG}" "${RD}" >/dev/null 2>&1 || true
   docker network rm "${NET}" >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
+# INT/TERM as well as EXIT: a Ctrl-C locally or a cancelled CI job otherwise
+# leaves three containers and a network behind, and the orphaned api container
+# keeps its published port bound - which then breaks the NEXT run.
+trap cleanup EXIT INT TERM
 
 echo "==> image under test: ${IMAGE}"
 
@@ -124,6 +130,23 @@ for flag in "--worker-class" "uvicorn.workers.UvicornWorker" "--graceful-timeout
     *) echo "!! image CMD no longer contains ${flag}: ${IMAGE_CMD}" >&2; exit 1 ;;
   esac
 done
+
+# The ENTRYPOINT matters as much as the CMD: tini is what forwards SIGTERM to the
+# gunicorn master, and the shutdown assertion below tests the CONSEQUENCE of that
+# rather than its presence. Swapping tini out silently is exactly the change this
+# check should refuse to test around.
+IMAGE_ENTRYPOINT="$(docker image inspect --format '{{json .Config.Entrypoint}}' "${IMAGE}")"
+case "${IMAGE_ENTRYPOINT}" in
+  *tini*) : ;;
+  *) echo "!! image ENTRYPOINT is no longer tini: ${IMAGE_ENTRYPOINT}" >&2; exit 1 ;;
+esac
+
+# Fail in a second with the real reason if the HEALTHCHECK is ever dropped,
+# rather than spending 120s in the wait loop below reporting "never healthy".
+if [ "$(docker image inspect --format '{{if .Config.Healthcheck}}yes{{else}}no{{end}}' "${IMAGE}")" != "yes" ]; then
+  echo "!! image declares no HEALTHCHECK - compose and the deploy gate both read it." >&2
+  exit 1
+fi
 
 # The baked-in default worker count, checked without paying for a second boot.
 BAKED_CONCURRENCY="$(docker image inspect \
@@ -174,11 +197,26 @@ done
 echo "==> dependencies healthy"
 
 # --------------------------------------------------------------------------- #
-# 3. Start the image with NO command override. This is the whole point.
+# 3. Start the image with NO command override, under PRODUCTION's runtime posture.
 # --------------------------------------------------------------------------- #
-echo "==> starting ${IMAGE} with its own CMD (WEB_CONCURRENCY=${EXPECTED_WORKERS})"
+# The security flags below are not decoration - they mirror docker-compose.prod.yml
+# exactly (read_only: true, tmpfs /tmp:size=64m,mode=1777, no-new-privileges:true).
+# Running without them was a real hole: gunicorn >= 25.1.0 starts a control socket
+# under $HOME by default, which succeeds on a writable filesystem and fails on
+# production's read-only one. A check that boots with a writable root cannot see
+# that class of defect at all, and "run it the way production runs it" has to mean
+# the filesystem too, not just the command line.
+#
+# /app/var/storage gets a tmpfs because prod mounts a named volume there
+# (LOCAL_STORAGE_DIR); without it the read-only root would make that path
+# unwritable, which is a difference from production rather than a copy of it.
+echo "==> starting ${IMAGE} with its own CMD (WEB_CONCURRENCY=${EXPECTED_WORKERS}, read-only rootfs)"
 docker run -d --name "${API}" --network "${NET}" \
   -p "127.0.0.1:${HOST_PORT}:8000" \
+  --read-only \
+  --tmpfs /tmp:size=64m,mode=1777 \
+  --tmpfs /app/var/storage:mode=1777 \
+  --security-opt no-new-privileges:true \
   -e WEB_CONCURRENCY="${EXPECTED_WORKERS}" \
   -e SECRET_KEY="image-cmd-check-not-a-real-key" \
   -e DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG}:5432/${PG_DB}" \
@@ -253,8 +291,11 @@ BASE="http://127.0.0.1:${HOST_PORT}"
 code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/health" || true)"
 [ "${code}" = "200" ] || fail "/health returned ${code}, expected 200 (this is what the Docker HEALTHCHECK and nginx hit)"
 
-READY_BODY="$(curl -s --max-time 10 "${BASE}/api/v1/health/ready" || true)"
-READY_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BASE}/api/v1/health/ready" || true)"
+# ONE request, not two: with N workers two calls can land on different workers,
+# so a status code from one and a body from another is not a coherent answer.
+READY_RAW="$(curl -s -w $'\n%{http_code}' --max-time 10 "${BASE}/api/v1/health/ready" || true)"
+READY_CODE="$(printf '%s' "${READY_RAW}" | tail -n1)"
+READY_BODY="$(printf '%s' "${READY_RAW}" | sed '$d')"
 [ "${READY_CODE}" = "200" ] \
   || fail "/api/v1/health/ready returned ${READY_CODE}, expected 200. Body: ${READY_BODY}"
 
@@ -320,6 +361,32 @@ if printf '%s\n' "${LOGS_AFTER}" | grep -qE "Worker exiting|was sent SIGKILL|WOR
   fail "gunicorn reported a worker exit/timeout/SIGKILL while serving. See the log dump above."
 fi
 echo "==> no worker churn while serving"
+
+# --------------------------------------------------------------------------- #
+# 8b. The boot must be CLEAN - no gunicorn ERROR or WARNING at all.
+# --------------------------------------------------------------------------- #
+# This is what turns the read-only rootfs above into an actual gate rather than
+# just a more realistic environment. gunicorn >= 25.1.0's default control socket
+# fails against a read-only filesystem and announces itself as
+#   [ERROR] Control server error: [Errno 30] Read-only file system: '/home/.../.gunicorn'
+# on EVERY boot, while the container still goes healthy and serves traffic
+# perfectly - so every other assertion in this file passes straight through it.
+#
+# Matches gunicorn's own `[LEVEL]` log format specifically. The app logs through
+# loguru with a different format (` | ERROR | `), so an application-level error
+# line cannot trip this; that is deliberate, since this assertion is about the
+# process manager's health, not the app's.
+#
+# Checked BEFORE shutdown on purpose: gunicorn 23.x logs "Worker (pid:N) was sent
+# SIGTERM!" at ERROR during a perfectly normal drain (24.1.0 downgraded it to
+# INFO), so asserting after the stop would fail on a correct shutdown.
+GUNICORN_PROBLEMS="$(printf '%s\n' "${LOGS_AFTER}" | grep -E '\[(ERROR|WARNING)\]' || true)"
+if [ -n "${GUNICORN_PROBLEMS}" ]; then
+  echo "---- gunicorn ERROR/WARNING lines at boot ----" >&2
+  printf '%s\n' "${GUNICORN_PROBLEMS}" >&2
+  fail "gunicorn logged ERROR/WARNING during a healthy boot. A subsystem is failing on every start even though the container serves traffic."
+fi
+echo "==> clean boot (no gunicorn ERROR/WARNING)"
 
 # --------------------------------------------------------------------------- #
 # 9. Graceful shutdown. THE ASSERTION THIS SCRIPT EXISTS FOR.

@@ -51,7 +51,7 @@ def _capture_sent(monkeypatch):
 
     captured: dict[str, object] = {}
 
-    def fake_send(self, **kwargs):  # noqa: ANN001, ANN003
+    def fake_send(self, **kwargs):
         captured["from"] = self.as_message()["From"]
         captured["to"] = kwargs.get("to")
         return None
