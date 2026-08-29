@@ -12,39 +12,51 @@ packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-# fastapi >= 0.133.0 is the FIRST release that drops the starlette upper bound
+# Lower bound: 0.133.0 is the FIRST release that drops the starlette upper bound
 # (0.128.3 still capped at <1.0.0, so it cannot reach the fixed starlette).
 # Verified against PyPI metadata for every fastapi release from 0.115.0 up.
-# Range rather than caret: Poetry's caret on a 0.x version pins the MINOR
-# (^0.133.0 == >=0.133.0,<0.134.0), which would block ordinary patch upgrades.
-# UPPER BOUND <0.137.0 IS A HARD REQUIREMENT, NOT CONSERVATISM. See below.
-#
-# Lower bound: 0.133.0 is the first release to drop the starlette upper bound
-# (0.128.3 still capped at <1.0.0, so it cannot reach the fixed starlette).
 #
 # Upper bound: fastapi 0.137.0 introduced `_IncludedRouter`, which wraps routes
 # registered via `include_router()` in a container object instead of flattening
 # them into `app.routes`. slowapi's SlowAPIMiddleware resolves the current
 # endpoint by iterating `app.routes` and matching entries that expose
 # `.endpoint`; a `_IncludedRouter` exposes neither, so from 0.137.0 onward EVERY
-# route under `include_router` becomes invisible to it and silently loses rate
-# limiting. For this app that is the entire /api/v1 surface - auth included.
+# route under `include_router` became invisible to it and silently lost rate
+# limiting - for this app the entire /api/v1 surface, auth included.
 #
-# Verified empirically at 135 requests against a 120/minute limit:
-#   fastapi 0.115.14 + starlette 0.46.2 -> first 429 at request 121  (works)
-#   fastapi 0.141.1  + starlette 1.6.0  -> 0 x 429                   (dead)
-#   /health (declared with @app.get, not via a router) keeps limiting on both,
-#   which is exactly why the unit tests did not catch it.
+# That is now FIXED IN-TREE by app/core/rate_limit.py, which teaches slowapi to
+# descend `_IncludedRouter` (upstream has not shipped a fix: slowapi 0.1.10 is
+# still broken, laurentS/slowapi#281 is open with three unmerged PRs). The
+# ceiling therefore moves from <0.137.0 to <0.142.0.
+#
+# Measured on 0.141.1 + starlette 1.6.0 after the fix, 130 requests against a
+# 120/minute limit on an include_router-mounted /api/v1 route:
+#   uvicorn, 1 worker  -> first 429 at request 121  (user key AND anon IP key)
+#   gunicorn, 4 workers -> first 429 at request 481 (4 x 120; MemoryStorage is
+#                          per-worker, so the effective limit is workers x limit)
+# Before the fix, the same drive produced 0 x 429.
+#
+# THE CEILING IS STILL BOUNDED ON PURPOSE. The fix leans on FastAPI internals
+# (`_IncludedRouter._match`), so a future minor could move it again. Bounding it
+# means Dependabot proposes 0.142 as its own reviewed PR, where
+# tests/api/test_rate_limit.py and the boot-time self-check in
+# app/core/rate_limit.py must both pass before it can land. Raising the ceiling
+# without those passing is how this silently broke the first time.
 #
 # Range rather than caret: Poetry's caret on a 0.x version pins the MINOR
 # (^0.133.0 == >=0.133.0,<0.134.0), which would block ordinary patch upgrades.
-fastapi = ">=0.133.0,<0.137.0"
+fastapi = ">=0.133.0,<0.142.0"
 # Declared DIRECTLY, though it arrives via fastapi, to make the security floor
 # explicit and enforceable: starlette < 1.3.1 carries 9 advisories
 # (PYSEC-2026-161/1941/1942/2280/2281/248/249). 1.3.1 is the highest fix version
 # required among them. Do not lower this floor.
 starlette = ">=1.3.1,<2.0.0"
-uvicorn = {extras = ["standard"], version = "^0.32.0"}
+# uvicorn 0.30.0 deprecated `uvicorn.workers`, but 0.52.4 STILL SHIPS IT and the
+# production Dockerfile CMD depends on it (--worker-class
+# uvicorn.workers.UvicornWorker). Verified by import against 0.52.4. If a future
+# uvicorn finally removes it, the container fails to boot - `make image-check`
+# runs the image's real CMD and is the gate that catches that.
+uvicorn = {extras = ["standard"], version = "^0.52.4"}
 pydantic = "^2.11.0"
 pydantic-settings = "^2.9.0"
 python-multipart = ">=0.0.32,<0.1.0"
@@ -62,7 +74,9 @@ loguru = "^0.7.3"
 emails = ">=1.1.2,<1.2"
 jinja2 = "^3.1.6"
 email-validator = "^2.2.0"
-httpx = "^0.27.0"
+# Only reached transitively, via starlette's TestClient - no app code constructs
+# an httpx client, so 0.28's removals (`proxies=`, `app=`) do not apply here.
+httpx = "^0.28.1"
 python-dateutil = "^2.8.2"
 gunicorn = "^23.0.0"
 psycopg2-binary = "^2.9.10"
