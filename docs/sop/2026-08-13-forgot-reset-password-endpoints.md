@@ -38,8 +38,10 @@ ones have accounts).
   no-enumeration precedent in `registration.py::resend`. `pending_verification` users are
   *not* excluded — only `disabled`, matching `login.py`'s own status check.
 - `POST /password/reset` — validates password strength first
-  (`validate_password_strength`, raises `WeakPassword` → 422) *before* touching the token,
-  so a weak-password attempt doesn't burn a valid reset token. Then `consume_auth_token`
+  (`validate_password_strength`, raises `WeakPassword` → 422; **since 2026-08-29 also
+  `PasswordTooLong` → 422 `PASSWORD_TOO_LONG` above 72 UTF-8 bytes** — see
+  `docs/sop/2026-08-29-passlib-to-bcrypt5-migration.md`) *before* touching the token,
+  so a rejected-password attempt doesn't burn a valid reset token. Then `consume_auth_token`
   (raises `TokenInvalid` → 400 on bad/expired/already-used tokens), sets
   `user.password_hash = get_password_hash(...)`, calls `revoke_all_for_user(db, user.id)`
   to force re-login on every device/session (a password reset is the standard trigger for

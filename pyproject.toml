@@ -62,8 +62,22 @@ pydantic-settings = "^2.9.0"
 python-multipart = ">=0.0.32,<0.1.0"
 python-dotenv = "^1.1.0"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-bcrypt = "^4.0.1"
+# passlib was REMOVED here, not upgraded -- 1.7.4 (October 2020) is its last
+# release and it is unmaintained, so this is terminal rather than a wait.
+# passlib's bcrypt backend runs a one-time self-test that hashes a 255-byte
+# secret to probe for the BSD wraparound bug; bcrypt 5 raises ValueError over
+# 72 bytes instead of truncating, so the backend never initialises and every
+# call fails -- even one hashing a 5-character password. The only alternatives
+# were pinning bcrypt <5 forever (never taking another bcrypt security fix) or
+# migrating. app/core/security.py now calls bcrypt directly; the emitted hashes
+# are byte-identical in format ($2b$12$) so stored hashes still verify.
+#
+# pwdlib was evaluated and rejected: its BcryptHasher is a bare passthrough to
+# bcrypt.checkpw with no truncation and no option to enable it, so 63 of the 126
+# golden passlib hashes in tests/fixtures/ raise ValueError under it. It would
+# still need our own truncation wrapper, so it adds a dependency without solving
+# the problem. See docs/sop/2026-08-29-passlib-to-bcrypt5-migration.md.
+bcrypt = "^5.0.0"
 sqlalchemy = "^2.0.41"
 alembic = "^1.15.0"
 loguru = "^0.7.3"

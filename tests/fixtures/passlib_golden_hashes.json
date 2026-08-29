@@ -1,0 +1,250 @@
+{
+  "_provenance": {
+    "generated_at": "2026-08-29T09:04:26.705354+00:00",
+    "generated_by": "scripts/gen_passlib_golden_hashes.py",
+    "passlib_version": "1.7.4",
+    "bcrypt_version": "4.3.0",
+    "production_context": "CryptContext(schemes=[\"bcrypt\"], deprecated=\"auto\")",
+    "note": "Hashes produced by the PRE-MIGRATION passlib implementation. The post-migration implementation must verify every one of these unchanged, or existing users are locked out."
+  },
+  "cases": [
+    {
+      "label": "ascii_simple",
+      "password": "password1",
+      "password_utf8_bytes": 9,
+      "password_chars": 9,
+      "hashes": {
+        "crypt_context_default": "$2b$12$aU./kx5wN5mfcznQKNYA0OK4H6uy2lCtG/4p5ZLFh3dZt5xppgXba",
+        "2b_rounds_4": "$2b$04$34xbljHVrlTEQSxNvJNeru1EZqZdIWBRse0Qsubm378xgckp178DC",
+        "2b_rounds_8": "$2b$08$q.jhVEa3Ca6gEeVOxv28rOXYx3iwxtl6K/z4dRV5s4Zh6.O7iZOFO",
+        "2b_rounds_10": "$2b$10$5wsg6j/2j4CHRpgV3z.Ngu1Vrq4TqxcLi/DPibUUh.PCvNPYkQHza",
+        "2b_rounds_12": "$2b$12$H4shAbciTyAs1NgsYpa47O54iupPVAKUZri2F3Yh.FAlDFCPo6/jq",
+        "2b_rounds_13": "$2b$13$C1H23wFZpItjuF/ED15v0uTre6jPvLDikZok9KGI9Delp.yuqUBTa",
+        "ident_2a": "$2a$10$HUM/heO1kjYheKCenjh76euTSGZkivxOvQ4qRsWZWof6nvPpENx0a",
+        "ident_2y": "$2y$10$bMZXsSGZJsZK12GENvyhOO2e8GlyVN8N3wQz8C7dhO2iRyY.Oo9Ti",
+        "ident_2b": "$2b$10$S2J1KLzJgF4iUMls8AHkAOVdD6QgXIdZTfHU/G/ENRJ1KFM4gKELG"
+      }
+    },
+    {
+      "label": "ascii_typical",
+      "password": "Str0ng!Passw0rd#2024",
+      "password_utf8_bytes": 20,
+      "password_chars": 20,
+      "hashes": {
+        "crypt_context_default": "$2b$12$ThTPWBRC2FslCxDENa1dD.57ZoR/ZymPd7KOGjTkSQgbiRtSCmC8G",
+        "2b_rounds_4": "$2b$04$ZM0YJ27FyGIzWcHOHzRNKOZ/bS2ZDEX0zqWm/h4rYH5ymzLUNc6yS",
+        "2b_rounds_8": "$2b$08$xaTdjyzYSO76OJ3RX4.36eyuSSi8Yjxi.tFR8U6lcQPXHtDracodC",
+        "2b_rounds_10": "$2b$10$qAIH362Qabd8VdgtqCilyeiW37vWVbIEw1THBm.usqnaqfxBiUvum",
+        "2b_rounds_12": "$2b$12$Hvaz9CAd.ET2lb.Nf5PmSeZb6wpT.B3tPJEjGJwjvewSplEQVZT3W",
+        "2b_rounds_13": "$2b$13$D6KwHRNGzY6EpnG9VjYv5uk/..Fl6ggWIIsetVyBGDUtWGkydNjdu",
+        "ident_2a": "$2a$10$96Zi/vzrjcliv7wxbPpMEu0U.D8YY8Kvg.BtO3yQhqeZQlgdCoUe6",
+        "ident_2y": "$2y$10$eEkRCfbFcY0/AEihZ2KonOFPtcbA8jnnbcSUI5dfh5Mnb2Booio7K",
+        "ident_2b": "$2b$10$YSEC/sb9Dv/Gn0Nt/I5fZeE/egEOKFMKHBtBwQBzfb6Jb3hISd25."
+      }
+    },
+    {
+      "label": "ascii_71_bytes",
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "password_utf8_bytes": 71,
+      "password_chars": 71,
+      "hashes": {
+        "crypt_context_default": "$2b$12$QkrhSpot/b/NezXZWYTkRuBXe3LlDqj1rCoW34cJtkCaSOjNnGvca",
+        "2b_rounds_4": "$2b$04$uIB7wBtqy7usp3VMp8Eny.BuzgIs8nULk6e/WIWy2zZEGmbwavoBy",
+        "2b_rounds_8": "$2b$08$76tx3knpO2NJ8gr2Ly1cq.7eX92LGLvg6wasyMhR9ZT8qjQdBHT0W",
+        "2b_rounds_10": "$2b$10$wr51zV3tkBThOcTPZv9PYu1foOW73HRk8h6p.6NX2VjMygwnVC8o.",
+        "2b_rounds_12": "$2b$12$vk0TytmskslYP57.IvOHRebzsyI1krpp5H3G4b4r7hnuShfeCyrwy",
+        "2b_rounds_13": "$2b$13$6pGk9xzZuHTZSVwVqqjMDurCJRbMeuRSrcOjsVXbrcWfaA16Dgeby",
+        "ident_2a": "$2a$10$eFdDt0MKfOVUaQUeF0tRN.zconleBgM0mZNaN25QqkKrtoP8mTRnW",
+        "ident_2y": "$2y$10$f0fBbA6a.CCCs4N6YfJfJuJj0Kjf.l0ifEypAK3wo/aN2D0T.DuvG",
+        "ident_2b": "$2b$10$L8VIaOLszugEBNoSqNvzjeBt3lu1c3m/ZXJMSqXFzd7EC8O00iV2y"
+      }
+    },
+    {
+      "label": "ascii_72_bytes",
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "password_utf8_bytes": 72,
+      "password_chars": 72,
+      "hashes": {
+        "crypt_context_default": "$2b$12$523m6lWAxpN.r9Edd00HKeXcT80T6ub.C8SmWOvSB81.yWSaQIfCq",
+        "2b_rounds_4": "$2b$04$FAcjdx9Vh1VBxlRIwPtfp.Z0rAegnoyZaHsOggqxMLxFQ6e1qQEUy",
+        "2b_rounds_8": "$2b$08$VxPw.zxv.9Pa9MSbSFKu2udk.pBEn/LHpr3ztdbtnVpXcm1HJZvNS",
+        "2b_rounds_10": "$2b$10$xAUrPwueXBwjrjsw1VHOTeD7FReNKnIVzxXG8nW4baVl0dZnNx03.",
+        "2b_rounds_12": "$2b$12$Yrs7kljxjBkHUcRSEtpjIOyq5wN0azTJboLZKyEMWWAr4NKcLNf2q",
+        "2b_rounds_13": "$2b$13$KN8LVHxa3hsQDZn/lTYW/e.iQGoAD2n0BsMZCOe3ODrskolUGsQ2e",
+        "ident_2a": "$2a$10$KUPXa7PPWs8s6aCxomDX4.r7fp37tW.tJFq2W71YNZLHWiWQD4EJG",
+        "ident_2y": "$2y$10$KxMTaYLFtZfqUp9qOIp2eOA6FQFmvPGZhT6i19efLDc.zotDGpal.",
+        "ident_2b": "$2b$10$yu9MimxlFYKtvC.YHgNBcOQbD/NFjPmdJIZJ4MGcfoz4Nc3AeOGvG"
+      }
+    },
+    {
+      "label": "ascii_73_bytes",
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "password_utf8_bytes": 73,
+      "password_chars": 73,
+      "hashes": {
+        "crypt_context_default": "$2b$12$Nl/sBM.1.Sj.gUXO0stCsuqMijoyDZB6psVFYE8lp4ruJQN7AAQ6i",
+        "2b_rounds_4": "$2b$04$EkaFpL0lb395IDaJUfcoB.oE/brsrvkZAkRdwptqbNvJ/lgxNW77m",
+        "2b_rounds_8": "$2b$08$/WKCgECclk9LVoYxz0Z8Mu5rIDM14t.D1zvWHw/yEB0ZnGVg4vKB.",
+        "2b_rounds_10": "$2b$10$SBxBHucokrorK.mGeUhtr.A4i.907iv8if0SOs55XL5QaEslW7TUS",
+        "2b_rounds_12": "$2b$12$53M44L4uSXgaTlA6iTk0Iu2szbrghS2UsxEeZ0RRY.BhxteGgitHS",
+        "2b_rounds_13": "$2b$13$5pcaqt1mc8RbgwKp8r0PKeIfGvIB7S33ExHvtxGa3.tFbCqGTU7WC",
+        "ident_2a": "$2a$10$O0EDuBkaMlj3TrpPFemUdOdJI00tI/7JMruVM7nTcXl5sm4YKgD3W",
+        "ident_2y": "$2y$10$r7cqyJt/p162mdDzx0o4au4Tw0Hea60t.ZcBAiYyPXFJZj0qcEr9m",
+        "ident_2b": "$2b$10$hA9MPdslEqejrznNx6f80uFjTDayKBlncQYAFkGUWEFKkcJliS0/q"
+      }
+    },
+    {
+      "label": "ascii_100_bytes",
+      "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "password_utf8_bytes": 100,
+      "password_chars": 100,
+      "hashes": {
+        "crypt_context_default": "$2b$12$XqgRLphHeTVewrDouqKmeeOW/ZxNb81PMsDxAEKN6tCSseFUNPu3C",
+        "2b_rounds_4": "$2b$04$J47SlFiab1SExcDSpIVegubBTFupdL1a16nSFvxXDN2Ov.cUbp46G",
+        "2b_rounds_8": "$2b$08$Uxx6GRzanmFc9KgIXTASKOiO6E16rb7AAe1UCzWJEpr2ePcsiaGJe",
+        "2b_rounds_10": "$2b$10$d.vJQo4Ch2GYfwQ.0nssRehiUQyUbLQCa/z9rQse2UM/eTFeQyose",
+        "2b_rounds_12": "$2b$12$h/gwDvOauiGDk2zz87dz7.CIwLBULCuaOppJkuDlG7NcnZGi617fe",
+        "2b_rounds_13": "$2b$13$0QayLYKQEzuftskXRLjU/eBNywmtP19a5S4qxcD3kiXXfaIqIC3Ca",
+        "ident_2a": "$2a$10$TCu0xjJBeYEgB5kN2SRxc.NtYcrKxvZQH8begd02E5klPWbg4wLh.",
+        "ident_2y": "$2y$10$W16Y1lUtkfecBsGoTjF3COxdNyyRASQh6vXhAcqGsUfDVYOOFzYEC",
+        "ident_2b": "$2b$10$Xx3oNTyM4kq9Pa0SqyFkH.Om1f8BSMxCl7nEmujvvmxEvduJlrtS."
+      }
+    },
+    {
+      "label": "ascii_200_bytes",
+      "password": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "password_utf8_bytes": 200,
+      "password_chars": 200,
+      "hashes": {
+        "crypt_context_default": "$2b$12$oD89vLQ2QG2s7B/n8.Jk7eiRodv1lMSBHmgJL5kxD1TBxHJdn4Sf6",
+        "2b_rounds_4": "$2b$04$mUIdfF/KiCODk1FJdZCxbuYuCpM5ox7aIZQ0zwzLElXqJu6i4Qxg2",
+        "2b_rounds_8": "$2b$08$iu9HQNm6BLxQMWGfkChdd.f2B5zXTJNJxTRu9wydc9As.aGhY/I2O",
+        "2b_rounds_10": "$2b$10$Ig6c6iWE8pXb6WbUQ6v6EuilJ8NWPsaRxxmzxitzfLIcpvBCaPVO.",
+        "2b_rounds_12": "$2b$12$rsNv4T2maJoExZ348H52WuDjm9YKX7pbvoQqg4hgzIsOqnBzXERGe",
+        "2b_rounds_13": "$2b$13$.DCYTq.x1UhtxGAF3kkIeuXp0GsZWdL71m3kURCnW/nkNb4VS5sEm",
+        "ident_2a": "$2a$10$dDXTrtLOFAjC/itvHqJjtOtm/GCmJVFX7YscYg721BTu.H7xwm/Fq",
+        "ident_2y": "$2y$10$mdPTse5gQ7rZ2ylvISld7.Xjs7SLsKRl1uJlNhzmyii9SEOQRxZJK",
+        "ident_2b": "$2b$10$00xgFWnUh5SpXOScU1f6aOfQDgK2mOtG1fLWJ2wPtewW.EdXHHTN."
+      }
+    },
+    {
+      "label": "unicode_cjk_short",
+      "password": "密码密码",
+      "password_utf8_bytes": 12,
+      "password_chars": 4,
+      "hashes": {
+        "crypt_context_default": "$2b$12$KCgeg/wkUWTYJRGTJtxCZ.WseNXKUBC67MPChY7K1hG/vil3zPOEG",
+        "2b_rounds_4": "$2b$04$6sTsj4I9M3P53DL2F8lYweRNj53zNZA/fNtYl69SZED.RHwhFT9ZS",
+        "2b_rounds_8": "$2b$08$n6AkkgeDvYIFZyfp.ouxo.eHMMn9ovMgSO49JdMjnHvBIbWjMu7iS",
+        "2b_rounds_10": "$2b$10$r7ltYTyEZPDdip00CDwlReGVLfte7t1AQE6p7Vt.3s9KkByMpbQTO",
+        "2b_rounds_12": "$2b$12$7ReT7npIj.IN7kQ8b7tmFe1B3/TJs94Tw8ry5Agubv/dgmWJcXyUa",
+        "2b_rounds_13": "$2b$13$25vzzasP6A4KekhvGPxmKOSf3IpDHfIYzkgcQixOFfJPoW16wau6u",
+        "ident_2a": "$2a$10$O1XVyoDwdO/AC3214WmJbOcYNIn34GmcwXYKSSeeyIXRCYqOh/8Ra",
+        "ident_2y": "$2y$10$z9d4UrF2qCPNPLBT4gNLmeaHwXRVutCIl8ZDrhQymJ7JDTNRyUIpm",
+        "ident_2b": "$2b$10$FdZZvOhczRKQ4Ul7KG0Wp.ImCO4m5EVai1ryRVMkvM4SGTo0RfQ4u"
+      }
+    },
+    {
+      "label": "unicode_cjk_90_bytes",
+      "password": "密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密",
+      "password_utf8_bytes": 90,
+      "password_chars": 30,
+      "hashes": {
+        "crypt_context_default": "$2b$12$HaxT5dmtyn3YUjZNIV1lw.WY1CVsdy.X81hSwgJICxvWNIcIqKADq",
+        "2b_rounds_4": "$2b$04$Fd.54Tf1aBxZxHCp.P5.Q.s.NQ1RbUpD.7rr5L0lp1haHB.FYUvhy",
+        "2b_rounds_8": "$2b$08$vPz9wTh416pl2zrbkH0kIuw.sMaW6O7ytb9C/EFvzPXxN1QBDGjKi",
+        "2b_rounds_10": "$2b$10$aTm18Ha36IfA8uPpGmTPSeFIGFELsU0V/L3czroVujz/ahgfZGJI2",
+        "2b_rounds_12": "$2b$12$qdpex18qehza0..SdvcyJeOdoCqutrwbaTiQvKh4aCIo88FpvyFiW",
+        "2b_rounds_13": "$2b$13$bsbZxEdWTSlPW.6shRJ0NukA7IFtY5Q3Ipx5Npj/1xTrZjfgFQ8Su",
+        "ident_2a": "$2a$10$0WggxiCZ0/r3zz.0exTJiuwCBP7VIaG0YjBdARt2KFZDN1vmB2E6W",
+        "ident_2y": "$2y$10$IOTmRVZhsXTOG1lUNKLnYO32dhsPXOe9tzmsr/dlicsMHfZE7qAdm",
+        "ident_2b": "$2b$10$h70gFHFkEZ1DEqV.AI8NbeDlZ6e5dhBUd6J7yvjsvJg4WWMRWpGya"
+      }
+    },
+    {
+      "label": "unicode_emoji_96_bytes",
+      "password": "🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐",
+      "password_utf8_bytes": 96,
+      "password_chars": 24,
+      "hashes": {
+        "crypt_context_default": "$2b$12$Z3VVaueT0.7C.YbC1JS8b.QtHHGotpXbR/r8cUnM9lxKwcgvbcbJS",
+        "2b_rounds_4": "$2b$04$Qt5kxtZ.wk42J484Fxlc1OmKXwFPzc0coxXzJCJA/33pN8Q9OA3Uy",
+        "2b_rounds_8": "$2b$08$YYCSXmPYHCQ1PuR/KSux9uX0MpJkc4IoF7USOk45/tB35GitMCl1i",
+        "2b_rounds_10": "$2b$10$CN/78qe0BRts7NwfP//aVONEGXJyupVpEDmM2x/6j73nd/yX8dkEu",
+        "2b_rounds_12": "$2b$12$ZbwSjI2W9NLL4Q88b3U1pOOQfcmZ.3UM1A1kqv.QJOPVQby3ZuFTq",
+        "2b_rounds_13": "$2b$13$agyNufEJNgiA0tLfXGvgHOnteFopF.PO/UcAA8dS6IJ13satdfc3e",
+        "ident_2a": "$2a$10$wKqSlftexinkN2arZpkWweyQpB0Hf8AB36KWBr2oH731fdTjAg7K.",
+        "ident_2y": "$2y$10$V9QsqR4BX4OGEwMQWe8ToOy9WP8fcRebqdeR.iYxZSP5eUyaL2WOi",
+        "ident_2b": "$2b$10$PgKjLkUopCrX6nz3ioJ7..NKEFbUlMZfuwxWq9yhiIMU.Tc/eaV7i"
+      }
+    },
+    {
+      "label": "unicode_emoji_split_codepoint",
+      "password": "x🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐🔐",
+      "password_utf8_bytes": 101,
+      "password_chars": 26,
+      "hashes": {
+        "crypt_context_default": "$2b$12$rF2zeYQHW0h9gRgakW/ORuMWp4AD5VWZI5oTqV3eWEreKWvIGx/v.",
+        "2b_rounds_4": "$2b$04$u2CGbH3gWrjuekcix.dNMeMNKXCeBn07je/so7a08LSoMhYFhkKIm",
+        "2b_rounds_8": "$2b$08$lk19oetbX0XEo4uEo5/W2uDgZ5Ju/qUfNzYkRqBCy9hh0cMvRe8US",
+        "2b_rounds_10": "$2b$10$krRI6Dy9H.JcQY5jsd.gV..Ejv.IQDQ6tRcYFOZXKsJ7LaNIJeVNy",
+        "2b_rounds_12": "$2b$12$EuYT9u8glMIPs3SI9OrbCuGDAA2z2Ob06UvtzRtH16g3ngm2PKpNa",
+        "2b_rounds_13": "$2b$13$ILcF5zM6UElfvYifSgOz2OCGrbG1nF.p6YNDncR68XWS7.Kf0/x0G",
+        "ident_2a": "$2a$10$Q4fWoFHNkhRf9HisWB4uxeGiFoiDhFQitnuFmYzOMrYNCXdafntkO",
+        "ident_2y": "$2y$10$h4WQQ07bUxsZeQvEai6BW.seIAzU0dAvgArIDrGcmapB3dRCSUSPa",
+        "ident_2b": "$2b$10$n/NW6x0nSI0wRz//svhD5Od/0yqd3EQ4zr.W35x.fN8DP3QOBGejm"
+      }
+    },
+    {
+      "label": "unicode_accented",
+      "password": "pässwort-über-café",
+      "password_utf8_bytes": 21,
+      "password_chars": 18,
+      "hashes": {
+        "crypt_context_default": "$2b$12$dmLJRJEmxJ0fpCC4iD/wsOoJfuiSAh8VbNgmLyLz/cjLj8L3aoAq2",
+        "2b_rounds_4": "$2b$04$15i13T7zw1fmFBOCuQbJpuCQjcNr6xTymFMgeRXEQgscxtnIEGSIe",
+        "2b_rounds_8": "$2b$08$3TqP7PrchxCH4Zy.SKvRTeV0VIXwfWBvb89JxY8/3IsVdK5FMRfGm",
+        "2b_rounds_10": "$2b$10$zh2L9jpa5uwqrxymLFEynOh8UkZVLKjxfEPyi4jeG6mkTLQx78qs2",
+        "2b_rounds_12": "$2b$12$lb2/obAp/7pFvFygP7NJUOb5mHwXBu0rIn8LDRMZVSs1.FziGYiDW",
+        "2b_rounds_13": "$2b$13$QJZygBch3ilZZDd/TxRrzeubn5GIUeQ1iIIKa1Jm5WmhlfAC.AmCu",
+        "ident_2a": "$2a$10$.weYUAPsOoT2asUNkW/NUu0QEqFVgLIFpIEVubi9TFAFT4tX8qz12",
+        "ident_2y": "$2y$10$AqvXtwgLPmA7LlsF8tLmoOIHXRDMSgmy0Lm.Jv9b0TEijILOfztSS",
+        "ident_2b": "$2b$10$Yp/O3vN6aPMym028iWSUIehef3JxFedNVTz6DpsCK7SC3OPcZmdFq"
+      }
+    },
+    {
+      "label": "unicode_mixed_74_bytes",
+      "password": "cafézzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "password_utf8_bytes": 74,
+      "password_chars": 73,
+      "hashes": {
+        "crypt_context_default": "$2b$12$D4XJqROZPRQA.nH8V4hLCuWyx5MK0G2QH7HNf1rNeP6tBGVjWhh.W",
+        "2b_rounds_4": "$2b$04$eMUHJ7ag8gukyUAE9BvHOOK.kymKEWSvXOB.ERV2dBSJxr6eb/Bqa",
+        "2b_rounds_8": "$2b$08$3hr/66VYYe5VKKTVbIRzgenlSwA4PUHbGFlvTvDlOymUnPw830b4K",
+        "2b_rounds_10": "$2b$10$J0H0TaZXYdcFnex9nx6oNua4222JACNR1vxLS6j3OeieriIMs7XWq",
+        "2b_rounds_12": "$2b$12$DqDmqZnYFngDkDf6BjZtp.Ap9y86g.Pt11f7BRUmMcysJB8KI2L0K",
+        "2b_rounds_13": "$2b$13$D8qZ/P2QHZ6E50pykGKDcOT0ByViuhbu7GNF4NtugHlbhA6BCJPc.",
+        "ident_2a": "$2a$10$VgvkPjnaa4ZAp3T.TM.HOuao3It2XKQfC6M0TbQ7uMqlSshYxxQW2",
+        "ident_2y": "$2y$10$oS5WFSGtWn52w8PpUFzCR.2gVuOreh.zxAK77BNTV.2pimikkFnCG",
+        "ident_2b": "$2b$10$hxuqoBs3B0sh4dfhQywtdu/grdROtYOKwjuHzDI3ZY4cZOuR4r7pu"
+      }
+    },
+    {
+      "label": "whitespace_and_symbols",
+      "password": "  spaced \t pass \n word  ",
+      "password_utf8_bytes": 24,
+      "password_chars": 24,
+      "hashes": {
+        "crypt_context_default": "$2b$12$or8Jo1QcRhn8qR1QQ8PwM.mu3xRBBwqHhG7Zx..BEqT2ATR8Y2TyO",
+        "2b_rounds_4": "$2b$04$bda8b6zLVTDltpa4qtvYEeRz8qskpu8R/wn/poJj1eKBtZXFt6JbS",
+        "2b_rounds_8": "$2b$08$9N2iHzmnfkIwAn4DjyAmcujckw9xRDPuCC6nr1d60SrLJD0U0aIke",
+        "2b_rounds_10": "$2b$10$DQmlZTsdQ3SMv.oqDfvxqekAP0ODFolNJZ1ZaCX4vIHfmenzWh4s2",
+        "2b_rounds_12": "$2b$12$u4yt0RMfX4ja39baBPLWU.J.8Op41m7aVkBNMrsO8MVuMCjyAphRa",
+        "2b_rounds_13": "$2b$13$asAZEvfFPmb5SVSoJbT..uwctHYkf9EPIEVUgrC/pNBVlnKcjuBxW",
+        "ident_2a": "$2a$10$ww3dpNLLxvxVYq1bfsQeVuG6WzDwruqZMsWzTm2ZaEjQzjqSO9qFq",
+        "ident_2y": "$2y$10$B6uQKEg2x/OFF6Jyxoxe9ugEBoO5Bm6gw/APa56kPKhEv5LF9tmHW",
+        "ident_2b": "$2b$10$HtmZDsgpXnxGxmr3VQOXqOZIsUJEII/mJ/vykiC9bNaiuMXP2riFS"
+      }
+    }
+  ]
+}
