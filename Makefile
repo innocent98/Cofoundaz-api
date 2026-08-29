@@ -2,6 +2,7 @@
 
 .PHONY: help install dev-install run test test-cov e2e lint format clean docker-build docker-up docker-down migrate shell \
 	prod-up prod-down prod-logs prod-migrate prod-ps prod-config ci-local docker-scan lint-actions \
+	image-check \
 	quality scan sbom \
 	env-generate-key env-encrypt-staging env-encrypt-production env-decrypt-staging \
 	env-decrypt-production env-verify env-diff
@@ -47,6 +48,8 @@ help:
 	@echo "                       checkov, trivy fs/config/image"
 	@echo "  make sbom          - Generate a CycloneDX SBOM from the built image"
 	@echo "  make docker-scan   - Build the image and scan it with Trivy"
+	@echo "  make image-check   - Boot the image with its OWN gunicorn CMD and assert"
+	@echo "                       workers, health, readiness and graceful shutdown"
 
 install:
 	poetry install --only main
@@ -66,6 +69,15 @@ test-cov:
 
 e2e:
 	./scripts/e2e_run.sh
+
+# Boots the image with NO command override -- the one thing `make e2e` cannot
+# cover, because e2e_run.sh runs bare uvicorn on the host rather than gunicorn
+# in the container. Same script CI's `build` job runs.
+image-check:
+	docker build -t cofoundaz-api:ci \
+		--build-arg GIT_SHA=$$(git rev-parse --short HEAD) \
+		--build-arg VERSION=local-check .
+	./scripts/image_cmd_check.sh cofoundaz-api:ci
 
 lint:
 	poetry run black --check app tests
@@ -171,30 +183,32 @@ prod-down: $(PROD_ENV_FILE)
 # instead of debugged by pushing commits. Requires the dev db+redis to be up
 # (`make docker-up`) for the test and e2e stages.
 ci-local:
-	@echo "==> [1/6] lint"
+	@echo "==> [1/7] lint"
 	poetry run black --check app tests
 	poetry run isort --check-only app tests
 	poetry run ruff check app tests
 	poetry run mypy app
-	@echo "==> [2/6] lockfile"
+	@echo "==> [2/7] lockfile"
 	poetry check --lock
-	@echo "==> [3/6] unit tests + coverage gate"
+	@echo "==> [3/7] unit tests + coverage gate"
 	poetry run pytest --cov=app --cov-report=term-missing --cov-fail-under=95
-	@echo "==> [4/6] migrations"
+	@echo "==> [4/7] migrations"
 	@HEADS=$$(poetry run alembic heads | grep -c '(head)'); \
 		echo "alembic heads: $$HEADS"; \
 		if [ "$$HEADS" -ne 1 ]; then echo "ERROR: expected exactly 1 head"; exit 1; fi
 	poetry run alembic upgrade head
 	poetry run alembic check
-	@echo "==> [5/6] e2e"
+	@echo "==> [5/7] e2e"
 	./scripts/e2e_run.sh
-	@echo "==> [6/6] image build + smoke"
+	@echo "==> [6/7] image build + smoke"
 	docker build -t cofoundaz-api:ci-local \
 		--build-arg GIT_SHA=$$(git rev-parse --short HEAD) \
 		--build-arg BUILD_DATE=$$(date -u +%Y-%m-%dT%H:%M:%SZ) .
 	docker run --rm -e SECRET_KEY=ci -e DATABASE_URL=postgresql://u:p@h:5432/d \
 		-e FIRST_SUPERUSER_EMAIL=a@b.com -e FIRST_SUPERUSER_PASSWORD=x -e LOG_FILE_PATH= \
 		cofoundaz-api:ci-local python -c "import app.main; print('image smoke OK')"
+	@echo "==> [7/7] image CMD check (gunicorn, workers, readiness, graceful stop)"
+	./scripts/image_cmd_check.sh cofoundaz-api:ci-local
 	@echo "==> CI-local complete"
 
 lint-actions:

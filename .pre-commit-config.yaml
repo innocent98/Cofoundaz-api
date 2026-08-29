@@ -11,26 +11,32 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
+  # KEEP THESE REVS IN STEP WITH poetry.lock. A hook pinned to a different
+  # version than CI runs is worse than no hook: it formats or lints one way
+  # locally and CI demands another, and the developer loops. Concretely, ruff
+  # v0.8.0 has no UP042 rule while the locked 0.16.5 does - pre-commit would
+  # have passed a file CI then rejected.
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 26.5.1
     hooks:
       - id: black
         language_version: python3.11
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.13.0
+    rev: 6.1.0
     hooks:
       - id: isort
         args: ["--profile", "black"]
 
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.8.0
+  # astral-sh is the canonical home; charliermarsh/ still redirects.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
     hooks:
       - id: ruff
         args: ["--fix"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         additional_dependencies: [types-all]
