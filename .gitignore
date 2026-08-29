@@ -81,6 +81,14 @@ venv.bak/
 # poetry.lock is INTENTIONALLY TRACKED: it is what makes container builds and CI
 # reproducible. Do not re-ignore it.
 
+# Claude Code
+# Machine-local settings, plus `.claude/worktrees/` — where agent worktrees put a
+# FULL nested checkout of this repo (megabytes of it). Neither belongs in git, and
+# nothing under .claude/ is tracked today. If shared project-level Claude config is
+# ever wanted in version control, narrow this to `.claude/settings.local.json` and
+# `.claude/worktrees/` rather than re-allowing the whole directory.
+.claude/
+
 # IDEs
 .vscode/
 .idea/

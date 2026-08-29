@@ -55,7 +55,11 @@ bcrypt = "^4.0.1"
 sqlalchemy = "^2.0.41"
 alembic = "^1.15.0"
 loguru = "^0.7.3"
-emails = "^0.6"
+# FLOOR IS THE VERIFIED VERSION, NOT THE OLD ONE. Dependabot proposed
+# ">=0.6,<1.2", which leaves emails 0.6 resolvable - the exact version whose
+# untyped mail_from contract app/platform/email.py was fixed for. A resolver
+# picking it again would silently reintroduce the From-less message bug.
+emails = ">=1.1.2,<1.2"
 jinja2 = "^3.1.6"
 email-validator = "^2.2.0"
 httpx = "^0.27.0"
@@ -68,18 +72,22 @@ pyotp = "^2.10.0"
 cryptography = "^50.0.0"
 
 [tool.poetry.group.dev.dependencies]
+# Floors are the versions actually verified on this tree, not the superseded ones
+# dependabot's widened ranges left resolvable. Ceilings are dependabot's, so it can
+# still propose the next major. A floor below the locked version means a fresh
+# `poetry lock` can pick a formatter or linter that disagrees with CI.
 pytest = "^8.3.0"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^6.0.0"
+pytest-asyncio = ">=1.4,<1.5"
+pytest-cov = ">=7.1,<8"
 pytest-mock = "^3.14.0"
-black = "^24.10.0"
+black = ">=26.5.1,<27.0"
 flake8 = "^7.1.0"
-mypy = "^1.13.0"
-isort = "^5.13.0"
-pylint = "^3.3.0"
+mypy = ">=2.3.1,<3.0"
+isort = ">=6.1,<7.0"
+pylint = ">=4.0.7,<5.0"
 pre-commit = "^4.0.0"
-ipython = "^8.29.0"
-ruff = "^0.8.0"
+ipython = ">=9.17,<10.0"
+ruff = ">=0.16.5,<0.17"
 bandit = "^1.9.4"
 radon = "^6.0.1"
 

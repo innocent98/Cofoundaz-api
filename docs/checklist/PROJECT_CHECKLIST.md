@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-29 · `feat/nginx-edge-tls` (nginx edge + two-stack compose; branched off `main` @ `f75d62f`)_
+_Last reconciled: 2026-08-29 · `feat/nginx-edge-tls` (nginx TLS edge + two-stack compose, PR #31) on top of the image-CMD CI gate, dependency fixes and the weekend test bug (PR #28, merged)_
 
 ---
 
@@ -25,9 +25,7 @@ _Last reconciled: 2026-08-29 · `feat/nginx-edge-tls` (nginx edge + two-stack co
 | 🟡 In progress | 0 | — |
 | ⬜ Planned / next | 21 | Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~63 endpoints · 398 unit tests (real Postgres) + 26 live E2E · ~98% coverage · black/isort/ruff/mypy clean · zero AI-attribution trailers.
-
-**Health at a glance:** ~60 endpoints · 353 unit tests (real Postgres) + 26 live E2E · 98.39% coverage · black/isort/ruff (incl. C901)/mypy clean · pylint 9.94/10 · radon average complexity **A (2.30)**, every module MI **A** · bandit / hadolint / `trivy config` / checkov all exit 0 · zero AI-attribution trailers.
+**Health at a glance:** ~63 endpoints · **410 unit tests** (real Postgres) + **27 live E2E** · **98.39% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
 ---
 
@@ -306,6 +304,51 @@ verified locally, and the CI workflows have now had a first real run on GitHub
       `python-jose`) — CI expected red until triaged · real VPS deploy (SSH, nginx, UFW, GHCR
       push/pull) never attempted · CPU reservations are no-ops outside Swarm (memory
       reservations do apply) · `UvicornWorker` deprecated upstream (works on uvicorn 0.32.1)
+
+## ✅ CI hardening & dependency debt — *shipped on `ci/exercise-image-cmd-and-dep-fixes` (2026-08-29)*
+
+_The image's own `CMD` had never been executed by anything. SOP:
+`docs/sop/2026-08-29-image-cmd-gate-and-dependency-fixes.md`._
+
+- [x] **Image-CMD gate** (`scripts/image_cmd_check.sh`, BLOCKS in `ci.yml`'s `build` job) —
+      runs the image with NO command override against throwaway Postgres/Redis on a
+      user-defined network. Asserts the gunicorn `CMD` is still declared, the uvicorn
+      worker class loads, `WEB_CONCURRENCY` really drives the worker count (set to 3, not
+      the baked default 4, so a hardcoded `--workers` cannot pass), the container reaches
+      Docker `healthy` on the image's own HEALTHCHECK timings, `/health` 200,
+      `/api/v1/health/ready` 200 with both dependencies ok (JSON-parsed, not grepped), no
+      worker churn, and **SIGTERM drains to exit 0, not 137**
+- [x] Gate proven to bite before being trusted — an image hardcoding `--workers 2` fails on
+      worker count; an image whose PID 1 swallows SIGTERM fails on exit 137, **having passed
+      every other assertion**
+- [x] Also runnable locally as `make image-check`; `make ci-local` grows a 7th stage
+- [x] **PR #22** — `emails` 0.6 → 1.1.2 landed with a real fix: 1.x makes the `mail_from`
+      ADDRESS non-optional, and `(None, None)` builds **no `From` header at all**, which
+      every MTA rejects while `send()`'s discarded result hides it. Unset
+      `EMAILS_FROM_EMAIL` now raises instead of being cast away. `app/platform/email.py`
+      → 100% covered (it had **no** SMTP tests before)
+- [x] **PR #19** — dev-tooling group landed (mypy 2.3.1, black 26.5.1, pylint 4.0.7,
+      ruff 0.16.5, isort 6.1.0, pytest-asyncio 1.4.0, pytest-cov 7.1.0, ipython 9.17.0).
+      Its "19 errors" were **ruff `UP042`, not mypy** — ruff runs first, so mypy never
+      executed on that PR. Fixed by migrating 19 enums to `enum.StrEnum` after proving it
+      safe: `name == value` everywhere, SQLAlchemy persists by name, `alembic check` shows
+      no drift, no `str()`/f-string of any member in `app/`, and all 25 live API captures
+      unchanged
+- [x] **Weekend CI bug fixed** — six `test_mission_generate.py` tests asserted on generated
+      mission tasks without pinning the date, so they passed Mon–Fri and failed **every
+      Saturday and Sunday** on unmodified `main` (the service correctly returns an empty
+      "weekends off" mission). A `weekday` fixture shifts the service's today forward to
+      Monday on weekends and is a no-op on a weekday
+- [ ] **PR #24 (`gunicorn` 26.2.0) — verified but NOT merged.** Workers, readiness,
+      `--graceful-timeout` and graceful-stop exit 0 all hold, but gunicorn ≥ 25.1.0 starts a
+      control socket by default under `$HOME`, and our `read_only: true` production container
+      logs `[ERROR] Control server error: ... Read-only file system` on **every boot**.
+      Needs `--no-control-socket` added to the Dockerfile `CMD` **in the same commit** — the
+      flag does not exist in 23.0.0, so landing it first breaks startup outright
+- [ ] _Deferred:_ migrate off the deprecated `uvicorn.workers` module to
+      `uvicorn-worker==0.3.0` (`0.4.0` needs `uvicorn>=0.36.0`, our pin forbids it) ·
+      widen the image-CMD gate to also run `alembic upgrade head` through the image ·
+      `SC2329` false positive on `cleanup()` in `scripts/e2e_run.sh`
 
 ---
 
