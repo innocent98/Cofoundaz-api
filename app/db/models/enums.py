@@ -1,20 +1,20 @@
 import enum
 
 
-class UserStatus(str, enum.Enum):
+class UserStatus(enum.StrEnum):
     pending_verification = "pending_verification"
     active = "active"
     locked = "locked"
     disabled = "disabled"
 
 
-class MfaType(str, enum.Enum):
+class MfaType(enum.StrEnum):
     none = "none"
     totp = "totp"
     sms = "sms"
 
 
-class BusinessModel(str, enum.Enum):
+class BusinessModel(enum.StrEnum):
     b2b = "b2b"
     b2c = "b2c"
     b2b2c = "b2b2c"
@@ -23,7 +23,7 @@ class BusinessModel(str, enum.Enum):
     services = "services"
 
 
-class StartupStage(str, enum.Enum):
+class StartupStage(enum.StrEnum):
     idea = "idea"
     validation = "validation"
     build = "build"
@@ -32,7 +32,7 @@ class StartupStage(str, enum.Enum):
     scale = "scale"
 
 
-class MembershipRole(str, enum.Enum):
+class MembershipRole(enum.StrEnum):
     founder = "founder"
     team_member = "team_member"
     mentor = "mentor"
@@ -42,13 +42,13 @@ class MembershipRole(str, enum.Enum):
     investor = "investor"
 
 
-class MembershipStatus(str, enum.Enum):
+class MembershipStatus(enum.StrEnum):
     active = "active"
     suspended = "suspended"
     removed = "removed"
 
 
-class JobStatus(str, enum.Enum):
+class JobStatus(enum.StrEnum):
     queued = "queued"
     running = "running"
     succeeded = "succeeded"
@@ -56,36 +56,36 @@ class JobStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
-class AuthTokenPurpose(str, enum.Enum):
+class AuthTokenPurpose(enum.StrEnum):
     email_verification = "email_verification"
     # nosec B105 - an enum member naming a token PURPOSE, not a password value.
     password_reset = "password_reset"  # nosec B105
 
 
-class OAuthProvider(str, enum.Enum):
+class OAuthProvider(enum.StrEnum):
     google = "google"
     apple = "apple"
 
 
-class InvitationStatus(str, enum.Enum):
+class InvitationStatus(enum.StrEnum):
     pending = "pending"
     accepted = "accepted"
     expired = "expired"
     revoked = "revoked"
 
 
-class AssessmentType(str, enum.Enum):
+class AssessmentType(enum.StrEnum):
     initial = "initial"
     quarterly = "quarterly"
 
 
-class AssessmentStatus(str, enum.Enum):
+class AssessmentStatus(enum.StrEnum):
     in_progress = "in_progress"
     completed = "completed"
     abandoned = "abandoned"
 
 
-class Dimension(str, enum.Enum):
+class Dimension(enum.StrEnum):
     product = "product"
     market = "market"
     money = "money"
@@ -93,36 +93,36 @@ class Dimension(str, enum.Enum):
     team = "team"
 
 
-class RecommendationEffort(str, enum.Enum):
+class RecommendationEffort(enum.StrEnum):
     low = "low"
     medium = "medium"
     high = "high"
 
 
-class RecommendationStatus(str, enum.Enum):
+class RecommendationStatus(enum.StrEnum):
     pending = "pending"
     accepted = "accepted"
     dismissed = "dismissed"
 
 
-class RoadmapStatus(str, enum.Enum):
+class RoadmapStatus(enum.StrEnum):
     todo = "todo"
     in_progress = "in_progress"
     done = "done"
 
 
-class TaskEffort(str, enum.Enum):
+class TaskEffort(enum.StrEnum):
     small = "small"
     medium = "medium"
     large = "large"
 
 
-class MissionStatus(str, enum.Enum):
+class MissionStatus(enum.StrEnum):
     pending = "pending"
     complete = "complete"
 
 
-class MissionTaskStatus(str, enum.Enum):
+class MissionTaskStatus(enum.StrEnum):
     todo = "todo"
     done = "done"
     snoozed = "snoozed"
