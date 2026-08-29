@@ -1,5 +1,29 @@
 # Dependabot configuration.
 #
+# ============================================================================
+# PAUSED 2026-08-29: `open-pull-requests-limit: 0` on every ecosystem, which
+# stops Dependabot opening version-update PRs. The config is kept rather than
+# deleted so the schedules, groupings and rationale below survive, and so
+# re-enabling is a one-character change per ecosystem rather than a rewrite.
+#
+# WHAT THIS DOES NOT DISABLE: repository-level "Dependabot security updates"
+# and the Dependabot alerts feed are separate settings in the repo's Security
+# tab. If those are on, security PRs can still appear; turn them off there if
+# that is also wanted.
+#
+# WHAT STILL CATCHES VULNERABLE DEPENDENCIES: CI does, and it BLOCKS.
+# `pip-audit` runs against the locked production set and `trivy image` /
+# `trivy fs` scan the built image, both failing the build on findings. So
+# pausing Dependabot costs the automatic fix PRs, not the detection.
+#
+# THE COST, STATED PLAINLY: this repo pins GitHub Actions to full commit SHAs
+# and the Docker base image to a digest. Pinning without a mechanism to MOVE
+# the pin is strictly worse than not pinning - within months you are running a
+# base image with months of unpatched CVEs, confidently and reproducibly. While
+# this is paused, moving those pins is a MANUAL job. The Dockerfile's header
+# documents how to refresh the digest by hand.
+# ============================================================================
+#
 # WHY THIS EXISTS: this repo pins GitHub Actions to full commit SHAs and the
 # Docker base image to a digest. That is the correct posture - a tag is mutable
 # and `actions/checkout@v5` can be re-pointed at any commit by whoever controls
@@ -20,7 +44,7 @@ updates:
       day: monday
       time: "05:00"
       timezone: Etc/UTC
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0   # PAUSED - restore (5 / 5 / 3) to resume
     labels: ["dependencies", "python"]
     commit-message:
       prefix: "chore(deps)"
@@ -46,7 +70,7 @@ updates:
       day: monday
       time: "05:00"
       timezone: Etc/UTC
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0   # PAUSED - restore (5 / 5 / 3) to resume
     labels: ["dependencies", "github-actions"]
     commit-message:
       prefix: "ci(deps)"
@@ -72,7 +96,7 @@ updates:
       day: monday
       time: "05:00"
       timezone: Etc/UTC
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0   # PAUSED - restore (5 / 5 / 3) to resume
     labels: ["dependencies", "docker"]
     commit-message:
       prefix: "chore(docker)"
