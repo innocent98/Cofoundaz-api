@@ -686,6 +686,39 @@ jobs:
           docker run --rm cofoundaz-api:ci alembic --help > /dev/null
           echo "alembic CLI present in image OK"
 
+      - name: Run the image the way production runs it
+        # BLOCKS. Closes the largest hole in this pipeline: until this step,
+        # NOTHING in the repository had ever started the image's own CMD.
+        #
+        #   - the smoke test above overrides it (`python -c ...`, `alembic --help`)
+        #   - scripts/e2e_run.sh boots bare `uvicorn` on the host: one process,
+        #     no arbiter, no prefork, no signal forwarding through tini
+        #   - docker-compose.yml (dev) overrides it with reloading uvicorn
+        #
+        # So gunicorn, the uvicorn worker class, WEB_CONCURRENCY,
+        # --graceful-timeout and the rest of the CMD shipped to production
+        # completely unexercised - a gunicorn major bump or a worker class
+        # deprecated out from under us would have been discovered on the VPS.
+        #
+        # The script asserts the container reaches Docker's HEALTHY state on the
+        # image's own HEALTHCHECK timings, that WEB_CONCURRENCY actually
+        # determines the worker count (it overrides the baked default so a
+        # hardcoded --workers could not pass), that /health and
+        # /api/v1/health/ready both answer 200 with database AND redis ok, that
+        # no worker churns while serving, and - the one this exists for - that
+        # SIGTERM drains to EXIT CODE 0 rather than 137. A 137 is SIGKILL, which
+        # means every deploy severs in-flight requests.
+        #
+        # Verified to actually bite before being trusted here: against an image
+        # whose CMD hardcodes --workers it fails on the worker count, and
+        # against an image whose PID 1 swallows SIGTERM it fails on exit 137 -
+        # and that second image passed every other assertion in this file,
+        # including the healthcheck and both endpoints.
+        #
+        # Same script `make image-check` runs locally, deliberately: what CI
+        # proves is what a developer can reproduce. ~15s including dependencies.
+        run: ./scripts/image_cmd_check.sh cofoundaz-api:ci
+
       - name: Generate SBOM (CycloneDX)
         # A Software Bill of Materials for the image that was just built. Its
         # value is retrospective: when the next critical CVE lands, "are we
