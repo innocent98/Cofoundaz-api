@@ -31,7 +31,9 @@ per the project's endpoint-is-a-thin-adapter convention.
   without a follow-up schema PR.
 - **`app/api/v1/endpoints/auth/registration.py`** (new):
   - `POST /signup` (201): `validate_password_strength` first (422 `WEAK_PASSWORD`
-    on failure), then duplicate-email check (409 `EMAIL_TAKEN`), then creates a
+    on failure; **since 2026-08-29 also 422 `PASSWORD_TOO_LONG` above 72 UTF-8
+    bytes** — see `docs/sop/2026-08-29-passlib-to-bcrypt5-migration.md`), then
+    duplicate-email check (409 `EMAIL_TAKEN`), then creates a
     pending `User` + `UserProfile`, issues a 24h `email_verification` token, sends
     the verification email via `get_email_sender()`, writes an
     `auth.user.registered` audit row, publishes `auth.user.registered` on the

@@ -36,6 +36,18 @@ class WeakPassword(AppError):  # noqa: N818
     message = "Add a number and make it at least 8 characters."
 
 
+class PasswordTooLong(AppError):  # noqa: N818
+    # bcrypt consumes only the first 72 bytes of a secret. Passwords over that
+    # length were previously accepted and SILENTLY TRUNCATED, so two passwords
+    # sharing a 72-byte prefix logged into the same account. Rejecting at the
+    # boundary stops that population from growing; already-stored hashes are
+    # unaffected and still verify (app/core/security.py truncates on verify).
+    # Set-password paths only -- never applied to login, which must keep
+    # accepting the long passwords existing users already have.
+    code, http_status = "PASSWORD_TOO_LONG", 422
+    message = "That password is too long. Emoji and accented letters take up extra room."
+
+
 class InvalidCredentials(AppError):  # noqa: N818
     code, http_status = "INVALID_CREDENTIALS", 401
     message = "That email and password don't match."
