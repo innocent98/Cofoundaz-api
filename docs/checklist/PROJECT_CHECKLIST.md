@@ -11,7 +11,7 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-28 · `feat/staging-pipeline-env-encryption` (staging gate + env encryption; branched off `main` @ `bbd59a6` with PRs #18 and #25 merged)_
+_Last reconciled: 2026-08-29 · `feat/nginx-edge-tls` (nginx edge + two-stack compose; branched off `main` @ `f75d62f`)_
 
 ---
 
@@ -193,7 +193,9 @@ verified locally, and the CI workflows have now had a first real run on GitHub
 
 - [x] `docker-compose.prod.yml` — no host-published Postgres/Redis, `migrate` one-shot gated by
       `service_completed_successfully`, resource limits, json-file log rotation, own compose
-      project name (`cofoundaz-api-prod`) so `down -v` can't touch the dev stack's volumes
+      project name so `down -v` can't touch the dev stack's volumes. **Superseded 2026-08-29:**
+      the project name is now `${COMPOSE_PROJECT_NAME:-cofoundaz-api-prod}` and the fixed
+      `container_name:` keys are gone, so one file serves both stacks — see the nginx section
 - [x] `docker-compose.yml` made honestly dev-only
 - [x] Production `Dockerfile` rewritten — Poetry 2.2.1 (was 1.8.4, couldn't read the
       lock-version 2.1 lockfile), tini + gunicorn/uvicorn workers, `libpq-dev`/pip/setuptools/wheel
@@ -307,6 +309,71 @@ verified locally, and the CI workflows have now had a first real run on GitHub
 
 ---
 
+## ✅ Edge — nginx, TLS & two stacks on one VPS — *on `feat/nginx-edge-tls`*
+
+_The front door, plus the compose blocker that made a second stack impossible. Everything
+below is verified LOCALLY — a real nginx parsing and serving the real configuration against
+the real application. **No VPS, no DNS, no certificate, no real handshake.** See
+`docs/sop/2026-08-29-nginx-edge-two-stack-compose.md` and
+`docs/deployment/NGINX_TLS.md`._
+
+- [x] **Two stacks on one host** — `docker-compose.prod.yml` parameterised: project name from
+      `COMPOSE_PROJECT_NAME` (default unchanged), all four `container_name:` keys removed
+      (a fixed container name is global to the daemon, so it collides regardless of project),
+      `API_PORT` per environment — production 8000, staging 8001
+- [x] **Volume separation proven, not assumed** — both stacks up simultaneously; distinct
+      containers, networks, ports and volumes; a marker row written into each Postgres and read
+      back from the correct one; `down -v` on staging destroyed only staging's three volumes and
+      production's marker row survived
+- [x] Every reference to the old container names audited — `deploy-stack` already resolved via
+      `docker compose … ps -q api`; `Makefile` goes through `$(PROD_COMPOSE)`; only prose in
+      three docs named them
+- [x] **Bug found and fixed:** `API_PORT` was read as `grep … | cut … || echo 8000` in three
+      places. `||` tests the last command and `cut` exits 0 on empty input, so a missing
+      `API_PORT` gave `http://127.0.0.1:/…` and rolled the deploy back for the wrong reason.
+      Fixed in `deploy-stack/action.yml`, `cd.yml` and the `Makefile`
+- [x] **nginx configuration version-controlled** in `deploy/nginx/` — http-level `conf.d/`
+      (TLS, hardening, upstreams, rate-limit zones), shared `snippets/`, thin per-host vhosts,
+      an ACME bootstrap vhost, and a `default_server` catch-all using `ssl_reject_handshake`
+- [x] TLS 1.2 floor, ECDHE-only ciphers, session cache with tickets off, HTTP/2, HTTP→HTTPS
+      301, HSTS **without `preload`** on either host (an apex-wide, irreversible decision that
+      is not a subdomain's to make)
+- [x] Security headers on every response including 4xx/5xx (`always`), strict `default-src
+      'none'` CSP for the API, a separate relaxed CSP for the docs pages
+- [x] `client_max_body_size` — `1m` globally, `3m` on `= /api/v1/onboarding/logo`, sized so a
+      2–3 MB upload reaches the app and gets its actionable 422 instead of nginx's HTML 413
+- [x] Edge rate limiting as a coarse backstop ~15× above the app's per-user budget, in separate
+      zones per environment; staging's auth zone deliberately looser so the CD gate cannot 429
+      itself
+- [x] JSON error pages for 413/429/502/503/504 in the app's own `{"error":{"code",…}}` envelope,
+      with `proxy_intercept_errors off` so the application's own bodies pass through untouched
+- [x] gzip on; brotli and HTTP/3 shipped **commented** with the exact enablement steps — both
+      fail to parse on an nginx without the module/build, so neither may be enabled blind
+- [x] `deploy/nginx/test/verify-local.sh` — real nginx, real backends, self-signed certs at the
+      real cert paths: **`nginx -t` clean, 35 assertions, 0 failures**
+- [x] `docs/deployment/NGINX_TLS.md` — DNS, first-time setup, certbot `--webroot`, renewal and
+      how to prove it before it matters, the port map, and 502/504/handshake troubleshooting
+- [x] `DEPLOYMENT_GUIDE.md` / `GITHUB_ACTIONS_SETUP.md` corrected — **nginx is a hard
+      prerequisite for the staging E2E gate**, and therefore for reaching production at all.
+      Neither document said so
+- [ ] **`X-Forwarded-For` defect — diagnosed and proven, deliberately NOT fixed here.** Behind
+      nginx every unauthenticated request keys the app's limiter on the Docker bridge gateway,
+      so login/signup/forgot-password share one 120/min bucket for the whole internet. The fix
+      is one env var, `FORWARDED_ALLOW_IPS=*`, in each encrypted `.env` — Adebayo's action.
+      (A CIDR does **not** work: gunicorn rejects it and the container crash-loops.) Documented
+      in `.env.production.example` and NGINX_TLS.md §11
+- [ ] **Staging posture decided, not enforced** — recommendation is no auth: `noindex`, full
+      TLS/header parity, rate limits, docs served (the gate needs `openapi.json`; production
+      404s all three). Basic auth is documented and ready to uncomment, with the CD credential
+      path verified against the pinned httpx — but it is **off**
+- [ ] _Deferred:_ nothing has touched a real VPS — no certificate, no handshake, no SSL Labs
+      grade, no certbot renewal, HTTP/3 and brotli never parsed by a capable nginx · the nginx
+      upstreams hardcode 8000/8001 while the stacks read `API_PORT` from `.env`, with nothing
+      enforcing agreement · no off-host certificate-expiry monitoring · `deploy/nginx/` is not
+      linted by CI
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
@@ -384,3 +451,13 @@ verified locally, and the CI workflows have now had a first real run on GitHub
       package — works today on uvicorn 0.32.1
 - [ ] Local venv runs Python 3.14 while the project targets 3.11 (CI uses 3.11) — pre-existing,
       not introduced by the deployment hardening pass
+- [ ] **`FORWARDED_ALLOW_IPS=*` is not set in any real environment.** Until it is added to
+      `.env.staging` / `.env.production` and re-encrypted, the app's anonymous rate limit is a
+      single global bucket and `X-Forwarded-Proto` is not honoured behind nginx
+- [ ] nginx upstream ports (8000/8001 in `deploy/nginx/conf.d/20-upstreams.conf`) and each
+      stack's `API_PORT` must agree; nothing enforces it. Disagreement shows up as a 502 on one
+      vhost only. A deploy-time assertion would close it
+- [ ] No certificate-expiry monitoring from off-host — certbot can fail silently on a rate limit
+      or a DNS change
+- [ ] `deploy/nginx/` has no CI coverage. A job running just `nginx -t` inside the nginx
+      container would be cheap and is not done
