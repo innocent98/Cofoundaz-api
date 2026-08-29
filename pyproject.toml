@@ -90,14 +90,14 @@ cryptography = "^50.0.0"
 # dependabot's widened ranges left resolvable. Ceilings are dependabot's, so it can
 # still propose the next major. A floor below the locked version means a fresh
 # `poetry lock` can pick a formatter or linter that disagrees with CI.
-pytest = "^8.3.0"
+pytest = ">=8.3,<10.0"
 pytest-asyncio = ">=1.4,<1.5"
 pytest-cov = ">=7.1,<8"
 pytest-mock = "^3.14.0"
 black = ">=26.5.1,<27.0"
 flake8 = "^7.1.0"
 mypy = ">=2.3.1,<3.0"
-isort = ">=6.1,<7.0"
+isort = ">=6.1,<9.0"
 pylint = ">=4.0.7,<5.0"
 pre-commit = "^4.0.0"
 ipython = ">=9.17,<10.0"
