@@ -271,8 +271,13 @@ jobs:
             # run partway through a 120/minute budget and fail on 429s that have
             # nothing to do with the change under test.
             docker compose -f docker-compose.prod.yml --env-file .env restart api
+            # Same sed-not-grep|cut reasoning as .github/actions/deploy-stack:
+            # `cut` exits 0 on empty input, so the `||` default never fired and a
+            # missing API_PORT yielded `http://127.0.0.1:/...`. Staging runs on
+            # 8001, so this value is no longer incidental.
+            API_PORT="$(sed -n 's/^API_PORT=//p' .env | tail -n 1)"
             for _ in $(seq 1 40); do
-              if curl -fsS --max-time 5 "http://127.0.0.1:$(grep -E '^API_PORT=' .env | cut -d= -f2 || echo 8000)/api/v1/health/ready" >/dev/null 2>&1; then
+              if curl -fsS --max-time 5 "http://127.0.0.1:${API_PORT:-8000}/api/v1/health/ready" >/dev/null 2>&1; then
                 echo "staging api back up after limiter reset"; exit 0
               fi
               sleep 3

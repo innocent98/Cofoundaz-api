@@ -52,6 +52,25 @@ set each environment's secret accordingly — nothing else in the pipeline cares
 deployment *and* `E2E_BASE_URL` for the `staging-e2e` gate, which fails fast when it is empty.
 It must therefore be the **publicly reachable staging base URL**, or the gate cannot run.
 
+> **PREREQUISITE THAT IS NOT A GITHUB SETTING: nginx must already be serving both hostnames
+> over TLS before the first CD run.**
+>
+> This is easy to miss because nothing in this file or in `cd.yml` asks for it. The
+> `staging-e2e` job runs `pytest e2e/` from a GitHub-hosted runner against
+> `https://staging-api.cofoundaz.com`. The compose stack publishes on `127.0.0.1` only —
+> deliberately — so **without nginx there is nothing on 443 for the runner to reach**, and
+> `production-deploy` is gated on `staging-e2e` succeeding. The pipeline therefore cannot
+> reach production at all until the edge exists.
+>
+> The failure is also misleading: it presents as connection errors from the test suite,
+> which reads like an application or deploy problem rather than a missing prerequisite.
+>
+> Set it up first: **[NGINX_TLS.md](./NGINX_TLS.md)**. Two other things there matter to this
+> pipeline specifically — staging must keep serving `/api/v1/openapi.json`, because
+> `e2e/test_smoke.py::test_openapi_served` is one of the 13 gating tests; and staging's edge
+> rate limit is deliberately looser than production's so the gate's own request burst cannot
+> 429 itself.
+
 **CI needs no secrets to pass.** Every credential in `ci.yml` is a hardcoded throwaway
 (`ci-secret-key-not-used-outside-ci`, `test_user` / `test_password`) written inline in the
 workflow. `SONAR_TOKEN` is the one optional addition, and its absence is a clean skip rather
@@ -431,6 +450,13 @@ Work top to bottom. Nothing here depends on a green CI run.
       adding secrets.
 - [ ] Confirm the deploy user on each host is in the `docker` group and `docker compose version`
       works.
+- [ ] **Set up nginx and obtain certificates for both hostnames** — [NGINX_TLS.md](./NGINX_TLS.md).
+      Confirm `curl -I https://staging-api.cofoundaz.com/api/v1/health/ready` returns 200 **from
+      off-host** before the first CD run. The E2E gate reaches staging over the public internet;
+      until this works, `production-deploy` is unreachable.
+- [ ] Confirm each host's `.env` sets a distinct `COMPOSE_PROJECT_NAME` and `API_PORT`
+      (production `cofoundaz-api-prod` / 8000, staging `cofoundaz-api-staging` / 8001). Sharing
+      either is silent and destructive — see `DEPLOYMENT_GUIDE.md` §13.
 - [ ] Create the deploy directory on each host, owned by the deploy user. Its absolute path is
       that environment's `DEPLOY_PATH` value — it is not written down in this repo.
 - [ ] Create the GHCR PAT with `read:packages` only, with an expiry (§4).
@@ -441,7 +467,8 @@ Work top to bottom. Nothing here depends on a green CI run.
 - [ ] Add all **8 secrets to `staging`** and all **8 to `production`** — including
       `ENV_ENCRYPTION_KEY` (the same value in both is fine).
 - [ ] Add `APP_URL` as an environment **variable** on both. The `staging` value must be the
-      publicly reachable staging base URL, or the E2E gate cannot run.
+      publicly reachable staging base URL, or the E2E gate cannot run — which means nginx and the
+      staging certificate must already exist.
 - [ ] Enable Dependabot for the repo (Settings → Code security), then check within two weeks
       that Docker **digest** PRs actually appear — see §9.
 - [ ] *(Optional)* Enable SonarCloud and add `SONAR_TOKEN` — §8. Skipping this is fine; the job
@@ -538,6 +565,9 @@ one. The correct sequence is always: edit `.env.<env>` locally → re-encrypt �
 ---
 
 ## Related documents
+
+- **[NGINX_TLS.md](./NGINX_TLS.md)** — nginx, TLS and certificates. A prerequisite for the
+  staging E2E gate, and therefore for reaching production at all.
 
 - **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** — the full operator's manual, including the
   three-stage CD pipeline and exactly what the staging E2E gate covers.

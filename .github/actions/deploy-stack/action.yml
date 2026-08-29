@@ -138,7 +138,19 @@ runs:
 
           # `.env` - the deployed filename. Not `.env.production`.
           COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
-          HEALTH_URL="http://127.0.0.1:$(grep -E '^API_PORT=' .env | cut -d= -f2 || echo 8000)/api/v1/health/ready"
+
+          # API_PORT differs per stack on this host (production 8000, staging
+          # 8001), so the readiness probe has to read it rather than assume it.
+          #
+          # Written as sed + a separate default, NOT as
+          # `grep ... | cut ... || echo 8000`: in a pipeline the `||` tests the
+          # LAST command's status, and `cut` exits 0 on empty input. A missing
+          # API_PORT therefore produced an empty substitution and the URL
+          # `http://127.0.0.1:/api/v1/health/ready`, which fails every poll and
+          # rolls the deploy back for the wrong reason.
+          API_PORT="$(sed -n 's/^API_PORT=//p' .env | tail -n 1)"
+          HEALTH_URL="http://127.0.0.1:${API_PORT:-8000}/api/v1/health/ready"
+          echo "    stack port: ${API_PORT:-8000} (project: $(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env | tail -n 1 || true))"
 
           echo "==> [${STACK_ENV}] [1/6] Recording the currently deployed image for rollback"
           # Read from the RUNNING container, not from .env: the .env was just

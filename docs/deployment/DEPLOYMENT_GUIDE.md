@@ -28,8 +28,8 @@ run, and correct this document afterwards.
 |---|---|
 | Image | Two-stage Dockerfile. Base pinned by multi-arch digest `python:3.11-slim-bookworm@sha256:0bee7276f83…`. Runtime carries `/opt/venv` + app source and nothing else. |
 | Process model | `tini` (PID 1) → gunicorn master → 4 `uvicorn.workers.UvicornWorker` workers (`WEB_CONCURRENCY=4`). |
-| Stack | `docker-compose.prod.yml`, compose project `cofoundaz-api-prod`: `migrate` (one-shot), `api`, `db`, `redis`. |
-| Edge | nginx on the host terminates TLS and proxies to `127.0.0.1:${API_PORT}`. The API is **not** published on `0.0.0.0`. |
+| Stack | `docker-compose.prod.yml`, one file serving **both** stacks: `migrate` (one-shot), `api`, `db`, `redis`. The compose project name comes from `COMPOSE_PROJECT_NAME` in each `.env` (`cofoundaz-api-prod` / `cofoundaz-api-staging`), which is what keeps their volumes apart. See §13. |
+| Edge | nginx on the host terminates TLS and proxies to `127.0.0.1:${API_PORT}` — production 8000, staging 8001. The API is **not** published on `0.0.0.0`. Configuration is version-controlled in `deploy/nginx/`; the manual is **[NGINX_TLS.md](./NGINX_TLS.md)**. |
 | Registry | GHCR — `ghcr.io/innocent98/cofoundaz-api`. Deploys use the **immutable digest**, not a tag. |
 | Environments | **Two** stacks — `staging` and `production` — running the *same* image digest. They differ only in the `.env` each receives and in the per-environment GitHub secrets (`DEPLOY_PATH`, `VPS_*`, `ENV_ENCRYPTION_KEY`, `GHCR_PULL_*`). No server path appears anywhere in this repository. See §2. |
 
@@ -169,7 +169,8 @@ carries the full arithmetic and how to re-derive it if a host ever differs.
 |---|---|
 | Docker Engine + Compose v2 plugin | `docker compose` (subcommand), not the legacy `docker-compose` binary. The compose file uses `name:`, `service_completed_successfully`, and `deploy.resources` under Compose v2. |
 | A non-root `deploy` user | In the `docker` group. **Do not deploy as root** — one leaked SSH key would otherwise mean full host compromise. |
-| nginx | Terminates TLS on 443, proxies to `127.0.0.1:${API_PORT}`. |
+| nginx **≥ 1.25.1** | Terminates TLS on 443 and proxies to `127.0.0.1:${API_PORT}`. **This is a hard prerequisite, not an afterthought** — nothing reaches either stack without it, including the CD pipeline's own staging E2E gate. The version floor is real: the vhosts use `http2 on;` as a standalone directive, which Debian 12 (1.22) and Ubuntu 24.04 (1.24) reject. Config, setup and certificates: **[NGINX_TLS.md](./NGINX_TLS.md)**. |
+| certbot | Let's Encrypt certificates for both hostnames, via `certonly --webroot`. The `--nginx` plugin is deliberately not used - it rewrites config that is version-controlled. |
 | `curl` | The deploy script polls readiness with it. |
 | Deploy directory | `${DEPLOY_PATH}` — supplied by the **per-environment** GitHub secret, one value for `staging` and another for `production`. Owned by the deploy user. CD ships `docker-compose.prod.yml` and `.env` into it on every deploy. |
 
@@ -296,11 +297,21 @@ Verified startup ordering (locally): `db` becomes healthy → `migrate` runs all
 curl -fsS http://127.0.0.1:8000/api/v1/health/ready
 ```
 
-**7. Point nginx at it.** nginx proxies to `127.0.0.1:${API_PORT}`.
+**7. Point nginx at it.** The vhosts, TLS posture, security headers and rate limits are in
+`deploy/nginx/`, and the full first-time procedure - DNS records, the ACME bootstrap vhost
+that breaks the certificate chicken-and-egg, `certbot certonly --webroot`, and renewal - is
+**[NGINX_TLS.md](./NGINX_TLS.md)** §3-§6.
 
-> **NOT VERIFIED —** no nginx config exists in this repo and none was tested. Verify with
-> `nginx -t`, then an external `curl -I https://api.yourdomain.com/health` returning 200 over
-> TLS.
+Do this **before** the first CD run, not after. `cd.yml`'s `staging-e2e` job drives
+`vars.APP_URL` from a GitHub runner; with no nginx there is nothing on 443 to answer it, and
+the gate fails in a way that looks like an application problem.
+
+> **NOT VERIFIED —** the configuration has never served a real certificate or a real client.
+> It has been parsed by nginx and driven end to end against this application with
+> self-signed certificates (35 assertions, 0 failures - `deploy/nginx/test/verify-local.sh`).
+> Verify on the host with `sudo nginx -t`, then an external
+> `curl -I https://api.cofoundaz.com/health` returning 200 with `strict-transport-security`
+> present, then an SSL Labs scan targeting A+.
 
 ### Local rehearsal note
 
@@ -1312,19 +1323,39 @@ docker inspect --format '{{.Config.Image}}' \
 
 ---
 
-## 13. The compose project name — do not change it
+## 13. The compose project name — the value that keeps the two databases apart
 
 ```yaml
-name: cofoundaz-api-prod
+name: ${COMPOSE_PROJECT_NAME:-cofoundaz-api-prod}
 ```
 
 This is **not cosmetic**, and it was learned the hard way. The project name prefixes every
-volume and network. When the prod stack shared a name with the dev stack (which defaults to
-the directory name, `cofoundaz-api`), running
+container, network and named volume. When the prod stack shared a name with the dev stack
+(which defaults to the directory name, `cofoundaz-api`), running
 `docker compose -f docker-compose.prod.yml down -v` **deleted the dev stack's Postgres
-volume**. After the rename, dev volumes were verified to survive a prod `down -v`.
+volume**.
 
-Keep the two names different forever.
+Since the same file now serves both the staging and production stacks on one host, the name
+is supplied per stack from `.env`:
+
+| Environment | `COMPOSE_PROJECT_NAME` | Postgres volume |
+|---|---|---|
+| production | `cofoundaz-api-prod` (also the default) | `cofoundaz-api-prod_postgres_data` |
+| staging | `cofoundaz-api-staging` | `cofoundaz-api-staging_postgres_data` |
+
+The default is production's historical value, so an existing production stack is not
+silently renamed — a rename would orphan its volumes and start it on an empty database.
+
+**Two stacks sharing this value is the worst failure mode in this system.** There is no
+warning: the second `compose up` adopts the first stack's containers, and a later
+`down -v` destroys the other environment's database. Verified on 2026-08-29 that
+project-scoping actually separates them — both stacks up simultaneously, a distinct marker
+row written into each Postgres, `down -v` on one, and the other's row still readable. Also
+verified that `container_name:` is absent: a fixed container name is global to the Docker
+daemon rather than scoped to the project, so it collides regardless of project name.
+
+Nothing addresses these containers by name. The deploy action, the Makefile and the runbooks
+all resolve them with `docker compose … ps -q <service>`.
 
 Relatedly, `make prod-down` deliberately has **no `-v`**. Named volumes hold the Postgres data
 directory; `down -v` on a production host is unrecoverable data loss. Remove volumes by hand,
@@ -1367,6 +1398,8 @@ volume to object storage.
 
 ## Related documents
 
+- **[NGINX_TLS.md](./NGINX_TLS.md)** — the edge: nginx vhosts, TLS, certificates, rate limiting,
+  and the `X-Forwarded-For` defect that disables the app's anonymous rate limit.
 - **[GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md)** — every secret and variable, how to
   generate it, and its scope. All of them are now **per-environment**.
 - **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)** — the `scripts/env.sh` workflow: generate a key,
