@@ -33,3 +33,84 @@ def test_factory_returns_file_when_configured(monkeypatch):
 
     monkeypatch.setattr(settings, "EMAIL_BACKEND", "file")
     assert isinstance(get_email_sender(), FileEmailSender)
+
+
+# --------------------------------------------------------------------------- #
+# SMTP backend.
+#
+# These drive the REAL `emails` library and assert on the MIME message it
+# produces; only the final network send is stubbed. Mocking emails.Message
+# itself would prove nothing about a version bump, which is the exact thing
+# that broke here (0.6 -> 1.1.2 made the mail_from address non-optional).
+# --------------------------------------------------------------------------- #
+
+
+def _capture_sent(monkeypatch):
+    """Stub only the network hop, and hand back the built MIME message."""
+    import emails
+
+    captured: dict[str, object] = {}
+
+    def fake_send(self, **kwargs):  # noqa: ANN001, ANN003
+        captured["from"] = self.as_message()["From"]
+        captured["to"] = kwargs.get("to")
+        return None
+
+    monkeypatch.setattr(emails.Message, "send", fake_send)
+    return captured
+
+
+def test_smtp_sender_builds_from_header_with_name(monkeypatch):
+    from app.core.config import settings
+    from app.platform.email import SMTPEmailSender
+
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    monkeypatch.setattr(settings, "EMAILS_FROM_NAME", "Cofoundaz")
+    captured = _capture_sent(monkeypatch)
+
+    SMTPEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+    assert captured["from"] == "Cofoundaz <no-reply@cofoundaz.com>"
+    assert captured["to"] == "user@x.com"
+
+
+def test_smtp_sender_allows_an_unset_from_name(monkeypatch):
+    """A missing display name is legal and yields a bare-address From."""
+    from app.core.config import settings
+    from app.platform.email import SMTPEmailSender
+
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    monkeypatch.setattr(settings, "EMAILS_FROM_NAME", None)
+    captured = _capture_sent(monkeypatch)
+
+    SMTPEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+    assert captured["from"] == "no-reply@cofoundaz.com"
+
+
+def test_smtp_sender_refuses_to_send_without_a_from_address(monkeypatch):
+    """An unset EMAILS_FROM_EMAIL must fail loudly, not send a From-less message.
+
+    emails 1.x builds NO From header at all from (None, None). RFC 5322 requires
+    one, so such a message is rejected or quarantined by the receiving MTA - and
+    because SMTPEmailSender discards the send result, that failure would be
+    completely silent. Verified against emails 1.1.2.
+    """
+    import pytest
+
+    from app.core.config import settings
+    from app.platform.email import SMTPEmailSender
+
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", None)
+    monkeypatch.setattr(settings, "EMAILS_FROM_NAME", "Cofoundaz")
+
+    with pytest.raises(RuntimeError, match="EMAILS_FROM_EMAIL is not set"):
+        SMTPEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+
+def test_factory_returns_smtp_when_configured(monkeypatch):
+    from app.core.config import settings
+    from app.platform.email import SMTPEmailSender
+
+    monkeypatch.setattr(settings, "EMAIL_BACKEND", "smtp")
+    assert isinstance(get_email_sender(), SMTPEmailSender)
