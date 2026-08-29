@@ -16,6 +16,10 @@ from app.core.config import settings
 from app.core.envelope import error_response
 from app.core.errors import register_exception_handlers
 from app.core.logger import log
+from app.core.rate_limit import (
+    install_included_router_support,
+    verify_included_router_resolution,
+)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -82,6 +86,14 @@ async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JS
 # SlowAPIMiddleware is what actually enforces `default_limits` (and any
 # @limiter.limit(...) decorators) on every request; without it, app.state.limiter
 # and the handler above are registered but never invoked.
+#
+# It also cannot see routes mounted via include_router on fastapi >= 0.137
+# unless we teach it how. install_() patches slowapi's endpoint resolution;
+# verify_() refuses to start the process if the patch is not working, so a
+# future fastapi upgrade fails at boot instead of silently serving the whole
+# /api/v1 surface unlimited. See app/core/rate_limit.py.
+install_included_router_support()
+verify_included_router_resolution()
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware

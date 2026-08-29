@@ -343,8 +343,19 @@ _The image's own `CMD` had never been executed by anything. SOP:
       logs `[ERROR] Control server error: ... Read-only file system` on **every boot**.
       Needs `--no-control-socket` added to the Dockerfile `CMD` **in the same commit** — the
       flag does not exist in 23.0.0, so landing it first breaks startup outright
-- [ ] _Deferred:_ migrate off the deprecated `uvicorn.workers` module to
-      `uvicorn-worker==0.3.0` (`0.4.0` needs `uvicorn>=0.36.0`, our pin forbids it) ·
+- [x] **PR #20 (`production-minor`) unblocked** (2026-08-29) — fastapi 0.136.3 → **0.141.1**,
+      uvicorn 0.32.1 → **0.52.4**, httpx 0.27.2 → **0.28.1**, python-dotenv → 1.2.3. The
+      blocker was slowapi losing every `include_router` route to fastapi 0.137's
+      `_IncludedRouter` (upstream `laurentS/slowapi#281` is open with three unmerged PRs;
+      0.1.10 is still broken), fixed in-tree by `app/core/rate_limit.py` with a boot-time
+      self-check that refuses to start if resolution breaks. Ceiling `<0.137.0` → `<0.142.0`,
+      still bounded on purpose. Measured: first 429 at request **121** under uvicorn for both
+      the authenticated-user and anonymous-IP key; **480 × 200** under gunicorn with 4 workers.
+      See SOP `2026-08-29-fastapi-ceiling-slowapi-included-router.md`
+- [ ] _Deferred:_ migrate off the deprecated `uvicorn.workers` module to `uvicorn-worker`
+      — **now unblocked**: `0.4.0` needs `uvicorn>=0.36.0` and the pin is `^0.52.4` as of
+      2026-08-29. `uvicorn.workers` still ships in 0.52.4 and `make image-check` passes on
+      it, so this is no longer urgent, but the module is on borrowed time ·
       widen the image-CMD gate to also run `alembic upgrade head` through the image ·
       `SC2329` false positive on `cleanup()` in `scripts/e2e_run.sh`
 
@@ -397,9 +408,16 @@ _The image's own `CMD` had never been executed by anything. SOP:
       targets Dockerfile/K8s/Terraform/CloudFormation/Helm; Checkov 3.3.15 has no
       `docker_compose` framework at all. Closing this needs a compose-specific
       linter, not another general IaC scanner
-- [ ] `starlette` 0.46.2 — **3 HIGH** still blocking `trivy image`. Stays pinned
-      even with fastapi 0.141.1, so it needs real compatibility work (starlette
-      1.x is a major version, not a drop-in)
+- [x] ~~`starlette` 0.46.2 — **3 HIGH** blocking `trivy image`~~ — **resolved.** The tree is
+      on starlette **1.6.0** (pin `>=1.3.1,<2.0.0`), and `make scan` is clean: the only HIGH
+      left in `trivy fs` is `ecdsa` CVE-2024-23342 (transitive via `python-jose`, no fixed
+      version published, report-only). Verified 2026-08-29 alongside the fastapi bump
+- [ ] **Rate limits are per-worker, not global.** slowapi uses in-memory `MemoryStorage`, so
+      the real ceiling in production is `WEB_CONCURRENCY × RATE_LIMIT_PER_MINUTE`
+      (measured: 4 workers × 120 = **480**, not 120). Pre-existing, not a regression, but now
+      quantified. Redis is already a dependency — pointing slowapi's storage at it would make
+      the limit global and exact. Do this before the limit is treated as a security control
+      rather than an abuse damper
 - [ ] **Only 13 of 27 e2e tests gate production.** The other 14 need
       `EMAIL_FILE_DIR` on the same machine as the test run (they reach the
       `mailbox` fixture, mostly via `make_verified_user`), which a remote runner
