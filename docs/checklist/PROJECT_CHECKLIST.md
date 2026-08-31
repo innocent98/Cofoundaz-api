@@ -11,19 +11,20 @@
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
 
-_Last reconciled: 2026-08-29 · `chore/bcrypt-5-passlib-migration` (passlib → direct bcrypt, unblocking bcrypt 5.0.0, PR #33) on top of `main` at the nginx TLS edge + two-stack compose (PR #31), the slowapi router-descent rate-limit fix (PR #32), the image-CMD CI gate and weekend test bug (PR #28), and the Dependabot pause (PR #34)_
+_Last reconciled: 2026-08-31 · `feat/dashboard` (Module 02 — Founder Dashboard, aggregation BFF + activity feed, not yet merged) on top of `main` at the passlib → direct bcrypt migration (PR #33), the nginx TLS edge + two-stack compose (PR #31), the slowapi router-descent rate-limit fix (PR #32), the image-CMD CI gate and weekend test bug (PR #28), and the Dependabot pause (PR #34)_
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) · 21 not started (02·03·08–26).
+**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) + 1 shipped on branch, not yet merged (02 Dashboard) · 20 not started (03·08–26).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
+| 🟢 Shipped on branch, not yet merged | 1 module | Founder Dashboard (02) — `feat/dashboard` |
 | 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 21 | Dashboard (02) · AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ⬜ Planned / next | 20 | AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
 **Health at a glance:** ~63 endpoints · **410 unit tests** (real Postgres) + **27 live E2E** · **98.39% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
@@ -181,6 +182,48 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] Live E2E (`e2e/test_mission.py`, 6 captures) + smoke openapi surface (5 mission paths)
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
 - [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
+
+## ✅ Module 02 — Founder Dashboard — *shipped on branch `feat/dashboard` (not yet merged to `main`)*
+
+_The founder's home screen: `GET /dashboard/summary` (9-section aggregation of Modules 04/05/06/07)
+and `GET /dashboard/activity` (keyset-paginated team feed). In-process aggregation BFF, no new
+domain logic — plus one new durable primitive, `activity_log` + `write_activity()` (mirrors
+`write_audit()`), wired at 8 existing action sites. Migration `0010_dashboard`. SOP:
+`docs/sop/2026-08-31-dashboard.md`._
+
+**Build (subagent-driven, Tasks 1–7):**
+- [x] `ActivityLog` model + migration `0010_dashboard` (chains off `0009_mission`, sole alembic
+      head) + `write_activity()` helper (`app/platform/activity.py`) + `create_activity` factory
+- [x] 8 `write_activity` call sites wired into existing endpoints — `mission.task.added` ·
+      `mission.task.completed` (idempotency-guarded) · `mission.task.snoozed` ·
+      `mission.task.rejected` · `roadmap.milestone.completed` · `roadmap.replanned` ·
+      `member.joined` · `assessment.completed` (gated on `complete_assessment`'s new `claimed`
+      return value, not on the call merely succeeding, so a retried completion can't duplicate
+      the feed row)
+- [x] Aggregation service — `get_summary(db, startup, user)` composing Health Score / Mission /
+      Roadmap / Assessment reads, with **per-section resilience**
+      (`{"error": true}` marker instead of a 500 if one section's read throws)
+- [x] `GET /dashboard/summary` — 9 sections: `greeting`, `health`, `mission`, `upcoming`
+      (7-day roadmap-milestone window, `UPCOMING_WINDOW_DAYS`), `kpis`
+      (`tasks_done_this_week` live; `revenue`/`runway`/`pipeline_value`/`campaign_performance`
+      honestly `null`), `calibration`, `briefing`/`risks`/`opportunities` (honest static
+      empty-states)
+- [x] `GET /dashboard/activity` — keyset pagination on `(created_at, id)`, opaque base64 cursor,
+      `limit` clamped 1–50, `actor: {id, name} | null` (outer-joined, no N+1), malformed cursor →
+      `422 VALIDATION_ERROR`
+- [x] Access: both routes = any active member (founder/team_member/mentor); no writes in this
+      module
+- [x] Live E2E journey (`e2e/test_dashboard.py`, 2 captures) + smoke openapi surface
+      (`/dashboard/summary`, `/dashboard/activity`)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-08-31-dashboard.md`, `docs/fe-integration-guide-dashboard.md`
+- [ ] _Deferred:_ AI briefing/risks/opportunities → Module 03 · financial KPIs
+      (`revenue`/`runway`/`pipeline_value`/`campaign_performance`) → Modules 09–11 · realtime
+      activity delivery (websocket/push) → Module 20 · widget-level role/grant filtering ·
+      `kpi_snapshots`/`briefings` tables deliberately not built (nothing to persist yet) ·
+      `_section`'s swallowed exceptions have no Sentry capture · no dedicated
+      `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
+      not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
