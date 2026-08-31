@@ -8,13 +8,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import MembershipRole, MissionStatus
+from app.db.models.enums import MembershipRole, MissionStatus, MissionTaskStatus
 from app.db.models.membership import Membership
 from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
+from app.platform.activity import write_activity
 from app.schemas.mission import MissionSettingsUpdate, MissionTaskAction, MissionTaskCreate
 from app.services.mission.service import (
     VALID_REJECT_REASONS,
@@ -56,6 +57,10 @@ def _serialize_settings(s: MissionSettings) -> dict[str, Any]:
         "delivery_time": s.delivery_time.isoformat(),
         "weekend_missions": s.weekend_missions,
     }
+
+
+def _actor_name(user: User) -> str:
+    return (user.profile.full_name if user.profile else None) or "A teammate"
 
 
 def _mission_task(db: Session, membership: Membership, task_id: uuid.UUID) -> MissionTask:
@@ -154,6 +159,15 @@ def create_task(
         db.add(mission)
         db.flush()
     task = add_custom_task(db, mission, payload.title, payload.effort)
+    write_activity(
+        db,
+        startup_id=startup.id,
+        actor_user_id=user.id,
+        action="mission.task.added",
+        entity_type="mission_task",
+        entity_id=task.id,
+        summary=f"{_actor_name(user)} added '{task.title}' to today's mission",
+    )
     db.commit()
     return success_response(serialize_task(task))
 
@@ -171,9 +185,29 @@ def patch_task(
 
     match payload.action:
         case "complete":
+            was_done = task.status == MissionTaskStatus.done
             complete_task(db, startup, task)
+            if not was_done and task.status == MissionTaskStatus.done:
+                write_activity(
+                    db,
+                    startup_id=startup.id,
+                    actor_user_id=user.id,
+                    action="mission.task.completed",
+                    entity_type="mission_task",
+                    entity_id=task.id,
+                    summary=f"{_actor_name(user)} completed '{task.title}'",
+                )
         case "snooze":
             snooze_task(db, task)
+            write_activity(
+                db,
+                startup_id=startup.id,
+                actor_user_id=user.id,
+                action="mission.task.snoozed",
+                entity_type="mission_task",
+                entity_id=task.id,
+                summary=f"{_actor_name(user)} snoozed '{task.title}'",
+            )
         case "reorder":
             if payload.order is None:
                 raise AppError(
@@ -192,6 +226,15 @@ def patch_task(
                     field_errors=[{"field": "reject_reason", "message": "Not a valid reason."}],
                 )
             reject_task(db, task, payload.reject_reason)
+            write_activity(
+                db,
+                startup_id=startup.id,
+                actor_user_id=user.id,
+                action="mission.task.rejected",
+                entity_type="mission_task",
+                entity_id=task.id,
+                summary=f"{_actor_name(user)} rejected '{task.title}'",
+            )
         case _:
             raise AppError(
                 "VALIDATION_ERROR",

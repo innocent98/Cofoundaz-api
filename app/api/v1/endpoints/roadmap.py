@@ -29,6 +29,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
+from app.platform.activity import write_activity
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.schemas.roadmap import (
@@ -63,6 +64,10 @@ def _startup(db: Session, membership: Membership) -> Startup:
     if s is None:
         raise NotFound()
     return s
+
+
+def _actor_name(user: User) -> str:
+    return (user.profile.full_name if user.profile else None) or "A teammate"
 
 
 def _roadmap(db: Session, membership: Membership) -> Roadmap | None:
@@ -473,6 +478,15 @@ def update_milestone_ep(
                 "title": m.title,
             },
         )
+        write_activity(
+            db,
+            startup_id=membership.startup_id,
+            actor_user_id=user.id,
+            action="roadmap.milestone.completed",
+            entity_type="roadmap_milestone",
+            entity_id=m.id,
+            summary=f"{_actor_name(user)} completed milestone '{m.title}'",
+        )
     db.commit()
     return success_response(_milestone_out(db, m))
 
@@ -648,6 +662,19 @@ def replan_apply(
 ) -> Any:
     roadmap = _require_roadmap(db, membership)
     result = apply_replan(db, roadmap, user, body.change_ids)
+    if result["applied"]:
+        write_activity(
+            db,
+            startup_id=membership.startup_id,
+            actor_user_id=user.id,
+            action="roadmap.replanned",
+            entity_type="roadmap",
+            entity_id=roadmap.id,
+            summary=(
+                f"{_actor_name(user)} applied a roadmap re-plan "
+                f"({len(result['applied'])} milestone(s) shifted)"
+            ),
+        )
     db.commit()
     return success_response(result)
 
