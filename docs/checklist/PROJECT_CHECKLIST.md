@@ -26,7 +26,7 @@ _Last reconciled: 2026-08-31 · `feat/dashboard` (Module 02 — Founder Dashboar
 | 🟡 In progress | 0 | — |
 | ⬜ Planned / next | 20 | AI Co-Founder (03) · Business Builder (08) · 09–26 |
 
-**Health at a glance:** ~63 endpoints · **747 unit tests** (real Postgres) + **28 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** ~67 endpoints · **747 unit tests** (real Postgres) + **28 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
 ---
 

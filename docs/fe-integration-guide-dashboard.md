@@ -168,7 +168,7 @@ any mission task was completed (status `200`):
 | `upcoming` | a list, **`[]` in this capture** — see the honesty note below | Roadmap milestones due in the next 7 days, not yet `done`. |
 | `kpis.tasks_done_this_week` | **live** — the only real KPI in v1 | Mission tasks completed in the trailing 7 days (by `completed_at`, not by which day's mission they were assigned to). |
 | `kpis.revenue` / `runway` / `pipeline_value` / `campaign_performance` | **always `null` in v1** | No financial/CRM/campaign module exists yet — Modules 09–11. Render these as "coming soon" placeholders, not as "$0". |
-| `calibration.assessment_complete` | real, boolean | `true` once the founder has completed the kickoff assessment (any completed `Assessment` row) — **nested under `calibration`, not a top-level field** (see the nesting trap below). |
+| `calibration.assessment_complete` | real, boolean | `true` once the founder has completed the kickoff assessment (any completed `Assessment` row) — **nested under `calibration`, not a top-level field** (see the nesting trap below). **`calibration` itself can also be `{"error": true}`** on a rare DB error, same as `health`/`mission`/`upcoming`/`kpis` — check for the error shape before reading `assessment_complete` (see the error-marker trap below). |
 | `briefing` / `risks` / `opportunities` | **always the static empty-state shape in v1** | No AI panel exists yet — Module 03. `status` is always `"empty"`; `message` is a fixed string per section. The shape (`{status, message}`) is stable so Module 03 can later swap in a non-`"empty"` status without breaking the FE contract — but nothing today drives that transition. Don't build UI that assumes `status` can currently be anything else. |
 
 ### Field-nesting traps
@@ -182,8 +182,8 @@ any mission task was completed (status `200`):
   mis-flatten when wiring this up — it lives one level down, inside the `calibration` object,
   matching the shape in the capture above exactly.
 - **A section that throws server-side becomes `{"error": true}`, not an omitted key.** `health`,
-  `mission`, `upcoming`, and `kpis` are each independently wrapped so one subsystem's failure
-  can't 500 the whole page (see the SOP's "per-section resilience" note,
+  `mission`, `upcoming`, `kpis`, and `calibration` are each independently wrapped so one
+  subsystem's failure can't 500 the whole page (see the SOP's "per-section resilience" note,
   `docs/sop/2026-08-31-dashboard.md`). This was **not** exercised in the live capture (nothing
   failed during the journey) — it's derived from `app/services/dashboard/service.py`'s `_section`
   helper and unit-tested
