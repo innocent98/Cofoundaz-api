@@ -312,6 +312,7 @@ def create_mission_task(
     status: MissionTaskStatus = MissionTaskStatus.todo,
     order: int = 0,
     roadmap_task_id: uuid.UUID | None = None,
+    completed_at: datetime | None = None,
 ) -> MissionTask:
     t = MissionTask(
         mission_id=mission.id,
@@ -320,6 +321,7 @@ def create_mission_task(
         status=status,
         order=order,
         roadmap_task_id=roadmap_task_id,
+        completed_at=completed_at,
     )
     db.add(t)
     db.flush()

@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -70,19 +70,19 @@ def _upcoming(db: Session, startup: Startup) -> list[dict[str, Any]]:
 
 
 def _tasks_done_this_week(db: Session, startup: Startup) -> int:
-    # Keyed on the owning Mission's `mission_date` rather than `MissionTask.completed_at`:
-    # `completed_at` is only populated by the real task-completion path
-    # (app/services/mission/service.py: `_complete_task`), so a task marked `done` through
-    # any other route (backfills, admin overrides) would otherwise silently drop out of
-    # this week's count. `mission_date` is always set and is the meaningful business date
-    # for "was this done this week".
-    since = date.today() - timedelta(days=6)
+    # Keyed on `MissionTask.completed_at`, not the owning Mission's `mission_date`:
+    # `complete_task` (app/services/mission/service.py) is the only production path that
+    # sets `status=done`, and it always sets `completed_at` atomically in the same call —
+    # so a task can be dated to a mission from over a week ago yet genuinely completed
+    # today, and that must count. `completed_at` is tz-aware (DateTime(timezone=True)), so
+    # `since` must be tz-aware too or the comparison raises/misbehaves against Postgres.
+    since = datetime.now(UTC) - timedelta(days=7)
     return (
         db.query(MissionTask)
         .join(Mission, MissionTask.mission_id == Mission.id)
         .filter(Mission.startup_id == startup.id)
         .filter(MissionTask.status == MissionTaskStatus.done)
-        .filter(Mission.mission_date >= since)
+        .filter(MissionTask.completed_at >= since)
         .count()
     )
 
