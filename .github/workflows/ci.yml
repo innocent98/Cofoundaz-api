@@ -33,6 +33,17 @@ name: CI
 #                         image (the one that finds CVEs that ship) is retained
 #                         inside `build`.
 #
+# DRAFT PRs COST NOTHING. Every job carries a `draft == false` guard, so a PR
+# opened as a draft runs no CI at all; marking it ready runs the suite once.
+# GitHub does NOT skip drafts on its own - a draft fires `opened` and
+# `synchronize` like any other PR - which is why the guard is explicit and why
+# `ready_for_review` had to be added to the trigger's type list.
+#
+# The habit this enables: open work as a draft, push as often as you like for
+# free, mark it ready when you want it validated. Repeated pushes to an ALREADY
+# READY PR still re-run CI (correctly - the code changed), though
+# `cancel-in-progress` below kills superseded runs so rapid pushes cannot stack.
+#
 # Adding a job costs roughly (its minutes x runs per month). Say so in the PR.
 
 on:
@@ -40,6 +51,13 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+    # `ready_for_review` is REQUIRED here. GitHub does NOT exclude draft PRs
+    # from pull_request events - a draft still fires `opened` and
+    # `synchronize` - so drafts are skipped by an explicit `draft == false`
+    # guard on every job below, and marking one ready fires
+    # `ready_for_review`, which is NOT in the default type list. Without it a
+    # PR drafted, pushed to, then marked ready would never run CI at all.
+    types: [opened, reopened, ready_for_review, synchronize]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -65,6 +83,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   lint:
     name: Lint & type-check
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,6 +114,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   test:
     name: Unit tests
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     services:
@@ -161,8 +183,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   migrations:
     name: Migrations (fresh DB, round-trip, drift)
-    # PR-only: see the cost note at the top of this file.
-    if: github.event_name == 'pull_request'
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     services:
@@ -231,8 +253,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   e2e:
     name: End-to-end
-    # PR-only: see the cost note at the top of this file.
-    if: github.event_name == 'pull_request'
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -280,6 +302,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   security:
     name: Security (secrets, SAST, dependencies)
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -414,8 +438,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   quality:
     name: Quality (pylint, complexity, Dockerfile)
-    # PR-only: see the cost note at the top of this file.
-    if: github.event_name == 'pull_request'
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -501,6 +525,7 @@ jobs:
     # See docs/deployment/GITHUB_ACTIONS_SETUP.md.
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
       (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
     runs-on: ubuntu-latest
     permissions:
@@ -527,8 +552,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   build:
     name: Build image & scan
-    # PR-only: see the cost note at the top of this file.
-    if: github.event_name == 'pull_request'
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     # The image is only built once everything that can invalidate it is green.
     # Trivy runs after the build because it scans the resolved image filesystem;
