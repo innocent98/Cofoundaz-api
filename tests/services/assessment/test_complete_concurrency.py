@@ -79,24 +79,24 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
         assessment_id = assessment.id
 
         barrier = threading.Barrier(2)
-        results: list[tuple[dict | None, BaseException | None]] = []
+        results: list[tuple[dict | None, bool | None, BaseException | None]] = []
         results_lock = threading.Lock()
 
         def attempt() -> None:
             session = Session(bind=engine)
-            outcome: tuple[dict | None, BaseException | None]
+            outcome: tuple[dict | None, bool | None, BaseException | None]
             try:
                 a = session.query(Assessment).filter(Assessment.id == assessment_id).one()
                 s = session.query(Startup).filter(Startup.id == startup_id).one()
                 barrier.wait(timeout=5)
                 try:
-                    result = complete_assessment(session, a, s)
+                    result, claimed = complete_assessment(session, a, s)
                 except BaseException as exc:  # noqa: BLE001 - captured for the assertion below
                     session.rollback()
-                    outcome = (None, exc)
+                    outcome = (None, None, exc)
                 else:
                     session.commit()
-                    outcome = (result, None)
+                    outcome = (result, claimed, None)
             finally:
                 session.close()
             with results_lock:
@@ -109,10 +109,16 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
             t.join(timeout=10)
 
         assert len(results) == 2, "both threads must finish"
-        assert all(exc is None for _, exc in results), f"neither call should raise: {results}"
+        assert all(exc is None for _, _, exc in results), f"neither call should raise: {results}"
 
         r0, r1 = results[0][0], results[1][0]
         assert r0 == r1, "both callers must observe the identical scored result"
+
+        claimed0, claimed1 = results[0][1], results[1][1]
+        assert sorted([claimed0, claimed1]) == [
+            False,
+            True,
+        ], f"exactly one racer must claim the transition, got {[claimed0, claimed1]}"
 
         verify = Session(bind=engine)
         try:

@@ -8,7 +8,7 @@ from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult
-from app.db.models.enums import AssessmentStatus, MembershipRole
+from app.db.models.enums import MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -111,9 +111,8 @@ def post_complete_assessment(
 ) -> dict[str, Any]:
     a = _assessment(db, membership, assessment_id)
     startup = _startup(db, membership)
-    was_completed = a.status == AssessmentStatus.completed
-    result = complete_assessment(db, a, startup)
-    if not was_completed:
+    result, claimed = complete_assessment(db, a, startup)
+    if claimed:
         write_activity(
             db,
             startup_id=startup.id,
