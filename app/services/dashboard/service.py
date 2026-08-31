@@ -1,13 +1,16 @@
+import base64
+import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.db.models.activity import ActivityLog
 from app.db.models.enums import MissionTaskStatus, RoadmapStatus
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
-from app.db.models.user import User
+from app.db.models.user import User, UserProfile
 from app.services.health_score.service import get_overview, latest_completed_result
 from app.services.mission.service import get_or_generate_today, serialize_mission, streak
 
@@ -118,3 +121,59 @@ def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
         "risks": {"status": "empty", "message": _RISKS_EMPTY},
         "opportunities": {"status": "empty", "message": _OPPS_EMPTY},
     }
+
+
+def _encode_cursor(created_at: datetime, row_id: uuid.UUID) -> str:
+    return base64.urlsafe_b64encode(f"{created_at.isoformat()}|{row_id}".encode()).decode()
+
+
+def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
+    raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+    ts, row_id = raw.split("|", 1)
+    return datetime.fromisoformat(ts), uuid.UUID(row_id)
+
+
+def get_activity(
+    db: Session, startup: Startup, cursor: str | None = None, limit: int = 20
+) -> dict[str, Any]:
+    limit = max(1, min(limit, 50))
+    q = (
+        db.query(ActivityLog, UserProfile.full_name)
+        .outerjoin(UserProfile, UserProfile.user_id == ActivityLog.actor_user_id)
+        .filter(ActivityLog.startup_id == startup.id)
+        .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
+    )
+    if cursor:
+        c_ts, c_id = _decode_cursor(cursor)
+        q = q.filter(
+            (ActivityLog.created_at < c_ts)
+            | ((ActivityLog.created_at == c_ts) & (ActivityLog.id < c_id))
+        )
+    rows = q.limit(limit + 1).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+
+    items = []
+    for row, full_name in rows:
+        actor = (
+            {"id": str(row.actor_user_id), "name": full_name}
+            if row.actor_user_id is not None
+            else None
+        )
+        items.append(
+            {
+                "id": str(row.id),
+                "action": row.action,
+                "entity_type": row.entity_type,
+                "entity_id": str(row.entity_id) if row.entity_id else None,
+                "summary": row.summary,
+                "meta": row.meta,
+                "actor": actor,
+                "created_at": row.created_at.isoformat(),
+            }
+        )
+    next_cursor = None
+    if has_more and rows:
+        last, _ = rows[-1]
+        next_cursor = _encode_cursor(last.created_at, last.id)
+    return {"items": items, "next_cursor": next_cursor}
