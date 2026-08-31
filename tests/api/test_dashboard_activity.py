@@ -1,3 +1,4 @@
+import base64
 from datetime import UTC, datetime
 
 from app.core.security import create_access_token
@@ -77,3 +78,23 @@ def test_activity_system_row_has_null_actor(client, db):
     items = r.json()["data"]["items"]
     assert len(items) == 1
     assert items[0]["actor"] is None
+
+
+def test_activity_malformed_cursor_returns_422(client, db):
+    _u, _s, h = _member(db)
+    db.commit()
+
+    r = client.get("/api/v1/dashboard/activity?cursor=not-valid-base64!!!", headers=h)
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_activity_cursor_missing_separator_returns_422(client, db):
+    _u, _s, h = _member(db)
+    db.commit()
+
+    # valid base64, but decodes to a string with no "|" separator to split on.
+    bad_cursor = base64.urlsafe_b64encode(b"no-separator-here").decode()
+    r = client.get(f"/api/v1/dashboard/activity?cursor={bad_cursor}", headers=h)
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"

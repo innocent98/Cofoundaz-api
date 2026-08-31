@@ -1,10 +1,12 @@
 import base64
+import binascii
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.db.models.activity import ActivityLog
 from app.db.models.enums import MissionTaskStatus, RoadmapStatus
 from app.db.models.mission import Mission, MissionTask
@@ -128,9 +130,17 @@ def _encode_cursor(created_at: datetime, row_id: uuid.UUID) -> str:
 
 
 def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
-    raw = base64.urlsafe_b64decode(cursor.encode()).decode()
-    ts, row_id = raw.split("|", 1)
-    return datetime.fromisoformat(ts), uuid.UUID(row_id)
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+        ts, row_id = raw.split("|", 1)
+        return datetime.fromisoformat(ts), uuid.UUID(row_id)
+    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "Invalid pagination cursor.",
+            422,
+            field_errors=[{"field": "cursor", "message": "This page link is no longer valid."}],
+        ) from exc
 
 
 def get_activity(
