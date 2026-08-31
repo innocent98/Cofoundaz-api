@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -41,8 +42,35 @@ def _first_name(user: User) -> str:
 
 
 def _section(fn: Any) -> Any:
+    """Run fn(), collapsing any exception to {"error": True}.
+
+    Used ONLY for `health`: `get_overview` commits internally
+    (app/services/health_score/service.py:190), and an internal `commit()` issued from
+    inside a SAVEPOINT block (see `_section_isolated` below) breaks the SAVEPOINT --
+    so `health` can't use the savepoint-wrapped variant every other section uses.
+    """
     try:
         return fn()
+    except Exception:  # noqa: BLE001 - per-card isolation: one failure must not 500 the page
+        return {"error": True}
+
+
+def _section_isolated(db: Session, fn: Any) -> Any:
+    """Like `_section`, but also isolates DB statement errors, not just Python-level ones.
+
+    A failed flush/statement (e.g. a unique-constraint violation) marks the *whole*
+    shared `Session` rollback-only. Without isolation, every later section would then
+    raise `PendingRollbackError`, and so would the endpoint's final `db.commit()`
+    (app/api/v1/endpoints/dashboard.py:37) -- one card's DB error would 500 the entire
+    page instead of just that card. Running fn() inside its own SAVEPOINT means a
+    failure only rolls back that SAVEPOINT, leaving the outer session -- and every
+    other section -- usable.
+
+    NOT used for `health` (see `_section`'s docstring).
+    """
+    try:
+        with db.begin_nested():
+            return fn()
     except Exception:  # noqa: BLE001 - per-card isolation: one failure must not 500 the page
         return {"error": True}
 
@@ -92,8 +120,26 @@ def _tasks_done_this_week(db: Session, startup: Startup) -> int:
     )
 
 
+def _get_or_generate_today_race_safe(db: Session, startup: Startup) -> Mission | None:
+    """Race-safe wrapper around `get_or_generate_today`.
+
+    `get_or_generate_today` (app/services/mission/service.py:84-106) does an unguarded
+    check-then-INSERT against the `uq_mission_startup_date` unique constraint. Two
+    concurrent first-loads-of-the-day for the same startup (two summary polls, or a
+    summary racing `GET /missions/today`) can both pass its `existing is None` check and
+    both INSERT -- the loser's flush raises `IntegrityError`. Run the call inside a
+    SAVEPOINT so a losing racer rolls back only its own attempt, then re-select today's
+    mission: under READ COMMITTED the winner's now-committed row is visible.
+    """
+    try:
+        with db.begin_nested():
+            return get_or_generate_today(db, startup)
+    except IntegrityError:
+        return db.query(Mission).filter_by(startup_id=startup.id, mission_date=date.today()).first()
+
+
 def _mission_section(db: Session, startup: Startup) -> Any:
-    m = get_or_generate_today(db, startup)
+    m = _get_or_generate_today_race_safe(db, startup)
     if m is None:
         return None
     return serialize_mission(db, m, streak(db, startup))
@@ -107,18 +153,21 @@ def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
             "startup_name": startup.name,
         },
         "health": _section(lambda: get_overview(db, startup)),
-        "mission": _section(lambda: _mission_section(db, startup)),
-        "upcoming": _section(lambda: _upcoming(db, startup)),
-        "kpis": _section(
+        "mission": _section_isolated(db, lambda: _mission_section(db, startup)),
+        "upcoming": _section_isolated(db, lambda: _upcoming(db, startup)),
+        "kpis": _section_isolated(
+            db,
             lambda: {
                 "tasks_done_this_week": _tasks_done_this_week(db, startup),
                 "revenue": None,
                 "runway": None,
                 "pipeline_value": None,
                 "campaign_performance": None,
-            }
+            },
         ),
-        "calibration": {"assessment_complete": latest_completed_result(db, startup.id) is not None},
+        "calibration": _section_isolated(
+            db, lambda: {"assessment_complete": latest_completed_result(db, startup.id) is not None}
+        ),
         "briefing": {"status": "empty", "message": _BRIEFING_EMPTY},
         "risks": {"status": "empty", "message": _RISKS_EMPTY},
         "opportunities": {"status": "empty", "message": _OPPS_EMPTY},

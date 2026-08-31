@@ -1,6 +1,10 @@
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from app.db.models.enums import RoadmapStatus
+from sqlalchemy import select
+
+from app.db.models.enums import MissionTaskStatus, RoadmapStatus, TaskEffort
+from app.db.models.mission import MissionTask
 from app.services.dashboard.service import UPCOMING_WINDOW_DAYS, get_summary
 from tests.factories import (
     create_milestone,
@@ -98,3 +102,39 @@ def test_a_failing_section_becomes_error_marker_not_a_raise(db, monkeypatch):
     out = get_summary(db, startup, owner)
     assert out["health"] == {"error": True}
     assert out["greeting"]["startup_name"] == startup.name  # rest still populated
+
+
+def test_a_db_error_in_one_section_is_isolated_not_a_cascade(db, monkeypatch):
+    owner = create_user(db)
+    startup = create_startup(db, owner=owner)
+
+    def bad_flush(db_, startup_id):
+        # A real IntegrityError, not a Python-level exception: mission_tasks.mission_id
+        # is a NOT NULL FK to missions.id, so a random UUID that matches no row fails
+        # the constraint on flush -- this is what marks the whole shared Session
+        # rollback-only if the section isn't savepoint-isolated.
+        db_.add(
+            MissionTask(
+                mission_id=uuid.uuid4(),
+                title="boom",
+                effort=TaskEffort.medium,
+                status=MissionTaskStatus.todo,
+                order=0,
+            )
+        )
+        db_.flush()
+        return None  # pragma: no cover - flush always raises before this line
+
+    monkeypatch.setattr("app.services.dashboard.service.latest_completed_result", bad_flush)
+    out = get_summary(db, startup, owner)
+
+    assert out["calibration"] == {"error": True}
+    # Every other section still populated -- the DB error didn't cascade.
+    assert out["greeting"]["startup_name"] == startup.name
+    assert out["upcoming"] == []
+    assert out["kpis"]["tasks_done_this_week"] == 0
+
+    # The outer transaction must still be usable: no PendingRollbackError from the
+    # poisoned flush leaking past its savepoint. A read and a trailing write both work.
+    assert db.execute(select(1)).scalar_one() == 1
+    create_mission(db, startup=startup, mission_date=date.today() + timedelta(days=90))
