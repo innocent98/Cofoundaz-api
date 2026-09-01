@@ -84,7 +84,7 @@ def save_canvas(
     validate_blocks(canvas.type, blocks)
     if expected_version != canvas.version:
         raise CanvasVersionConflict(
-            "This canvas was changed elsewhere. Reload and reapply your edits."
+            message="This canvas was changed elsewhere. Reload and reapply your edits."
         )
     was_complete = completion(canvas.type, canvas.blocks)["status"] == "complete"
     merged = empty_blocks(canvas.type)

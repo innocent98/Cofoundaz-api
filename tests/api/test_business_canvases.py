@@ -71,3 +71,66 @@ def test_overview_requires_membership_403(client, db):
     assert (
         client.get("/api/v1/business-builder/overview", headers=outsider_headers).status_code == 403
     )
+
+
+def test_put_saves_and_bumps_version(client, db):
+    _u, _s, h = _member(db)
+    client.get("/api/v1/business-builder/canvases/business_model", headers=h)  # lazy-create v1
+    r = client.put(
+        "/api/v1/business-builder/canvases/business_model",
+        json={"blocks": {"key_partners": ["Stripe"]}, "version": 1},
+        headers=h,
+    )
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["version"] == 2
+    assert data["blocks"]["key_partners"] == ["Stripe"]
+    assert data["completion"]["status"] == "continue"
+
+
+def test_put_stale_version_409(client, db):
+    _u, _s, h = _member(db)
+    client.get("/api/v1/business-builder/canvases/swot", headers=h)  # v1
+    client.put(
+        "/api/v1/business-builder/canvases/swot",
+        json={"blocks": {"strengths": ["fast"]}, "version": 1},
+        headers=h,
+    )  # -> v2
+    r = client.put(
+        "/api/v1/business-builder/canvases/swot",
+        json={"blocks": {"weaknesses": ["slow"]}, "version": 1},
+        headers=h,
+    )  # stale
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "CANVAS_VERSION_CONFLICT"
+
+
+def test_put_bad_block_422(client, db):
+    _u, _s, h = _member(db)
+    client.get("/api/v1/business-builder/canvases/swot", headers=h)
+    r = client.put(
+        "/api/v1/business-builder/canvases/swot",
+        json={"blocks": {"strengths": "not-a-list"}, "version": 1},
+        headers=h,
+    )
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_put_mentor_forbidden_403(client, db):
+    _u, _s, founder_h = _member(db)
+    r = client.put(
+        "/api/v1/business-builder/canvases/swot",
+        json={"blocks": {"strengths": ["x"]}, "version": 1},
+        headers=founder_h,
+    )
+    assert r.status_code == 200  # sanity: founder can edit
+
+    mentor_u, mentor_s, mentor_h = _member(db, role=MembershipRole.mentor)
+    r = client.put(
+        "/api/v1/business-builder/canvases/swot",
+        json={"blocks": {"strengths": ["x"]}, "version": 1},
+        headers=mentor_h,
+    )
+    assert r.status_code == 403
+    assert r.json()["error"]["code"] == "FORBIDDEN"
