@@ -15,7 +15,10 @@ class BusinessCanvas(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "business_canvases"
 
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"), nullable=False
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     type: Mapped[CanvasType] = mapped_column(
         Enum(CanvasType, native_enum=False, length=20), nullable=False
