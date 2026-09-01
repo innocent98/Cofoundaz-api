@@ -130,7 +130,19 @@ def _result_dict(
     }
 
 
-def complete_assessment(db: Session, assessment: Assessment, startup: Startup) -> dict[str, Any]:
+def complete_assessment(
+    db: Session, assessment: Assessment, startup: Startup
+) -> tuple[dict[str, Any], bool]:
+    """Complete `assessment`, returning `(result, claimed)`.
+
+    `claimed` is True only for the caller whose UPDATE actually won the atomic
+    in_progress -> completed transition below; it is False when this call found the
+    assessment already completed (by a prior call or a concurrent racer that won).
+    `result` is the same scored-result dict either way. Callers that must fire a
+    side effect exactly once per real completion (e.g. writing an activity-log row)
+    should gate on `claimed`, not on a pre-call status read -- see the TOCTOU note
+    on the atomic claim below.
+    """
     answers = answered_map(db, assessment)
     nq = next_question(ASSESSMENT_BANK, answers, startup)
     if nq is not None:
@@ -173,8 +185,14 @@ def complete_assessment(db: Session, assessment: Assessment, startup: Startup) -
                 "This assessment is being completed by another request. Try again shortly.",
                 409,
             )
-        return _result_dict(
-            assessment.id, stored.dimension_scores, stored.overall_provisional, stored.narrative
+        return (
+            _result_dict(
+                assessment.id,
+                stored.dimension_scores,
+                stored.overall_provisional,
+                stored.narrative,
+            ),
+            False,
         )
 
     # We won the claim -- keep the in-memory object in sync with what we just committed.
@@ -207,9 +225,12 @@ def complete_assessment(db: Session, assessment: Assessment, startup: Startup) -
         },
     )
     db.flush()
-    return _result_dict(
-        assessment.id,
-        scored["dimension_scores"],
-        scored["overall_provisional"],
-        scored["narrative"],
+    return (
+        _result_dict(
+            assessment.id,
+            scored["dimension_scores"],
+            scored["overall_provisional"],
+            scored["narrative"],
+        ),
+        True,
     )

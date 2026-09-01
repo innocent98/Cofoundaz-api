@@ -1,0 +1,34 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "bb10dc08-af45-410b-9f7c-e02a4f7d9251",
+        "action": "mission.task.completed",
+        "entity_type": "mission_task",
+        "entity_id": "721e79af-c219-4a3a-94d8-699e597929a3",
+        "summary": "Ada Founder completed 'Run 10 customer interviews'",
+        "meta": null,
+        "actor": {
+          "id": "d22ef611-7880-4336-9d53-fb872cae34e0",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-08-31T16:56:32.533340+00:00"
+      },
+      {
+        "id": "63d037eb-c484-4910-a09a-bb8152c2a7a7",
+        "action": "assessment.completed",
+        "entity_type": "assessment",
+        "entity_id": "b5d59c90-c404-47b4-9431-9aa09fe5c709",
+        "summary": "Ada Founder completed the startup assessment",
+        "meta": null,
+        "actor": {
+          "id": "d22ef611-7880-4336-9d53-fb872cae34e0",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-08-31T16:56:32.451502+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

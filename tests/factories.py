@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.db.models.activity import ActivityLog
 from app.db.models.assessment import Assessment, AssessmentAnswer
 from app.db.models.auth import AuthSession
 from app.db.models.enums import (
@@ -311,6 +312,7 @@ def create_mission_task(
     status: MissionTaskStatus = MissionTaskStatus.todo,
     order: int = 0,
     roadmap_task_id: uuid.UUID | None = None,
+    completed_at: datetime | None = None,
 ) -> MissionTask:
     t = MissionTask(
         mission_id=mission.id,
@@ -319,6 +321,7 @@ def create_mission_task(
         status=status,
         order=order,
         roadmap_task_id=roadmap_task_id,
+        completed_at=completed_at,
     )
     db.add(t)
     db.flush()
@@ -387,3 +390,28 @@ def create_auth_session(
     db.add(s)
     db.flush()
     return s
+
+
+def create_activity(
+    db: Session,
+    *,
+    startup: Startup,
+    action: str = "mission.task.completed",
+    summary: str = "Someone did a thing",
+    actor: User | None = None,
+    entity_type: str | None = None,
+    entity_id: uuid.UUID | None = None,
+    meta: dict | None = None,
+) -> ActivityLog:
+    row = ActivityLog(
+        startup_id=startup.id,
+        actor_user_id=actor.id if actor else None,
+        action=action,
+        summary=summary,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        meta=meta,
+    )
+    db.add(row)
+    db.flush()
+    return row
