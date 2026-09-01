@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     assessments,
+    business,
     dashboard,
     health,
     health_score,
@@ -25,3 +26,4 @@ api_router.include_router(health_score.router, prefix="/health-score", tags=["he
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(business.router, prefix="/business-builder", tags=["business-builder"])
