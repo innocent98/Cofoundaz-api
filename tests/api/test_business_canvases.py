@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 
 from app.core.security import create_access_token
+from app.db.models.business import BusinessCanvas
 from app.db.models.enums import MembershipRole, StartupStage
+from app.db.models.job import Job
 from tests.factories import create_membership, create_startup, create_user
 
 
@@ -134,3 +136,22 @@ def test_put_mentor_forbidden_403(client, db):
     )
     assert r.status_code == 403
     assert r.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_ai_fill_enqueues_job_and_writes_no_canvas(client, db):
+    _u, s, h = _member(db)
+    r = client.post("/api/v1/business-builder/canvases/lean/ai-fill", headers=h)
+    assert r.status_code == 202
+    data = r.json()["data"]
+    assert data["status"] == "queued" and data["job_id"]
+    job = db.query(Job).filter(Job.id == data["job_id"]).one()
+    assert job.type == "business.canvas.ai_fill"
+    assert job.payload["canvas_type"] == "lean"
+    assert job.payload["startup_id"] == str(s.id)
+    assert db.query(BusinessCanvas).filter_by(startup_id=s.id).count() == 0  # no canvas written
+
+
+def test_ai_fill_mentor_forbidden_403(client, db):
+    _mentor_u, _mentor_s, mentor_h = _member(db, role=MembershipRole.mentor)
+    r = client.post("/api/v1/business-builder/canvases/lean/ai-fill", headers=mentor_h)
+    assert r.status_code == 403

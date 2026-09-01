@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -12,6 +12,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
+from app.platform.jobs import job_dispatcher
 from app.schemas.business import CanvasSave
 from app.services.business.service import (
     get_or_create_canvas,
@@ -70,3 +71,22 @@ def put_canvas(
     saved = save_canvas(db, canvas, body.blocks, body.version)
     db.commit()
     return success_response(serialize_canvas(saved))
+
+
+@router.post("/canvases/{type}/ai-fill", status_code=status.HTTP_202_ACCEPTED)
+def ai_fill_canvas(
+    type: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    canvas_type = _parse_type(type)
+    startup = _startup(db, membership)
+    job = job_dispatcher.enqueue(
+        db,
+        type="business.canvas.ai_fill",
+        payload={"startup_id": str(startup.id), "canvas_type": canvas_type.value},
+        startup_id=startup.id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
