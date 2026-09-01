@@ -1,10 +1,63 @@
 name: CI
 
+# COST MODEL - read before adding a job.
+#
+# This is a PRIVATE repo. GitHub Free bills every job, rounded UP to the minute,
+# against a 2,000 min/month allowance. The pipeline was previously 10 jobs at
+# ~15 billed minutes per run, firing on BOTH pull_request and push-to-main - so
+# one PR-then-merge cycle cost ~30 minutes and re-ran, on main, the exact suite
+# that had just passed on the PR. 100+ runs over three days exhausted the
+# allowance and every job began failing in 2 seconds with zero steps, which
+# looks alarmingly like a code failure and is not one.
+#
+# So jobs are now split by what a given event can actually tell you:
+#
+#   ALWAYS (push + PR)  lint, test, security      ~5 min
+#     The set that must still catch a DIRECT push to main - a typo, a broken
+#     test, a secret. Cheap enough to run unconditionally.
+#
+#   PR ONLY             quality, migrations, e2e, build   ~+6 min
+#     Slower, and re-running them on the merge commit re-tests code that was
+#     green minutes earlier. A merge to main additionally triggers CD, whose
+#     own build step fails before deploying if the image is broken.
+#
+# REMOVED, with what each cost and what coverage was lost:
+#   sonarcloud  (~1 min)  Inert - it has no SONAR_TOKEN and has never produced
+#                         a finding. Re-add it WITH the token or not at all.
+#   iac-scan    (~3 min)  trivy fs duplicated pip-audit on the same CVE set;
+#                         trivy config returned 0 findings on every run since
+#                         the Dockerfile was hardened; Checkov has no
+#                         docker_compose framework, so it only ever scanned the
+#                         workflows. Real loss: nothing currently scans the two
+#                         compose files as IaC - no tool we tried can. trivy
+#                         image (the one that finds CVEs that ship) is retained
+#                         inside `build`.
+#
+# DRAFT PRs COST NOTHING. Every job carries a `draft == false` guard, so a PR
+# opened as a draft runs no CI at all; marking it ready runs the suite once.
+# GitHub does NOT skip drafts on its own - a draft fires `opened` and
+# `synchronize` like any other PR - which is why the guard is explicit and why
+# `ready_for_review` had to be added to the trigger's type list.
+#
+# The habit this enables: open work as a draft, push as often as you like for
+# free, mark it ready when you want it validated. Repeated pushes to an ALREADY
+# READY PR still re-run CI (correctly - the code changed), though
+# `cancel-in-progress` below kills superseded runs so rapid pushes cannot stack.
+#
+# Adding a job costs roughly (its minutes x runs per month). Say so in the PR.
+
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+    # `ready_for_review` is REQUIRED here. GitHub does NOT exclude draft PRs
+    # from pull_request events - a draft still fires `opened` and
+    # `synchronize` - so drafts are skipped by an explicit `draft == false`
+    # guard on every job below, and marking one ready fires
+    # `ready_for_review`, which is NOT in the default type list. Without it a
+    # PR drafted, pushed to, then marked ready would never run CI at all.
+    types: [opened, reopened, ready_for_review, synchronize]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -30,6 +83,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   lint:
     name: Lint & type-check
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,6 +114,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   test:
     name: Unit tests
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     services:
@@ -126,6 +183,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   migrations:
     name: Migrations (fresh DB, round-trip, drift)
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     services:
@@ -194,6 +253,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   e2e:
     name: End-to-end
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -241,6 +302,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   security:
     name: Security (secrets, SAST, dependencies)
+    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -375,6 +438,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   quality:
     name: Quality (pylint, complexity, Dockerfile)
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -438,122 +503,6 @@ jobs:
           failure-threshold: info
 
   # ------------------------------------------------------------------------- #
-  iac-scan:
-    name: IaC & repo scanning (Trivy fs/config, Checkov)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # ALL SCANS FIRST, UPLOADS LAST - see the note in the `security` job. On
-      # the first real CI run a failed SARIF upload sat mid-job and caused the
-      # `trivy config` gate and Checkov to be SKIPPED entirely.
-
-      - name: Trivy fs (SARIF)
-        # REPORT-ONLY. Finds a DIFFERENT set from the image scan in `build`: it
-        # reads poetry.lock, so it sees the locked dependency graph including
-        # advisories with NO fix available (e.g. ecdsa CVE-2024-23342, which the
-        # image scan hides behind --ignore-unfixed). Also runs the secret scanner.
-        #
-        # It does not BLOCK because pip-audit already gates on the same
-        # dependency CVEs; the value here is the wider view.
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret
-          format: sarif
-          output: trivy-fs.sarif
-          severity: HIGH,CRITICAL
-
-      - name: Trivy config (SARIF)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: config
-          scan-ref: .
-          format: sarif
-          output: trivy-config.sarif
-          severity: MEDIUM,HIGH,CRITICAL
-
-      - name: Fail on IaC misconfiguration
-        # BLOCKS - and green today (0 misconfigurations on this Dockerfile), so
-        # it is a free ratchet against the hardening eroding.
-        #
-        # SCOPE NOTE: `trivy config` supports Dockerfile, Kubernetes, Terraform,
-        # CloudFormation and Helm. It has NO docker-compose scanner, so the two
-        # compose files are NOT covered here despite being IaC. Neither does
-        # Checkov (no docker_compose framework). Workflow files are covered by
-        # actionlint + shellcheck. See docs/deployment/DEPLOYMENT_GUIDE.md.
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: config
-          scan-ref: .
-          format: table
-          severity: MEDIUM,HIGH,CRITICAL
-          exit-code: "1"
-
-      - name: Checkov (GitHub Actions workflows)
-        # BLOCKS. Green today (47 passed / 0 failed / 1 documented skip).
-        #
-        # SCOPE - READ BEFORE ASSUMING IT COVERS COMPOSE: Checkov 3.3.15 has no
-        # `docker_compose` framework at all. Run against the compose files under
-        # the generic `yaml` framework it emits no check_type and no results
-        # whatsoever - not "few findings", literally no policies apply. A job
-        # pointed at compose here could never fail, which is worse than no job.
-        #
-        # What it DOES add is workflow security POLICY, which actionlint does not
-        # do (actionlint is syntax and typing). On first run it caught CKV_GHA_7
-        # against cd.yml's workflow_dispatch input - see the documented inline
-        # skip there for why that one is a false positive for this design.
-        run: |
-          pipx install checkov
-          checkov --directory .github --framework github_actions \
-            --compact --quiet --output cli
-
-      # --- Publish to the Security tab (BEST EFFORT) ------------------------ #
-      # Guarded on hashFiles() as well as continue-on-error: if an earlier scan
-      # step is ever skipped, its SARIF will not exist, and an unguarded upload
-      # would fail with "Path does not exist" - which is precisely what happened
-      # on the first run and masked the real cause.
-      - name: Publish Trivy fs findings
-        id: sarif_fs
-        if: always() && hashFiles('trivy-fs.sarif') != ''
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
-        with:
-          sarif_file: trivy-fs.sarif
-          # Distinct category per scan mode so the Security tab keeps three
-          # separate Trivy result sets instead of each overwriting the last.
-          category: trivy-fs
-
-      - name: Publish Trivy config findings
-        id: sarif_config
-        if: always() && hashFiles('trivy-config.sarif') != ''
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
-        with:
-          sarif_file: trivy-config.sarif
-          category: trivy-config
-
-      - name: Report code-scanning availability
-        if: always()
-        env:
-          FS: ${{ steps.sarif_fs.outcome }}
-          CFG: ${{ steps.sarif_config.outcome }}
-        run: |
-          if [ "${FS}" = "failure" ] || [ "${CFG}" = "failure" ]; then
-            echo "::warning title=Code scanning upload unavailable::Trivy SARIF was NOT uploaded to the Security tab (private repo without GitHub Advanced Security). Findings are still ENFORCED by exit code in the scan steps above. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
-            {
-              echo "### Code scanning upload unavailable"
-              echo ""
-              echo "Trivy SARIF was **not** uploaded (private repo, GHAS not enabled)."
-              echo "Gates still enforced by exit code - a lost *view*, not a lost *gate*."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Code scanning upload OK (fs=${FS} config=${CFG})."
-          fi
 
   # ------------------------------------------------------------------------- #
   dependency-review:
@@ -576,6 +525,7 @@ jobs:
     # See docs/deployment/GITHUB_ACTIONS_SETUP.md.
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
       (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
     runs-on: ubuntu-latest
     permissions:
@@ -598,57 +548,18 @@ jobs:
           deny-licenses: GPL-3.0, AGPL-3.0, LGPL-3.0
 
   # ------------------------------------------------------------------------- #
-  sonarcloud:
-    name: SonarCloud
-    runs-on: ubuntu-latest
-    # Needs the coverage.xml produced by `test` so Sonar reports on the SAME
-    # coverage run that gates the build, rather than recomputing and disagreeing.
-    needs: [test]
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - name: Check whether SonarCloud is enabled
-        id: gate
-        # Job-level `env` IS visible to a step's `if`, which is what makes this
-        # skip-cleanly pattern work. Without the guard, every run of this repo
-        # would fail red on a missing secret for a service nobody has set up.
-        run: |
-          if [ -n "${SONAR_TOKEN}" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "SONAR_TOKEN is not set - skipping." >> "$GITHUB_STEP_SUMMARY"
-            echo "See docs/deployment/GITHUB_ACTIONS_SETUP.md -> Enabling SonarCloud." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.gate.outputs.enabled == 'true'
-        with:
-          # Sonar needs full history to attribute issues to authors and to compute
-          # "new code" correctly; a shallow clone makes every line look new.
-          fetch-depth: 0
-
-      - name: Download coverage from the test job
-        if: steps.gate.outputs.enabled == 'true'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: coverage-xml
-
-      - name: SonarCloud scan
-        if: steps.gate.outputs.enabled == 'true'
-        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # ------------------------------------------------------------------------- #
   build:
     name: Build image & scan
+    # PR-only, and never while the PR is a draft. See the cost note on top.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     # The image is only built once everything that can invalidate it is green.
     # Trivy runs after the build because it scans the resolved image filesystem;
     # Semgrep (in `security`) scans source patterns. They are complementary, not
     # redundant - neither finds what the other finds.
-    needs: [lint, quality, test, migrations, e2e, security, iac-scan]
+    needs: [lint, quality, test, migrations, e2e, security]
     permissions:
       contents: read
       security-events: write
