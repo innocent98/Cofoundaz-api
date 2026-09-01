@@ -49,6 +49,20 @@ def test_save_bumps_version_and_rejects_stale(db):
         save_canvas(db, saved, {"weaknesses": ["slow"]}, expected_version=1)  # stale
 
 
+def test_save_is_full_replace_not_partial_merge(db):
+    s = _startup(db)
+    c = get_or_create_canvas(db, s, CanvasType.business_model)
+    c = save_canvas(db, c, {"key_partners": ["Stripe"]}, expected_version=1)
+    assert c.version == 2
+    assert c.blocks["key_partners"] == ["Stripe"]
+    c = save_canvas(db, c, {"channels": ["Web"]}, expected_version=2)
+    assert c.version == 3
+    assert c.blocks["channels"] == ["Web"]
+    # key_partners was omitted from this save, so full-replace resets it to empty
+    # rather than preserving the prior value (PUT semantics, not partial merge).
+    assert c.blocks["key_partners"] == []
+
+
 def test_completion_transitions_and_emits_once(db, monkeypatch):
     events = []
     monkeypatch.setattr(
