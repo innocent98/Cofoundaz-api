@@ -1,5 +1,6 @@
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, CanvasVersionConflict
@@ -15,16 +16,31 @@ def _defs(canvas_type: CanvasType) -> tuple[BlockDef, ...]:
 
 
 def get_or_create_canvas(db: Session, startup: Startup, canvas_type: CanvasType) -> BusinessCanvas:
+    """Lazily fetch or create the canvas row for `(startup, canvas_type)`.
+
+    Unguarded check-then-INSERT would let two concurrent first-loads of the same
+    (startup_id, type) both pass the `row is None` check and both INSERT -- the
+    loser's flush raises `IntegrityError` against `uq_business_canvas_startup_type`.
+    Mirrors `app/services/dashboard/service.py::_get_or_generate_today_race_safe`:
+    run the insert inside a SAVEPOINT so a losing racer rolls back only its own
+    attempt, then re-select -- under READ COMMITTED the winner's now-committed row
+    is visible.
+    """
     row = db.query(BusinessCanvas).filter_by(startup_id=startup.id, type=canvas_type).first()
     if row is None:
-        row = BusinessCanvas(
-            startup_id=startup.id,
-            type=canvas_type,
-            blocks=empty_blocks(canvas_type),
-            version=1,
-        )
-        db.add(row)
-        db.flush()
+        try:
+            with db.begin_nested():
+                row = BusinessCanvas(
+                    startup_id=startup.id,
+                    type=canvas_type,
+                    blocks=empty_blocks(canvas_type),
+                    version=1,
+                )
+                db.add(row)
+                db.flush()
+        except IntegrityError:
+            # A concurrent caller won the race -- their row is now committed and visible.
+            row = db.query(BusinessCanvas).filter_by(startup_id=startup.id, type=canvas_type).one()
     return row
 
 

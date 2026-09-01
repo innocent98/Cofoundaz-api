@@ -336,6 +336,16 @@ current `version` and `blocks`), reapply the user's in-progress edits on top of 
 `blocks`, and let the user re-save with the new `version`. There is no server-side merge — a
 naive retry with the same stale `version` will 409 again forever.
 
+**What the version check does and does not catch.** This is app-level optimistic concurrency —
+`save_canvas` compares `expected_version` against the row's version at the moment it runs. It
+reliably catches a stale save coming from a re-read (edit tab A, edit tab B off an older `GET`,
+save A, save B → B gets 409 as shown above). It does **not** catch two saves that are truly
+simultaneous and both read the same `version` at the same instant — those resolve last-writer-wins
+at the database level, with no 409 to either caller. This is expected given the "occasional-editor,
+not high-contention" tradeoff described in the SOP; a DB-level compare-and-swap (`UPDATE ... WHERE
+version = :expected`) is a possible future hardening if simultaneous-edit collisions turn out to
+matter in practice.
+
 ---
 
 ## 4. `POST /api/v1/business-builder/canvases/{type}/ai-fill` — AI-fill (deferred)

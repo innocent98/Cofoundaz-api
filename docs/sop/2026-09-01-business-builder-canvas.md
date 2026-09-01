@@ -139,7 +139,13 @@ modules); `_parse_type()` converts the path `{type}` string to `CanvasType`, rai
 on an unrecognized value.
 
 **Service** — `app/services/business/service.py`
-- `get_or_create_canvas(db, startup, canvas_type) -> BusinessCanvas` — lazy-get/create.
+- `get_or_create_canvas(db, startup, canvas_type) -> BusinessCanvas` — lazy-get/create,
+  race-safe: the INSERT runs inside a SAVEPOINT (`db.begin_nested()`) and re-selects on
+  `IntegrityError` against `uq_business_canvas_startup_type`, mirroring
+  `app/services/dashboard/service.py::_get_or_generate_today_race_safe`. Without this, two
+  concurrent first-loads of the same `(startup_id, type)` (e.g. two tabs opening a
+  never-before-opened canvas) could both pass the `row is None` check and both INSERT, with the
+  loser's flush raising `IntegrityError` unguarded.
 - `validate_blocks(canvas_type, blocks) -> None` — per-block-kind 422 validation.
 - `save_canvas(db, canvas, blocks, expected_version) -> BusinessCanvas` — validate → version
   check → full-replace merge → completion-transition event.
@@ -165,6 +171,11 @@ on an unrecognized value.
 - `tests/services/business/test_service.py` — lazy-get/create, validation (unknown block, wrong
   kind), version-conflict raise, full-replace-not-merge semantics (pinned explicitly), completion
   transitions and the `business.artifact.completed` event, overview grid.
+- `tests/services/business/test_concurrency.py` — two real, separately-committing `Session`s
+  race `get_or_create_canvas` on the same `(startup_id, type)` via a `threading.Barrier`; asserts
+  neither call raises and exactly one `business_canvases` row exists afterward. Verified to fail
+  (`IntegrityError` on `uq_business_canvas_startup_type`) against the naive unguarded
+  check-then-INSERT and pass against the race-safe version.
 - `tests/api/test_business_canvases.py` — endpoint happy paths, unknown-type 404, membership
   403, editor-vs-mentor 403 on both write endpoints, stale-version 409, bad-block 422, ai-fill
   writes no canvas row.
@@ -174,9 +185,10 @@ on an unrecognized value.
 
 ## Verification
 
-- **Unit suite: 766 passed** (`poetry run pytest -q`) — 19 of those are business-builder-specific
-  (`tests/services/business/`, `tests/api/test_business_canvases.py`); the rest is the unchanged
-  baseline from every prior module.
+- **Unit suite: 767 passed** (`poetry run pytest -q`) — 20 of those are business-builder-specific
+  (`tests/services/business/`, `tests/api/test_business_canvases.py`), including the
+  `test_concurrency.py` race-safety regression test added in the branch's final fix wave; the
+  rest is the unchanged baseline from every prior module.
 - **Live E2E: 29 passed** (`COMPOSE_PROJECT_NAME=cofoundaz-api make e2e`, this task) —
   `e2e/test_business_builder.py::test_business_builder_journey` among them: a founder onboards →
   `GET /overview` shows all 5 canvas types `status == "start"` → `GET
@@ -232,3 +244,12 @@ on an unrecognized value.
   order — `blocks` in a captured response can come back in a different key order than
   `block_defs` or the request body (observed live — see the FE guide's field-nesting trap). Not
   a bug; documented so the FE doesn't build UI that assumes ordering.
+- **`save_canvas`'s version check is last-writer-wins under true simultaneity.** The
+  `expected_version != canvas.version` check in `save_canvas` (`service.py:104`) is app-level
+  optimistic concurrency, not a DB-level compare-and-swap — it reliably 409s a save built from a
+  stale re-read, but two saves that read the same `version` at the same instant both pass the
+  check and the second write silently overwrites the first with no 409 to either caller. Given
+  this is a single founder (or small team) editing occasionally rather than a high-contention
+  money path, this was accepted as-is rather than moved to `UPDATE ... WHERE version = :expected`
+  — revisit if simultaneous-edit collisions turn out to matter in practice. Documented in the FE
+  guide's optimistic-concurrency section so the FE doesn't assume the 409 is a complete guarantee.
