@@ -42,6 +42,12 @@ on:
     branches: [develop]
   pull_request:
     branches: [develop]
+    # Mirrors ci.yml exactly, and for the same two reasons. `ready_for_review`
+    # is NOT in GitHub's default type list, so without it a PR that is drafted,
+    # pushed to, then marked ready would never be analysed at all - the draft
+    # guard below would skip every event it did receive. The two must be added
+    # together or the guard silently becomes "never run on a PR".
+    types: [opened, reopened, ready_for_review, synchronize]
   schedule:
     # Mondays 04:17 UTC. Deliberately not on the hour - GitHub heavily throttles
     # cron at :00, and a delayed weekly baseline is a stale weekly baseline.
@@ -64,6 +70,14 @@ jobs:
     # real run produced. A job that is red forever teaches people that red is
     # normal, so this SKIPS cleanly instead of failing.
     #
+    # It ALSO skips while a pull request is still a draft, matching ci.yml so
+    # that "a draft costs nothing" is a property of the whole pipeline rather
+    # than of one file. That guard is currently invisible - on this private repo
+    # the GHAS condition already skips the job on every event, so a draft costs
+    # nothing today either way. It stops being invisible the moment code
+    # scanning is enabled, at which point drafts would otherwise start billing
+    # CodeQL minutes with no one having changed anything.
+    #
     # It turns itself back on when either becomes true:
     #   - the repository is made PUBLIC (code scanning is free on public repos), or
     #   - the repository variable ENABLE_CODE_SCANNING is set to "true" after
@@ -75,7 +89,9 @@ jobs:
     # gitleaks, pip-audit, Trivy and Checkov all run on their own exit codes and
     # keep blocking the build with or without GHAS - only their Security-tab
     # upload is lost.
-    if: github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true'
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
     # CodeQL on a large repo can outrun the 6h default; this fails fast instead.
     timeout-minutes: 30
     permissions:
