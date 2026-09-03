@@ -42,14 +42,21 @@ inputs:
   ghcr_username:
     required: true
     description: >-
-      GHCR user for the VPS-side docker login. Pass ${{ github.actor }} - NOT a
-      GHCR_PULL_USERNAME secret. That pair was removed (see
-      docs/deployment/GITHUB_ACTIONS_SETUP.md §4) and no longer exists.
+      GHCR user for the VPS-side docker login. The caller passes the
+      github.actor context value - NOT a GHCR_PULL_USERNAME secret. That pair
+      was removed (see docs/deployment/GITHUB_ACTIONS_SETUP.md §4) and no
+      longer exists.
+      NOTE: no '${{ ... }}' here. An action manifest is template-parsed in
+      full, INCLUDING description prose, and neither the `github` nor the
+      `secrets` context exists at manifest-load time - writing one here fails
+      the whole action with "Unrecognized named-value".
   ghcr_token:
     required: true
     description: >-
-      Token for that login. Pass ${{ secrets.GITHUB_TOKEN }}; the calling job
-      must grant `packages: read` or the VPS-side pull is denied.
+      Token for that login. The caller passes the workflow's own GITHUB_TOKEN
+      secret; the calling job must grant `packages: read` or the VPS-side pull
+      is denied. (Again, deliberately not written as an expression - see the
+      note on ghcr_username above.)
 
 runs:
   using: composite
