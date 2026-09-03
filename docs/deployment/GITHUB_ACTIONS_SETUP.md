@@ -440,6 +440,44 @@ private repositories **without** GHAS (it is *Dependabot alerts*, which read the
 Graph, that need GHAS on a private repo). Enable it under
 **Settings → Code security → Dependabot version updates**.
 
+## 9c. Adding a secret a TEST needs — never inline it
+
+If a new module's tests need a key (an encryption key, a signing key, a
+third-party token), it goes in as a GitHub Actions **secret**, referenced from
+the workflow. It never goes in as a literal, not even a throwaway one.
+
+```yaml
+# WRONG - fails the gitleaks gate, permanently, for everyone
+env:
+  JOURNAL_ENCRYPTION_KEY: <a real 44-char Fernet key, pasted inline>
+
+# RIGHT
+env:
+  JOURNAL_ENCRYPTION_KEY: ${{ secrets.CI_JOURNAL_ENCRYPTION_KEY }}
+```
+
+**Why, even when the value really is throwaway.** This happened on 2026-08-31:
+a Fernet key was committed inline into this workflow's pytest env block, with an
+accurate comment saying it was a throwaway that the journal tests needed. It was
+genuinely inert — never used on real data, absent from every env template,
+referenced by no code. It still cost real time, for two reasons:
+
+1. **gitleaks cannot tell a throwaway from a live key.** Neither can a reviewer,
+   quickly. Every committed high-entropy string has to be investigated as though
+   it were real, and that investigation is the expensive part — not the fix.
+2. **git history is permanent.** Once committed, the only ways out are a
+   baseline entry or rewriting published history. The value was deleted from the
+   tree the same week and the finding persisted regardless.
+
+Existing repo values live under the `CI_` prefix (`CI_STRIPE_API_KEY`,
+`CI_SUPABASE_JWT_SECRET`); follow that convention. If the value must be
+reproducible across runs, generate it once and store it as a secret — do not
+regenerate per run unless the tests genuinely tolerate it.
+
+A local `.env` is fine for the same key: `.env` is gitignored, `.env.*` is denied
+by default, and only `*.example` templates are re-allowed. See
+[ENV_ENCRYPTION.md](ENV_ENCRYPTION.md).
+
 ## 10. Setup checklist
 
 Work top to bottom. Nothing here depends on a green CI run.
