@@ -1,0 +1,205 @@
+name: Live E2E
+
+# The e2e/ suite, pointed at a DEPLOYED environment instead of a locally booted
+# uvicorn. Same suite, same assertions, real nginx, real TLS, real database.
+#
+# Extracted out of the old single-run cd.yml for two reasons:
+#
+#   1. PROMOTION GATE. `cd-staging.yml` calls it with `workflow_call` after it
+#      deploys staging. Only if this passes does that workflow mark the image
+#      staging-verified, which is the ONLY thing `cd-production.yml` will
+#      deploy. The gate therefore still gates, even though staging and
+#      production are now separate workflow runs.
+#
+#   2. ON DEMAND. `workflow_dispatch` runs it against either environment
+#      without deploying anything - for confirming an incident is resolved, or
+#      for checking production after a manual change on the box.
+#
+# WHAT IT ACTUALLY COVERS - read this before trusting a green tick.
+# Of the 27 tests in e2e/, only 13 can run remotely. The rest need to read
+# captured emails out of `EMAIL_FILE_DIR`, which is a directory on the VPS that
+# a GitHub runner cannot see. e2e/conftest.py deselects them automatically by
+# FIXTURE CLOSURE (anything reaching `mailbox`, directly or through
+# `make_verified_user`), so a new mailbox-dependent test is excluded the moment
+# it is written rather than by a list someone has to remember to update.
+# A run that collects NOTHING fails deliberately - see the exit-5 handling below.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "GitHub Environment to target: staging or production."
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which deployed environment to test."
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+concurrency:
+  # Per environment, so an on-demand run against production cannot collide with
+  # the promotion gate running against staging. Not cancelled in flight: a
+  # half-run suite tells you nothing, and it has already created its fixtures.
+  group: live-e2e-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  live-e2e:
+    name: Live E2E against ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    # Supplies APP_URL and the VPS_* secrets for the chosen environment, and -
+    # for production - applies that environment's required-reviewer approval.
+    # That approval is the deliberate friction on the production path: this
+    # suite SIGNS UP REAL USERS in whatever database it points at.
+    environment:
+      name: ${{ inputs.environment }}
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: "3.11"
+          poetry-version: "2.2.1"
+
+      - name: Warn about writing to production
+        if: inputs.environment == 'production'
+        run: |
+          echo "::warning title=This run writes to production::The e2e suite signs up users and creates workspace data. Against production those records are real and are NOT cleaned up."
+          {
+            echo "### Running against PRODUCTION"
+            echo ""
+            echo "This suite creates real users and real workspace rows in the"
+            echo "production database, and does not clean them up. It also does"
+            echo "**not** reset the rate limiter (that would restart the production"
+            echo "API), so a busy window can fail the run on 429s that say nothing"
+            echo "about correctness."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reset the staging rate limiter
+        # STAGING ONLY, and hard-coded to that rather than made an input. The
+        # reset works by restarting the api service; doing that to production to
+        # make a test suite pass would be trading a real outage for a green tick.
+        if: inputs.environment == 'staging'
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          envs: DEPLOY_PATH
+          script: |
+            set -euo pipefail
+            cd "${DEPLOY_PATH}"
+            # The template flushes rate-limit keys out of Redis. That would be a
+            # NO-OP here: this app builds its slowapi Limiter without a
+            # storage_uri, so limiter state is MemoryStorage inside each gunicorn
+            # worker - verified locally (type(limiter._storage) is MemoryStorage).
+            # Restarting the api service is what actually clears it.
+            #
+            # Without this, a redeploy that reuses warm workers can start the E2E
+            # run partway through a 120/minute budget and fail on 429s that have
+            # nothing to do with the change under test.
+            docker compose -f docker-compose.prod.yml --env-file .env restart api
+            # Same sed-not-grep|cut reasoning as .github/actions/deploy-stack:
+            # `cut` exits 0 on empty input, so the `||` default never fired and a
+            # missing API_PORT yielded `http://127.0.0.1:/...`. Staging runs on
+            # 8001, so this value is no longer incidental.
+            API_PORT="$(sed -n 's/^API_PORT=//p' .env | tail -n 1)"
+            for _ in $(seq 1 40); do
+              if curl -fsS --max-time 5 "http://127.0.0.1:${API_PORT:-8000}/api/v1/health/ready" >/dev/null 2>&1; then
+                echo "staging api back up after limiter reset"; exit 0
+              fi
+              sleep 3
+            done
+            echo "::error::staging api did not come back after the limiter reset"
+            exit 1
+
+      - name: Run the live E2E gate
+        env:
+          # Points the existing e2e/ suite at the DEPLOYED API instead of a
+          # locally booted uvicorn. Same suite, same assertions.
+          E2E_BASE_URL: ${{ vars.APP_URL }}
+          # Remote mode: e2e/conftest.py deselects every test whose fixture
+          # closure needs the mailbox, because EMAIL_FILE_DIR lives on the VPS
+          # and this runner cannot read it. It prints exactly which tests were
+          # dropped, and errors out if that would leave nothing to run.
+          E2E_REMOTE: "1"
+          TARGET_ENV: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [ -z "${E2E_BASE_URL}" ]; then
+            echo "::error::The APP_URL variable is not set for the ${TARGET_ENV} environment - cannot run the live gate. See docs/deployment/GITHUB_ACTIONS_SETUP.md section 6."
+            exit 1
+          fi
+          echo "Target: ${TARGET_ENV} -> ${E2E_BASE_URL}"
+          # -o addopts="" clears the unit-suite defaults from pyproject.toml
+          # (coverage, --strict-markers), which do not apply to a remote run.
+          poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider \
+            --junitxml=live-e2e.xml 2>&1 | tee live-e2e.log
+          ec=${PIPESTATUS[0]}
+
+          # A gate that no-ops is worse than no gate. The template treats pytest
+          # exit 5 ("no tests collected") as success so projects without an e2e
+          # suite are not blocked; we have a suite, so exit 5 here means the
+          # selection broke and NOTHING was verified. Fail on it.
+          #
+          # This matters MORE now than it did in the single-run pipeline: a pass
+          # here is what mints the staging-verified tag that production will
+          # deploy on. An empty run would mint that proof out of nothing.
+          if [ "$ec" -eq 5 ]; then
+            echo "::error::pytest collected no tests. The live gate verified nothing - failing deliberately."
+            exit 1
+          fi
+          exit "$ec"
+
+      - name: Summarise what the gate actually covered
+        if: always()
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+          TARGET_URL: ${{ vars.APP_URL }}
+        run: |
+          {
+            echo "### Live E2E - ${TARGET_ENV}"
+            echo ""
+            echo "Target: \`${TARGET_URL}\`"
+            echo ""
+            if [ -f live-e2e.log ]; then
+              PASSED=$(grep -cE '^e2e/.* PASSED' live-e2e.log || true)
+              DESEL=$(grep -cE 'deselected \(needs local mail dir\)' live-e2e.log || true)
+              echo "| metric | count |"
+              echo "|---|---|"
+              echo "| ran against deployed ${TARGET_ENV} | ${PASSED:-0} |"
+              echo "| deselected (need a local mail dir) | ${DESEL:-0} |"
+              echo ""
+              echo "Deselected tests do **not** gate production. They need"
+              echo "\`EMAIL_FILE_DIR\` on the same machine as the test run, which a"
+              echo "remote runner does not have. See docs/deployment/DEPLOYMENT_GUIDE.md."
+            else
+              echo "No log produced - the job failed before pytest ran."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-e2e-${{ inputs.environment }}-${{ github.run_id }}
+          path: |
+            live-e2e.log
+            live-e2e.xml
+          if-no-files-found: warn
+          retention-days: 14
