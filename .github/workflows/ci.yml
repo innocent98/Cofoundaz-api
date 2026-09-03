@@ -328,10 +328,27 @@ jobs:
         # Run as a pinned container rather than the marketplace action: the
         # action requires GITLEAKS_LICENSE for organisation-owned repos, and the
         # container has no such condition.
+        #
+        # `--log-opts HEAD` scopes the scan to the history of the ref being
+        # built. It is NOT a weakening of the gate, and the distinction matters:
+        #
+        #   checkout uses fetch-depth: 0, which fetches every branch and tag -
+        #   correct, because a secret committed and "removed" in a later commit
+        #   is still in history and still compromised, and a shallow clone would
+        #   miss exactly that. But gitleaks defaults to scanning ALL refs in the
+        #   object store, not just the branch under test. So one commit on ONE
+        #   contributor's unmerged branch failed this job on every branch in the
+        #   repo, main included - a red build nobody could explain from their own
+        #   diff, pointing at a file their branch never touched.
+        #
+        # Scoped to HEAD, a branch is judged on its own history. A secret on
+        # someone else's branch fails THEIR pull request, which is where it can
+        # actually be fixed. Full history of this branch is still scanned.
         run: |
           docker run --rm -v "${{ github.workspace }}:/repo" \
             ghcr.io/gitleaks/gitleaks:v8.30.1 \
-            detect --source /repo --redact --verbose --no-banner
+            detect --source /repo --redact --verbose --no-banner \
+            --log-opts HEAD
 
       # --- 2. SAST ---------------------------------------------------------- #
       #
