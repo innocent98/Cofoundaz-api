@@ -46,10 +46,13 @@ inputs:
       github.actor context value - NOT a GHCR_PULL_USERNAME secret. That pair
       was removed (see docs/deployment/GITHUB_ACTIONS_SETUP.md §4) and no
       longer exists.
-      NOTE: no '${{ ... }}' here. An action manifest is template-parsed in
-      full, INCLUDING description prose, and neither the `github` nor the
-      `secrets` context exists at manifest-load time - writing one here fails
-      the whole action with "Unrecognized named-value".
+      NOTE - do not write GitHub expression syntax (a dollar sign followed by
+      double braces) anywhere above the `runs:` key, not even inside quotes or
+      prose. An action manifest is template-parsed in full, description text
+      included, and the manifest context has neither `github` nor `secrets`.
+      Documenting the correct wiring as a live expression is what broke this
+      action twice: first "Unrecognized named-value: 'github'", then
+      "Unexpected symbol" from an ellipsis inside the braces.
   ghcr_token:
     required: true
     description: >-
