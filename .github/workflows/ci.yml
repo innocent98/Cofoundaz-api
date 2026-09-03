@@ -10,16 +10,42 @@ name: CI
 # allowance and every job began failing in 2 seconds with zero steps, which
 # looks alarmingly like a code failure and is not one.
 #
-# So jobs are now split by what a given event can actually tell you:
+# So jobs are split by what a given event can actually tell you:
 #
 #   ALWAYS (push + PR)  lint, test, security      ~5 min
-#     The set that must still catch a DIRECT push to main - a typo, a broken
-#     test, a secret. Cheap enough to run unconditionally.
+#     The set that must still catch a DIRECT push to `develop` - a typo, a
+#     broken test, a secret. A direct push bypasses PR review entirely, so this
+#     is the only thing standing between it and a staging deploy. Cheap enough
+#     to run unconditionally.
 #
 #   PR ONLY             quality, migrations, e2e, build   ~+6 min
 #     Slower, and re-running them on the merge commit re-tests code that was
-#     green minutes earlier. A merge to main additionally triggers CD, whose
-#     own build step fails before deploying if the image is broken.
+#     green minutes earlier. A merge into `develop` additionally triggers
+#     cd-staging.yml, whose own build step fails before deploying if the image
+#     is broken.
+#
+# WHERE THIS FILE SITS IN THE BRANCHING MODEL (docs/deployment/BRANCHING.md)
+#
+#   | event                | this file runs         | other workflows        |
+#   |----------------------|------------------------|------------------------|
+#   | PR -> develop        | full suite (~11 min)   | -                      |
+#   | PR -> develop, draft | NOTHING (0 min)        | -                      |
+#   | push develop         | lint/test/security     | cd-staging.yml         |
+#   | PR develop -> main   | NOTHING                | NOTHING                |
+#   | push main            | NOTHING                | cd-production.yml      |
+#
+# `main` IS ABSENT FROM THE TRIGGERS ON PURPOSE, and it is not a weakened gate.
+# Promotion to `main` is a FAST-FORWARD of `develop` (branch protection on
+# `main` requires a linear history), so a commit arriving on `main` carries the
+# byte-identical tree that already passed the full suite on the `develop` PR
+# and the safety net on the `develop` push. Re-running any of it would test the
+# same tree a third time and bill for it. If the fast-forward rule is ever
+# relaxed, the tree on `main` stops being the tested tree and this decision has
+# to be revisited - though cd-production.yml would refuse to deploy such a
+# commit anyway, because no image exists for its SHA.
+#
+# A PR from `develop` to `main` therefore runs nothing at all, in any workflow.
+# That is the intent, not an oversight.
 #
 # REMOVED, with what each cost and what coverage was lost:
 #   sonarcloud  (~1 min)  Inert - it has no SONAR_TOKEN and has never produced
@@ -48,9 +74,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
     # `ready_for_review` is REQUIRED here. GitHub does NOT exclude draft PRs
     # from pull_request events - a draft still fires `opened` and
     # `synchronize` - so drafts are skipped by an explicit `draft == false`
@@ -62,8 +88,10 @@ on:
 concurrency:
   group: ci-${{ github.ref }}
   # Cancel superseded PR runs (pushing three times to a PR should not run three
-  # full pipelines). Do NOT cancel on main: CD is gated on the CI run for a main
-  # commit, and cancelling it would leave that commit permanently un-deployable.
+  # full pipelines). Do NOT cancel on a push to `develop`: that run is the only
+  # safety net a direct push gets, and cd-staging.yml is already building and
+  # deploying the same commit in parallel. Cancelling it would deploy to staging
+  # with the safety net silently unfinished rather than failed.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege by default. Jobs that need more (SARIF upload) opt in locally.
@@ -83,7 +111,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   lint:
     name: Lint & type-check
-    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    # Runs on every push to `develop`, and on PRs once they leave draft.
+    # Drafts cost nothing.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
@@ -105,7 +134,7 @@ jobs:
 
       - name: mypy
         # `make lint` has always run mypy; CI never did. That gap let type
-        # regressions land on main and only surface for whoever next ran the
+        # regressions land on the trunk and only surface for whoever next ran the
         # Makefile target locally. Verified passing on the current tree
         # ("Success: no issues found in 91 source files"), so this is a real
         # gate from day one, not an aspiration.
@@ -114,7 +143,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   test:
     name: Unit tests
-    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    # Runs on every push to `develop`, and on PRs once they leave draft.
+    # Drafts cost nothing.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
@@ -302,7 +332,8 @@ jobs:
   # ------------------------------------------------------------------------- #
   security:
     name: Security (secrets, SAST, dependencies)
-    # Runs on push, and on PRs once they leave draft. Drafts cost nothing.
+    # Runs on every push to `develop`, and on PRs once they leave draft.
+    # Drafts cost nothing.
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
@@ -527,7 +558,7 @@ jobs:
     # Two conditions, both required:
     #
     #  1. pull_request only - it diffs the dependency manifest between base and
-    #     head, and there is no "before" on a push to main.
+    #     head, and there is no "before" on a push to `develop`.
     #
     #  2. The repository must actually support it. dependency-review needs the
     #     Dependency Graph, which on a PRIVATE repo requires GitHub Advanced
@@ -554,7 +585,7 @@ jobs:
       - name: Review dependency changes
         # Catches a vulnerable or badly-licensed dependency at the moment it is
         # INTRODUCED. pip-audit already scans the whole tree, but on a PR that is
-        # too late to be cheap: it tells you main is vulnerable after the merge.
+        # too late to be cheap: it tells you the trunk is vulnerable after the merge.
         # This blocks the PR that would cause it.
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
@@ -591,7 +622,9 @@ jobs:
         with:
           context: .
           # Built and loaded locally, never pushed. CI proves the image builds
-          # and is scannable; publishing is CD's job (.github/workflows/cd.yml).
+          # and is scannable; publishing is cd-staging.yml's job - and it is the
+          # ONLY workflow that publishes, which is what lets cd-production.yml
+          # refuse to deploy anything staging did not first prove.
           push: false
           load: true
           tags: cofoundaz-api:ci

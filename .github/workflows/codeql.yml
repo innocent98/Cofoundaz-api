@@ -32,10 +32,16 @@ name: CodeQL
 # exactly why Semgrep blocks the build and this reports to the Security tab.
 
 on:
+  # `develop` only, matching ci.yml. A push to `main` is a fast-forward of an
+  # already-analysed `develop` commit, so analysing it again would build the
+  # same CodeQL database from the same tree and bill for it; and a PR from
+  # `develop` to `main` must run nothing at all (see the trigger table in
+  # ci.yml). The weekly cron below is what keeps the Security tab's baseline
+  # current, and it is unaffected.
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
   schedule:
     # Mondays 04:17 UTC. Deliberately not on the hour - GitHub heavily throttles
     # cron at :00, and a delayed weekly baseline is a stale weekly baseline.
