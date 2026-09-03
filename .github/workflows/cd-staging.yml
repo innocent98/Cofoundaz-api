@@ -1,0 +1,446 @@
+name: CD (staging)
+
+# push to `develop`  ->  build once  ->  deploy staging  ->  live E2E  ->  mint proof
+#
+#   build-and-push -> staging-deploy -> staging-e2e -> mark-staging-verified
+#
+# This workflow is the ONLY thing in the repository that builds and pushes an
+# application image, and the only thing that can mint the `staging-verified-*`
+# tag that `cd-production.yml` refuses to deploy without. Production has no
+# build step at all: it can only ever redeploy bytes this workflow already
+# built and this workflow's E2E already proved.
+#
+# WHY THE SPLIT (this used to be one run, cd.yml, on push to main)
+# Staging and production now happen on different events - push to `develop` and
+# push to `main` - because a promotion should be a deliberate act, not a side
+# effect of merging. Splitting broke the old `needs: [staging-e2e]` edge that
+# made production unreachable without a green gate, so the proof had to move
+# somewhere both runs can see it. It moved into the registry, next to the
+# artifact it is a claim about. See `mark-staging-verified` below.
+#
+# The image is deployed by immutable DIGEST, never by tag. A tag is a mutable
+# pointer; a digest is content-addressed, so the registry cannot serve different
+# bytes under it.
+#
+# DELIBERATE DEVIATION FROM THE TEMPLATE: the template scp's a `docker save`
+# tarball to each host. We keep GHCR + digest pull instead, because a digest is
+# content-addressed and because the SBOM and SLSA provenance attestations
+# BuildKit pushes alongside the manifest have nowhere to live in a tarball. The
+# cost is a GHCR credential on each VPS and a network dependency on ghcr.io at
+# deploy time.
+#
+# Per-environment secrets - including DEPLOY_PATH - come from GitHub
+# Environments, so no server path appears anywhere in this repository.
+# Secrets are documented in docs/deployment/GITHUB_ACTIONS_SETUP.md.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    # checkov:skip=CKV_GHA_7:Input cannot affect build output - see reasoning below.
+    #
+    # CKV_GHA_7 requires workflow_dispatch inputs to be empty, because an input
+    # that influences a build breaks the SLSA guarantee that the build output is
+    # determined solely by the source. That does not apply here, and the design
+    # makes it structurally impossible rather than merely unlikely:
+    #
+    #   1. `build-and-push` is SKIPPED whenever image_tag is set
+    #      (`if: github.event.inputs.image_tag == ''`). When this input has a
+    #      value, no build runs at all - so no build output exists for it to
+    #      affect. The input only selects an ALREADY-BUILT image.
+    #   2. The image reference is assembled from the trusted `${REGISTRY}` and
+    #      `${IMAGE_NAME}` env values; the input supplies only the tag portion.
+    #      It cannot redirect the pull to a different registry or repository.
+    #   3. The assembled reference is regex-validated before use, and the tag
+    #      character class excludes `/` and `@`, so it cannot break out of the
+    #      repository path.
+    #   4. workflow_dispatch requires write access on the repository.
+    #
+    # This is the staging half of the manual rollback path
+    # (docs/deployment/ROLLBACK.md). Removing it to satisfy the check would
+    # delete the rollback mechanism and make the system less safe, not more.
+    inputs:
+      image_tag:
+        description: >-
+          Redeploy an EXISTING GHCR tag to staging instead of building
+          (e.g. sha-a1b2c3d). See docs/deployment/ROLLBACK.md.
+        required: false
+        type: string
+
+concurrency:
+  # Separate from cd-production so a staging deploy cannot queue behind - or
+  # block - a production rollback. The two stacks share a VPS but live in
+  # different DEPLOY_PATHs with different compose project names, so they do not
+  # contend for the same `.env`.
+  #
+  # cancel-in-progress is FALSE on purpose - cancelling a half-finished deploy
+  # leaves a VPS in an unknown state, which is worse than queueing.
+  group: cd-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ------------------------------------------------------------------------- #
+  build-and-push:
+    name: Build & push to GHCR
+    runs-on: ubuntu-latest
+    # Skip the build entirely when redeploying an existing tag (rollback).
+    if: github.event.inputs.image_tag == ''
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.ref.outputs.image_ref }}
+      sha_tag: ${{ steps.ref.outputs.sha_tag }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+          # `latest` is now INERT: builds only ever run on `develop`, and the
+          # default branch is `main`, so this rule never fires. It is kept
+          # rather than deleted so that if the default branch is ever changed,
+          # the behaviour is visible here instead of being a silent omission.
+          # Nothing deploys `latest` in any case - both environments deploy by
+          # digest.
+          #
+          # The semver rules that used to live here were removed with the
+          # `v*.*.*` tag trigger: a version tag no longer builds anything, so a
+          # semver tag rule would have had no event to fire on. Tagging a
+          # release is now a labelling act on an already-deployed commit.
+
+      - name: Build & push
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # BuildKit attaches a SLSA provenance attestation (what built this, from
+          # which commit, with which inputs) and an SBOM attestation to the pushed
+          # manifest. Both travel WITH the image in GHCR and can be read back with
+          # `docker buildx imagetools inspect --format '{{ json .Provenance }}'`.
+          provenance: true
+          sbom: true
+          #
+          # DELIBERATELY NOT ADDING cosign KEYLESS SIGNING.
+          # A signature is only worth the verification step that enforces it, and
+          # for this topology there is nothing left for it to prove: the VPS pulls
+          # a digest, which is content-addressed, so the registry cannot serve
+          # different bytes under it - the exact tampering a signature would
+          # catch. Without an admission controller or a `cosign verify` gate that
+          # can actually refuse a deploy, signing here is ceremony that looks like
+          # security. Revisit if images are ever consumed by a third party.
+
+      - name: Resolve the immutable digest
+        id: ref
+        # Deploy by DIGEST, not by tag. A tag is a mutable pointer - `sha-abc123`
+        # can in principle be re-pushed. A digest is content-addressed, so what
+        # the VPS pulls is byte-identical to what was just built and scanned.
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          # github.repository preserves the repository's own casing
+          # ("innocent98/Cofoundaz-api"), but a Docker reference's path component
+          # MUST be lowercase. docker/metadata-action lowercases it silently when
+          # deriving tags, so the PUSH lands at .../cofoundaz-api while a ref built
+          # from the raw variable names .../Cofoundaz-api -- malformed AND
+          # nonexistent. That mismatch failed the first real CD run.
+          #
+          # `tr` rather than bash's ${VAR,,}: the latter needs bash 4+, so it
+          # cannot be exercised on a macOS dev machine (bash 3.2) and silently
+          # breaks under sh. This form is portable and locally testable.
+          IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_REF="${REGISTRY}/${IMAGE_LC}@${DIGEST}"
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "Deploying image: ${IMAGE_REF}"
+
+          # ------------------------------------------------------------------ #
+          # COUPLING GUARD. cd-production.yml has to find this build months
+          # later, from a different workflow run, knowing only the commit SHA.
+          # It reconstructs the tag as `sha-` + the first 7 characters of the
+          # SHA. That is docker/metadata-action's `format=short` today, but it
+          # is THEIR formatting choice, not ours, and an action bump could
+          # change it. If that ever happens, the failure would otherwise land on
+          # the production side as a bogus "no image was ever built for this
+          # commit" - blaming the branching model for an action upgrade.
+          #
+          # So assert it here, at build time, where the diagnosis is obvious.
+          SHORT="$(printf '%s' "${GITHUB_SHA}" | cut -c1-7)"
+          EXPECTED="${REGISTRY}/${IMAGE_LC}:sha-${SHORT}"
+          echo "sha_tag=sha-${SHORT}" >> "$GITHUB_OUTPUT"
+          if ! printf '%s\n' "${META_TAGS}" | grep -qxF "${EXPECTED}"; then
+            echo "::error::docker/metadata-action did not produce the tag ${EXPECTED} that cd-production.yml looks for. Tags pushed were:"
+            printf '%s\n' "${META_TAGS}"
+            echo "::error::Fix the short-SHA convention in BOTH this file and .github/workflows/cd-production.yml before deploying."
+            exit 1
+          fi
+          echo "Short-SHA tag confirmed present: ${EXPECTED}"
+
+  # ------------------------------------------------------------------------- #
+  staging-deploy:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    # `always()` keeps the rollback path alive (workflow_dispatch with an
+    # image_tag skips build-and-push). The explicit checks stop a FAILED build
+    # from ever reaching a VPS.
+    if: always() && needs.build-and-push.result != 'failure' && needs.build-and-push.result != 'cancelled'
+    environment:
+      name: staging
+      url: ${{ vars.APP_URL }}
+    outputs:
+      image_ref: ${{ steps.target.outputs.image_ref }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Choose the image to deploy
+        id: target
+        env:
+          BUILT_REF: ${{ needs.build-and-push.outputs.image_ref }}
+          MANUAL_TAG: ${{ github.event.inputs.image_tag }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TAG}" ]; then
+            # Lowercased for the same reason as the digest path in
+            # build-and-push: the registry holds .../cofoundaz-api, never
+            # .../Cofoundaz-api.
+            IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+            REF="${REGISTRY}/${IMAGE_LC}:${MANUAL_TAG}"
+            echo "Manual deploy (rollback path) of ${REF}"
+          else
+            REF="${BUILT_REF}"
+            echo "Deploying freshly built ${REF}"
+          fi
+          if [ -z "${REF}" ]; then
+            echo "::error::No image reference resolved - refusing to deploy."
+            exit 1
+          fi
+          # Defence in depth: workflow_dispatch input is operator-supplied text
+          # that ends up in a `docker pull` on the VPS. Constrain it to the shape
+          # of a real image reference before it leaves this runner.
+          if ! printf '%s' "${REF}" | grep -qE '^[a-z0-9./_-]+(:[A-Za-z0-9._-]+|@sha256:[a-f0-9]{64})$'; then
+            echo "::error::Refusing to deploy malformed image reference: ${REF}"
+            exit 1
+          fi
+          echo "image_ref=${REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy the staging stack
+        uses: ./.github/actions/deploy-stack
+        with:
+          environment: staging
+          image_ref: ${{ steps.target.outputs.image_ref }}
+          vps_host: ${{ secrets.VPS_HOST }}
+          vps_username: ${{ secrets.VPS_USERNAME }}
+          vps_ssh_key: ${{ secrets.VPS_SSH_KEY }}
+          vps_port: ${{ secrets.VPS_PORT || 22 }}
+          deploy_path: ${{ secrets.DEPLOY_PATH }}
+          env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
+          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
+          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
+
+  # ------------------------------------------------------------------------- #
+  staging-e2e:
+    name: Live E2E gate
+    needs: [staging-deploy]
+    if: needs.staging-deploy.result == 'success'
+    # The same workflow `workflow_dispatch` can aim at either environment. Here
+    # it is the promotion gate; nothing downstream of it runs unless it passes.
+    uses: ./.github/workflows/live-e2e.yml
+    with:
+      environment: staging
+    secrets: inherit
+
+  # ------------------------------------------------------------------------- #
+  mark-staging-verified:
+    name: Mint the staging-verified proof
+    runs-on: ubuntu-latest
+    needs: [build-and-push, staging-deploy, staging-e2e]
+    # Four conditions, and every one of them is load-bearing:
+    #
+    #   push only        - a workflow_dispatch rollback deploys an arbitrary
+    #                      older tag, but `github.sha` is still whatever HEAD of
+    #                      `develop` is. Minting `staging-verified-<HEAD>` there
+    #                      would attach this commit's name to a DIFFERENT
+    #                      commit's bytes, which is the one lie that would make
+    #                      the whole gate worthless.
+    #   build succeeded  - the proof names a digest this run built.
+    #   deploy succeeded - the bytes actually reached staging.
+    #   e2e succeeded    - and were exercised there.
+    #
+    # `result == 'success'` rather than `!failure()`: a SKIPPED or CANCELLED
+    # upstream job must never be mistaken for a pass.
+    if: >-
+      github.event_name == 'push' &&
+      needs.build-and-push.result == 'success' &&
+      needs.staging-deploy.result == 'success' &&
+      needs.staging-e2e.result == 'success'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Checkout FIRST: this job runs ./scripts/ghcr_digest.sh to verify its own
+      # work, so the repository has to be on disk before anything else.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the tested digest as staging-verified
+        id: mint
+        env:
+          TESTED_REF: ${{ needs.staging-deploy.outputs.image_ref }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+
+          # The digest staging actually ran. Taken from the deploy job's output,
+          # not recomputed, so this cannot drift from what was deployed.
+          SRC_DIGEST="${TESTED_REF##*@}"
+          if ! printf '%s' "${SRC_DIGEST}" | grep -qE '^sha256:[a-f0-9]{64}$'; then
+            echo "::error::staging-deploy did not hand over a digest reference (got '${TESTED_REF}'). Refusing to mint a proof for an unpinned image."
+            exit 1
+          fi
+
+          # TWO proof tags are minted, because production has to answer two
+          # different questions and only one of them is about a commit.
+          #
+          #   staging-verified-<full 40-char sha>
+          #     "was THIS COMMIT verified?" - the question the automatic
+          #     promotion path asks, since a push to `main` knows its SHA and
+          #     nothing else. Full SHA, not the short form: this name must be
+          #     reconstructible from `github.sha` alone, with no truncation
+          #     convention to keep in step between two files.
+          #
+          #   verified-sha256-<64 hex>
+          #     "were THESE BYTES verified?" - the question a manual rollback
+          #     asks, because an operator supplies a tag like `sha-a1b2c3d` from
+          #     which the full commit SHA cannot be recovered. Keying the proof
+          #     to the digest attaches it to the artifact itself, so a rollback
+          #     to any previously-promoted image passes the gate without anyone
+          #     having to disable it.
+          #
+          # Both point at the same manifest. Neither can be minted except here,
+          # after a green live E2E against deployed staging.
+          VERIFIED_TAG="staging-verified-${GITHUB_SHA}"
+          DIGEST_TAG="verified-${SRC_DIGEST/:/-}"
+          DST="${REGISTRY}/${IMAGE_LC}:${VERIFIED_TAG}"
+          DST_DIGEST_KEYED="${REGISTRY}/${IMAGE_LC}:${DIGEST_TAG}"
+
+          echo "Minting ${DST}"
+          echo "    and ${DST_DIGEST_KEYED}"
+          echo "   from ${TESTED_REF}"
+
+          # `imagetools create` adds a tag that points at an EXISTING manifest.
+          # It does not pull, rebuild, or re-push layers, and it preserves the
+          # OCI index - so the SBOM and provenance attestations stay attached.
+          docker buildx imagetools create \
+            --tag "${DST}" \
+            --tag "${DST_DIGEST_KEYED}" \
+            "${TESTED_REF}"
+
+          # ------------------------------------------------------------------ #
+          # ASSERT THE PROOF POINTS AT THE TESTED BYTES.
+          #
+          # The requirement is that production redeploys the EXACT artifact
+          # staging tested, so "the new tag resolves to the same digest" cannot
+          # be assumed - it has to be checked. buildx is expected to copy the
+          # index verbatim (identical bytes hash to an identical digest), but
+          # that is its implementation detail, not a documented guarantee, and
+          # an unverified assumption here would silently degrade the whole gate
+          # from "the same artifact" to "an artifact built from the same source".
+          #
+          # The digest-keyed tag is the one where a mismatch would be actively
+          # dangerous - its NAME asserts its content - so both are checked.
+          #
+          # If this ever fires, the fix is to retag with a tool that guarantees
+          # byte-for-byte manifest reuse - `crane tag`, which PUTs the identical
+          # manifest bytes under the new name - and NOT to relax the assertion.
+          for t in "${VERIFIED_TAG}" "${DIGEST_TAG}"; do
+            GOT="$(./scripts/ghcr_digest.sh "${IMAGE_LC}" "${t}")"
+            if [ "${GOT}" != "${SRC_DIGEST}" ]; then
+              echo "::error::${t} resolves to ${GOT} but staging tested ${SRC_DIGEST}. The proof does not name the tested bytes - refusing to leave it standing. Retag with 'crane tag' instead of 'buildx imagetools create'."
+              exit 1
+            fi
+            echo "  verified: ${t} -> ${GOT}"
+          done
+
+          {
+            echo "verified_tag=${VERIFIED_TAG}"
+            echo "digest_tag=${DIGEST_TAG}"
+            echo "digest=${SRC_DIGEST}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Proof minted and verified: ${VERIFIED_TAG} -> ${SRC_DIGEST}"
+
+      - name: Promotion summary
+        if: always()
+        env:
+          VERIFIED_TAG: ${{ steps.mint.outputs.verified_tag }}
+          DIGEST_TAG: ${{ steps.mint.outputs.digest_tag }}
+          DIGEST: ${{ steps.mint.outputs.digest }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Staging verified: ${RESULT}"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| commit | \`${GITHUB_SHA}\` |"
+            echo "| digest | \`${DIGEST:-<not minted>}\` |"
+            echo "| proof (by commit) | \`${VERIFIED_TAG:-<not minted>}\` |"
+            echo "| proof (by digest) | \`${DIGEST_TAG:-<not minted>}\` |"
+            echo ""
+            if [ "${RESULT}" = "success" ]; then
+              echo "This commit is now promotable. Fast-forward \`main\` to it to"
+              echo "deploy these exact bytes to production - \`cd-production.yml\`"
+              echo "will find this proof and redeploy the digest above without"
+              echo "rebuilding."
+            else
+              echo "No proof was minted, so this commit is **not** promotable."
+              echo "Fast-forwarding \`main\` to it will fail at the production gate."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

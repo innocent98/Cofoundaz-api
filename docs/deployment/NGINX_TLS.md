@@ -649,9 +649,10 @@ setting, not from the request — but that is luck, not design.)
 
 ## 12. Staging is publicly reachable — the posture
 
-Staging **has** to be reachable from the internet: the CD gate runs the E2E suite against it
-from a GitHub-hosted runner (`.github/workflows/cd.yml`, job `staging-e2e`), and those
-runners have no stable egress addresses. An IP allowlist would break the gate. That is a
+Staging **has** to be reachable from the internet: the CD promotion gate runs the E2E suite
+against it from a GitHub-hosted runner — `.github/workflows/cd-staging.yml`, job `staging-e2e`,
+which calls the reusable `.github/workflows/live-e2e.yml` with `environment: staging` — and
+those runners have no stable egress addresses. An IP allowlist would break the gate. That is a
 constraint, not a preference.
 
 ### What ships, and what it is worth
@@ -663,6 +664,16 @@ constraint, not a preference.
 | Rate limiting | **on**, auth zone loosened for the gate | absorbs scripted abuse |
 | OpenAPI docs | **served** | required — the gate fetches `openapi.json`; and serving them here is what lets production close them |
 | HTTP Basic | **off**, ready to enable | see below |
+
+**The loosened auth zone is staging-only, and that is now enforced at the workflow level, not
+just at the nginx layer.** `live-e2e.yml` can also be pointed at `production` on demand
+(`workflow_dispatch`), and production's auth zone is **not** loosened the way staging's is —
+there is no reason to loosen it, since nothing routinely hammers it the way the promotion gate
+does to staging. `live-e2e.yml` also hard-restricts its rate-limiter reset (a restart of the
+`api` service) to `staging` — restarting production to make a test suite pass would trade a real
+outage for a green tick. The combination means an on-demand `live-e2e.yml` run against
+`production` can **429 itself** on a busy window, and that failure is about the limiter, not
+about the deployment. See `DEPLOYMENT_GUIDE.md`'s live-E2E-gate section for the full caveat.
 
 ### The recommendation
 
@@ -697,15 +708,33 @@ already exempt because `auth_basic` is not set inside it. Enabling auth without 
 exemptions breaks certificate renewal and every uptime probe, and both failures are silent
 until they are not.
 
-On the GitHub side: add a **secret** `E2E_BASE_URL` on the `staging` environment carrying
-the credentials in the URL, and change one line in `cd.yml`:
+On the GitHub side, this used to be a one-line change in the old single-run `cd.yml`, because
+that workflow only ever drove `staging`. **It is not one line any more.** The E2E gate now lives
+in `.github/workflows/live-e2e.yml`, a **reusable workflow** (`workflow_call` from
+`cd-staging.yml`, plus its own `workflow_dispatch` with an `environment` choice of
+`staging`/`production`) whose job declares `environment: ${{ inputs.environment }}` — so the same
+single `E2E_BASE_URL: ${{ vars.APP_URL }}` line resolves against **whichever** GitHub Environment
+the caller selected, staging or production, from the same step. Swapping that one line's source
+from `vars.APP_URL` to `secrets.E2E_BASE_URL` therefore changes the behaviour for **both**
+environments at once, not just staging — production would then also need a
+`secrets.E2E_BASE_URL` defined (holding its plain public URL, since production does not get
+Basic auth here) or every on-demand production run breaks on a missing secret. What it actually
+takes:
+
+1. Add the **secret** `E2E_BASE_URL` on the `staging` environment, carrying the credentials in
+   the URL: `https://ci:<pass>@staging-api.cofoundaz.com`.
+2. Add the **secret** `E2E_BASE_URL` on the `production` environment too, carrying the plain
+   public URL with no credentials, so the shared step still resolves for an on-demand production
+   run.
+3. Change the one line in `live-e2e.yml`:
 
 ```yaml
-E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}   # https://ci:<pass>@staging-api.cofoundaz.com
+E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}   # staging: https://ci:<pass>@staging-api.cofoundaz.com
+                                             # production: https://api.cofoundaz.com (no creds)
 ```
 
-`vars.APP_URL` stays clean, because it is rendered in the GitHub UI as `environment.url`
-and would otherwise display the password.
+`vars.APP_URL` stays clean on both environments, because it is rendered in the GitHub UI as
+`environment.url` and would otherwise display the password on the staging side.
 
 `e2e/conftest.py` builds `httpx.Client(base_url=BASE_URL)`, and httpx sends Basic
 automatically from URL userinfo. **Verified** against the pinned httpx 0.27.2 inside the
@@ -820,6 +849,8 @@ in UFW after TLS started working; a stale AAAA record (§3).
 ## Related documents
 
 - [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) — the compose stack, CI/CD, sizing, runbooks
+- [BRANCHING.md](./BRANCHING.md) — the `develop` → `main` promotion model behind the staging vs
+  production distinction this document draws throughout §12
 - [GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md) — secrets, environments, the staging gate
 - [ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md) — how `.env` reaches the VPS
 - [ROLLBACK.md](./ROLLBACK.md) — reverting a deploy
