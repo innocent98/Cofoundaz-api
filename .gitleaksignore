@@ -41,3 +41,35 @@
 # every user). The decision above is that history surgery is unnecessary, not
 # that the value is safe to use.
 36ee5d513c1ca05d2a8896b1c2c7c1b9cccbc687:.env.example:generic-api-key:12
+
+# ---------------------------------------------------------------------------
+# 3ef75fef8eca7de5a0944525d30aa00a77eb87dc:.github/workflows/ci.yml:generic-api-key:81
+# ---------------------------------------------------------------------------
+# WHAT: a Fernet-format JOURNAL_ENCRYPTION_KEY committed inline into the CI
+# workflow's pytest env block on 2026-08-31, in "built founder-journal module".
+# It sat alongside the other throwaway CI values (SECRET_KEY:
+# test-secret-key-for-ci, POSTGRES_PASSWORD: test_password) and carried its own
+# comment saying it was a throwaway needed only because the journal encryption
+# tests require a real Fernet-format key.
+#
+# STATUS: NOT a live secret, confirmed rather than assumed. The value appears in
+# no current tree - 0 occurrences on main and on feat/business-builder-canvas -
+# is absent from .env.example and .env.production.example, and is referenced by
+# no code or test on either branch. Adebayo confirmed on 2026-09-01 that no real
+# journal data was ever encrypted with it, so there is nothing to rotate and no
+# data to re-encrypt.
+#
+# WHY IT IS SUPPRESSED: the commit is published history. The value is already
+# gone from every working tree; only the historical blob remains, and removing
+# that needs git-filter-repo plus a force-push and a re-clone by everyone - a
+# disproportionate response to a dead CI value.
+#
+# THE ACTUAL FIX SHIPPED ALONGSIDE THIS: the gitleaks step is now scoped with
+# `--log-opts HEAD`. Before that, this single commit on ONE unmerged branch
+# failed the job on every branch including main, because gitleaks scanned all
+# refs rather than the branch under test.
+#
+# FOR THE FOUNDER-JOURNAL WORK, STILL IN FLIGHT: JOURNAL_ENCRYPTION_KEY must be
+# supplied as a GitHub Actions secret referenced as ${{ secrets.* }}, never as
+# an inline literal - see docs/deployment/GITHUB_ACTIONS_SETUP.md.
+3ef75fef8eca7de5a0944525d30aa00a77eb87dc:.github/workflows/ci.yml:generic-api-key:81
