@@ -31,7 +31,7 @@ run, and correct this document afterwards.
 | Stack | `docker-compose.prod.yml`, one file serving **both** stacks: `migrate` (one-shot), `api`, `db`, `redis`. The compose project name comes from `COMPOSE_PROJECT_NAME` in each `.env` (`cofoundaz-api-prod` / `cofoundaz-api-staging`), which is what keeps their volumes apart. See §13. |
 | Edge | nginx on the host terminates TLS and proxies to `127.0.0.1:${API_PORT}` — production 8000, staging 8001. The API is **not** published on `0.0.0.0`. Configuration is version-controlled in `deploy/nginx/`; the manual is **[NGINX_TLS.md](./NGINX_TLS.md)**. |
 | Registry | GHCR — `ghcr.io/innocent98/cofoundaz-api`. Deploys use the **immutable digest**, not a tag. |
-| Environments | **Two** stacks — `staging` and `production` — running the *same* image digest. They differ only in the `.env` each receives and in the per-environment GitHub secrets (`DEPLOY_PATH`, `VPS_*`, `ENV_ENCRYPTION_KEY`, `GHCR_PULL_*`). No server path appears anywhere in this repository. See §2. |
+| Environments | **Two** stacks — `staging` and `production` — running the *same* image digest. They differ only in the `.env` each receives and in the per-environment GitHub secrets (`DEPLOY_PATH`, `VPS_*`, `ENV_ENCRYPTION_KEY`). No server path appears anywhere in this repository. See §2. |
 
 ### Image hardening — what was verified
 
@@ -276,7 +276,8 @@ ever verify), and exact `BACKEND_CORS_ORIGINS` with no wildcard and no trailing 
 **4. Authenticate to GHCR on the host.**
 
 ```bash
-printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u <ghcr-user> --password-stdin
+# Only needed for a MANUAL pull. CD forwards the run's own GITHUB_TOKEN and logs in for you.
+printf '%s' "<a GitHub token with read:packages>" | docker login ghcr.io -u <your-gh-user> --password-stdin
 ```
 
 **5. Bring the stack up.** On the server the env file is `.env` — get it there either by
@@ -890,7 +891,7 @@ default. The deviation is deliberate and stated in `cd.yml` itself.
 
 | | GHCR pull (this project) | scp `docker save` tarball (template) |
 |---|---|---|
-| VPS needs GHCR auth | **Yes** — `GHCR_PULL_TOKEN` on each host | No |
+| VPS needs GHCR auth | **Yes** — but supplied per-run by CD's `GITHUB_TOKEN`, not a stored PAT | No |
 | Network dependency at deploy time | **ghcr.io must be reachable** | GitHub runner → VPS only |
 | Rollback source | GHCR + local image cache (72h prune window) | previous tarball on disk |
 | Layer reuse on pull | Yes — only changed layers transfer | Full image every time |

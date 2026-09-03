@@ -34,8 +34,6 @@ environment, so each resolves that environment's copy.
 | Environments `staging` **and** `production` | `VPS_PORT` | secret (optional — defaults to 22) |
 | Environments `staging` **and** `production` | `DEPLOY_PATH` | secret |
 | Environments `staging` **and** `production` | `ENV_ENCRYPTION_KEY` | secret |
-| Environments `staging` **and** `production` | `GHCR_PULL_USERNAME` | secret |
-| Environments `staging` **and** `production` | `GHCR_PULL_TOKEN` | secret |
 | Environments `staging` **and** `production` | `APP_URL` | **variable, not secret** |
 | Repository | `SONAR_TOKEN` | secret — **OPTIONAL** (§8). Absent = the `sonarcloud` job skips cleanly. |
 | Automatic | `GITHUB_TOKEN` | provided by GitHub — CD's `build-and-push` uses it for the GHCR push |
@@ -154,37 +152,38 @@ then remove the old public key from `~/.ssh/authorized_keys` on the VPS. In that
 
 ---
 
-## 4. GHCR pull token
+## 4. GHCR pull credentials — nothing to configure
 
-**Each** VPS pulls the image from `ghcr.io` at deploy time. **The GHCR package is private by
-default**, so every host needs credentials of its own — the runner's `GITHUB_TOKEN` cannot be
-used there, it does not leave the runner. `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are
-therefore set on **both** environments; one PAT reused across both is fine.
+**There is nothing to create here.** `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are no longer
+used; do not set them.
 
-> **NOT VERIFIED —** no GHCR push or pull was performed. Verification: on the VPS, run
-> `printf '%s' "<token>" | docker login ghcr.io -u <user> --password-stdin` followed by
-> `docker pull ghcr.io/innocent98/cofoundaz-api:latest`.
+Each VPS pulls the image from `ghcr.io` at deploy time, and the package is private by default,
+so the host does need credentials. Those are now the workflow run's own `GITHUB_TOKEN`,
+forwarded to the VPS for `docker login` — with `packages: read` granted on the two deploy jobs.
 
-**Generate a classic Personal Access Token** (GitHub → Settings → Developer settings →
-Personal access tokens → Tokens (classic)):
+**An earlier version of this document said `GITHUB_TOKEN` "cannot be used there, it does not
+leave the runner". That is wrong**, and it is why a hand-made PAT was specified instead. The
+token is an ordinary credential string; nothing stops it being passed over SSH and used for
+`docker login` on another host while the run is active. It is strictly better than a PAT:
 
-| Setting | Value |
-|---|---|
-| Scope | **`read:packages` only** |
-| Expiry | Set one. 90 days is a reasonable cadence; put the renewal in a calendar. |
-| Name | `cofoundaz-api GHCR pull (VPS)` — so you know what breaks when you revoke it. |
+| | PAT | run-scoped `GITHUB_TOKEN` |
+|---|---|---|
+| Lifetime | Until you rotate it | Expires when the job ends |
+| Scope | Whatever was ticked at creation | Exactly the workflow's `permissions:` block |
+| Rotation | Manual, on a reminder | Automatic, every run |
+| Stored anywhere | Yes — two secrets, two environments | No |
 
-`read:packages` and nothing more. A token with `write:packages` or `repo` on the VPS means
-anyone who gets shell there can push a poisoned image or read your source.
+If you already created those two secrets, they are now unused and can be deleted.
 
-- `GHCR_PULL_USERNAME` = the GitHub username that owns the PAT.
-- `GHCR_PULL_TOKEN` = the PAT itself.
+> **NOT VERIFIED —** no GHCR pull from a VPS has completed yet. The 2026-09-01 deploy reached
+> this step and failed with `username is empty`, which is the bug this change fixes.
 
-**How the token is handled in the deploy** (`cd.yml`): it is passed to `appleboy/ssh-action`
-via `envs:` as an environment variable, **not** interpolated with `${{ }}` into the script
-body. `${{ }}` interpolation happens before the remote shell runs, which would bake the token
-into the literal command text sent over the wire and into any command trace. On the VPS it is
-consumed with `--password-stdin`, never as an argv argument.
+**How the credential is handled in the deploy** (`cd.yml`): it is passed to
+`appleboy/ssh-action` via `envs:` as an environment variable, **not** interpolated with
+`${{ }}` into the script body. `${{ }}` interpolation happens before the remote shell runs,
+which would bake the token into the literal command text sent over the wire and into any
+command trace. On the VPS it is consumed with `--password-stdin`, never as an argv argument.
+That handling is unchanged — only the source of the credential is.
 
 ---
 
@@ -259,9 +258,10 @@ if the decrypted plaintext holds fewer than 5 variables. It warns when `CHANGE_M
 the plaintext. Generate and manage the key with `scripts/env.sh` / `make env-*` — the full
 workflow is in **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)**.
 
-### `GHCR_PULL_USERNAME` / `GHCR_PULL_TOKEN`
+### `GHCR_PULL_USERNAME` / `GHCR_PULL_TOKEN` — REMOVED
 
-See §4. Set on both environments.
+Not used, and not required. The VPS-side `docker login` uses the run's own `GITHUB_TOKEN`.
+See §4.
 
 ---
 
@@ -299,7 +299,7 @@ deployment in the Actions UI.
 Provided automatically, at the **repository** level — nothing to set per environment.
 `cd.yml`'s `build-and-push` job requests `packages: write` to push to GHCR; CI requests
 `security-events: write` only in the jobs that upload SARIF. Everything else runs on the default
-`contents: read`. The VPS-side pull uses `GHCR_PULL_TOKEN` instead (§4); `GITHUB_TOKEN` never
+`contents: read`, plus `packages: read` on the two deploy jobs so the VPS-side pull can use it (§4). `GITHUB_TOKEN` never
 leaves the runner.
 
 You do not create this token, but you may need to **allow it to write packages**: Settings →
@@ -585,7 +585,6 @@ Two notes on CI hygiene worth preserving:
 
 | Credential | Cadence | Notes |
 |---|---|---|
-| `GHCR_PULL_TOKEN` | At its expiry — 90 days is reasonable | Update the secret **and** re-run `docker login` on the VPS. |
 | `SONAR_TOKEN` *(if enabled)* | At its expiry | Only affects the optional `sonarcloud` job; if it lapses the job fails rather than skipping, since the secret still exists but is invalid. Delete the secret to go back to a clean skip. |
 | `VPS_SSH_KEY` | On personnel change or suspected compromise | New key → `ssh-copy-id` → update the secret **on both environments** → deploy to confirm → **then** remove the old public key. |
 | `ENV_ENCRYPTION_KEY` | Quarterly, or on suspected leak | `./scripts/env.sh rotate <env>` re-encrypts under a fresh key. Update the secret on **both** environments if they share one key, commit the new `.enc` files, then redeploy. Verified locally: rotation invalidates the old key. |
