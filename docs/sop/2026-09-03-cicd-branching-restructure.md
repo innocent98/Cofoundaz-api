@@ -175,6 +175,33 @@ Local, 2026-09-03. macOS. No VPS and no GitHub run.
   dev machine without a PAT. All four paths: existing tag → exit 0 with the digest; missing tag
   → exit 2; a digest reference round-trips to itself; an unreadable repository → exit 1. Stdout
   carries the digest and nothing else, so `DIGEST="$(...)"` is safe.
+- **Every branch of the production gate, driven through the real script text.** The
+  `resolve-artifact` `run:` block was extracted verbatim from `cd-production.yml` by a YAML
+  parse (133 lines) and executed against a stubbed `ghcr_digest.sh` whose "which tags exist"
+  table is set per case. Ten cases, each asserted on **exit code**, not just output:
+
+  | # | Case | Expected | Result |
+  |---|---|---|---|
+  | A | push to `main`, image built and verified | deploy (0) | pass |
+  | B | push to `main`, no image at all | refuse (1) | pass |
+  | C | push to `main`, image exists but never verified | refuse (1) | pass |
+  | D | push to `main`, the two tags name different digests | refuse (1) | pass |
+  | E | rollback to a tag carrying a digest-keyed proof | deploy (0) | pass |
+  | F | rollback to an unproven tag, no bypass | refuse (1) | pass |
+  | G | rollback to an unproven tag with bypass ticked | deploy (0) + `::warning` | pass |
+  | H | malformed tag `foo/bar@sha256:x` (traversal attempt) | refuse (1) | pass |
+  | I | rollback to a tag that does not exist | refuse (1) | pass |
+  | J | registry unreachable (resolver exit 1, not 2) | refuse (1) | pass |
+
+  Case J is the one worth calling out: it must **not** produce the fast-forward diagnosis. It
+  does not — zero mentions — so a credentials outage cannot be misread as an unpromotable
+  commit. Case B produces that diagnosis and only that one.
+
+  The simulation also incidentally confirms the repository-name lowercasing: with
+  `IMAGE_NAME=innocent98/Cofoundaz-api`, the emitted reference is
+  `ghcr.io/innocent98/cofoundaz-api@sha256:...`. That mismatch failed the first real CD run
+  once already.
+
 - `gitleaks v8.30.1` in directory mode over the whole tree — **no leaks found**.
 - `black --check app tests` and `ruff check app tests` — both clean. `poetry check --lock` —
   exit 0.
