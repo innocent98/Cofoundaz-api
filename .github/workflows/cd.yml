@@ -179,6 +179,13 @@ jobs:
     outputs:
       image_ref: ${{ steps.target.outputs.image_ref }}
 
+    permissions:
+      contents: read
+      # Lets this job's GITHUB_TOKEN pull from GHCR. The token is forwarded to
+      # the VPS for `docker login`, replacing a hand-made PAT: it is minted per
+      # run, scoped by this block, and expires when the job ends - so there is
+      # no long-lived registry credential to store, rotate, or leak.
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -226,8 +233,8 @@ jobs:
           vps_port: ${{ secrets.VPS_PORT || 22 }}
           deploy_path: ${{ secrets.DEPLOY_PATH }}
           env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
-          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
-          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
+          ghcr_username: ${{ github.actor }}
+          ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
   # ------------------------------------------------------------------------- #
   staging-e2e:
@@ -369,6 +376,13 @@ jobs:
       # not available in `environment.url`, and a public base URL is not a secret.
       url: ${{ vars.APP_URL }}
 
+    permissions:
+      contents: read
+      # Lets this job's GITHUB_TOKEN pull from GHCR. The token is forwarded to
+      # the VPS for `docker login`, replacing a hand-made PAT: it is minted per
+      # run, scoped by this block, and expires when the job ends - so there is
+      # no long-lived registry credential to store, rotate, or leak.
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -384,8 +398,8 @@ jobs:
           vps_port: ${{ secrets.VPS_PORT || 22 }}
           deploy_path: ${{ secrets.DEPLOY_PATH }}
           env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
-          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
-          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
+          ghcr_username: ${{ github.actor }}
+          ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deployment summary
         if: always()
