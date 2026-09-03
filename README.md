@@ -114,6 +114,9 @@ docs/
   superpowers/plans/     # per-change implementation plans (pre-work)
   sop/                   # Standard Operating Procedures — record of what shipped (post-work)
   checklist/             # the master build checklist (always-current bird's-eye map)
+  deployment/            # CI/CD, compose, nginx/TLS, branching model, env encryption, rollback,
+                         #   backups — the operator's manuals (DEPLOYMENT_GUIDE.md, NGINX_TLS.md,
+                         #   BRANCHING.md and friends)
   fe-integration-guide-*.md  # the FE contract, every payload captured from a live response
   backend-kickoff-brief.md   # orientation for a fresh session
 ```
@@ -181,8 +184,11 @@ flowchart LR
     BUILD --> REV["Review<br/>independent per-task + whole-branch"]
     REV --> V["Verify<br/>unit + sanity + smoke + live E2E (real data)"]
     V --> DOC["Document<br/>SOP + FE guide + checklist"]
-    DOC --> PR["PR → merge"]
-    PR --> B
+    DOC --> PR["PR → develop<br/>full CI: lint · test · migrations · e2e ·<br/>security · quality · build"]
+    PR --> STG["Staging deploy + live E2E gate<br/>(cd-staging.yml, on merge to develop)"]
+    STG --> FF["Fast-forward develop → main<br/>(docs/deployment/BRANCHING.md)"]
+    FF --> PROD["Production deploy<br/>(cd-production.yml — redeploys the<br/>staging-verified digest, no rebuild)"]
+    PROD --> B
 ```
 
 **Subagent-driven development.** Larger modules are decomposed into a plan of small, independently
@@ -207,7 +213,11 @@ all four with **real data**, not mocks.
 | **Live E2E (real data)** | The real user journey works over HTTP end-to-end | `make e2e` boots a **real uvicorn** on an isolated `cofoundaz_e2e` DB + Redis, walks the journey with real payloads, and **captures every response** to `e2e/_captures/` (which the FE guide then quotes verbatim). |
 
 Gates that must be green before any PR: `pytest` · `black --check` · `isort --check` ·
-`ruff check` · `mypy` · `make e2e`.
+`ruff check` · `mypy` · `make e2e`. Concretely, that's CI's full 8-job suite (`lint`, `test`,
+`migrations`, `e2e`, `security`, `quality`, `dependency-review`, `build`) on a **PR targeting
+`develop`** — `develop` is the only branch CI targets. A PR from `develop` into `main` runs no
+CI at all, by design: `main` is fast-forwarded from an already-tested `develop` commit, so
+nothing on that PR would be testing anything new. See `docs/deployment/BRANCHING.md`.
 
 ### How we document — three complementary artifacts
 
@@ -267,4 +277,5 @@ The API is versioned under `/api/v1`; interactive docs are served at `/docs` whe
    `app/services/roadmap/`, `app/api/v1/endpoints/roadmap.py`, its spec/plan/SOP under `docs/`, and
    its FE guide (`docs/fe-integration-guide-roadmap.md`).
 3. Check `docs/checklist/PROJECT_CHECKLIST.md` for what's done and what's next.
-4. Follow the loop above: brainstorm → spec → plan → build (TDD) → review → verify → document → PR.
+4. Follow the loop above: brainstorm → spec → plan → build (TDD) → review → verify → document →
+   **PR into `develop`** (never `main` directly — see `docs/deployment/BRANCHING.md`).

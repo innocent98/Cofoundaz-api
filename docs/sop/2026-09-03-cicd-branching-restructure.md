@@ -244,6 +244,23 @@ Local, 2026-09-03. macOS. No VPS and no GitHub run.
 ## Follow-ups
 
 - **NOT VERIFIED: the whole deploy path**, as above. First promotion is the test.
+- **The trust surface genuinely widened, and nothing in the pipeline closes it.** Production no
+  longer receives a digest in-memory from the build that produced it; it *looks one up* in the
+  registry, possibly days later. Digest pinning is unweakened — the resolved digest is still
+  deployed byte-for-byte — but *which digest gets trusted* now depends on the state of two
+  mutable tags at the moment `resolve-artifact` reads them. `resolve-artifact` catches the two
+  being re-pointed **independently**; it cannot catch them being re-pointed **together** by
+  someone holding `packages: write`. That is bounded by the same access control that already
+  gates a push to `main`, so it is not a new *authorisation* hole — but it is a larger surface
+  than "only the run that built the image can name the digest," and the honest thing is to say
+  so. Full argument in `DEPLOYMENT_GUIDE.md` under image provenance.
+
+  **The cheap fix is GHCR tag immutability.** Making `staging-verified-*` and `verified-sha256-*`
+  immutable once created removes the attack outright, needs no new tooling, and is a repository
+  setting rather than a pipeline change. **Worth doing before this is load-bearing — Adebayo's
+  call.** A `cosign verify` gate would NOT close it on its own: it proves who signed an artifact,
+  not that the tag currently pointing at it is the tag that was tested.
+
 - **Proof-tag accumulation.** Every promoted commit adds two GHCR tags, forever. Harmless for a
   long time, but there is no retention policy. Worth a scheduled cleanup that keeps, say, the
   last 50 — and it must never delete a tag for an image that is currently deployed.

@@ -74,8 +74,8 @@ put it.
 
 **The repository does not know either server path.** `DEPLOY_PATH` is a **secret on the GitHub
 Environment**, so the `staging` environment resolves one path and `production` another.
-`cd.yml` and `.github/actions/deploy-stack/action.yml` read `${{ secrets.DEPLOY_PATH }}` and
-nothing else.
+`cd-staging.yml`, `cd-production.yml` and `.github/actions/deploy-stack/action.yml` read
+`${{ secrets.DEPLOY_PATH }}` and nothing else.
 
 That is deliberate, and it is a correction. Earlier versions of this guide named
 `/opt/cofoundaz-api` as *the* deploy directory. **That path never existed on any host** — which
@@ -303,9 +303,10 @@ curl -fsS http://127.0.0.1:8000/api/v1/health/ready
 that breaks the certificate chicken-and-egg, `certbot certonly --webroot`, and renewal - is
 **[NGINX_TLS.md](./NGINX_TLS.md)** §3-§6.
 
-Do this **before** the first CD run, not after. `cd.yml`'s `staging-e2e` job drives
-`vars.APP_URL` from a GitHub runner; with no nginx there is nothing on 443 to answer it, and
-the gate fails in a way that looks like an application problem.
+Do this **before** the first CD run, not after. `cd-staging.yml`'s `staging-e2e` job calls the
+reusable `live-e2e.yml` workflow, which drives `vars.APP_URL` from a GitHub runner; with no
+nginx there is nothing on 443 to answer it, and the gate fails in a way that looks like an
+application problem.
 
 > **NOT VERIFIED —** the configuration has never served a real certificate or a real client.
 > It has been parsed by nginx and driven end to end against this application with
@@ -454,47 +455,96 @@ and the backup section below extended.
 
 ## 6. The CI/CD flow, end to end
 
-> **NOT VERIFIED — the current shapes.** `ci.yml` and `cd.yml` have executed on GitHub in
-> *earlier* shapes (that is where the GHAS constraint and the lowercase-image-name bug were
-> found), but **`cd.yml` has never run as the three-job staging-gated pipeline described below**,
-> and `codeql.yml` has never run at all. `actionlint` exits 0 on every workflow plus the
-> composite actions (re-run 2026-08-28), with `shellcheck 0.11.0` integration — confirmed live
-> by feeding actionlint a deliberately-bad script and seeing SC2086 reported. Static validation
-> is not execution. The next push is the verification run.
+> **NOT VERIFIED — the current shapes.** `cd.yml` is **gone**. The pipeline is now five
+> workflows — `ci.yml` (retargeted to `develop` only), `codeql.yml` (retargeted to `develop`
+> only), and three new files: `cd-staging.yml`, `live-e2e.yml`, and `cd-production.yml`. `ci.yml`
+> and the predecessor `cd.yml` have executed on GitHub in *earlier* shapes (that is where the
+> GHAS constraint and the lowercase-image-name bug were found), but **none of the five workflows
+> in their current shape has ever run**, `codeql.yml` has never run at all, and nothing here has
+> touched a real VPS. `actionlint` exits 0 on every workflow plus the composite actions (re-run
+> against this shape), with `shellcheck 0.11.0` integration — confirmed live by feeding
+> actionlint a deliberately-bad script and seeing SC2086 reported. Static validation is not
+> execution. **The real tests are the first push to `develop`** — which exercises `ci.yml`'s
+> push-safety-net path and all of `cd-staging.yml` through `mark-staging-verified` — **and the
+> first fast-forward promotion of `develop` to `main`**, which exercises `cd-production.yml`'s
+> registry-lookup path end to end for the first time.
 
 ### CI — `.github/workflows/ci.yml`
 
-Triggers on push and PR to `main` and `develop`. `cancel-in-progress` is true for
-`pull_request` only — **not** for `main`, because a cancelled main CI run would leave that
-commit undeployable.
+**Triggers on `develop` only — `main` is gone from `ci.yml`'s triggers, and that is not a
+weakened gate.** `on: push: branches: [develop]` and `on: pull_request: branches: [develop]`.
+There is no PR-into-`main` trigger and no push-to-`main` trigger anywhere in this file, and
+nothing else in the repository runs CI on those events either. `cancel-in-progress` is true
+for `pull_request` only — **not** for a push to `develop`, because that run is the only CI
+safety net a direct push gets, and `cd-staging.yml` is already building and deploying the same
+commit in parallel; cancelling it would deploy to staging with the safety net silently
+unfinished rather than failed.
 
-**Job graph — 10 jobs.** Eight run fully in parallel with no `needs:` at all; only two are
-gated:
+**Promotion to `main` is a fast-forward of `develop`** (branch protection on `main` requires a
+linear history), so a commit arriving on `main` carries the byte-identical tree that already
+passed CI on the `develop` PR and the push-to-`develop` safety net. Re-running any of it on
+`main` would test the same tree a third time and bill for it, which is why `ci.yml` runs
+**nothing** on a PR from `develop` into `main`, and nothing on a push to `main` either — see
+`docs/deployment/BRANCHING.md`. If the fast-forward rule is ever relaxed this decision has to
+be revisited, though `cd-production.yml` would refuse to deploy such a commit anyway, because
+no image exists for a SHA nothing ever built.
+
+**Job graph — 8 jobs**, split by what a given event can actually tell you. `lint`, `test` and
+`security` run on both `push` and `pull_request` (the cheap safety net a direct push to
+`develop` needs); `migrations`, `e2e`, `quality`, `dependency-review` and `build` are
+**PR-only**, gated `if: github.event_name == 'pull_request' && ... draft == false`:
 
 ```
-lint · test · migrations · e2e · security · quality · trivy-repo · dependency-review
-   │      │
-   │      └──► sonarcloud    needs: [test]   (skips cleanly when SONAR_TOKEN is absent)
-   │
-   └──► build   needs: [lint, quality, test, migrations, e2e, security, trivy-repo]
+push develop:  lint · test · security                              (~5 min)
+
+PR -> develop: lint · test · security · migrations · e2e · quality · dependency-review
+                  │      │       │          │         │
+                  └──────┴───────┴──────────┴─────────┴──► build
+                     needs: [lint, quality, test, migrations, e2e, security]
+                                                                     (~11 min total)
 ```
 
-`sonarcloud` and `dependency-review` are deliberately **not** in `build`'s `needs:`. One is
-optional and one only exists on `pull_request` events — gating the image build on either would
-make `build` unreachable on a push to `main`.
+`dependency-review` is deliberately **not** in `build`'s `needs:`: it only exists on
+`pull_request` events (it diffs the manifest against a base commit, and there is no "before" on
+a push), and its gating already stops the PR that introduced the vulnerable dependency, so
+`build` does not need to wait on it. Two jobs that used to sit here — **`sonarcloud`** and a
+combined **`trivy-repo`** job (`trivy fs` + `trivy config` + Checkov) — were **removed
+entirely**, not merged elsewhere; see "What was removed, and why" below. Every job still carries
+its `draft == false` guard, so a draft PR runs no CI at all.
 
-| Job | What it does | Local verification |
-|---|---|---|
-| `lint` | black, isort, ruff — now including **C901** (mccabe complexity) — and **mypy** | All green. mypy: *"Success: no issues found in 91 source files"*. Measured worst complexity: `validate_answer` in `app/services/assessment/engine.py` at **11**; everything else ≤ 9. |
-| `test` | `postgres:17-alpine` + `redis:7-alpine` services, `pytest --cov-fail-under=95`, uploads `coverage.xml` as an artifact | **406 passed, 98.25% coverage** (re-verified 2026-08-28 after `main` merged Roadmap Slice 3 and Today's Mission). |
-| `migrations` | exactly-one-head check, upgrade from empty, `alembic check` (model/schema drift), then `downgrade base` + `upgrade head` | Exactly 1 head, 0 drift (re-verified 2026-08-28). |
-| `e2e` | writes a CI `.env`, runs `scripts/e2e_run.sh` against a locally booted server | **The full 27-test suite.** This is where the 14 mailbox-dependent journeys are covered; CD's live staging gate runs only the other 13 — see the CD section below. |
-| `security` | gitleaks (full history), Semgrep (SARIF → Security tab), **bandit** (`-r app/`), pip-audit on `poetry export --only main` | gitleaks exit 0 after baselining one historical `SECRET_KEY`; Semgrep 1.157.0 exit 0, no findings; **bandit exit 0**; pip-audit red on **1** remaining advisory (`ecdsa`, no fix available) — see §10. |
-| `quality` | **pylint** `--fail-under=9.5`, **radon** `cc`/`mi` report, **hadolint** on the `Dockerfile` | pylint **9.94/10, 15 messages remaining**; radon **average complexity A (2.30)** across 301 blocks with every module's maintainability index rated **A**; hadolint **exit 0** at `failure-threshold: info`. |
-| `trivy-repo` | `trivy fs` (locked dependency graph + secret scan, report-only) and `trivy config` (IaC misconfiguration, blocking) | `trivy fs`: **1 HIGH, 0 CRITICAL** (the unfixable `ecdsa` advisory), and **0 secrets found** (re-verified 2026-08-28, after the starlette upgrade cleared the rest). `trivy config`: **0 misconfigurations** on the Dockerfile. |
-| `dependency-review` | **PR-only.** `fail-on-severity: high`; denies `GPL-3.0`, `AGPL-3.0`, `LGPL-3.0` | **NOT VERIFIED —** the action requires a real pull request to diff a manifest against a base commit and cannot be run locally. Verification is the first PR into `develop`. |
-| `sonarcloud` | `needs: [test]`. Downloads the coverage artifact and scans — **only when `SONAR_TOKEN` exists**, skipping cleanly otherwise | **NOT VERIFIED —** no SonarCloud account was created; `sonar-project.properties` still carries `CHANGE_ME` placeholders. The skip-cleanly path is by construction (job-level `env` + a step `if` gate), not observed. Enablement steps: `GITHUB_ACTIONS_SETUP.md` → "Enabling SonarCloud". |
-| `build` | `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`. Builds the image, smoke-tests it, generates a **CycloneDX SBOM**, Trivy-scans HIGH/CRITICAL `--ignore-unfixed`, uploads SARIF, **then** a separate failing gate step | Trivy 0.74.0: **0 findings** as of 2026-08-28 — the starlette upgrade cleared all of them; see §10. SBOM generated locally from the built image: **CycloneDX 1.7, 174 components** (173 library + 1 operating-system), ~301 KB. **NOT VERIFIED —** the SBOM has never been uploaded as a workflow artifact. |
+| Job | Runs on | What it does | Local verification |
+|---|---|---|---|
+| `lint` | push + PR | black, isort, ruff — including **C901** (mccabe complexity) — and **mypy** | All green. mypy: *"Success: no issues found in 91 source files"*. Measured worst complexity: `validate_answer` in `app/services/assessment/engine.py` at **11**; everything else ≤ 9. |
+| `test` | push + PR | `postgres:17-alpine` + `redis:7-alpine` services, `pytest --cov-fail-under=95`, uploads `coverage.xml` as an artifact | **406 passed, 98.25% coverage** (re-verified 2026-08-28 after `main` merged Roadmap Slice 3 and Today's Mission). |
+| `security` | push + PR | gitleaks (full history), Semgrep (SARIF → Security tab), **bandit** (`-r app/`), pip-audit on `poetry export --only main` | gitleaks exit 0 after baselining one historical `SECRET_KEY`; Semgrep 1.157.0 exit 0, no findings; **bandit exit 0**; pip-audit red on **1** remaining advisory (`ecdsa`, no fix available) — see §10. |
+| `migrations` | PR-only | exactly-one-head check, upgrade from empty, `alembic check` (model/schema drift), then `downgrade base` + `upgrade head` | Exactly 1 head, 0 drift (re-verified 2026-08-28). |
+| `e2e` | PR-only | writes a CI `.env`, runs `scripts/e2e_run.sh` against a locally booted server | **The full 27-test suite.** This is where the 14 mailbox-dependent journeys are covered; the CD-staging live E2E gate runs only the other 13 — see the CD-staging section below. Runs on a PR into `develop`, **not** on a bare push to `develop`. |
+| `quality` | PR-only | **pylint** `--fail-under=9.5`, **radon** `cc`/`mi` report, **hadolint** on the `Dockerfile` | pylint **9.94/10, 15 messages remaining**; radon **average complexity A (2.30)** across 301 blocks with every module's maintainability index rated **A**; hadolint **exit 0** at `failure-threshold: info`. |
+| `dependency-review` | PR-only, and only when the repo supports it (see below) | `fail-on-severity: high`; denies `GPL-3.0`, `AGPL-3.0`, `LGPL-3.0` | **NOT VERIFIED —** the action requires a real pull request to diff a manifest against a base commit and cannot be run locally. Verification is the first PR into `develop`. |
+| `build` | PR-only, `needs: [lint, quality, test, migrations, e2e, security]` | Builds the image, smoke-tests it, runs it as production does (`scripts/image_cmd_check.sh`), generates a **CycloneDX SBOM**, Trivy-scans HIGH/CRITICAL `--ignore-unfixed`, uploads SARIF, **then** a separate failing gate step | Trivy 0.74.0: **0 findings** as of 2026-08-28 — the starlette upgrade cleared all of them; see §10. SBOM generated locally from the built image: **CycloneDX 1.7, 174 components** (173 library + 1 operating-system), ~301 KB. **NOT VERIFIED —** the SBOM has never been uploaded as a workflow artifact. |
+
+### What was removed, and why
+
+`ci.yml` used to be 10 jobs at ~15 billed minutes, firing on **both** `pull_request` and
+push-to-`main` — one PR-then-merge cycle cost ~30 minutes and re-ran, on `main`, the exact suite
+that had just passed on the PR. 100+ runs over three days exhausted the 2,000 min/month GitHub
+Free allowance and every job began failing in 2 seconds with zero steps, which looks alarmingly
+like a code failure and is not one. Fixing the billing meant cutting jobs, not just retargeting
+triggers:
+
+- **`sonarcloud`** (~1 min) — removed as **inert**: it never had a `SONAR_TOKEN` and had never
+  produced a finding. Re-add it with the token, or not at all.
+- **`trivy-repo`** (~3 min, `trivy fs` + `trivy config` + Checkov) — removed because `trivy fs`
+  duplicated pip-audit on the same CVE set, `trivy config` had returned 0 findings on every run
+  since the Dockerfile was hardened, and Checkov has no `docker_compose` framework so it only
+  ever scanned the workflow files. **`trivy image` — the scan that finds CVEs that actually
+  ship — is retained**, inside `build`. The real loss, stated plainly: nothing in CI now scans
+  the two compose files as IaC, and nothing in CI scans the workflow files themselves — no tool
+  tried so far covers compose, and Checkov's workflow coverage went with the job it lived in.
+  `checkov:skip=CKV_GHA_7:` comments remain inline in `cd-staging.yml` and `cd-production.yml`
+  for if/when Checkov is reintroduced; they are not currently enforced by any CI job. Both
+  scans (plus `trivy fs`/`trivy image`) still run **locally** via `make scan`, so the coverage
+  exists as a pre-push discipline even though it no longer gates CI.
 
 ### Code scanning needs GHAS on a private repo — gates are unaffected
 
@@ -509,9 +559,11 @@ Re-enable by making the repo public (free) or by setting `ENABLE_CODE_SCANNING=t
 buying GHAS. Both routes are in `docs/deployment/GITHUB_ACTIONS_SETUP.md` §9.
 
 > **Do not reorder the scanning steps.** Scanners run *before* uploads on purpose. When the
-> uploads sat first, a failed upload skipped `bandit`, `pip-audit`, `trivy config` and Checkov —
-> four blocking gates that silently never ran. Uploads are last, best-effort, and guarded on the
-> SARIF file existing.
+> uploads sat first, a failed upload skipped `bandit` and `pip-audit` — two blocking gates that
+> silently never ran. (The `trivy-repo` job that used to sit here — `trivy fs`, `trivy config`
+> and Checkov — has since been removed entirely; see "What was removed, and why" above, and
+> "Checkov and `trivy config` — removed, not merged" below.) Uploads are last, best-effort, and
+> guarded on the SARIF file existing.
 
 ### What blocks and what only reports — the deliberate split
 
@@ -526,22 +578,22 @@ accident of defaults.
 | `test` — coverage ≥ 95% | **BLOCKS** | Actual coverage is 98.29%. |
 | `migrations`, `e2e` | **BLOCKS** | A broken migration or journey must never reach a deploy. |
 | `security` — gitleaks, Semgrep, bandit, pip-audit | **BLOCKS** | All green except pip-audit, whose redness is the point (§10). |
-| `trivy config` (IaC) | **BLOCKS** | 0 findings today. |
-| `trivy image` (in `build`) | **BLOCKS** | The image is what ships. |
+| `trivy image` (in `build`) | **BLOCKS** | The image is what ships. This is the *only* Trivy mode still in CI — `trivy fs` and `trivy config` were removed with the rest of `trivy-repo`. |
 | **CodeQL** | *report-only* | A brand-new rollout has **no triaged baseline**, and `security-and-quality` is broad. Blocking on the first run is how teams end up disabling CodeQL within a fortnight. |
-| **`trivy fs`** | *report-only* | **pip-audit already blocks** on the same dependency CVEs. Two blocking gates for one finding set is noise; `trivy fs`'s value is the *wider* view — the lockfile graph including unfixable CVEs, plus secret scanning. |
 | **radon** `cc`/`mi` | *report-only* | ruff's C901 is the single complexity **gate**. Two tools counting complexity differently must not both block. |
-| **SonarCloud** | *report-only* | Not yet enabled at all, and its verdict is a trend, not a pass/fail on one commit. |
 
-Report-only does **not** mean invisible: every one of them publishes SARIF to the repository
-Security tab, where a finding can be triaged and dismissed with a reason.
+Report-only does **not** mean invisible: both of them publish SARIF to the repository Security
+tab, where a finding can be triaged and dismissed with a reason. `trivy fs`, `trivy config`,
+Checkov and SonarCloud are no longer in this table at all — they do not run in CI in any mode,
+blocking or reporting. See "What was removed, and why" above.
 
 ### SARIF categories are distinct per scan mode
 
-Five scans upload SARIF, each under its own `category`: **`trivy-fs`**, **`trivy-config`**,
-**`trivy-image`**, **`semgrep`**, and CodeQL's **`/language:python`**. GitHub keys a code-scanning
-result set by category, so sharing one would make each upload silently overwrite the last —
-the three Trivy modes in particular find genuinely different things and must stay separate.
+**Three** scans upload SARIF now, each under its own `category`: **`trivy-image`** (in `build`),
+**`semgrep`** (in `security`), and CodeQL's **`/language:python`**. GitHub keys a code-scanning
+result set by category, so sharing one would make each upload silently overwrite the last. This
+used to be five categories — `trivy-fs` and `trivy-config` were dropped along with the
+`trivy-repo` job that produced them.
 
 ### Two findings that were fixed, not ignored
 
@@ -559,52 +611,51 @@ the three Trivy modes in particular find genuinely different things and must sta
   `"1000:1000"`. Only `DL3008` (apt version pinning) is ignored, in `.hadolint.yaml`, with a
   written justification — see below.
 
-### Scope limit: `trivy config` does not cover docker-compose
+### Checkov and `trivy config` — removed from CI, not merged elsewhere
 
-`trivy config`'s supported misconfiguration targets are **Dockerfile, Kubernetes, Terraform,
-CloudFormation and Helm**. It has **no docker-compose scanner**, so `docker-compose.yml` and
-`docker-compose.prod.yml` are **not** covered by that gate despite being infrastructure-as-code.
-Verified by running it locally: only Dockerfiles appear in its target list. The workflow files
-are covered by `actionlint` + `shellcheck` instead; the compose files are covered by review and
-by `docker compose config`, and by nothing automated.
+Both used to run as CI gates and no longer do. What they covered, and what is true now:
 
-### Checkov — what it does and does not cover here
+**`trivy config`** scanned for IaC misconfiguration. Its supported targets are **Dockerfile,
+Kubernetes, Terraform, CloudFormation and Helm** — it has **no docker-compose scanner**, so
+`docker-compose.yml` and `docker-compose.prod.yml` were **never** covered by it despite being
+infrastructure-as-code (verified by running it locally: only Dockerfiles appeared in its target
+list). Its only real target here was the Dockerfile, and it had returned 0 findings on every run
+since the Dockerfile was hardened — a scan with nothing left to say. It was cut with the rest of
+`trivy-repo`; the workflow files are still covered by `actionlint` + `shellcheck`, and the
+compose files are covered by review and by `docker compose config`, and by nothing automated.
 
-Checkov was added specifically to close the docker-compose gap above. **It cannot close it.**
+**Checkov** was added specifically to try to close the docker-compose gap `trivy config` left.
+**It could not close it.** Checkov has **no `docker_compose` framework at all** — its frameworks
+are terraform, cloudformation, kubernetes, helm, dockerfile, github_actions, ansible, secrets,
+sast and friends. Pointed at the compose files under the generic `yaml` framework it emitted
+**no check_type and no results whatsoever** — not "a few findings", literally no policies
+applied (verified locally against both compose files). The one place it *did* earn its place was
+scanning `.github/workflows/**` under the `github_actions` framework — **47 checks passed, 1
+failed** (`CKV_GHA_7`) on the run that measured this. That coverage of the workflow files is
+what was lost when the job was cut for cost, alongside the compose gap it never closed.
 
-Checkov 3.3.15 has **no `docker_compose` framework at all** — its frameworks are terraform,
-cloudformation, kubernetes, helm, dockerfile, github_actions, ansible, secrets, sast and
-friends. Pointed at the compose files under the generic `yaml` framework it emits **no
-check_type and no results whatsoever** — not "a few findings", literally no policies apply.
-Verified locally against both compose files.
+`CKV_GHA_7` fired against the `workflow_dispatch` input that is now on both `cd-staging.yml` and
+`cd-production.yml`, and it is worth knowing why it was suppressed rather than fixed, because the
+inline `#checkov:skip=CKV_GHA_7:` comments are still there even with the job gone. The check
+requires dispatch inputs to be empty, because an input that influences a build breaks the SLSA
+guarantee that build output derives solely from source. Here the input **structurally cannot** do
+that: on the staging side `build-and-push` is skipped entirely when `image_tag` is set, so no
+build runs; on the production side there is no build step in the workflow at all. Both image
+references are assembled from the trusted `${REGISTRY}`/`${IMAGE_NAME}` with the input supplying
+only the tag, and the assembled reference is regex-validated with a tag character class that
+excludes `/` and `@`. Removing the inputs to satisfy the check would delete the manual rollback
+path (`ROLLBACK.md`) and make the system less safe. The comments carry that reasoning written out
+at the site — never a blanket skip — so if Checkov is ever reintroduced as a job, the skip is
+already justified in place.
 
-A job that scanned compose here could never fail, which is worse than having no job: it would
-read as coverage while providing none. So Checkov is wired to the framework where it *does*
-earn its place:
-
-| Target | Result |
-|---|---|
-| `docker-compose.yml`, `docker-compose.prod.yml` | **No coverage.** No framework supports them. |
-| `.github/workflows/**` | **47 checks passed, 1 failed** on first run — real value. |
-
-That one failure was `CKV_GHA_7` against `cd.yml`'s `workflow_dispatch` input, and it is worth
-knowing why it is suppressed rather than fixed. The check requires dispatch inputs to be empty,
-because an input that influences a build breaks the SLSA guarantee that build output derives
-solely from source. Here the input **structurally cannot** do that: `build-and-push` is skipped
-entirely when `image_tag` is set, so no build runs; the image reference is assembled from the
-trusted `${REGISTRY}`/`${IMAGE_NAME}` with the input supplying only the tag; and the assembled
-reference is regex-validated with a tag character class that excludes `/` and `@`. Removing the
-input to satisfy the check would delete the manual rollback path and make the system less safe.
-The suppression is an inline `#checkov:skip=CKV_GHA_7:` comment in `cd.yml` with that reasoning
-written out — never a blanket skip.
-
-Checkov **BLOCKS**, on the same principle as `trivy config`: it is green today, so it is a free
-ratchet against regression.
-
-**Net position on compose IaC: `docker-compose.yml` and `docker-compose.prod.yml` are scanned
-by no IaC tool.** `trivy config` has no compose scanner and neither does Checkov. They are
-covered by review and by `docker compose config` only. If that gap matters, it needs a
-compose-specific linter, not another general IaC tool.
+**Net position: nothing in CI scans `docker-compose.yml`, `docker-compose.prod.yml`, or
+`.github/workflows/**` as IaC any more.** The compose gap was never closed by either tool; the
+workflow-file coverage existed only while the `trivy-repo`/Checkov job did, and it is gone with
+the job. Both scans (plus `trivy fs`, `trivy image`) still run **locally** via `make scan`, so
+the coverage exists as a pre-push discipline, just not as a CI gate. If the compose gap or the
+workflow-file gap starts to matter, it needs either a compose-specific linter (no general IaC
+tool tried so far covers it) or reintroducing a scoped Checkov job against `.github/workflows/**`
+alone.
 
 ### Why `DL3008` is the one ignored hadolint rule
 
@@ -623,10 +674,21 @@ to `info`, the strictest setting hadolint offers.
 - CI Postgres was 15 while production ran 17 — a whole major version tested nowhere. Now
   aligned to **17 everywhere**.
 
-All action versions are pinned to full commit SHAs. **All 18 pins across `ci.yml`, `cd.yml` and
-`codeql.yml` were re-verified against the live GitHub API — zero mismatches.**
+All action versions are pinned to full commit SHAs. **Recounted for the five-workflow shape:
+37 pins across `ci.yml` (20), `cd-staging.yml` (9), `codeql.yml` (3), `live-e2e.yml` (3) and
+`cd-production.yml` (2)** — up from the 18 that used to live across the three-file shape
+(`ci.yml`, `cd.yml`, `codeql.yml`), because the single `cd.yml` split into three files each with
+their own `actions/checkout` and, for staging, its own buildx/login/metadata/build-push steps.
+The composite actions under `.github/actions/` carry a further 5 pins (`deploy-stack`: 2;
+`setup-python-poetry`: 3) not counted above, since they are shared infrastructure rather than
+workflow-specific. **NOT VERIFIED against the live GitHub API for this shape** — the 18-pin
+figure was confirmed live on 2026-08-28 against the old three-file topology; this recount is a
+static `grep` over the current files, not a re-run of that API check. Re-verify before trusting
+the number in an audit.
 `permissions: contents: read` by default; `security-events: write` only where SARIF uploads,
-and `pull-requests: write` only in `dependency-review`.
+`packages: write` only where a job pushes or tags a GHCR image, `packages: read` only where
+`cd-production.yml`'s `resolve-artifact` job reads one, and `pull-requests: write` only in
+`dependency-review`.
 A shared composite action lives at `.github/actions/setup-python-poetry/action.yml`.
 
 **Poetry must be 2.x.** `poetry.lock` is lock-version 2.1, which Poetry 1.x cannot read. The
@@ -637,21 +699,28 @@ missing lockfile now fails at `COPY`.
 ### CodeQL — `.github/workflows/codeql.yml`
 
 > **NOT VERIFIED —** CodeQL has never run. It cannot be executed locally; it needs GitHub
-> Actions. Verification is the first push to `main` or `develop`.
+> Actions. Verification is the first push to `develop`.
 
 A **separate workflow, not a job in `ci.yml`** — and that is the whole point. CodeQL needs a
 `schedule:` trigger (`cron: "17 4 * * 1"`, Mondays 04:17 UTC) so the Security tab holds a
 *current* baseline: query packs gain advisories continuously, so code that was clean in June
 can be flagged in August without a line changing. Putting that cron in `ci.yml` would run the
-entire 10-job pipeline weekly — Postgres and Redis service containers, the e2e suite, an image
+entire 8-job pipeline weekly — Postgres and Redis service containers, the e2e suite, an image
 build — to obtain one analysis.
+
+`codeql.yml` was retargeted alongside `ci.yml`: it triggers on `develop` only now, matching the
+same reasoning — a push to `main` is a fast-forward of an already-analysed `develop` commit, so
+analysing it again would build the same CodeQL database from the same tree and bill for it, and
+a PR from `develop` to `main` runs nothing at all (see `docs/deployment/BRANCHING.md`). The
+weekly cron is unaffected either way; it is what keeps the Security tab's baseline current
+regardless of push activity.
 
 | Setting | Value |
 |---|---|
 | Languages | `python` (no build step — CodeQL uses its `none` build mode and extracts from source) |
 | Query suite | `security-and-quality` — the security suite **plus** maintainability and correctness queries |
 | Timeout | 30 minutes |
-| Triggers | push + PR on `main`/`develop`, plus the weekly cron |
+| Triggers | push + PR on `develop` only, plus the weekly cron (unaffected by the retarget) |
 | Gating | **REPORT-ONLY.** Findings land in the Security tab and on PR diffs; the job does not fail the build. |
 
 **It is not redundant with Semgrep.** Semgrep is syntactic pattern matching — fast, and good at
@@ -698,47 +767,122 @@ commits and waiting. All three skip `.worktrees` and `htmlcov` (gitignored workt
 | `make scan` | six stages: bandit → Semgrep → gitleaks → `trivy config` → `trivy fs` → `trivy image`, each labelled BLOCKS or REPORT ONLY exactly as in CI | bandit PASS, Semgrep PASS, gitleaks "no leaks found", `trivy config` PASS, `trivy fs` reports **7 HIGH** and continues (report-only), `trivy image` **6 HIGH → exit 1** (blocking, as designed) |
 | `make sbom` | builds the image and writes `sbom.cdx.json` (CycloneDX, via Trivy) | 174 components |
 
-### CD — `.github/workflows/cd.yml`
+### CD is now two workflows, not one — `cd.yml` is deleted
 
-> **NOT VERIFIED — the current shape.** CI and CD have both executed on GitHub before (that is
-> where the GHAS constraint below and the lowercase-image-name bug were found), but **CD has
-> never run in its current three-job shape**, and no part of it has ever touched a real VPS: no
+Staging and production used to be one workflow run, `cd.yml`, triggered on a push to `main`. It
+is **gone**, replaced by `cd-staging.yml` (push to `develop`) and `cd-production.yml` (push to
+`main`), joined by a third, `live-e2e.yml`, that both call into for the actual gate. The reason
+is promotion discipline: with one workflow, reaching production was a side effect of merging to
+`main`; with two, it requires a **second, deliberate act** — fast-forwarding `develop` to `main`
+— and that act is what the `resolve-artifact` job in `cd-production.yml` verifies actually
+happened cleanly (see below).
+
+Splitting the workflow broke the old `needs: [staging-e2e]` edge that made `production-deploy`
+structurally unreachable without a green gate — a `needs:` edge cannot span two separate
+workflow runs. The proof therefore had to move somewhere both runs can see it: the **registry**,
+as two tags minted onto the tested image itself. `cd-production.yml` resolves those tags before
+it will deploy anything. **Production has no build step of its own at all** — it can only ever
+redeploy bytes that `cd-staging.yml` already built and that a live E2E run already proved against
+a deployed staging.
+
+> **NOT VERIFIED — the current shape.** CI and the old single-run CD have both executed on
+> GitHub before (that is where the GHAS constraint below and the lowercase-image-name bug were
+> found), but **neither `cd-staging.yml`, `live-e2e.yml`, nor `cd-production.yml` has ever run in
+> this split, registry-proof shape**, and no part of any of them has ever touched a real VPS: no
 > SSH deploy, no scp, no GHCR pull from a server. **No staging box existed at the time of this
 > verification pass.** `actionlint` exits 0 on all workflows and `shellcheck` is clean on
-> `scripts/env.sh` (2026-08-28). Static validation is not execution.
+> `scripts/env.sh` and `scripts/ghcr_digest.sh` (re-run against this shape). Static validation is
+> not execution. **The real tests are the first push to `develop`** (exercises `cd-staging.yml`
+> end to end, including minting the `staging-verified-*` tags) **and the first fast-forward of
+> `develop` into `main`** (exercises `cd-production.yml`'s registry lookup for the first time).
 
-Triggers: push to `main`, tags `v*.*.*`, and `workflow_dispatch` with an optional `image_tag`
-input (the manual rollback path — see `ROLLBACK.md`). One `concurrency` group covers the whole
-pipeline: `cd-pipeline`, `cancel-in-progress: false`.
+#### CD — staging: `.github/workflows/cd-staging.yml`
 
-**CD is a three-stage gated pipeline. Production is unreachable except through a green live
-staging E2E run.**
+Triggers: push to `develop`, and `workflow_dispatch` with an optional `image_tag` input (the
+manual rollback path — see `ROLLBACK.md`; when set, it redeploys an existing GHCR tag to staging
+instead of building). `concurrency` group `cd-staging`, `cancel-in-progress: false` — separate
+from production's group, so a staging deploy can never queue behind or block a production
+rollback, and a half-finished deploy is never cancelled into an unknown VPS state.
+
+**Four stages. The last one only runs, and only mints its proof, after a real E2E pass against
+deployed staging:**
 
 ```
-build-and-push  ──►  staging-deploy  ──►  staging-e2e  ──►  production-deploy
-(skipped when        environment:         environment:      environment:
- image_tag is         staging              staging           production
- supplied)                                                   (manual approval)
+build-and-push  ──►  staging-deploy  ──►  staging-e2e  ──►  mark-staging-verified
+(skipped when        environment:         uses:               mints staging-verified-<sha>
+ image_tag is         staging              live-e2e.yml        and verified-sha256-<digest>
+ supplied)                                 (environment:        onto the SAME manifest,
+                                             staging)            then asserts both resolve
+                                                                  to the tested digest
 ```
 
 | Job | The condition that gates it |
 |---|---|
-| `build-and-push` | `if: github.event.inputs.image_tag == ''` — skipped entirely on the rollback path. Pushes to GHCR, then resolves the **immutable digest**. |
+| `build-and-push` | `if: github.event.inputs.image_tag == ''` — skipped entirely on the rollback path. Pushes to GHCR tagged `sha-<short7>`, asserts that tag is really what `docker/metadata-action` produced (a coupling guard for `cd-production.yml`, which reconstructs that same tag by convention), then resolves the **immutable digest**. |
 | `staging-deploy` | `if: always() && needs.build-and-push.result != 'failure' && … != 'cancelled'`. `always()` is what keeps the rollback path alive when the build is skipped; the explicit checks stop a **failed** build from ever reaching a VPS. |
-| `staging-e2e` | `if: needs.staging-deploy.result == 'success'` |
-| `production-deploy` | `if: needs.staging-deploy.result == 'success' && needs.staging-e2e.result == 'success'` — **both conditions explicit**, so a skipped or cancelled gate can never be mistaken for a pass. |
+| `staging-e2e` | `if: needs.staging-deploy.result == 'success'`. A `uses:` call into the reusable `live-e2e.yml` with `environment: staging` — see below. |
+| `mark-staging-verified` | `if: github.event_name == 'push' && needs.build-and-push.result == 'success' && needs.staging-deploy.result == 'success' && needs.staging-e2e.result == 'success'` — all four explicit, so a skipped or cancelled upstream job can never be mistaken for a pass. `push`-only: a `workflow_dispatch` rollback deploys an arbitrary older tag while `github.sha` is still HEAD of `develop`, and minting a proof for HEAD under those bytes would attach this commit's name to a different commit's artifact — the one lie that would make the whole gate worthless. |
 
-**Production deploys the same digest staging proved.** `production-deploy` takes its
-`image_ref` from `needs.staging-deploy.outputs.image_ref`. It does **not** rebuild. Staging and
-production therefore run byte-identical artifacts, and the only difference between them is which
-`.env` each received.
+**`mark-staging-verified` is the mechanism that replaces the old `needs:` edge into production.**
+It uses `docker buildx imagetools create` to add **two** tags to the exact manifest staging just
+tested — `staging-verified-<full 40-char commit sha>` (answers "was this *commit* verified?",
+the question a push to `main` can ask since it knows its own SHA) and
+`verified-sha256-<64 hex digest>` (answers "were these *bytes* verified?", the question a manual
+rollback has to ask since an operator-supplied tag like `sha-a1b2c3d` cannot be reversed back
+into a commit SHA). It then **asserts** — via `scripts/ghcr_digest.sh` — that both newly-minted
+tags actually resolve to the digest staging tested, and fails loudly if not, rather than trusting
+`imagetools create` silently.
 
-**Both deploys call one composite action**, `.github/actions/deploy-stack`. Two copies of ~100
-lines of deploy shell would drift, and the copy that drifts is the one you find out about during
-an incident.
+**Both `cd-staging.yml` and `cd-production.yml` call the same composite action**,
+`.github/actions/deploy-stack`. Two copies of ~100 lines of deploy shell would drift, and the
+copy that drifts is the one you find out about during an incident. Staging carries **no** manual
+approval gate on its `staging` GitHub Environment — only production does (see below).
+
+#### CD — production: `.github/workflows/cd-production.yml`
+
+Triggers: push to `main`, and `workflow_dispatch` with `image_tag` **and** `bypass_staging_proof`
+inputs (the rollback path — see `ROLLBACK.md`). The old `v*.*.*` tag trigger is **removed
+entirely**: a version tag no longer builds or deploys anything, because a tag is not a commit
+that went through staging — tagging a release is now a labelling act on a commit production is
+already running. `concurrency` group `cd-production`, `cancel-in-progress: false`.
+
+```
+resolve-artifact  ──►  production-deploy
+(reads sha-<short7>     environment: production
+ and                     (manual approval)
+ staging-verified-<sha>
+ from GHCR, refuses
+ to continue if either
+ is missing or they
+ disagree, deploys
+ the resolved DIGEST)
+```
+
+| Job | The condition that gates it |
+|---|---|
+| `resolve-artifact` | Always runs. Resolves two GHCR tags via `scripts/ghcr_digest.sh` (needs the new `packages: read` permission — the old single-run `cd.yml` never needed it, because it had just built the image itself in the same run). On the **automatic push-to-`main` path**, it reconstructs `sha-<short7>` from `github.sha`, confirms an image was ever built for this exact commit, then confirms `staging-verified-<full sha>` also exists for it, then confirms both resolve to the **same** digest — three explicit failure modes, each with a distinct, actionable error message (see below). On the **manual rollback path**, an operator supplies `image_tag` directly; the job looks up `verified-sha256-<64 hex>` instead of a commit-keyed tag, and — **only** on `workflow_dispatch`, **never** on the automatic path — an operator can tick `bypass_staging_proof` to deploy an image with no proof at all (break-glass, for images built before this mechanism shipped). |
+| `production-deploy` | `if: needs.resolve-artifact.result == 'success'` — explicit, so a skipped or cancelled resolution is never mistaken for a pass. Carries the `production` Environment's required-reviewer approval. |
+
+**The three automatic-path failure modes are each diagnosed distinctly in the job log**, rather
+than one generic "not found": (1) no `sha-<short7>` tag exists at all — nothing was ever built
+for this commit, and the error names the likely cause explicitly: `develop -> main` was not a
+fast-forward, so `main`'s SHA is not the SHA that went through staging even if the diff is
+identical (see `docs/deployment/BRANCHING.md`); (2) the build tag exists but
+`staging-verified-<sha>` does not — the commit's image was built but never proved on a deployed
+environment, or that CD-staging run is still in flight, cancelled, or failed; (3) both tags exist
+but resolve to **different** digests — one of them was re-pointed after being minted, and nobody
+can now say which bytes were actually tested, so the job refuses outright rather than guess.
+
+**Production still deploys by immutable digest**, exactly as before — `resolve-artifact` hands
+`production-deploy` an `image_ref` pinned `@sha256:…`, never a tag. What changed is *how that
+digest is discovered*: previously it came from `needs.staging-deploy.outputs.image_ref` within
+the same workflow run; now it comes from a live GHCR lookup in a separate run. See "Image
+provenance" below for what that changes about the trust model, stated plainly rather than papered
+over.
 
 **`production` keeps its manual approval gate** via the `production` GitHub Environment —
-configure required reviewers under Settings → Environments → production.
+configure required reviewers under Settings → Environments → production. `bypass_staging_proof`
+exists **only** as a `workflow_dispatch` input; there is no way to reach it from a push to `main`.
 
 #### What `deploy-stack` does, per environment
 
@@ -778,9 +922,38 @@ Design points that matter, all preserved from the single-environment version:
 - `docker image prune -af --filter "until=72h"` reclaims disk but deliberately keeps recent
   images, so a manual rollback to yesterday's build still has a local image.
 
-#### The live staging E2E gate — what it proves, and what it does not
+#### The live E2E gate — `.github/workflows/live-e2e.yml` — what it proves, and what it does not
 
 This is the part not to oversell, so it is written plainly.
+
+Extracted out of the old single-run `cd.yml` into its own **reusable workflow** for two reasons.
+First, it is the **promotion gate**: `cd-staging.yml` calls it with `uses:` and
+`environment: staging` after deploying, and only a green result lets `mark-staging-verified`
+mint the proof `cd-production.yml` requires — the gate still gates, even though staging and
+production are now separate workflow runs. Second, it is available **on demand**, via its own
+`workflow_dispatch` with an `environment` choice of `staging` or `production` — for confirming an
+incident is resolved, or for checking production after a manual change on the box, without
+deploying anything.
+
+**Running it on demand against `production` is a different exercise than the staging gate, and
+the differences are load-bearing, not cosmetic:**
+
+- It **signs up real users** in the production database. The suite is not adapted for
+  production — same assertions, same signup/verify/login calls — so every run leaves behind real
+  rows that are **not cleaned up**. The job emits a highlighted `::warning` and a step-summary
+  block saying so before it runs.
+- The **rate-limiter reset is hard-restricted to `staging`** (`if: inputs.environment ==
+  'staging'` in the workflow itself) — restarting the `api` service to make a test suite pass
+  would trade a real outage for a green tick, which is not an acceptable trade against production.
+  Consequence: production's nginx auth zone is **not** loosened the way staging's is (see
+  `NGINX_TLS.md` §12), so an on-demand run against production **can 429 itself** on a busy window,
+  and that failure says nothing about correctness.
+- The `production` GitHub Environment's **required-reviewer approval** is the deliberate friction
+  on this path — it is not a rubber-stamp step, it is the thing standing between "someone ran a
+  workflow" and "real users got created in prod."
+
+None of that applies to the promotion-gate use inside `cd-staging.yml`: that call always targets
+`staging`, always gets the limiter reset, and creates no real user data.
 
 The `e2e/` suite has **27 tests**. Against a **deployed** staging, only **13 can run.** The
 other **14 cannot**: they read one-time tokens out of file-captured emails (`EMAIL_BACKEND=file`
@@ -797,10 +970,12 @@ consumes `mailbox` internally.
   must **fail**, not pass;
 - and, as a backstop, the `mailbox` fixture itself raises in remote mode.
 
-The CD job additionally **fails on pytest exit code 5** ("no tests collected"). That is a
+`live-e2e.yml` additionally **fails on pytest exit code 5** ("no tests collected"). That is a
 deliberate divergence from the house template, which treats exit 5 as success so projects
 *without* an e2e suite are not blocked. This project has a suite, so exit 5 means the selection
-broke and nothing was verified.
+broke and nothing was verified — and this now matters more than it did in the single-run
+pipeline: a pass here is what mints the `staging-verified` tag production will deploy on. An
+empty run would mint that proof out of nothing.
 
 **Verified** on 2026-08-28 against a live HTTP server: **`13 passed, 14 deselected`.**
 
@@ -823,7 +998,9 @@ broke and nothing was verified.
 | `e2e/test_smoke.py::test_assessments_requires_auth` |
 
 **The 14 that do NOT gate production** — deselected remotely; they **do** run in local
-`make e2e` and in the CI `e2e` job on every push
+`make e2e` and in the CI `e2e` job **on every PR into `develop`** (that job is PR-only — it does
+**not** run on a bare push to `develop`, which only gets `lint`/`test`/`security`; see the CI
+job graph above)
 
 | Test |
 |---|
@@ -849,7 +1026,8 @@ signup-verify, MFA, password reset, refresh rotation, onboarding, roadmap, missi
 journeys against that artifact.
 
 Those journeys are **not unverified** — the CI `e2e` job runs the full suite against a locally
-booted server on every push. They are simply not verified *against the deployed artifact*.
+booted server on every PR into `develop`. They are simply not verified *against the deployed
+artifact*.
 
 **The concrete path to widening it**, either of:
 
@@ -861,11 +1039,14 @@ booted server on every push. They are simply not verified *against the deployed 
 > proposals. Do not read them as existing capability.
 
 The job writes a step summary counting what ran and what was deselected, and uploads
-`staging-e2e.log` / `staging-e2e.xml` as an artifact with 14-day retention.
+`live-e2e.log` / `live-e2e.xml` as an artifact named `live-e2e-<environment>-<run id>`, with
+14-day retention — the artifact name now carries which environment was targeted, since the same
+workflow can run against either.
 
-#### The rate-limiter reset — a restart, not a Redis flush
+#### The rate-limiter reset — a restart, not a Redis flush, and staging-only
 
-Before the gate runs, `staging-e2e` SSHes in and runs
+Before the gate runs against `staging` — and **only** against `staging`; the step is guarded
+`if: inputs.environment == 'staging'` in `live-e2e.yml` itself — it SSHes in and runs
 `docker compose -f docker-compose.prod.yml --env-file .env restart api`, then re-waits on
 readiness.
 
@@ -877,17 +1058,28 @@ Restarting the `api` service is what actually clears it.
 Without the reset, a redeploy that reuses warm workers can start the E2E run partway through a
 120/minute budget and fail on 429s that have nothing to do with the change under test.
 
-#### `E2E_BASE_URL` comes from the `APP_URL` variable
+**This does not exist for `production`, on purpose.** Restarting the production `api` service to
+clear its rate limiter would trade a real outage for a green tick — an unacceptable trade even
+for an on-demand diagnostic run. The consequence is asymmetric: a `staging` run always starts
+with a clean limiter budget; a `production` run does not, and — combined with production's nginx
+auth zone **not** being loosened the way staging's is (`NGINX_TLS.md` §12) — an on-demand
+production run can 429 itself on a busy window, a failure that says nothing about correctness.
 
-`staging-e2e` sets `E2E_BASE_URL: ${{ vars.APP_URL }}` and fails fast when it is empty. The
-**`staging` environment's `APP_URL` must therefore be the publicly reachable staging base URL**,
-or the gate cannot run at all. It is the same variable that supplies `environment.url` on the
-deployment.
+#### `E2E_BASE_URL` comes from the `APP_URL` variable — of whichever environment was selected
+
+`live-e2e.yml` sets `E2E_BASE_URL: ${{ vars.APP_URL }}` and fails fast when it is empty. Because
+the workflow now declares `environment: ${{ inputs.environment }}` at the job level rather than
+hardcoding `staging`, **which environment's `APP_URL` gets used depends entirely on the caller**:
+`cd-staging.yml`'s promotion-gate call always passes `environment: staging`, so it is always the
+`staging` environment's `APP_URL`; a manual `workflow_dispatch` run picks whichever of
+`staging`/`production` the operator chose in the dropdown. **Both environments' `APP_URL` must
+therefore be their real publicly reachable base URL**, or the gate cannot run at all against
+that environment. It is the same variable that supplies `environment.url` on each deployment.
 
 ### House-default deviation: GHCR pull, not scp-tarball
 
 This project deploys by **GHCR pull**, which differs from the house template's scp-tarball
-default. The deviation is deliberate and stated in `cd.yml` itself.
+default. The deviation is deliberate and stated in `cd-staging.yml` itself.
 
 | | GHCR pull (this project) | scp `docker save` tarball (template) |
 |---|---|---|
@@ -907,28 +1099,71 @@ The cost is real and worth stating: a **GHCR credential on every VPS**, and a **
 dependency on ghcr.io at deploy time**. If ghcr.io is down you cannot deploy — but you *can*
 still roll back to any image still in the local cache.
 
-### Image provenance — and why there is no cosign signature
+### Image provenance — and why there is still no cosign signature, argued honestly for the new shape
 
-`cd.yml`'s `build-and-push` step sets **`provenance: true`** and **`sbom: true`** on
+`cd-staging.yml`'s `build-and-push` step sets **`provenance: true`** and **`sbom: true`** on
 `docker/build-push-action`, so BuildKit attaches a SLSA provenance attestation (what built this,
 from which commit, with which inputs) and an SBOM attestation to the pushed GHCR manifest.
 
 ```bash
-docker buildx imagetools inspect ghcr.io/innocent98/cofoundaz-api:latest \
+docker buildx imagetools inspect ghcr.io/innocent98/cofoundaz-api:sha-<short7> \
   --format '{{ json .Provenance }}'
 ```
 
+Tagged by `sha-<short7>` above rather than `latest`: `latest` is now **inert** — it only ever
+tagged the default branch's build, builds only ever run on `develop`, and the default branch is
+`main`, so the `latest` rule in `docker/metadata-action` never fires. Nothing deploys `latest` in
+either environment; both deploy by digest.
+
 > **NOT VERIFIED —** no GHCR push has been performed, so no attestation has been inspected.
 
-**cosign keyless signing was deliberately not added.** CD resolves the digest from the build it
-just ran, and the VPS pulls *that digest*. A digest is content-addressed: the registry cannot
-serve different bytes under it — which is precisely the tampering a signature would catch.
-Without an admission controller or a `cosign verify` gate that can actually **refuse** a deploy,
-a signature would be ceremony: a step that produces an artifact nothing checks.
+**cosign keyless signing was still deliberately not added — but the argument for that changed
+with the split, and it is worth stating what changed rather than reusing the old reasoning
+unchanged.**
 
-Revisit this if either changes: the images are consumed by a third party, or a policy engine
-(Kyverno, Sigstore policy-controller, a `cosign verify` gate in the deploy script) is introduced
-that can turn a bad signature into a stopped deploy.
+In the single-run `cd.yml`, "CD resolves the digest from the build it just ran" was true in the
+strongest possible sense: build and deploy were steps in the *same execution*, so the digest the
+VPS pulled was handed forward in-memory, in a `needs:` output, with no gap in which anything
+outside that run could interpose. The digest's identity was never in question; only its byte
+content was, and content-addressing already settles that.
+
+**That is no longer the whole picture.** `cd-production.yml` does not receive a digest from a
+build — it **looks one up**, in a separate workflow run, potentially hours or days later (`main`
+is fast-forwarded manually), by resolving two GHCR tags: `sha-<short7>` and
+`staging-verified-<full sha>`. Digest pinning itself is unweakened — whatever digest is resolved
+is still deployed byte-for-byte, and a tag cannot be quietly re-pushed with different bytes under
+the same digest. **What changed is *which digest gets trusted in the first place*.** That trust
+now rests on the state of two mutable tags in the registry at the moment `resolve-artifact` reads
+them, not on a value carried forward within one continuous execution. Concretely: anyone or
+anything holding `packages: write` on this GHCR package — which, on this repository, means any
+workflow run's ephemeral `GITHUB_TOKEN`, i.e. anything that can trigger a workflow with that
+permission — could, in the window between `mark-staging-verified` minting the proof and `main`
+being fast-forwarded to promote it, re-point *both* `sha-<short7>` and `staging-verified-<sha>`
+to a different manifest, and `cd-production.yml` would deploy it, believing it staging-verified.
+`resolve-artifact`'s "do the two tags agree" check (see above) catches the tags being moved
+**independently** — a single re-point of just one of them is caught immediately — but it cannot
+catch the two being moved **together**, deliberately, by someone with write access, since from
+the workflow's point of view that looks exactly like a legitimately promoted image.
+
+**This is a real widening of the trust surface, not a cosmetic one, and it is not closed by
+anything currently in the pipeline.** It is bounded by the same access control that already
+gates a merge to `develop` or a push to `main` — GHCR write access is not handed out more widely
+than repository write access — but it is a genuinely larger surface than "only the same
+workflow run that just built the image can name the digest." A `cosign verify` gate would not
+close it either, on its own: cosign proves an artifact was signed by a given identity, not that
+the *tag currently pointing at it* is the tag that was tested — the same registry-state trust
+problem would still exist one layer up, at "which signed artifact does this tag currently name."
+Closing this properly needs either an **admission controller that pins by digest at deploy time
+from a source outside the registry's own tags** (so the two-tags-moved-together attack has
+nothing left to fool), or **GHCR package protection rules that make `staging-verified-*` and
+`verified-sha256-*` tags immutable once created** — neither is implemented today.
+
+Revisit this if any of the following becomes true: the images are consumed by a third party;
+GHCR write access on this repository stops being coextensive with repository write access (e.g.
+a bot or CI identity gets broader package permissions than it needs); or a policy engine
+(Kyverno, Sigstore policy-controller, GHCR immutable tags, a `cosign verify` gate in the deploy
+script) is introduced that can turn a re-pointed tag into a stopped deploy rather than a silent
+one.
 
 ---
 
@@ -1399,6 +1634,9 @@ volume to object storage.
 
 ## Related documents
 
+- **[BRANCHING.md](./BRANCHING.md)** — the `develop` → `main` fast-forward promotion model this
+  guide's CI/CD section assumes throughout: why `main` must stay a linear history, what happens
+  when it isn't, and how a hotfix is expected to flow.
 - **[NGINX_TLS.md](./NGINX_TLS.md)** — the edge: nginx vhosts, TLS, certificates, rate limiting,
   and the `X-Forwarded-For` defect that disables the app's anonymous rate limit.
 - **[GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md)** — every secret and variable, how to
