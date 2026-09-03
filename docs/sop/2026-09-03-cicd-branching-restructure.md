@@ -2,6 +2,12 @@
 
 > **Type:** infra / deploy pipeline · **Date:** 2026-09-03 · **Area:** `.github/workflows/`, `scripts/ghcr_digest.sh`, deployment docs
 
+> **⚠️ Follow-up — this restructure shipped two regressions.** Rewriting the two `deploy-stack`
+> call sites reverted the GHCR credentials to the removed `GHCR_PULL_*` PAT pair and dropped
+> `permissions: packages: read` from both deploy jobs, so the very first `cd-staging.yml` run
+> failed at `docker login` with `username is empty`. Fixed in
+> **`docs/sop/2026-09-03-cd-ghcr-auth-regression.md`** — read that alongside this document.
+
 ## What shipped
 
 Three things, in that order because the third could not exist without the second.

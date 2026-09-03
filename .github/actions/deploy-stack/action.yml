@@ -41,14 +41,51 @@ inputs:
     description: "AES key for .env.<environment>.enc. See docs/deployment/ENV_ENCRYPTION.md."
   ghcr_username:
     required: true
-    description: "GHCR user for the VPS-side docker login."
+    description: >-
+      GHCR user for the VPS-side docker login. Pass ${{ github.actor }} - NOT a
+      GHCR_PULL_USERNAME secret. That pair was removed (see
+      docs/deployment/GITHUB_ACTIONS_SETUP.md §4) and no longer exists.
   ghcr_token:
     required: true
-    description: "PAT with read:packages."
+    description: >-
+      Token for that login. Pass ${{ secrets.GITHUB_TOKEN }}; the calling job
+      must grant `packages: read` or the VPS-side pull is denied.
 
 runs:
   using: composite
   steps:
+    # A composite action does NOT enforce `required: true` - an input the
+    # caller omits, or one wired to a secret that does not exist, silently
+    # becomes the empty string. That is exactly how an unset ghcr_username
+    # reached the VPS and surfaced 20 lines later as the opaque `docker login`
+    # error "username is empty", after the scp had already landed. Fail here
+    # instead, naming the input, before anything touches the server.
+    - name: Preflight - every deploy input is present
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.vps_host }}
+        VPS_USERNAME: ${{ inputs.vps_username }}
+        VPS_SSH_KEY: ${{ inputs.vps_ssh_key }}
+        DEPLOY_PATH: ${{ inputs.deploy_path }}
+        ENV_ENCRYPTION_KEY: ${{ inputs.env_encryption_key }}
+        GHCR_USERNAME: ${{ inputs.ghcr_username }}
+        GHCR_TOKEN: ${{ inputs.ghcr_token }}
+        IMAGE_REF: ${{ inputs.image_ref }}
+      run: |
+        set -euo pipefail
+        MISSING=""
+        for v in VPS_HOST VPS_USERNAME VPS_SSH_KEY DEPLOY_PATH \
+                 ENV_ENCRYPTION_KEY GHCR_USERNAME GHCR_TOKEN IMAGE_REF; do
+          if [ -z "${!v:-}" ]; then
+            MISSING="${MISSING} ${v}"
+          fi
+        done
+        if [ -n "${MISSING}" ]; then
+          echo "::error::Empty deploy input(s):${MISSING} - a GitHub secret or variable of that name is unset for this environment. Nothing was shipped. See docs/deployment/GITHUB_ACTIONS_SETUP.md."
+          exit 1
+        fi
+        echo "All required deploy inputs are present."
+
     - name: Decrypt the environment file
       shell: bash
       env:
@@ -130,7 +167,10 @@ runs:
         # command text sent over the wire and into any trace.
         envs: IMAGE_REF,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN,STACK_ENV
         command_timeout: 15m
-        script_stop: true
+        # Deliberately no `script_stop:` - it is not a valid input at this
+        # pinned version, so the action warns "Unexpected input(s)
+        # 'script_stop'" on every run and ignores it. The script below opens
+        # with `set -euo pipefail`, which is what it would have provided.
         script: |
           set -euo pipefail
 

@@ -16,7 +16,11 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-03 · `chore/cicd-branching-restructure` (CD split into `cd-staging.yml` /
+_Last reconciled: 2026-09-03 (evening) · `fix/cd-ghcr-auth-regression`, branched from `develop` —
+repairs the GHCR-auth regression PR #42 shipped, which broke the first-ever `cd-staging.yml` run;
+see the **CI/CD — branching restructure** section below._
+
+_Previously: 2026-09-03 · `chore/cicd-branching-restructure` (CD split into `cd-staging.yml` /
 `cd-production.yml` + reusable `live-e2e.yml`, registry-carried staging-verified proof, `cd.yml`
 deleted) branched from `main` — NOT from `feat/dashboard`, which carries Module 02 (Founder
 Dashboard, aggregation BFF + activity feed) and is still unmerged. `main` is at the passlib → direct bcrypt migration (PR #33), the
@@ -576,7 +580,7 @@ the real application. **No VPS, no DNS, no certificate, no real handshake.** See
 
 ---
 
-## 🟢 CI/CD — branching restructure (staging/production split) — *on `chore/cicd-branching-restructure`, not yet merged*
+## 🟢 CI/CD — branching restructure (staging/production split) — *merged to `develop` as PR #42 (`f96172c`); `main` untouched at `0de05f4`*
 
 _The single `cd.yml` (build → staging → staging-e2e → production, gated by a same-workflow
 `needs:` chain) is deleted. Staging and production now promote on separate events —
@@ -630,13 +634,36 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       a `bypass_staging_proof` break-glass path for pre-mechanism images, and an explicit
       gains/losses note on what re-proving-live-at-rollback-time was traded for), plus a new
       `docs/deployment/BRANCHING.md` describing the full promotion model, and this checklist entry
+- [ ] **Delete the stale `GHCR_PULL_TOKEN` repository secret** — referenced by nothing after the
+      fix above, and a long-lived `read:packages` credential. Settings → Secrets and variables →
+      Actions. **NOT DONE** — Adebayo's action
+- [ ] **Required reviewers on the `production` Environment** — `protection_rules: []` today, yet
+      `cd-production.yml:58-59`, `cd-production.yml:291-292` and `live-e2e.yml:59-62` all treat it
+      as *the* production gate. Until it exists, `bypass_staging_proof` can deploy an unverified
+      image unattended and a Live E2E dispatch against production signs up real users with no
+      prompt. **NOT DONE** — Settings → Environments → `production`, Adebayo's action
 - [ ] **Branch protection on `main` requiring LINEAR HISTORY** — required for the fast-forward
       promotion model to hold (a squash merge or merge commit mints a new SHA that was never
       built, so `resolve-artifact` fails loudly rather than silently deploying stale bytes).
       **NOT DONE** — Settings → Branches → `main`, Adebayo's action
-- [ ] **Create the `develop` branch** — does not exist yet. **NOT DONE**
-- [ ] **First push to `develop`** — would be the first real execution of `ci.yml`'s
-      event-dependent triggers and of `cd-staging.yml`. **NEVER RUN**
+- [x] **Create the `develop` branch** — created; PR #42 merged into it 2026-09-03 (`f96172c`)
+- [x] **First push to `develop`** — RAN (run `33776562659`). `ci.yml`'s event-dependent triggers
+      and `cd-staging.yml`'s `build-and-push` both went green; **`staging-deploy` FAILED** at
+      `docker login` with `username is empty`, and `staging-e2e` + `mark-staging-verified` were
+      skipped. Cause: the split reverted both `deploy-stack` call sites to the removed
+      `GHCR_PULL_*` PAT pair (`GHCR_PULL_USERNAME` has never existed → `""`) **and** dropped
+      `permissions: packages: read` from both deploy jobs. See the item below
+- [x] **GHCR-auth regression fixed** — `ghcr_username`/`ghcr_token` restored to
+      `github.actor` / `secrets.GITHUB_TOKEN`, `packages: read` restored on `staging-deploy` and
+      `production-deploy`, a fail-fast preflight added to `.github/actions/deploy-stack` (a
+      composite action does not enforce `required: true` — an unset secret silently becomes `""`,
+      which is why this only surfaced *after* the scp had landed on the VPS), and the invalid
+      `script_stop:` input dropped. `actionlint` + `shellcheck` clean; preflight proven to fail on
+      the real condition and pass on the fixed wiring. SOP:
+      `docs/sop/2026-09-03-cd-ghcr-auth-regression.md`. **NOT VERIFIED in CI** — needs a push to
+      `develop`; the identical bug was also live on the untriggered production path
+- [ ] **Re-run `cd-staging.yml` after the fix** — still the first real GHCR pull from a VPS.
+      **NEVER SUCCEEDED**
 - [ ] **First fast-forward promotion, `develop` → `main`** — would be the first real execution of
       `cd-production.yml`'s `resolve-artifact` gate. **NEVER RUN**, and cannot happen until the
       item above has produced a `staging-verified` tag for it to resolve

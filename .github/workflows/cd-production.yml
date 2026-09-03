@@ -119,9 +119,9 @@ jobs:
           MANUAL_TAG: ${{ github.event.inputs.image_tag }}
           BYPASS: ${{ github.event.inputs.bypass_staging_proof }}
           # The automatic GITHUB_TOKEN can read this repository's own GHCR
-          # package. GHCR_PULL_USERNAME/GHCR_PULL_TOKEN are deliberately NOT
-          # used here: those are the VPS's long-lived PAT, and a workflow that
-          # can do its job with the ephemeral per-run token should.
+          # package, so that is what both this lookup AND the VPS-side
+          # `docker login` use. GHCR_PULL_USERNAME/GHCR_PULL_TOKEN were the
+          # old long-lived PAT pair; they are removed and must not come back.
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -296,6 +296,14 @@ jobs:
       # not available in `environment.url`, and a public base URL is not a secret.
       url: ${{ vars.APP_URL }}
 
+    permissions:
+      contents: read
+      # Lets this job's GITHUB_TOKEN pull from GHCR. The token is forwarded to
+      # the VPS for `docker login`, replacing a hand-made PAT: it is minted per
+      # run, scoped by this block, and expires when the job ends - so there is
+      # no long-lived registry credential to store, rotate, or leak.
+      packages: read
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -312,8 +320,13 @@ jobs:
           vps_port: ${{ secrets.VPS_PORT || 22 }}
           deploy_path: ${{ secrets.DEPLOY_PATH }}
           env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
-          ghcr_username: ${{ secrets.GHCR_PULL_USERNAME }}
-          ghcr_token: ${{ secrets.GHCR_PULL_TOKEN }}
+          # NOT secrets.GHCR_PULL_USERNAME/_TOKEN. Those were removed when the
+          # VPS-side login moved to the run's own token; GHCR_PULL_USERNAME has
+          # never existed, so it resolved to "" and the deploy died on
+          # `docker login ... -u ""` -> "username is empty". Requires the
+          # `packages: read` permission granted on this job.
+          ghcr_username: ${{ github.actor }}
+          ghcr_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deployment summary
         if: always()

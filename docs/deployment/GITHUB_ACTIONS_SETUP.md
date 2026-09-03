@@ -194,9 +194,16 @@ token is an ordinary credential string; nothing stops it being passed over SSH a
 | Stored anywhere | Yes — two secrets, two environments | No |
 
 If you already created those two secrets, they are now unused and can be deleted.
+`GHCR_PULL_TOKEN` is in fact still present on this repository and should be deleted —
+`GHCR_PULL_USERNAME` never existed, which is precisely how the bug below stayed invisible.
 
 > **NOT VERIFIED —** no GHCR pull from a VPS has completed yet. The 2026-09-01 deploy reached
-> this step and failed with `username is empty`, which is the bug this change fixes.
+> this step and failed with `username is empty`. That was fixed in `cd.yml`, but the
+> `cd-staging.yml`/`cd-production.yml` split (PR #42) silently reverted both call sites to the
+> removed PAT pair — and dropped `packages: read` from the two deploy jobs — so the first
+> `cd-staging.yml` run (`33776562659`, 2026-09-03) failed with the identical error. Re-fixed,
+> and `.github/actions/deploy-stack` now refuses to ship anything when a deploy input is empty.
+> See `docs/sop/2026-09-03-cd-ghcr-auth-regression.md`.
 
 **How the credential is handled in the deploy** (`.github/actions/deploy-stack`, used
 identically by `cd-staging.yml` and `cd-production.yml`): it is passed to
