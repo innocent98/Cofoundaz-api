@@ -33,7 +33,10 @@ def test_overview_lists_all_types_as_start(client, db):
     r = client.get("/api/v1/business-builder/overview", headers=h)
     assert r.status_code == 200
     rows = r.json()["data"]
-    assert {row["type"] for row in rows} == {
+    # overview also carries the 4 record-kind rows (persona, revenue_stream,
+    # competitor, pricing) appended after the canvas rows -- additive only,
+    # see app/services/business/service.py::overview.
+    assert {row["type"] for row in rows} >= {
         "business_model",
         "lean",
         "value_prop",
