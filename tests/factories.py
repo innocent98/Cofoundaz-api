@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.models.activity import ActivityLog
 from app.db.models.assessment import Assessment, AssessmentAnswer
 from app.db.models.auth import AuthSession
-from app.db.models.business import BusinessCanvas
+from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.enums import (
     AssessmentStatus,
     AssessmentType,
@@ -18,6 +18,7 @@ from app.db.models.enums import (
     MissionTaskStatus,
     RecommendationEffort,
     RecommendationStatus,
+    RecordKind,
     RoadmapStatus,
     StartupStage,
     TaskEffort,
@@ -433,6 +434,25 @@ def create_business_canvas(
         type=type,
         blocks=blocks if blocks is not None else empty_blocks(type),
         version=version,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def create_business_record(
+    db: Session,
+    *,
+    startup: Startup,
+    kind: RecordKind = RecordKind.persona,
+    data: dict | None = None,
+    position: int = 0,
+) -> BusinessRecord:
+    row = BusinessRecord(
+        startup_id=startup.id,
+        kind=kind,
+        data=data if data is not None else {"name": "Sample"},
+        position=position,
     )
     db.add(row)
     db.flush()
