@@ -64,3 +64,48 @@ def test_create_mentor_forbidden_403(client, db):
         "/api/v1/business-builder/personas", json={"data": {"name": "x"}}, headers=headers
     )
     assert r.status_code == 403
+
+
+def test_put_full_replaces(client, founder):
+    headers, _ = founder
+    rid = client.post(
+        "/api/v1/business-builder/personas",
+        json={"data": {"name": "A", "quote": "hi"}},
+        headers=headers,
+    ).json()["data"]["id"]
+    r = client.put(
+        f"/api/v1/business-builder/personas/{rid}",
+        json={"data": {"name": "A2"}},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["data"]["name"] == "A2" and r.json()["data"]["data"]["quote"] == ""
+
+
+def test_delete(client, founder):
+    headers, _ = founder
+    rid = client.post(
+        "/api/v1/business-builder/personas",
+        json={"data": {"name": "A"}},
+        headers=headers,
+    ).json()["data"]["id"]
+    assert (
+        client.delete(f"/api/v1/business-builder/personas/{rid}", headers=headers).status_code
+        == 200
+    )
+    assert (
+        client.get("/api/v1/business-builder/personas", headers=headers).json()["data"]["records"]
+        == []
+    )
+
+
+def test_put_cross_tenant_404(client, db, founder):
+    import uuid
+
+    headers, _ = founder
+    r = client.put(
+        f"/api/v1/business-builder/personas/{uuid.uuid4()}",
+        json={"data": {"name": "x"}},
+        headers=headers,
+    )
+    assert r.status_code == 404

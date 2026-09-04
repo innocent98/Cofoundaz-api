@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, status
@@ -15,7 +16,14 @@ from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
 from app.schemas.business import CanvasSave, RecordCreate
 from app.services.business.record_defs import fields
-from app.services.business.records import create_record, list_records, serialize_record
+from app.services.business.records import (
+    _record,
+    create_record,
+    delete_record,
+    list_records,
+    serialize_record,
+    update_record,
+)
 from app.services.business.service import (
     get_or_create_canvas,
     overview,
@@ -139,3 +147,34 @@ def create_kind(
     record = create_record(db, startup, rk, payload.data)
     db.commit()
     return success_response(serialize_record(record))
+
+
+@router.put("/{kind}/{record_id}")
+def update_kind(
+    kind: str,
+    record_id: uuid.UUID,
+    payload: RecordCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    record = _record(db, membership, rk, record_id)
+    update_record(db, record, payload.data)
+    db.commit()
+    return success_response(serialize_record(record))
+
+
+@router.delete("/{kind}/{record_id}")
+def delete_kind(
+    kind: str,
+    record_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    record = _record(db, membership, rk, record_id)
+    delete_record(db, record)
+    db.commit()
+    return success_response({"deleted": True})
