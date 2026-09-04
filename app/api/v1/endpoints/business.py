@@ -6,14 +6,16 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
-from app.db.models.enums import CanvasType, MembershipRole
+from app.db.models.enums import CanvasType, MembershipRole, RecordKind
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
-from app.schemas.business import CanvasSave
+from app.schemas.business import CanvasSave, RecordCreate
+from app.services.business.record_defs import fields
+from app.services.business.records import create_record, list_records, serialize_record
 from app.services.business.service import (
     get_or_create_canvas,
     overview,
@@ -90,3 +92,50 @@ def ai_fill_canvas(
     )
     db.commit()
     return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+_KIND_PATHS = {
+    "personas": RecordKind.persona,
+    "revenue-streams": RecordKind.revenue_stream,
+    "competitors": RecordKind.competitor,
+    "pricing": RecordKind.pricing,
+}
+
+
+def _parse_kind(kind: str) -> RecordKind:
+    try:
+        return _KIND_PATHS[kind]
+    except KeyError:
+        raise NotFound() from None
+
+
+@router.get("/{kind}")
+def list_kind(
+    kind: str,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    startup = _startup(db, membership)
+    return success_response(
+        {
+            "records": [serialize_record(r) for r in list_records(db, startup, rk)],
+            "fields": fields(rk),
+        }
+    )
+
+
+@router.post("/{kind}", status_code=status.HTTP_201_CREATED)
+def create_kind(
+    kind: str,
+    payload: RecordCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    startup = _startup(db, membership)
+    record = create_record(db, startup, rk, payload.data)
+    db.commit()
+    return success_response(serialize_record(record))
