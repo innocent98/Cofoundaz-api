@@ -149,6 +149,25 @@ def create_kind(
     return success_response(serialize_record(record))
 
 
+@router.post("/{kind}/ai-fill", status_code=status.HTTP_202_ACCEPTED)
+def ai_fill_kind(
+    kind: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    startup = _startup(db, membership)
+    job = job_dispatcher.enqueue(
+        db,
+        type=f"business.{rk.value}.ai_fill",
+        payload={"startup_id": str(startup.id), "kind": rk.value},
+        startup_id=startup.id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
 @router.put("/{kind}/{record_id}")
 def update_kind(
     kind: str,

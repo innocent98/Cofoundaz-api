@@ -109,3 +109,24 @@ def test_put_cross_tenant_404(client, db, founder):
         headers=headers,
     )
     assert r.status_code == 404
+
+
+def test_ai_fill_enqueues_job_writes_no_record(client, db, founder):
+    from app.db.models.business import BusinessRecord
+    from app.db.models.job import Job
+
+    headers, startup = founder
+    r = client.post("/api/v1/business-builder/personas/ai-fill", headers=headers)
+    assert r.status_code == 202 and r.json()["data"]["status"] == "queued"
+    job = db.query(Job).filter(Job.type == "business.persona.ai_fill").one()
+    assert job.payload["kind"] == "persona" and job.payload["startup_id"] == str(startup.id)
+    assert db.query(BusinessRecord).filter_by(startup_id=startup.id).count() == 0
+
+
+def test_ai_fill_mentor_forbidden_403(client, db):
+    from app.db.models.enums import MembershipRole
+
+    _, _, headers = _member(db, role=MembershipRole.mentor)
+    assert (
+        client.post("/api/v1/business-builder/personas/ai-fill", headers=headers).status_code == 403
+    )
