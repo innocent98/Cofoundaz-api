@@ -28,12 +28,12 @@ production; feature PRs target `develop`._
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) + 3 shipped on branch, not yet merged (02 Dashboard · 08 Business Builder Slice 1 · 08 Business Builder Slice 2) · 18 not started (03·08 Slice 3·09–26).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder Slice 1) + 1 shipped on branch, not yet merged (08 Business Builder Slice 2) · 18 not started (03·08 Slice 3·09–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
-| 🟢 Shipped on branch, not yet merged | 3 modules | Founder Dashboard (02) — `feat/dashboard` · Business Builder (08) Slice 1 — `feat/business-builder-canvas` · Business Builder (08) Slice 2 — `feat/business-builder-records` |
+| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slice 1 — merged to `develop` (PR #39) |
+| 🟢 Shipped on branch, not yet merged | 1 module | Business Builder (08) Slice 2 — `feat/business-builder-records` (→ `develop`) |
 | 🟡 In progress | 0 | — |
 | ⬜ Planned / next | 18 | AI Co-Founder (03) · Business Builder (08) Slice 3 · 09–26 |
 
@@ -198,7 +198,7 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
 - [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
-## ✅ Module 02 — Founder Dashboard — *shipped on branch `feat/dashboard` (not yet merged to `main`)*
+## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
 _The founder's home screen: `GET /dashboard/summary` (9-section aggregation of Modules 04/05/06/07)
 and `GET /dashboard/activity` (keyset-paginated team feed). In-process aggregation BFF, no new
@@ -240,7 +240,7 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
-## 🟢 Module 08 — Business Builder — *Slice 1 shipped on branch `feat/business-builder-canvas` ·
+## 🟢 Module 08 — Business Builder — *Slice 1 merged to `develop` (PR #39) ·
 Slice 2 shipped on branch `feat/business-builder-records`, not yet merged*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
@@ -254,7 +254,7 @@ CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slic
 /overview` now returns 9 rows (5 canvas + 4 record). Migration `0012_business_records`. SOP:
 `docs/sop/2026-09-04-business-builder-records.md`._
 
-**Slice 1 — Canvas Core** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+**Slice 1 — Canvas Core** — *✅ merged to `develop` (PR #39, Tasks 1–6)*
 - [x] Scope + locked decisions (generic table + `CANVAS_BLOCKS` code registry, not 5 tables ·
       optimistic-concurrency version counter, not a row lock · PUT is full-replace, not a merge ·
       completion derived on read, not cached · ai-fill enqueue-only, real worker deferred to
