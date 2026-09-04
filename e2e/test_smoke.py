@@ -78,6 +78,10 @@ def test_openapi_served(http: httpx.Client):
         # dashboard surface
         "/api/v1/dashboard/summary",
         "/api/v1/dashboard/activity",
+        # business builder surface
+        "/api/v1/business-builder/overview",
+        "/api/v1/business-builder/canvases/{type}",
+        "/api/v1/business-builder/canvases/{type}/ai-fill",
     ]:
         assert p in paths, f"missing route {p}"
 

@@ -103,6 +103,11 @@ class AlreadyMember(AppError):  # noqa: N818
     message = "That person is already on this workspace."
 
 
+class CanvasVersionConflict(AppError):  # noqa: N818
+    code, http_status = "CANVAS_VERSION_CONFLICT", 409
+    message = "This canvas was changed elsewhere. Refresh and try again."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."

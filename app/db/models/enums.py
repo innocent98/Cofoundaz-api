@@ -127,3 +127,11 @@ class MissionTaskStatus(enum.StrEnum):
     done = "done"
     snoozed = "snoozed"
     rejected = "rejected"
+
+
+class CanvasType(enum.StrEnum):
+    business_model = "business_model"
+    lean = "lean"
+    value_prop = "value_prop"
+    mission_vision = "mission_vision"
+    swot = "swot"
