@@ -1,0 +1,348 @@
+name: CD (production)
+
+# push to `main`  ->  resolve the artifact staging already proved  ->  deploy it
+#
+#   resolve-artifact  ->  production-deploy
+#
+# THIS WORKFLOW NEVER BUILDS. There is no build step to find, and that is the
+# whole point: production can only ever run bytes that `cd-staging.yml` built
+# and that the live E2E gate then exercised against a deployed staging stack.
+# A commit that never went through `develop` has no image, and is therefore
+# undeployable rather than "deployable after a quick rebuild".
+#
+# HOW THE GATE IS ENFORCED, not merely documented
+#
+#   1. `cd-staging.yml` builds on a push to `develop` and pushes `sha-<short7>`.
+#   2. Only after the live E2E passes against deployed staging does it add the
+#      tags `staging-verified-<full sha>` and `verified-sha256-<hex>` to that
+#      same manifest. Nothing else in the repository can create either tag.
+#   3. This workflow resolves BOTH `sha-<short7>` and
+#      `staging-verified-<full sha>` through the registry, refuses to continue
+#      if either is missing, refuses to continue if they disagree, and then
+#      deploys the DIGEST.
+#
+# So the proof travels with the artifact, in the registry, and survives the fact
+# that staging and production are now separate workflow runs that cannot share
+# a `needs:` edge.
+#
+# THIS REQUIRES `develop -> main` TO BE A FAST-FORWARD.
+# A squash merge or a merge commit produces a NEW commit SHA. No image was ever
+# built for that SHA, so step 3 fails and nothing deploys. Enable branch
+# protection on `main` requiring a LINEAR HISTORY - see
+# docs/deployment/GITHUB_ACTIONS_SETUP.md and docs/deployment/BRANCHING.md. The
+# error message below says so explicitly, so the cause is obvious in the log
+# rather than being inferred.
+#
+# THE `v*.*.*` TAG TRIGGER WAS REMOVED. A version tag used to build and deploy.
+# It now builds nothing, because a tag is not a commit that went through
+# staging. Tagging a release is a labelling act on a commit production is
+# already running.
+#
+# Secrets are documented in docs/deployment/GITHUB_ACTIONS_SETUP.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    # checkov:skip=CKV_GHA_7:Inputs cannot affect build output - there is no build.
+    #
+    # CKV_GHA_7 wants workflow_dispatch inputs to be empty, because an input
+    # that influences a build breaks the SLSA guarantee that the build output is
+    # determined solely by the source. This workflow contains no build step at
+    # all, so there is no build output for an input to affect - the inputs only
+    # SELECT an already-built, already-tested image.
+    #
+    # `image_ref` is regex-validated on the runner before it reaches a VPS, and
+    # its character class excludes `/` and `@` in the tag portion, so it cannot
+    # redirect the pull to another registry or repository. workflow_dispatch
+    # requires write access on the repository, and the `production` environment
+    # applies its own required-reviewer approval on top.
+    #
+    # This is the rollback path (docs/deployment/ROLLBACK.md). Removing it to
+    # satisfy the check would delete the rollback mechanism and make the system
+    # less safe, not more.
+    inputs:
+      image_tag:
+        description: >-
+          Roll back by redeploying an EXISTING GHCR tag (e.g. sha-a1b2c3d).
+          Must already carry a staging-verified proof unless the override below
+          is ticked. See docs/deployment/ROLLBACK.md.
+        required: false
+        type: string
+      bypass_staging_proof:
+        description: >-
+          BREAK GLASS. Deploy the tag above even though no staging-verified
+          proof exists for it. Only legitimate for images built before the proof
+          mechanism shipped. Never available on the automatic push-to-main path.
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  # Separate from cd-staging: a staging deploy must never be able to queue in
+  # front of a production rollback. The two stacks live in different
+  # DEPLOY_PATHs with different compose project names on the shared VPS, so they
+  # do not contend for the same `.env`.
+  #
+  # cancel-in-progress is FALSE on purpose - cancelling a half-finished deploy
+  # leaves a VPS in an unknown state, which is worse than queueing.
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ------------------------------------------------------------------------- #
+  resolve-artifact:
+    name: Resolve the staging-verified artifact
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Read-only, and new relative to the old cd.yml: that workflow knew the
+      # digest because it had just built it. This one has to ASK the registry.
+      packages: read
+    outputs:
+      image_ref: ${{ steps.resolve.outputs.image_ref }}
+      proof: ${{ steps.resolve.outputs.proof }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve and verify
+        id: resolve
+        env:
+          MANUAL_TAG: ${{ github.event.inputs.image_tag }}
+          BYPASS: ${{ github.event.inputs.bypass_staging_proof }}
+          # The automatic GITHUB_TOKEN can read this repository's own GHCR
+          # package, so that is what both this lookup AND the VPS-side
+          # `docker login` use. GHCR_PULL_USERNAME/GHCR_PULL_TOKEN were the
+          # old long-lived PAT pair; they are removed and must not come back.
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Same lowercasing as cd-staging.yml: github.repository preserves the
+          # repository's casing ("innocent98/Cofoundaz-api") but a Docker
+          # reference's path component must be lowercase, and the registry only
+          # ever holds .../cofoundaz-api.
+          IMAGE_LC="$(printf '%s' "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
+
+          # scripts/ghcr_digest.sh exits 2 for "does not exist" and 1 for
+          # anything else, so a credentials outage can never be reported as an
+          # unpromotable commit. `set -e` would kill the script on either, hence
+          # the explicit capture.
+          resolve() {
+            local ref="$1" out rc
+            set +e
+            out="$(./scripts/ghcr_digest.sh "${IMAGE_LC}" "${ref}")"
+            rc=$?
+            set -e
+            RESOLVE_RC=$rc
+            RESOLVE_OUT="$out"
+          }
+
+          # ================================================================== #
+          # BREAK-GLASS PATH: an operator named an explicit tag.
+          # ================================================================== #
+          if [ -n "${MANUAL_TAG}" ]; then
+            if ! printf '%s' "${MANUAL_TAG}" | grep -qE '^[A-Za-z0-9._-]+$'; then
+              echo "::error::Refusing a malformed image tag: '${MANUAL_TAG}'. Tags may contain letters, digits, dot, underscore and dash only - no '/' and no '@'."
+              exit 1
+            fi
+
+            resolve "${MANUAL_TAG}"
+            case "${RESOLVE_RC}" in
+              0) ;;
+              2)
+                echo "::error::No image tagged '${MANUAL_TAG}' exists in ${REGISTRY}/${IMAGE_LC}. Check the repository's Packages page for the available tags."
+                exit 1 ;;
+              *)
+                echo "::error::Could not reach the registry to resolve '${MANUAL_TAG}'. This is NOT a missing image - see the ghcr_digest output above."
+                exit 1 ;;
+            esac
+            DIGEST="${RESOLVE_OUT}"
+
+            # The digest-keyed proof is what makes a rollback checkable at all.
+            # An operator supplies something like `sha-a1b2c3d`, from which the
+            # full commit SHA cannot be recovered - so the question has to be
+            # asked of the BYTES instead: were these exact bytes ever verified
+            # on staging? Any image that was legitimately promoted answers yes,
+            # so this blocks nothing a real rollback needs.
+            PROOF_TAG="verified-${DIGEST/:/-}"
+            resolve "${PROOF_TAG}"
+            if [ "${RESOLVE_RC}" -eq 0 ]; then
+              PROOF="staging-verified (by digest: ${PROOF_TAG})"
+              echo "Rollback target ${MANUAL_TAG} -> ${DIGEST} carries a staging-verified proof."
+            elif [ "${BYPASS}" = "true" ]; then
+              PROOF="NONE - staging proof BYPASSED by the operator"
+              echo "::warning title=Staging gate bypassed::Deploying ${MANUAL_TAG} (${DIGEST}) to production with NO staging-verified proof, because bypass_staging_proof was ticked. This image has not been exercised against a deployed environment by this pipeline."
+            else
+              echo "::error::${MANUAL_TAG} resolves to ${DIGEST}, but no staging-verified proof exists for those bytes (looked for the tag ${PROOF_TAG})."
+              echo "::error::Production only deploys images the live E2E gate has exercised against deployed staging. An image built BEFORE the proof mechanism shipped will not have one - in that case re-run this workflow with 'bypass_staging_proof' ticked, and see docs/deployment/ROLLBACK.md."
+              exit 1
+            fi
+
+          # ================================================================== #
+          # AUTOMATIC PATH: a push to main. NO BYPASS EXISTS HERE.
+          # ================================================================== #
+          else
+            SHORT="$(printf '%s' "${GITHUB_SHA}" | cut -c1-7)"
+            BUILD_TAG="sha-${SHORT}"
+
+            # --- 1. Was an image EVER built for this commit? ---------------- #
+            resolve "${BUILD_TAG}"
+            case "${RESOLVE_RC}" in
+              0) ;;
+              2)
+                echo "::error title=No image exists for this commit::No image is tagged ${BUILD_TAG} in ${REGISTRY}/${IMAGE_LC}, so nothing was ever built for commit ${GITHUB_SHA}."
+                echo "::error::Production NEVER builds. It can only redeploy an image that cd-staging.yml already built from a push to 'develop' and that the live E2E gate then proved against deployed staging."
+                echo "::error::THE USUAL CAUSE IS THAT 'develop -> main' WAS NOT A FAST-FORWARD. A squash merge or a merge commit creates a NEW commit SHA, and no image was ever built for that SHA - so this commit is not the tree staging tested, even if the diff is identical."
+                echo "::error::Fix: Settings -> Branches -> main -> require a LINEAR HISTORY, and promote with a fast-forward so main's SHA is byte-identical to the SHA that passed on develop. See docs/deployment/BRANCHING.md."
+                echo "::error::If this was a hotfix pushed straight to main, that is the same situation: take it through 'develop' instead. Production stack is UNCHANGED by this failure."
+                exit 1 ;;
+              *)
+                echo "::error::Could not reach the registry to resolve ${BUILD_TAG}. This is NOT a missing image and NOT a branching problem - see the ghcr_digest output above."
+                exit 1 ;;
+            esac
+            BUILD_DIGEST="${RESOLVE_OUT}"
+
+            # --- 2. Did the live staging E2E gate pass on it? --------------- #
+            PROOF_TAG="staging-verified-${GITHUB_SHA}"
+            resolve "${PROOF_TAG}"
+            case "${RESOLVE_RC}" in
+              0) ;;
+              2)
+                echo "::error title=This commit was never proved on staging::An image exists for commit ${GITHUB_SHA} (${BUILD_TAG}), but the tag ${PROOF_TAG} does not. That tag is minted ONLY by cd-staging.yml, and only after the live E2E suite passes against deployed staging."
+                echo "::error::So this commit's image was built but never exercised on a deployed environment - or the staging run failed, was cancelled, or is still in flight."
+                echo "::error::Check the CD (staging) run for this commit. If it is still running, wait for it and re-run this workflow. Production stack is UNCHANGED by this failure."
+                exit 1 ;;
+              *)
+                echo "::error::Could not reach the registry to resolve ${PROOF_TAG}. This is NOT a missing proof - see the ghcr_digest output above."
+                exit 1 ;;
+            esac
+            PROOF_DIGEST="${RESOLVE_OUT}"
+
+            # --- 3. Do they name the same bytes? ---------------------------- #
+            # cd-staging.yml already asserts this at mint time, so a mismatch
+            # here means one of the two tags was moved afterwards. Hard failure:
+            # at that point nobody can say which bytes were tested.
+            if [ "${BUILD_DIGEST}" != "${PROOF_DIGEST}" ]; then
+              echo "::error::${BUILD_TAG} resolves to ${BUILD_DIGEST} but ${PROOF_TAG} resolves to ${PROOF_DIGEST}. One of these tags has been re-pointed since it was minted, so it is no longer possible to say which bytes staging proved. Refusing to deploy."
+              exit 1
+            fi
+
+            DIGEST="${PROOF_DIGEST}"
+            PROOF="staging-verified (by commit: ${PROOF_TAG})"
+          fi
+
+          # ================================================================== #
+          # Deploy by DIGEST regardless of how we got here. A tag is a mutable
+          # pointer; a digest is content-addressed, so the registry cannot serve
+          # different bytes under it than the ones just verified.
+          IMAGE_REF="${REGISTRY}/${IMAGE_LC}@${DIGEST}"
+          if ! printf '%s' "${IMAGE_REF}" | grep -qE '^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$'; then
+            echo "::error::Refusing to deploy malformed image reference: ${IMAGE_REF}"
+            exit 1
+          fi
+
+          {
+            echo "image_ref=${IMAGE_REF}"
+            echo "proof=${PROOF}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Resolved: ${IMAGE_REF}"
+          echo "Proof   : ${PROOF}"
+
+      - name: Resolution summary
+        if: always()
+        env:
+          IMAGE_REF: ${{ steps.resolve.outputs.image_ref }}
+          PROOF: ${{ steps.resolve.outputs.proof }}
+        run: |
+          {
+            echo "### Production artifact resolution"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| commit | \`${GITHUB_SHA}\` |"
+            echo "| image | \`${IMAGE_REF:-<unresolved>}\` |"
+            echo "| proof | ${PROOF:-<none - see the error above>} |"
+            echo ""
+            echo "Production does not build. If resolution failed, the production"
+            echo "stack is untouched - see \`docs/deployment/BRANCHING.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------- #
+  production-deploy:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    needs: [resolve-artifact]
+    # Explicit rather than implicit: a skipped or cancelled resolve must never
+    # be mistaken for a pass.
+    if: needs.resolve-artifact.result == 'success'
+
+    # The `production` GitHub Environment supplies its own DEPLOY_PATH, VPS_*,
+    # and ENV_ENCRYPTION_KEY, and carries the manual approval gate. Configure
+    # required reviewers under Settings -> Environments -> production.
+    environment:
+      name: production
+      # A repository/environment VARIABLE, not a secret: the `secrets` context is
+      # not available in `environment.url`, and a public base URL is not a secret.
+      url: ${{ vars.APP_URL }}
+
+    permissions:
+      contents: read
+      # Lets this job's GITHUB_TOKEN pull from GHCR. The token is forwarded to
+      # the VPS for `docker login`, replacing a hand-made PAT: it is minted per
+      # run, scoped by this block, and expires when the job ends - so there is
+      # no long-lived registry credential to store, rotate, or leak.
+      packages: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Deploy the production stack
+        uses: ./.github/actions/deploy-stack
+        with:
+          environment: production
+          # The digest resolve-artifact proved was staging-verified. Not a
+          # rebuild - this workflow has no build step.
+          image_ref: ${{ needs.resolve-artifact.outputs.image_ref }}
+          vps_host: ${{ secrets.VPS_HOST }}
+          vps_username: ${{ secrets.VPS_USERNAME }}
+          vps_ssh_key: ${{ secrets.VPS_SSH_KEY }}
+          vps_port: ${{ secrets.VPS_PORT || 22 }}
+          deploy_path: ${{ secrets.DEPLOY_PATH }}
+          env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
+          # NOT secrets.GHCR_PULL_USERNAME/_TOKEN. Those were removed when the
+          # VPS-side login moved to the run's own token; GHCR_PULL_USERNAME has
+          # never existed, so it resolved to "" and the deploy died on
+          # `docker login ... -u ""` -> "username is empty". Requires the
+          # `packages: read` permission granted on this job.
+          ghcr_username: ${{ github.actor }}
+          ghcr_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment summary
+        if: always()
+        env:
+          IMAGE_REF: ${{ needs.resolve-artifact.outputs.image_ref }}
+          PROOF: ${{ needs.resolve-artifact.outputs.proof }}
+          RESULT: ${{ job.status }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          {
+            echo "### Production deploy: ${RESULT}"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| image | \`${IMAGE_REF}\` |"
+            echo "| commit | \`${GITHUB_SHA}\` |"
+            echo "| actor | ${ACTOR} |"
+            echo "| gated by | ${PROOF} |"
+          } >> "$GITHUB_STEP_SUMMARY"

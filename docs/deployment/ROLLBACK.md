@@ -1,6 +1,6 @@
 # Rollback Runbook — cofoundaz-api
 
-> **Type:** incident runbook · **Read time:** 3 minutes · **Last verified:** 2026-08-28
+> **Type:** incident runbook · **Read time:** 3 minutes · **Last verified:** 2026-09-03
 
 Three paths, in the order you will need them.
 
@@ -16,20 +16,35 @@ because of that.
 
 > **NOT VERIFIED —** none of these procedures has been executed against a real VPS, and no
 > staging box existed at the time of this verification pass. They are read directly off
-> `.github/workflows/cd.yml`, `.github/actions/deploy-stack/action.yml` and
-> `docker-compose.prod.yml`. The one part that *was* verified is what makes §3 trustworthy: all
-> 7 alembic revisions implement real downgrade bodies (`op.drop_table` / `op.drop_index`, not
-> `pass`), and the CI `migrations` job proves the `downgrade base` → `upgrade head` round-trip on
-> every run.
+> `.github/workflows/cd-staging.yml`, `.github/workflows/cd-production.yml`,
+> `.github/workflows/live-e2e.yml`, `scripts/ghcr_digest.sh`,
+> `.github/actions/deploy-stack/action.yml` and `docker-compose.prod.yml`. The one part that
+> *was* verified is what makes §3 trustworthy: all 7 alembic revisions implement real downgrade
+> bodies (`op.drop_table` / `op.drop_index`, not `pass`), and the CI `migrations` job proves the
+> `downgrade base` → `upgrade head` round-trip on every run.
 
-> **Two things changed with the two-environment pipeline, and both affect this runbook.**
+> **The pipeline was restructured on 2026-09-03 — see `docs/deployment/BRANCHING.md` for the
+> full branching model. Three things changed and all three affect this runbook.**
 >
 > 1. **The env file on the server is `.env`**, not `.env.production`. `.env.<env>` names exist
 >    only on a developer machine. Every command below uses `--env-file .env`.
-> 2. **The automatic rollback now exists identically in BOTH environments**, because staging and
->    production share one composite action, `.github/actions/deploy-stack`. A failed *staging*
->    deploy rolls staging back the same way and, because `production-deploy` requires
->    `needs.staging-deploy.result == 'success'`, production is never reached.
+> 2. **`cd.yml` no longer exists.** Deploys are now two separate workflows —
+>    **CD (staging)** (`.github/workflows/cd-staging.yml`, fires on a push to `develop`) and
+>    **CD (production)** (`.github/workflows/cd-production.yml`, fires on a push to `main`) —
+>    plus a reusable **Live E2E** workflow (`.github/workflows/live-e2e.yml`) that both the
+>    staging promotion gate and an on-demand `workflow_dispatch` run. The automatic rollback
+>    described in §1 still exists identically in both environments, because staging and
+>    production still share one composite action, `.github/actions/deploy-stack`.
+> 3. **Production still cannot be reached by a bad staging run — but not because of a `needs:`
+>    edge, because there isn't one any more.** Staging and production are now separate workflow
+>    runs on separate trigger events, so `cd-production.yml` has no job dependency on
+>    `cd-staging.yml`'s result to point at. Instead, `cd-production.yml`'s `resolve-artifact` job
+>    refuses to deploy any commit that does not carry a `staging-verified-<full sha>` tag in
+>    GHCR — a tag only `cd-staging.yml`'s `mark-staging-verified` job can mint, and only after
+>    the live E2E gate passes against a *deployed* staging stack. The practical guarantee is the
+>    same one the old `needs:` edge gave (a broken or unrun staging pass blocks production), but
+>    the mechanism moved from a job dependency to a proof carried in the registry alongside the
+>    artifact — which is what makes it survive the two runs no longer sharing a workflow.
 >
 > `${DEPLOY_PATH}` below is that environment's **GitHub Environment secret**. No server path is
 > written down in this repository — read the secret, not this document.
@@ -102,43 +117,93 @@ the same digest, so a bad release is a bad release on both.
 Use when a deploy went green but the release is bad, or when the automatic rollback could not
 complete.
 
-**Actions → CD → Run workflow → set `image_tag`.**
+**Actions → CD (production) → Run workflow → set `image_tag`.**
 
-Supply an **existing GHCR tag**, e.g. `sha-a1b2c3d`. This skips `build-and-push` entirely
-(`if: github.event.inputs.image_tag == ''`) — no rebuild, no CI wait.
+Supply an **existing GHCR tag**, e.g. `sha-a1b2c3d`. `cd-production.yml` has no build step at
+all — there is no `build-and-push` to skip, because it does not exist in this workflow.
+`resolve-artifact` only ever resolves an already-built, already-pushed image through the
+registry and hands its digest to `production-deploy`.
 
-> **The manual rollback now goes through staging first.** It redeploys the chosen tag along the
-> full chain: `staging-deploy` → `staging-e2e` → `production-deploy`. That is slower than the old
-> straight-to-production path, and it is the point — **a rollback is a production change, so it
-> is gated too.** A tag that cannot pass the live staging gate does not reach production.
+> **The manual rollback no longer goes through staging, and that is a deliberate change in the
+> safety story — not an oversight.** The old design (the single `cd.yml`) re-proved the tag live
+> by redeploying it through the full chain — `staging-deploy` → `staging-e2e` →
+> `production-deploy` — before it reached production. The new design instead trusts a proof
+> minted **when the image was first built and promoted**: `cd-staging.yml` tags the tested
+> digest `verified-sha256-<64-hex-digest>` the moment the live E2E suite passes against deployed
+> staging, and `cd-production.yml`'s `resolve-artifact` job refuses to deploy any `image_tag`
+> whose digest does not carry that tag — unless `bypass_staging_proof` is ticked (below).
 >
-> Two consequences to plan for during an incident:
+> **What this gains:**
+> - **Staging is left untouched.** A production rollback no longer redeploys anything to staging
+>   as a side effect of getting there.
+> - **It works when staging is down or unreachable.** The old path needed the staging gate to be
+>   able to run at all; the new path needs only the registry to answer.
+> - **It is faster during an incident** — a registry lookup and a deploy, with no rebuild, no
+>   staging redeploy, and no live E2E run sitting in the critical path.
 >
-> - **Staging is rolled back as well**, because it is the first hop. If you need staging left
->   alone, this is not the path.
-> - **The gate must be able to run.** It needs the `staging` environment's `APP_URL` to be
->   reachable from the GitHub runner. If staging itself is down, use the last-resort path below.
+> **What this loses:**
+> - **The image is not re-exercised against a live environment at rollback time.** The gate ran
+>   once, when the image was first promoted, and a rollback trusts that result rather than
+>   re-establishing it. If config or schema has drifted since the proof was minted and you are
+>   not confident the image still behaves correctly, run `live-e2e.yml` by hand against
+>   production first (`workflow_dispatch`, `environment: production`) instead of trusting a
+>   stale proof blind — see the warning that run prints about writing real data to production.
 
-The input is validated on the runner before it reaches the VPS: it must match
-`^[a-z0-9./_-]+(:[A-Za-z0-9._-]+|@sha256:[a-f0-9]{64})$`. Operator-supplied text that ends up
-in a `docker pull` gets constrained to the shape of a real image reference first.
+The `image_tag` input itself is validated on the runner before it reaches the VPS:
+`^[A-Za-z0-9._-]+$` — letters, digits, dot, underscore and dash only, so it cannot contain a `/`
+or `@` and cannot redirect the pull to a different registry or repository. The
+`registry/repo@digest` reference assembled from it is separately validated against
+`^[a-z0-9./_-]+@sha256:[a-f0-9]{64}$` immediately before the deploy step ever sees it.
+
+### `bypass_staging_proof` — break glass, not routine
+
+`cd-production.yml`'s `workflow_dispatch` also exposes a `bypass_staging_proof` checkbox.
+Ticking it deploys the named tag to production even though no `verified-sha256-<digest>` proof
+exists for it. It exists for exactly one legitimate case: **an image built before the proof
+mechanism shipped** — which, on day one, is whatever production is currently running. It is
+**never** available on the automatic push-to-`main` path; that path has no bypass at all.
+
+When used, the run emits a `::warning` and the deployment summary records "staging proof
+BYPASSED" against whoever ticked it. If the same situation keeps forcing a bypass, that is a
+signal to get a fresh staging-verified image built and promoted the normal way — not a reason to
+keep reaching for the checkbox.
 
 ### Finding the tag to roll back to
 
 | Source | How |
 |---|---|
-| Previous CD run | The **Deployment summary** step writes image, commit, and actor to the run summary. |
-| GHCR | The repo's Packages page lists every pushed tag. |
+| Previous **CD (production)** run | The **Deployment summary** step writes image, commit, and gating proof to the run summary. |
+| GHCR | The repo's Packages page lists every pushed tag, including `staging-verified-<sha>` and `verified-sha256-<digest>`. |
 | The VPS | `docker images ghcr.io/innocent98/cofoundaz-api` — the local cache, pruned at 72h. |
 
-Tags available: `sha-<short>`, semver (`v1.2.3`, `v1.2`) on tag pushes, and `latest` on `main`.
-**Never roll back to `latest`** — it is a moving pointer, so you cannot tell what you deployed
-and the next rollback has no fixed reference.
+GHCR now carries two extra tag families alongside `sha-<short7>`: `staging-verified-<full sha>`
+(keyed to the commit) and `verified-sha256-<digest>` (keyed to the bytes). **Seeing a
+`verified-sha256-<digest>` tag on the same manifest as the candidate `sha-<short7>` tag is the
+fastest way to confirm a rollback target will pass the gate** without needing
+`bypass_staging_proof` — if it is not there, either that image was never promoted through
+`cd-staging.yml`, or the bypass is what you need.
+
+Tags available: `sha-<short7>` from every build, plus the two proof tags above. **Semver tags
+(`v1.2.3`, `v1.2`) are never produced any more** — the `v*.*.*` tag trigger was removed, since a
+version tag no longer builds anything; tagging a release is now a labelling act on a commit
+already running in production. **`latest` is now inert** — builds only ever run on a push to
+`develop`, and `latest` was only ever tagged on the default branch, which is `main`. Neither
+environment would deploy `latest` in any case on the automatic paths, since both deploy by
+digest, but do not expect a fresh `latest` tag to appear.
+
+**Never roll back to `latest`.** `resolve-artifact` will happily accept it as an `image_tag` and
+resolve it to whatever digest it currently points at — so the rollback would "work" while
+leaving you unable to say what you deployed, and the next rollback with no fixed reference to
+aim at. Name a `sha-<short7>` tag. This has not changed; `latest` being inert makes it a *staler*
+moving pointer, not a safer one.
 
 This path still requires the `production` environment approval if you configured required
 reviewers. That is correct: a rollback is still a production change.
 
 ### Last resort — roll back on the VPS directly
+
+This is now also the only rollback path that works if **GHCR itself** is unreachable — every
+Actions-driven path above resolves the image through the registry before it can deploy anything.
 
 If Actions itself is unavailable:
 
@@ -318,3 +383,6 @@ does not error — it silently addresses the other environment's volumes.
   variables, including `DEPLOY_PATH`.
 - **[ENV_ENCRYPTION.md](./ENV_ENCRYPTION.md)** — how to change an environment properly: edit
   locally, re-encrypt, commit, redeploy.
+- **[BRANCHING.md](./BRANCHING.md)** — the full `develop` → `main` promotion model, the
+  fast-forward requirement, and why the staging-verified proof lives in the registry instead of
+  a workflow dependency.

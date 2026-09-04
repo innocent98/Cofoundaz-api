@@ -90,7 +90,11 @@ def _upcoming(db: Session, startup: Startup) -> list[dict[str, Any]]:
     )
     result = []
     for m in rows:
-        assert m.due_on is not None  # guaranteed by the due_on >= today filter above
+        # Narrows Optional[date] for mypy. The `due_on >= today` filter above makes
+        # None unreachable, so this documents an invariant rather than guarding a
+        # real case. Kept as an assert rather than a silent `continue` so a violated
+        # invariant stays loud; the service is not run with -O.
+        assert m.due_on is not None  # nosec B101
         result.append(
             {
                 "id": str(m.id),

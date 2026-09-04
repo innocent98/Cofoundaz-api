@@ -10,8 +10,17 @@
 > **Convention:** update on new scope (map it in *before* building), on planning (mirror task
 > breakdown), and on shipping (check off + note PR/commit). An item is checked **only when done
 > and verified**.
+> **Branching (as of 2026-09-03):** new work lands `feature branch → develop → fast-forward
+> main`, not `feature branch → main` directly — see `docs/deployment/BRANCHING.md`. Entries
+> below dated before this that say "merged to `main`" are historically accurate under the old,
+> now-retired model; leave them as written. Only entries from here on should describe the
+> `develop → main` path.
 
-_Last reconciled: 2026-09-01 · `feat/business-builder-canvas` (Module 08 Slice 1 — Business Builder canvas core, not yet merged) on top of `feat/dashboard` (Module 02 — Founder Dashboard, aggregation BFF + activity feed, not yet merged) on top of `main` at the passlib → direct bcrypt migration (PR #33), the nginx TLS edge + two-stack compose (PR #31), the slowapi router-descent rate-limit fix (PR #32), the image-CMD CI gate and weekend test bug (PR #28), and the Dependabot pause (PR #34)_
+_Last reconciled: 2026-09-03 · `feat/business-builder-canvas` (Module 08 Slice 1 — Business Builder
+canvas core) merged into `develop`, on top of the CI/CD branching restructure (CD split into
+`cd-staging.yml` / `cd-production.yml` + reusable `live-e2e.yml`, registry-carried staging-verified
+proof, `cd.yml` deleted, GHCR-auth regression repaired — PRs #40–45). `develop` = staging, `main` =
+production; feature PRs target `develop`._
 
 ---
 
@@ -299,6 +308,26 @@ verified locally, and the CI workflows have now had a first real run on GitHub
       `quality`, `trivy-repo`, `dependency-review`, `sonarcloud` — leaving 8 jobs fully parallel,
       `sonarcloud` on `needs: [test]`, and `build` on
       `needs: [lint, quality, test, migrations, e2e, security, trivy-repo]`
+- [x] **CI restructured to be event-dependent** (2026-09-03) — `sonarcloud` and `trivy-repo`
+      removed outright (see the cost-model comment atop `ci.yml`: `sonarcloud` was inert with no
+      `SONAR_TOKEN` and had never produced a finding; `trivy-repo` duplicated `pip-audit` on CVEs
+      and duplicated the image scan already inside `build`), leaving **8 jobs** split by what
+      each *event* can actually prove rather than all 8 firing on both `push` and `pull_request`.
+      `lint` / `test` / `security` run on every push to `develop` **and** on a non-draft PR into
+      `develop` (~5 min) — the safety net for a direct push that bypasses PR review entirely.
+      `migrations` / `e2e` / `quality` / `build` / `dependency-review` run **PR-only** (~+6 min);
+      re-running them on the merge commit would re-test a tree that was green minutes earlier.
+      `build` now needs `[lint, quality, test, migrations, e2e, security]` (`trivy-repo` dropped
+      from the list along with the job). Draft PRs cost nothing — every job carries an explicit
+      `github.event.pull_request.draft == false` guard, and GitHub does not skip drafts on its
+      own. `main` is absent from every trigger in this file: a PR from `develop` to `main` runs
+      nothing, and neither does a push to `main` (that fires `cd-production.yml` instead) —
+      because `main` is required to be a fast-forward of `develop`, the tree arriving there
+      already passed the full suite once, and re-running it would bill for testing the same tree
+      a third time. Previously ~100 runs across 3 days exhausted the private repo's 2,000
+      min/month Free-tier allowance and every job started failing in 2 seconds with zero steps —
+      indistinguishable from a real failure unless you know to check the billing page. See
+      `docs/deployment/BRANCHING.md`
 - [x] `GET /api/v1/health/ready` — checks Postgres + Redis, `503` naming the failed dependency,
       no DSN leak (7 tests); `/health` kept as a cheap liveness check
 - [x] Security-exception scaffolding — `.trivyignore` / `.github/security/pip-audit-ignores.txt`
@@ -355,18 +384,28 @@ verified locally, and the CI workflows have now had a first real run on GitHub
 - [x] **Checkov** wired for `github_actions` — **47 passed / 0 failed / 1
       documented skip**; caught `CKV_GHA_7` on `cd.yml` first run. NOT used for
       compose: Checkov 3.3.15 has no `docker_compose` framework (verified — zero
-      results), so a compose job there could never fail
+      results), so a compose job there could never fail. **`cd.yml` was since
+      deleted and split** (2026-09-03) — the same documented
+      `checkov:skip=CKV_GHA_7` comment, with reasoning updated for each
+      workflow's actual shape, now lives in both `cd-staging.yml`'s and
+      `cd-production.yml`'s `workflow_dispatch` blocks
 - [x] **VPS target spec CONFIRMED at 4 vCPU / 8 GB / 80 GB SSD** — restated in
       `docker-compose.prod.yml` and `docs/deployment/` as a confirmed spec rather
       than an assumption. Nominal CPU sums to 4.5 but `api` and `migrate` are
       mutually exclusive (`service_completed_successfully`), so real peaks are
       2.5 (migrating) and **exactly 4.0** (steady state); memory 5632M of 8192M
       leaves 2560M for host + page cache. Connections 42/100 (42%)
-- [x] **Staging → production gated pipeline** (2026-08-28) — CD restructured to
+- [x] ~~**Staging → production gated pipeline** (2026-08-28) — CD restructured to
       `build-and-push` → `staging-deploy` → `staging-e2e` → `production-deploy`;
       production requires an explicitly-green staging gate and deploys the SAME
       digest staging proved, not a rebuild. Both deploys share one composite
-      action (`.github/actions/deploy-stack`) so the logic cannot drift
+      action (`.github/actions/deploy-stack`) so the logic cannot drift~~ —
+      **superseded 2026-09-03.** Promotion needed to become a deliberate act
+      (a push to `develop` and a push to `main` are two different events, not
+      one event driving both stacks), and that broke the single-workflow
+      `needs:` chain this item describes. See **CI/CD — branching restructure
+      (staging/production split)** below for the replacement design: two
+      workflows plus a registry-carried proof instead of a job dependency.
 - [x] **Encrypted environment files** — `scripts/env.sh` (6 subcommands, 3-tier key
       discovery, AES-256-CBC + PBKDF2 100k), `make env-*` wrappers, `.gitignore`
       re-allows `*.enc` while still denying `.env` / `.env.staging` /
@@ -379,7 +418,10 @@ verified locally, and the CI workflows have now had a first real run on GitHub
       tests by fixture closure, prints every deselection, and errors if that would
       leave zero tests. Verified `13 passed, 14 deselected` against a live server
 - [x] `docs/deployment/ENV_ENCRYPTION.md` + DEPLOYMENT_GUIDE / GITHUB_ACTIONS_SETUP /
-      ROLLBACK updated; SOP `docs/sop/2026-08-28-staging-pipeline-env-encryption.md`
+      ROLLBACK updated; SOP `docs/sop/2026-08-28-staging-pipeline-env-encryption.md`.
+      **2026-09-03 branching restructure** further updated `ROLLBACK.md` and added
+      `docs/deployment/BRANCHING.md` (new); SOP
+      `docs/sop/2026-09-03-cicd-branching-restructure.md`
 - [ ] **SonarCloud** — `sonar-project.properties` committed but INERT; the job
       skips cleanly until a `SONAR_TOKEN` secret exists. Needs a SonarCloud
       account (could not be created here)
@@ -388,8 +430,18 @@ verified locally, and the CI workflows have now had a first real run on GitHub
 - [x] Full production stack verified locally end-to-end — migration gate, resource limits
       (`docker inspect`), read-only rootfs, graceful shutdown (1s, exit 0), readiness
       `200`→`503` on Redis outage
-- [ ] `cd.yml` (build/push GHCR + SSH deploy + automatic rollback) — authored, `actionlint` /
-      `shellcheck` clean, **never executed on GitHub**
+- [ ] `cd.yml` — **deleted 2026-09-03**, split into the workflows below; superseded, not
+      renamed. See **CI/CD — branching restructure (staging/production split)** below
+- [ ] `cd-staging.yml` (build/push GHCR + SSH deploy to staging + live E2E gate + mint
+      `staging-verified-*` / `verified-sha256-*` proof tags) — authored, **never executed on
+      GitHub**
+- [ ] `cd-production.yml` (resolve a staging-verified digest + SSH deploy to production; no
+      build step at all) — authored, **never executed on GitHub**
+- [ ] `live-e2e.yml` (reusable live E2E; called by `cd-staging.yml`, also runnable standalone via
+      `workflow_dispatch` against either environment) — authored, **never executed on GitHub**
+- [ ] `scripts/ghcr_digest.sh` (resolves a GHCR tag/digest to its manifest digest via the
+      registry v2 API; exit 0/2/1 = resolved/missing/error) — authored, **never executed against
+      the real registry**
 - [ ] _Deferred:_ Trivy/pip-audit CVE debt (`python-multipart`, `starlette`, `ecdsa` via
       `python-jose`) — CI expected red until triaged · real VPS deploy (SSH, nginx, UFW, GHCR
       push/pull) never attempted · CPU reservations are no-ops outside Swarm (memory
@@ -518,7 +570,10 @@ the real application. **No VPS, no DNS, no certificate, no real handshake.** See
 - [x] **Bug found and fixed:** `API_PORT` was read as `grep … | cut … || echo 8000` in three
       places. `||` tests the last command and `cut` exits 0 on empty input, so a missing
       `API_PORT` gave `http://127.0.0.1:/…` and rolled the deploy back for the wrong reason.
-      Fixed in `deploy-stack/action.yml`, `cd.yml` and the `Makefile`
+      Fixed in `deploy-stack/action.yml`, `cd.yml` and the `Makefile`. (`cd.yml` was since
+      deleted and split into `cd-staging.yml` / `cd-production.yml` / `live-e2e.yml` — the same
+      `sed -n 's/^API_PORT=//p' .env | tail -n 1` fix now lives in `live-e2e.yml`'s rate-limiter
+      reset step; the other two never re-derive `API_PORT` themselves)
 - [x] **nginx configuration version-controlled** in `deploy/nginx/` — http-level `conf.d/`
       (TLS, hardening, upstreams, rate-limit zones), shared `snippets/`, thin per-host vhosts,
       an ACME bootstrap vhost, and a `default_server` catch-all using `ssl_reject_handshake`
@@ -532,6 +587,12 @@ the real application. **No VPS, no DNS, no certificate, no real handshake.** See
 - [x] Edge rate limiting as a coarse backstop ~15× above the app's per-user budget, in separate
       zones per environment; staging's auth zone deliberately looser so the CD gate cannot 429
       itself
+- [ ] **`live-e2e.yml` can now be dispatched against `environment: production`, whose auth zone
+      is NOT loosened.** An on-demand production run can therefore 429 itself in a way the
+      staging-only gate cannot — the workflow's own "Warn about writing to production" step says
+      so, but the edge config does nothing to prevent it. Not a blocker (it is an opt-in
+      diagnostic path, not the promotion gate), but a 429 from a production `live-e2e.yml` run
+      should be read as "the zone is doing its job", not "the suite is broken"
 - [x] JSON error pages for 413/429/502/503/504 in the app's own `{"error":{"code",…}}` envelope,
       with `proxy_intercept_errors off` so the application's own bodies pass through untouched
 - [x] gzip on; brotli and HTTP/3 shipped **commented** with the exact enablement steps — both
@@ -558,6 +619,99 @@ the real application. **No VPS, no DNS, no certificate, no real handshake.** See
       upstreams hardcode 8000/8001 while the stacks read `API_PORT` from `.env`, with nothing
       enforcing agreement · no off-host certificate-expiry monitoring · `deploy/nginx/` is not
       linted by CI
+
+---
+
+## 🟢 CI/CD — branching restructure (staging/production split) — *merged to `develop` as PR #42 (`f96172c`); `main` untouched at `0de05f4`*
+
+_The single `cd.yml` (build → staging → staging-e2e → production, gated by a same-workflow
+`needs:` chain) is deleted. Staging and production now promote on separate events —
+`push: [develop]` and `push: [main]` — so the gate that used to be a job dependency had to move
+into something both runs can see: a proof carried on the GHCR manifest itself. Nothing below has
+touched a real VPS, a real GHCR push, or a real GitHub Actions run — see the unchecked items at
+the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
+
+- [x] `ci.yml` retargeted to `[develop]` only (`push` + `pull_request`), restructured to be
+      event-dependent rather than firing the same 8 jobs on both events — see the "CI restructured
+      to be event-dependent" item under **Deployment & Infrastructure** above for the full job
+      split (`lint`/`test`/`security` always, `migrations`/`e2e`/`quality`/`build`/
+      `dependency-review` PR-only, nothing on `main`)
+- [x] `codeql.yml` retargeted to `[develop]` (`push` + `pull_request`, matching `ci.yml`'s
+      reasoning: `main` is a fast-forward of an already-analysed `develop` commit); weekly cron
+      (Mondays 04:17 UTC) unchanged
+- [x] **`cd-staging.yml`** (new) — `push: [develop]` + `workflow_dispatch` (`image_tag` rollback
+      input). `build-and-push` → `staging-deploy` → `staging-e2e` (calls `live-e2e.yml`) →
+      `mark-staging-verified`. The only workflow in the repo that builds and pushes an
+      application image
+- [x] **`cd-production.yml`** (new) — `push: [main]` + `workflow_dispatch` (`image_tag` +
+      `bypass_staging_proof` rollback inputs). `resolve-artifact` → `production-deploy`. **Has no
+      build step at all** — it can only ever redeploy bytes `cd-staging.yml` already built and
+      already proved. The `v*.*.*` tag trigger from the old `cd.yml` is removed entirely; a
+      version tag no longer builds or deploys anything — tagging a release is now a labelling act
+      on a commit already running in production
+- [x] **`live-e2e.yml`** (new) — the old `staging-e2e` job body, extracted into a reusable
+      workflow (`workflow_call`, input `environment`) also directly `workflow_dispatch`-able
+      against `staging` or `production`. The rate-limiter reset (restarts the `api` service to
+      clear slowapi's per-worker `MemoryStorage`) is staging-only; a production run instead prints
+      an explicit warning that it creates real, non-cleaned-up user/workspace rows and does not
+      reset the limiter — see the new item under **Edge** above about it being able to 429 itself
+- [x] **Registry-carried staging-verified proof** — `mark-staging-verified` mints two tags on the
+      SAME tested manifest via `docker buildx imagetools create`, then asserts (does not assume)
+      both resolve back to the tested digest: `staging-verified-<full 40-char commit sha>`
+      ("was this commit verified?", used by the automatic push-to-`main` path) and
+      `verified-sha256-<64-hex digest>` ("were these bytes verified?", used by a manual rollback,
+      which supplies a short tag like `sha-a1b2c3d` that the full commit SHA cannot be recovered
+      from). Nothing else in the repository can mint either tag
+- [x] `cd-production.yml`'s `resolve-artifact` — on a push to `main`, resolves `sha-<short7>` and
+      `staging-verified-<full sha>`, fails loudly if either is absent (naming "not a fast-forward"
+      as the likely cause) or if the two digests disagree, then deploys by digest. **No bypass
+      exists on this path.** On `workflow_dispatch`, resolves the given tag, looks for
+      `verified-sha256-<its digest>`, and refuses unless `bypass_staging_proof` is also ticked —
+      which emits a `::warning` and records the bypass in the deployment summary
+- [x] **`scripts/ghcr_digest.sh`** (new) — HEADs the GHCR v2 manifest API for a tag or digest;
+      exit 0 = resolved (digest on stdout), 2 = does not exist, 1 = anything else, so a
+      credentials outage is never misreported as a missing/un-promotable image
+- [x] Docs updated to match: `docs/deployment/ROLLBACK.md` (§2 rewritten — a manual rollback no
+      longer redeploys through staging first; it trusts the registry-carried proof instead, with
+      a `bypass_staging_proof` break-glass path for pre-mechanism images, and an explicit
+      gains/losses note on what re-proving-live-at-rollback-time was traded for), plus a new
+      `docs/deployment/BRANCHING.md` describing the full promotion model, and this checklist entry
+- [ ] **Delete the stale `GHCR_PULL_TOKEN` repository secret** — referenced by nothing after the
+      fix above, and a long-lived `read:packages` credential. Settings → Secrets and variables →
+      Actions. **NOT DONE** — Adebayo's action
+- [ ] **Required reviewers on the `production` Environment** — `protection_rules: []` today, yet
+      `cd-production.yml:58-59`, `cd-production.yml:291-292` and `live-e2e.yml:59-62` all treat it
+      as *the* production gate. Until it exists, `bypass_staging_proof` can deploy an unverified
+      image unattended and a Live E2E dispatch against production signs up real users with no
+      prompt. **NOT DONE** — Settings → Environments → `production`, Adebayo's action
+- [ ] **Branch protection on `main` requiring LINEAR HISTORY** — required for the fast-forward
+      promotion model to hold (a squash merge or merge commit mints a new SHA that was never
+      built, so `resolve-artifact` fails loudly rather than silently deploying stale bytes).
+      **NOT DONE** — Settings → Branches → `main`, Adebayo's action
+- [x] **Create the `develop` branch** — created; PR #42 merged into it 2026-09-03 (`f96172c`)
+- [x] **First push to `develop`** — RAN (run `33776562659`). `ci.yml`'s event-dependent triggers
+      and `cd-staging.yml`'s `build-and-push` both went green; **`staging-deploy` FAILED** at
+      `docker login` with `username is empty`, and `staging-e2e` + `mark-staging-verified` were
+      skipped. Cause: the split reverted both `deploy-stack` call sites to the removed
+      `GHCR_PULL_*` PAT pair (`GHCR_PULL_USERNAME` has never existed → `""`) **and** dropped
+      `permissions: packages: read` from both deploy jobs. See the item below
+- [x] **GHCR-auth regression fixed** — `ghcr_username`/`ghcr_token` restored to
+      `github.actor` / `secrets.GITHUB_TOKEN`, `packages: read` restored on `staging-deploy` and
+      `production-deploy`, a fail-fast preflight added to `.github/actions/deploy-stack` (a
+      composite action does not enforce `required: true` — an unset secret silently becomes `""`,
+      which is why this only surfaced *after* the scp had landed on the VPS), and the invalid
+      `script_stop:` input dropped. `actionlint` + `shellcheck` clean; preflight proven to fail on
+      the real condition and pass on the fixed wiring. SOP:
+      `docs/sop/2026-09-03-cd-ghcr-auth-regression.md`. **NOT VERIFIED in CI** — needs a push to
+      `develop`; the identical bug was also live on the untriggered production path
+- [ ] **Re-run `cd-staging.yml` after the fix** — still the first real GHCR pull from a VPS.
+      **NEVER SUCCEEDED**
+- [ ] **First fast-forward promotion, `develop` → `main`** — would be the first real execution of
+      `cd-production.yml`'s `resolve-artifact` gate. **NEVER RUN**, and cannot happen until the
+      item above has produced a `staging-verified` tag for it to resolve
+- [ ] _Deferred:_ every existing "never touched a real VPS" item under **Deployment &
+      Infrastructure** and **Edge** above applies identically here — this restructure changes
+      *how* the gate is enforced, not whether the underlying deploy has ever run for real
 
 ---
 
@@ -621,24 +775,30 @@ the real application. **No VPS, no DNS, no certificate, no real handshake.** See
 - [ ] **Only 13 of 27 e2e tests gate production.** The other 14 need
       `EMAIL_FILE_DIR` on the same machine as the test run (they reach the
       `mailbox` fixture, mostly via `make_verified_user`), which a remote runner
-      does not have. They still run in CI against a local server. Widening needs
+      does not have. The full local suite still runs against a local server — but only in
+      `ci.yml`'s `e2e` job, which is **PR-only** as of the 2026-09-03 event split (never on a
+      push to `develop` — see the cost-model comment atop `ci.yml`), so it is not a safety net
+      for a direct push the way `lint`/`test`/`security` are. Widening the live gate needs
       mail-dir transport over SSH or an on-VPS runner
 - [ ] **No secret has been created yet.** `.env.staging.enc` / `.env.production.enc`
       do not exist and `ENV_ENCRYPTION_KEY` is not in GitHub — the one-time setup
       in `docs/deployment/ENV_ENCRYPTION.md` §4 is Adebayo's to run
 - [ ] `APP_URL` must be set as a **staging** environment variable, not only
-      production — the staging gate uses it as `E2E_BASE_URL`
+      production — the staging gate (`live-e2e.yml`, called from `cd-staging.yml`) uses it as
+      `E2E_BASE_URL`. Production's `APP_URL` now also feeds `live-e2e.yml` when it is dispatched
+      on demand with `environment: production`
 - [ ] The staging/production deploy path has **never run against a real VPS** — no
-      SSH deploy, no scp, no GHCR pull from a server; CD has never executed in its
-      three-job shape
+      SSH deploy, no scp, no GHCR pull from a server; neither `cd-staging.yml` (4 jobs:
+      `build-and-push` → `staging-deploy` → `staging-e2e` → `mark-staging-verified`) nor
+      `cd-production.yml` (2 jobs: `resolve-artifact` → `production-deploy`) has ever executed
 - [ ] CodeQL, `dependency-review` and SonarCloud have **never executed** — none can
       run locally; first signal comes from the first GitHub Actions run/PR
 - [ ] The `SECRET_KEY` committed to `.env.example` in `36ee5d51` is public in git history and must
       be treated as compromised — confirm no deployed environment ever used it; clearing it from
       history needs `git-filter-repo` + force-push + everyone re-cloning
-- [ ] Production deploy path (`docker-compose.prod.yml`, hardened `Dockerfile`, `cd.yml`) has
-      never been exercised against a real VPS — no SSH deploy, no nginx, no UFW, no GHCR
-      push/pull; the workflows have never executed on GitHub
+- [ ] Production deploy path (`docker-compose.prod.yml`, hardened `Dockerfile`,
+      `cd-production.yml`) has never been exercised against a real VPS — no SSH deploy, no
+      nginx, no UFW, no GHCR push/pull; the workflows have never executed on GitHub
 - [ ] `deploy.resources.reservations.cpus` is declarative-only outside Swarm (verified
       `CpuShares`/`CpuQuota`/`CpuPeriod` all `0` on Compose v2.40.3) — memory reservations do apply
 - [ ] `uvicorn.workers.UvicornWorker` is deprecated upstream in favour of the `uvicorn-worker`
