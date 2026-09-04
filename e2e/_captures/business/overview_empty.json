@@ -39,6 +39,34 @@
       "total_blocks": 4,
       "completion_pct": 0,
       "status": "start"
+    },
+    {
+      "type": "persona",
+      "label": "Persona",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "revenue_stream",
+      "label": "Revenue Stream",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "competitor",
+      "label": "Competitor",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "pricing",
+      "label": "Pricing",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
     }
   ],
   "meta": null
