@@ -38,3 +38,15 @@ def test_pricing_nested_tiers_validate():
 def test_fields_descriptor_lists_keys():
     keys = {f["key"] for f in fields(RecordKind.persona)}
     assert {"name", "goals", "quote"} <= keys
+
+
+def test_fields_descriptor_exposes_enum_choices():
+    threat_level = next(f for f in fields(RecordKind.competitor) if f["key"] == "threat_level")
+    assert threat_level["choices"] == ["low", "medium", "high"]
+
+    model_type = next(f for f in fields(RecordKind.pricing) if f["key"] == "model_type")
+    assert "subscription" in model_type["choices"]
+    assert "tiered" in model_type["choices"]
+
+    name = next(f for f in fields(RecordKind.persona) if f["key"] == "name")
+    assert name["choices"] is None

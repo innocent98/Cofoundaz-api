@@ -1,3 +1,4 @@
+import enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -54,14 +55,21 @@ RECORD_SCHEMAS: dict[RecordKind, type[BaseModel]] = {
 
 
 def fields(kind: RecordKind) -> list[dict[str, Any]]:
-    """FE field descriptors for a kind: key, required, type, enum choices."""
+    """FE field descriptors for a kind: each dict has `key`, `required`, `type`,
+    and `choices` (list of enum member values when the field's annotation is a
+    Python `enum.Enum` subclass, else `None`)."""
     out: list[dict[str, Any]] = []
     for key, info in RECORD_SCHEMAS[kind].model_fields.items():
+        annotation = info.annotation
+        choices: list[Any] | None = None
+        if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+            choices = [member.value for member in annotation]
         out.append(
             {
                 "key": key,
                 "required": info.is_required(),
-                "type": str(info.annotation),
+                "type": str(annotation),
+                "choices": choices,
             }
         )
     return out
