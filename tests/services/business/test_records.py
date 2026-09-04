@@ -25,6 +25,18 @@ def test_validate_rejects_bad_data(db):
     assert e.value.http_status == 422
 
 
+def test_validate_rejects_bad_enum_choice(db):
+    with pytest.raises(AppError) as e:
+        validate(RecordKind.competitor, {"name": "X", "threat_level": "apocalyptic"})
+    assert e.value.code == "VALIDATION_ERROR"
+    assert e.value.http_status == 422
+
+    with pytest.raises(AppError) as e2:
+        validate(RecordKind.pricing, {"model_type": "per_seat"})  # not a PricingModelType member
+    assert e2.value.code == "VALIDATION_ERROR"
+    assert e2.value.http_status == 422
+
+
 def test_create_appends_position_and_lists_ordered(db):
     s = _startup(db)
     a = create_record(db, s, RecordKind.persona, {"name": "A"})
@@ -53,6 +65,23 @@ def test_delete_removes(db):
     r = create_record(db, s, RecordKind.persona, {"name": "A"})
     delete_record(db, r)
     assert list_records(db, s, RecordKind.persona) == []
+
+
+def test_create_first_record_emits_completed_event_once(db, monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        "app.services.business.records.event_bus.publish",
+        lambda e, p: events.append((e, p)),
+    )
+    s = _startup(db)
+    create_record(db, s, RecordKind.persona, {"name": "A"})
+    assert events == [
+        ("business.artifact.completed", {"startup_id": str(s.id), "artifact": "persona"})
+    ]
+    create_record(db, s, RecordKind.persona, {"name": "B"})  # second record -- no re-emit
+    assert events == [
+        ("business.artifact.completed", {"startup_id": str(s.id), "artifact": "persona"})
+    ]
 
 
 def test_overview_includes_record_rows(db):
