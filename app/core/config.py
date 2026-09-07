@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
     MFA_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Master key the per-workspace journal keys are derived from (HKDF). Optional like
+    # MFA_ENCRYPTION_KEY so the app still boots without it; the journal service raises
+    # JournalNotConfigured at use time rather than failing startup for every deployment.
+    JOURNAL_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
 
     # Providers
     EMAIL_BACKEND: str = "console"  # console | smtp | file

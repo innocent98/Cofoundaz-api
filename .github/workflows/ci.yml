@@ -200,7 +200,13 @@ jobs:
         # adding a single lightly-covered module, which trains people to lower
         # the number. 95 still fails loudly on a real regression. Raise it when
         # coverage is durably higher, never lower it to make a red build green.
-        run: poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=95
+        #
+        # JOURNAL_ENCRYPTION_KEY is generated per run rather than stored: the
+        # journal tests need a valid Fernet key, but nothing needs that key to
+        # survive between runs. GITHUB_ACTIONS_SETUP.md rule 2.
+        run: |
+          export JOURNAL_ENCRYPTION_KEY="$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=95
 
       - name: Upload coverage artifact
         if: always()

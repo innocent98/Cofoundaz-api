@@ -68,6 +68,18 @@ class MfaInvalidCode(AppError):  # noqa: N818
     message = "That code isn't right. Try again."
 
 
+class JournalNotConfigured(AppError):  # noqa: N818
+    code, http_status = "JOURNAL_NOT_CONFIGURED", 500
+    message = "Journal storage is not configured on the server."
+
+
+class JournalContentUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor the plaintext may ever appear in an
+    # error surfaced to a client or a log.
+    code, http_status = "JOURNAL_CONTENT_UNREADABLE", 500
+    message = "That entry could not be read."
+
+
 class FeatureNotEnabled(AppError):  # noqa: N818
     code, http_status = "FEATURE_NOT_ENABLED", 501
     message = "This feature isn't available yet."

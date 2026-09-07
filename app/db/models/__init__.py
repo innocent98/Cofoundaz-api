@@ -11,6 +11,7 @@ from app.db.models.health_score import (  # noqa: F401
 )
 from app.db.models.invitation import Invitation  # noqa: F401
 from app.db.models.job import Job  # noqa: F401
+from app.db.models.journal import JournalEntry, MoodLog  # noqa: F401
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401
 from app.db.models.roadmap import (  # noqa: F401

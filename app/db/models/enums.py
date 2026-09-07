@@ -135,3 +135,11 @@ class CanvasType(enum.StrEnum):
     value_prop = "value_prop"
     mission_vision = "mission_vision"
     swot = "swot"
+
+
+class JournalMood(enum.StrEnum):
+    rough = "rough"
+    meh = "meh"
+    okay = "okay"
+    good = "good"
+    great = "great"

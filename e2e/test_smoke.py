@@ -82,10 +82,13 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/business-builder/overview",
         "/api/v1/business-builder/canvases/{type}",
         "/api/v1/business-builder/canvases/{type}/ai-fill",
-    ]:
+        # journal ("Founder Journal") surface
+        "/api/v1/journal/entries",
+        "/api/v1/journal/entries/{entry_id}",
+        "/api/v1/journal/mood",
+        "/api/v1/journal/prompts/today",
+        ]:
         assert p in paths, f"missing route {p}"
-
-
 def test_me_requires_auth(http: httpx.Client):
     assert http.get("/api/v1/auth/me").status_code == 401
 

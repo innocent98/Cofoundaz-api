@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     health_score,
     invitations,
     jobs,
+    journal,
     mission,
     roadmap,
 )
@@ -27,3 +28,4 @@ api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(business.router, prefix="/business-builder", tags=["business-builder"])
+api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
