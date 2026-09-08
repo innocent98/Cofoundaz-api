@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
-from app.db.models.enums import CanvasType, MembershipRole, RecordKind
+from app.db.models.enums import CanvasType, MembershipRole, RecordKind, SuggestionStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
-from app.schemas.business import CanvasSave, RecordCreate
+from app.schemas.business import CanvasSave, RecordCreate, SuggestionCreate
 from app.services.business.record_defs import fields
 from app.services.business.records import (
     _record,
@@ -29,6 +29,13 @@ from app.services.business.service import (
     overview,
     save_canvas,
     serialize_canvas,
+)
+from app.services.business.suggestions import (
+    approve_suggestion,
+    create_suggestion,
+    list_suggestions,
+    reject_suggestion,
+    serialize_suggestion,
 )
 
 router = APIRouter()
@@ -115,6 +122,57 @@ def _parse_kind(kind: str) -> RecordKind:
         return _KIND_PATHS[kind]
     except KeyError:
         raise NotFound() from None
+
+
+@router.post("/suggestions", status_code=status.HTTP_201_CREATED)
+def create_suggestion_endpoint(
+    body: SuggestionCreate,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    s = create_suggestion(db, membership, body.op, body.target, body.payload, body.note)
+    db.commit()
+    return success_response(serialize_suggestion(db, s))
+
+
+@router.get("/suggestions")
+def list_suggestions_endpoint(
+    status: str | None = None,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    try:
+        parsed = SuggestionStatus(status) if status else None
+    except ValueError:
+        raise NotFound() from None  # unknown status filter -> 404 (uniform "no such view")
+    rows = list_suggestions(db, _startup(db, membership), parsed)
+    return success_response({"suggestions": [serialize_suggestion(db, r) for r in rows]})
+
+
+@router.post("/suggestions/{suggestion_id}/approve")
+def approve_suggestion_endpoint(
+    suggestion_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    s = approve_suggestion(db, membership, suggestion_id)
+    db.commit()
+    return success_response(serialize_suggestion(db, s))
+
+
+@router.post("/suggestions/{suggestion_id}/reject")
+def reject_suggestion_endpoint(
+    suggestion_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    s = reject_suggestion(db, membership, suggestion_id)
+    db.commit()
+    return success_response(serialize_suggestion(db, s))
 
 
 @router.get("/{kind}")
