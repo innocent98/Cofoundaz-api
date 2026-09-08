@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from app.core.security import create_access_token
 from app.db.models.business import BusinessCanvas
-from app.db.models.enums import MembershipRole, StartupStage
+from app.db.models.enums import CanvasType, MembershipRole, RecordKind, StartupStage
 from app.db.models.job import Job
 from tests.factories import create_membership, create_startup, create_user
 
@@ -33,12 +33,12 @@ def test_overview_lists_all_types_as_start(client, db):
     r = client.get("/api/v1/business-builder/overview", headers=h)
     assert r.status_code == 200
     rows = r.json()["data"]
-    assert {row["type"] for row in rows} == {
-        "business_model",
-        "lean",
-        "value_prop",
-        "mission_vision",
-        "swot",
+    # overview carries the 4 record-kind rows (persona, revenue_stream, competitor,
+    # pricing) appended after the canvas rows -- see
+    # app/services/business/service.py::overview. Exact-set assertion re-catches
+    # duplicate/stray/misspelled rows.
+    assert {row["type"] for row in rows} == {t.value for t in CanvasType} | {
+        k.value for k in RecordKind
     }
     assert all(row["status"] == "start" for row in rows)
 

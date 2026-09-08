@@ -3,10 +3,10 @@
     {
       "type": "business_model",
       "label": "Business Model",
-      "filled_blocks": 1,
+      "filled_blocks": 0,
       "total_blocks": 9,
-      "completion_pct": 11,
-      "status": "continue"
+      "completion_pct": 0,
+      "status": "start"
     },
     {
       "type": "lean",
@@ -43,9 +43,9 @@
     {
       "type": "persona",
       "label": "Persona",
-      "status": "start",
-      "completion_pct": 0,
-      "count": 0
+      "status": "complete",
+      "completion_pct": 100,
+      "count": 1
     },
     {
       "type": "revenue_stream",

@@ -82,6 +82,10 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/business-builder/overview",
         "/api/v1/business-builder/canvases/{type}",
         "/api/v1/business-builder/canvases/{type}/ai-fill",
+        # business builder records surface (Slice 2 — typed artifacts)
+        "/api/v1/business-builder/{kind}",
+        "/api/v1/business-builder/{kind}/ai-fill",
+        "/api/v1/business-builder/{kind}/{record_id}",
     ]:
         assert p in paths, f"missing route {p}"
 

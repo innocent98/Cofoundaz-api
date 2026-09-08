@@ -135,3 +135,24 @@ class CanvasType(enum.StrEnum):
     value_prop = "value_prop"
     mission_vision = "mission_vision"
     swot = "swot"
+
+
+class RecordKind(enum.StrEnum):
+    persona = "persona"
+    revenue_stream = "revenue_stream"
+    competitor = "competitor"
+    pricing = "pricing"
+
+
+class ThreatLevel(enum.StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class PricingModelType(enum.StrEnum):
+    subscription = "subscription"
+    one_time = "one_time"
+    usage = "usage"
+    freemium = "freemium"
+    tiered = "tiered"

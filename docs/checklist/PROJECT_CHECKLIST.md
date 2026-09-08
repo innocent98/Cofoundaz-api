@@ -16,8 +16,10 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-03 · `feat/business-builder-canvas` (Module 08 Slice 1 — Business Builder
-canvas core) merged into `develop`, on top of the CI/CD branching restructure (CD split into
+_Last reconciled: 2026-09-04 · `feat/business-builder-records` (Module 08 Slice 2 — Business
+Builder typed artifacts: personas/revenue-streams/competitors/pricing generic `{kind}` CRUD +
+9-row overview) shipped on branch, on top of Slice 1 (canvas core, `feat/business-builder-canvas`,
+merged into `develop` via PR #39) and the CI/CD branching restructure (CD split into
 `cd-staging.yml` / `cd-production.yml` + reusable `live-e2e.yml`, registry-carried staging-verified
 proof, `cd.yml` deleted, GHCR-auth regression repaired — PRs #40–45). `develop` = staging, `main` =
 production; feature PRs target `develop`._
@@ -26,16 +28,20 @@ production; feature PRs target `develop`._
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) + 2 shipped on branch, not yet merged (02 Dashboard · 08 Business Builder Slice 1) · 19 not started (03·08 Slices 2–3·09–26).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder Slice 1) + 1 shipped on branch, not yet merged (08 Business Builder Slice 2) · 18 not started (03·08 Slice 3·09–26).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
-| 🟢 Shipped on branch, not yet merged | 2 modules | Founder Dashboard (02) — `feat/dashboard` · Business Builder (08) Slice 1 — `feat/business-builder-canvas` |
+| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slice 1 — merged to `develop` (PR #39) |
+| 🟢 Shipped on branch, not yet merged | 1 module | Business Builder (08) Slice 2 — `feat/business-builder-records` (→ `develop`) |
 | 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 19 | AI Co-Founder (03) · Business Builder (08) Slices 2–3 · 09–26 |
+| ⬜ Planned / next | 18 | AI Co-Founder (03) · Business Builder (08) Slice 3 · 09–26 |
 
-**Health at a glance:** ~71 endpoints · **766 unit tests** (real Postgres) + **29 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** ~76 endpoints · **790 unit tests** (real Postgres) + **30 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+
+_Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
+carried forward unchanged from the last full lint/security sweep — not re-run in this Slice 2
+reconcile pass; only the test counts and endpoint count were verified this pass._
 
 ---
 
@@ -192,7 +198,7 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
 - [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
-## ✅ Module 02 — Founder Dashboard — *shipped on branch `feat/dashboard` (not yet merged to `main`)*
+## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
 _The founder's home screen: `GET /dashboard/summary` (9-section aggregation of Modules 04/05/06/07)
 and `GET /dashboard/activity` (keyset-paginated team feed). In-process aggregation BFF, no new
@@ -234,15 +240,21 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
-## 🟢 Module 08 — Business Builder — *Slice 1 shipped on branch `feat/business-builder-canvas`, not yet merged*
+## 🟢 Module 08 — Business Builder — *Slice 1 merged to `develop` (PR #39) ·
+Slice 2 shipped on branch `feat/business-builder-records`, not yet merged*
 
-_Five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/`swot`),
-each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
+_Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
+`swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
 versioned full-replace saves, derived completion, and an AI-fill job seam deliberately left
 unconsumed until Module 03. Migration `0011_business_canvases`. SOP:
-`docs/sop/2026-09-01-business-builder-canvas.md`._
+`docs/sop/2026-09-01-business-builder-canvas.md`.
+Slice 2: four typed-artifact record kinds (`persona`/`revenue_stream`/`competitor`/`pricing`), each
+a generic `business_records` row + an in-code Pydantic schema registry, under a uniform `{kind}`
+CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slice 1; `GET
+/overview` now returns 9 rows (5 canvas + 4 record). Migration `0012_business_records`. SOP:
+`docs/sop/2026-09-04-business-builder-records.md`._
 
-**Slice 1 — Canvas Core** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+**Slice 1 — Canvas Core** — *✅ merged to `develop` (PR #39, Tasks 1–6)*
 - [x] Scope + locked decisions (generic table + `CANVAS_BLOCKS` code registry, not 5 tables ·
       optimistic-concurrency version counter, not a row lock · PUT is full-replace, not a merge ·
       completion derived on read, not cached · ai-fill enqueue-only, real worker deferred to
@@ -269,15 +281,55 @@ unconsumed until Module 03. Migration `0011_business_canvases`. SOP:
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile —
       `docs/sop/2026-09-01-business-builder-canvas.md`,
       `docs/fe-integration-guide-business-builder.md`
-- [ ] _Deferred:_ Slice 2 (typed artifacts — richer per-block field types beyond text/list) ·
-      Slice 3 (suggestions + plan generation from a completed canvas) · real
+- [ ] _Deferred:_ Slice 3 (suggestions + plan generation from a completed canvas) · real
       `business.canvas.ai_fill` worker → Module 03 (AI Co-Founder) · canvas version history (no
       row-level history table) · no `business.artifact.completed` consumer yet · no
       `write_activity` call site for canvas saves (doesn't show up in the dashboard activity
       feed) · JSONB doesn't preserve `blocks` key order (documented in the FE guide, not a bug)
       — see SOP Follow-ups
 
-**Slice 2 — Typed Artifacts** — *⬜ planned, not started*
+**Slice 2 — Typed Artifacts** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+- [x] Scope + locked decisions (generic `business_records` table + `RECORD_SCHEMAS` Pydantic
+      registry, not 4 tables · real Pydantic model validation per kind, not a hand-rolled checker ·
+      PUT is full-replace, not a merge, same as Slice 1 · record-kind overview rows are binary
+      (`count >= 1` → complete), no partial "continue" state · ai-fill enqueue-only, real worker
+      deferred to Module 03) — `.superpowers/sdd/2026-09-04-business-builder-records/`
+- [x] `RecordKind`/`ThreatLevel`/`PricingModelType` enums + `BusinessRecord` model + migration
+      `0012_business_records` (chains off `0011_business_canvases`, sole alembic head) +
+      standalone `startup_id` index + composite `(startup_id, kind, position)` index
+- [x] `RECORD_SCHEMAS` registry (`app/services/business/record_defs.py`) — 4 Pydantic v2 models
+      (`PersonaData`/`RevenueStreamData`/`CompetitorData`/`PricingData` + nested `PricingTier`),
+      each `extra="forbid"`; `fields(kind)` descriptor incl. enum `choices` (FE dropdown source)
+- [x] Records service — `validate` (Pydantic → 422 `field_errors`) · `create_record`
+      (position-by-count append, `business.artifact.completed` on a kind's first record only) ·
+      `update_record` (full-replace, pinned by a dedicated test) · `delete_record` ·
+      `list_records` (ordered) · `overview()` extended with the 4 record-kind rows
+- [x] `GET /business-builder/{kind}` (member; `{records, fields}`; unknown kind → 404) · `POST
+      /business-builder/{kind}` (editor; 201; bad `data` → 422 `VALIDATION_ERROR`)
+- [x] `PUT /business-builder/{kind}/{record_id}` (editor; **full-replace**, not a partial merge —
+      an omitted field resets to its schema default; unknown/cross-tenant id → 404) · `DELETE
+      /business-builder/{kind}/{record_id}` (editor; `{deleted: true}`)
+- [x] `POST /business-builder/{kind}/ai-fill` (editor; 202, enqueues `business.{kind}.ai_fill`
+      job, writes no record; job stays `queued` — no worker yet)
+- [x] `GET /business-builder/overview` extended — 9 rows total (5 canvas + 4 record kinds);
+      record rows: `{type, label, status, completion_pct, count}`, `status`/`completion_pct`
+      derived from `count >= 1`
+- [x] Access: reads = any active member (mentor incl.) · writes = founder/team_member (mentor →
+      403 `FORBIDDEN`) — same as Slice 1
+- [x] Live E2E journey (`e2e/test_business_builder.py::test_business_builder_records_journey`,
+      10 new captures) + the pre-existing Slice 1 journey re-verified (its `/overview` assertions
+      widened for the 4 new record rows) + smoke openapi surface (3 new `{kind}` paths)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-09-04-business-builder-records.md`,
+      `docs/fe-integration-guide-business-builder.md` (§6–§11)
+- [ ] _Deferred:_ Slice 3 (suggestions + plan) · real `business.{kind}.ai_fill` worker →
+      Module 03 · Module 12 (Revenue) sync for `revenue_stream` records · no reorder/`PATCH
+      .../{id}/reorder` endpoint (`position` is append-only) · `create_record`'s position
+      assignment is not race-safe (no unique constraint on `(startup_id, kind, position)`, unlike
+      Slice 1's race-safe `get_or_create_canvas`) · `test_put_cross_tenant_404` is not yet a
+      genuine cross-tenant test (asserts against an unknown id, not a real second tenant's
+      record; same gap for `DELETE`) · JSONB doesn't preserve `data` key order (documented in the
+      FE guide, not a bug) — see SOP Follow-ups
 
 **Slice 3 — Suggestions + Plan** — *⬜ planned, not started*
 

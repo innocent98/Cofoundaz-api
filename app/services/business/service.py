@@ -1,11 +1,12 @@
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, CanvasVersionConflict
-from app.db.models.business import BusinessCanvas
-from app.db.models.enums import CanvasType
+from app.db.models.business import BusinessCanvas, BusinessRecord
+from app.db.models.enums import CanvasType, RecordKind
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.business.canvas_defs import CANVAS_BLOCKS, BlockDef, empty_blocks
@@ -141,6 +142,24 @@ def overview(db: Session, startup: Startup) -> list[dict]:
                 "type": canvas_type.value,
                 "label": canvas_type.value.replace("_", " ").title(),
                 **completion(canvas_type, blocks),
+            }
+        )
+    counts: dict[RecordKind, int] = dict(
+        db.query(BusinessRecord.kind, func.count(BusinessRecord.id))
+        .filter_by(startup_id=startup.id)
+        .group_by(BusinessRecord.kind)
+        .all()  # type: ignore[arg-type]
+    )
+    for kind in RecordKind:
+        count = counts.get(kind, 0)
+        complete = count >= 1
+        rows.append(
+            {
+                "type": kind.value,
+                "label": kind.value.replace("_", " ").title(),
+                "status": "complete" if complete else "start",
+                "completion_pct": 100 if complete else 0,
+                "count": count,
             }
         )
     return rows
