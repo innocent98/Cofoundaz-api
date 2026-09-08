@@ -156,3 +156,11 @@ class PricingModelType(enum.StrEnum):
     usage = "usage"
     freemium = "freemium"
     tiered = "tiered"
+
+
+class JournalMood(enum.StrEnum):
+    rough = "rough"
+    meh = "meh"
+    okay = "okay"
+    good = "good"
+    great = "great"

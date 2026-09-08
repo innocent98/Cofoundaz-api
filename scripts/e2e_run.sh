@@ -39,6 +39,10 @@ export REFRESH_COOKIE_SECURE="False"
 # a populated .env. (Note: a real deployment MUST set a persistent MFA_ENCRYPTION_KEY.)
 export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 
+# Self-contained journal encryption: same pattern as MFA above, so Module 21's
+# journal writes work in e2e. (A real deployment MUST set a persistent JOURNAL_ENCRYPTION_KEY.)
+export JOURNAL_ENCRYPTION_KEY="${JOURNAL_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+
 SERVER_PID=""
 SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"
 
