@@ -14,7 +14,13 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
-from app.schemas.business import CanvasSave, RecordCreate, SuggestionCreate
+from app.schemas.business import CanvasSave, PositioningMapSave, RecordCreate, SuggestionCreate
+from app.services.business.positioning import (
+    assemble_map,
+    get_or_create_map,
+    serialize_map,
+    update_axes,
+)
 from app.services.business.record_defs import fields
 from app.services.business.records import (
     _record,
@@ -173,6 +179,32 @@ def reject_suggestion_endpoint(
     s = reject_suggestion(db, membership, suggestion_id)
     db.commit()
     return success_response(serialize_suggestion(db, s))
+
+
+@router.get("/positioning-map")
+def get_positioning_map(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    data = assemble_map(db, startup)  # lazily creates the axes row
+    db.commit()
+    return success_response(data)
+
+
+@router.put("/positioning-map")
+def put_positioning_map(
+    body: PositioningMapSave,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    row = get_or_create_map(db, startup)
+    update_axes(db, row, body.axes)
+    db.commit()
+    return success_response(serialize_map(row))
 
 
 @router.get("/{kind}")

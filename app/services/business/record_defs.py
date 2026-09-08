@@ -1,7 +1,7 @@
 import enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models.enums import PricingModelType, RecordKind, ThreatLevel
 
@@ -33,6 +33,8 @@ class CompetitorData(_Base):
     strengths: list[str] = []
     weaknesses: list[str] = []
     threat_level: ThreatLevel = ThreatLevel.medium
+    map_x: float | None = Field(default=None, ge=0, le=1)
+    map_y: float | None = Field(default=None, ge=0, le=1)
 
 
 class PricingTier(_Base):
