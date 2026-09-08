@@ -87,7 +87,7 @@ low-mood card** with its dismissal state. Founder-only, hard-enforced server-sid
 | 8 | Low-mood card | **In scope**, built to the PRD's verbatim copy and rule (§6). |
 | 9 | Column naming | The PRD entity says `date`; this spec uses **`entry_date`** (as the handoff brief does) — `date` collides with the SQL type name and reads badly in queries. A naming choice only; the API field is `date` in responses, matching the PRD. |
 
-## 3. Data model (migration `0008_journal`)
+## 3. Data model (migration `0013_journal`)
 
 Two tables. One new enum `Mood(rough|meh|okay|good|great)` in `app/db/models/enums.py`, matching the
 PRD's Rough / Meh / Okay / Good / Great exactly.

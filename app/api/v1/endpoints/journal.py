@@ -115,6 +115,8 @@ def create_journal_entry(
         data=payload,
     )
 
+    db.commit()
+
     return success_response(_entry_response(entry).model_dump())
 
 
@@ -317,6 +319,8 @@ def update_journal_entry(
         data=payload,
     )
 
+    db.commit()
+
     return success_response(_entry_response(entry).model_dump())
 
 
@@ -349,6 +353,8 @@ def delete_journal_entry(
         startup_id=startup.id,
         entry_id=entry_id,
     )
+
+    db.commit()
 
     return success_response(
         {
