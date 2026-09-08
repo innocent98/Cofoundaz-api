@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.errors import AppError, CanvasVersionConflict
-from app.db.models.enums import CanvasType
+from app.db.models.enums import CanvasType, RecordKind
 from app.services.business.service import (
     completion,
     get_or_create_canvas,
@@ -85,9 +85,15 @@ def test_completion_transitions_and_emits_once(db, monkeypatch):
 def test_overview_is_read_only_and_covers_all_types(db):
     s = _startup(db)
     rows = overview(db, s)
-    assert {r["type"] for r in rows} == {t.value for t in CanvasType}
+    # overview appends 4 record-kind rows (persona, revenue_stream, competitor,
+    # pricing) after the canvas rows -- see app/services/business/service.py::overview.
+    # Exact-set assertion re-catches duplicate/stray/misspelled rows.
+    assert {r["type"] for r in rows} == {t.value for t in CanvasType} | {
+        k.value for k in RecordKind
+    }
     assert all(r["status"] == "start" for r in rows)
     # overview created no rows
-    from app.db.models.business import BusinessCanvas
+    from app.db.models.business import BusinessCanvas, BusinessRecord
 
     assert db.query(BusinessCanvas).filter_by(startup_id=s.id).count() == 0
+    assert db.query(BusinessRecord).filter_by(startup_id=s.id).count() == 0

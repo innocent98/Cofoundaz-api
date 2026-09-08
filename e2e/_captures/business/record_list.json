@@ -1,0 +1,66 @@
+{
+  "data": {
+    "records": [
+      {
+        "id": "e78881e7-f452-4783-a975-eb797434893e",
+        "kind": "persona",
+        "data": {
+          "name": "Busy Founder Bea",
+          "goals": [
+            "Ship an MVP",
+            "Get first 10 customers"
+          ],
+          "quote": "I just need this to work.",
+          "demographics": "28-40, solo/early-stage founder",
+          "frustrations": [
+            "No time to research tools"
+          ],
+          "watering_holes": [
+            "Indie Hackers",
+            "Twitter/X"
+          ]
+        },
+        "position": 0
+      }
+    ],
+    "fields": [
+      {
+        "key": "name",
+        "required": true,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "demographics",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "goals",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "frustrations",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "watering_holes",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "quote",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      }
+    ]
+  },
+  "meta": null
+}

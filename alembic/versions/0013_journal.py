@@ -1,7 +1,7 @@
 """create journal entries and mood logs
 
 Revision ID: 0013_journal
-Revises: 0011_business_canvases
+Revises: 0012_business_records
 Create Date: 2026-08-30
 """
 
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "0013_journal"
-down_revision = "0011_business_canvases"
+down_revision = "0012_business_records"
 branch_labels = None
 depends_on = None
 

@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": "5e898f6c-a9dc-4c9f-9171-200376693e45",
+    "kind": "pricing",
+    "data": {
+      "tiers": [
+        {
+          "name": "Starter",
+          "price": "$19/mo",
+          "features": [
+            "1 seat"
+          ]
+        },
+        {
+          "name": "Pro",
+          "price": "$49/mo",
+          "features": [
+            "5 seats",
+            "Priority support"
+          ]
+        }
+      ],
+      "model_type": "tiered"
+    },
+    "position": 0
+  },
+  "meta": null
+}
