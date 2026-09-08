@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -98,6 +98,13 @@ class BusinessPositioningMap(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    axes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    axes: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text(
+            '\'{"x": {"label": "Price", "low": "Low", "high": "High"}, '
+            '"y": {"label": "Quality", "low": "Low", "high": "High"}}\'::jsonb'
+        ),
+    )
 
     __table_args__ = (UniqueConstraint("startup_id", name="uq_business_positioning_map_startup"),)

@@ -71,7 +71,15 @@ def upgrade() -> None:
     op.create_table(
         "business_positioning_maps",
         sa.Column("startup_id", sa.UUID(), nullable=False),
-        sa.Column("axes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "axes",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text(
+                '\'{"x": {"label": "Price", "low": "Low", "high": "High"}, '
+                '"y": {"label": "Quality", "low": "Low", "high": "High"}}\'::jsonb'
+            ),
+            nullable=False,
+        ),
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column(
             "created_at",

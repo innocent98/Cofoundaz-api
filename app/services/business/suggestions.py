@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -35,6 +36,13 @@ def _parse_kind(target: dict) -> RecordKind:
         raise NotFound() from None
 
 
+def _parse_record_id(target: dict) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(target["record_id"]))
+    except (KeyError, ValueError, TypeError):
+        raise NotFound() from None
+
+
 def create_suggestion(
     db: Session,
     membership: Membership,
@@ -59,12 +67,14 @@ def create_suggestion(
         target = {"kind": kind.value}
     elif op == SuggestionOp.record_update:
         kind = _parse_kind(target)
-        rec = _record(db, membership, kind, target.get("record_id"))  # 404 if missing/cross-tenant
+        rid = _parse_record_id(target)  # 404 on malformed id
+        rec = _record(db, membership, kind, rid)  # 404 if missing/cross-tenant
         validate(kind, (payload or {}).get("data", {}))
         target = {"kind": kind.value, "record_id": str(rec.id)}
     elif op == SuggestionOp.record_delete:
         kind = _parse_kind(target)
-        rec = _record(db, membership, kind, target.get("record_id"))  # 404
+        rid = _parse_record_id(target)  # 404 on malformed id
+        rec = _record(db, membership, kind, rid)  # 404
         payload = None
         target = {"kind": kind.value, "record_id": str(rec.id)}
 

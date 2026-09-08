@@ -125,3 +125,19 @@ def test_list_bad_status_404(client, db):
         client.get("/api/v1/business-builder/suggestions?status=bogus", headers=h).status_code
         == 404
     )
+
+
+def test_create_malformed_record_id_404(client, db):
+    """A syntactically invalid record_id must 404 cleanly, not 500 with a leaked DB error."""
+    _u, _s, h = _member(db)
+    r = client.post(
+        "/api/v1/business-builder/suggestions",
+        json={
+            "op": "record_update",
+            "target": {"kind": "competitor", "record_id": "not-a-uuid"},
+            "payload": {"data": {"name": "X"}},
+        },
+        headers=h,
+    )
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"
