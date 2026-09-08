@@ -3,8 +3,9 @@ import uuid
 import pytest
 
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import RecordKind, SuggestionOp, SuggestionStatus
+from app.db.models.enums import CanvasType, RecordKind, SuggestionOp, SuggestionStatus
 from app.db.models.membership import Membership
+from app.services.business.canvas_defs import empty_blocks
 from app.services.business.records import create_record
 from app.services.business.suggestions import (
     create_suggestion,
@@ -96,6 +97,38 @@ def test_serialize_includes_current_for_record_update(db):
     assert out["current"]["data"]["name"] == "Acme"
     assert out["payload"]["data"]["name"] == "Acme2"
     assert out["author"]["id"] == str(m.user_id)
+
+
+def test_serialize_includes_current_for_canvas_update(db):
+    _u, _s, m = _ctx(db)
+    sug = create_suggestion(
+        db,
+        m,
+        SuggestionOp.canvas_update,
+        {"canvas_type": "swot"},
+        {"blocks": {}},
+        None,
+    )
+    out = serialize_suggestion(db, sug)
+    # get_or_create_canvas lazily creates the row (version=1, empty blocks) as a
+    # side effect of create_suggestion capturing base_version -- current reflects
+    # that live row, not the (empty) suggestion payload.
+    assert out["current"]["blocks"] == empty_blocks(CanvasType.swot)
+    assert out["current"]["version"] == 1
+
+
+def test_serialize_current_is_none_for_record_create(db):
+    _u, _s, m = _ctx(db)
+    sug = create_suggestion(
+        db,
+        m,
+        SuggestionOp.record_create,
+        {"kind": "persona"},
+        {"data": {"name": "P1"}},
+        None,
+    )
+    out = serialize_suggestion(db, sug)
+    assert out["current"] is None
 
 
 def test_list_filters_by_status(db):
