@@ -156,3 +156,16 @@ class PricingModelType(enum.StrEnum):
     usage = "usage"
     freemium = "freemium"
     tiered = "tiered"
+
+
+class SuggestionOp(enum.StrEnum):
+    canvas_update = "canvas_update"
+    record_create = "record_create"
+    record_update = "record_update"
+    record_delete = "record_delete"
+
+
+class SuggestionStatus(enum.StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
