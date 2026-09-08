@@ -108,6 +108,11 @@ class CanvasVersionConflict(AppError):  # noqa: N818
     message = "This canvas was changed elsewhere. Refresh and try again."
 
 
+class SuggestionNotPending(AppError):  # noqa: N818
+    code, http_status = "SUGGESTION_NOT_PENDING", 409
+    message = "This suggestion has already been resolved."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."
