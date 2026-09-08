@@ -1,9 +1,11 @@
 {
   "data": {
-    "id": "9a004ca2-a173-4c02-b4fb-b11829a4a17d",
+    "id": "bc9245be-5951-4dd4-9cd3-86cf94924a01",
     "kind": "competitor",
     "data": {
       "name": "BigCo Rival",
+      "map_x": null,
+      "map_y": null,
       "price": "$$$$",
       "strengths": [
         "Brand recognition"

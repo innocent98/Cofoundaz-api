@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SUGGESTION_NOT_PENDING",
+    "message": "This suggestion has already been resolved.",
+    "field_errors": []
+  }
+}

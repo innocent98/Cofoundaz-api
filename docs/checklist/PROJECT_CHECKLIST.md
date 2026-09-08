@@ -16,32 +16,33 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-04 · `feat/business-builder-records` (Module 08 Slice 2 — Business
-Builder typed artifacts: personas/revenue-streams/competitors/pricing generic `{kind}` CRUD +
-9-row overview) shipped on branch, on top of Slice 1 (canvas core, `feat/business-builder-canvas`,
-merged into `develop` via PR #39) and the CI/CD branching restructure (CD split into
-`cd-staging.yml` / `cd-production.yml` + reusable `live-e2e.yml`, registry-carried staging-verified
-proof, `cd.yml` deleted, GHCR-auth regression repaired — PRs #40–45). `develop` = staging, `main` =
-production; feature PRs target `develop`._
+_Last reconciled: 2026-09-08 · `feat/business-builder-suggestions` (Module 08 Slice 3 —
+suggestion workflow: `business_consultant`-style non-editor propose/founder-approve for
+canvas_update/record_create/record_update/record_delete, plus the competitor positioning map
+— editable 2×2 axes + `map_x`/`map_y` on the existing competitor record) shipped on branch, on
+top of Slice 2 (typed artifacts, `feat/business-builder-records`, merged into `develop` via PR
+#46) and Slice 1 (canvas core, `feat/business-builder-canvas`, merged into `develop` via PR #39).
+`develop` = staging, `main` = production; feature PRs target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder Slice 1) + 1 shipped on branch, not yet merged (08 Business Builder Slice 2) · 18 not started (03·08 Slice 3·09–26).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder Slices 1–2) + 1 shipped on branch, not yet merged (08 Business Builder Slice 3) · 18 not started (03·09–26, minus 08 which is complete except its AI Business Plan Generator sub-screen — see Module 08 below).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slice 1 — merged to `develop` (PR #39) |
-| 🟢 Shipped on branch, not yet merged | 1 module | Business Builder (08) Slice 2 — `feat/business-builder-records` (→ `develop`) |
+| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–2 — merged to `develop` (PR #39, PR #46) |
+| 🟢 Shipped on branch, not yet merged | 1 module | Business Builder (08) Slice 3 — `feat/business-builder-suggestions` (→ `develop`) |
 | 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 18 | AI Co-Founder (03) · Business Builder (08) Slice 3 · 09–26 |
+| ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–26 |
 
-**Health at a glance:** ~76 endpoints · **790 unit tests** (real Postgres) + **30 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** ~82 endpoints · **824 unit tests** (real Postgres) + **32 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
-carried forward unchanged from the last full lint/security sweep — not re-run in this Slice 2
-reconcile pass; only the test counts and endpoint count were verified this pass._
+carried forward unchanged from the last full lint/security sweep — not re-run in this Slice 3
+reconcile pass; only the test counts and endpoint count were verified this pass (endpoint count is
+an estimate — +6 for Slice 3's suggestion/positioning-map routes over the prior ~76 tally)._
 
 ---
 
@@ -240,8 +241,9 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
-## 🟢 Module 08 — Business Builder — *Slice 1 merged to `develop` (PR #39) ·
-Slice 2 shipped on branch `feat/business-builder-records`, not yet merged*
+## 🟢 Module 08 — Business Builder — *Slices 1–2 merged to `develop` (PR #39, PR #46) ·
+Slice 3 shipped on branch `feat/business-builder-suggestions`, not yet merged — complete except
+the AI Business Plan Generator (§08.11), dependency-blocked on Modules 03 + 18*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
 `swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
@@ -252,7 +254,16 @@ Slice 2: four typed-artifact record kinds (`persona`/`revenue_stream`/`competito
 a generic `business_records` row + an in-code Pydantic schema registry, under a uniform `{kind}`
 CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slice 1; `GET
 /overview` now returns 9 rows (5 canvas + 4 record). Migration `0012_business_records`. SOP:
-`docs/sop/2026-09-04-business-builder-records.md`._
+`docs/sop/2026-09-04-business-builder-records.md`.
+Slice 3: a non-editor member (PRD's `business_consultant` "suggest mode") can propose a
+`canvas_update`/`record_create`/`record_update`/`record_delete` via `POST /suggestions`; a founder
+or team_member reviews (`GET /suggestions?status=pending`) and resolves
+(`POST /suggestions/{id}/approve|reject`) — applied through the SAME Slice 1/2 write functions, so
+the existing full-replace and optimistic-concurrency contracts apply to a suggestion's approval for
+free. Plus the competitor positioning map: editable 2×2 axes (`business_positioning_maps`, a new
+singleton-per-startup table) and `map_x`/`map_y` on the existing `CompetitorData` record (no new
+table for coordinates). Migrations `0013_business_suggestions`, `0014_business_positioning_maps`.
+SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 
 **Slice 1 — Canvas Core** — *✅ merged to `develop` (PR #39, Tasks 1–6)*
 - [x] Scope + locked decisions (generic table + `CANVAS_BLOCKS` code registry, not 5 tables ·
@@ -281,14 +292,14 @@ CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slic
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile —
       `docs/sop/2026-09-01-business-builder-canvas.md`,
       `docs/fe-integration-guide-business-builder.md`
-- [ ] _Deferred:_ Slice 3 (suggestions + plan generation from a completed canvas) · real
-      `business.canvas.ai_fill` worker → Module 03 (AI Co-Founder) · canvas version history (no
-      row-level history table) · no `business.artifact.completed` consumer yet · no
-      `write_activity` call site for canvas saves (doesn't show up in the dashboard activity
-      feed) · JSONB doesn't preserve `blocks` key order (documented in the FE guide, not a bug)
-      — see SOP Follow-ups
+- [ ] _Deferred:_ AI Business Plan Generator (§08.11, dependency-blocked on Modules 03 + 18 — see
+      Slice 3 below) · real `business.canvas.ai_fill` worker → Module 03 (AI Co-Founder) · canvas
+      version history (no row-level history table) · no `business.artifact.completed` consumer
+      yet · no `write_activity` call site for canvas saves (doesn't show up in the dashboard
+      activity feed) · JSONB doesn't preserve `blocks` key order (documented in the FE guide, not
+      a bug) — see SOP Follow-ups
 
-**Slice 2 — Typed Artifacts** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+**Slice 2 — Typed Artifacts** — *✅ merged to `develop` (PR #46, Tasks 1–6)*
 - [x] Scope + locked decisions (generic `business_records` table + `RECORD_SCHEMAS` Pydantic
       registry, not 4 tables · real Pydantic model validation per kind, not a hand-rolled checker ·
       PUT is full-replace, not a merge, same as Slice 1 · record-kind overview rows are binary
@@ -322,16 +333,63 @@ CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slic
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile —
       `docs/sop/2026-09-04-business-builder-records.md`,
       `docs/fe-integration-guide-business-builder.md` (§6–§11)
-- [ ] _Deferred:_ Slice 3 (suggestions + plan) · real `business.{kind}.ai_fill` worker →
-      Module 03 · Module 12 (Revenue) sync for `revenue_stream` records · no reorder/`PATCH
-      .../{id}/reorder` endpoint (`position` is append-only) · `create_record`'s position
-      assignment is not race-safe (no unique constraint on `(startup_id, kind, position)`, unlike
-      Slice 1's race-safe `get_or_create_canvas`) · `test_put_cross_tenant_404` is not yet a
-      genuine cross-tenant test (asserts against an unknown id, not a real second tenant's
-      record; same gap for `DELETE`) · JSONB doesn't preserve `data` key order (documented in the
-      FE guide, not a bug) — see SOP Follow-ups
+- [ ] _Deferred:_ AI Business Plan Generator (§08.11, see Slice 3 below) · real
+      `business.{kind}.ai_fill` worker → Module 03 · Module 12 (Revenue) sync for
+      `revenue_stream` records · no reorder/`PATCH .../{id}/reorder` endpoint (`position` is
+      append-only) · `create_record`'s position assignment is not race-safe (no unique constraint
+      on `(startup_id, kind, position)`, unlike Slice 1's race-safe `get_or_create_canvas`) ·
+      `test_put_cross_tenant_404` is not yet a genuine cross-tenant test (asserts against an
+      unknown id, not a real second tenant's record; same gap for `DELETE`) · JSONB doesn't
+      preserve `data` key order (documented in the FE guide, not a bug) — see SOP Follow-ups
 
-**Slice 3 — Suggestions + Plan** — *⬜ planned, not started*
+**Slice 3 — Suggestions + Positioning Map** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+- [x] Scope + locked decisions (suggestions apply through the EXISTING Slice 1/2 write functions,
+      not a parallel apply path · `base_version` pinned at create time vs. `current` recomputed
+      live at every read — two different mechanisms, not the same snapshot · positioning
+      coordinates live on the competitor RECORD (`map_x`/`map_y`), not a separate points table ·
+      `PositioningMapSave` carries `axes` only — no way to set coordinates through the map
+      endpoint, by design · any active member can suggest, only `_editor` can approve/reject, same
+      role split as every other Business Builder write) —
+      `.superpowers/sdd/2026-09-08-business-builder-suggestions/`
+- [x] `SuggestionOp`/`SuggestionStatus` enums + `BusinessSuggestion`/`BusinessPositioningMap`
+      models + migrations `0013_business_suggestions`, `0014_business_positioning_maps` (chain off
+      `0012_business_records`, sole alembic head) + `CompetitorData.map_x`/`map_y` (no migration —
+      new JSONB keys on the existing `data` column)
+- [x] Suggestions service (`app/services/business/suggestions.py`) — `create_suggestion` (per-op
+      target/payload validation, `base_version` capture for `canvas_update`) · `list_suggestions`
+      (status filter) · `_current` (live diff-view read) · `serialize_suggestion` · `_apply`
+      (dispatches to `save_canvas`/`create_record`/`update_record`/`delete_record`) ·
+      `approve_suggestion`/`reject_suggestion` (pending → approved/rejected state machine)
+- [x] Positioning service (`app/services/business/positioning.py`) — `get_or_create_map`
+      (race-safe lazy-create, mirrors `get_or_create_canvas`) · `validate_axes` · `update_axes` ·
+      `assemble_map` (joins map axes with every competitor's coordinates)
+- [x] `POST /business-builder/suggestions` (any member; per-op 404/422) · `GET
+      /business-builder/suggestions` (any member; `?status=` filter, unknown status → 404)
+- [x] `POST /business-builder/suggestions/{id}/approve` (editor; applies via `_apply()`; 409
+      `SUGGESTION_NOT_PENDING` / 409 `CANVAS_VERSION_CONFLICT` / 404 target-gone) · `POST
+      /business-builder/suggestions/{id}/reject` (editor; 409 `SUGGESTION_NOT_PENDING`)
+- [x] `GET /business-builder/positioning-map` (any member; lazy-creates axes row) · `PUT
+      /business-builder/positioning-map` (editor; axes only — coordinates via the EXISTING
+      `POST`/`PUT /competitors`, not a new route)
+- [x] Access: suggest = any active member · approve/reject/PUT-axes = founder/team_member
+      (`business_consultant`/mentor/accountant/legal_advisor/investor → 403 `FORBIDDEN` on
+      resolve, same as every other Business Builder write)
+- [x] Live E2E journeys (`e2e/test_business_builder.py::test_business_suggestions_journey`,
+      `::test_business_positioning_map_journey`, 25 new captures — both 409s and the 403
+      exercised live, not just derived from source) + full existing suite re-run green (32 e2e, 824
+      unit) + smoke openapi surface
+- [x] SOP + FE integration guide (every body captured live, zero source-derived error rows) + this
+      checklist reconcile — `docs/sop/2026-09-08-business-builder-slice3.md`,
+      `docs/fe-integration-guide-business-builder-suggestions.md`
+- [ ] _Deferred:_ **AI Business Plan Generator (PRD §08.11)** — `POST
+      /business-builder/plan/generate`, `business_plans` entity, `business.plan.generated` event —
+      dependency-blocked on Module 03 (AI Co-Founder, for actual plan-section generation) and
+      Module 18 (Documents & Templates, for the generated plan's document store/viewer); this is
+      the ONLY Module 08 PRD sub-screen not yet shippable, and it cannot ship correctly until both
+      dependencies exist · reject-reason field on `POST .../reject` (no structured "why" today) ·
+      no server-computed suggestion diff summary beyond raw `current`/`payload` · no notification
+      wired to `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet)
+      — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 

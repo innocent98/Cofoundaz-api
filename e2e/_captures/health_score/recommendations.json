@@ -1,7 +1,7 @@
 {
   "data": [
     {
-      "id": "ac7b50d4-c764-431e-97c6-dd9ce7446f1f",
+      "id": "540c4189-a8ee-40af-a5c9-011461cca1b5",
       "dimension": "legal",
       "key": "legal.incorporate",
       "title": "Complete incorporation",
@@ -12,7 +12,7 @@
       "priority": 1
     },
     {
-      "id": "fdc535c1-1d9b-4a35-9d6b-f65ff1e3bfde",
+      "id": "6508b8ab-5b9f-418d-9d9b-dc19ddcb1739",
       "dimension": "legal",
       "key": "legal.founder_agreement",
       "title": "Sign a founders' agreement",
@@ -23,7 +23,7 @@
       "priority": 2
     },
     {
-      "id": "a70d5fbd-e664-4480-89cf-8d9ea7c45fad",
+      "id": "432a3b4a-1e20-41b2-812d-32bf8cc9c288",
       "dimension": "product",
       "key": "product.define_mvp",
       "title": "Define your MVP scope",
@@ -34,7 +34,7 @@
       "priority": 3
     },
     {
-      "id": "3647cb40-7df2-4f4c-b873-08fae657b9ac",
+      "id": "89e17d21-4d94-4af6-a313-c1d7144954fc",
       "dimension": "product",
       "key": "product.user_feedback_loop",
       "title": "Set up a user feedback loop",
@@ -45,7 +45,7 @@
       "priority": 4
     },
     {
-      "id": "07ca120f-caf6-4a00-9061-284dc9518466",
+      "id": "2c71aca4-893d-4ccc-8741-703180a55da3",
       "dimension": "market",
       "key": "market.icp_definition",
       "title": "Write a one-page ICP",
@@ -56,7 +56,7 @@
       "priority": 5
     },
     {
-      "id": "f01b8e76-c162-4769-bcb5-acf2e80f2565",
+      "id": "efd3758b-d544-4009-85ec-dbf0e1e3a262",
       "dimension": "money",
       "key": "money.runway_model",
       "title": "Build a 12-month runway model",
@@ -67,7 +67,7 @@
       "priority": 6
     },
     {
-      "id": "99b97910-f21e-4220-b3a1-1cdec1ec654f",
+      "id": "9655aa50-abf0-4165-b760-0f014c0574bb",
       "dimension": "market",
       "key": "market.competitor_map",
       "title": "Map your top 5 competitors",
@@ -78,7 +78,7 @@
       "priority": 7
     },
     {
-      "id": "072beb82-7efc-4cd1-97ad-8493ec524f20",
+      "id": "750b381b-7291-4fc4-a6a9-9237e7900905",
       "dimension": "team",
       "key": "team.roles_clarity",
       "title": "Clarify founder roles & equity",
@@ -89,7 +89,7 @@
       "priority": 8
     },
     {
-      "id": "13cb14aa-672f-413d-b930-442504c4d7d1",
+      "id": "658abf20-8235-4563-bd09-65b88f570156",
       "dimension": "money",
       "key": "money.pricing_experiment",
       "title": "Run a pricing experiment",

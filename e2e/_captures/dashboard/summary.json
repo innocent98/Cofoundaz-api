@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-08-31T16:56:32.465287+00:00",
+      "computed_at": "2026-09-08T14:03:15.405284+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -46,7 +46,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "bb0bf2d5-61f0-4ecb-b7dc-bbbd1fb697a3",
+          "id": "0809a31e-1d9a-4449-8537-7768904e1883",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -57,7 +57,7 @@
           "priority": 1
         },
         {
-          "id": "9c19ede4-64d8-49a9-993f-5cb779720dd4",
+          "id": "00aa0195-8085-4821-9a21-baddb610fbef",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
@@ -68,7 +68,7 @@
           "priority": 2
         },
         {
-          "id": "b8ac279f-0b65-451a-8699-4883cebbd4c8",
+          "id": "f2edad67-76e0-4b97-a0ce-b9947cc1142f",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -82,13 +82,13 @@
       "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
     },
     "mission": {
-      "mission_date": "2026-08-31",
+      "mission_date": "2026-09-08",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "721e79af-c219-4a3a-94d8-699e597929a3",
-          "roadmap_task_id": "8baf2855-ca05-4ff2-a4b0-a11174ef9752",
+          "id": "a1af67ed-dec6-4dcd-a657-8309f3a34ca6",
+          "roadmap_task_id": "8ae119b9-ea43-4a89-be12-300b4d6948a1",
           "title": "Run 10 customer interviews",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "medium",
@@ -98,8 +98,8 @@
           "reject_reason": null
         },
         {
-          "id": "30de2629-33d2-43b2-adc5-4b0cd8fda1da",
-          "roadmap_task_id": "67ff93d0-113f-4cfb-9063-1a4e44d9647b",
+          "id": "c4ebc5e9-aaf8-4ccf-a7a6-8cd4f425a78d",
+          "roadmap_task_id": "706ebfda-8b02-4210-a795-ac5f502ddab4",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -109,8 +109,8 @@
           "reject_reason": null
         },
         {
-          "id": "ed0d6ad0-6e5c-420d-94d0-d0397f404189",
-          "roadmap_task_id": "87ec7057-0b01-464f-b0f0-ae791edb7415",
+          "id": "08959ecb-f1a5-4b3a-bb8f-6119dd878164",
+          "roadmap_task_id": "de2b65c6-c5f2-4ec9-abd9-9366e8d9e7e5",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "axes": {
+      "x": {
+        "label": "Price",
+        "low": "Low",
+        "high": "High"
+      },
+      "y": {
+        "label": "Quality",
+        "low": "Low",
+        "high": "High"
+      }
+    },
+    "competitors": []
+  },
+  "meta": null
+}
