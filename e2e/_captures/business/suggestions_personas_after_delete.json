@@ -1,0 +1,44 @@
+{
+  "data": {
+    "records": [],
+    "fields": [
+      {
+        "key": "name",
+        "required": true,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "demographics",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "goals",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "frustrations",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "watering_holes",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "quote",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      }
+    ]
+  },
+  "meta": null
+}

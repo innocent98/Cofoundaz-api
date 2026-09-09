@@ -1,13 +1,13 @@
 {
   "data": {
-    "id": "2aef6d93-a13c-47cf-9d8b-106044556573",
-    "roadmap_task_id": "4114b8ca-7324-4525-a692-42c5f15baf22",
+    "id": "afec3285-c640-4fe9-87e7-ed8f78885ce8",
+    "roadmap_task_id": "99b20fa7-0cd4-4a8d-9a14-9f204e4ca46d",
     "title": "Draft 3 pricing options",
     "reason": "From your 'Pricing test' milestone.",
     "effort": "small",
     "status": "done",
     "order": 2,
-    "completed_at": "2026-08-27T11:34:08.303973+00:00",
+    "completed_at": "2026-09-08T14:03:23.891382+00:00",
     "reject_reason": null
   },
   "meta": null

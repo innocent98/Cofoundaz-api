@@ -2,82 +2,82 @@
   "data": {
     "nodes": [
       {
-        "task_id": "50a75484-1339-4f24-8022-cfed16842717",
+        "task_id": "363b950b-61c6-48f4-9564-9473e5fb97a0",
         "title": "Run 10 customer interviews",
-        "milestone_id": "9c1ca87a-ff30-4df5-804f-a30c01e3540f",
+        "milestone_id": "57e064f9-1bf6-4ec3-826a-edd5d97168a6",
         "milestone_title": "Validate demand",
-        "phase_id": "44b7624b-f32b-4968-b403-917c1c85f5ca",
+        "phase_id": "c0d83fc1-e07d-477c-8ecd-8411e51a7125",
         "phase_name": "Validation"
       },
       {
-        "task_id": "917cace1-7700-4bc6-a308-235a6c93ede7",
+        "task_id": "61ff77d9-ee61-488b-801d-e954920a6334",
         "title": "Synthesize problem hypotheses",
-        "milestone_id": "9c1ca87a-ff30-4df5-804f-a30c01e3540f",
+        "milestone_id": "57e064f9-1bf6-4ec3-826a-edd5d97168a6",
         "milestone_title": "Validate demand",
-        "phase_id": "44b7624b-f32b-4968-b403-917c1c85f5ca",
+        "phase_id": "c0d83fc1-e07d-477c-8ecd-8411e51a7125",
         "phase_name": "Validation"
       },
       {
-        "task_id": "2ad54c5c-0297-496e-bca9-a015e42b0a45",
+        "task_id": "3321f4a2-1f1f-47f4-9978-56fdf5c76a94",
         "title": "Draft 3 pricing options",
-        "milestone_id": "9989de79-c027-40f1-aa79-8ced478ee276",
+        "milestone_id": "cc0d6aaa-2bc7-49d1-a0a9-73cda489b57a",
         "milestone_title": "Pricing test",
-        "phase_id": "44b7624b-f32b-4968-b403-917c1c85f5ca",
+        "phase_id": "c0d83fc1-e07d-477c-8ecd-8411e51a7125",
         "phase_name": "Validation"
       },
       {
-        "task_id": "2f6253d1-cfa7-4197-b2b7-74751eaa23b8",
+        "task_id": "36f088da-3d7f-434e-b155-cee8c1706268",
         "title": "Run a willingness-to-pay test",
-        "milestone_id": "9989de79-c027-40f1-aa79-8ced478ee276",
+        "milestone_id": "cc0d6aaa-2bc7-49d1-a0a9-73cda489b57a",
         "milestone_title": "Pricing test",
-        "phase_id": "44b7624b-f32b-4968-b403-917c1c85f5ca",
+        "phase_id": "c0d83fc1-e07d-477c-8ecd-8411e51a7125",
         "phase_name": "Validation"
       },
       {
-        "task_id": "003b0731-91f2-44f5-9376-568bafd348cc",
+        "task_id": "6cdb1cfa-dde3-4922-a1b8-de2cda6ebe25",
         "title": "Define the core user journey",
-        "milestone_id": "d45b4b57-ef0f-469c-9ae4-e118b933ae23",
+        "milestone_id": "98eb6447-f1d2-4735-948c-caf8f92b5162",
         "milestone_title": "Core flow",
-        "phase_id": "ec3fa127-7320-475b-a36d-d25461da6329",
+        "phase_id": "439b7b76-07c4-475f-b09c-ddc7c1cb0946",
         "phase_name": "Build MVP"
       },
       {
-        "task_id": "3a3f9349-0101-418c-998c-9bc10da0afb4",
+        "task_id": "2a499bd7-f571-4a2c-923b-662a1171c04f",
         "title": "Build the happy path",
-        "milestone_id": "d45b4b57-ef0f-469c-9ae4-e118b933ae23",
+        "milestone_id": "98eb6447-f1d2-4735-948c-caf8f92b5162",
         "milestone_title": "Core flow",
-        "phase_id": "ec3fa127-7320-475b-a36d-d25461da6329",
+        "phase_id": "439b7b76-07c4-475f-b09c-ddc7c1cb0946",
         "phase_name": "Build MVP"
       },
       {
-        "task_id": "b17a0c5c-3ca1-4422-9c47-4dccf8f7bd3c",
+        "task_id": "ca2e7504-77df-4263-ad23-eaa7683fcd5e",
         "title": "Custom task",
-        "milestone_id": "e392022b-3339-40fb-972b-2aaaf38eb27e",
+        "milestone_id": "5a0be7a0-debf-499a-be47-7f9c690e9c32",
         "milestone_title": "Custom milestone",
-        "phase_id": "11cd0828-4c1a-4757-a7db-9ce2a227379d",
+        "phase_id": "f45acee0-f234-4a3e-a69a-3b380d7724e2",
         "phase_name": "Custom phase"
       },
       {
-        "task_id": "0f5ad5fb-6f78-4a97-93e5-4183ba518447",
+        "task_id": "cf317e34-2750-4d16-9990-1480e77813e4",
         "title": "Task A",
-        "milestone_id": "e392022b-3339-40fb-972b-2aaaf38eb27e",
+        "milestone_id": "5a0be7a0-debf-499a-be47-7f9c690e9c32",
         "milestone_title": "Custom milestone",
-        "phase_id": "11cd0828-4c1a-4757-a7db-9ce2a227379d",
+        "phase_id": "f45acee0-f234-4a3e-a69a-3b380d7724e2",
         "phase_name": "Custom phase"
       },
       {
-        "task_id": "df052b9c-f922-45c0-b9b6-7073f2dc938b",
+        "task_id": "f0337fd1-23d2-49f5-aaa2-d3c08a77a7f9",
         "title": "Task B",
-        "milestone_id": "e392022b-3339-40fb-972b-2aaaf38eb27e",
+        "milestone_id": "5a0be7a0-debf-499a-be47-7f9c690e9c32",
         "milestone_title": "Custom milestone",
-        "phase_id": "11cd0828-4c1a-4757-a7db-9ce2a227379d",
+        "phase_id": "f45acee0-f234-4a3e-a69a-3b380d7724e2",
         "phase_name": "Custom phase"
       }
     ],
     "edges": [
       {
-        "task_id": "0f5ad5fb-6f78-4a97-93e5-4183ba518447",
-        "depends_on_task_id": "df052b9c-f922-45c0-b9b6-7073f2dc938b"
+        "task_id": "cf317e34-2750-4d16-9990-1480e77813e4",
+        "depends_on_task_id": "f0337fd1-23d2-49f5-aaa2-d3c08a77a7f9"
       }
     ],
     "list": [

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "a2f84723-7941-49d5-ba9d-d5b468e7b5b6",
+    "kind": "competitor",
+    "data": {
+      "name": "BigCo Rival",
+      "map_x": 0.85,
+      "map_y": 0.15,
+      "price": "",
+      "strengths": [],
+      "weaknesses": [],
+      "positioning": "Enterprise incumbent",
+      "threat_level": "high"
+    },
+    "position": 0
+  },
+  "meta": null
+}

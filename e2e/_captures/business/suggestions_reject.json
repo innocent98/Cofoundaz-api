@@ -1,0 +1,48 @@
+{
+  "data": {
+    "id": "a5db1568-ade5-4bf8-afac-db46861cd8d6",
+    "op": "canvas_update",
+    "target": {
+      "canvas_type": "business_model"
+    },
+    "payload": {
+      "blocks": {
+        "key_activities": [
+          "Customer support"
+        ]
+      }
+    },
+    "base_version": 2,
+    "current": {
+      "blocks": {
+        "channels": [],
+        "key_partners": [
+          "Acme Corp",
+          "Umbrella Corp"
+        ],
+        "key_resources": [],
+        "cost_structure": [],
+        "key_activities": [],
+        "revenue_streams": [],
+        "customer_segments": [],
+        "value_propositions": [],
+        "customer_relationships": []
+      },
+      "version": 3
+    },
+    "note": "Add customer support as a key activity",
+    "status": "rejected",
+    "author": {
+      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "name": null,
+      "email": "consultant-ef3da62188e1@example.com"
+    },
+    "resolved_by": {
+      "id": "b3a9fb75-ce6e-468f-b081-ff420eec3eeb",
+      "name": "Ada Founder"
+    },
+    "resolved_at": "2026-09-08T14:03:13.849518+00:00",
+    "created_at": "2026-09-08T14:03:13.812876+00:00"
+  },
+  "meta": null
+}

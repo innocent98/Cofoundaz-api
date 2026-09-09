@@ -1,4 +1,4 @@
-"""Live Business Builder journey, both slices:
+"""Live Business Builder journey, all three slices:
 
 - Slice 1 (Canvas Core) -- a founder onboards, then walks the full canvas
   surface -- the empty overview grid, a lazy-created canvas at v1 with its
@@ -11,16 +11,28 @@
   record row, create a competitor and a pricing record (exercising the
   `threat_level`/`model_type` enum fields), and the same deferred ai-fill seam
   for a record kind.
+- Slice 3 (Suggestions + Positioning Map) -- a founder + a `business_consultant`
+  teammate in the SAME workspace: the consultant suggests all four ops
+  (canvas_update, record_create, record_update, record_delete), is forbidden
+  from approving their own suggestion, the founder lists/approves/rejects and
+  hits both 409s (`SUGGESTION_NOT_PENDING`, `CANVAS_VERSION_CONFLICT`); then
+  the founder walks the positioning-map endpoints, including the
+  coordinate-on-competitor trap (coords are edited via `PUT /competitors/{id}`,
+  not the map endpoint).
 
 Every response body along the way is captured to `e2e/_captures/business/
 *.json` -- those files are the verbatim source for
-`docs/fe-integration-guide-business-builder.md` (Task 6, both slices). They
+`docs/fe-integration-guide-business-builder.md` /
+`docs/fe-integration-guide-business-builder-suggestions.md` (Task 6). They
 must be REAL bodies from this live run, complete and untrimmed.
 
 Business Builder has no roadmap/assessment dependency, so onboarding here is
 just steps 1-4 + complete -- no roadmap generation or assessment walk needed
 (unlike e2e/test_dashboard.py / e2e/test_mission.py, which need the roadmap for
-their own surfaces).
+their own surfaces). Slice 3's consultant invite is the one exception: the
+invite must be sent while onboarding is still a draft (same constraint
+documented in e2e/test_roadmap.py::_onboard_steps), so that journey invites
+BEFORE calling `/onboarding/complete`.
 """
 
 import httpx
@@ -28,6 +40,26 @@ import httpx
 
 def _auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _wh(c: httpx.Client, auth: dict) -> dict:
+    """Build the X-Workspace-Id header from `/auth/me` (same pattern as
+    e2e/test_roadmap.py::_wh)."""
+    me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+    return {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+
+def _signup_verify_login(c: httpx.Client, mailbox, email: str, password: str) -> dict:
+    """Sign up + verify + log in a specific (email, password) -- used for the
+    invited business_consultant, who must sign up with the email the invite
+    was sent to (same helper as e2e/test_roadmap.py)."""
+    c.post("/api/v1/auth/signup", json={"email": email, "password": password})
+    token = mailbox.latest_token_for(email, subject_contains="Verify")
+    c.post("/api/v1/auth/verify", json={"token": token})
+    access = c.post("/api/v1/auth/login", json={"email": email, "password": password}).json()[
+        "data"
+    ]["access_token"]
+    return _auth_header(access)
 
 
 def _onboard_steps(c: httpx.Client, auth: dict, *, stage: str, name: str) -> None:
@@ -317,3 +349,405 @@ def test_business_builder_records_journey(base_url, make_verified_user, capture)
         assert record_ai_fill_job_data["type"] == "business.persona.ai_fill"
         assert record_ai_fill_job_data["status"] == "queued"
         capture("business", "record_ai_fill_job", record_ai_fill_job)
+
+
+def test_business_suggestions_journey(base_url, make_verified_user, mailbox, unique_email, capture):
+    """Slice 3 (Suggestions) -- a founder + a `business_consultant` teammate in
+    the SAME workspace. The consultant suggests all four ops; the founder is
+    the only one who can approve/reject (role in `_editor` = founder,
+    team_member -- `business_consultant` is NOT). Covers the full state
+    machine, both 409s, and the `current`-vs-`payload` diff contract (`current`
+    is null for record_create, non-null for canvas_update/record_update)."""
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Founder onboards through steps 1-4 (NOT /complete yet -- the
+        # consultant invite must be sent while onboarding is still a draft,
+        # same constraint as e2e/test_roadmap.py).
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Suggestions")
+
+        consultant_email = unique_email("consultant")
+        inv = c.post(
+            "/api/v1/onboarding/invites",
+            headers=auth,
+            json={"invites": [{"email": consultant_email, "role": "business_consultant"}]},
+        )
+        assert inv.status_code == 200, inv.text
+        assert set(inv.json()["data"]["created"]) == {consultant_email}
+        consultant_token = mailbox.latest_token_for(consultant_email, subject_contains="invited")
+
+        # Consultant signs up (email MUST match the invite) + verifies + accepts.
+        consultant_pw = "Consult-" + consultant_email.split("@")[0] + "-9"
+        consultant_auth = _signup_verify_login(c, mailbox, consultant_email, consultant_pw)
+        consultant_accept = c.post(
+            "/api/v1/invitations/accept", json={"token": consultant_token}, headers=consultant_auth
+        )
+        assert consultant_accept.status_code == 200, consultant_accept.text
+        assert consultant_accept.json()["data"]["role"] == "business_consultant"
+
+        # Founder completes onboarding now that the invite has landed.
+        done = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert done.status_code == 200, done.text
+
+        wh = _wh(c, auth)
+        consultant_wh = _wh(c, consultant_auth)
+
+        # 1. Founder GETs the business_model canvas -- lazy-creates it at v1
+        # (same lazy-create as the Slice 1 journey above).
+        canvas_get = c.get("/api/v1/business-builder/canvases/business_model", headers=wh)
+        assert canvas_get.status_code == 200, canvas_get.text
+        assert canvas_get.json()["data"]["version"] == 1
+        capture("business", "suggestions_canvas_get", canvas_get)
+
+        # 2. Consultant POSTs a canvas_update suggestion -- all business_model
+        # blocks are list-kind (only mission_vision is text), so the payload
+        # value MUST be a list, not a bare string.
+        suggestion_create = c.post(
+            "/api/v1/business-builder/suggestions",
+            headers=consultant_wh,
+            json={
+                "op": "canvas_update",
+                "target": {"canvas_type": "business_model"},
+                "payload": {"blocks": {"key_partners": ["Acme Corp"]}},
+                "note": "Add Acme as a key partner",
+            },
+        )
+        assert suggestion_create.status_code == 201, suggestion_create.text
+        suggestion_data = suggestion_create.json()["data"]
+        assert suggestion_data["op"] == "canvas_update"
+        assert suggestion_data["status"] == "pending"
+        assert suggestion_data["base_version"] == 1
+        # `current` is the canvas state AT SUGGESTION TIME -- not yet applied.
+        assert suggestion_data["current"] == {
+            "blocks": canvas_get.json()["data"]["blocks"],
+            "version": 1,
+        }
+        assert suggestion_data["author"]["email"] == consultant_email
+        suggestion_id = suggestion_data["id"]
+        capture("business", "suggestions_create_canvas_update", suggestion_create)
+
+        # 3. Consultant tries to approve their own suggestion -- 403. Role rule:
+        # any member can suggest, only an editor (founder/team_member) approves.
+        consultant_approve = c.post(
+            f"/api/v1/business-builder/suggestions/{suggestion_id}/approve", headers=consultant_wh
+        )
+        assert consultant_approve.status_code == 403, consultant_approve.text
+        assert consultant_approve.json()["error"]["code"] == "FORBIDDEN"
+        capture("business", "suggestions_approve_forbidden", consultant_approve)
+
+        # 4. Founder lists pending suggestions -- sees it.
+        list_pending = c.get(
+            "/api/v1/business-builder/suggestions", headers=wh, params={"status": "pending"}
+        )
+        assert list_pending.status_code == 200, list_pending.text
+        pending_ids = [s["id"] for s in list_pending.json()["data"]["suggestions"]]
+        assert suggestion_id in pending_ids
+        capture("business", "suggestions_list_pending", list_pending)
+
+        # 5. Founder approves -- applies canvas_update through the existing
+        # save_canvas() write path, bumping the canvas to v2.
+        approve = c.post(
+            f"/api/v1/business-builder/suggestions/{suggestion_id}/approve", headers=wh
+        )
+        assert approve.status_code == 200, approve.text
+        approve_data = approve.json()["data"]
+        assert approve_data["status"] == "approved"
+        assert approve_data["resolved_by"] is not None
+        assert (
+            approve_data["resolved_by"]["id"] != suggestion_data["author"]["id"]
+        )  # founder, not consultant
+        assert approve_data["resolved_at"] is not None
+        capture("business", "suggestions_approve_canvas_update", approve)
+
+        # 6. GET the canvas -- reflects the approved change: v2, key_partners
+        # filled (save_canvas() full-replaces against empty_blocks(), so every
+        # OTHER block resets to its empty value -- same full-replace contract
+        # as the Slice 1 canvas PUT).
+        canvas_after = c.get("/api/v1/business-builder/canvases/business_model", headers=wh)
+        assert canvas_after.status_code == 200, canvas_after.text
+        canvas_after_data = canvas_after.json()["data"]
+        assert canvas_after_data["version"] == 2
+        assert canvas_after_data["blocks"]["key_partners"] == ["Acme Corp"]
+        assert canvas_after_data["blocks"]["key_activities"] == []
+        capture("business", "suggestions_canvas_after_approve", canvas_after)
+
+        # 7. Approving the same suggestion again -- 409 SUGGESTION_NOT_PENDING.
+        # The state machine only allows approve/reject from `pending`.
+        approve_again = c.post(
+            f"/api/v1/business-builder/suggestions/{suggestion_id}/approve", headers=wh
+        )
+        assert approve_again.status_code == 409, approve_again.text
+        assert approve_again.json()["error"]["code"] == "SUGGESTION_NOT_PENDING"
+        capture("business", "suggestions_not_pending", approve_again)
+
+        # 8. Consultant creates a SECOND canvas_update suggestion, pinned to the
+        # canvas's current version (2) via base_version.
+        suggestion2 = c.post(
+            "/api/v1/business-builder/suggestions",
+            headers=consultant_wh,
+            json={
+                "op": "canvas_update",
+                "target": {"canvas_type": "business_model"},
+                "payload": {"blocks": {"key_activities": ["Customer support"]}},
+                "note": "Add customer support as a key activity",
+            },
+        )
+        assert suggestion2.status_code == 201, suggestion2.text
+        suggestion2_data = suggestion2.json()["data"]
+        assert suggestion2_data["base_version"] == 2
+        suggestion2_id = suggestion2_data["id"]
+
+        # 9. Founder directly PUTs the canvas (moving it to v3) BEFORE
+        # resolving suggestion 2 -- simulates a concurrent edit.
+        canvas_direct_put = c.put(
+            "/api/v1/business-builder/canvases/business_model",
+            headers=wh,
+            json={"blocks": {"key_partners": ["Acme Corp", "Umbrella Corp"]}, "version": 2},
+        )
+        assert canvas_direct_put.status_code == 200, canvas_direct_put.text
+        assert canvas_direct_put.json()["data"]["version"] == 3
+
+        # 10. Founder approves suggestion 2 -- 409 CANVAS_VERSION_CONFLICT: the
+        # canvas moved (v2 -> v3) since the suggestion was made. The suggestion
+        # stays pending (the apply-then-persist transaction rolls back).
+        approve_conflict = c.post(
+            f"/api/v1/business-builder/suggestions/{suggestion2_id}/approve", headers=wh
+        )
+        assert approve_conflict.status_code == 409, approve_conflict.text
+        assert approve_conflict.json()["error"]["code"] == "CANVAS_VERSION_CONFLICT"
+        capture("business", "suggestions_version_conflict", approve_conflict)
+
+        still_pending = c.get(
+            "/api/v1/business-builder/suggestions", headers=wh, params={"status": "pending"}
+        )
+        assert suggestion2_id in [s["id"] for s in still_pending.json()["data"]["suggestions"]]
+
+        # Founder rejects suggestion 2 instead -- clears it out of `pending`.
+        reject2 = c.post(
+            f"/api/v1/business-builder/suggestions/{suggestion2_id}/reject", headers=wh
+        )
+        assert reject2.status_code == 200, reject2.text
+        assert reject2.json()["data"]["status"] == "rejected"
+        capture("business", "suggestions_reject", reject2)
+
+        # 11. Consultant suggests a record_create (persona). `current` is null
+        # for record_create -- there is no prior state for a not-yet-created
+        # record.
+        suggest_record_create = c.post(
+            "/api/v1/business-builder/suggestions",
+            headers=consultant_wh,
+            json={
+                "op": "record_create",
+                "target": {"kind": "persona"},
+                "payload": {"data": {"name": "Suggested Persona"}},
+                "note": "Add a persona for our target user",
+            },
+        )
+        assert suggest_record_create.status_code == 201, suggest_record_create.text
+        suggest_record_create_data = suggest_record_create.json()["data"]
+        assert suggest_record_create_data["current"] is None
+        record_create_suggestion_id = suggest_record_create_data["id"]
+        capture("business", "suggestions_create_record_create", suggest_record_create)
+
+        # 12. Founder approves -- creates the persona record for real.
+        approve_record_create = c.post(
+            f"/api/v1/business-builder/suggestions/{record_create_suggestion_id}/approve",
+            headers=wh,
+        )
+        assert approve_record_create.status_code == 200, approve_record_create.text
+        capture("business", "suggestions_approve_record_create", approve_record_create)
+
+        personas_after_create = c.get("/api/v1/business-builder/personas", headers=wh)
+        assert personas_after_create.status_code == 200, personas_after_create.text
+        personas_records = personas_after_create.json()["data"]["records"]
+        assert [r["data"]["name"] for r in personas_records] == ["Suggested Persona"]
+        persona_id = personas_records[0]["id"]
+        capture("business", "suggestions_personas_after_create", personas_after_create)
+
+        # 13. Consultant suggests a record_update against that persona.
+        # `current` now reflects the EXISTING record data -- non-null, unlike
+        # record_create.
+        suggest_record_update = c.post(
+            "/api/v1/business-builder/suggestions",
+            headers=consultant_wh,
+            json={
+                "op": "record_update",
+                "target": {"kind": "persona", "record_id": persona_id},
+                "payload": {
+                    "data": {
+                        "name": "Suggested Persona (Updated)",
+                        "quote": "I just need this to work.",
+                    }
+                },
+                "note": "Flesh out the persona quote",
+            },
+        )
+        assert suggest_record_update.status_code == 201, suggest_record_update.text
+        suggest_record_update_data = suggest_record_update.json()["data"]
+        assert suggest_record_update_data["current"] == {"data": personas_records[0]["data"]}
+        record_update_suggestion_id = suggest_record_update_data["id"]
+        capture("business", "suggestions_create_record_update", suggest_record_update)
+
+        # 14. Founder approves -- applies the update.
+        approve_record_update = c.post(
+            f"/api/v1/business-builder/suggestions/{record_update_suggestion_id}/approve",
+            headers=wh,
+        )
+        assert approve_record_update.status_code == 200, approve_record_update.text
+        capture("business", "suggestions_approve_record_update", approve_record_update)
+
+        personas_after_update = c.get("/api/v1/business-builder/personas", headers=wh)
+        assert personas_after_update.json()["data"]["records"][0]["data"]["name"] == (
+            "Suggested Persona (Updated)"
+        )
+
+        # 15. Consultant suggests a record_delete for the same persona.
+        suggest_record_delete = c.post(
+            "/api/v1/business-builder/suggestions",
+            headers=consultant_wh,
+            json={
+                "op": "record_delete",
+                "target": {"kind": "persona", "record_id": persona_id},
+                "note": "This persona turned out to be a duplicate",
+            },
+        )
+        assert suggest_record_delete.status_code == 201, suggest_record_delete.text
+        suggest_record_delete_data = suggest_record_delete.json()["data"]
+        assert suggest_record_delete_data["payload"] is None
+        record_delete_suggestion_id = suggest_record_delete_data["id"]
+        capture("business", "suggestions_create_record_delete", suggest_record_delete)
+
+        # 16. Founder approves -- deletes the record for real.
+        approve_record_delete = c.post(
+            f"/api/v1/business-builder/suggestions/{record_delete_suggestion_id}/approve",
+            headers=wh,
+        )
+        assert approve_record_delete.status_code == 200, approve_record_delete.text
+        capture("business", "suggestions_approve_record_delete", approve_record_delete)
+
+        personas_after_delete = c.get("/api/v1/business-builder/personas", headers=wh)
+        assert personas_after_delete.json()["data"]["records"] == []
+        capture("business", "suggestions_personas_after_delete", personas_after_delete)
+
+
+def test_business_positioning_map_journey(base_url, make_verified_user, capture):
+    """Slice 3 (Positioning Map) -- defaults, editable axes, and the
+    coordinate-on-competitor trap: `map_x`/`map_y` live on the competitor
+    RECORD (`PUT /competitors/{id}`), NOT on the positioning-map endpoint --
+    `PUT /positioning-map` only ever touches `axes`."""
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Positioning")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+        wh = _wh(c, auth)
+
+        # 1. GET /positioning-map -- lazily creates the singleton axes row with
+        # the default Price/Quality axes; no competitors yet.
+        map_default = c.get("/api/v1/business-builder/positioning-map", headers=wh)
+        assert map_default.status_code == 200, map_default.text
+        map_default_data = map_default.json()["data"]
+        assert map_default_data["axes"] == {
+            "x": {"label": "Price", "low": "Low", "high": "High"},
+            "y": {"label": "Quality", "low": "Low", "high": "High"},
+        }
+        assert map_default_data["competitors"] == []
+        capture("business", "positioning_get_default", map_default)
+
+        # 2. PUT new axes.
+        put_axes = c.put(
+            "/api/v1/business-builder/positioning-map",
+            headers=wh,
+            json={
+                "axes": {
+                    "x": {"label": "Growth Rate", "low": "Slow", "high": "Fast"},
+                    "y": {"label": "Retention", "low": "Poor", "high": "Great"},
+                }
+            },
+        )
+        assert put_axes.status_code == 200, put_axes.text
+        assert put_axes.json()["data"]["axes"]["x"]["label"] == "Growth Rate"
+        capture("business", "positioning_put_axes", put_axes)
+
+        # 3. POST a competitor WITH map_x/map_y -- coords live on the record.
+        competitor_create = c.post(
+            "/api/v1/business-builder/competitors",
+            headers=wh,
+            json={
+                "data": {
+                    "name": "BigCo Rival",
+                    "positioning": "Enterprise incumbent",
+                    "threat_level": "high",
+                    "map_x": 0.7,
+                    "map_y": 0.3,
+                }
+            },
+        )
+        assert competitor_create.status_code == 201, competitor_create.text
+        competitor_id = competitor_create.json()["data"]["id"]
+        assert competitor_create.json()["data"]["data"]["map_x"] == 0.7
+        capture("business", "positioning_competitor_create", competitor_create)
+
+        # 4. GET /positioning-map -- the competitor now appears with coords.
+        map_with_competitor = c.get("/api/v1/business-builder/positioning-map", headers=wh)
+        assert map_with_competitor.status_code == 200, map_with_competitor.text
+        comp_row = map_with_competitor.json()["data"]["competitors"][0]
+        assert comp_row["id"] == competitor_id
+        assert comp_row["x"] == 0.7
+        assert comp_row["y"] == 0.3
+        assert comp_row["threat_level"] == "high"
+        capture("business", "positioning_get_with_competitor", map_with_competitor)
+
+        # 5. THE TRAP: PUT /positioning-map does NOT accept competitor coords --
+        # `PositioningMapSave` only has an `axes` field, so an extraneous
+        # `competitors` key is silently ignored by pydantic, not applied.
+        map_ignores_coords = c.put(
+            "/api/v1/business-builder/positioning-map",
+            headers=wh,
+            json={
+                "axes": {
+                    "x": {"label": "Growth Rate", "low": "Slow", "high": "Fast"},
+                    "y": {"label": "Retention", "low": "Poor", "high": "Great"},
+                },
+                "competitors": [{"id": competitor_id, "map_x": 0.99, "map_y": 0.99}],
+            },
+        )
+        assert map_ignores_coords.status_code == 200, map_ignores_coords.text
+        capture("business", "positioning_map_ignores_coords", map_ignores_coords)
+
+        map_unchanged = c.get("/api/v1/business-builder/positioning-map", headers=wh)
+        unchanged_comp = map_unchanged.json()["data"]["competitors"][0]
+        assert unchanged_comp["x"] == 0.7  # unchanged -- the PUT above was a no-op on coords
+        assert unchanged_comp["y"] == 0.3
+        capture("business", "positioning_map_unchanged_after_trap", map_unchanged)
+
+        # 6. THE FIX: coords are edited via PUT /competitors/{id} -- the
+        # existing record full-replace endpoint, same as any other record field.
+        competitor_coords_update = c.put(
+            f"/api/v1/business-builder/competitors/{competitor_id}",
+            headers=wh,
+            json={
+                "data": {
+                    "name": "BigCo Rival",
+                    "positioning": "Enterprise incumbent",
+                    "threat_level": "high",
+                    "map_x": 0.85,
+                    "map_y": 0.15,
+                }
+            },
+        )
+        assert competitor_coords_update.status_code == 200, competitor_coords_update.text
+        assert competitor_coords_update.json()["data"]["data"]["map_x"] == 0.85
+        capture("business", "positioning_competitor_coords_update", competitor_coords_update)
+
+        # 7. GET /positioning-map -- reflects the NEW coords, set through the
+        # competitor record, not through the map endpoint.
+        map_after_fix = c.get("/api/v1/business-builder/positioning-map", headers=wh)
+        assert map_after_fix.status_code == 200, map_after_fix.text
+        fixed_comp = map_after_fix.json()["data"]["competitors"][0]
+        assert fixed_comp["x"] == 0.85
+        assert fixed_comp["y"] == 0.15
+        capture("business", "positioning_get_after_coord_fix", map_after_fix)

@@ -1,0 +1,27 @@
+{
+  "data": {
+    "id": "0652405a-5983-46f8-8608-8760ceaf249c",
+    "op": "record_create",
+    "target": {
+      "kind": "persona"
+    },
+    "payload": {
+      "data": {
+        "name": "Suggested Persona"
+      }
+    },
+    "base_version": null,
+    "current": null,
+    "note": "Add a persona for our target user",
+    "status": "pending",
+    "author": {
+      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "name": null,
+      "email": "consultant-ef3da62188e1@example.com"
+    },
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-09-08T14:03:13.857587+00:00"
+  },
+  "meta": null
+}
