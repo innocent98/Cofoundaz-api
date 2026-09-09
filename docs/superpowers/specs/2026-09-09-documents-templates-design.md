@@ -187,7 +187,11 @@ workspace artifacts: **read = any member** (`require_workspace`); **write = edit
 - Template registry: catalog shape; `instantiate` produces one section per heading with ids +
   empty bodies; unknown key → 404.
 - RBAC matrix: member can read (list/get/templates); non-editor (mentor) → 403 on
-  create/update/delete; non-member → 404.
+  create/update/delete; non-member of the workspace → **403** (`require_workspace` raises
+  `Forbidden`, the codebase-wide convention). Note: a *cross-tenant resource* access — a
+  valid document id belonging to another startup — returns uniform **404** (scoped by
+  `membership.startup_id`); the 403 is the workspace-membership gate, the 404 is the
+  resource-scoping gate.
 - `document.created` event fires once on create.
 - Seam: `create_document(..., ai_generated=True, kind=business_plan)` persists correctly (the
   shape Module 08 will use).
