@@ -177,3 +177,17 @@ class JournalMood(enum.StrEnum):
     okay = "okay"
     good = "good"
     great = "great"
+
+
+class DocumentKind(enum.StrEnum):
+    business_plan = "business_plan"
+    pitch_deck = "pitch_deck"
+    financial_model = "financial_model"
+    meeting_notes = "meeting_notes"
+    one_pager = "one_pager"
+    custom = "custom"
+
+
+class DocumentStatus(enum.StrEnum):
+    draft = "draft"
+    final = "final"
