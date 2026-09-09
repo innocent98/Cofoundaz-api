@@ -169,3 +169,11 @@ class SuggestionStatus(enum.StrEnum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+
+
+class JournalMood(enum.StrEnum):
+    rough = "rough"
+    meh = "meh"
+    okay = "okay"
+    good = "good"
+    great = "great"

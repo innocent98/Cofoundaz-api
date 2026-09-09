@@ -1,7 +1,7 @@
 """business_positioning_maps
 
-Revision ID: 0014_business_positioning_maps
-Revises: 0013_business_suggestions
+Revision ID: 0015_business_positioning_maps
+Revises: 0014_business_suggestions
 Create Date: 2026-09-08
 
 Module 08 (Business Builder) schema (Slice 3 Task 1:
@@ -24,9 +24,10 @@ table — no lock on any existing table:
     and emitted both here) to match the FK-index convention used
     throughout this codebase.
 
-This revision chains directly off 0013_business_suggestions (this same
-Slice 3 Task 1 unit), which chains off 0012_business_records, the alembic
-head at spec time.
+This revision chains directly off 0014_business_suggestions (this same
+Slice 3 Task 1 unit), which chains off 0013_journal (journal PR #37 merged
+first and claimed the 0013_ slot off 0012_business_records; the Slice 3
+migrations were re-chained linearly behind it when develop was merged in).
 
 business_positioning_maps is brand new — this migration takes no lock on
 any existing table (it adds an FK to the existing startups table, but
@@ -46,7 +47,7 @@ tables this run — only the revision id, down_revision, Create Date,
 formatting, and this docstring were hand-edited; the upgrade()/downgrade()
 bodies are exactly as generated (split out of a single autogenerate run
 that also detected business_suggestions, which was moved verbatim into the
-preceding revision, 0013_business_suggestions, so each revision creates
+preceding revision, 0014_business_suggestions, so each revision creates
 exactly one table).
 
 downgrade() drops the table and is lossy: any positioning-map data written
@@ -60,8 +61,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0014_business_positioning_maps"
-down_revision = "0013_business_suggestions"
+revision = "0015_business_positioning_maps"
+down_revision = "0014_business_suggestions"
 branch_labels = None
 depends_on = None
 

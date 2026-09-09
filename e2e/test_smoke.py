@@ -86,6 +86,11 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/business-builder/{kind}",
         "/api/v1/business-builder/{kind}/ai-fill",
         "/api/v1/business-builder/{kind}/{record_id}",
+        # journal ("Founder Journal") surface
+        "/api/v1/journal/entries",
+        "/api/v1/journal/entries/{entry_id}",
+        "/api/v1/journal/mood",
+        "/api/v1/journal/prompts/today",
     ]:
         assert p in paths, f"missing route {p}"
 

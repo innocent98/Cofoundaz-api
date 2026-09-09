@@ -1,7 +1,7 @@
 """business_suggestions
 
-Revision ID: 0013_business_suggestions
-Revises: 0012_business_records
+Revision ID: 0014_business_suggestions
+Revises: 0013_journal
 Create Date: 2026-09-08
 
 Module 08 (Business Builder) schema (Slice 3 Task 1:
@@ -41,10 +41,12 @@ other StrEnum column in this codebase (see business_records.kind in
 VARCHAR(20) with a CHECK-free application-level enum. downgrade() therefore
 only needs to drop indexes and the table; there is no enum type to drop.
 
-This revision chains directly off 0012_business_records, the current
-alembic head (confirmed via `poetry run alembic heads` at spec time — the
-journal PR #37 introducing `0013_journal` had not merged, so this branch
-does not need to rebase and claims the `0013_` slot).
+This revision chains off 0013_journal. Journal PR #37 merged into develop
+first (claiming the `0013_` slot off 0012_business_records), so when develop
+was merged into this Slice 3 branch the two migrations were re-chained
+linearly — this one now follows 0013_journal as 0014_, keeping a single
+alembic head (0012_business_records → 0013_journal → 0014_business_suggestions
+→ 0015_business_positioning_maps).
 
 business_suggestions is brand new — this migration takes no lock on any
 existing table (it adds FKs to the existing startups/users tables, but
@@ -78,8 +80,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0013_business_suggestions"
-down_revision = "0012_business_records"
+revision = "0014_business_suggestions"
+down_revision = "0013_journal"
 branch_labels = None
 depends_on = None
 
