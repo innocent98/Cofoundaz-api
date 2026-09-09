@@ -120,6 +120,11 @@ class CanvasVersionConflict(AppError):  # noqa: N818
     message = "This canvas was changed elsewhere. Refresh and try again."
 
 
+class DocumentVersionConflict(AppError):  # noqa: N818
+    code, http_status = "DOCUMENT_VERSION_CONFLICT", 409
+    message = "This document was changed elsewhere. Reload and reapply your edits."
+
+
 class SuggestionNotPending(AppError):  # noqa: N818
     code, http_status = "SUGGESTION_NOT_PENDING", 409
     message = "This suggestion has already been resolved."
