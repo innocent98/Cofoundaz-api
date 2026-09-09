@@ -1,0 +1,20 @@
+{
+  "data": {
+    "key": "business_plan",
+    "name": "Business Plan",
+    "description": "A full business plan.",
+    "kind": "business_plan",
+    "sections": [
+      "Executive Summary",
+      "Problem",
+      "Solution",
+      "Market & Customer",
+      "Business Model",
+      "Go-to-Market",
+      "Team",
+      "Financials",
+      "The Ask"
+    ]
+  },
+  "meta": null
+}
