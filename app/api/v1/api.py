@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     assessments,
     business,
     dashboard,
+    documents,
     health,
     health_score,
     invitations,
@@ -29,3 +30,4 @@ api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(business.router, prefix="/business-builder", tags=["business-builder"])
 api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
+api_router.include_router(documents.router, tags=["documents"])

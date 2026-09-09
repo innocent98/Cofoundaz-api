@@ -16,33 +16,43 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-08 · `feat/business-builder-suggestions` (Module 08 Slice 3 —
-suggestion workflow: `business_consultant`-style non-editor propose/founder-approve for
-canvas_update/record_create/record_update/record_delete, plus the competitor positioning map
-— editable 2×2 axes + `map_x`/`map_y` on the existing competitor record) shipped on branch, on
-top of Slice 2 (typed artifacts, `feat/business-builder-records`, merged into `develop` via PR
-#46) and Slice 1 (canvas core, `feat/business-builder-canvas`, merged into `develop` via PR #39).
-`develop` = staging, `main` = production; feature PRs target `develop`._
+_Last reconciled: 2026-09-09 · `feat/documents-templates` (Module 18 Slice 1 — Document Library
+Core: a `documents` table (title + ordered JSONB `sections` + `kind`/`status`/`ai_generated`/
+`folder`/`version`) + an in-code template registry (Business Plan/Pitch Deck/Financial Model/
+Meeting Notes/One-Pager) + 7 endpoints under `/documents` + `/document-templates`) shipped on
+branch, off `develop` post-PR #47 (Business Builder Slice 3, now merged — corrected below; the
+prior entry here said "shipped on branch, not yet merged", which was stale by the time this
+branch forked from `develop`). `develop` = staging, `main` = production; feature PRs target
+`develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder Slices 1–2) + 1 shipped on branch, not yet merged (08 Business Builder Slice 3) · 18 not started (03·09–26, minus 08 which is complete except its AI Business Plan Generator sub-screen — see Module 08 below).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 shipped on branch, not yet merged (18 Documents & Templates Slice 1) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which now has its Slice 1 — see Module 08 and Module 18 below).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–2 — merged to `develop` (PR #39, PR #46) |
-| 🟢 Shipped on branch, not yet merged | 1 module | Business Builder (08) Slice 3 — `feat/business-builder-suggestions` (→ `develop`) |
+| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–3 — merged to `develop` (PR #39, PR #46, PR #47) |
+| 🟢 Shipped on branch, not yet merged | 1 module | Documents & Templates (18) Slice 1 — `feat/documents-templates` (→ `develop`) |
 | 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–26 |
+| ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–17 · 19–26 |
 
-**Health at a glance:** ~82 endpoints · **824 unit tests** (real Postgres) + **32 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** **99 endpoints** (directly counted from `app.routes`, superseding the prior
+estimate) · **961 unit tests** (real Postgres) + **34 live E2E** · **98% coverage** (floor 95) ·
+black 26.5.1 / isort 6.1.0 / ruff 0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7
+**9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint /
+actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero
+AI-attribution trailers.
 
 _Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
-carried forward unchanged from the last full lint/security sweep — not re-run in this Slice 3
-reconcile pass; only the test counts and endpoint count were verified this pass (endpoint count is
-an estimate — +6 for Slice 3's suggestion/positioning-map routes over the prior ~76 tally)._
+carried forward unchanged from the last full lint/security sweep — not re-run in this Documents
+Slice 1 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
+re-verified this pass. This pass also does not reconcile Module 21 (Founder Journal) into the
+Snapshot tally/table above — its own PR (#37) has merged per `git log` but its checklist entry
+under Upcoming was not updated in this pass, since that reconciliation belongs to its own
+shipment and is out of scope for this Module 18 task; flagged here rather than silently left
+inconsistent._
 
 ---
 
@@ -241,9 +251,8 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
-## 🟢 Module 08 — Business Builder — *Slices 1–2 merged to `develop` (PR #39, PR #46) ·
-Slice 3 shipped on branch `feat/business-builder-suggestions`, not yet merged — complete except
-the AI Business Plan Generator (§08.11), dependency-blocked on Modules 03 + 18*
+## ✅ Module 08 — Business Builder — *all 3 slices merged to `develop` (PR #39, PR #46, PR #47) —
+complete except the AI Business Plan Generator (§08.11), dependency-blocked on Modules 03 + 18*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
 `swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
@@ -342,7 +351,7 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       unknown id, not a real second tenant's record; same gap for `DELETE`) · JSONB doesn't
       preserve `data` key order (documented in the FE guide, not a bug) — see SOP Follow-ups
 
-**Slice 3 — Suggestions + Positioning Map** — *🟢 shipped on branch, not yet merged (Tasks 1–6)*
+**Slice 3 — Suggestions + Positioning Map** — *✅ merged to `develop` (PR #47, Tasks 1–6)*
 - [x] Scope + locked decisions (suggestions apply through the EXISTING Slice 1/2 write functions,
       not a parallel apply path · `base_version` pinned at create time vs. `current` recomputed
       live at every read — two different mechanisms, not the same snapshot · positioning
@@ -383,13 +392,71 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       `docs/fe-integration-guide-business-builder-suggestions.md`
 - [ ] _Deferred:_ **AI Business Plan Generator (PRD §08.11)** — `POST
       /business-builder/plan/generate`, `business_plans` entity, `business.plan.generated` event —
-      dependency-blocked on Module 03 (AI Co-Founder, for actual plan-section generation) and
-      Module 18 (Documents & Templates, for the generated plan's document store/viewer); this is
-      the ONLY Module 08 PRD sub-screen not yet shippable, and it cannot ship correctly until both
-      dependencies exist · reject-reason field on `POST .../reject` (no structured "why" today) ·
-      no server-computed suggestion diff summary beyond raw `current`/`payload` · no notification
-      wired to `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet)
-      — see SOP Follow-ups
+      dependency-blocked on Module 03 (AI Co-Founder, for actual plan-section generation); the
+      document-store half of the dependency landed on `feat/documents-templates` (Module 18 Slice
+      1 — see below), which exposes the `create_document(..., ai_generated=True,
+      kind=business_plan)` seam this generator will call, but `business_plans.document_id` is not
+      wired up and the generator itself is not built — this is the ONLY Module 08 PRD sub-screen
+      not yet shippable, and it cannot ship correctly until Module 03 exists · reject-reason field
+      on `POST .../reject` (no structured "why" today) · no server-computed suggestion diff
+      summary beyond raw `current`/`payload` · no notification wired to
+      `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet) — see SOP
+      Follow-ups
+
+## 🟢 Module 18 — Documents & Templates — *Slice 1 (Library Core) shipped on branch
+`feat/documents-templates`, not yet merged · Slices 2–4 planned, not started*
+
+_Module 18 has no detailed textual PRD entry — scope recovered from the UI comp
+(`Documents & Templates.dc.html`), decomposing into four slices: Library Core (this slice, a
+document store + in-code template registry), Upload & Files (Cloudinary), Sharing, and
+E-signature. Slice 1 is also the seam Module 08's deferred AI Business Plan Generator (§08.11)
+needs — see that module's entry above. SOP: `docs/sop/2026-09-09-documents-templates-slice1.md`._
+
+**Slice 1 — Document Library Core** — *🟢 shipped on branch, not yet merged (Tasks 1–5)*
+- [x] Scope + locked decisions (generic `documents` table + JSONB `sections` array, canvas
+      pattern, not a normalized child table · optimistic-concurrency `version` counter, full-
+      replace `PUT`, same as Business Builder · in-code `DOCUMENT_TEMPLATES` registry, not a DB
+      table, same as `CANVAS_BLOCKS` · `folder` is a freeform string column, not a `folders`
+      table · no export/uploads/sharing/e-sign in this slice) —
+      `.superpowers/sdd/2026-09-09-documents-templates-slice1/`
+- [x] `DocumentKind`/`DocumentStatus` enums + `Document` model + migration `0016_documents`
+      (chains off `0015_business_positioning_maps`, sole alembic head) + standalone
+      `startup_id`/`created_by_id` indexes + composite `(startup_id, kind)` index
+- [x] `DOCUMENT_TEMPLATES` registry (`app/services/documents/template_defs.py`) — 5 templates
+      (Business Plan/Pitch Deck/Financial Model/Meeting Notes/One-Pager), `instantiate()` (assigns
+      section ids, empty bodies), `catalog()`/`template_view()`
+- [x] Document service (`app/services/documents/service.py`) — `validate_sections` (shape check +
+      id assignment, 422 on bad shape) · `create_document` (the Module 08 AI-generator seam,
+      publishes `document.created`) · `list_documents` (kind/folder/status filters) ·
+      `get_document` (tenant-scoped 404) · `update_document` (version check → 409
+      `DOCUMENT_VERSION_CONFLICT`, else full-replace + version bump) · `delete_document` ·
+      `serialize_summary`/`serialize_document` (the summary-vs-full split)
+- [x] `GET /document-templates` · `GET /document-templates/{key}` (member; unknown key → 404) ·
+      `GET /documents?kind=&folder=&status=` (member; **summaries only, no `sections`**; unknown
+      filter value → 404)
+- [x] `POST /documents` (editor; 201; `template_key` seeds `kind`/`title`/`sections`, else
+      explicit/blank) · `GET /documents/{id}` (member; full document **with `sections`**) · `PUT
+      /documents/{id}` (editor; full-replace; stale `version` → 409
+      `DOCUMENT_VERSION_CONFLICT`) · `DELETE /documents/{id}` (editor; `{deleted: true}`)
+- [x] Access: reads = any active member · writes = founder/team_member (mentor → 403
+      `FORBIDDEN`) — same `require_workspace`/`_editor` split as Business Builder
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_journey`, 9 captures: templates
+      catalog + detail → create-from-template → get → full-replace edit (version bump) → stale-
+      version 409 → folder-filtered list (summary shape confirmed) → delete → 404) + full existing
+      suite re-run green (34 e2e, 961 unit) + smoke openapi surface
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 403 write-
+      role row, cited from a passing unit test) + this checklist reconcile —
+      `docs/sop/2026-09-09-documents-templates-slice1.md`,
+      `docs/fe-integration-guide-documents-templates.md`
+- [ ] _Deferred:_ **Slice 2 — Upload & Files (Cloudinary)** — opaque binary file upload via
+      Cloudinary as a URL-returning `Storage` implementation · **Slice 3 — Sharing** — share
+      links + expiry + access levels + email delivery (needs Module 20/email) · **Slice 4 —
+      E-signature** — signature-request workflow (needs a real e-sign provider) · no server-side
+      PDF/DOCX export (FE renders/prints `sections`; real export awaits Slice 2's storage
+      backend) · no per-section endpoints (always full-replace `PUT`) · no `folders` table/folder
+      management UI · no user-authored templates (registry is read-only, in-code) ·
+      `business_plans.document_id` FK not wired — blocked on Module 03's AI Co-Founder landing
+      first (see Module 08 above) — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
