@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That file type isn't allowed. Upload a PDF, Office doc, image, text, or CSV.",
+    "field_errors": []
+  }
+}

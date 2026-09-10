@@ -16,38 +16,38 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-09 · `feat/documents-templates` (Module 18 Slice 1 — Document Library
-Core: a `documents` table (title + ordered JSONB `sections` + `kind`/`status`/`ai_generated`/
-`folder`/`version`) + an in-code template registry (Business Plan/Pitch Deck/Financial Model/
-Meeting Notes/One-Pager) + 7 endpoints under `/documents` + `/document-templates`) shipped on
-branch, off `develop` post-PR #47 (Business Builder Slice 3, now merged — corrected below; the
-prior entry here said "shipped on branch, not yet merged", which was stale by the time this
-branch forked from `develop`). `develop` = staging, `main` = production; feature PRs target
-`develop`._
+_Last reconciled: 2026-09-10 · `feat/documents-files` (Module 18 Slice 2 — Upload & Files: a
+`document_files` table (`filename`/`content_type`/`size_bytes`/`folder`/`storage_key`/`url`) + a
+`Storage` protocol extended with `delete` + a Cloudinary-backed implementation (`resource_type=
+"raw"`) + 4 endpoints under `/documents/files`) shipped on branch, off `develop` post-PR #48
+(Documents & Templates Slice 1, now merged). `develop` = staging, `main` = production; feature PRs
+target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 shipped on branch, not yet merged (18 Documents & Templates Slice 1) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which now has its Slice 1 — see Module 08 and Module 18 below).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 partially merged, further work on branch (18 Documents & Templates: Slice 1 merged, Slice 2 shipped on branch) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which now has Slices 1–2 — see Module 08 and Module 18 below).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–3 — merged to `develop` (PR #39, PR #46, PR #47) |
-| 🟢 Shipped on branch, not yet merged | 1 module | Documents & Templates (18) Slice 1 — `feat/documents-templates` (→ `develop`) |
+| 🟢 Shipped on branch, not yet merged | 1 module (partial) | Documents & Templates (18) Slice 2 (Upload & Files) — `feat/documents-files` (→ `develop`); Slice 1 (Library Core) already merged to `develop` (PR #48) |
 | 🟡 In progress | 0 | — |
 | ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–17 · 19–26 |
 
-**Health at a glance:** **99 endpoints** (directly counted from `app.routes`, superseding the prior
-estimate) · **961 unit tests** (real Postgres) + **34 live E2E** · **98% coverage** (floor 95) ·
-black 26.5.1 / isort 6.1.0 / ruff 0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7
-**9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint /
-actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero
-AI-attribution trailers.
+**Health at a glance:** **102 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 83 paths, 102 operations; supersedes the prior
+`app.routes`-based count of 99, which used a different counting method) · **978 unit tests** (real
+Postgres) + **35 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 /
+ruff 0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7 **9.94/10** · radon
+average complexity **A (2.36)**, every module
+MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean
+(1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
 carried forward unchanged from the last full lint/security sweep — not re-run in this Documents
-Slice 1 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
+Slice 2 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
 re-verified this pass. This pass also does not reconcile Module 21 (Founder Journal) into the
 Snapshot tally/table above — its own PR (#37) has merged per `git log` but its checklist entry
 under Upcoming was not updated in this pass, since that reconciliation belongs to its own
@@ -403,16 +403,18 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet) — see SOP
       Follow-ups
 
-## 🟢 Module 18 — Documents & Templates — *Slice 1 (Library Core) shipped on branch
-`feat/documents-templates`, not yet merged · Slices 2–4 planned, not started*
+## 🟢 Module 18 — Documents & Templates — *Slice 1 (Library Core) merged to `develop` (PR #48) ·
+Slice 2 (Upload & Files) shipped on branch `feat/documents-files`, not yet merged · Slices 3–4
+planned, not started*
 
 _Module 18 has no detailed textual PRD entry — scope recovered from the UI comp
-(`Documents & Templates.dc.html`), decomposing into four slices: Library Core (this slice, a
-document store + in-code template registry), Upload & Files (Cloudinary), Sharing, and
-E-signature. Slice 1 is also the seam Module 08's deferred AI Business Plan Generator (§08.11)
-needs — see that module's entry above. SOP: `docs/sop/2026-09-09-documents-templates-slice1.md`._
+(`Documents & Templates.dc.html`), decomposing into four slices: Library Core (a document store +
+in-code template registry), Upload & Files (this slice, Cloudinary-backed binary storage), Sharing,
+and E-signature. Slice 1 is also the seam Module 08's deferred AI Business Plan Generator (§08.11)
+needs — see that module's entry above. SOPs: `docs/sop/2026-09-09-documents-templates-slice1.md`,
+`docs/sop/2026-09-10-documents-files-slice2.md`._
 
-**Slice 1 — Document Library Core** — *🟢 shipped on branch, not yet merged (Tasks 1–5)*
+**Slice 1 — Document Library Core** — *✅ merged to `develop` (PR #48, Tasks 1–5)*
 - [x] Scope + locked decisions (generic `documents` table + JSONB `sections` array, canvas
       pattern, not a normalized child table · optimistic-concurrency `version` counter, full-
       replace `PUT`, same as Business Builder · in-code `DOCUMENT_TEMPLATES` registry, not a DB
@@ -448,15 +450,56 @@ needs — see that module's entry above. SOP: `docs/sop/2026-09-09-documents-tem
       role row, cited from a passing unit test) + this checklist reconcile —
       `docs/sop/2026-09-09-documents-templates-slice1.md`,
       `docs/fe-integration-guide-documents-templates.md`
-- [ ] _Deferred:_ **Slice 2 — Upload & Files (Cloudinary)** — opaque binary file upload via
-      Cloudinary as a URL-returning `Storage` implementation · **Slice 3 — Sharing** — share
-      links + expiry + access levels + email delivery (needs Module 20/email) · **Slice 4 —
-      E-signature** — signature-request workflow (needs a real e-sign provider) · no server-side
-      PDF/DOCX export (FE renders/prints `sections`; real export awaits Slice 2's storage
-      backend) · no per-section endpoints (always full-replace `PUT`) · no `folders` table/folder
-      management UI · no user-authored templates (registry is read-only, in-code) ·
+- [x] Slice 2 (Upload & Files) landed — Cloudinary-backed storage is now available; see below.
+- [ ] _Deferred:_ **Slice 3 — Sharing** — share links + expiry + access levels + email delivery
+      (needs Module 20/email) · **Slice 4 — E-signature** — signature-request workflow (needs a
+      real e-sign provider) · no per-section endpoints (always full-replace `PUT`) · no `folders`
+      table/folder management UI · no user-authored templates (registry is read-only, in-code) ·
       `business_plans.document_id` FK not wired — blocked on Module 03's AI Co-Founder landing
       first (see Module 08 above) — see SOP Follow-ups
+
+**Slice 2 — Upload & Files** — *🟢 shipped on branch `feat/documents-files`, not yet merged
+(Tasks 1–5)*
+- [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
+      `documents` · `Storage` protocol extended with `delete` · Cloudinary behind that protocol,
+      `resource_type="raw"` for deterministic delete · allowlist-by-content-type + 15 MB cap,
+      enforced server-side against actual streamed bytes, not a trusted `Content-Length` · no
+      attachments-to-document FK in this slice) —
+      `.superpowers/sdd/2026-09-10-documents-files-slice2/`
+- [x] `Storage.delete` added to the protocol · `CloudinaryStorage` (`save`/`delete`, both
+      `resource_type="raw"`) alongside the existing `LocalStorage` · `get_storage()` switches on
+      `settings.STORAGE_BACKEND` (`app/platform/storage.py`)
+- [x] `DocumentFile` model + migration `0017_document_files` (chains off `0016_documents`, sole
+      alembic head) + standalone `startup_id`/`uploaded_by_id` indexes + composite
+      `(startup_id, folder)` index
+- [x] File service (`app/services/documents/files.py`) — `EXT_BY_CONTENT_TYPE` allowlist ·
+      `upload_file` (storage key + save + row + `document.file.uploaded` event) · `list_files`
+      (folder filter, newest-first) · `get_file` (tenant-scoped 404) · `delete_file` (storage
+      delete + row delete + `document.file.deleted` event) · `serialize_file` (one shape, no
+      summary/full split)
+- [x] `POST /documents/files` (editor; `multipart/form-data`, field `file` + form field `folder`;
+      201; allowlist/15 MB-cap violations → 422 `VALIDATION_ERROR`) · `GET /documents/files?folder=`
+      (member; summaries) · `GET /documents/files/{id}` (member) · `DELETE /documents/files/{id}`
+      (editor; `{deleted: true}`) — registered ahead of `/documents/{document_id}` so the literal
+      `files` segment isn't shadowed (regression-tested)
+- [x] Access: reads = any active member · writes = founder/team_member (mentor → 403 `FORBIDDEN`)
+      — same `require_workspace`/`_editor` split as Slice 1
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_files_journey`, 6 captures: upload
+      (multipart PDF + folder) → folder-filtered list → get → disallowed-type 422 → delete → 404)
+      + full existing suite re-run green (35 e2e, 978 unit) — both upload and delete confirmed to
+      persist (`db.commit()` verified via a follow-up `GET` after each write)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 403 write-
+      role row and the 15 MB-cap row, both cited from passing unit tests) + this checklist
+      reconcile — `docs/sop/2026-09-10-documents-files-slice2.md`,
+      `docs/fe-integration-guide-documents-files.md`
+- [ ] _Deferred:_ **DEPLOY FOLLOW-UP — set `STORAGE_BACKEND=cloudinary` +
+      `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET` in
+      `.env.staging.enc`/`.env.production.enc` before this slice reaches either environment** —
+      without it, uploads silently fall back to `LocalStorage` (ephemeral, not shared across
+      replicas) with no startup-time warning · attachments-to-document FK (no `document_id` link
+      from a file to a specific document yet) · no content/malware scanning · no file versioning
+      (re-upload creates a new row, not an in-place update) · no per-file access level beyond the
+      tenant's member/editor split (that's Slice 3) — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
