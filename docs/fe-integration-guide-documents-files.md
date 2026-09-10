@@ -76,13 +76,13 @@ Legal
 ```json
 {
   "data": {
-    "id": "5a374460-f534-4f32-b2e7-b5321c2e3d5b",
+    "id": "afcd17ef-3203-404c-8593-2e305af6f715",
     "filename": "nda.pdf",
     "content_type": "application/pdf",
     "size_bytes": 46,
     "folder": "Legal",
-    "url": "var/storage/documents/ae7da826-1b2d-4075-a9d8-d780429f2881/18c4817e58b34bfdb2f5219442a7490d.pdf",
-    "uploaded_at": "2026-09-10T16:10:16.704974+00:00"
+    "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+    "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
   },
   "meta": null
 }
@@ -130,13 +130,13 @@ Any active member. Optional `folder` query param — exact string match (same co
   "data": {
     "files": [
       {
-        "id": "5a374460-f534-4f32-b2e7-b5321c2e3d5b",
+        "id": "afcd17ef-3203-404c-8593-2e305af6f715",
         "filename": "nda.pdf",
         "content_type": "application/pdf",
         "size_bytes": 46,
         "folder": "Legal",
-        "url": "var/storage/documents/ae7da826-1b2d-4075-a9d8-d780429f2881/18c4817e58b34bfdb2f5219442a7490d.pdf",
-        "uploaded_at": "2026-09-10T16:10:16.704974+00:00"
+        "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+        "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
       }
     ]
   },
@@ -161,13 +161,13 @@ response in §1, since nothing had changed:
 ```json
 {
   "data": {
-    "id": "5a374460-f534-4f32-b2e7-b5321c2e3d5b",
+    "id": "afcd17ef-3203-404c-8593-2e305af6f715",
     "filename": "nda.pdf",
     "content_type": "application/pdf",
     "size_bytes": 46,
     "folder": "Legal",
-    "url": "var/storage/documents/ae7da826-1b2d-4075-a9d8-d780429f2881/18c4817e58b34bfdb2f5219442a7490d.pdf",
-    "uploaded_at": "2026-09-10T16:10:16.704974+00:00"
+    "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+    "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
   },
   "meta": null
 }
