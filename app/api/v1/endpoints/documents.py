@@ -1,12 +1,12 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.enums import DocumentKind, DocumentStatus, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -14,6 +14,14 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.schemas.document import DocumentCreate, DocumentSave
+from app.services.documents.files import (
+    EXT_BY_CONTENT_TYPE,
+    delete_file,
+    get_file,
+    list_files,
+    serialize_file,
+    upload_file,
+)
 from app.services.documents.service import (
     create_document,
     delete_document,
@@ -28,6 +36,8 @@ from app.services.documents.template_defs import catalog, instantiate, template_
 
 router = APIRouter()
 _editor = require_role(MembershipRole.founder, MembershipRole.team_member)
+_MAX_FILE_BYTES = 15 * 1024 * 1024
+_CHUNK_BYTES = 64 * 1024
 
 
 def _startup(db: Session, membership: Membership) -> Startup:
@@ -115,6 +125,75 @@ def create_document_endpoint(
     )
     db.commit()
     return success_response(serialize_document(doc))
+
+
+@router.post("/documents/files", status_code=status.HTTP_201_CREATED)
+async def upload_document_file(
+    file: UploadFile = File(...),  # noqa: B008
+    folder: str | None = Form(None),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    if file.content_type not in EXT_BY_CONTENT_TYPE:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "That file type isn't allowed. Upload a PDF, Office doc, image, text, or CSV.",
+            422,
+        )
+    content = b""
+    while True:
+        chunk = await file.read(_CHUNK_BYTES)
+        if not chunk:
+            break
+        content += chunk
+        if len(content) > _MAX_FILE_BYTES:
+            raise AppError("VALIDATION_ERROR", "File must be 15 MB or smaller.", 422)
+    row = upload_file(
+        db,
+        _startup(db, membership),
+        uploaded_by_id=membership.user_id,
+        filename=file.filename or "file",
+        content_type=file.content_type,
+        size_bytes=len(content),
+        content=content,
+        folder=folder,
+    )
+    db.commit()
+    return success_response(serialize_file(row))
+
+
+@router.get("/documents/files")
+def list_document_files(
+    folder: str | None = None,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = list_files(db, _startup(db, membership), folder=folder)
+    return success_response({"files": [serialize_file(r) for r in rows]})
+
+
+@router.get("/documents/files/{file_id}")
+def get_document_file(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(serialize_file(get_file(db, membership, file_id)))
+
+
+@router.delete("/documents/files/{file_id}")
+def delete_document_file(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_file(db, get_file(db, membership, file_id))
+    db.commit()
+    return success_response({"deleted": True})
 
 
 @router.get("/documents/{document_id}")
