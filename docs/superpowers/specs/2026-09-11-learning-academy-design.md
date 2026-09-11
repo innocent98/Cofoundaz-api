@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-11
 **Module:** 17 Learning Academy (single slice)
-**Status:** Approved design (all seven decisions signed off by the lead) → implementation plan next
+**Status:** Approved design (all ten decisions signed off by the lead) → implementation plan next
 **Base branch / PR target:** `develop`
 **Depends on:** nothing new. Reads the startup's stage (Onboarding). No AI, storage, or email.
 
@@ -19,7 +19,8 @@
    - Module 25.4 Content Management, Learning Academy CMS — **line 776**
 2. Handoff brief — `docs/handoff/module-17-learning-academy.md`
 3. Planned blueprint — `docs/architecture/planned/modules-17-21-junior-handoff.md`
-4. Design decisions — agreed with the lead on GitHub (the Module 17 design issue and its follow-up #51)
+4. Design decisions — agreed with the lead on GitHub (the Module 17 design issue, questions 1–10,
+   and its follow-up #51)
 
 The brief and the blueprint are orientation documents, not the spec, by their own headers. Where
 they disagree with the PRD, the PRD wins (see §9, waivers).
@@ -33,15 +34,20 @@ A learning hub inside the founder's workspace: a catalog of **courses** made of 
 
 ### This slice delivers
 
-- A read-only, versioned, in-code catalog of courses, lessons, paths and articles
+- A read-only, versioned, in-code catalog of courses, lessons, paths and articles, populated with
+  **clearly labelled placeholder content** (§4)
 - Enrolments, per-lesson progress, and certificates, persisted per user, per workspace
-- Course progress derived from completed lessons, never stored independently of them
+- Automatic, race-safe enrolment when a lesson is completed in a course the caller has not enrolled
+  in (§5)
+- Course and path progress derived from completed lessons by an exact, documented formula (§5)
 - Certificate issuance on completion: the record, an unguessable credential code, the
   `learning.course.completed` event, and the `learning.certificate.generate` job
 - A deterministic recommendations endpoint that also returns the caller's in-progress courses
 
 ### Non-goals (this slice)
 
+- **Real catalog content.** v1 ships placeholder courses, lessons, paths and articles. Replacing
+  them with real content is a **required pre-go-live task** (§9, follow-ups).
 - **AI-picked recommendations and the reason line** (PRD 17.1, *"Because your assessment flagged
   pricing…"*) — needs Module 03.
 - **The Health Score boost in recommendations** — deferred; the ranker is structured so it can be
@@ -105,7 +111,9 @@ catalog (§4). They are not foreign keys, because the catalog is not in the data
 | `completed_at` | timestamptz, nullable | set once, when progress first reaches 100 |
 | `created_at`, `updated_at` | timestamptz | `TimestampMixin` |
 
-Unique `(startup_id, user_id, course_id)` — one enrolment per person, per course, per workspace.
+Unique `(startup_id, user_id, course_id)` — one enrolment per person, per course, per workspace. A
+row is created either by `POST /learning/enrollments` or automatically by the first lesson
+completion (§5); both paths go through the same race-safe get-or-create.
 
 ### `lesson_progress`
 
@@ -186,6 +194,24 @@ shape is kept clean and normalized so it maps one-to-one onto tables:
 - **Articles** — each with a stable id, title, tags, and body.
 - A version constant, `LEARNING_CATALOG_VERSION`.
 
+### Placeholder content (v1)
+
+v1 ships **placeholder content**, agreed with the lead (§9, D8). It must be:
+
+- **Unmistakably labelled.** The catalog module's docstring states that all content is
+  placeholder, and **every course, lesson, path and article title starts with `[Placeholder] `**, so
+  any placeholder that reaches a screen is obvious.
+- **Realistic in shape**, so the recommender and the path-percentage maths are genuinely exercised:
+  - **one stage-tagged course for each of the six stages** — idea, validation, build, launch,
+    growth, scale
+  - courses at more than one level, so beginner-first ordering is tested
+  - **at least one path** with **two or more courses in order**
+  - **at least two articles**
+
+Replacing the placeholders with real content is a **required pre-go-live task**, not optional
+(§9, follow-ups). The academy is founders and team members only and there are no live users yet, so
+the interim risk is low — but the swap must land before go-live.
+
 ### Rules for the catalog
 
 - **Every course, lesson, path and article has a stable id that never changes** once anything
@@ -194,8 +220,12 @@ shape is kept clean and normalized so it maps one-to-one onto tables:
 - **Lesson ids are unique across the whole catalog**, not just within their course, because
   `lesson_progress` is unique on `lesson_id` and `PATCH /learning/lessons/{id}/progress` addresses
   a lesson by id alone.
+- **Every course has at least one lesson, and every path has at least one course**, so no
+  percentage divides by zero.
+- **Every course id a path lists must exist in the catalog.**
 - **Counts are derived, not stored.** Lesson count and total duration are computed from the lesson
-  list each time, as `template_counts` does for roadmap templates.
+  list each time, as `template_counts` does for roadmap templates. A path's total time is the sum of
+  its courses' durations.
 
 ---
 
@@ -211,7 +241,7 @@ All routes: `require_role(founder, team_member)` + `get_verified_user`, standard
 | `GET` | `/learning/paths` | Paths (ordered course lists), total time, the caller's completion % |
 | `GET` | `/learning/articles` | Article index |
 | `POST` | `/learning/enrollments` | Enrol the caller in a course — idempotent; first time 201, repeat 200 |
-| `PATCH` | `/learning/lessons/{id}/progress` | Mark a lesson complete → recompute progress → at 100%, issue a certificate |
+| `PATCH` | `/learning/lessons/{id}/progress` | Mark a lesson complete → auto-enrol if needed → recompute progress → at 100%, issue a certificate |
 | `GET` | `/learning/certificates` | The caller's certificates |
 
 ### Recommendations
@@ -235,6 +265,48 @@ Returned inside `GET /learning/recommendations`, so the front page loads in a si
 same approach as the dashboard summary. It lists the caller's courses in this workspace that are
 **enrolled but not yet completed**, with their progress, most recently active first.
 
+### Enrolment, including automatic enrolment
+
+`POST /learning/enrollments` and the first `PATCH /learning/lessons/{id}/progress` in an unenrolled
+course both call **one race-safe get-or-create** on the `(startup_id, user_id, course_id)` unique
+constraint (§9, D9):
+
+1. Select the enrolment. If it exists, use it.
+2. Otherwise, insert it **inside a savepoint** (`db.begin_nested()`).
+3. If that insert raises `IntegrityError`, a concurrent request won the race — **re-select** the
+   now-committed row.
+
+This is the same pattern as `get_or_create_canvas` in `app/services/business/service.py` and the
+positioning-map lazy-create in `app/services/business/positioning.py`. Two near-simultaneous lesson
+completions in an unenrolled course therefore produce exactly one enrolment.
+
+Automatic enrolment on lesson completion leaves the caller in exactly the same state as enrolling
+first and then completing the lesson.
+
+### Progress formula
+
+Both percentages are integers from 0 to 100, and both use Python's built-in `round()` — the same
+rounding `recompute_milestone_progress` already uses in `app/services/roadmap/service.py`. Python
+rounds exact halves to the nearest even number, so `62.5` → `62` and `63.5` → `64`.
+
+**Course %** = `round(100 × lessons completed ÷ total lessons in the course)`
+
+- counts only this caller's completions, in this workspace
+- written to `enrollments.progress` on each completion
+- a course the caller has not enrolled in is **0**
+
+**Path %** = `round(mean of the course % of every course in the path)`
+
+- the mean is taken over **all** courses the path lists, in catalog order
+- a course in the path that the caller has not enrolled in counts as **0**
+- the mean uses the integer course percentages above, then is rounded once
+
+Worked examples:
+
+- A course with 3 lessons, 1 completed → `round(33.33…)` → **33**. With 2 completed → **67**.
+- A path of four courses at 100, 50, 50 and 50 → mean `62.5` → **62**.
+- A path of two courses, one at 100 and one never enrolled → mean `50` → **50**.
+
 ### Service
 
 `app/services/learning/service.py`. Services `flush()`; they never commit.
@@ -248,11 +320,6 @@ same approach as the dashboard summary. It lists the caller's courses in this wo
 
 Concurrent duplicates must be safe too, not only sequential ones. Two simultaneous requests must
 produce one row and no `IntegrityError` → 500.
-
-### Progress roll-up
-
-Mirrors `recompute_milestone_progress` in `app/services/roadmap/service.py`: completed lessons ÷
-lessons in the course, rounded, written to `enrollments.progress` on each completion.
 
 The `PATCH` response includes the certificate only when that completion took the course to 100%.
 
@@ -293,19 +360,30 @@ inside one rolled-back transaction; the live e2e is what catches it.
   enrolment, progress or certificates → 404 or empty list.
 - **Per-workspace isolation** — another workspace's record → 404. The same person enrols and
   progresses separately in two workspaces.
-- **Catalog** — every course, lesson, path and article id is unique; lesson ids are unique across
-  the whole catalog; every path's course ids exist; derived counts are correct.
+- **Catalog shape** — every course, lesson, path and article id is unique; lesson ids are unique
+  across the whole catalog; every path's course ids exist; every course has at least one lesson and
+  every path at least one course; derived counts are correct.
+- **Placeholder labelling** — every course, lesson, path and article title starts with
+  `[Placeholder] `; there is one course for each of the six stages; courses span more than one
+  level; at least one path lists two or more courses; there are at least two articles.
 - **Enrolment** — idempotent (201 then 200); unknown course → 404.
 - **Lesson completion** — idempotent; unknown lesson → 404.
-- **Roll-up** — progress equals completed ÷ total after each completion.
+- **Automatic enrolment** — completing a lesson in an unenrolled course creates the enrolment and
+  records the completion; the result matches enrolling first.
+- **Course %** — equals `round(100 × completed ÷ total)` after each completion, including a
+  non-whole case (1 of 3 → 33).
+- **Path %** — mean of course percentages; unenrolled courses count as 0; the half-even rounding
+  case (100, 50, 50, 50 → 62).
 - **Completion** — at 100%: `completed_at` set, one certificate, one event, one job.
 - **Credential code** — unique across certificates; generated with `secrets.token_urlsafe`.
 - **Recommendations** — stage match; completed courses excluded; beginner first; stable order;
   no-stage fallback returns beginner courses from every stage.
 - **Continue watching** — lists enrolled, not-completed courses only; excludes completed and
   not-enrolled; most recently active first; another member's enrolments never appear.
-- **Concurrency** — two simultaneous enrolments, and two simultaneous completions of the same
-  lesson, each produce one row with no error. Mirrors `tests/services/journal/test_upsert.py`.
+- **Concurrency** — two simultaneous enrolments; two simultaneous completions of the same lesson;
+  and two simultaneous completions of **different** lessons in an **unenrolled** course. Each
+  produces exactly one row per unique key and no error. Mirrors
+  `tests/services/business/test_concurrency.py`.
 - **Migration** — applies cleanly and leaves exactly one alembic head.
 
 **Sanity:** full `make test` green on a freshly migrated database.
@@ -316,7 +394,8 @@ inside one rolled-back transaction; the live e2e is what catches it.
 lesson → progress reaches 100% → a certificate is issued and appears in `GET /learning/certificates`.
 Every body captured to `e2e/_captures/learning/`.
 
-**FE integration guide:** `docs/fe-integration-guide-learning.md`, built from the captures only.
+**FE integration guide:** `docs/fe-integration-guide-learning.md`, built from the captures only. It
+must state that v1 catalog content is placeholder.
 
 ---
 
@@ -329,7 +408,7 @@ Every body captured to `e2e/_captures/learning/`.
 | `app/db/models/__init__.py` | register the models |
 | `alembic/versions/0018_learning.py` | **new** migration |
 | `app/services/learning/__init__.py` | **new** package |
-| `app/services/learning/catalog.py` | **new** — in-code catalog + `LEARNING_CATALOG_VERSION` |
+| `app/services/learning/catalog.py` | **new** — placeholder in-code catalog + `LEARNING_CATALOG_VERSION` |
 | `app/services/learning/service.py` | **new** |
 | `app/schemas/learning.py` | **new** — request models |
 | `app/api/v1/endpoints/learning.py` | **new** — router |
@@ -345,7 +424,7 @@ Every body captured to `e2e/_captures/learning/`.
 
 ## 9. Decisions & waivers
 
-All seven decisions below were agreed with the lead on GitHub.
+All ten decisions below were agreed with the lead on GitHub.
 
 - **D1 — The catalog is in-code config, not database tables.** It follows the existing in-code
   registry convention, and with no admin authoring there is nothing a table would hold that is not
@@ -371,6 +450,19 @@ All seven decisions below were agreed with the lead on GitHub.
   workspaces would require learning progress to be visible across workspaces, breaking the
   per-workspace scoping every other module upholds — a larger redesign, not v1. A person in two
   workspaces enrols and progresses separately in each.
+- **D8 — v1 ships a labelled placeholder catalog.** Unmistakably labelled, and realistic in shape —
+  one stage-tagged course per stage, at least one path with ordered courses, and at least two
+  articles — so the recommender and the path-percentage maths are genuinely exercised by the tests.
+  Real content is a required pre-go-live task.
+- **D9 — Completing a lesson in an unenrolled course enrols the caller automatically.** It is more
+  forgiving, and the end state is identical to enrolling first. The auto-enrol is race-safe: a
+  get-or-create on the `(startup_id, user_id, course_id)` unique constraint inside a savepoint, with
+  a re-select on `IntegrityError`, as in `get_or_create_canvas`.
+- **D10 — A path's completion % is the average progress across its courses.** It moves as the
+  person makes progress, rather than only when a whole course finishes. Course % is lessons
+  completed ÷ total lessons; path % is the mean of its courses' percentages, with unenrolled courses
+  counting as 0, both rounded with Python's `round()`. The exact formula and worked examples are in
+  §5.
 
 ### Waivers
 
@@ -382,10 +474,16 @@ All seven decisions below were agreed with the lead on GitHub.
   migration slot as `0008` (it is `0018`), and the brief says to open the PR into `main` (it goes
   into `develop`).
 
+### Follow-ups
+
+- **Replace the placeholder catalog with real content — required before go-live** (D8).
+- Move the catalog into the database when Module 25.4 lands (D1).
+- Add the Health Score signal as a recommendation sort key (D2).
+- Add a public certificate verification endpoint, and PDF rendering and sharing (D3).
+
 ### Settled by the PRD or house rules
 
 - **`startup_id` on all three tables** — house tenancy rule; the PRD entity list omits it.
 - **A `lesson_progress` table** — the PRD omits it; progress must be derived, not stored alone.
-- **Deferred:** AI recommendations (Module 03), the Health Score boost, PDF rendering and sharing, a
-  public verification endpoint, video hosting (`video_ref` only), notifications (Module 20),
-  authoring (Module 25.4), private lesson notes, un-completing a lesson.
+- **Deferred:** AI recommendations (Module 03), video hosting (`video_ref` only), notifications
+  (Module 20), authoring (Module 25.4), private lesson notes, un-completing a lesson.
