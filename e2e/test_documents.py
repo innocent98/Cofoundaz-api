@@ -6,15 +6,25 @@ hits the optimistic-concurrency 409 on a stale re-PUT, lists documents by
 `folder` (confirming the list is SUMMARY-shaped -- no `sections` key), then
 deletes it and confirms the 404.
 
+`test_documents_files_journey` (Module 18, Slice 2 - Upload & Files) covers the
+sibling `/documents/files` surface: a founder uploads a small PDF (multipart,
+with a `folder`), lists/gets it back, a disallowed content-type 422s, then a
+delete + re-GET 404s. The e2e runner sets no `STORAGE_BACKEND`, so this runs on
+LocalStorage -- the captured `url` is a local filesystem path, not a Cloudinary
+URL (see the FE guide for how that differs in staging/prod).
+
 Every response body along the way is captured to `e2e/_captures/documents/
 *.json` -- those files are the verbatim source for
-`docs/fe-integration-guide-documents-templates.md`. They must be REAL bodies
-from this live run, complete and untrimmed.
+`docs/fe-integration-guide-documents-templates.md` and
+`docs/fe-integration-guide-documents-files.md`. They must be REAL bodies from
+this live run, complete and untrimmed.
 
 Document Library Core has no roadmap/assessment dependency, so onboarding here
 is just steps 1-4 + complete -- same shape as e2e/test_business_builder.py and
 e2e/test_journal.py.
 """
+
+import io
 
 import httpx
 
@@ -151,3 +161,73 @@ def test_documents_journey(base_url, make_verified_user, capture):
         gone = c.get(f"/api/v1/documents/{doc_id}", headers=wh)
         assert gone.status_code == 404, gone.text
         capture("documents", "document_get_after_delete", gone)
+
+
+def test_documents_files_journey(base_url, make_verified_user, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder -- same shape as test_documents_journey above.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Files")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. POST /documents/files -- multipart upload (field `file` + form
+        # field `folder`), a tiny real PDF -- 201, file summary shape.
+        pdf_bytes = b"%PDF-1.4\n%a tiny fake PDF for e2e upload\n%%EOF"
+        uploaded = c.post(
+            "/api/v1/documents/files",
+            headers=wh,
+            files={"file": ("nda.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+            data={"folder": "Legal"},
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        file_row = uploaded.json()["data"]
+        assert file_row["filename"] == "nda.pdf"
+        assert file_row["content_type"] == "application/pdf"
+        assert file_row["size_bytes"] == len(pdf_bytes)
+        assert file_row["folder"] == "Legal"
+        assert file_row["url"]
+        capture("documents", "file_upload", uploaded)
+
+        file_id = file_row["id"]
+
+        # 2. GET /documents/files?folder=Legal -- shows the upload (summary).
+        listed = c.get("/api/v1/documents/files", headers=wh, params={"folder": "Legal"})
+        assert listed.status_code == 200, listed.text
+        files = listed.json()["data"]["files"]
+        assert len(files) == 1
+        assert files[0]["id"] == file_id
+        capture("documents", "file_list_by_folder", listed)
+
+        # 3. GET /documents/files/{id} -- metadata + url.
+        fetched = c.get(f"/api/v1/documents/files/{file_id}", headers=wh)
+        assert fetched.status_code == 200, fetched.text
+        assert fetched.json()["data"]["id"] == file_id
+        capture("documents", "file_get", fetched)
+
+        # 4. A disallowed content-type -> 422 VALIDATION_ERROR.
+        rejected = c.post(
+            "/api/v1/documents/files",
+            headers=wh,
+            files={"file": ("virus.exe", io.BytesIO(b"MZ"), "application/x-msdownload")},
+        )
+        assert rejected.status_code == 422, rejected.text
+        assert rejected.json()["error"]["code"] == "VALIDATION_ERROR"
+        capture("documents", "file_upload_bad_type_422", rejected)
+
+        # 5. DELETE then GET -> 404 -- confirms the delete actually persisted
+        # (a missing db.commit() would surface here as the file still existing).
+        deleted = c.delete(f"/api/v1/documents/files/{file_id}", headers=wh)
+        assert deleted.status_code == 200, deleted.text
+        assert deleted.json()["data"]["deleted"] is True
+        capture("documents", "file_delete", deleted)
+
+        gone = c.get(f"/api/v1/documents/files/{file_id}", headers=wh)
+        assert gone.status_code == 404, gone.text
+        capture("documents", "file_get_after_delete", gone)

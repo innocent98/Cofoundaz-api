@@ -46,3 +46,28 @@ class Document(UUIDMixin, TimestampMixin, Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
     __table_args__ = (Index("ix_documents_startup_kind", "startup_id", "kind"),)
+
+
+class DocumentFile(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "document_files"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    folder: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    url: Mapped[str] = mapped_column(String(1024), nullable=False)
+
+    __table_args__ = (Index("ix_document_files_startup_folder", "startup_id", "folder"),)

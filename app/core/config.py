@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     STORAGE_BACKEND: str = "local"  # local
     LOCAL_STORAGE_DIR: str = "./var/storage"
 
+    # Cloudinary (only used when STORAGE_BACKEND == "cloudinary"; empty for local/CI).
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
     # Logging
     # Path for the loguru file sink. Set to "" to log to stderr only, which is
     # what containerised deployments want (Docker's json-file driver then owns
