@@ -1,14 +1,15 @@
+import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
-from app.db.models.enums import DocumentKind, DocumentStatus
+from app.db.models.enums import DocumentKind, DocumentStatus, ShareAccess
 
 
 class Document(UUIDMixin, TimestampMixin, Base):
@@ -71,3 +72,42 @@ class DocumentFile(UUIDMixin, TimestampMixin, Base):
     url: Mapped[str] = mapped_column(String(1024), nullable=False)
 
     __table_args__ = (Index("ix_document_files_startup_folder", "startup_id", "folder"),)
+
+
+class DocumentShare(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "document_shares"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    shared_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    access_level: Mapped[ShareAccess] = mapped_column(
+        Enum(ShareAccess, native_enum=False, length=20), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_viewed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (Index("ix_document_shares_startup_created", "startup_id", "created_at"),)
