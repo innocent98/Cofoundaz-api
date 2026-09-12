@@ -191,3 +191,8 @@ class DocumentKind(enum.StrEnum):
 class DocumentStatus(enum.StrEnum):
     draft = "draft"
     final = "final"
+
+
+class ShareAccess(enum.StrEnum):
+    view = "view"
+    comment = "comment"

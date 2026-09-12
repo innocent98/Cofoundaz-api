@@ -124,6 +124,11 @@ ENV PYTHONUNBUFFERED=1 \
 # built extension module. Dropping it removes a compiler-adjacent package and
 # its CVE surface from the runtime image.
 RUN apt-get update \
+ # Pull the base image's available security patches (e.g. libpcre2-8-0
+ # CVE-2026-86145 / CVE-2026-89161, fixed in 10.42-1+deb12u1) so a stale base
+ # layer doesn't fail the Trivy HIGH/CRITICAL gate. Base-image OS CVEs surface
+ # as the vuln DB updates, independent of app code.
+ && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends tini \
  && rm -rf /var/lib/apt/lists/* \
  # The base image's own pip/setuptools live OUTSIDE the venv and survive the
