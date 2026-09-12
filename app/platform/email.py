@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+import httpx
+
 from app.core.config import settings
 from app.core.logger import log
 
@@ -74,6 +76,55 @@ class SMTPEmailSender:
         )
 
 
+class ResendEmailSender:
+    """Sends via the Resend HTTP API (https://resend.com).
+
+    Uses httpx (already a project dependency) rather than the `resend` SDK — the
+    API is a single authenticated POST. Fails loud (raises) on a missing key,
+    a missing From address, or a non-2xx response, mirroring SMTPEmailSender:
+    a caller that must deliver (email verification, password reset) should see
+    the failure, not have it swallowed. Callers that can tolerate a miss (e.g.
+    a best-effort document-share notification) wrap the send themselves.
+    """
+
+    _ENDPOINT = "https://api.resend.com/emails"
+
+    def send(self, msg: EmailMessage) -> None:
+        api_key = settings.RESEND_API_KEY
+        if not api_key:
+            raise RuntimeError(
+                "RESEND_API_KEY is not set, so the Resend backend cannot authenticate. "
+                "Set RESEND_API_KEY (and EMAILS_FROM_EMAIL) or choose a different EMAIL_BACKEND."
+            )
+        from_email = settings.EMAILS_FROM_EMAIL
+        if from_email is None:
+            raise RuntimeError(
+                "EMAILS_FROM_EMAIL is not set, so the Resend backend cannot build a From "
+                "address. Set EMAILS_FROM_EMAIL (and optionally EMAILS_FROM_NAME)."
+            )
+        sender = (
+            f"{settings.EMAILS_FROM_NAME} <{from_email}>"
+            if settings.EMAILS_FROM_NAME
+            else str(from_email)
+        )
+        response = httpx.post(
+            self._ENDPOINT,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "from": sender,
+                "to": [msg.to],
+                "subject": msg.subject,
+                "html": msg.html,
+            },
+            timeout=10.0,
+        )
+        if response.status_code >= 300:
+            raise RuntimeError(
+                f"Resend API returned {response.status_code} sending to {msg.to}: {response.text}"
+            )
+        log.info(f"[email:resend] to={msg.to} subject={msg.subject!r}")
+
+
 class FileEmailSender:
     """Writes each email as a JSON file so a black-box e2e/dev harness can read it back.
 
@@ -107,6 +158,8 @@ class FileEmailSender:
 def get_email_sender() -> EmailSender:
     if settings.EMAIL_BACKEND == "smtp":
         return SMTPEmailSender()
+    if settings.EMAIL_BACKEND == "resend":
+        return ResendEmailSender()
     if settings.EMAIL_BACKEND == "file":
         return FileEmailSender()
     return ConsoleEmailSender()

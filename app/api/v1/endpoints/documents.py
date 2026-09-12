@@ -8,6 +8,7 @@ from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
+from app.core.logger import log
 from app.db.models.document import Document
 from app.db.models.enums import DocumentKind, DocumentStatus, MembershipRole
 from app.db.models.membership import Membership
@@ -237,13 +238,20 @@ def create_share_endpoint(
         expires_in_days=body.expires_in_days,
     )
     link = f"{settings.SERVER_HOST}/shared/{raw}"
-    get_email_sender().send(
-        EmailMessage(
-            to=body.email,
-            subject="A document was shared with you on Cofoundaz",
-            html=f'<p>You can view the document here: <a href="{link}">{link}</a></p>',
+    # Best-effort: the share is created regardless of email delivery. The link is
+    # returned in the response so the founder can copy it even if the mail send
+    # fails (a flaky provider must not 500 share creation). Auth/invite sends
+    # stay fail-loud; only this notification is tolerant.
+    try:
+        get_email_sender().send(
+            EmailMessage(
+                to=body.email,
+                subject="A document was shared with you on Cofoundaz",
+                html=f'<p>You can view the document here: <a href="{link}">{link}</a></p>',
+            )
         )
-    )
+    except Exception as exc:  # noqa: BLE001 - deliberately tolerant; share still created
+        log.warning(f"share notification email to {body.email} failed: {exc!r}")
     db.commit()
     return success_response({**serialize_share(share), "link": link})
 

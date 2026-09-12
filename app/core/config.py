@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     EMAILS_FROM_EMAIL: EmailStr | None = None
     EMAILS_FROM_NAME: str | None = None
+    RESEND_API_KEY: str | None = None  # used only when EMAIL_BACKEND == "resend"
 
     # Admin
     FIRST_SUPERUSER_EMAIL: EmailStr

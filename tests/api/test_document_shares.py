@@ -84,3 +84,29 @@ def test_cross_tenant_revoke_404(client, db):
         client.delete(f"/api/v1/documents/{docb.id}/shares/{share_id}", headers=ha).status_code
         == 404
     )
+
+
+def test_share_create_survives_email_failure(client, db, monkeypatch):
+    """A flaky mail backend must not 500 share creation — the share is still
+    created and the link still returned (best-effort notification)."""
+    import app.api.v1.endpoints.documents as documents_ep
+
+    _u, _s, doc, h = _member(db)
+
+    class _BoomSender:
+        def send(self, msg):
+            raise RuntimeError("smtp/resend down")
+
+    monkeypatch.setattr(documents_ep, "get_email_sender", lambda: _BoomSender())
+    r = client.post(
+        f"/api/v1/documents/{doc.id}/shares",
+        json={"email": "tayo@lawfirm.ng", "access_level": "view"},
+        headers=h,
+    )
+    assert r.status_code == 201
+    assert r.json()["data"]["link"].endswith(r.json()["data"]["link"].rsplit("/", 1)[-1])
+    # the share persisted despite the email failure
+    assert (
+        len(client.get(f"/api/v1/documents/{doc.id}/shares", headers=h).json()["data"]["shares"])
+        == 1
+    )
