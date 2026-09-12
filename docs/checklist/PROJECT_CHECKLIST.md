@@ -16,38 +16,41 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-10 · `feat/documents-files` (Module 18 Slice 2 — Upload & Files: a
-`document_files` table (`filename`/`content_type`/`size_bytes`/`folder`/`storage_key`/`url`) + a
-`Storage` protocol extended with `delete` + a Cloudinary-backed implementation (`resource_type=
-"raw"`) + 4 endpoints under `/documents/files`) shipped on branch, off `develop` post-PR #48
-(Documents & Templates Slice 1, now merged). `develop` = staging, `main` = production; feature PRs
-target `develop`._
+_Last reconciled: 2026-09-12 · `feat/documents-sharing` (Module 18 Slice 3 — Sharing: a
+`document_shares` table (tokenized expiring link, `email`/`access_level`/`token_hash`/`expires_at`/
+`revoked_at`/`last_viewed_at`) + a sharing service mirroring the invitation-token pattern + 5
+endpoints, 4 authenticated under `/documents/{id}/shares` and `/documents/shares` plus the public
+`GET /shared/{token}`) shipped on branch, off `develop` post-PR #50 (Documents & Templates Slice 2,
+now merged). Slice 2 itself is also now reconciled below as merged (PR #50) — the prior pass
+(2026-09-10) recorded it as "shipped on branch, not yet merged", which was accurate at the time but
+went stale once PR #50 merged; caught and corrected in this pass rather than left inconsistent.
+`develop` = staging, `main` = production; feature PRs target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 partially merged, further work on branch (18 Documents & Templates: Slice 1 merged, Slice 2 shipped on branch) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which now has Slices 1–2 — see Module 08 and Module 18 below).
+**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 partially merged, further work on branch (18 Documents & Templates: Slices 1–2 merged, Slice 3 shipped on branch) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which now has Slices 1–3 — see Module 08 and Module 18 below).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–3 — merged to `develop` (PR #39, PR #46, PR #47) |
-| 🟢 Shipped on branch, not yet merged | 1 module (partial) | Documents & Templates (18) Slice 2 (Upload & Files) — `feat/documents-files` (→ `develop`); Slice 1 (Library Core) already merged to `develop` (PR #48) |
+| 🟢 Shipped on branch, not yet merged | 1 module (partial) | Documents & Templates (18) Slice 3 (Sharing) — `feat/documents-sharing` (→ `develop`); Slices 1 (Library Core, PR #48) and 2 (Upload & Files, PR #50) already merged to `develop` |
 | 🟡 In progress | 0 | — |
 | ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–17 · 19–26 |
 
-**Health at a glance:** **102 endpoints** (directly counted from the OpenAPI schema's
-path×method operations, `app.openapi()["paths"]` — 83 paths, 102 operations; supersedes the prior
-`app.routes`-based count of 99, which used a different counting method) · **978 unit tests** (real
-Postgres) + **35 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 /
-ruff 0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7 **9.94/10** · radon
-average complexity **A (2.36)**, every module
+**Health at a glance:** **107 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 87 paths, 107 operations; supersedes the prior
+83-path/102-operation count from the Slice 2 pass, +4 paths/+5 operations for this slice's share
+routes) · **992 unit tests** (real Postgres) + **36 live E2E** · **98% coverage** (floor 95) ·
+black 26.5.1 / isort 6.1.0 / ruff 0.16.5 / mypy 2.3.1 clean (directly re-run this pass) ·
+pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module
 MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean
 (1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
 carried forward unchanged from the last full lint/security sweep — not re-run in this Documents
-Slice 2 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
+Slice 3 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
 re-verified this pass. This pass also does not reconcile Module 21 (Founder Journal) into the
 Snapshot tally/table above — its own PR (#37) has merged per `git log` but its checklist entry
 under Upcoming was not updated in this pass, since that reconciliation belongs to its own
@@ -404,15 +407,17 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       Follow-ups
 
 ## 🟢 Module 18 — Documents & Templates — *Slice 1 (Library Core) merged to `develop` (PR #48) ·
-Slice 2 (Upload & Files) shipped on branch `feat/documents-files`, not yet merged · Slices 3–4
-planned, not started*
+Slice 2 (Upload & Files) merged to `develop` (PR #50) · Slice 3 (Sharing) shipped on branch
+`feat/documents-sharing`, not yet merged · Slice 4 (E-signature) planned, not started*
 
 _Module 18 has no detailed textual PRD entry — scope recovered from the UI comp
 (`Documents & Templates.dc.html`), decomposing into four slices: Library Core (a document store +
-in-code template registry), Upload & Files (this slice, Cloudinary-backed binary storage), Sharing,
-and E-signature. Slice 1 is also the seam Module 08's deferred AI Business Plan Generator (§08.11)
-needs — see that module's entry above. SOPs: `docs/sop/2026-09-09-documents-templates-slice1.md`,
-`docs/sop/2026-09-10-documents-files-slice2.md`._
+in-code template registry), Upload & Files (Cloudinary-backed binary storage), Sharing (this slice,
+external tokenized read links), and E-signature. Slice 1 is also the seam Module 08's deferred AI
+Business Plan Generator (§08.11) needs — see that module's entry above. SOPs:
+`docs/sop/2026-09-09-documents-templates-slice1.md`,
+`docs/sop/2026-09-10-documents-files-slice2.md`,
+`docs/sop/2026-09-12-documents-sharing-slice3.md`._
 
 **Slice 1 — Document Library Core** — *✅ merged to `develop` (PR #48, Tasks 1–5)*
 - [x] Scope + locked decisions (generic `documents` table + JSONB `sections` array, canvas
@@ -450,16 +455,15 @@ needs — see that module's entry above. SOPs: `docs/sop/2026-09-09-documents-te
       role row, cited from a passing unit test) + this checklist reconcile —
       `docs/sop/2026-09-09-documents-templates-slice1.md`,
       `docs/fe-integration-guide-documents-templates.md`
-- [x] Slice 2 (Upload & Files) landed — Cloudinary-backed storage is now available; see below.
-- [ ] _Deferred:_ **Slice 3 — Sharing** — share links + expiry + access levels + email delivery
-      (needs Module 20/email) · **Slice 4 — E-signature** — signature-request workflow (needs a
-      real e-sign provider) · no per-section endpoints (always full-replace `PUT`) · no `folders`
+- [x] Slice 2 (Upload & Files) landed — Cloudinary-backed storage is now available; merged (PR #50).
+- [x] Slice 3 (Sharing) landed — external tokenized share links are now available; see below.
+- [ ] _Deferred:_ **Slice 4 — E-signature** — signature-request workflow (needs a real e-sign
+      provider) · no per-section endpoints (always full-replace `PUT`) · no `folders`
       table/folder management UI · no user-authored templates (registry is read-only, in-code) ·
       `business_plans.document_id` FK not wired — blocked on Module 03's AI Co-Founder landing
       first (see Module 08 above) — see SOP Follow-ups
 
-**Slice 2 — Upload & Files** — *🟢 shipped on branch `feat/documents-files`, not yet merged
-(Tasks 1–5)*
+**Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
       `documents` · `Storage` protocol extended with `delete` · Cloudinary behind that protocol,
       `resource_type="raw"` for deterministic delete · allowlist-by-content-type + 15 MB cap,
@@ -499,7 +503,58 @@ needs — see that module's entry above. SOPs: `docs/sop/2026-09-09-documents-te
       replicas) with no startup-time warning · attachments-to-document FK (no `document_id` link
       from a file to a specific document yet) · no content/malware scanning · no file versioning
       (re-upload creates a new row, not an in-place update) · no per-file access level beyond the
-      tenant's member/editor split (that's Slice 3) — see SOP Follow-ups
+      tenant's member/editor split — Slice 3 (Sharing) shipped external share links for
+      structured `documents` only, not `document_files`; file sharing remains a follow-up (see
+      Slice 3's own SOP Follow-ups) — see SOP Follow-ups
+
+**Slice 3 — Sharing** — *🟢 shipped on branch `feat/documents-sharing`, not yet merged
+(Tasks 1–4)*
+- [x] Scope + locked decisions (external expiring-link/token model, View/Comment only, mirroring
+      the existing invitation-token pattern (`token_urlsafe(32)` + `hash_token` sha256 + uniform
+      404) · `comment` tier stored but functionally `view` until a comment entity exists · `edit`
+      not offered — anonymous edits can't be attributed in version history · shares target
+      structured `documents` only, not `document_files` · email via the existing `EmailSender`
+      seam, not blocked on Module 20) —
+      `.superpowers/sdd/2026-09-12-documents-sharing-slice3/`
+- [x] `ShareAccess` enum (`view`/`comment`) + `DocumentShare` model + migration
+      `0018_document_shares` (chains off `0017_document_files`, sole alembic head) + standalone
+      `startup_id`/`document_id`/`shared_by_id` indexes + unique `token_hash` + composite
+      `(startup_id, created_at)` index
+- [x] Sharing service (`app/services/documents/shares.py`) — `create_share` (token gen + hash +
+      row + `document.shared` event, returns the raw token) · `list_shares` (per-document) ·
+      `list_workspace_shares` (per-startup overview) · `revoke_share` (`document.share.revoked`
+      event) · `open_shared` (hash lookup, uniform 404 for unknown/expired/revoked, sets
+      `last_viewed_at`) · `serialize_share` (derives `status`, omits `token_hash`)
+- [x] `POST /documents/{id}/shares` (editor; 201; JSON body `{email, access_level?,
+      expires_in_days?}`; builds the link, emails it, response returns `link` **once**) · `GET
+      /documents/{id}/shares` (member; per-document "Shared with" list, no `link`) · `DELETE
+      /documents/{id}/shares/{share_id}` (editor; `{revoked: true}`) · `GET /documents/shares`
+      (member; workspace "Shared with others" overview, `document_id` on each row; registered
+      ahead of `/documents/{document_id}` so the literal `shares` segment isn't shadowed) · `GET
+      /shared/{token}` (**public, no auth at all**; returns `{document, access_level,
+      expires_at}`; uniform 404 unknown/expired/revoked; persists `last_viewed_at`)
+- [x] Access: authenticated reads = any active member · authenticated writes = founder/team_member
+      (mentor → 403 `FORBIDDEN`) — same `require_workspace`/`_editor` split as Slices 1–2; the
+      public open route has no auth dependency at all, by design
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_sharing_journey`, 6 captures:
+      create (returns `link`, cross-checked against the raw link parsed out of the captured share
+      email in the file mail dir) → public open with zero auth headers → per-document list
+      (`last_viewed_at` now set) → workspace overview (`document_id` present) → revoke → public
+      open → 404) + full existing suite re-run green (36 e2e, 992 unit)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the rows listed
+      unit-only in that guide's verification table — non-editor 403, cross-tenant revoke,
+      unknown/expired-token 404, and the `expires_in_days: 0`/`null` "never expires" case) + this
+      checklist reconcile — `docs/sop/2026-09-12-documents-sharing-slice3.md`,
+      `docs/fe-integration-guide-documents-sharing.md`
+- [ ] _Deferred:_ **FOLLOW-UP — `SERVER_HOST` currently points at the API host in both
+      `.env.staging`/`.env.production`, not the FE origin, so the emailed share link does not
+      resolve to an FE page today** (returns raw API JSON instead) — needs either repointing
+      `SERVER_HOST` or introducing a separate frontend-origin setting, a decision for whoever owns
+      the FE deploy · Edit access tier + member-scoped ACL editing · Comment feature (tier stored,
+      not yet functional) · sharing uploaded files (`document_files`, Slice 2) · wrap the
+      share-create email send in `try`/`except` so a transient SMTP failure can't 500 an otherwise-
+      valid create · **Slice 4 — E-signature** — signature-request workflow (needs a real e-sign
+      provider) — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
