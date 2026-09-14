@@ -91,6 +91,15 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/journal/entries/{entry_id}",
         "/api/v1/journal/mood",
         "/api/v1/journal/prompts/today",
+        # learning academy surface
+        "/api/v1/learning/recommendations",
+        "/api/v1/learning/courses",
+        "/api/v1/learning/courses/{course_id}",
+        "/api/v1/learning/paths",
+        "/api/v1/learning/articles",
+        "/api/v1/learning/enrollments",
+        "/api/v1/learning/lessons/{lesson_id}/progress",
+        "/api/v1/learning/certificates",
     ]:
         assert p in paths, f"missing route {p}"
 

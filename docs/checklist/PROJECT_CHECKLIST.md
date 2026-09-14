@@ -684,6 +684,69 @@ SOP; Slice 1 is the first thing that actually retires the in-app half of those. 
       notification grouping/digest · Slices 2–4 (email/preferences, scheduler/cron, real-time/push)
       — see SOP Follow-ups
 
+## 🟢 Module 17 — Learning Academy — *shipped on branch `feat/learning-academy`, not yet merged*
+
+_A learning hub inside the workspace: a read-only, versioned **in-code catalog** of courses
+(ordered lessons), learning paths and articles — **labelled placeholder content; real content is
+required before go-live** — plus per-person, per-workspace enrolments, lesson progress and
+certificates. Eight routes under `/learning`, founders and team members only (reads included).
+Deterministic recommendations with continue watching, race-safe automatic enrolment, derived course
+and path progress. Migration `0019_learning`. Spec:
+`docs/superpowers/specs/2026-09-11-learning-academy-design.md` (decisions D1–D10 agreed with the
+lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
+
+**Build (Tasks 1–6):**
+- [x] Scope + locked decisions D1–D10, agreed with the lead on GitHub (in-code catalog, moving to
+      the DB with Module 25.4 · deterministic recommendations, Health Score key deferred ·
+      certificate record + credential code + job stub, no PDF · lesson notes deferred · continue
+      watching inside recommendations · founders + team members only · enrolment unique per
+      workspace · labelled placeholder catalog · auto-enrol on lesson completion · course % and
+      path % formula) — spec + plan under `docs/superpowers/`
+- [x] `CourseLevel` enum + `Enrollment`/`LessonProgress`/`Certificate` models + migration
+      `0019_learning` (chains off `0018_document_shares`, sole alembic head, `alembic check`
+      clean) — unique `(startup_id, user_id, course_id)` on enrolments and certificates, unique
+      `(startup_id, user_id, lesson_id)` on lesson progress, unique `credential_code`,
+      `ck_enrollments_progress_range` (0–100), `CASCADE` FKs + `startup_id`/`user_id` indexes
+- [x] In-code catalog (`app/services/learning/catalog.py`, `LEARNING_CATALOG_VERSION = 1`) — 6
+      stage-tagged courses (one per stage, three levels), 2 paths, 2 articles, every title prefixed
+      `[Placeholder] ` · stable ids · lesson ids unique catalog-wide · durations derived
+- [x] Service write path (`app/services/learning/service.py`) — `get_or_create_enrollment`
+      (SAVEPOINT + re-select on `IntegrityError`, as `get_or_create_canvas`) · `complete_lesson`
+      (auto-enrol + enrolment row lock `FOR UPDATE`, so concurrent completions can't store a stale
+      %) · course % = `round(100 × completed ÷ total)` · one certificate at 100%
+      (`secrets.token_urlsafe(16)`) + `learning.course.completed` event +
+      `learning.certificate.generate` job
+- [x] Service read path — `recommended_courses` (stage filter, completed excluded,
+      `RECOMMENDATION_SORT_KEYS` level → catalog order; no stage → beginner courses) ·
+      `continue_watching` · path % = `round(mean of course %)`, unenrolled = 0, halves to even ·
+      course / path / article views
+- [x] 8 routes — `GET /learning/recommendations` · `GET /learning/courses` ·
+      `GET /learning/courses/{course_id}` · `GET /learning/paths` · `GET /learning/articles` ·
+      `POST /learning/enrollments` (201 first time, 200 on a repeat) ·
+      `PATCH /learning/lessons/{lesson_id}/progress` (`completed: true` only, `false` → 422;
+      `certificate` key always present) · `GET /learning/certificates` — both writes `db.commit()`
+- [x] Access: every route = founder/team_member (mentor, accountant, legal_advisor,
+      business_consultant, investor → 403) + verified email; progress is personal and per
+      workspace — access matrix and isolation unit-tested
+- [x] Tests — 123 learning unit/API tests (models 7 · migration 2 · catalog 6 · service 12 ·
+      concurrency 3 · browse 11 · API 82) · full project suite: 1,105 passed + the 10 Redis-backed
+      Auth tests pass once `REDIS_URL` points at the host from inside a container (1,115 total) ·
+      coverage 97.26% (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the 8 learning routes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_learning.py`, written: onboard → recommendations → catalog +
+      course → enrol 201/200 → continue watching → lesson 1 = 50% → lesson 2 = 100% + certificate
+      → shelf and continue watching cleared → paths / articles / certificates; 11 captures) —
+      **not yet run**; how to run the e2e suite on Windows is with the lead
+- [x] SOP — `docs/sop/2026-09-14-learning-academy.md`
+- [ ] FE integration guide (`docs/fe-integration-guide-learning.md`) — waits on the live e2e
+      captures
+- [ ] _Deferred:_ **Replace the placeholder catalog with real content — REQUIRED before go-live** ·
+      move the catalog into the DB when Module 25.4 lands · Health Score signal as a
+      recommendation sort key · PDF rendering, sharing and a public certificate verification
+      endpoint (jobs are enqueued, nothing renders them) · private lesson notes · AI
+      recommendations + reason line (Module 03) · notifications (Module 20) · video hosting
+      (`video_ref` only) · un-completing a lesson — see SOP Follow-ups
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -1123,7 +1186,7 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) shipped, see its own section
       above; Slices 2–4 (email delivery + preferences, scheduler/cron, real-time/push) still ahead
-- [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 17 — Learning Academy** — *mapped into its own section above (🟢 shipped on branch `feat/learning-academy`, not yet merged)* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
