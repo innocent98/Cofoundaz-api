@@ -9,22 +9,17 @@ registry (`app/services/notifications/registry.py`), which fans the event
 out to one notification row per active member. B -- who did not perform the
 action -- reads it back via `GET /notifications`.
 
-**Known gap surfaced by this live run (not fixed here -- Task 6 is
-docs/e2e only, no app/ changes):** the spec's "recipient = active members
-minus actor" rule (`_members_minus_actor` in registry.py) resolves the actor
-via `payload.get(k) for k in (actor_id, shared_by, created_by, user_id,
-shared_by_id)`. The `document.shared` publish site
-(`app/services/documents/shares.py::create_share`) -- like 13 of the other
-14 `_members_minus_actor`-routed v1 events -- never puts any of those keys
-in its payload (only `startup_id`/`document_id`/`share_id`), so the actor
-resolves to `None` and nobody is excluded: A also receives a notification
-for A's own share. This journey asserts the REAL observed behavior (A is
-notified too) rather than the spec-aspirational one, and captures A's own
-feed as live evidence. The one event where exclusion actually works is
-`workspace.member.joined`, which goes through a dedicated
-`_existing_members` helper keyed directly off `payload["user_id"]` --
-exercised here as a side effect of B's invite acceptance (A receives that
-notification; B, the joiner, correctly does not).
+**Actor exclusion (spec decision D2: recipients = active members minus the
+actor):** every user-initiated publish site now puts an actor-identifying
+key (`shared_by_id`, `created_by`, `actor_id`, or `applied_by`, depending on
+the event) into its event payload, and `_actor()` in registry.py resolves it
+-- so `_members_minus_actor` correctly excludes the acting user. A shares a
+document twice below; A's own feed shows neither `document.shared` row, only
+B receives them. The one other event with actor exclusion,
+`workspace.member.joined`, goes through a dedicated `_existing_members`
+helper keyed directly off `payload["user_id"]` -- exercised here as a side
+effect of B's invite acceptance (A receives that notification; B, the
+joiner, correctly does not).
 
 Every response along the way is captured to `e2e/_captures/notifications/
 *.json` -- those files are the verbatim source for
@@ -146,19 +141,17 @@ def test_notifications_journey(base_url, make_verified_user, mailbox, unique_ema
         assert share2.status_code == 201, share2.text
         capture("notifications", "trigger_document_share_2", share2)
 
-        # 4b. KNOWN GAP (see module docstring): `document.shared`'s
-        # recipient rule is `_members_minus_actor`, but the publish payload
-        # ({startup_id, document_id, share_id}) carries no actor-identifying
-        # key, so the actor is never excluded -- A also gets notified of A's
-        # own two shares. Assert the REAL behavior and capture it as live
-        # evidence rather than silently omitting it.
+        # 4b. Actor exclusion (spec D2): A shared the document twice but is
+        # the actor on both `document.shared` events, so A's own feed
+        # contains NEITHER row -- only the unrelated `workspace.member.joined`
+        # notification from B's earlier invite acceptance (A is not the
+        # joiner there, so that one is expected).
         a_feed = a.get("/api/v1/notifications", headers=wh_a)
         assert a_feed.status_code == 200, a_feed.text
         a_types = [n["type"] for n in a_feed.json()["data"]["notifications"]]
-        assert a_types.count("document.shared") == 2, a_types
-        # A's own join-adjacent notification (from B's accept) is also here.
+        assert "document.shared" not in a_types, a_types
         assert "workspace.member.joined" in a_types, a_types
-        capture("notifications", "actor_not_excluded_known_gap", a_feed)
+        capture("notifications", "actor_excluded_from_own_action", a_feed)
 
         # 5. B -- who did NOT perform the action -- sees exactly two
         # `document.shared` notifications, both unread, and NO
@@ -232,16 +225,18 @@ def test_notifications_journey(base_url, make_verified_user, mailbox, unique_ema
         assert bad_read.status_code == 404, bad_read.text
         capture("notifications", "mark_read_404_unknown", bad_read)
 
-        # 7d. Cross-user scoping: A's OWN `document.shared` notification row
-        # (a distinct row id from B's, per-recipient) is not B's to mark --
-        # 404, not a leak of "this exists but isn't yours".
+        # 7d. Cross-user scoping: A's OWN `workspace.member.joined`
+        # notification row (a distinct row id from B's feed, per-recipient --
+        # and the only type A has, since A is excluded from its own
+        # `document.shared` rows per 4b) is not B's to mark -- 404, not a
+        # leak of "this exists but isn't yours".
         a_own_feed = a.get("/api/v1/notifications", headers=wh_a, params={"unread": "true"})
-        a_own_share_notif_id = next(
+        a_own_notif_id = next(
             n["id"]
             for n in a_own_feed.json()["data"]["notifications"]
-            if n["type"] == "document.shared"
+            if n["type"] == "workspace.member.joined"
         )
-        cross_user_read = b.post(f"/api/v1/notifications/{a_own_share_notif_id}/read", headers=wh_b)
+        cross_user_read = b.post(f"/api/v1/notifications/{a_own_notif_id}/read", headers=wh_b)
         assert cross_user_read.status_code == 404, cross_user_read.text
         capture("notifications", "mark_read_404_cross_user", cross_user_read)
 

@@ -1,12 +1,12 @@
 {
   "data": {
-    "id": "df17260a-eca3-470d-9513-50960cd47ee6",
-    "email": "shared-with-46a633528d05@example.com",
+    "id": "5315072c-2c86-48b9-b604-fde094c5944a",
+    "email": "shared-with-3afdd0172e71@example.com",
     "access_level": "view",
-    "expires_at": "2026-10-14T15:40:49.642433+00:00",
+    "expires_at": "2026-10-14T16:16:00.280222+00:00",
     "revoked_at": null,
     "last_viewed_at": null,
-    "created_at": "2026-09-14T15:40:49.636876+00:00",
+    "created_at": "2026-09-14T16:16:00.277251+00:00",
     "status": "active",
     "link": "http://localhost/shared/EXAMPLE-SHARE-TOKEN-REDACTED-0001"
   },

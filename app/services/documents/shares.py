@@ -43,6 +43,7 @@ def create_share(
             "startup_id": str(document.startup_id),
             "document_id": str(document.id),
             "share_id": str(row.id),
+            "shared_by_id": str(shared_by_id),
         },
     )
     return row, raw

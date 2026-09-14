@@ -40,7 +40,12 @@ def create_notifications(
 ) -> list[Notification]:
     rows = [
         Notification(
-            user_id=uid, startup_id=startup_id, type=type, title=title, body=body, data=data
+            user_id=uid,
+            startup_id=startup_id,
+            type=type,
+            title=title,
+            body=body,
+            data=dict(data),
         )
         for uid in user_ids
     ]

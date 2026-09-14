@@ -61,30 +61,32 @@ from two separate share actions (`e2e/_captures/notifications/feed_unread_only.j
   "data": {
     "notifications": [
       {
-        "id": "4d3264b2-5d36-427f-9b88-6ac3b226fab9",
+        "id": "44f41e6d-cba4-4a07-b853-1d2ee6d6ebcf",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "829b0ba4-493b-49af-aa3e-effc0c8dd2cf",
-          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
-          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+          "share_id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
         },
         "read": false,
-        "created_at": "2026-09-14T15:40:49.652615+00:00"
+        "created_at": "2026-09-14T16:16:00.287901+00:00"
       },
       {
-        "id": "a7cc08e7-4801-4e68-aca9-19e38cee920d",
+        "id": "24c17596-423e-4d64-ac03-2966818e5b9e",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "df17260a-eca3-470d-9513-50960cd47ee6",
-          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
-          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+          "share_id": "5315072c-2c86-48b9-b604-fde094c5944a",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
         },
         "read": false,
-        "created_at": "2026-09-14T15:40:49.636876+00:00"
+        "created_at": "2026-09-14T16:16:00.277251+00:00"
       }
     ],
     "next_cursor": null
@@ -92,6 +94,9 @@ from two separate share actions (`e2e/_captures/notifications/feed_unread_only.j
   "meta": null
 }
 ```
+
+Note `data.shared_by_id` — every `document.shared` row now carries the sharer's user id (added by the
+actor-exclusion fix, §5a); the recipient's own feed never contains a row for their own share.
 
 **Row shape:** `id`, `type` (a dotted event name — see §5's catalog), `title` (fixed, generic per
 `type` — see the note below), `body` (currently always `""` for every v1 type — do not render an
@@ -152,20 +157,21 @@ page can be non-empty with `next_cursor: null` if it's the last page).
   "data": {
     "notifications": [
       {
-        "id": "4d3264b2-5d36-427f-9b88-6ac3b226fab9",
+        "id": "44f41e6d-cba4-4a07-b853-1d2ee6d6ebcf",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "829b0ba4-493b-49af-aa3e-effc0c8dd2cf",
-          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
-          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+          "share_id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
         },
         "read": false,
-        "created_at": "2026-09-14T15:40:49.652615+00:00"
+        "created_at": "2026-09-14T16:16:00.287901+00:00"
       }
     ],
-    "next_cursor": "MjAyNi0wOS0xNFQxNTo0MDo0OS42NTI2MTUrMDA6MDB8NGQzMjY0YjItNWQzNi00MjdmLTliODgtNmFjM2IyMjZmYWI5"
+    "next_cursor": "MjAyNi0wOS0xNFQxNjoxNjowMC4yODc5MDErMDA6MDB8NDRmNDFlNmQtY2JhNC00YTA3LWI4NTMtMWQyZWU2ZDZlYmNm"
   },
   "meta": null
 }
@@ -178,17 +184,18 @@ page can be non-empty with `next_cursor: null` if it's the last page).
   "data": {
     "notifications": [
       {
-        "id": "a7cc08e7-4801-4e68-aca9-19e38cee920d",
+        "id": "24c17596-423e-4d64-ac03-2966818e5b9e",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "df17260a-eca3-470d-9513-50960cd47ee6",
-          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
-          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+          "share_id": "5315072c-2c86-48b9-b604-fde094c5944a",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
         },
         "read": false,
-        "created_at": "2026-09-14T15:40:49.636876+00:00"
+        "created_at": "2026-09-14T16:16:00.277251+00:00"
       }
     ],
     "next_cursor": null
@@ -218,17 +225,18 @@ No request body. Returns the updated, serialized notification.
 ```json
 {
   "data": {
-    "id": "4d3264b2-5d36-427f-9b88-6ac3b226fab9",
+    "id": "44f41e6d-cba4-4a07-b853-1d2ee6d6ebcf",
     "type": "document.shared",
     "title": "A document was shared in your workspace",
     "body": "",
     "data": {
-      "share_id": "829b0ba4-493b-49af-aa3e-effc0c8dd2cf",
-      "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
-      "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+      "share_id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
+      "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+      "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+      "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
     },
     "read": true,
-    "created_at": "2026-09-14T15:40:49.652615+00:00"
+    "created_at": "2026-09-14T16:16:00.287901+00:00"
   },
   "meta": null
 }
@@ -278,21 +286,21 @@ schema), so the FE should switch/deep-link on `type` and read `data`'s fields ac
 
 | `type` | `data` fields (for deep-linking) | Recipients | Verified live? |
 |---|---|---|---|
-| `document.shared` | `startup_id`, `document_id`, `share_id` | active members minus actor ⚠️ (see §5a) | ✅ `feed_unread_only.json` |
-| `document.signature.requested` | `startup_id`, `request_id`, `file_id` | active members minus actor ⚠️ | not captured live |
-| `document.signature.signed` | `startup_id`, `request_id`, `signer_id` | active members minus actor ⚠️ | not captured live |
-| `document.signature.completed` | `startup_id`, `request_id` | active members minus actor ⚠️ | not captured live |
-| `business.suggestion.created` | `startup_id`, `suggestion_id`, `op` | active members minus actor ⚠️ | not captured live |
-| `business.suggestion.approved` | `startup_id`, `suggestion_id`, `op` | active members minus actor ⚠️ | not captured live |
-| `business.suggestion.rejected` | `startup_id`, `suggestion_id`, `op` | active members minus actor ⚠️ | not captured live |
-| `business.artifact.completed` | `startup_id`, `artifact` | active members minus actor ⚠️ | not captured live |
-| `roadmap.replanned` | `startup_id`, `roadmap_id`, `replan_id`, `change_count`, `applied_by` | active members minus actor ⚠️ | not captured live |
-| `roadmap.milestone.completed` | `startup_id`, `roadmap_id`, `milestone_id`, `title` | active members minus actor ⚠️ | not captured live |
-| `mission.completed` | `startup_id`, `mission_id`, `mission_date` | active members minus actor ⚠️ | not captured live |
-| `mission.streak.milestone` | `startup_id`, `streak` | active members minus actor ⚠️ | not captured live |
-| `healthscore.dropped` | `startup_id`, `score`, `previous_score`, `delta_7d`, `computed_at` | active members minus actor ⚠️ | not captured live |
-| `assessment.completed` | `assessment_id`, `startup_id`, `dimension_scores` | active members minus actor ⚠️ | not captured live |
-| `workspace.member.joined` | `startup_id`, `user_id`, `role` | existing active members, correctly excluding the new joiner | ✅ `actor_not_excluded_known_gap.json` (shows this type present in the actor's own feed after a teammate joined) |
+| `document.shared` | `startup_id`, `document_id`, `share_id`, `shared_by_id` | active members minus actor ✅ (see §5a) | ✅ `feed_unread_only.json` |
+| `document.signature.requested` | `startup_id`, `request_id`, `file_id`, `created_by` | active members minus actor ✅ | not captured live |
+| `document.signature.signed` | `startup_id`, `request_id`, `signer_id` | all active members (passive/system event — no member actor) | not captured live |
+| `document.signature.completed` | `startup_id`, `request_id` | all active members (passive/system event — no member actor) | not captured live |
+| `business.suggestion.created` | `startup_id`, `suggestion_id`, `op`, `created_by` | active members minus actor ✅ | not captured live |
+| `business.suggestion.approved` | `startup_id`, `suggestion_id`, `op`, `actor_id` | active members minus actor ✅ | not captured live |
+| `business.suggestion.rejected` | `startup_id`, `suggestion_id`, `op`, `actor_id` | active members minus actor ✅ | not captured live |
+| `business.artifact.completed` | `startup_id`, `artifact` | all active members (passive/system event — no member actor) | not captured live |
+| `roadmap.replanned` | `startup_id`, `roadmap_id`, `replan_id`, `change_count`, `applied_by` | active members minus actor ✅ | not captured live |
+| `roadmap.milestone.completed` | `startup_id`, `roadmap_id`, `milestone_id`, `title`, `actor_id` | active members minus actor ✅ | not captured live |
+| `mission.completed` | `startup_id`, `mission_id`, `mission_date` | all active members (passive/system event — no member actor) | not captured live |
+| `mission.streak.milestone` | `startup_id`, `streak` | all active members (passive/system event — no member actor) | not captured live |
+| `healthscore.dropped` | `startup_id`, `score`, `previous_score`, `delta_7d`, `computed_at` | all active members (passive/system event — no member actor) | not captured live |
+| `assessment.completed` | `assessment_id`, `startup_id`, `dimension_scores` | all active members (passive/system event — no member actor) | not captured live |
+| `workspace.member.joined` | `startup_id`, `user_id`, `role` | existing active members, correctly excluding the new joiner | ✅ `actor_excluded_from_own_action.json` (shows this type present in the actor's own feed after a teammate joined) |
 
 Non-`data`-shape columns (`title`/`body`) are fixed per type, not shown per-row above — see §1 for
 why `title` is generic and `body` is currently always `""`.
@@ -301,45 +309,83 @@ why `title` is generic and `body` is currently always `""`.
 publish-site source (cited per-row in the SOP), not captured live in this journey — only
 `document.shared` and `workspace.member.joined` were actually exercised end-to-end in this task's
 e2e run. Only two of the 15 types have a registry-level unit test asserting recipient logic
-specifically (`test_members_minus_actor` for `document.shared`,
+specifically (`test_members_minus_actor_real_document_shared_payload` for `document.shared`,
 `test_member_joined_notifies_existing_members_not_joiner` for `workspace.member.joined`); the rest
 are covered only by `test_all_specs_have_generic_copy` (asserts every `SPECS` entry renders a
 non-empty title without raising — a smoke check, not a recipient-logic or `data`-shape assertion).
 
-### 5a. ⚠️ Known gap — "minus actor" does not currently exclude the actor
+### 5a. ✅ Actor exclusion — "minus actor" now correctly excludes the actor
 
-**For every row marked ⚠️ above, the actor of the action ALSO receives a notification for their own
-action** — the "minus actor" part of "active members minus actor" is not effective today for these
-14 event types (it only works for `workspace.member.joined`, which uses a different code path). This
-was discovered and confirmed live while writing this slice's e2e journey (not a spec change — the
-backend intends to exclude the actor and does not yet). **Captured live:**
-`e2e/_captures/notifications/actor_not_excluded_known_gap.json` shows the *sharer's own* feed
-containing 2 `document.shared` notifications for the 2 documents *they themselves* just shared, plus
-1 `workspace.member.joined` (which correctly did NOT include the new joiner):
+**Spec decision D2** (recipients = active members minus the actor) now holds for every event that
+has a member actor. Each user-initiated publish site puts an actor-identifying key into its event
+payload (`shared_by_id`, `created_by`, or `actor_id` — `applied_by` for `roadmap.replanned`, which
+already carried it), and `_actor()` in `app/services/notifications/registry.py` resolves it, so
+`_members_minus_actor` genuinely drops the acting user from the recipient list. The 7 events marked
+✅ "active members minus actor" above are covered by this fix; `workspace.member.joined` was already
+correct via its own dedicated `_existing_members` code path (unchanged). The remaining events marked
+"passive/system event" have no member actor at all (they're triggered by missions, health-score
+recompute, signature completion, etc., not by one member acting on another) — "notify all active
+members" is the correct, intended behavior for those, not a gap.
+
+**Captured live (`document.shared`):** A shares the same document twice. B's feed
+(`e2e/_captures/notifications/feed_unread_only.json`) shows both rows with `shared_by_id` now
+present in `data`, pointing at A:
 
 ```json
 {
   "data": {
     "notifications": [
-      { "type": "document.shared", "data": { "share_id": "829b0ba4-...", "...": "..." }, "read": false, "...": "..." },
-      { "type": "document.shared", "data": { "share_id": "df17260a-...", "...": "..." }, "read": false, "...": "..." },
-      { "type": "workspace.member.joined", "data": { "role": "team_member", "user_id": "0704902d-...", "...": "..." }, "read": false, "...": "..." }
+      {
+        "type": "document.shared",
+        "data": {
+          "share_id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
+          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
+          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
+        },
+        "read": false,
+        "...": "..."
+      }
+    ]
+  }
+}
+```
+
+A's own feed (`e2e/_captures/notifications/actor_excluded_from_own_action.json`), captured right
+after both shares, contains **zero** `document.shared` rows — only the unrelated
+`workspace.member.joined` notification from B's earlier invite acceptance:
+
+```json
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "b20cc02b-01f7-439a-9c8a-1e69a01f220e",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "97394be8-ed1e-4154-bba1-79d79a4398f4",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769"
+        },
+        "read": false,
+        "created_at": "2026-09-14T16:16:00.184056+00:00"
+      }
     ],
     "next_cursor": null
   },
   "meta": null
 }
 ```
-*(trimmed for brevity above — the full untrimmed body, with every field, is in the cited capture
-file.)*
+*(both bodies pasted verbatim from the cited capture files — the `document.shared` excerpt above is
+trimmed to one row for brevity; the full two-row body is in `feed_unread_only.json`.)*
 
-**FE guidance until this is fixed (tracked in the SOP, not fixed in this slice):** do not assume a
-user never sees a notification for their own action. If your notifications panel wants to hide
-"you did this" rows, you currently need a client-side heuristic (e.g. compare `data`'s actor-ish
-field, where present, against the logged-in user id) rather than relying on the backend to have
-already filtered them out — and note most `data` payloads above don't even carry an actor id field
-to compare against, so this client-side workaround is only possible for a few types
-(`roadmap.replanned`'s `applied_by` is the clearest one that does).
+**FE guidance:** the backend now filters out "you did this" rows for every event with a member
+actor, so the notifications panel does not need a client-side heuristic to hide a user's own
+actions on the 7 events above (or on `workspace.member.joined`). For the passive/system events
+(missions, health score, etc.) there is no actor to exclude — every active member, including one
+whose own mission/health-score triggered the event, is an intended recipient.
 
 ---
 
@@ -390,10 +436,10 @@ every response body is captured verbatim in the named file.
 | Unknown notification id → `404 NOT_FOUND` | ✅ | `mark_read_404_unknown.json` |
 | Another user's own row (same event, different recipient) → `404 NOT_FOUND`, not leaked as existing | ✅ | `mark_read_404_cross_user.json` |
 | `POST /notifications/read-all` → `{marked: N}`, zeroes unread-count, does not delete rows (full feed still shows them, now `read: true`) | ✅ | `read_all.json`, `unread_count_after_read_all.json`, `feed_full_after_read_all.json`, `feed_unread_empty_after_read_all.json` |
-| `document.shared` fans out to every active member including the actor (Known Gap, §5a) | ✅ | `actor_not_excluded_known_gap.json` |
-| `workspace.member.joined` correctly excludes the joiner, notifies existing members | ✅ | `actor_not_excluded_known_gap.json` (shows it present in the *existing* member's feed) |
+| `document.shared` fans out to active members MINUS the actor (spec D2, §5a) — sharer's own feed has zero rows for their own shares, other member gets both | ✅ | `actor_excluded_from_own_action.json` (sharer's feed), `feed_unread_only.json` (other member's feed, `data.shared_by_id` present) |
+| `workspace.member.joined` correctly excludes the joiner, notifies existing members | ✅ | `actor_excluded_from_own_action.json` (shows it present in the *existing* member's feed) |
 | The other 13 `type` catalog rows' `data` shape (signature/suggestion/roadmap/mission/healthscore/assessment events) | ⚠️ not captured live | read directly from each event's `event_bus.publish(...)` call site in `app/services/**`/`app/api/v1/endpoints/roadmap.py` (cited per-row in the SOP) — not independently unit-tested per type beyond `test_all_specs_have_generic_copy`'s generic title-rendering smoke check |
-| `_members_minus_actor` genuinely excludes the actor **given a payload that names one** (proves the exclusion logic itself is correct — the bug in §5a is that real publish sites don't supply that key, not that the exclusion code is broken) | ⚠️ unit only, with a hand-built payload that (unlike the real publish site) includes the actor key | `tests/services/notifications/test_registry.py::test_members_minus_actor` |
+| `_members_minus_actor` excludes the actor **using the real `document.shared` payload shape** (`{startup_id, document_id, share_id, shared_by_id}`, as actually produced by `create_share`) | ✅ | `tests/services/notifications/test_registry.py::test_members_minus_actor_real_document_shared_payload` |
 | Non-member (`403 FORBIDDEN`) on any of the 4 routes | ⚠️ not captured — shared `require_workspace` dependency, no notifications-specific test needed | `app/db/tenancy.py::require_workspace` (used identically by every other workspace-scoped module) |
 | Malformed pagination `cursor` → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/services/notifications/test_service.py::test_bad_cursor_422` |
 | A failing notification handler is savepoint-isolated — the triggering action's own writes still commit, and a broken handler never 500s the caller | ⚠️ unit only | `tests/platform/test_events.py::test_failing_handler_is_isolated_and_does_not_raise` |

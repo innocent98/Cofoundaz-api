@@ -24,7 +24,7 @@ def _active_member_ids(
 
 
 def _actor(payload: dict) -> uuid.UUID | None:
-    for key in ("actor_id", "shared_by", "created_by", "user_id", "shared_by_id"):
+    for key in ("actor_id", "shared_by", "created_by", "user_id", "shared_by_id", "applied_by"):
         if payload.get(key):
             try:
                 return uuid.UUID(str(payload[key]))

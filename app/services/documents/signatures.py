@@ -51,7 +51,12 @@ def create_request(
     event_bus.publish(
         db,
         "document.signature.requested",
-        {"startup_id": str(req.startup_id), "request_id": str(req.id), "file_id": str(file.id)},
+        {
+            "startup_id": str(req.startup_id),
+            "request_id": str(req.id),
+            "file_id": str(file.id),
+            "created_by": str(created_by_id),
+        },
     )
     return req, pairs
 

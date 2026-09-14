@@ -92,7 +92,12 @@ def create_suggestion(
     event_bus.publish(
         db,
         "business.suggestion.created",
-        {"startup_id": str(startup.id), "suggestion_id": str(row.id), "op": op.value},
+        {
+            "startup_id": str(startup.id),
+            "suggestion_id": str(row.id),
+            "op": op.value,
+            "created_by": str(membership.user_id),
+        },
     )
     return row
 
@@ -206,7 +211,12 @@ def approve_suggestion(
     event_bus.publish(
         db,
         "business.suggestion.approved",
-        {"startup_id": str(s.startup_id), "suggestion_id": str(s.id), "op": s.op.value},
+        {
+            "startup_id": str(s.startup_id),
+            "suggestion_id": str(s.id),
+            "op": s.op.value,
+            "actor_id": str(membership.user_id),
+        },
     )
     return s
 
@@ -223,6 +233,11 @@ def reject_suggestion(
     event_bus.publish(
         db,
         "business.suggestion.rejected",
-        {"startup_id": str(s.startup_id), "suggestion_id": str(s.id), "op": s.op.value},
+        {
+            "startup_id": str(s.startup_id),
+            "suggestion_id": str(s.id),
+            "op": s.op.value,
+            "actor_id": str(membership.user_id),
+        },
     )
     return s

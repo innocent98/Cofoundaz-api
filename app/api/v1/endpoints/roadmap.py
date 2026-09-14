@@ -478,6 +478,7 @@ def update_milestone_ep(
                 "roadmap_id": str(roadmap.id),
                 "milestone_id": str(m.id),
                 "title": m.title,
+                "actor_id": str(membership.user_id),
             },
         )
         write_activity(

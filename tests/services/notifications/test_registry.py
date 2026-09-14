@@ -24,6 +24,25 @@ def test_members_minus_actor(db):
     assert rows[0].type == "document.shared"
 
 
+def test_members_minus_actor_real_document_shared_payload(db):
+    owner, other, s = _workspace(db)
+    # real payload shape produced by app.services.documents.shares.create_share
+    _handle(
+        db,
+        "document.shared",
+        {
+            "startup_id": str(s.id),
+            "document_id": "00000000-0000-0000-0000-0000000000aa",
+            "share_id": "00000000-0000-0000-0000-0000000000bb",
+            "shared_by_id": str(owner.id),
+        },
+    )
+    rows = db.query(Notification).all()
+    assert owner.id not in {r.user_id for r in rows}
+    assert {r.user_id for r in rows} == {other.id}
+    assert rows[0].type == "document.shared"
+
+
 def test_member_joined_notifies_existing_members_not_joiner(db):
     owner, other, s = _workspace(db)
     joiner = create_user(db)
