@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
 from app.core.logger import log
-from app.db.models.document import Document
+from app.db.models.document import Document, DocumentFile, SignatureRequest
 from app.db.models.enums import DocumentKind, DocumentStatus, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -17,7 +17,13 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.email import EmailMessage, get_email_sender
-from app.schemas.document import DocumentCreate, DocumentSave, ShareCreate
+from app.schemas.document import (
+    DocumentCreate,
+    DocumentSave,
+    ShareCreate,
+    SignAction,
+    SignatureRequestCreate,
+)
 from app.services.documents.files import (
     EXT_BY_CONTENT_TYPE,
     delete_file,
@@ -46,6 +52,16 @@ from app.services.documents.shares import (
     serialize_share,
     share_document,
 )
+from app.services.documents.signatures import (
+    cancel_request,
+    create_request,
+    get_request,
+    list_requests,
+    open_for_signing,
+    record_signature,
+    reissue_unsigned,
+    serialize_request,
+)
 from app.services.documents.template_defs import catalog, instantiate, template_view
 
 router = APIRouter()
@@ -56,6 +72,24 @@ _CHUNK_BYTES = 64 * 1024
 
 def _startup(db: Session, membership: Membership) -> Startup:
     return db.query(Startup).filter(Startup.id == membership.startup_id).one()
+
+
+def _signature_email(to: str, link: str, title: str) -> None:
+    """Best-effort: a flaky mail backend must not fail the request."""
+    try:
+        get_email_sender().send(
+            EmailMessage(
+                to=to,
+                subject=f"Signature requested: {title}",
+                html=f'<p>You have a document to review and sign: <a href="{link}">{link}</a></p>',
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - delivery is best-effort
+        log.warning(f"signature email to {to} failed: {exc}")
+
+
+def get_request_by_id(db: Session, request_id: uuid.UUID) -> SignatureRequest:
+    return db.query(SignatureRequest).filter_by(id=request_id).one()
 
 
 def _parse_kind(kind: str | None) -> DocumentKind | None:
@@ -295,6 +329,119 @@ def open_shared_endpoint(
             "expires_at": share.expires_at.isoformat() if share.expires_at else None,
         }
     )
+
+
+@router.get("/documents/signature-requests")
+def list_signature_requests_endpoint(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = list_requests(db, _startup(db, membership))
+    return success_response({"requests": [serialize_request(db, r) for r in rows]})
+
+
+@router.post("/documents/files/{file_id}/signature-requests", status_code=status.HTTP_201_CREATED)
+def create_signature_request_endpoint(
+    file_id: uuid.UUID,
+    body: SignatureRequestCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    file = get_file(db, membership, file_id)  # 404 if missing/cross-tenant
+    title = body.title or file.filename
+    req, pairs = create_request(
+        db,
+        file,
+        created_by_id=membership.user_id,
+        title=title,
+        signers=[s.model_dump() for s in body.signers],
+        expires_in_days=body.expires_in_days,
+    )
+    links = [f"{settings.SERVER_HOST}/sign/{raw}" for _signer, raw in pairs]
+    for (signer, _raw), link in zip(pairs, links, strict=True):
+        _signature_email(signer.email, link, title)
+    db.commit()
+    return success_response({**serialize_request(db, req), "signer_links": links})
+
+
+@router.get("/documents/signature-requests/{request_id}")
+def get_signature_request_endpoint(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(serialize_request(db, get_request(db, membership, request_id)))
+
+
+@router.post("/documents/signature-requests/{request_id}/remind")
+def remind_signature_request_endpoint(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    req = get_request(db, membership, request_id)
+    pairs = reissue_unsigned(db, req)  # rotates unsigned signers' tokens; 409 if not active
+    for signer, raw in pairs:
+        _signature_email(signer.email, f"{settings.SERVER_HOST}/sign/{raw}", req.title)
+    db.commit()
+    return success_response({"reminded": len(pairs)})
+
+
+@router.post("/documents/signature-requests/{request_id}/cancel")
+def cancel_signature_request_endpoint(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    cancel_request(db, get_request(db, membership, request_id))  # 409 if not active
+    db.commit()
+    return success_response({"cancelled": True})
+
+
+@router.get("/sign/{token}")
+def view_for_signing_endpoint(
+    token: str,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    signer = open_for_signing(db, token)  # 404 unknown/expired/cancelled/complete/signed
+    request = get_request_by_id(db, signer.request_id)
+    file = db.query(DocumentFile).filter_by(id=request.file_id).one()
+    return success_response(
+        {
+            "request": {
+                "title": request.title,
+                "status": serialize_request(db, request, with_signers=False)["status"],
+            },
+            "file": serialize_file(file),
+            "signer": {"email": signer.email, "name": signer.name},
+        }
+    )
+
+
+@router.post("/sign/{token}")
+def sign_endpoint(
+    token: str,
+    body: SignAction,
+    request: Request,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    if not body.typed_name.strip():
+        raise AppError("VALIDATION_ERROR", "Type your name to sign.", 422)
+    signer = open_for_signing(db, token)  # 404 if not signable
+    updated = record_signature(
+        db,
+        signer,
+        typed_name=body.typed_name.strip(),
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
+    return success_response(serialize_request(db, updated))
 
 
 @router.get("/documents/{document_id}")
