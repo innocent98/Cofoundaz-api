@@ -1,0 +1,47 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "d08af7f5-5c1e-4c82-86a6-af5d4951cae8",
+        "type": "document.shared",
+        "title": "A document was shared in your workspace",
+        "body": "",
+        "data": {
+          "share_id": "829b0ba4-493b-49af-aa3e-effc0c8dd2cf",
+          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
+          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+        },
+        "read": false,
+        "created_at": "2026-09-14T15:40:49.652615+00:00"
+      },
+      {
+        "id": "1dbd0224-f485-4b8b-a73e-b8b532a08cd2",
+        "type": "document.shared",
+        "title": "A document was shared in your workspace",
+        "body": "",
+        "data": {
+          "share_id": "df17260a-eca3-470d-9513-50960cd47ee6",
+          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922",
+          "document_id": "7961cb3e-8787-4872-8607-07862f605b4d"
+        },
+        "read": false,
+        "created_at": "2026-09-14T15:40:49.636876+00:00"
+      },
+      {
+        "id": "4e4bbde7-9727-40d4-a8b5-51e339923e2b",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "0704902d-ca21-4064-8952-b5a90fc3d40b",
+          "startup_id": "2646c922-a3e5-42e8-98a3-1fb647f59922"
+        },
+        "read": false,
+        "created_at": "2026-09-14T15:40:49.567046+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}
