@@ -1,7 +1,7 @@
 """learning
 
 Revision ID: 0019_learning
-Revises: 0018_document_shares
+Revises: 0020_signatures
 Create Date: 2026-09-14
 
 Module 17 (Learning Academy) schema (Task 1: app/db/models/learning.py;
@@ -22,8 +22,9 @@ course_id and lesson_id are text keys into the in-code catalog
 (app/services/learning/catalog.py), not foreign keys — the catalog is not
 stored in the database yet (spec decision D1).
 
-This revision chains directly off 0018_document_shares, the current
-alembic head.
+This revision chains off 0020_signatures (Module 18 Slice 4), which merged
+into develop first. 0019 was reserved for Module 17 (issue #52 heads-up), so
+the chain runs 0018_document_shares -> 0020_signatures -> 0019_learning.
 
 All three tables are brand new, so this migration takes no lock on any
 existing table beyond the brief lock needed to validate the new foreign
@@ -31,9 +32,9 @@ keys to startups and users. Estimated lock duration on prod-sized data:
 sub-second.
 
 This file was produced via `alembic revision --autogenerate` against
-app/db/models/learning.py. Only the revision id, Create Date and this
-docstring were hand-edited; the upgrade()/downgrade() bodies are exactly
-as generated.
+app/db/models/learning.py. Only the revision id, down_revision, Create Date
+and this docstring were hand-edited; the upgrade()/downgrade() bodies are
+exactly as generated.
 
 downgrade() drops the three tables and is lossy: any enrolments, lesson
 progress and certificates written while this migration was applied are
@@ -45,7 +46,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "0019_learning"
-down_revision = '0018_document_shares'
+down_revision = '0020_signatures'
 branch_labels = None
 depends_on = None
 

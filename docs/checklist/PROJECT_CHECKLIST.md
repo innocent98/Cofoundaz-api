@@ -703,8 +703,8 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       workspace · labelled placeholder catalog · auto-enrol on lesson completion · course % and
       path % formula) — spec + plan under `docs/superpowers/`
 - [x] `CourseLevel` enum + `Enrollment`/`LessonProgress`/`Certificate` models + migration
-      `0019_learning` (chains off `0018_document_shares`, sole alembic head, `alembic check`
-      clean) — unique `(startup_id, user_id, course_id)` on enrolments and certificates, unique
+      `0019_learning` (chains off `0020_signatures`: `0019` was reserved for Module 17, so the
+      chain runs `0018` → `0020` → `0019`; sole alembic head, `alembic check` clean) — unique `(startup_id, user_id, course_id)` on enrolments and certificates, unique
       `(startup_id, user_id, lesson_id)` on lesson progress, unique `credential_code`,
       `ck_enrollments_progress_range` (0–100), `CASCADE` FKs + `startup_id`/`user_id` indexes
 - [x] In-code catalog (`app/services/learning/catalog.py`, `LEARNING_CATALOG_VERSION = 1`) — 6
@@ -729,9 +729,8 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       business_consultant, investor → 403) + verified email; progress is personal and per
       workspace — access matrix and isolation unit-tested
 - [x] Tests — 123 learning unit/API tests (models 7 · migration 2 · catalog 6 · service 12 ·
-      concurrency 3 · browse 11 · API 82) · full project suite: 1,105 passed + the 10 Redis-backed
-      Auth tests pass once `REDIS_URL` points at the host from inside a container (1,115 total) ·
-      coverage 97.26% (floor 95) · ruff / black / mypy clean
+      concurrency 3 · browse 11 · API 82) · full project suite on the latest `develop`: 1,139
+      passed, coverage 97.98% (floor 95) · ruff / black / mypy clean
 - [x] Smoke openapi surface — the 8 learning routes added to `e2e/test_smoke.py`
 - [ ] Live E2E journey (`e2e/test_learning.py`, written: onboard → recommendations → catalog +
       course → enrol 201/200 → continue watching → lesson 1 = 50% → lesson 2 = 100% + certificate
