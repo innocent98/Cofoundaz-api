@@ -9,7 +9,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
-from app.db.models.enums import DocumentKind, DocumentStatus, ShareAccess
+from app.db.models.enums import (
+    DocumentKind,
+    DocumentStatus,
+    ShareAccess,
+    SignatureRequestStatus,
+)
 
 
 class Document(UUIDMixin, TimestampMixin, Base):
@@ -111,3 +116,64 @@ class DocumentShare(UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (Index("ix_document_shares_startup_created", "startup_id", "created_at"),)
+
+
+class SignatureRequest(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "signature_requests"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    file_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("document_files.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[SignatureRequestStatus] = mapped_column(
+        Enum(SignatureRequestStatus, native_enum=False, length=20),
+        nullable=False,
+        server_default=SignatureRequestStatus.awaiting.value,
+    )
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cancelled_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (Index("ix_signature_requests_startup_created", "startup_id", "created_at"),)
+
+
+class SignatureSigner(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "signature_signers"
+
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("signature_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    signed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    signed_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)

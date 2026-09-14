@@ -196,3 +196,9 @@ class DocumentStatus(enum.StrEnum):
 class ShareAccess(enum.StrEnum):
     view = "view"
     comment = "comment"
+
+
+class SignatureRequestStatus(enum.StrEnum):
+    awaiting = "awaiting"
+    complete = "complete"
+    cancelled = "cancelled"
