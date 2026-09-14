@@ -130,6 +130,11 @@ class SuggestionNotPending(AppError):  # noqa: N818
     message = "This suggestion has already been resolved."
 
 
+class SignatureNotActive(AppError):  # noqa: N818
+    code, http_status = "SIGNATURE_NOT_ACTIVE", 409
+    message = "This signature request is already complete or cancelled."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."
