@@ -202,3 +202,9 @@ class SignatureRequestStatus(enum.StrEnum):
     awaiting = "awaiting"
     complete = "complete"
     cancelled = "cancelled"
+
+
+class CourseLevel(enum.StrEnum):
+    beginner = "beginner"
+    intermediate = "intermediate"
+    advanced = "advanced"
