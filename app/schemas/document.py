@@ -23,3 +23,18 @@ class ShareCreate(BaseModel):
     email: str
     access_level: ShareAccess = ShareAccess.view
     expires_in_days: int | None = 30
+
+
+class SignerInput(BaseModel):
+    email: str
+    name: str | None = None
+
+
+class SignatureRequestCreate(BaseModel):
+    signers: list[SignerInput] = Field(default_factory=list)
+    title: str | None = None
+    expires_in_days: int | None = 14
+
+
+class SignAction(BaseModel):
+    typed_name: str
