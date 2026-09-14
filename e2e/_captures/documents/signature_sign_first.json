@@ -1,33 +1,15 @@
 {
   "data": {
-    "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
     "title": "Investor Agreement",
     "status": "awaiting",
-    "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
     "filename": "investor-agreement.pdf",
     "signed_count": 1,
     "total": 2,
-    "expires_at": "2026-09-28T12:53:05.919518+00:00",
+    "expires_at": "2026-09-28T13:13:40.351626+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T12:53:05.915698+00:00",
-    "signers": [
-      {
-        "email": "signer-one-04b22e2a31a5@example.com",
-        "name": "Ada Investor",
-        "position": 0,
-        "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.954477+00:00",
-        "signed_name": "Ada Investor"
-      },
-      {
-        "email": "signer-two-97958c8c1fb9@example.com",
-        "name": "Bello Legal",
-        "position": 1,
-        "status": "pending",
-        "signed_at": null,
-        "signed_name": null
-      }
-    ]
+    "created_at": "2026-09-14T13:13:40.347874+00:00"
   },
   "meta": null
 }

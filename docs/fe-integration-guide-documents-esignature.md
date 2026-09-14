@@ -63,11 +63,11 @@ Request body:
 **Request** (this journey's create call, two signers):
 
 ```json
-POST /api/v1/documents/files/d6d13f05-dc24-44d2-bad6-286c056e8b21/signature-requests
+POST /api/v1/documents/files/a946b250-dfb8-462c-9808-34e35bc02848/signature-requests
 {
   "signers": [
-    { "email": "signer-one-04b22e2a31a5@example.com", "name": "Ada Investor" },
-    { "email": "signer-two-97958c8c1fb9@example.com", "name": "Bello Legal" }
+    { "email": "signer-one-4e0d876104fa@example.com", "name": "Ada Investor" },
+    { "email": "signer-two-50ccede83c5c@example.com", "name": "Bello Legal" }
   ],
   "title": "Investor Agreement"
 }
@@ -78,19 +78,19 @@ POST /api/v1/documents/files/d6d13f05-dc24-44d2-bad6-286c056e8b21/signature-requ
 ```json
 {
   "data": {
-    "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
     "title": "Investor Agreement",
     "status": "awaiting",
-    "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
     "filename": "investor-agreement.pdf",
     "signed_count": 0,
     "total": 2,
-    "expires_at": "2026-09-28T12:53:05.919518+00:00",
+    "expires_at": "2026-09-28T13:13:40.351626+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T12:53:05.915698+00:00",
+    "created_at": "2026-09-14T13:13:40.347874+00:00",
     "signers": [
       {
-        "email": "signer-one-04b22e2a31a5@example.com",
+        "email": "signer-one-4e0d876104fa@example.com",
         "name": "Ada Investor",
         "position": 0,
         "status": "pending",
@@ -98,7 +98,7 @@ POST /api/v1/documents/files/d6d13f05-dc24-44d2-bad6-286c056e8b21/signature-requ
         "signed_name": null
       },
       {
-        "email": "signer-two-97958c8c1fb9@example.com",
+        "email": "signer-two-50ccede83c5c@example.com",
         "name": "Bello Legal",
         "position": 1,
         "status": "pending",
@@ -107,8 +107,8 @@ POST /api/v1/documents/files/d6d13f05-dc24-44d2-bad6-286c056e8b21/signature-requ
       }
     ],
     "signer_links": [
-      "http://localhost/sign/6NqVZiq-MyDppxva_tC06EyoCV93qaNsmr5dhUxPLdo",
-      "http://localhost/sign/B-oTz_w8z93r43Y90oGYmLckrwKaraZotlb0d3okOSA"
+      "http://localhost/sign/76eb_OxpfSuzS3ZA-C7AT6LrEskRng_TRVE7E0_uIs0",
+      "http://localhost/sign/5_3HoWCZ-G15TuufZcw5nEsIU34mGScnqRSTBG1YRyc"
     ]
   },
   "meta": null
@@ -165,16 +165,16 @@ signing):
   "data": {
     "request": { "title": "Investor Agreement", "status": "awaiting" },
     "file": {
-      "id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+      "id": "a946b250-dfb8-462c-9808-34e35bc02848",
       "filename": "investor-agreement.pdf",
       "content_type": "application/pdf",
       "size_bytes": 47,
       "folder": null,
-      "url": "var/storage/documents/075147b0-9c23-430b-ae11-c7685d40bfd3/6bf8e4ed8f7442c0953698bc99904c39.pdf",
-      "uploaded_at": "2026-09-14T12:53:05.903711+00:00"
+      "url": "var/storage/documents/5d1f26ba-4c9f-4199-a909-a3219661a6a6/1e0d6b20088d4273984666e98ea297a2.pdf",
+      "uploaded_at": "2026-09-14T13:13:40.338718+00:00"
     },
     "signer": {
-      "email": "signer-one-04b22e2a31a5@example.com",
+      "email": "signer-one-4e0d876104fa@example.com",
       "name": "Ada Investor"
     }
   },
@@ -211,7 +211,7 @@ VALIDATION_ERROR` (not exercised live; same shape as every other 422 in this API
 **Request** (first signer, this journey):
 
 ```json
-POST /api/v1/sign/6NqVZiq-MyDppxva_tC06EyoCV93qaNsmr5dhUxPLdo
+POST /api/v1/sign/76eb_OxpfSuzS3ZA-C7AT6LrEskRng_TRVE7E0_uIs0
 { "typed_name": "Ada Investor" }
 ```
 
@@ -221,34 +221,16 @@ the request **stays `awaiting`**, `signed_count` moves to 1:
 ```json
 {
   "data": {
-    "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
     "title": "Investor Agreement",
     "status": "awaiting",
-    "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
     "filename": "investor-agreement.pdf",
     "signed_count": 1,
     "total": 2,
-    "expires_at": "2026-09-28T12:53:05.919518+00:00",
+    "expires_at": "2026-09-28T13:13:40.351626+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T12:53:05.915698+00:00",
-    "signers": [
-      {
-        "email": "signer-one-04b22e2a31a5@example.com",
-        "name": "Ada Investor",
-        "position": 0,
-        "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.954477+00:00",
-        "signed_name": "Ada Investor"
-      },
-      {
-        "email": "signer-two-97958c8c1fb9@example.com",
-        "name": "Bello Legal",
-        "position": 1,
-        "status": "pending",
-        "signed_at": null,
-        "signed_name": null
-      }
-    ]
+    "created_at": "2026-09-14T13:13:40.347874+00:00"
   },
   "meta": null
 }
@@ -261,44 +243,33 @@ the request **stays `awaiting`**, `signed_count` moves to 1:
 ```json
 {
   "data": {
-    "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
     "title": "Investor Agreement",
     "status": "complete",
-    "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
     "filename": "investor-agreement.pdf",
     "signed_count": 2,
     "total": 2,
-    "expires_at": "2026-09-28T12:53:05.919518+00:00",
-    "completed_at": "2026-09-14T12:53:05.973019+00:00",
-    "created_at": "2026-09-14T12:53:05.915698+00:00",
-    "signers": [
-      {
-        "email": "signer-one-04b22e2a31a5@example.com",
-        "name": "Ada Investor",
-        "position": 0,
-        "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.954477+00:00",
-        "signed_name": "Ada Investor"
-      },
-      {
-        "email": "signer-two-97958c8c1fb9@example.com",
-        "name": "Bello Legal",
-        "position": 1,
-        "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.973019+00:00",
-        "signed_name": "Bello Legal"
-      }
-    ]
+    "expires_at": "2026-09-28T13:13:40.351626+00:00",
+    "completed_at": "2026-09-14T13:13:40.395673+00:00",
+    "created_at": "2026-09-14T13:13:40.347874+00:00"
   },
   "meta": null
 }
 ```
 
-**Both `POST /sign/{token}` responses return the FULL request shape (the same shape as `GET
-/documents/signature-requests/{id}`, §6b) — every signer's current status, not just the one who
-just signed.** This lets a signing-confirmation page show "2 of 2 signed — complete!" (or "1 of 2
-signed — waiting on Bello Legal") without a follow-up call. **`signer_links` is absent here too**
-(§1) — the signing page cannot use this response to discover other signers' links.
+**Neither `POST /sign/{token}` response includes the `signers[]` roster.** This is a deliberate
+privacy scoping (fixed in this slice's final review): the public, unauthenticated `/sign/{token}`
+endpoints return only the request summary — `id`/`title`/`status`/`file_id`/`filename`/
+`signed_count`/`total`/`expires_at`/`completed_at`/`created_at` — never the per-signer array, so a
+signer who has no login and no workspace membership cannot read another co-signer's email or name
+off their own signing confirmation. That's still enough for a signing-confirmation page to show "2
+of 2 signed — complete!" (or "1 of 2 signed — waiting on someone else") purely from `signed_count`/
+`total`/`status`. The **full** shape with `signers[]` is returned only by the authenticated,
+workspace-scoped `GET /documents/signature-requests` / `GET /documents/signature-requests/{id}`
+(§9) — and by the create response (§1) for the founder who just sent the request. **`signer_links`
+is absent here too** (§1) — the signing page cannot use this response to discover other signers'
+links.
 
 **Immediately re-opening the same (now-signed) token 404s**
 (`e2e/_captures/documents/signature_sign_after_signed_404.json`, `GET /sign/{token}` on the
@@ -399,7 +370,7 @@ not) subsequently 404s via the uniform shape (§5).
 one-signer "NDA" request created alongside this journey's `signature_create_for_cancel.json`):
 
 ```json
-{ "data": { "cancelled": true } }
+{ "data": { "cancelled": true }, "meta": null }
 ```
 
 **Cancelling a request that's already `complete`** → `409 SIGNATURE_NOT_ACTIVE` (not exercised
@@ -429,31 +400,31 @@ Both are **workspace-scoped, member-readable, and never carry `signer_links`** (
 ```json
 {
   "data": {
-    "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
     "title": "Investor Agreement",
     "status": "complete",
-    "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
     "filename": "investor-agreement.pdf",
     "signed_count": 2,
     "total": 2,
-    "expires_at": "2026-09-28T12:53:05.919518+00:00",
-    "completed_at": "2026-09-14T12:53:05.973019+00:00",
-    "created_at": "2026-09-14T12:53:05.915698+00:00",
+    "expires_at": "2026-09-28T13:13:40.351626+00:00",
+    "completed_at": "2026-09-14T13:13:40.395673+00:00",
+    "created_at": "2026-09-14T13:13:40.347874+00:00",
     "signers": [
       {
-        "email": "signer-one-04b22e2a31a5@example.com",
+        "email": "signer-one-4e0d876104fa@example.com",
         "name": "Ada Investor",
         "position": 0,
         "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.954477+00:00",
+        "signed_at": "2026-09-14T13:13:40.380127+00:00",
         "signed_name": "Ada Investor"
       },
       {
-        "email": "signer-two-97958c8c1fb9@example.com",
+        "email": "signer-two-50ccede83c5c@example.com",
         "name": "Bello Legal",
         "position": 1,
         "status": "signed",
-        "signed_at": "2026-09-14T12:53:05.973019+00:00",
+        "signed_at": "2026-09-14T13:13:40.395673+00:00",
         "signed_name": "Bello Legal"
       }
     ]
@@ -473,19 +444,19 @@ against the same ephemeral database, filter client-side on `id` if you diff agai
   "data": {
     "requests": [
       {
-        "id": "6a423302-920d-4148-a636-3b74bc39bae6",
+        "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
         "title": "Investor Agreement",
         "status": "complete",
-        "file_id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+        "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
         "filename": "investor-agreement.pdf",
         "signed_count": 2,
         "total": 2,
-        "expires_at": "2026-09-28T12:53:05.919518+00:00",
-        "completed_at": "2026-09-14T12:53:05.973019+00:00",
-        "created_at": "2026-09-14T12:53:05.915698+00:00",
+        "expires_at": "2026-09-28T13:13:40.351626+00:00",
+        "completed_at": "2026-09-14T13:13:40.395673+00:00",
+        "created_at": "2026-09-14T13:13:40.347874+00:00",
         "signers": [
-          { "email": "signer-one-04b22e2a31a5@example.com", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-14T12:53:05.954477+00:00", "signed_name": "Ada Investor" },
-          { "email": "signer-two-97958c8c1fb9@example.com", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-14T12:53:05.973019+00:00", "signed_name": "Bello Legal" }
+          { "email": "signer-one-4e0d876104fa@example.com", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-14T13:13:40.380127+00:00", "signed_name": "Ada Investor" },
+          { "email": "signer-two-50ccede83c5c@example.com", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-14T13:13:40.395673+00:00", "signed_name": "Bello Legal" }
         ]
       }
     ]
@@ -578,6 +549,7 @@ every response body is captured verbatim in the named file.
 | `POST .../cancel` — `{cancelled: true}` | ✅ | `signature_cancel.json` |
 | Cancelled request's signer link → uniform `404 NOT_FOUND` | ✅ | `signature_sign_after_cancel_404.json` |
 | `signer_links` absent from get/list/sign responses | ✅ | `signature_get.json`, `signature_list.json`, `signature_sign_first.json`, `signature_sign_second.json` (none contain the key) |
+| `signers[]` roster absent from both `POST /sign/{token}` responses (privacy scoping — a signer cannot see co-signers' emails/names) | ✅ | `signature_sign_first.json`, `signature_sign_second.json` (neither contains the key; full shape only on `signature_create.json`, `signature_get.json`, `signature_list.json`) |
 | Unknown token (never existed) → same uniform `404 NOT_FOUND` | ⚠️ unit only | `tests/api/test_signatures.py::test_unknown_sign_token_404` |
 | Expired token (past `expires_at`, never signed/cancelled) → same uniform `404 NOT_FOUND` | ⚠️ unit only | `tests/services/documents/test_signatures.py::test_open_unknown_expired_cancelled_signed_all_404` |
 | `status: "expired"` derivation on a request whose clock has passed `expires_at` | ⚠️ unit only | `tests/services/documents/test_signatures.py::test_request_status_derives_expired` |

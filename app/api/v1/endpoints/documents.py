@@ -441,7 +441,9 @@ def sign_endpoint(
         user_agent=request.headers.get("user-agent"),
     )
     db.commit()
-    return success_response(serialize_request(db, updated))
+    # with_signers=False: the public signer must NOT receive the co-signer roster
+    # (emails/names). They keep status + signed_count/total (outside the signers block).
+    return success_response(serialize_request(db, updated, with_signers=False))
 
 
 @router.get("/documents/{document_id}")

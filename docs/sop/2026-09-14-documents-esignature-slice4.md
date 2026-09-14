@@ -227,6 +227,15 @@ that module, per D8 in the design).
 
 ## Follow-ups
 
+**Known gap deferred to a follow-up (flagged in the final whole-branch review, not blocking):**
+- **Completion is not row-locked.** `record_signature` reads the request with a plain `.one()`,
+  sets the signer's `signed_at`, then re-counts to decide completion. Under READ COMMITTED, two
+  final signers POSTing concurrently can each miss the other's uncommitted `signed_at`, leaving the
+  request stuck at `signed_count == total` but `status = "awaiting"` (and the
+  `document.signature.completed` event never fires). No signatures are lost — only the completion
+  transition is missed. Same class as the Slice 3 share pattern (also unlocked). Fix: `SELECT … FOR
+  UPDATE` the request row before the all-signed check, plus a two-concurrent-signers race test.
+
 **Deferred to later slices/modules (by design, not oversights):**
 - **Third-party provider for certificate-based signing.** This slice's typed-name + audit-trail
   model is a valid simple electronic signature, not a certificate-based/notarized one (see the "How"

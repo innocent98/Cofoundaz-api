@@ -45,6 +45,9 @@ def test_create_returns_signer_links_and_public_sign_completes(client, db):
     # first signer signs -> still awaiting
     r1 = client.post(f"/api/v1/sign/{tokens[0]}", json={"typed_name": "Alice"})
     assert r1.status_code == 200 and r1.json()["data"]["status"] == "awaiting"
+    # the public signer must NOT receive the co-signer roster (emails/names)
+    assert "signers" not in r1.json()["data"]
+    assert r1.json()["data"]["signed_count"] == 1 and r1.json()["data"]["total"] == 2
     # second signs -> complete
     r2 = client.post(f"/api/v1/sign/{tokens[1]}", json={"typed_name": "Bob"})
     assert r2.status_code == 200 and r2.json()["data"]["status"] == "complete"
