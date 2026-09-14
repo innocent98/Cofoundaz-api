@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": "a09196ac-3d07-491a-9c9f-4488963eb3b4",
+    "title": "NDA",
+    "status": "awaiting",
+    "file_id": "5dfda882-d532-4f5f-9586-3e9a27a0d622",
+    "filename": "nda.pdf",
+    "signed_count": 0,
+    "total": 1,
+    "expires_at": "2026-09-28T12:53:06.021303+00:00",
+    "completed_at": null,
+    "created_at": "2026-09-14T12:53:06.017229+00:00",
+    "signers": [
+      {
+        "email": "signer-cancelled-7d98edad294d@example.com",
+        "name": null,
+        "position": 0,
+        "status": "pending",
+        "signed_at": null,
+        "signed_name": null
+      }
+    ],
+    "signer_links": [
+      "http://localhost/sign/VaRCSPBdUWtEbykh7ZVRTdMcbbHpPJdswsHkpy8aTkA"
+    ]
+  },
+  "meta": null
+}

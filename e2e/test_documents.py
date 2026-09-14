@@ -22,12 +22,26 @@ back out of the captured share email in the file mail dir (same
 document with NO auth at all, the per-document and workspace "shared with"
 lists show it, a revoke fires, and the same public open then 404s.
 
+`test_documents_esignature_journey` (Module 18, Slice 4 - E-signature, the
+final slice -- completes Module 18) covers the tokenized-link signing
+surface: a founder uploads a file and sends it to two signers, each signer's
+secure link is read back out of the captured signature email in the file
+mail dir (same mechanism as `_latest_share_link` above, but the signature
+email carries a `/sign/{token}` link -- see `_latest_sign_link` below) and
+cross-checked against the create response's one-time `signer_links`, both
+signers open the file with NO auth via the public `GET /sign/{token}` and
+sign it via the public `POST /sign/{token}`, the request goes `awaiting` ->
+`complete` after the second signature, and the workspace list reflects `2 of
+2` signed + `complete`. A second request exercises the cancel path: create ->
+cancel -> the cancelled signer's `GET /sign/{token}` 404s.
+
 Every response body along the way is captured to `e2e/_captures/documents/
 *.json` -- those files are the verbatim source for
 `docs/fe-integration-guide-documents-templates.md`,
-`docs/fe-integration-guide-documents-files.md`, and
-`docs/fe-integration-guide-documents-sharing.md`. They must be REAL bodies
-from this live run, complete and untrimmed.
+`docs/fe-integration-guide-documents-files.md`,
+`docs/fe-integration-guide-documents-sharing.md`, and
+`docs/fe-integration-guide-documents-esignature.md`. They must be REAL
+bodies from this live run, complete and untrimmed.
 
 Document Library Core has no roadmap/assessment dependency, so onboarding here
 is just steps 1-4 + complete -- same shape as e2e/test_business_builder.py and
@@ -43,6 +57,7 @@ from pathlib import Path
 import httpx
 
 _SHARE_LINK_RE = re.compile(r'href="([^"]*/shared/[^"]+)"')
+_SIGN_LINK_RE = re.compile(r'href="([^"]*/sign/[^"]+)"')
 
 
 def _latest_share_link(email: str) -> str:
@@ -64,6 +79,27 @@ def _latest_share_link(email: str) -> str:
         if m:
             return m.group(1)
     raise AssertionError(f"no share email found for {email}")
+
+
+def _latest_sign_link(email: str) -> str:
+    """Reads the raw `/sign/{token}` link out of the file-backend mail dir.
+
+    Mirrors `_latest_share_link` above -- same `E2E_MAIL_DIR` env var, same
+    per-email JSON captures written by `FileEmailSender` -- but the signature
+    email's `<a href>` points at `/sign/{token}` (see
+    `_signature_email` in app/api/v1/endpoints/documents.py) instead of
+    `/shared/{token}`, so it needs its own regex.
+    """
+    mail_dir = Path(os.environ.get("E2E_MAIL_DIR", "./var/mail-e2e"))
+    files = sorted(mail_dir.glob("*.json"))
+    for f in reversed(files):  # newest first
+        data = json.loads(f.read_text())
+        if data["to"].lower() != email.lower():
+            continue
+        m = _SIGN_LINK_RE.search(data["html"])
+        if m:
+            return m.group(1)
+    raise AssertionError(f"no signature email found for {email}")
 
 
 def _auth_header(token: str) -> dict:
@@ -357,3 +393,153 @@ def test_documents_sharing_journey(base_url, make_verified_user, unique_email, c
         gone = c.get(f"/api/v1/shared/{token}")
         assert gone.status_code == 404, gone.text
         capture("documents", "share_open_after_revoke", gone)
+
+
+def test_documents_esignature_journey(base_url, make_verified_user, unique_email, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder -- same shape as the journeys above.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Signatures")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. Upload a file to send for signature (Slice 2's /documents/files).
+        pdf_bytes = b"%PDF-1.4\n%a tiny fake PDF for e2e signing\n%%EOF"
+        uploaded = c.post(
+            "/api/v1/documents/files",
+            headers=wh,
+            files={"file": ("investor-agreement.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        file_id = uploaded.json()["data"]["id"]
+
+        # 2. POST /documents/files/{id}/signature-requests -- editor, 201, two
+        # signers -- the response returns `signer_links` (once; list/get never).
+        signer1_email = unique_email("signer-one")
+        signer2_email = unique_email("signer-two")
+        created = c.post(
+            f"/api/v1/documents/files/{file_id}/signature-requests",
+            headers=wh,
+            json={
+                "signers": [
+                    {"email": signer1_email, "name": "Ada Investor"},
+                    {"email": signer2_email, "name": "Bello Legal"},
+                ],
+                "title": "Investor Agreement",
+            },
+        )
+        assert created.status_code == 201, created.text
+        created_body = created.json()["data"]
+        assert created_body["status"] == "awaiting"
+        assert created_body["signed_count"] == 0
+        assert created_body["total"] == 2
+        signer_links = created_body["signer_links"]
+        assert len(signer_links) == 2
+        capture("documents", "signature_create", created)
+
+        request_id = created_body["id"]
+
+        # 3. For each signer: the SAME link was actually emailed -- read it back
+        # out of the captured signature email (file mail dir) and cross-check
+        # against the create response's one-time `signer_links`.
+        emailed_link_1 = _latest_sign_link(signer1_email)
+        emailed_link_2 = _latest_sign_link(signer2_email)
+        assert emailed_link_1 == signer_links[0]
+        assert emailed_link_2 == signer_links[1]
+        token1 = emailed_link_1.rsplit("/", 1)[-1]
+        token2 = emailed_link_2.rsplit("/", 1)[-1]
+
+        # 4. GET /sign/{token} -- PUBLIC, NO auth header at all -- returns the
+        # file + request title/status + the signer's own identity.
+        view1 = c.get(f"/api/v1/sign/{token1}")
+        assert view1.status_code == 200, view1.text
+        view1_body = view1.json()["data"]
+        assert view1_body["request"]["title"] == "Investor Agreement"
+        assert view1_body["request"]["status"] == "awaiting"
+        assert view1_body["file"]["id"] == file_id
+        assert view1_body["signer"]["email"] == signer1_email
+        capture("documents", "signature_sign_view", view1)
+
+        # 5. POST /sign/{token} -- PUBLIC, typed-name signature -- first of two,
+        # request stays `awaiting`.
+        sign1 = c.post(f"/api/v1/sign/{token1}", json={"typed_name": "Ada Investor"})
+        assert sign1.status_code == 200, sign1.text
+        sign1_body = sign1.json()["data"]
+        assert sign1_body["status"] == "awaiting"
+        assert sign1_body["signed_count"] == 1
+        capture("documents", "signature_sign_first", sign1)
+
+        # 6. Second signer: view + sign -- this is the LAST signer, so the
+        # request flips to `complete`.
+        view2 = c.get(f"/api/v1/sign/{token2}")
+        assert view2.status_code == 200, view2.text
+        capture("documents", "signature_sign_view_second", view2)
+
+        sign2 = c.post(f"/api/v1/sign/{token2}", json={"typed_name": "Bello Legal"})
+        assert sign2.status_code == 200, sign2.text
+        sign2_body = sign2.json()["data"]
+        assert sign2_body["status"] == "complete"
+        assert sign2_body["signed_count"] == 2
+        assert sign2_body["total"] == 2
+        assert sign2_body["completed_at"] is not None
+        capture("documents", "signature_sign_second", sign2)
+
+        # 6b. A signed signer's link is single-use -- re-opening it 404s.
+        resigned = c.get(f"/api/v1/sign/{token1}")
+        assert resigned.status_code == 404, resigned.text
+        capture("documents", "signature_sign_after_signed_404", resigned)
+
+        # 7. GET /documents/signature-requests/{id} -- one request, complete.
+        fetched = c.get(f"/api/v1/documents/signature-requests/{request_id}", headers=wh)
+        assert fetched.status_code == 200, fetched.text
+        assert fetched.json()["data"]["status"] == "complete"
+        capture("documents", "signature_get", fetched)
+
+        # 8. GET /documents/signature-requests -- workspace list shows 2 of 2 +
+        # complete.
+        listed = c.get("/api/v1/documents/signature-requests", headers=wh)
+        assert listed.status_code == 200, listed.text
+        rows = listed.json()["data"]["requests"]
+        row = next(r for r in rows if r["id"] == request_id)
+        assert row["signed_count"] == 2
+        assert row["total"] == 2
+        assert row["status"] == "complete"
+        capture("documents", "signature_list", listed)
+
+        # 9. Cancel path -- a second request, one signer, created then
+        # cancelled before signing: the signer's link 404s afterward.
+        uploaded2 = c.post(
+            "/api/v1/documents/files",
+            headers=wh,
+            files={"file": ("nda.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+        )
+        assert uploaded2.status_code == 201, uploaded2.text
+        file2_id = uploaded2.json()["data"]["id"]
+
+        signer3_email = unique_email("signer-cancelled")
+        created2 = c.post(
+            f"/api/v1/documents/files/{file2_id}/signature-requests",
+            headers=wh,
+            json={"signers": [{"email": signer3_email}], "title": "NDA"},
+        )
+        assert created2.status_code == 201, created2.text
+        created2_body = created2.json()["data"]
+        capture("documents", "signature_create_for_cancel", created2)
+
+        request2_id = created2_body["id"]
+        token3 = created2_body["signer_links"][0].rsplit("/", 1)[-1]
+
+        cancelled = c.post(f"/api/v1/documents/signature-requests/{request2_id}/cancel", headers=wh)
+        assert cancelled.status_code == 200, cancelled.text
+        assert cancelled.json()["data"]["cancelled"] is True
+        capture("documents", "signature_cancel", cancelled)
+
+        gone = c.get(f"/api/v1/sign/{token3}")
+        assert gone.status_code == 404, gone.text
+        capture("documents", "signature_sign_after_cancel_404", gone)

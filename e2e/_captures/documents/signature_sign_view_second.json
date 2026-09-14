@@ -1,0 +1,22 @@
+{
+  "data": {
+    "request": {
+      "title": "Investor Agreement",
+      "status": "awaiting"
+    },
+    "file": {
+      "id": "d6d13f05-dc24-44d2-bad6-286c056e8b21",
+      "filename": "investor-agreement.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 47,
+      "folder": null,
+      "url": "var/storage/documents/075147b0-9c23-430b-ae11-c7685d40bfd3/6bf8e4ed8f7442c0953698bc99904c39.pdf",
+      "uploaded_at": "2026-09-14T12:53:05.903711+00:00"
+    },
+    "signer": {
+      "email": "signer-two-97958c8c1fb9@example.com",
+      "name": "Bello Legal"
+    }
+  },
+  "meta": null
+}
