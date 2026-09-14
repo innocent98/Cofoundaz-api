@@ -49,6 +49,7 @@ def create_request(
         pairs.append((signer, raw))
     db.flush()
     event_bus.publish(
+        db,
         "document.signature.requested",
         {"startup_id": str(req.startup_id), "request_id": str(req.id), "file_id": str(file.id)},
     )
@@ -110,6 +111,7 @@ def cancel_request(db: Session, request: SignatureRequest) -> None:
     request.cancelled_at = datetime.now(UTC)
     db.flush()
     event_bus.publish(
+        db,
         "document.signature.cancelled",
         {"startup_id": str(request.startup_id), "request_id": str(request.id)},
     )
@@ -152,6 +154,7 @@ def record_signature(
     signer.signed_user_agent = user_agent
     db.flush()
     event_bus.publish(
+        db,
         "document.signature.signed",
         {
             "startup_id": str(request.startup_id),
@@ -165,6 +168,7 @@ def record_signature(
         request.completed_at = now
         db.flush()
         event_bus.publish(
+            db,
             "document.signature.completed",
             {"startup_id": str(request.startup_id), "request_id": str(request.id)},
         )

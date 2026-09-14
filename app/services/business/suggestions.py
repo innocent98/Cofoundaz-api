@@ -90,6 +90,7 @@ def create_suggestion(
     db.add(row)
     db.flush()
     event_bus.publish(
+        db,
         "business.suggestion.created",
         {"startup_id": str(startup.id), "suggestion_id": str(row.id), "op": op.value},
     )
@@ -203,6 +204,7 @@ def approve_suggestion(
     s.resolved_at = datetime.now(UTC)
     db.flush()
     event_bus.publish(
+        db,
         "business.suggestion.approved",
         {"startup_id": str(s.startup_id), "suggestion_id": str(s.id), "op": s.op.value},
     )
@@ -219,6 +221,7 @@ def reject_suggestion(
     s.resolved_at = datetime.now(UTC)
     db.flush()
     event_bus.publish(
+        db,
         "business.suggestion.rejected",
         {"startup_id": str(s.startup_id), "suggestion_id": str(s.id), "op": s.op.value},
     )

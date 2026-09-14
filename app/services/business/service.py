@@ -112,6 +112,7 @@ def save_canvas(
     now_complete = completion(canvas.type, canvas.blocks)["status"] == "complete"
     if now_complete and not was_complete:
         event_bus.publish(
+            db,
             "business.artifact.completed",
             {"startup_id": str(canvas.startup_id), "canvas_type": canvas.type.value},
         )

@@ -76,7 +76,7 @@ def test_generate_emits_event(db, monkeypatch):
     events = []
     from app.platform import events as events_mod
 
-    monkeypatch.setattr(events_mod.event_bus, "publish", lambda e, p: events.append((e, p)))
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda db, e, p: events.append((e, p)))
     owner = create_user(db)
     startup = create_startup(db, owner=owner, stage=StartupStage.idea)
     generate_roadmap(db, startup)

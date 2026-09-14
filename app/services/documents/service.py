@@ -59,6 +59,7 @@ def create_document(
     db.add(doc)
     db.flush()
     event_bus.publish(
+        db,
         "document.created",
         {"startup_id": str(startup.id), "document_id": str(doc.id), "kind": doc.kind.value},
     )

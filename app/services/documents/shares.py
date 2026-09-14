@@ -37,6 +37,7 @@ def create_share(
     db.add(row)
     db.flush()
     event_bus.publish(
+        db,
         "document.shared",
         {
             "startup_id": str(document.startup_id),
@@ -69,6 +70,7 @@ def revoke_share(db: Session, share: DocumentShare) -> None:
     share.revoked_at = datetime.now(UTC)
     db.flush()
     event_bus.publish(
+        db,
         "document.share.revoked",
         {"startup_id": str(share.startup_id), "share_id": str(share.id)},
     )

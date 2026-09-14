@@ -67,7 +67,7 @@ def test_completion_transitions_and_emits_once(db, monkeypatch):
     events = []
     monkeypatch.setattr(
         "app.services.business.service.event_bus.publish",
-        lambda e, p: events.append((e, p)),
+        lambda db, e, p: events.append((e, p)),
     )
     s = _startup(db)
     c = get_or_create_canvas(db, s, CanvasType.mission_vision)

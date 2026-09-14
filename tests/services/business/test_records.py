@@ -71,7 +71,7 @@ def test_create_first_record_emits_completed_event_once(db, monkeypatch):
     events = []
     monkeypatch.setattr(
         "app.services.business.records.event_bus.publish",
-        lambda e, p: events.append((e, p)),
+        lambda db, e, p: events.append((e, p)),
     )
     s = _startup(db)
     create_record(db, s, RecordKind.persona, {"name": "A"})

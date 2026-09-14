@@ -349,6 +349,7 @@ def _maybe_complete_mission(db: Session, mission: Mission) -> None:
     db.flush()
 
     event_bus.publish(
+        db,
         "mission.completed",
         {
             "startup_id": str(mission.startup_id),
@@ -362,6 +363,7 @@ def _maybe_complete_mission(db: Session, mission: Mission) -> None:
         new_streak = streak(db, startup)
         if new_streak in _STREAK_MILESTONES:
             event_bus.publish(
+                db,
                 "mission.streak.milestone",
                 {"startup_id": str(mission.startup_id), "streak": new_streak},
             )
@@ -380,6 +382,7 @@ def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTa
     db.flush()
 
     event_bus.publish(
+        db,
         "mission.task.completed",
         {
             "startup_id": str(startup.id),

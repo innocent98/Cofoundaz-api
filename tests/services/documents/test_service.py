@@ -138,7 +138,7 @@ def test_create_publishes_event_once(db, monkeypatch):
     events = []
     monkeypatch.setattr(
         "app.services.documents.service.event_bus.publish",
-        lambda e, p: events.append((e, p)),
+        lambda db, e, p: events.append((e, p)),
     )
     u, s, _m = _ctx(db)
     doc = _new(db, s, u)

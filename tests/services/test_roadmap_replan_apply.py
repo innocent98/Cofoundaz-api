@@ -28,7 +28,7 @@ def test_apply_commits_marker_history_event(db, monkeypatch):
     events = []
     from app.platform import events as ev
 
-    monkeypatch.setattr(ev.event_bus, "publish", lambda e, p: events.append((e, p)))
+    monkeypatch.setattr(ev.event_bus, "publish", lambda db, e, p: events.append((e, p)))
 
     roadmap, user, m = _slipped(db)
     changes = compute_replan(db, roadmap)

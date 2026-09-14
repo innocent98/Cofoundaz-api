@@ -50,9 +50,10 @@ def complete_onboarding(db: Session, startup: Startup, user: User) -> dict[str, 
     )
 
     event_bus.publish(
-        "onboarding.completed", {"startup_id": str(startup.id), "user_id": str(user.id)}
+        db, "onboarding.completed", {"startup_id": str(startup.id), "user_id": str(user.id)}
     )
     event_bus.publish(
+        db,
         "notification.onboarding_complete",
         {"startup_id": str(startup.id), "user_id": str(user.id)},
     )
