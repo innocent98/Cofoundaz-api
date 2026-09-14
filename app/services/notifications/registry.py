@@ -102,15 +102,17 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     )
 
 
-_registered = False
+# Ids of buses already wired up, so a re-import or a second startup call does not
+# double-subscribe the default bus. A set mutated in place (never rebound) avoids a
+# module-level `global` while keeping the guard per-bus — tests pass a throwaway bus.
+_registered_buses: set[int] = set()
 
 
 def register(bus: Any = event_bus) -> None:
     """Subscribe every handled event on the bus. Idempotent for the default bus."""
-    global _registered
-    if bus is event_bus and _registered:
+    if bus is event_bus and id(bus) in _registered_buses:
         return
     for event in SPECS:
         bus.subscribe(event, lambda db, payload, e=event: _handle(db, e, payload))
     if bus is event_bus:
-        _registered = True
+        _registered_buses.add(id(bus))
