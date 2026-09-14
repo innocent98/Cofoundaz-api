@@ -61,7 +61,7 @@ def signup(
         actor_user_id=user.id,
         ip=request.client.host if request.client else None,
     )
-    event_bus.publish("auth.user.registered", {"user_id": str(user.id)})
+    event_bus.publish(db, "auth.user.registered", {"user_id": str(user.id)})
     db.commit()
     return success_response(
         {"user": {"id": str(user.id), "email": user.email}, "verification_sent": True}
@@ -74,7 +74,7 @@ def verify(payload: TokenRequest, db: Session = Depends(get_db)) -> dict[str, An
     user.status = UserStatus.active
     user.email_verified_at = datetime.now(UTC)
     db.flush()
-    event_bus.publish("auth.user.verified", {"user_id": str(user.id)})
+    event_bus.publish(db, "auth.user.verified", {"user_id": str(user.id)})
     db.commit()
     return success_response({"verified": True})
 

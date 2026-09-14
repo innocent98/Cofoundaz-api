@@ -79,6 +79,7 @@ def create_invitations(
             )
         )
         event_bus.publish(
+            db,
             "workspace.member.invited",
             {"startup_id": str(startup.id), "email": email, "role": role.value},
         )
@@ -133,6 +134,7 @@ def accept_invitation(db: Session, user: User, token: str) -> Membership:
     inv.accepted_user_id = user.id
     db.flush()
     event_bus.publish(
+        db,
         "workspace.member.joined",
         {"startup_id": str(inv.startup_id), "user_id": str(user.id), "role": inv.role.value},
     )

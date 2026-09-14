@@ -45,6 +45,7 @@ def create_record(db: Session, startup: Startup, kind: RecordKind, data: dict) -
     db.flush()
     if count == 0:
         event_bus.publish(
+            db,
             "business.artifact.completed",
             {"startup_id": str(startup.id), "artifact": kind.value},
         )

@@ -25,7 +25,7 @@ def test_apply_then_reapply_is_noop(client, db, monkeypatch):
     events = []
     from app.platform import events as ev
 
-    monkeypatch.setattr(ev.event_bus, "publish", lambda e, p: events.append((e, p)))
+    monkeypatch.setattr(ev.event_bus, "publish", lambda db, e, p: events.append((e, p)))
 
     _u, _s, h = _member(db, role=MembershipRole.founder, stage=StartupStage.idea)
     db.commit()

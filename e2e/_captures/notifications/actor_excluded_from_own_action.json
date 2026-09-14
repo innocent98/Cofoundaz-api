@@ -1,0 +1,21 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "b20cc02b-01f7-439a-9c8a-1e69a01f220e",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "97394be8-ed1e-4154-bba1-79d79a4398f4",
+          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769"
+        },
+        "read": false,
+        "created_at": "2026-09-14T16:16:00.184056+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

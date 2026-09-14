@@ -27,13 +27,13 @@ shipment merged earlier but had not been reconciled into this snapshot). `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **9 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 1 in progress (17 Learning Academy — the junior's active build, not yet merged). 16 not started (03 · 09–16 · 19 · 20 · 22–26). Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
+**PRD module tally: 26 total** — **9 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 2 in progress (17 Learning Academy — the junior's active build, not yet merged; 20 Notifications — Slice 1 of ~4 shipped on `feat/notifications-feed`, not yet merged). 15 not started (03 · 09–16 · 19 · 22–26). Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Shipped & merged (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · Business Builder (08, Slices 1–3; PRs #39/#46/#47) · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 In progress | 1 module | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged |
-| ⬜ Not started | 16 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Notifications (20) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
+| 🟡 In progress | 2 modules | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged. Notifications (20) — Slice 1 (In-App Feed + Fan-Out) shipped on `feat/notifications-feed` (migration `0021`); Slices 2–4 (email, scheduler, real-time) planned; not yet merged |
+| ⬜ Not started | 15 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **114 endpoints** (directly counted from the OpenAPI schema's
 path×method operations, `app.openapi()["paths"]` — 93 paths, 114 operations; supersedes the prior
@@ -609,6 +609,81 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
 
+## 🟢 Module 20 — Notifications — *Slice 1 (In-App Feed + Fan-Out) shipped on branch
+`feat/notifications-feed`, not yet merged — Slices 2–4 planned*
+
+_Module 20 decomposes into ~4 slices (agreed 2026-09-14, `docs/superpowers/specs/
+2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (this — the platform event
+bus becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows), 2
+Email delivery + per-user preferences (Resend backend already exists), 3 Scheduler/cron (mission
+06:00, roadmap-overdue, quarterly re-assessment), 4 Real-time (websocket) + push. Nearly every
+already-shipped module (Dashboard, Roadmap, Mission, Health Score, Documents, Business Builder,
+Assessment, onboarding) has a "real notification delivery — Module 20" deferred line in its own
+SOP; Slice 1 is the first thing that actually retires the in-app half of those. SOP
+`docs/sop/2026-09-14-notifications-feed-slice1.md`._
+
+**Slice 1 — In-App Feed + Fan-Out** — *🟢 shipped on branch `feat/notifications-feed`
+(Tasks 1–6), not yet merged*
+- [x] Scope + locked decisions (real synchronous same-transaction event bus, not a queue — a
+      notification exists iff the triggering action committed · per-handler `db.begin_nested()`
+      savepoint + try/except so a notification bug never breaks the triggering action · data-driven
+      registry, one file, ~15 rows · recipient default = active members minus actor, overridable per
+      event · generic per-type copy, not per-instance rendering · in-app delivery only this slice ·
+      migration `0021_notifications`, `0019` reserved/skipped for a concurrent Module 17 branch) —
+      `.superpowers/sdd/2026-09-14-notifications-feed-slice1/`
+- [x] `app/platform/events.py` — `EventBus.publish` gains a `db: Session` parameter and now
+      dispatches to subscribed handlers inside a per-handler savepoint; `subscribe(event, handler)`
+      added — 32 `event_bus.publish(...)` call sites (28 in `app/services/**`, 4 in
+      `app/api/v1/endpoints/**`) mechanically updated to the new signature, behavior-preserving for
+      every caller with no registered handlers
+- [x] `Notification` model + migration `0021_notifications` (chains off `0020_signatures`, sole
+      alembic head) + standalone `user_id`/`startup_id` indexes + composite
+      `(user_id, startup_id, created_at)` index for the feed query
+- [x] Notifications service (`app/services/notifications/service.py`) — `create_notifications`
+      (bulk-insert per recipient) · `list_notifications` (keyset pagination on
+      `(created_at, id) desc`, `limit` clamped `[1, 50]`) · `unread_count` · `mark_read` (404
+      cross-user, idempotent) · `mark_all_read` (bulk update, returns count) ·
+      `serialize_notification`
+- [x] Registry (`app/services/notifications/registry.py`) — `SPECS` dict, 15 v1 handled events
+      (`document.shared`, `document.signature.{requested,signed,completed}`,
+      `business.suggestion.{created,approved,rejected}`, `business.artifact.completed`,
+      `roadmap.replanned`, `roadmap.milestone.completed`, `mission.completed`,
+      `mission.streak.milestone`, `healthscore.dropped`, `assessment.completed`,
+      `workspace.member.joined`) · `register()` subscribes all 15 at import time, called from
+      `app/api/v1/api.py`
+- [x] `GET /notifications?unread=&limit=&cursor=` (feed, keyset pagination) · `GET
+      /notifications/unread-count` (bell badge) · `POST /notifications/{id}/read` (404 if not the
+      caller's row) · `POST /notifications/read-all` (`{marked: N}`) — all four scoped strictly to
+      `(membership.user_id, membership.startup_id)`, verified user + `require_workspace`
+- [x] Live E2E journey (`e2e/test_notifications.py::test_notifications_journey`, 19 captures):
+      founder A invites teammate B (a REAL second active member) → B accepts → A shares a document
+      twice → B's feed shows exactly 2 unread `document.shared` rows (`data.shared_by_id` = A) → A's
+      own feed has **zero** `document.shared` rows (actor exclusion, fixed in `42e00ef` — see below)
+      → keyset pagination (`limit=1` → non-null `next_cursor` → the other row + `next_cursor: null`)
+      → mark-read (idempotent) → unknown-id 404 → **cross-user 404** (A's own `workspace.member.
+      joined` row 404s for B) → `read-all` → unread-count → 0 → full feed still shows both rows, now
+      `read: true` + full existing suite re-run green (38 e2e, 1036 unit)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 13 event
+      types' `data` shape and a handful of shared-dependency rows, all cited in that guide's
+      verification table) + this checklist reconcile —
+      `docs/sop/2026-09-14-notifications-feed-slice1.md`,
+      `docs/fe-integration-guide-notifications.md`
+- [x] **Final-review fix wave (`42e00ef`)** — fixed the actor-exclusion known gap above: added an
+      actor-identifying payload key (`shared_by_id`/`created_by`/`actor_id`) at the 6 publish sites
+      for events with a genuine member actor (`document.shared`, `document.signature.requested`,
+      the 3 `business.suggestion.*` events, `roadmap.milestone.completed`) and recognized
+      `roadmap.replanned`'s existing `applied_by` key in `_actor()` — 7 events now genuinely exclude
+      the actor; confirmed live (`e2e/_captures/notifications/actor_excluded_from_own_action.json`,
+      superseding the deleted `actor_not_excluded_known_gap.json`) and by a new unit test using the
+      real `document.shared` payload shape. Passive/system events (missions, health score, signature
+      completion, etc.) intentionally left notify-all — no member actor exists to exclude. Also
+      hardened `create_notifications` to give each fanned-out row its own `dict(data)` copy instead
+      of sharing one dict object. 1036 unit / 38 e2e green, `ruff`/`black`/`mypy` clean. SOP + FE
+      guide updated in the same pass.
+- [ ] _Deferred:_ richer per-type/per-instance titles (today: one fixed string per event type) ·
+      notification grouping/digest · Slices 2–4 (email/preferences, scheduler/cron, real-time/push)
+      — see SOP Follow-ups
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -1046,7 +1121,8 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
-- [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
+- [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) shipped, see its own section
+      above; Slices 2–4 (email delivery + preferences, scheduler/cron, real-time/push) still ahead
 - [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up

@@ -38,7 +38,7 @@ def _seed_roadmap(db, s, *, mission_size=3, task_count=3):
 
 def _capture_events(monkeypatch):
     events = []
-    monkeypatch.setattr(events_mod.event_bus, "publish", lambda e, p: events.append((e, p)))
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda db, e, p: events.append((e, p)))
     return events
 
 

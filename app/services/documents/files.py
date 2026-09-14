@@ -51,6 +51,7 @@ def upload_file(
     db.add(row)
     db.flush()
     event_bus.publish(
+        db,
         "document.file.uploaded",
         {"startup_id": str(startup.id), "file_id": str(row.id), "content_type": content_type},
     )
@@ -76,6 +77,7 @@ def delete_file(db: Session, file: DocumentFile) -> None:
     db.delete(file)
     db.flush()
     event_bus.publish(
+        db,
         "document.file.deleted",
         {"startup_id": str(file.startup_id), "file_id": str(file.id)},
     )

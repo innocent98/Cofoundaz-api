@@ -146,6 +146,7 @@ def recompute_health_score(
 
     # 5. Events
     event_bus.publish(
+        db,
         "healthscore.updated",
         {
             "startup_id": str(startup.id),
@@ -159,6 +160,7 @@ def recompute_health_score(
     )
     if delta <= -5:
         event_bus.publish(
+            db,
             "healthscore.dropped",
             {
                 "startup_id": str(startup.id),
@@ -170,6 +172,7 @@ def recompute_health_score(
         )
     if prior_max is not None and overall > prior_max:
         event_bus.publish(
+            db,
             "healthscore.record",
             {
                 "startup_id": str(startup.id),

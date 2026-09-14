@@ -100,6 +100,7 @@ def generate_roadmap(db: Session, startup: Startup, *, actor: User | None = None
     db.flush()
 
     event_bus.publish(
+        db,
         "roadmap.generated",
         {
             "startup_id": str(startup.id),

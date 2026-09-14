@@ -27,7 +27,7 @@ def test_milestone_create_and_complete_emits_event(client, db, monkeypatch):
     events = []
     from app.platform import events as events_mod
 
-    monkeypatch.setattr(events_mod.event_bus, "publish", lambda e, p: events.append((e, p)))
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda db, e, p: events.append((e, p)))
 
     _u, _s, h = _member(db, role=MembershipRole.founder, stage=StartupStage.idea)
     db.commit()

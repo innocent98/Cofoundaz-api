@@ -37,7 +37,7 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
     )
     db.flush()
     event_bus.publish(
-        "workspace.created", {"startup_id": str(startup.id), "created_by": str(user.id)}
+        db, "workspace.created", {"startup_id": str(startup.id), "created_by": str(user.id)}
     )
     return startup
 
