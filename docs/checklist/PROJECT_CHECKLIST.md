@@ -1004,6 +1004,7 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## Deferred follow-ups (tracked, non-blocking)
 
+- [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
 - [ ] Index `assessments.created_by` FK
 - [ ] `compare` error distinction (in-progress vs not-found) if FE needs it

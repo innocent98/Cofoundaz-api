@@ -114,3 +114,99 @@ def test_factory_returns_smtp_when_configured(monkeypatch):
 
     monkeypatch.setattr(settings, "EMAIL_BACKEND", "smtp")
     assert isinstance(get_email_sender(), SMTPEmailSender)
+
+
+# --------------------------------------------------------------------------- #
+# Resend backend.
+#
+# Drives ResendEmailSender with the network hop (httpx.post) stubbed, asserting
+# the request it builds and its fail-loud behaviour. No real Resend calls.
+# --------------------------------------------------------------------------- #
+
+
+class _FakeResponse:
+    def __init__(self, status_code: int, text: str = "") -> None:
+        self.status_code = status_code
+        self.text = text
+
+
+def test_factory_returns_resend_when_configured(monkeypatch):
+    from app.core.config import settings
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "EMAIL_BACKEND", "resend")
+    assert isinstance(get_email_sender(), ResendEmailSender)
+
+
+def test_resend_sender_posts_expected_request(monkeypatch):
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    monkeypatch.setattr(settings, "EMAILS_FROM_NAME", "Cofoundaz")
+
+    captured: dict[str, object] = {}
+
+    def fake_post(url, *, headers, json, timeout):
+        captured.update(url=url, headers=headers, json=json, timeout=timeout)
+        return _FakeResponse(200)
+
+    monkeypatch.setattr(email_mod.httpx, "post", fake_post)
+    ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+    assert captured["url"] == "https://api.resend.com/emails"
+    assert captured["headers"]["Authorization"] == "Bearer re_test_key"
+    body = captured["json"]
+    assert body["from"] == "Cofoundaz <no-reply@cofoundaz.com>"
+    assert body["to"] == ["user@x.com"]
+    assert body["subject"] == "Hi" and body["html"] == "<p>x</p>"
+
+
+def test_resend_sender_bare_from_without_name(monkeypatch):
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    monkeypatch.setattr(settings, "EMAILS_FROM_NAME", None)
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        email_mod.httpx,
+        "post",
+        lambda url, *, headers, json, timeout: captured.update(json=json) or _FakeResponse(200),
+    )
+    ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+    assert captured["json"]["from"] == "no-reply@cofoundaz.com"
+
+
+def test_resend_sender_raises_on_non_2xx(monkeypatch):
+    import pytest
+
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    monkeypatch.setattr(
+        email_mod.httpx,
+        "post",
+        lambda url, *, headers, json, timeout: _FakeResponse(422, '{"message":"bad"}'),
+    )
+    with pytest.raises(RuntimeError, match="Resend API returned 422"):
+        ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+
+def test_resend_sender_refuses_without_api_key(monkeypatch):
+    import pytest
+
+    from app.core.config import settings
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", None)
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    with pytest.raises(RuntimeError, match="RESEND_API_KEY is not set"):
+        ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
