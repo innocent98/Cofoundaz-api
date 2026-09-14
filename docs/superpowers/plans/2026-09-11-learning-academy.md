@@ -22,27 +22,27 @@
 - **Race safety (spec D9):** enrolment is a get-or-create inside a SAVEPOINT with a re-select on `IntegrityError`, as in `get_or_create_canvas`. The progress roll-up takes `SELECT … FOR UPDATE` on the enrolment row, so concurrent completions in one course roll up one at a time and never store a stale percentage.
 - **Progress formula (spec §5):** integers 0–100 using Python's `round()` (exact halves round to even), as `recompute_milestone_progress` does.
 - **Placeholder content (spec D8):** every course, lesson, path and article title starts with `[Placeholder] `.
-- **Migrations:** produced by `alembic revision --autogenerate` against the ORM models; `0018_learning` with `down_revision = "0017_document_files"`, re-pointed if `develop` has moved; single head; `alembic check` zero drift before push.
+- **Migrations:** produced by `alembic revision --autogenerate` against the ORM models; `0019_learning` with `down_revision = "0018_document_shares"`, re-pointed if `develop` has moved; single head; `alembic check` zero drift before push.
 - **No AI attribution** in any commit message or PR/issue/review body.
 - **CI green locally before push:** `poetry run ruff check app tests`, `poetry run black --check app tests`, `poetry run mypy app`, `poetry run pytest`, then `scripts/e2e_run.sh`.
 
 ---
 
-### Task 1: Schema — `CourseLevel`, three models, migration `0018_learning`
+### Task 1: Schema — `CourseLevel`, three models, migration `0019_learning`
 
 **Files:**
 - Modify: `app/db/models/enums.py` (add `CourseLevel`)
 - Create: `app/db/models/learning.py` (`Enrollment`, `LessonProgress`, `Certificate`)
 - Modify: `app/db/models/__init__.py` (register the models)
-- Create: `alembic/versions/0018_learning.py`
+- Create: `alembic/versions/0019_learning.py`
 - Test: `tests/db/test_learning_models.py`, `tests/test_learning_migration.py`
 
 **Interfaces:**
 - Produces: `CourseLevel` (`beginner`/`intermediate`/`advanced`); ORM `Enrollment` (`id, created_at, updated_at, startup_id, user_id, course_id, progress, completed_at`), `LessonProgress` (`id, created_at, updated_at, startup_id, user_id, course_id, lesson_id, completed_at`), `Certificate` (`id, created_at, updated_at, startup_id, user_id, course_id, credential_code, issued_at`).
 
 **Migration numbering — settle against the live head:** before writing the migration, run
-`git fetch origin && poetry run alembic heads`. If the head is still `0017_document_files`, use
-`0018_learning`; otherwise use the next number after whatever head exists and chain onto it.
+`git fetch origin && poetry run alembic heads`. If the head is still `0018_document_shares`, use
+`0019_learning`; otherwise use the next number after whatever head exists and chain onto it.
 `poetry run alembic heads` MUST show exactly one head afterwards.
 
 - [ ] **Step 1: Add the enum**
@@ -184,7 +184,7 @@ Confirm `upgrade()` creates `enrollments`, `lesson_progress` and `certificates` 
   on `progress`
 - `ondelete="CASCADE"` on all six foreign keys
 
-Add a short module docstring (mirror `0017_document_files.py`).
+Add a short module docstring (mirror `0018_document_shares.py`).
 
 - [ ] **Step 5: Verify single head + zero drift**
 
@@ -2184,7 +2184,7 @@ Create `docs/sop/<build-date>-learning-academy.md` in the project's SOP style (m
 `docs/sop/2026-08-31-dashboard.md`): **what shipped** (with commit refs), **why**, **how** (in-code
 catalog normalized for Module 25.4; savepoint get-or-create for enrolment; the enrolment row lock
 that keeps the progress roll-up from drifting under concurrency; the progress formula), **what's
-involved** (files, the three tables, migration `0018_learning`, the 8 routes), **verification**
+involved** (files, the three tables, migration `0019_learning`, the 8 routes), **verification**
 (unit, concurrency, e2e and captures), **operate / roll back** (one migration; `downgrade` drops
 all three tables and is lossy), and **follow-ups**:
 
@@ -2223,7 +2223,7 @@ git commit -m "test(learning): live e2e + captures + FE guide + SOP + checklist"
 
 **1. Spec coverage:**
 - §2 access (founders and team members only, reads included; per-person and per-workspace scoping) → Task 5 (`_academy` on all 8 routes) + Task 5 access matrix and isolation tests + Task 3 isolation tests. ✓
-- §3 data model (3 tables, unique constraints, `progress` CHECK, `server_default` timestamps, migration `0018_learning`) → Task 1. ✓
+- §3 data model (3 tables, unique constraints, `progress` CHECK, `server_default` timestamps, migration `0019_learning`) → Task 1. ✓
 - §4 catalog (placeholder labelling, realistic shape, stable ids, catalog-wide lesson ids, derived counts) → Task 2. ✓
 - §5 recommendations rule + extensible sort keys → Task 4; continue watching inside recommendations → Tasks 4 + 5; race-safe automatic enrolment → Task 3; progress formula → Tasks 3 + 4; idempotency and 201/200 → Tasks 3 + 5; `db.commit()` → Task 5. ✓
 - §6 credential code, event, job → Task 3. ✓

@@ -163,7 +163,7 @@ until Module 25.4 (§4).
 
 ### Migration
 
-- **`0018_learning`**, with `down_revision = "0017_document_files"` — the `develop` head at the
+- **`0019_learning`**, with `down_revision = "0018_document_shares"` — the `develop` head at the
   time of writing. The brief's `0008` is out of date. If anything merges first, re-point
   `down_revision` at the new head before pushing.
 - `created_at` / `updated_at` carry `server_default=sa.text("now()")`. Core-level inserts do not
@@ -406,7 +406,7 @@ must state that v1 catalog content is placeholder.
 | `app/db/models/enums.py` | add `CourseLevel` |
 | `app/db/models/learning.py` | **new** — `Enrollment`, `LessonProgress`, `Certificate` |
 | `app/db/models/__init__.py` | register the models |
-| `alembic/versions/0018_learning.py` | **new** migration |
+| `alembic/versions/0019_learning.py` | **new** migration |
 | `app/services/learning/__init__.py` | **new** package |
 | `app/services/learning/catalog.py` | **new** — placeholder in-code catalog + `LEARNING_CATALOG_VERSION` |
 | `app/services/learning/service.py` | **new** |
@@ -471,7 +471,7 @@ All ten decisions below were agreed with the lead on GitHub.
   route, reads included, to founders and team members. Recorded so the handoff documents do not
   appear to contradict the code.
 - **W2 — The brief and the blueprint are otherwise out of date** on two points: they give the
-  migration slot as `0008` (it is `0018`), and the brief says to open the PR into `main` (it goes
+  migration slot as `0008` (it is `0019`), and the brief says to open the PR into `main` (it goes
   into `develop`).
 
 ### Follow-ups
