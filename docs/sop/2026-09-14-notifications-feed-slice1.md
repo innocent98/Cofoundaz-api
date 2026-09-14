@@ -15,8 +15,10 @@ Commits (branch `feat/notifications-feed`, off `develop`):
 `notifications` table + model + migration `0021_notifications`) → `8d302b1` (Task 3 — service:
 create/list-keyset/unread_count/mark_read/mark_all_read/serialize) → `6bd5ffc` (Task 4 — registry:
 ~15 event → notification handlers) → `72895e0` (Task 5 — 4 feed endpoints + `register()` called at
-import time from `app/api/v1/api.py`) → this task's e2e/SOP/FE-guide/checklist commit (Task 6, final
-task of the 6-task plan, `.superpowers/sdd/2026-09-14-notifications-feed-slice1/`).
+import time from `app/api/v1/api.py`) → `c866046` (Task 6 — e2e/SOP/FE-guide/checklist, final task
+of the 6-task plan, `.superpowers/sdd/2026-09-14-notifications-feed-slice1/`) → `42e00ef`
+(**final-review fix wave**, this update — fixes the Known Gap that Task 6 surfaced but didn't touch:
+the actor is now genuinely excluded from their own notifications; see "How" and Follow-ups below).
 
 ## Why
 
@@ -57,8 +59,9 @@ in tests doesn't double-subscribe the default bus).
 **Recipient rule: active members minus actor (default), overridable per event.**
 `_members_minus_actor` queries `Membership` where `startup_id` matches and `status == active`, then
 excludes the actor if the payload names one. `workspace.member.joined` gets its own
-`_existing_members` override (exclude the *joiner*, not payload-resolved — see the Known Gap below
-for why this distinction matters).
+`_existing_members` override (exclude the *joiner*, not payload-resolved). Events with no member
+actor at all (missions, health-score drops, signature completion, etc.) are intentionally left
+notify-all — see below for which events carry an actor and which don't.
 
 **Generic per-type copy, not per-instance rendering.** `title`/`body` in `SPECS` are fixed strings
 per event type (e.g. *"A document was shared in your workspace"*), not templated from payload
@@ -67,41 +70,46 @@ event payload already in hand; they never read the just-published entity, which 
 uncommitted in the same transaction. Richer, per-instance titles (e.g. naming the actual document)
 are a follow-up, not built here.
 
-**⚠️ KNOWN GAP surfaced by this task's live e2e run (found in Task 6, not fixed — see
-"No app/ changes" below):** `_members_minus_actor` resolves the actor via
-`payload.get(k) for k in ("actor_id", "shared_by", "created_by", "user_id", "shared_by_id")`. Of the
-14 v1 events routed through `_members_minus_actor` (every handled event except
-`workspace.member.joined`, which uses its own `_existing_members` helper), **none** of their
-publish-site payloads carry a key from that list — checked directly against all 32
-`event_bus.publish(...)` call sites. Concretely: `document.shared`'s publish site
-(`app/services/documents/shares.py::create_share`) sends `{startup_id, document_id, share_id}` — no
-actor field — so `_actor(payload)` returns `None` and `_active_member_ids(..., exclude=None)`
-excludes nobody. `roadmap.replanned` comes closest (it sends `applied_by`), but `applied_by` isn't
-in `_actor`'s key list either, so it too doesn't exclude. **The actor is notified of their own
-action** for `document.shared` and, by the same mechanism, for all 14 `_members_minus_actor`-routed
-events. The **one** event where exclusion genuinely works is `workspace.member.joined`, because its
-handler bypasses `_actor()`'s payload-key guessing and reads `payload["user_id"]` (the joiner)
-directly via the dedicated `_existing_members` helper. This is a real, confirmed gap in Tasks 1–5's
-shipped code, not a hypothetical — `e2e/test_notifications.py` asserts and captures the actual
-behavior (A also receives `document.shared` for A's own share) rather than silently asserting the
-spec's aspirational exclusion. Flagged as a background task for a docs-plus-app follow-up rather
-than fixed in this docs-only task — see Follow-ups.
+**✅ FIXED in the final-review fix wave (`42e00ef`) — was a KNOWN GAP through Task 6.**
+`_members_minus_actor` resolves the actor via `payload.get(k) for k in ("actor_id", "shared_by",
+"created_by", "user_id", "shared_by_id", "applied_by")`. Through Task 6, of the 14 v1 events routed
+through `_members_minus_actor`, none of their publish-site payloads carried a key from that list
+(`roadmap.replanned` came closest — it always sent `applied_by`, but that key wasn't in the list
+either) — so `_actor(payload)` always returned `None` and nobody was ever excluded. `document.shared`
+was the concrete case caught live: `create_share` sent `{startup_id, document_id, share_id}`, no
+actor field, so the sharer was notified of their own share.
 
-**Why Tasks 1–5's own unit test didn't catch this:** `tests/services/notifications/
+**The fix** adds the actor's id — already in scope at each publish call site — to the payload of
+every event that has a genuine member actor, and adds `applied_by` to `_actor()`'s key list so
+`roadmap.replanned`'s existing key is finally recognized:
+
+| Event | Publish site | Key added |
+|---|---|---|
+| `document.shared` | `app/services/documents/shares.py::create_share` | `shared_by_id` |
+| `document.signature.requested` | `app/services/documents/signatures.py::create_request` | `created_by` |
+| `business.suggestion.created` | `app/services/business/suggestions.py::create_suggestion` | `created_by` |
+| `business.suggestion.approved` | `app/services/business/suggestions.py::approve_suggestion` | `actor_id` |
+| `business.suggestion.rejected` | `app/services/business/suggestions.py::reject_suggestion` | `actor_id` |
+| `roadmap.milestone.completed` | `app/api/v1/endpoints/roadmap.py::update_milestone_ep` | `actor_id` |
+| `roadmap.replanned` | `app/services/roadmap/replan.py` (already sent `applied_by`) | *(registry-only: added `applied_by` to `_actor()`'s key tuple)* |
+
+**Deliberately left notify-all — not a gap, by design:** `mission.completed`,
+`mission.streak.milestone`, `healthscore.dropped`, `business.artifact.completed`,
+`document.signature.completed`, `document.signature.signed`, `assessment.completed`. These are
+passive/system events with no member actor to exclude (triggered by a scheduler, a score
+recompute, or the *last* signer completing a request — not one member acting against another), so
+"notify every active member" is the correct, intended behavior, not an oversight.
+`workspace.member.joined` is unaffected — it already excluded the joiner correctly via its own
+`_existing_members` helper, unchanged by this fix.
+
+**Why Task 1–5's original unit test didn't catch this:** `tests/services/notifications/
 test_registry.py::test_members_minus_actor` calls `_handle` directly with a **hand-built** payload
-that includes `"shared_by": str(owner.id)` — a key that happens to be in `_actor()`'s list — so the
-unit test genuinely passes and genuinely proves `_members_minus_actor` excludes correctly *when given
-the right key*. It never exercises the real publish site's actual payload shape — `create_share`'s
-real `document.shared` fan-out sends no such key. This is exactly the class of bug live e2e testing
-exists to catch (a unit correct in isolation, wired to a real caller that doesn't feed it what it
-needs) — not a criticism of the unit test itself, just why this task's live run is the first place
-the gap became visible.
-
-**No app/ changes in this task, by design.** Task 6's brief scopes it to live e2e + docs only; the
-known gap above is a Task 1–5 defect discovered while writing the live journey, and fixing it
-(adding an actor key to ~14 publish-site payload dicts, or teaching `_actor()` a per-event key
-mapping) is `app/` work that belongs in its own reviewed change, not folded silently into a
-docs/e2e commit.
+that includes `"shared_by": str(owner.id)` — a key that happens to be in `_actor()`'s list — so it
+proved `_members_minus_actor` excludes correctly *when given the right key*, but never exercised the
+real publish site's actual payload shape. The fix wave kept that test and added
+`test_members_minus_actor_real_document_shared_payload`, which uses the exact payload shape
+`create_share` now produces (`{startup_id, document_id, share_id, shared_by_id}`) — closing the gap
+between "the exclusion logic is correct" and "the exclusion logic actually fires in production."
 
 ## What's involved
 
@@ -125,7 +133,9 @@ docs/e2e commit.
 
 **Service** (Task 3) — `app/services/notifications/service.py`
 - `create_notifications(db, *, user_ids, startup_id, type, title, body, data)` — bulk-insert one row
-  per recipient, `flush`.
+  per recipient, `flush`. Each row gets its own `dict(data)` copy (fix wave `42e00ef`) rather than
+  all N rows sharing one dict object — a latent footgun if a row's `.data` were later mutated
+  in-memory before `flush`/`commit`.
 - `list_notifications(db, *, user_id, startup_id, unread, limit, cursor)` — keyset pagination on
   `(created_at desc, id desc)`, `limit` clamped to `[1, 50]`, cursor is base64 of
   `"{created_at.isoformat()}|{id}"`; malformed cursor → `422 VALIDATION_ERROR`.
@@ -170,11 +180,12 @@ belongs to a different user/workspace — uniform, no leak); `FORBIDDEN` (403 �
 - `tests/db/test_notification_model.py` (1) — `Notification` round-trips through the migrated table.
 - `tests/services/notifications/test_service.py` (6) — create/list/unread/keyset-cursor/mark-read
   (404 cross-user)/mark-all-read.
-- `tests/services/notifications/test_registry.py` (5) — `_members_minus_actor` excludes a synthetic
-  payload's `shared_by` actor (`test_members_minus_actor` — note this test's hand-built payload
-  *includes* a `shared_by` key, which is exactly why it passes; the real `document.shared` publish
-  site does not include that key, which is the Known Gap below — the unit test alone does not catch
-  it, only the live e2e run does); `workspace.member.joined` → existing members, not the joiner
+- `tests/services/notifications/test_registry.py` (6, +1 in the fix wave) — `_members_minus_actor`
+  excludes a synthetic payload's `shared_by` actor (`test_members_minus_actor`); **fix wave:**
+  `test_members_minus_actor_real_document_shared_payload` proves the same exclusion using the REAL
+  `document.shared` payload shape (`{startup_id, document_id, share_id, shared_by_id}`) now produced
+  by `create_share`, closing the gap the original hand-built-payload test couldn't catch;
+  `workspace.member.joined` → existing members, not the joiner
   (`test_member_joined_notifies_existing_members_not_joiner`); every `SPECS` entry renders non-empty
   generic title copy without a `KeyError` (`test_all_specs_have_generic_copy`); an unregistered
   event is a no-op (`test_handle_unknown_event_noop`); `register()` actually subscribes onto a given
@@ -185,13 +196,21 @@ belongs to a different user/workspace — uniform, no leak); `FORBIDDEN` (403 �
 
 ## Verification
 
-- **Unit suite: 1035 passed** (`poetry run pytest -q`) — unchanged from the pre-Task-6 baseline
-  (Tasks 1–5 landed all new unit tests already; this task is docs/e2e only, no `app/` or test
-  changes, confirmed by re-running the full suite and getting the identical count). 98% coverage.
-- **Live E2E: 38 passed** (`scripts/e2e_run.sh`) — up from 37, +1 for this task's new
-  `test_notifications_journey`. Fresh `cofoundaz_e2e` migrated from zero through
-  `0021_notifications` (verified single alembic head, sole chain off `0020_signatures` with `0019`
-  skipped as designed), real uvicorn with `EMAIL_BACKEND=file`, all 38 green.
+**Task 6 (docs/e2e, `c866046`):**
+- Unit suite: 1035 passed, 98% coverage — unchanged from the pre-Task-6 baseline (docs/e2e only, no
+  `app/` or test changes).
+- Live E2E: 38 passed (`scripts/e2e_run.sh`) — up from 37, +1 for the new
+  `test_notifications_journey`, which at the time asserted the (buggy) self-notification behavior as
+  the known gap — see the fix-wave verification below for the corrected assertions.
+
+**Final-review fix wave (`42e00ef`), superseding the above:**
+- **Unit suite: 1036 passed** (`poetry run pytest -q`) — 1035 baseline + 1 new registry test
+  (`test_members_minus_actor_real_document_shared_payload`). No other existing test needed changes —
+  nothing outside `tests/services/notifications/` asserted the buggy self-notification behavior.
+  98% coverage, unchanged.
+- **Live E2E: 38 passed** (`scripts/e2e_run.sh`) — same count as Task 6 (no new journey added, the
+  existing one's assertions were corrected in place). Fresh `cofoundaz_e2e` migrated from zero
+  through `0021_notifications`, real uvicorn with `EMAIL_BACKEND=file`, all 38 green.
   - `test_notifications_journey`: founder A onboards through the wizard → invites teammate B
     (`POST /onboarding/invites`, **before** `onboarding/complete` — invites 409 once
     `onboarding_completed_at` is set) → B signs up, verifies, and accepts (`POST
@@ -199,27 +218,29 @@ belongs to a different user/workspace — uniform, no leak); `FORBIDDEN` (403 �
     completes onboarding → B's baseline feed/unread-count are both empty → A creates a document and
     shares it **twice** with two different external recipients (two real `document.shared` events)
     → B's `GET /notifications?unread=true` shows exactly 2 unread `document.shared` rows with
-    `data.share_id` matching both shares → `unread-count` = 2 → keyset pagination exercised with
-    `limit=1` (page 1: 1 row + non-null `next_cursor`; page 2, following the cursor: the other row +
-    `next_cursor: null`) → mark one read (`read: true`) → `unread-count` drops to 1 → re-marking the
-    same row read is idempotent (still 200, still `read: true`) → an unknown notification id 404s →
-    **A's own `document.shared` row (a distinct per-recipient row id) 404s when B tries to mark it
+    `data.share_id` matching both shares, and now also `data.shared_by_id` pointing at A → A's OWN
+    feed is asserted to contain **zero** `document.shared` rows (the fix) — only the unrelated
+    `workspace.member.joined` from B's earlier accept → `unread-count` = 2 → keyset pagination
+    exercised with `limit=1` (page 1: 1 row + non-null `next_cursor`; page 2, following the cursor:
+    the other row + `next_cursor: null`) → mark one read (`read: true`) → `unread-count` drops to 1
+    → re-marking the same row read is idempotent (still 200, still `read: true`) → an unknown
+    notification id 404s → **A's own `workspace.member.joined` row (a distinct per-recipient row id;
+    switched from `document.shared` since A no longer has one of those) 404s when B tries to mark it
     read** — cross-user scoping confirmed, not just cross-tenant → `read-all` marks the remaining
     row (`{marked: 1}`) → `unread-count` → 0 → the unread-filtered feed is now empty, but the full
-    feed still shows both rows with `read: true` (read-all marks, never deletes). The journey also
-    captures A's own feed (`actor_not_excluded_known_gap.json`) as live proof of the Known Gap above
-    — A shows `document.shared` × 2 plus `workspace.member.joined` × 1 (from B's accept, correctly
-    excluding B the joiner).
-  - 19 new captures to `e2e/_captures/notifications/*.json` — every one is the verbatim source for
-    `docs/fe-integration-guide-notifications.md`, re-read fresh after the final green
-    `scripts/e2e_run.sh` run in this task (not reused from an earlier run).
+    feed still shows both rows with `read: true` (read-all marks, never deletes).
+  - Captures resynced: `actor_not_excluded_known_gap.json` deleted (the behavior it documented no
+    longer exists); `actor_excluded_from_own_action.json` added, capturing A's own feed with zero
+    `document.shared` rows as live proof of the fix; `feed_unread_only.json`, `feed_page1_limit1.json`,
+    `feed_page2_cursor.json`, `mark_read.json`, `mark_read_idempotent.json`,
+    `feed_full_after_read_all.json` regenerated and now show `shared_by_id` in `data`; the remaining
+    notifications captures regenerated with fresh ids/timestamps only (no shape change). All
+    re-opened fresh after the final green `scripts/e2e_run.sh` run in this fix wave and pasted
+    verbatim into `docs/fe-integration-guide-notifications.md` — not reused from Task 6's run.
 - `poetry run ruff check app tests e2e`, `poetry run black --check app tests e2e`,
   `poetry run mypy app` — all clean.
-- Migration round-trip verified via the `scripts/e2e_run.sh` run above (fresh `cofoundaz_e2e`
-  migrated `0020_signatures` → `0021_notifications` from zero); this task made no migration changes
-  (Task 2 already shipped `0021_notifications`), so no separate `upgrade head / downgrade -1 /
-  upgrade head` round-trip was re-run here — that check belongs to Task 2's own verification, not
-  repeated in a docs-only task.
+- No migration changes in the fix wave — the `0021_notifications` round-trip already verified in
+  Task 2 is unaffected.
 
 ## Operate / roll back
 
@@ -257,15 +278,10 @@ belongs to a different user/workspace — uniform, no leak); `FORBIDDEN` (403 �
   didn't scope it in), just unbuilt — a one-line `SPECS` addition whenever a "welcome" or
   "teammate finished setup" notification is wanted.
 
-**Known gap from this task, tracked for a follow-up `app/` change (see "Known Gap" in How above,
-and the live capture `e2e/_captures/notifications/actor_not_excluded_known_gap.json`):**
-- `_members_minus_actor`'s actor-resolution key list (`actor_id`/`shared_by`/`created_by`/`user_id`/
-  `shared_by_id`) does not match the keys any of the 14 `_members_minus_actor`-routed publish-site
-  payloads actually use (most send no actor-identifying field at all; `roadmap.replanned` sends
-  `applied_by`, which also isn't in the list). Net effect: the actor receives a notification for
-  their own action on every v1 event except `workspace.member.joined` (which bypasses `_actor()` via
-  a dedicated payload-keyed helper). Fixing this needs either (a) adding an actor-identifying key to
-  each affected publish-site payload dict (~14 small, additive changes across `app/services/**`), or
-  (b) teaching the registry a per-event actor-key mapping instead of one shared guess-list. Not fixed
-  in this task — Task 6 is docs/e2e-only per the brief, and this is a Tasks-1–5 defect, not something
-  introduced here.
+**RESOLVED in the final-review fix wave (`42e00ef`)** — see "How" above for the full fix. The
+Task-6-era gap (actor never excluded because publish-site payloads didn't carry an actor key) is
+closed for the 7 events with a genuine member actor (`document.shared`,
+`document.signature.requested`, the 3 `business.suggestion.*` events, `roadmap.replanned`,
+`roadmap.milestone.completed`), confirmed live (`e2e/_captures/notifications/
+actor_excluded_from_own_action.json`) and by a new unit test using the real publish-site payload
+shape. No remaining known gap in this area as of this SOP revision.

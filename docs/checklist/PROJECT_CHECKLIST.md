@@ -657,26 +657,32 @@ SOP; Slice 1 is the first thing that actually retires the in-app half of those. 
       `(membership.user_id, membership.startup_id)`, verified user + `require_workspace`
 - [x] Live E2E journey (`e2e/test_notifications.py::test_notifications_journey`, 19 captures):
       founder A invites teammate B (a REAL second active member) → B accepts → A shares a document
-      twice → B's feed shows exactly 2 unread `document.shared` rows → keyset pagination (`limit=1`
-      → non-null `next_cursor` → the other row + `next_cursor: null`) → mark-read (idempotent) →
-      unknown-id 404 → **cross-user 404** (A's own row 404s for B) → `read-all` → unread-count → 0 →
-      full feed still shows both rows, now `read: true` + full existing suite re-run green (38 e2e,
-      1035 unit, unchanged — this task is docs/e2e only)
+      twice → B's feed shows exactly 2 unread `document.shared` rows (`data.shared_by_id` = A) → A's
+      own feed has **zero** `document.shared` rows (actor exclusion, fixed in `42e00ef` — see below)
+      → keyset pagination (`limit=1` → non-null `next_cursor` → the other row + `next_cursor: null`)
+      → mark-read (idempotent) → unknown-id 404 → **cross-user 404** (A's own `workspace.member.
+      joined` row 404s for B) → `read-all` → unread-count → 0 → full feed still shows both rows, now
+      `read: true` + full existing suite re-run green (38 e2e, 1036 unit)
 - [x] SOP + FE integration guide (every payload/status/error captured live except the 13 event
       types' `data` shape and a handful of shared-dependency rows, all cited in that guide's
       verification table) + this checklist reconcile —
       `docs/sop/2026-09-14-notifications-feed-slice1.md`,
       `docs/fe-integration-guide-notifications.md`
-- [ ] _Deferred:_ **KNOWN GAP, tracked for a follow-up `app/` change — the "minus actor" half of
-      the default recipient rule does not actually exclude the actor.** `_members_minus_actor`
-      resolves the actor from a payload key list (`actor_id`/`shared_by`/`created_by`/`user_id`/
-      `shared_by_id`) that none of the 14 routed publish sites' real payloads use (confirmed live —
-      `e2e/_captures/notifications/actor_not_excluded_known_gap.json` — the sharer receives a
-      notification for their own share). Only `workspace.member.joined` genuinely excludes anyone
-      (a dedicated payload-keyed helper, not the guess-list). Not fixed in this task (docs/e2e-only
-      per the brief) — see SOP Follow-ups · richer per-type/per-instance titles (today: one fixed
-      string per event type) · notification grouping/digest · Slices 2–4 (email/preferences,
-      scheduler/cron, real-time/push) — see SOP Follow-ups
+- [x] **Final-review fix wave (`42e00ef`)** — fixed the actor-exclusion known gap above: added an
+      actor-identifying payload key (`shared_by_id`/`created_by`/`actor_id`) at the 6 publish sites
+      for events with a genuine member actor (`document.shared`, `document.signature.requested`,
+      the 3 `business.suggestion.*` events, `roadmap.milestone.completed`) and recognized
+      `roadmap.replanned`'s existing `applied_by` key in `_actor()` — 7 events now genuinely exclude
+      the actor; confirmed live (`e2e/_captures/notifications/actor_excluded_from_own_action.json`,
+      superseding the deleted `actor_not_excluded_known_gap.json`) and by a new unit test using the
+      real `document.shared` payload shape. Passive/system events (missions, health score, signature
+      completion, etc.) intentionally left notify-all — no member actor exists to exclude. Also
+      hardened `create_notifications` to give each fanned-out row its own `dict(data)` copy instead
+      of sharing one dict object. 1036 unit / 38 e2e green, `ruff`/`black`/`mypy` clean. SOP + FE
+      guide updated in the same pass.
+- [ ] _Deferred:_ richer per-type/per-instance titles (today: one fixed string per event type) ·
+      notification grouping/digest · Slices 2–4 (email/preferences, scheduler/cron, real-time/push)
+      — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
