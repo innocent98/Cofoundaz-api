@@ -16,29 +16,24 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-14 · `feat/documents-esignature` (Module 18 Slice 4 — E-signature, the
-**fourth and final slice — Module 18 is now COMPLETE**: `signature_requests` +
-`signature_signers` tables (tokenized single-use signing links, mirroring Slice 3's pattern) + an
-e-signature service + 7 endpoints, 5 authenticated under `/documents/files/{id}/signature-requests`
-and `/documents/signature-requests` plus the two public `GET`/`POST /sign/{token}`) shipped on
-branch, off `develop` post-PR #54 (Resend email backend, now merged). Slice 3 (Sharing) itself is
-also now reconciled below as merged (PR #53) — the prior pass (2026-09-12) recorded it as "shipped
-on branch, not yet merged", which was accurate at the time but went stale once PR #53 merged;
-caught and corrected in this pass rather than left inconsistent. `develop` = staging, `main` =
-production; feature PRs target `develop`._
+_Last reconciled: 2026-09-14 (post-merge pass) · **Module 18 (Documents & Templates) is COMPLETE —
+all four slices merged to `develop`**: Library Core (PR #48), Upload & Files (PR #50), Sharing
+(PR #53), E-signature (PR #55), plus the Resend email backend (PR #54) that powers slices 3–4's
+emails. This pass also folds **Module 21 (Founder Journal, PR #37)** into the merged tally (its own
+shipment merged earlier but had not been reconciled into this snapshot). `develop` = staging,
+`main` = production; feature PRs target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 7 fully complete & merged (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment · 08 Business Builder, all 3 slices) + 1 built (all 4 slices), Slices 1–3 merged, Slice 4 shipped on branch (18 Documents & Templates — **Module 18 COMPLETE**, see below) · 18 not started (03·09–17·19–26, minus 08 which is complete except its AI Business Plan Generator sub-screen, and minus 18 which is now fully built — see Module 08 and Module 18 below).
+**PRD module tally: 26 total** — **9 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 1 in progress (17 Learning Academy — the junior's active build, not yet merged). 16 not started (03 · 09–16 · 19 · 20 · 22–26). Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 7 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) · Founder Dashboard (02) — merged to `main` (PR #38) + `develop` · Business Builder (08) Slices 1–3 — merged to `develop` (PR #39, PR #46, PR #47) |
-| 🟢 Shipped on branch, not yet merged | 1 module (fully built) | Documents & Templates (18) — **all 4 slices built, Module 18 COMPLETE**: Slice 4 (E-signature) on `feat/documents-esignature` (→ `develop`); Slices 1 (Library Core, PR #48), 2 (Upload & Files, PR #50), and 3 (Sharing, PR #53) already merged to `develop` |
-| 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 18 | AI Co-Founder (03) · 09–17 · 19–26 |
+| ✅ Shipped & merged (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · Business Builder (08, Slices 1–3; PRs #39/#46/#47) · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 In progress | 1 module | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged |
+| ⬜ Not started | 16 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Notifications (20) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **114 endpoints** (directly counted from the OpenAPI schema's
 path×method operations, `app.openapi()["paths"]` — 93 paths, 114 operations; supersedes the prior
@@ -50,13 +45,9 @@ MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0
 (1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
-carried forward unchanged from the last full lint/security sweep — not re-run in this Documents
-Slice 4 reconcile pass; endpoint count, unit/e2e test counts, and black/ruff/mypy were directly
-re-verified this pass. This pass also does not reconcile Module 21 (Founder Journal) into the
-Snapshot tally/table above — its own PR (#37) has merged per `git log` but its checklist entry
-under Upcoming was not updated in this pass, since that reconciliation belongs to its own
-shipment and is out of scope for this Module 18 task; flagged here rather than silently left
-inconsistent._
+carried forward unchanged from the last full lint/security sweep. Endpoint count and unit/e2e test
+counts reflect `develop` at the Module 18 Slice 4 pass (PR #55 now merged). Module 21 (Founder
+Journal, PR #37) is reconciled into the tally/table above as of this post-merge pass._
 
 ---
 
