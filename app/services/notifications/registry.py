@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from app.db.models.enums import MembershipStatus
 from app.db.models.membership import Membership
 from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
+from app.services.notifications.categories import category_for
+from app.services.notifications.preferences import email_enabled
 from app.services.notifications.service import create_notifications
 
 
@@ -91,15 +94,20 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     user_ids = spec.recipients(db, payload)
     if not user_ids:
         return
-    create_notifications(
+    startup_id = uuid.UUID(str(payload["startup_id"]))
+    rows = create_notifications(
         db,
         user_ids=user_ids,
-        startup_id=uuid.UUID(str(payload["startup_id"])),
+        startup_id=startup_id,
         type=event,
         title=spec.title(payload),
         body=spec.body(payload),
         data=payload,
     )
+    category = category_for(event)
+    for n in rows:
+        if email_enabled(db, user_id=n.user_id, startup_id=n.startup_id, category=category):
+            job_dispatcher.enqueue(db, "email.notification", {"notification_id": str(n.id)}, startup_id)
 
 
 # Ids of buses already wired up, so a re-import or a second startup call does not
