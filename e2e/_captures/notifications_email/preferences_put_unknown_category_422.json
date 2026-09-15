@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "categories",
+        "message": "Value error, unknown categories: ['not_a_category']"
+      }
+    ]
+  }
+}

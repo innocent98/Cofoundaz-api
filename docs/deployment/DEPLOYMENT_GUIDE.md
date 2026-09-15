@@ -28,7 +28,7 @@ run, and correct this document afterwards.
 |---|---|
 | Image | Two-stage Dockerfile. Base pinned by multi-arch digest `python:3.11-slim-bookworm@sha256:0bee7276f83…`. Runtime carries `/opt/venv` + app source and nothing else. |
 | Process model | `tini` (PID 1) → gunicorn master → 4 `uvicorn.workers.UvicornWorker` workers (`WEB_CONCURRENCY=4`). |
-| Stack | `docker-compose.prod.yml`, one file serving **both** stacks: `migrate` (one-shot), `api`, `db`, `redis`. The compose project name comes from `COMPOSE_PROJECT_NAME` in each `.env` (`cofoundaz-api-prod` / `cofoundaz-api-staging`), which is what keeps their volumes apart. See §13. |
+| Stack | `docker-compose.prod.yml`, one file serving **both** stacks: `migrate` (one-shot), `api`, `worker`, `db`, `redis`. The compose project name comes from `COMPOSE_PROJECT_NAME` in each `.env` (`cofoundaz-api-prod` / `cofoundaz-api-staging`), which is what keeps their volumes apart. See §13. |
 | Edge | nginx on the host terminates TLS and proxies to `127.0.0.1:${API_PORT}` — production 8000, staging 8001. The API is **not** published on `0.0.0.0`. Configuration is version-controlled in `deploy/nginx/`; the manual is **[NGINX_TLS.md](./NGINX_TLS.md)**. |
 | Registry | GHCR — `ghcr.io/innocent98/cofoundaz-api`. Deploys use the **immutable digest**, not a tag. |
 | Environments | **Two** stacks — `staging` and `production` — running the *same* image digest. They differ only in the `.env` each receives and in the per-environment GitHub secrets (`DEPLOY_PATH`, `VPS_*`, `ENV_ENCRYPTION_KEY`). No server path appears anywhere in this repository. See §2. |
@@ -338,35 +338,36 @@ All limits were **verified as applied** via `docker inspect` on `HostConfig`:
 | `api` | 2.0 | 2048M | 1024M | `NanoCpus=2000000000`, `Memory=2147483648`, `MemoryReservation=1073741824` |
 | `db` | 1.5 | 3072M | 1024M | `NanoCpus=1500000000`, `Memory=3221225472`, `MemoryReservation=1073741824` |
 | `redis` | 0.5 | 512M | 128M | `NanoCpus=500000000`, `Memory=536870912`, `MemoryReservation=134217728` |
-| `migrate` | 0.5 | 512M | — | one-shot; exits before `api` starts |
-| **Nominal sum** | **4.5** | **6144M** | | *not a real peak — see below* |
+| `worker` | 0.5 | 512M | 128M | background job runner (`python -m app.worker`); same shape as `redis`'s limits |
+| `migrate` | 0.5 | 512M | — | one-shot; exits before `api` (and `worker`) starts |
+| **Nominal sum** | **5.0** | **6656M** | | *not a real peak — see below* |
 
-### The nominal 4.5 CPU never actually occurs
+### The nominal 5.0 CPU never actually occurs
 
-Add the CPU column up and you get **4.5 on a 4 vCPU box — a 12.5% oversubscription.** State
+Add the CPU column up and you get **5.0 on a 4 vCPU box — a 25% oversubscription.** State
 it explicitly rather than leave someone to find it and worry, because it is not reachable:
 
-`api` and `migrate` **cannot run at the same time.** `api` declares
-`depends_on: migrate: condition: service_completed_successfully`, so `migrate` has already
-exited before `api` starts. The two states that actually exist are:
+`api` and `worker` both declare `depends_on: migrate: condition: service_completed_successfully`,
+so `migrate` has already exited before either starts — none of the three ever run at the same
+time as `migrate`. The two states that actually exist are:
 
 | State | Services running | CPU | Memory |
 |---|---|---|---|
 | During migration | `db` + `redis` + `migrate` | **2.5** | 4096M |
-| Steady state | `db` + `redis` + `api` | **4.0** | 5632M |
+| Steady state | `db` + `redis` + `api` + `worker` | **4.5** | 6144M |
 
-Both fit 4 vCPU, and steady state lands exactly on it. Verified against the compose file with
-`docker compose config`, not estimated.
+Steady state's 4.5 CPU sits at a 12.5% ceiling over the 4 vCPU box — acceptable, per point 1
+below. Verified against the compose file with `docker compose config`, not estimated.
 
 Two things follow, and both matter:
 
-1. **Even if 4.5 were reachable it would be acceptable.** CPU limits are *ceilings*, not
+1. **A CPU ceiling above the vCPU count is acceptable.** CPU limits are *ceilings*, not
    reservations — Docker does not refuse to schedule an oversubscribed set, it throttles under
    contention. Memory limits are the ones that kill a container.
-2. **Memory has no equivalent escape.** 6144M nominal against 8192M is real headroom, and at
-   steady state it is 5632M — leaving **2560M (31%)** for the host kernel, nginx, sshd, and
-   most importantly the **page cache Postgres depends on** for read performance. Committing
-   100% of RAM to container limits is how a VPS starts OOM-killing.
+2. **Memory has no equivalent escape.** Steady state is 6144M against 8192M — leaving
+   **2048M (25%)** for the host kernel, nginx, sshd, and most importantly the **page cache
+   Postgres depends on** for read performance. Committing 100% of RAM to container limits is
+   how a VPS starts OOM-killing.
 
 > **Note on where this was tested.** Limits were verified as *applied* on a local Docker VM
 > with only 2.35 GiB RAM and 2 CPUs — smaller than the target spec, so `docker stats` displays
@@ -392,22 +393,25 @@ Do not delete the CPU reservations (they encode intent), but do not rely on them
 
 ```
 WEB_CONCURRENCY (4) × (DATABASE_POOL_SIZE 5 + DATABASE_MAX_OVERFLOW 5)  =  40
+worker (single process, same pool settings, ≤ DATABASE_POOL_SIZE + MAX_OVERFLOW) ≈ 10
 + migrate one-shot                                                      ≈   2
 POSTGRES_MAX_CONNECTIONS                                                =  100
                                                                         ─────
-spare for psql / pg_dump / monitoring                                   ≈  58
+spare for psql / pg_dump / monitoring                                   ≈  48
 ```
 
-**Confirmed correct for the 4 vCPU / 8 GB spec:** peak application demand is 42 of 100
-connections (42%), leaving 58 for `psql`, `pg_dump`, and monitoring. `WEB_CONCURRENCY=4` also
+**Confirmed correct for the 4 vCPU / 8 GB spec:** peak application demand is 52 of 100
+connections (52%), leaving 48 for `psql`, `pg_dump`, and monitoring. `WEB_CONCURRENCY=4` also
 matches the 4 vCPU count, which is the right shape here — the API's FastAPI handlers are
 synchronous `def` functions served from each worker's thread pool, so workers are the unit of
-parallelism and one per vCPU is the sane default.
+parallelism and one per vCPU is the sane default. The background `worker` service runs a single
+process (`python -m app.worker`), not a per-vCPU pool, so it stays at one connection pool
+(≤ 10 connections) regardless of `WEB_CONCURRENCY`.
 
 Raising `WEB_CONCURRENCY` **without** raising `max_connections` is how you get
 `FATAL: sorry, too many clients already` under load. The ceiling on this spec is
-`WEB_CONCURRENCY=9` (9 × 10 + 2 = 92 < 100) — but CPU, not connections, binds first. Re-check
-this arithmetic on every change to either number.
+`WEB_CONCURRENCY=8` (8 × 10 + 10 + 2 = 92 < 100) — but CPU, not connections, binds first.
+Re-check this arithmetic on every change to any of these numbers.
 
 ### Postgres tuning — verified applied inside the running container
 

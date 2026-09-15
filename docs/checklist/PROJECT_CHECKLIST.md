@@ -16,38 +16,46 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-14 (post-merge pass) · **Module 18 (Documents & Templates) is COMPLETE —
-all four slices merged to `develop`**: Library Core (PR #48), Upload & Files (PR #50), Sharing
-(PR #53), E-signature (PR #55), plus the Resend email backend (PR #54) that powers slices 3–4's
-emails. This pass also folds **Module 21 (Founder Journal, PR #37)** into the merged tally (its own
-shipment merged earlier but had not been reconciled into this snapshot). `develop` = staging,
-`main` = production; feature PRs target `develop`._
+_Last reconciled: 2026-09-15 (Module 20 Slice 2 pass) · **Module 18 (Documents & Templates) is
+COMPLETE — all four slices merged to `develop`**: Library Core (PR #48), Upload & Files (PR #50),
+Sharing (PR #53), E-signature (PR #55), plus the Resend email backend (PR #54) that powers
+slices 3–4's emails. **Module 20 (Notifications) Slice 1 (In-App Feed + Fan-Out) is now MERGED to
+`develop` (PR #58)**; **Slice 2 (Email Delivery + Preferences + Worker) shipped this pass** on
+`feat/notifications-email`, not yet merged. `develop` = staging, `main` = production; feature PRs
+target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **9 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 2 in progress (17 Learning Academy — the junior's active build, not yet merged; 20 Notifications — Slice 1 of ~4 shipped on `feat/notifications-feed`, not yet merged). 15 not started (03 · 09–16 · 19 · 22–26). Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
+**PRD module tally: 26 total** — **10 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 20 Notifications, Slice 1 only (PR #58) · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 1 in progress (17 Learning Academy — the junior's active build, not yet merged). 15 not started (03 · 09–16 · 19 · 22–26). Module 20 is counted as merged for its Slice 1 only — Slice 2 (this pass) sits on `feat/notifications-email`, unmerged, so the module as a whole is not yet complete; see its own section for the slice breakdown. Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & merged (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · Business Builder (08, Slices 1–3; PRs #39/#46/#47) · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 In progress | 2 modules | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged. Notifications (20) — Slice 1 (In-App Feed + Fan-Out) shipped on `feat/notifications-feed` (migration `0021`); Slices 2–4 (email, scheduler, real-time) planned; not yet merged |
+| ✅ Shipped & merged (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · Business Builder (08, Slices 1–3; PRs #39/#46/#47) · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, Slice 1 In-App Feed + Fan-Out; PR #58)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 In progress | 2 modules | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged. Notifications (20) — Slice 1 merged (PR #58, above); Slice 2 (Email Delivery + Preferences + Worker) shipped on `feat/notifications-email` (migration `0022_notifications_email`), not yet merged; Slices 3–4 (scheduler, real-time) planned |
 | ⬜ Not started | 15 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
-**Health at a glance:** **114 endpoints** (directly counted from the OpenAPI schema's
-path×method operations, `app.openapi()["paths"]` — 93 paths, 114 operations; supersedes the prior
-87-path/107-operation count from the Slice 3 pass, +6 paths/+7 operations for this slice's
-signature-request + public sign routes) · **1016 unit tests** (real Postgres) + **37 live E2E** ·
-**98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 / mypy 2.3.1 clean (directly
-re-run this pass) · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module
-MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean
-(1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** **120 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 98 paths, 120 operations; supersedes the prior
+93-path/114-operation count from the Documents Slice 4 pass, +5 paths/+6 operations for
+Notifications Slices 1–2's 4 feed routes + 2 preferences routes) · **1057 unit tests** (real
+Postgres) + **39 live E2E** · **97.66% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff
+0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7 **9.89/10** (directly re-run
+this pass — was 9.94 at the last full sweep; the new worker/notifications-preferences code adds a
+handful of pre-existing-pattern `too-many-arguments`/`broad-exception-caught` warnings, still well
+above the 9.5 floor) · bandit clean, 0 findings (directly re-run this pass) · radon average
+complexity **A (2.36)**, every module MI **A** · hadolint / actionlint / `trivy config` / checkov
+all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
-_Note: the pylint/radon/bandit/hadolint/actionlint/trivy/checkov/pip-audit figures above are
-carried forward unchanged from the last full lint/security sweep. Endpoint count and unit/e2e test
-counts reflect `develop` at the Module 18 Slice 4 pass (PR #55 now merged). Module 21 (Founder
-Journal, PR #37) is reconciled into the tally/table above as of this post-merge pass._
+_Note: the radon/hadolint/actionlint/`trivy config`/checkov/pip-audit figures above are carried
+forward unchanged from the last full lint/security sweep (not re-run in this pass — this pass's own
+CI reproduction covered black/isort/ruff/mypy/pylint/bandit/pytest+coverage/alembic heads/e2e, all
+directly re-run and recorded above). `docker-compose.yml`/`docker-compose.prod.yml` did gain a new
+`worker` service in the Slice 2 work (Task 7, prior to this pass) — worth a `trivy config`/checkov
+re-run next time either tool's pass is refreshed, though the added service follows the same shape
+as the existing `api`/`migrate` services those tools already cleared. Endpoint count and unit/e2e
+test counts are freshly re-counted this pass (2026-09-15), not carried over._
 
 ---
 
@@ -609,21 +617,25 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
 
-## 🟢 Module 20 — Notifications — *Slice 1 (In-App Feed + Fan-Out) shipped on branch
-`feat/notifications-feed`, not yet merged — Slices 2–4 planned*
+## 🟢 Module 20 — Notifications — *Slice 1 (In-App Feed + Fan-Out) MERGED to `develop`
+(PR #58); Slice 2 (Email Delivery + Preferences + Worker) shipped on branch
+`feat/notifications-email`, not yet merged — Slices 3–4 planned*
 
 _Module 20 decomposes into ~4 slices (agreed 2026-09-14, `docs/superpowers/specs/
-2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (this — the platform event
-bus becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows), 2
-Email delivery + per-user preferences (Resend backend already exists), 3 Scheduler/cron (mission
-06:00, roadmap-overdue, quarterly re-assessment), 4 Real-time (websocket) + push. Nearly every
-already-shipped module (Dashboard, Roadmap, Mission, Health Score, Documents, Business Builder,
-Assessment, onboarding) has a "real notification delivery — Module 20" deferred line in its own
-SOP; Slice 1 is the first thing that actually retires the in-app half of those. SOP
-`docs/sop/2026-09-14-notifications-feed-slice1.md`._
+2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
+becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows — ✅
+merged), **2 Email delivery + per-user preferences** (Resend backend already existed; this slice
+adds the preferences model/endpoints, the in-transaction enqueue, and a new background `worker`
+process — ✅ shipped, this pass), 3 Scheduler/cron (mission 06:00, roadmap-overdue, quarterly
+re-assessment — will enqueue into Slice 2's SAME `jobs` table/worker, no new infrastructure), 4
+Real-time (websocket) + push. Nearly every already-shipped module (Dashboard, Roadmap, Mission,
+Health Score, Documents, Business Builder, Assessment, onboarding) has a "real notification
+delivery — Module 20" deferred line in its own SOP; Slice 1 retired the in-app half, Slice 2 adds
+the email half. SOPs: `docs/sop/2026-09-14-notifications-feed-slice1.md`,
+`docs/sop/2026-09-15-notifications-email-delivery.md`._
 
-**Slice 1 — In-App Feed + Fan-Out** — *🟢 shipped on branch `feat/notifications-feed`
-(Tasks 1–6), not yet merged*
+**Slice 1 — In-App Feed + Fan-Out** — *🟢 MERGED to `develop` (PR #58, Tasks 1–6 +
+final-review fix wave)*
 - [x] Scope + locked decisions (real synchronous same-transaction event bus, not a queue — a
       notification exists iff the triggering action committed · per-handler `db.begin_nested()`
       savepoint + try/except so a notification bug never breaks the triggering action · data-driven
@@ -681,8 +693,65 @@ SOP; Slice 1 is the first thing that actually retires the in-app half of those. 
       of sharing one dict object. 1036 unit / 38 e2e green, `ruff`/`black`/`mypy` clean. SOP + FE
       guide updated in the same pass.
 - [ ] _Deferred:_ richer per-type/per-instance titles (today: one fixed string per event type) ·
-      notification grouping/digest · Slices 2–4 (email/preferences, scheduler/cron, real-time/push)
-      — see SOP Follow-ups
+      notification grouping/digest · Slices 3–4 (scheduler/cron, real-time/push) — see SOP
+      Follow-ups
+
+**Slice 2 — Email Delivery + Preferences + Worker** — *🟢 shipped on branch
+`feat/notifications-email` (Tasks 1–8), not yet merged*
+- [x] Scope + locked decisions (in-transaction enqueue at the same fan-out point Slice 1 already
+      writes in-app rows from — a rolled-back triggering action enqueues no email, same guarantee
+      as the in-app row · a separate background `worker` process claims + sends, never inline in
+      the request · opt-out preferences model, `master_email` + 5 categories, all default ON ·
+      at-least-once email delivery accepted as a waiver, not built around · migration
+      `0022_notifications_email`, chains off `0021_notifications`, sole head) —
+      `.superpowers/sdd/2026-09-15-notifications-email-delivery/`
+- [x] `notification_preferences` table (`user_id`/`startup_id` FKs, unique per pair,
+      `master_email` bool default true, `categories` JSONB default `{}`) + `jobs.attempts`/
+      `jobs.run_after` columns, migration `0022_notifications_email`
+- [x] Category catalog (`app/services/notifications/categories.py`) — 5 categories (`documents`,
+      `business`, `roadmap_missions`, `health_assessment`, `team`) covering all 15 v1 event types,
+      same map powers both the preferences gate and Slice 1's email deep-link path
+- [x] Preferences service (`app/services/notifications/preferences.py`) — `effective_preferences`
+      (defaults-merged, always all 5 keys present) · `set_preferences` (genuine partial merge) ·
+      `email_enabled` (the enqueue-time gate: `master_email AND categories[category]`)
+- [x] `GET`/`PUT /api/v1/notifications/preferences` — verified user + `require_workspace`, same
+      auth convention as Slice 1's 4 routes; unknown category key → `422 VALIDATION_ERROR`
+      (request-level `field_validator`, nothing partially applied)
+- [x] Registry enqueue (`app/services/notifications/registry.py::_handle`) — captures
+      `create_notifications`'s return value, enqueues one `email.notification` job per opted-in
+      recipient, in the SAME transaction/savepoint as the in-app rows
+- [x] Worker (`app/worker/`) — `runner.py` (claim via `SELECT ... FOR UPDATE SKIP LOCKED`,
+      per-job `db.begin_nested()` isolation, exponential backoff capped at 1h,
+      `WORKER_MAX_ATTEMPTS`=5 terminal failure, stale-`RUNNING` reaper) · `handlers/email.py`
+      (re-fetches the notification + recipient, HTML-escapes title/body, validates the deep-link
+      URL scheme) · `__main__.py` (poll loop, graceful `SIGTERM`/`SIGINT` shutdown) · new `worker`
+      service in `docker-compose.yml`/`docker-compose.prod.yml` (dev: `build:`; prod: `image:`,
+      0.5 CPU/512M limit, no published ports) · `DEPLOYMENT_GUIDE.md` resource/connection tables
+      updated
+- [x] Live E2E journey (`e2e/test_notifications_email.py::test_email_delivery_and_preferences`, 4
+      captures): mirrors Slice 1's A/B setup verbatim → B's preferences default all-ON → A shares a
+      document → queue drained in-process (looped `run_once` — the shared e2e `jobs` table has a
+      backlog from every earlier test, so a single batch under-drains) → B's mailbox has the new
+      email, subject verified, captured (`delivered_email.json`) → B turns `documents` email OFF
+      (`preferences_documents_off.json`) → A shares again → drain again → B's mailbox count
+      UNCHANGED (no new job enqueued) → `GET /preferences` reflects the toggle
+      (`preferences_get.json`) → unknown category `PUT` → `422`, captured
+      (`preferences_put_unknown_category_422.json`) · full suite re-run green (39 e2e, up from 38)
+- [x] SOP + FE integration guide extension (every payload/status/error captured live) + this
+      checklist reconcile — `docs/sop/2026-09-15-notifications-email-delivery.md`,
+      `docs/fe-integration-guide-notifications.md` §9 "Preferences & email (Slice 2)"
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (12 pre-existing
+      unformatted files from Tasks 1–7 fixed in this pass, plus one `ruff` `C420` finding in
+      `categories.py` and one `mypy` missing-annotation finding in `worker/__main__.py`'s SIGTERM
+      handler) · `mypy` clean · `pylint` 9.89/10 (≥ 9.5 floor) · `bandit` clean · 1057 unit passed,
+      97.66% coverage (≥ 95% floor) · exactly one alembic head · 39 e2e passed — see
+      `.superpowers/sdd/2026-09-15-notifications-email-delivery/task-8-report.md` for the full
+      per-gate breakdown
+- [ ] _Deferred:_ at-least-once email delivery (a worker crash between a successful Resend send and
+      its `_finalize_success` commit can re-send — accepted waiver, mitigated later by an
+      idempotency key if it becomes a real problem) · preferences are not retroactive (no "cancel a
+      pending email" path) · no per-notification email-delivery status exposed via the API · same
+      generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
@@ -1121,8 +1190,10 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
-- [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) shipped, see its own section
-      above; Slices 2–4 (email delivery + preferences, scheduler/cron, real-time/push) still ahead
+- [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) merged (PR #58); Slice 2
+      (Email Delivery + Preferences + Worker) shipped on `feat/notifications-email`, not yet merged;
+      see its own section above. Slices 3–4 (scheduler/cron, real-time/push) still ahead — Slice 3
+      will enqueue into the same `jobs` table/worker Slice 2 just built, not new infrastructure
 - [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up

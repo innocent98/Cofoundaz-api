@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # Background worker (Module 20 Slice 2)
+    WORKER_POLL_INTERVAL: float = 2.0
+    WORKER_BATCH_SIZE: int = 10
+    WORKER_MAX_ATTEMPTS: int = 5
+    WORKER_STALE_SECONDS: int = 300
+    APP_BASE_URL: str = ""  # frontend origin for email deep links; falls back to SERVER_HOST
+
     # Logging
     # Path for the loguru file sink. Set to "" to log to stderr only, which is
     # what containerised deployments want (Docker's json-file driver then owns
