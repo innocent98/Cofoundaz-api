@@ -2,7 +2,7 @@
   "data": {
     "suggestions": [
       {
-        "id": "c5f41a1b-203e-45b2-af10-dfc8e8463047",
+        "id": "106080bb-9ea6-4514-82e5-5c74c97f84f6",
         "op": "canvas_update",
         "target": {
           "canvas_type": "business_model"
@@ -32,13 +32,13 @@
         "note": "Add Acme as a key partner",
         "status": "pending",
         "author": {
-          "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+          "id": "09f232ed-0d26-47fc-90b6-d16fd1152190",
           "name": null,
-          "email": "consultant-ef3da62188e1@example.com"
+          "email": "consultant-cdb065171ed2@example.com"
         },
         "resolved_by": null,
         "resolved_at": null,
-        "created_at": "2026-09-08T14:03:13.753815+00:00"
+        "created_at": "2026-09-15T13:43:02.552065+00:00"
       }
     ]
   },

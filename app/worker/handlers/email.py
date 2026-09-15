@@ -41,7 +41,7 @@ def render_email(notification: Notification) -> str:
         f'<p><a href="{link}" style="display:inline-block;padding:10px 16px;'
         f'background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none">Open Cofoundaz</a></p>'
         f'<hr><p style="font-size:12px;color:#666">'
-        f'Manage your notification preferences in Settings.</p></div>'
+        f"Manage your notification preferences in Settings.</p></div>"
     )
 
 

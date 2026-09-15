@@ -2,7 +2,9 @@ from datetime import UTC, datetime
 
 from app.services.notifications.categories import CATEGORIES, category_for
 from app.services.notifications.preferences import (
-    effective_preferences, email_enabled, set_preferences,
+    effective_preferences,
+    email_enabled,
+    set_preferences,
 )
 from tests.factories import create_startup, create_user
 
@@ -29,8 +31,9 @@ def test_effective_defaults_all_on_when_unset(db):
 
 def test_set_and_email_enabled(db):
     u, s = _ctx(db)
-    set_preferences(db, user_id=u.id, startup_id=s.id, master_email=True,
-                    categories={"documents": False})
+    set_preferences(
+        db, user_id=u.id, startup_id=s.id, master_email=True, categories={"documents": False}
+    )
     assert email_enabled(db, user_id=u.id, startup_id=s.id, category="documents") is False
     assert email_enabled(db, user_id=u.id, startup_id=s.id, category="team") is True
     # master off overrides everything

@@ -107,7 +107,9 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     category = category_for(event)
     for n in rows:
         if email_enabled(db, user_id=n.user_id, startup_id=n.startup_id, category=category):
-            job_dispatcher.enqueue(db, "email.notification", {"notification_id": str(n.id)}, startup_id)
+            job_dispatcher.enqueue(
+                db, "email.notification", {"notification_id": str(n.id)}, startup_id
+            )
 
 
 # Ids of buses already wired up, so a re-import or a second startup call does not

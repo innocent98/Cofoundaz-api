@@ -9,13 +9,13 @@ from app.services.notifications.categories import CATEGORIES, CATEGORY_DEFAULTS
 
 def _row(db: Session, user_id: uuid.UUID, startup_id: uuid.UUID) -> NotificationPreference | None:
     return (
-        db.query(NotificationPreference)
-        .filter_by(user_id=user_id, startup_id=startup_id)
-        .first()
+        db.query(NotificationPreference).filter_by(user_id=user_id, startup_id=startup_id).first()
     )
 
 
-def effective_preferences(db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID) -> dict[str, Any]:
+def effective_preferences(
+    db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID
+) -> dict[str, Any]:
     """Stored prefs merged over defaults; every category key present."""
     row = _row(db, user_id, startup_id)
     stored = row.categories if row is not None else {}
@@ -26,14 +26,19 @@ def effective_preferences(db: Session, *, user_id: uuid.UUID, startup_id: uuid.U
 
 
 def set_preferences(
-    db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID,
-    master_email: bool | None, categories: dict[str, bool] | None,
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    startup_id: uuid.UUID,
+    master_email: bool | None,
+    categories: dict[str, bool] | None,
 ) -> dict[str, Any]:
     """Upsert; master_email and/or a subset of category keys. Returns effective prefs."""
     row = _row(db, user_id, startup_id)
     if row is None:
-        row = NotificationPreference(user_id=user_id, startup_id=startup_id,
-                                     master_email=True, categories={})
+        row = NotificationPreference(
+            user_id=user_id, startup_id=startup_id, master_email=True, categories={}
+        )
         db.add(row)
     if master_email is not None:
         row.master_email = master_email

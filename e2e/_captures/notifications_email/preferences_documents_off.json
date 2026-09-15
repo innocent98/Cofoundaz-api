@@ -1,0 +1,13 @@
+{
+  "data": {
+    "master_email": true,
+    "categories": {
+      "documents": false,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true
+    }
+  },
+  "meta": null
+}

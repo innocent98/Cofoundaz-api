@@ -2,17 +2,17 @@
   "data": {
     "notifications": [
       {
-        "id": "b20cc02b-01f7-439a-9c8a-1e69a01f220e",
+        "id": "070fbdd2-29bd-4ccc-9a30-87ea7e79d4f9",
         "type": "workspace.member.joined",
         "title": "A new member joined your workspace",
         "body": "",
         "data": {
           "role": "team_member",
-          "user_id": "97394be8-ed1e-4154-bba1-79d79a4398f4",
-          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769"
+          "user_id": "5ddaf76c-b1b1-4abe-81c4-60e87fc9387f",
+          "startup_id": "57c09963-52d6-4368-bf1d-d6b8f30229d4"
         },
         "read": false,
-        "created_at": "2026-09-14T16:16:00.184056+00:00"
+        "created_at": "2026-09-15T13:43:19.315284+00:00"
       }
     ],
     "next_cursor": null

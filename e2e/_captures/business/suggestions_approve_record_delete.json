@@ -1,10 +1,10 @@
 {
   "data": {
-    "id": "50316459-2fd0-45fa-9d6f-10609a28c6ab",
+    "id": "eaba31a6-bfe0-4b4d-8aef-73c6a85108d9",
     "op": "record_delete",
     "target": {
       "kind": "persona",
-      "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998"
+      "record_id": "373467a2-a137-4822-a886-2cfd587104e3"
     },
     "payload": null,
     "base_version": null,
@@ -12,16 +12,16 @@
     "note": "This persona turned out to be a duplicate",
     "status": "approved",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "09f232ed-0d26-47fc-90b6-d16fd1152190",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": "consultant-cdb065171ed2@example.com"
     },
     "resolved_by": {
-      "id": "b3a9fb75-ce6e-468f-b081-ff420eec3eeb",
+      "id": "2603e6bc-4675-45c7-b101-7a93462184b8",
       "name": "Ada Founder"
     },
-    "resolved_at": "2026-09-08T14:03:13.941430+00:00",
-    "created_at": "2026-09-08T14:03:13.923118+00:00"
+    "resolved_at": "2026-09-15T13:43:02.747591+00:00",
+    "created_at": "2026-09-15T13:43:02.732440+00:00"
   },
   "meta": null
 }

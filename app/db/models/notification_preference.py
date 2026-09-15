@@ -14,12 +14,16 @@ class NotificationPreference(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "notification_preferences"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     startup_id: Mapped[uuid.UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     master_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     categories: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")

@@ -9,18 +9,18 @@
         "key": "assessment.money",
         "value": 43.0,
         "contribution": 8.6,
-        "source_ref": "assessment:42284f8f-6f0c-4cfc-93b8-c04c448e7f3f"
+        "source_ref": "assessment:f7e627ec-f189-4874-b1ff-d887134307e9"
       }
     ],
     "trend": [
       {
         "score": 43,
-        "computed_at": "2026-09-08T14:03:16.287041+00:00"
+        "computed_at": "2026-09-15T13:43:08.043308+00:00"
       }
     ],
     "recommendations": [
       {
-        "id": "efd3758b-d544-4009-85ec-dbf0e1e3a262",
+        "id": "1464deba-d22e-41c7-9555-e13e24bbdc2a",
         "dimension": "money",
         "key": "money.runway_model",
         "title": "Build a 12-month runway model",
@@ -31,7 +31,7 @@
         "priority": 6
       },
       {
-        "id": "658abf20-8235-4563-bd09-65b88f570156",
+        "id": "779462d4-4bd4-433e-851e-6c77bfd6c374",
         "dimension": "money",
         "key": "money.pricing_experiment",
         "title": "Run a pricing experiment",

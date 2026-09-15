@@ -1,6 +1,7 @@
 import signal
 import time
 from collections.abc import Callable
+from types import FrameType
 
 from app.core.config import settings
 from app.core.logger import log
@@ -30,7 +31,7 @@ def main() -> None:
     register()
     stopping = {"v": False}
 
-    def _handle_sigterm(_signum, _frame):
+    def _handle_sigterm(_signum: int, _frame: FrameType | None) -> None:
         log.info("[worker] SIGTERM received; finishing and exiting")
         stopping["v"] = True
 

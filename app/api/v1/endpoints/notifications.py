@@ -103,8 +103,11 @@ def put_preferences_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     eff = set_preferences(
-        db, user_id=membership.user_id, startup_id=membership.startup_id,
-        master_email=body.master_email, categories=body.categories,
+        db,
+        user_id=membership.user_id,
+        startup_id=membership.startup_id,
+        master_email=body.master_email,
+        categories=body.categories,
     )
     db.commit()
     return success_response(eff)

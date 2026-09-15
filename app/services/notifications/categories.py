@@ -5,7 +5,11 @@ Single source of truth for event -> category. In-app delivery ignores this
 """
 
 CATEGORIES: tuple[str, ...] = (
-    "documents", "business", "roadmap_missions", "health_assessment", "team",
+    "documents",
+    "business",
+    "roadmap_missions",
+    "health_assessment",
+    "team",
 )
 
 EVENT_CATEGORY: dict[str, str] = {
@@ -27,7 +31,7 @@ EVENT_CATEGORY: dict[str, str] = {
 }
 
 # All ON (opt-out model, spec D3). New categories default ON here.
-CATEGORY_DEFAULTS: dict[str, bool] = {c: True for c in CATEGORIES}
+CATEGORY_DEFAULTS: dict[str, bool] = dict.fromkeys(CATEGORIES, True)
 
 
 def category_for(event: str) -> str | None:

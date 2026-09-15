@@ -23,8 +23,9 @@ def test_get_returns_defaults(client, db):
 
 def test_put_upserts_and_roundtrips(client, db):
     _u, _s, h = _member(db)
-    r = client.put("/api/v1/notifications/preferences", headers=h,
-                   json={"categories": {"documents": False}})
+    r = client.put(
+        "/api/v1/notifications/preferences", headers=h, json={"categories": {"documents": False}}
+    )
     assert r.status_code == 200 and r.json()["data"]["categories"]["documents"] is False
     got = client.get("/api/v1/notifications/preferences", headers=h).json()["data"]
     assert got["categories"]["documents"] is False and got["categories"]["team"] is True
@@ -32,6 +33,9 @@ def test_put_upserts_and_roundtrips(client, db):
 
 def test_put_unknown_category_422(client, db):
     _u, _s, h = _member(db)
-    r = client.put("/api/v1/notifications/preferences", headers=h,
-                   json={"categories": {"not_a_category": False}})
+    r = client.put(
+        "/api/v1/notifications/preferences",
+        headers=h,
+        json={"categories": {"not_a_category": False}},
+    )
     assert r.status_code == 422

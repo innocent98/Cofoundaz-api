@@ -35,8 +35,9 @@ def test_enqueues_one_email_job_per_opted_in_recipient(db):
 def test_category_off_still_creates_inapp_but_no_email(db):
     register()
     a, b, s = _two_members(db)
-    set_preferences(db, user_id=b.id, startup_id=s.id, master_email=True,
-                    categories={"documents": False})
+    set_preferences(
+        db, user_id=b.id, startup_id=s.id, master_email=True, categories={"documents": False}
+    )
     event_bus.publish(db, "document.shared", {"startup_id": str(s.id), "shared_by_id": str(a.id)})
     assert _email_jobs(db) == []
     assert db.query(Notification).filter_by(user_id=b.id).count() == 1  # in-app still created
@@ -46,6 +47,8 @@ def test_rolled_back_action_leaves_no_email_job(db):
     register()
     a, _b, s = _two_members(db)
     with db.begin_nested() as sp:
-        event_bus.publish(db, "document.shared", {"startup_id": str(s.id), "shared_by_id": str(a.id)})
+        event_bus.publish(
+            db, "document.shared", {"startup_id": str(s.id), "shared_by_id": str(a.id)}
+        )
         sp.rollback()
     assert _email_jobs(db) == []

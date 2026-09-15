@@ -2,32 +2,32 @@
   "data": {
     "notifications": [
       {
-        "id": "44f41e6d-cba4-4a07-b853-1d2ee6d6ebcf",
+        "id": "059e84ab-ee26-4401-82c9-ee291f2ae28a",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
-          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
-          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
-          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
+          "share_id": "a900fbfc-6c6a-4b4d-a866-dfd39030a160",
+          "startup_id": "57c09963-52d6-4368-bf1d-d6b8f30229d4",
+          "document_id": "265a067c-bea8-47b4-8dc3-b6d602152c14",
+          "shared_by_id": "8fec8730-b6fc-4617-a20d-448f4abc5bcd"
         },
         "read": false,
-        "created_at": "2026-09-14T16:16:00.287901+00:00"
+        "created_at": "2026-09-15T13:43:19.409812+00:00"
       },
       {
-        "id": "24c17596-423e-4d64-ac03-2966818e5b9e",
+        "id": "298b6125-68d7-4bb3-9165-5dbb9696beda",
         "type": "document.shared",
         "title": "A document was shared in your workspace",
         "body": "",
         "data": {
-          "share_id": "5315072c-2c86-48b9-b604-fde094c5944a",
-          "startup_id": "e93df778-2eee-4f1a-9a1e-c35e7b1e4769",
-          "document_id": "9ca6f88c-50a5-4712-8387-4c1a8aa403b1",
-          "shared_by_id": "817852f1-40b8-41da-827b-fd7fdb46f886"
+          "share_id": "32e1881a-2f39-4664-8ae6-c13de2998f7b",
+          "startup_id": "57c09963-52d6-4368-bf1d-d6b8f30229d4",
+          "document_id": "265a067c-bea8-47b4-8dc3-b6d602152c14",
+          "shared_by_id": "8fec8730-b6fc-4617-a20d-448f4abc5bcd"
         },
         "read": false,
-        "created_at": "2026-09-14T16:16:00.277251+00:00"
+        "created_at": "2026-09-15T13:43:19.392876+00:00"
       }
     ],
     "next_cursor": null

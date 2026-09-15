@@ -1,14 +1,14 @@
 {
   "data": {
-    "id": "6d2bb593-8d73-4ea1-9f34-21c013b73227",
-    "email": "shared-with-322b964064ca@example.com",
+    "id": "a900fbfc-6c6a-4b4d-a866-dfd39030a160",
+    "email": "shared-with-0c14c70f893b@example.com",
     "access_level": "view",
-    "expires_at": "2026-10-14T16:16:00.292511+00:00",
+    "expires_at": "2026-10-15T13:43:19.413167+00:00",
     "revoked_at": null,
     "last_viewed_at": null,
-    "created_at": "2026-09-14T16:16:00.287901+00:00",
+    "created_at": "2026-09-15T13:43:19.409812+00:00",
     "status": "active",
-    "link": "http://localhost/shared/EXAMPLE-SHARE-TOKEN-REDACTED-0002"
+    "link": "http://localhost/shared/fwEOJ82YH3xJA5rBTvMKcx4ClZfgYTriDHtaX3WUJ7A"
   },
   "meta": null
 }
