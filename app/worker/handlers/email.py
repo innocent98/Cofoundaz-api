@@ -1,3 +1,4 @@
+import html
 import uuid
 
 from sqlalchemy.orm import Session
@@ -21,16 +22,21 @@ _CATEGORY_PATH = {
 
 def deep_link(notification: Notification) -> str:
     base = (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
+    if not base.startswith(("http://", "https://")):
+        # Guard against a misconfigured/non-http base injecting an unexpected scheme
+        # (e.g. javascript:) into the deep link. Static today, defense-in-depth for later.
+        base = ""
     path = _CATEGORY_PATH.get(category_for(notification.type) or "", "/notifications")
     return f"{base}{path}"
 
 
 def render_email(notification: Notification) -> str:
-    link = deep_link(notification)
-    body = notification.body or ""
+    link = html.escape(deep_link(notification), quote=True)
+    title = html.escape(notification.title)
+    body = html.escape(notification.body or "")
     return (
         f'<div style="font-family:system-ui,sans-serif;max-width:520px">'
-        f"<h2>{notification.title}</h2>"
+        f"<h2>{title}</h2>"
         f"<p>{body}</p>"
         f'<p><a href="{link}" style="display:inline-block;padding:10px 16px;'
         f'background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none">Open Cofoundaz</a></p>'
@@ -46,8 +52,10 @@ def handle_email_notification(db: Session, job: Job) -> None:
     user = db.get(User, notification.user_id)
     if user is None or not user.email:
         return
+    # Strip CR/LF to prevent header injection in the SMTP backend.
+    subject = notification.title.replace("\r", " ").replace("\n", " ")
     get_email_sender().send(
-        EmailMessage(to=user.email, subject=notification.title, html=render_email(notification))
+        EmailMessage(to=user.email, subject=subject, html=render_email(notification))
     )
 
 
