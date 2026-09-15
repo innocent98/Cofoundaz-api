@@ -180,7 +180,10 @@ def test_email_delivery_and_preferences(
         assert off.json()["data"]["master_email"] is True
         capture("notifications_email", "preferences_documents_off", off)
 
-        before = mailbox.count_for(teammate_email)
+        before_emails = mailbox.count_for(teammate_email)
+        before_unread = b.get("/api/v1/notifications/unread-count", headers=wh_b).json()["data"][
+            "unread"
+        ]
 
         # 7. A shares again -- a SECOND `document.shared` event. B still
         # gets a new in-app row (in-app delivery ignores preferences), but
@@ -195,7 +198,14 @@ def test_email_delivery_and_preferences(
         assert share2.status_code == 201, share2.text
 
         _drain()
-        assert mailbox.count_for(teammate_email) == before  # no new email
+        # Both halves of "in-app ignores preferences, email respects them"
+        # proven in the SAME run: a new in-app row appeared (unread +1)...
+        after_unread = b.get("/api/v1/notifications/unread-count", headers=wh_b).json()["data"][
+            "unread"
+        ]
+        assert after_unread == before_unread + 1, (before_unread, after_unread)
+        # ...but NO new email was sent.
+        assert mailbox.count_for(teammate_email) == before_emails  # no new email
 
         prefs = b.get("/api/v1/notifications/preferences", headers=wh_b)
         assert prefs.status_code == 200, prefs.text
