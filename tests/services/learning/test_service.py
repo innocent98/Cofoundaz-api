@@ -1,10 +1,10 @@
 import pytest
 
 from app.core.errors import NotFound
-from app.db.models.enums import MembershipRole
+from app.db.models.enums import CourseLevel, MembershipRole
 from app.db.models.job import Job
 from app.db.models.learning import Certificate, Enrollment, LessonProgress
-from app.services.learning.catalog import COURSES
+from app.services.learning.catalog import COURSES, Course
 from app.services.learning.service import (
     complete_lesson,
     course_progress,
@@ -74,11 +74,17 @@ def test_course_percentage_is_rounded_completed_over_total(db):
     assert course_progress(db, s.id, u.id, course) == 67
 
 
+def test_a_course_with_no_lessons_is_zero_percent_not_an_error(db):
+    u, s = _ctx(db)
+    empty = Course(id="empty", title="t", level=CourseLevel.beginner, stage_tags=(), lessons=())
+    assert course_progress(db, s.id, u.id, empty) == 0
+
+
 def test_finishing_a_course_issues_one_certificate_event_and_job(db, monkeypatch):
     events = []
     monkeypatch.setattr(
         "app.services.learning.service.event_bus.publish",
-        lambda e, p: events.append((e, p)),
+        lambda db, e, p: events.append((e, p)),
     )
     u, s = _ctx(db)
     certs = _finish(db, s, u, "build-scope-the-mvp")  # 2 lessons

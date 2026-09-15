@@ -74,6 +74,8 @@ def course_progress(db: Session, startup_id: uuid.UUID, user_id: uuid.UUID, cour
     catalog. ``round`` rounds exact halves to even, matching ``recompute_milestone_progress``.
     """
     lesson_ids = [lesson.id for lesson in course.lessons]
+    if not lesson_ids:
+        return 0
     done = (
         db.query(LessonProgress)
         .filter_by(startup_id=startup_id, user_id=user_id)
@@ -120,6 +122,7 @@ def _issue_certificate(
     db.add(cert)
     db.flush()
     event_bus.publish(
+        db,
         "learning.course.completed",
         {
             "startup_id": str(startup_id),
