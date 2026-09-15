@@ -1,7 +1,7 @@
 """learning
 
-Revision ID: 0022_learning
-Revises: 0021_notifications
+Revision ID: 0023_learning
+Revises: 0022_notifications_email
 Create Date: 2026-09-14
 
 Module 17 (Learning Academy) schema (Task 1: app/db/models/learning.py;
@@ -22,10 +22,11 @@ course_id and lesson_id are text keys into the in-code catalog
 (app/services/learning/catalog.py), not foreign keys — the catalog is not
 stored in the database yet (spec decision D1).
 
-This revision chains off 0021_notifications, the develop head when this
-branch was rebased (Module 18 Slice 4 and Module 20 Slice 1 merged first),
-so the chain runs 0018_document_shares -> 0020_signatures ->
-0021_notifications -> 0022_learning.
+This revision chains off 0022_notifications_email, the develop head after
+Module 20 Slice 2 merged (PR #60). The chain runs 0018_document_shares ->
+0020_signatures -> 0021_notifications -> 0022_notifications_email ->
+0023_learning. (Renumbered from 0022_learning to keep a single alembic head
+after Slice 2 took 0022.)
 
 All three tables are brand new, so this migration takes no lock on any
 existing table beyond the brief lock needed to validate the new foreign
@@ -46,8 +47,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0022_learning"
-down_revision = '0021_notifications'
+revision = "0023_learning"
+down_revision = '0022_notifications_email'
 branch_labels = None
 depends_on = None
 
