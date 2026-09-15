@@ -1,10 +1,10 @@
 {
   "data": {
-    "id": "eaba31a6-bfe0-4b4d-8aef-73c6a85108d9",
+    "id": "50316459-2fd0-45fa-9d6f-10609a28c6ab",
     "op": "record_delete",
     "target": {
       "kind": "persona",
-      "record_id": "373467a2-a137-4822-a886-2cfd587104e3"
+      "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998"
     },
     "payload": null,
     "base_version": null,
@@ -21,13 +21,13 @@
     "note": "This persona turned out to be a duplicate",
     "status": "pending",
     "author": {
-      "id": "09f232ed-0d26-47fc-90b6-d16fd1152190",
+      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
       "name": null,
-      "email": "consultant-cdb065171ed2@example.com"
+      "email": "consultant-ef3da62188e1@example.com"
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-15T13:43:02.732440+00:00"
+    "created_at": "2026-09-08T14:03:13.923118+00:00"
   },
   "meta": null
 }

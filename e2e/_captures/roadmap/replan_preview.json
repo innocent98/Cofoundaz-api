@@ -3,11 +3,11 @@
     "drift_count": 1,
     "changes": [
       {
-        "change_id": "57b10b67-9759-42f1-a70a-8a06757836f8",
-        "milestone_id": "57b10b67-9759-42f1-a70a-8a06757836f8",
+        "change_id": "cdf6fd43-bb5a-44e6-988c-344e48ed76f4",
+        "milestone_id": "cdf6fd43-bb5a-44e6-988c-344e48ed76f4",
         "title": "Validate demand",
-        "old_due": "2026-09-05",
-        "new_due": "2026-09-22",
+        "old_due": "2026-08-29",
+        "new_due": "2026-09-15",
         "reason": "10 days overdue and not yet done."
       }
     ]

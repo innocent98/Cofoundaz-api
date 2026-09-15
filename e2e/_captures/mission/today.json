@@ -1,12 +1,12 @@
 {
   "data": {
-    "mission_date": "2026-09-15",
+    "mission_date": "2026-09-08",
     "status": "pending",
     "streak": 0,
     "tasks": [
       {
-        "id": "d2151115-2136-43ca-a1b8-ed7489ebdb02",
-        "roadmap_task_id": "3ee88a2f-738e-4002-92cd-5a491cf8e010",
+        "id": "6b584e9a-d9f2-4161-b0f9-a1dac382df89",
+        "roadmap_task_id": "ed2f1a1e-4367-4360-946a-498fd3569f3a",
         "title": "Run 10 customer interviews",
         "reason": "From your 'Validate demand' milestone.",
         "effort": "medium",
@@ -16,8 +16,8 @@
         "reject_reason": null
       },
       {
-        "id": "ca14343d-555b-4ce3-9117-b22bc3609533",
-        "roadmap_task_id": "42a8724b-d6dd-46d8-abc8-80b89170eb9f",
+        "id": "5499f2ea-1734-4fa8-9109-c55dca8f0618",
+        "roadmap_task_id": "1b390b08-3349-4ea6-8e30-7bb92b16c165",
         "title": "Synthesize problem hypotheses",
         "reason": "From your 'Validate demand' milestone.",
         "effort": "small",
@@ -27,8 +27,8 @@
         "reject_reason": null
       },
       {
-        "id": "f8906272-d0bd-4b8b-a084-d85530acd560",
-        "roadmap_task_id": "149c6b81-5071-4577-9e05-b31403024019",
+        "id": "afec3285-c640-4fe9-87e7-ed8f78885ce8",
+        "roadmap_task_id": "99b20fa7-0cd4-4a8d-9a14-9f204e4ca46d",
         "title": "Draft 3 pricing options",
         "reason": "From your 'Pricing test' milestone.",
         "effort": "small",
