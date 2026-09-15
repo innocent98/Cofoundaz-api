@@ -10,6 +10,8 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_workspace
+from app.schemas.notification import PreferencesUpdate
+from app.services.notifications.preferences import effective_preferences, set_preferences
 from app.services.notifications.service import (
     list_notifications,
     mark_all_read,
@@ -80,3 +82,29 @@ def read_all_endpoint(
     marked = mark_all_read(db, user_id=membership.user_id, startup_id=membership.startup_id)
     db.commit()
     return success_response({"marked": marked})
+
+
+@router.get("/notifications/preferences")
+def get_preferences_endpoint(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        effective_preferences(db, user_id=membership.user_id, startup_id=membership.startup_id)
+    )
+
+
+@router.put("/notifications/preferences")
+def put_preferences_endpoint(
+    body: PreferencesUpdate,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    eff = set_preferences(
+        db, user_id=membership.user_id, startup_id=membership.startup_id,
+        master_email=body.master_email, categories=body.categories,
+    )
+    db.commit()
+    return success_response(eff)
