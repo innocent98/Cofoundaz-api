@@ -153,6 +153,22 @@ def mailbox():
                     n += 1
             return n
 
+        @staticmethod
+        def latest_for(email: str) -> dict | None:
+            """The newest captured email JSON dict for `email`, or None.
+
+            Unlike `latest_token_for` (which extracts a one-time token from the
+            HTML body), this returns the whole captured email dict as written by
+            the file email backend -- used to assert on/capture the raw delivered
+            message itself (subject, to, html) rather than a token inside it.
+            """
+            files = sorted(Path(MAIL_DIR).glob("*.json"))
+            for f in reversed(files):
+                data = json.loads(f.read_text())
+                if data["to"].lower() == email.lower():
+                    return data
+            return None
+
     return _Mailbox()
 
 

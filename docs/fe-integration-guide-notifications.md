@@ -1,12 +1,14 @@
-# FE Integration Guide — Notifications (Module 20, Slice 1: In-App Feed)
+# FE Integration Guide — Notifications (Module 20, Slices 1–2: In-App Feed + Email)
 
 All request/response bodies below are pasted **verbatim** from live captures taken by
-`e2e/test_notifications.py::test_notifications_journey` running against a real server
-(`scripts/e2e_run.sh`) — see `e2e/_captures/notifications/*.json`. Nothing here is retyped from the
-schema, the service, or memory. IDs, tokens, and timestamps are real values from that ephemeral test
-run (they differ on every real request; the shapes are exact). Every payload, status code, and error
-body in this guide was exercised live, except the rows explicitly marked "unit only" or "not
-captured live" in §8's verification table.
+`e2e/test_notifications.py::test_notifications_journey` (Slice 1) and
+`e2e/test_notifications_email.py::test_email_delivery_and_preferences` (Slice 2) running against a
+real server (`scripts/e2e_run.sh`) — see `e2e/_captures/notifications/*.json` and
+`e2e/_captures/notifications_email/*.json`. Nothing here is retyped from the schema, the service, or
+memory. IDs, tokens, and timestamps are real values from that ephemeral test run (they differ on
+every real request; the shapes are exact). Every payload, status code, and error body in this guide
+was exercised live, except the rows explicitly marked "unit only" or "not captured live" in §8's
+verification table.
 
 Base path: `/api/v1`. All four routes require a Bearer access token
 (`Authorization: Bearer <token>`) + `X-Workspace-Id` header — same convention as every other
@@ -405,16 +407,201 @@ Standard envelope:
 
 ---
 
-## 7. Delivery scope — in-app only, this slice
+## 7. Delivery scope — in-app immediate, email async (Slice 2 adds email)
 
-**There is no email, push, or real-time (websocket) delivery in Slice 1.** A notification exists the
-instant its triggering action commits (same-transaction fan-out — see the SOP), but the ONLY way the
-FE learns about it is by calling this API — there is no server-pushed event, no webhook, no SSE
-stream. **The FE must poll** (§2's suggested cadence for the badge; fetch the full feed on-demand
-when the panel opens). Email delivery + per-user notification preferences are Slice 2; scheduler/cron
--triggered notifications (e.g. "your mission is ready") are Slice 3; real-time push/websocket
-delivery is Slice 4 — none of those are built yet, so do not design a "you'll get an email/push for
-this" affordance into the UI based on this slice.
+**In-app is still the only delivery the FE can poll or render a feed from** — a notification row
+exists the instant its triggering action commits (same-transaction fan-out, unchanged from Slice 1),
+and the ONLY way the FE *reads* it is by calling this API; there is no server-pushed event, webhook,
+or SSE stream. **The FE must still poll** (§2's suggested cadence for the badge; fetch the full feed
+on-demand when the panel opens).
+
+**As of Slice 2, an email may ALSO be sent for the same event — but never synchronously, and never
+guaranteed to arrive before (or even shortly after) the in-app row is visible.** See §9 for the full
+preferences contract, the category catalog, and what "asynchronous & best-effort" means concretely
+for UI design. Scheduler/cron-triggered notifications (e.g. "your mission is ready") are Slice 3;
+real-time push/websocket delivery is Slice 4 — neither is built yet, so still do not design a "you'll
+get a push for this" affordance based on this doc.
+
+---
+
+## 9. Preferences & email (Slice 2)
+
+New in Slice 2: two routes for reading/writing a member's own per-workspace email preferences, and a
+background worker (separate `worker` process/container, NOT the API process) that actually sends the
+email. Both routes require the same auth as every other route in this doc (Bearer token +
+`X-Workspace-Id`) and scope strictly to `(membership.user_id, membership.startup_id)` — exactly like
+the feed routes in §1–4; there is no cross-user or cross-workspace read/write surface.
+
+### 9.1 The model in one paragraph
+
+Preferences are **per-(user, workspace)**, same granularity as notifications themselves — a member
+who belongs to two workspaces has two independent preference rows, one per workspace. There are two
+independent controls: `master_email` (bool — a single global email on/off switch) and `categories`
+(one bool per category in the catalog below). **Both must be true for a given event's email to send**
+— `master_email: true` AND `categories.<that event's category>: true`. Turning `master_email` off
+mutes every category's email without touching the individual category toggles underneath it (they
+keep whatever value they had — flipping `master_email` back on later restores exactly the per-category
+mix the member had before). **In-app delivery (§1–4) ignores preferences entirely** — every category
+toggle and `master_email` govern the email channel ONLY; a member who turns everything off still sees
+every notification in their in-app feed/badge, just never gets emailed about it.
+
+A brand-new member (no preferences row written yet) gets **all-defaults**: `master_email: true`,
+every category `true` — this is an **opt-out model** (everything mailed by default; the member turns
+categories off), not opt-in. `GET`ting before ever `PUT`ting returns these defaults synthesized
+in-memory, not a 404 — there is no "no preferences set yet" error state for the FE to handle.
+
+### 9.2 The category catalog
+
+| Category key | Events it covers | Default |
+|---|---|---|
+| `documents` | `document.shared`, `document.signature.requested`, `document.signature.signed`, `document.signature.completed` | `true` |
+| `business` | `business.suggestion.created`, `business.suggestion.approved`, `business.suggestion.rejected`, `business.artifact.completed` | `true` |
+| `roadmap_missions` | `roadmap.replanned`, `roadmap.milestone.completed`, `mission.completed`, `mission.streak.milestone` | `true` |
+| `health_assessment` | `healthscore.dropped`, `assessment.completed` | `true` |
+| `team` | `workspace.member.joined` | `true` |
+
+This is the exact same event→category map §5's `type` catalog uses for deep-linking (`app/services/
+notifications/categories.py::EVENT_CATEGORY`) — a category toggle in a Settings UI maps 1:1 onto a
+group of `type` rows the FE already renders per §5's table. There is no 6th "everything else"
+category; every one of the 15 v1 event types in §5 falls under exactly one of these 5.
+
+### 9.3 `GET /api/v1/notifications/preferences`
+
+No request body, no query params. Returns the effective (defaults-merged) preferences.
+
+**Response — 200**, captured after B had already turned `documents` off (§9.4) — this is the shape
+for ANY state, defaults included; only the boolean values change
+(`e2e/_captures/notifications_email/preferences_get.json`):
+```json
+{
+  "data": {
+    "master_email": true,
+    "categories": {
+      "documents": false,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true
+    }
+  },
+  "meta": null
+}
+```
+
+**All 5 category keys are always present in the response**, regardless of whether the member has
+ever `PUT` any of them — do not treat a missing key as "off"; there is no missing-key case.
+
+### 9.4 `PUT /api/v1/notifications/preferences`
+
+Request body: `{"master_email"?: bool, "categories"?: {<category key>: bool, ...}}` — both fields are
+optional and independent; send only what changed (a **partial merge**, not a full replace — omitted
+category keys keep their current value, they do not reset to default). Returns the same effective
+shape as the `GET` above (not a 204 — always re-read the response body rather than assuming your `PUT`
+body is now the full state, since it may have been a partial update).
+
+**Request** (turning only `documents` off; `master_email` and every other category untouched):
+```json
+{ "categories": { "documents": false } }
+```
+
+**Response — 200** (`e2e/_captures/notifications_email/preferences_documents_off.json`):
+```json
+{
+  "data": {
+    "master_email": true,
+    "categories": {
+      "documents": false,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true
+    }
+  },
+  "meta": null
+}
+```
+
+Note `master_email` is still `true` and the other 4 categories are untouched `true` — proof the merge
+is genuinely partial, not a full-object replace that happened to default the rest back to `true`.
+
+**Unknown category key → `422 VALIDATION_ERROR`.** Sending any key outside the 5-row catalog above
+(typo, stale FE build against a since-renamed category, hand-crafted request) is rejected outright —
+NONE of the request's keys are applied, not even the valid ones alongside the bad one (request-level
+validation, before the service layer ever runs). Live capture, `PUT` with
+`{"categories": {"not_a_category": false}}`
+(`e2e/_captures/notifications_email/preferences_put_unknown_category_422.json`):
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      { "field": "categories", "message": "Value error, unknown categories: ['not_a_category']" }
+    ]
+  }
+}
+```
+Build the Settings UI as a **fixed set of 5 toggles from the catalog above**, never as a
+dynamically-keyed form that could send an arbitrary string — there is no forward-compatible "unknown
+category is just ignored" behavior to lean on.
+
+### 9.5 Email is asynchronous & best-effort — in-app is immediate
+
+**This is the single most important behavioral difference the FE must design around.** When an event
+fires (e.g. a document gets shared):
+1. The in-app notification row is created **synchronously, in the same transaction as the triggering
+   action** (unchanged from Slice 1 — §0/§7) — it is visible via `GET /notifications` the instant the
+   triggering request returns `201`/`200`.
+2. If the recipient's preferences allow email for that event's category (§9.1), an
+   `email.notification` **job is enqueued in the same transaction** — but NOT sent yet. It sits
+   `queued` in the jobs table.
+3. A **separate background `worker` process** (`python -m app.worker`, its own container in
+   docker-compose — NOT the API process, NOT a thread inside the request that shared the document)
+   polls that queue (`WORKER_POLL_INTERVAL`, default 2s) and sends the actual email whenever it next
+   picks the job up.
+
+**Consequences for the FE:**
+- **Never block a "share"/"invite"/etc. UI flow on an email arriving** — there is no callback, no
+  webhook, no status field on the triggering response that says "email sent." The triggering request
+  returning success only means the in-app row (and, if applicable, the job) was queued — not that
+  anyone's inbox has anything yet.
+- **Do not build a "email sent" checkmark or read-receipt UI** — the API exposes no per-notification
+  email-delivery status (sent/pending/failed) anywhere. The `notifications` row (§1) has no email-related
+  field at all; email delivery is entirely a fire-and-forget side effect the FE cannot observe via this
+  API in Slice 2.
+- **A queued email can be delayed arbitrarily** (worker restart, backlog, retry/backoff on a
+  transient send failure — up to `WORKER_MAX_ATTEMPTS` attempts with exponential backoff, capped at
+  1h between attempts, per the SOP) — do not assume "seconds" as an SLA in copy or UX (e.g. don't
+  write "check your email now").
+- **Preferences changes are NOT retroactive.** Turning a category off only gates the enqueue-time
+  check for events that fire AFTER the toggle — an email already enqueued (or already sent) before the
+  toggle flipped is unaffected. There is no "cancel pending email" behavior.
+- **The email CTA's base URL is `APP_BASE_URL`** (a deploy-time env var — the FE's own origin, e.g.
+  `https://app.cofoundaz.com`), not `SERVER_HOST`/the API's own origin — falls back to `SERVER_HOST`
+  only if `APP_BASE_URL` is unset (e2e capture above shows the fallback: `http://localhost/documents`,
+  since e2e never sets `APP_BASE_URL`). The deep link path is category-based (`/documents`,
+  `/business-builder`, `/roadmap`, `/health`, `/team`), same buckets as §9.2's catalog, not a link to
+  the specific document/suggestion/etc. — same "generic per type, not per instance" limitation as the
+  in-app `title` (§1).
+
+### 9.6 What the email itself looks like
+
+Captured live — the actual delivered message from the file email backend for a real
+`document.shared` event, B's mailbox, after the worker drained the queue
+(`e2e/_captures/notifications_email/delivered_email.json`):
+```json
+{
+  "to": "teammate-70c82e43bc6a@example.com",
+  "subject": "A document was shared in your workspace",
+  "html": "<div style=\"font-family:system-ui,sans-serif;max-width:520px\"><h2>A document was shared in your workspace</h2><p></p><p><a href=\"http://localhost/documents\" style=\"display:inline-block;padding:10px 16px;background:#4f46e5;color:#fff;border-radius:6px;text-decoration:none\">Open Cofoundaz</a></p><hr><p style=\"font-size:12px;color:#666\">Manage your notification preferences in Settings.</p></div>",
+  "sent_at": "2026-09-15T13:43:21.226520+00:00"
+}
+```
+`subject` is the notification's `title` verbatim (same generic per-type copy as §1 — not
+per-instance), `body` (currently always `""` per §1) is rendered but empty, and the CTA button links
+to the category's deep-link path under `APP_BASE_URL` per §9.5. The email footer's "Manage your
+notification preferences in Settings" line is static copy, not a real link — the FE owns wiring an
+actual Settings deep link there if that's wanted; the backend does not construct one.
 
 ---
 
@@ -422,8 +609,9 @@ this" affordance into the UI based on this slice.
 
 All rows below except those marked "unit only" or "not captured" were exercised **live**, over real
 HTTP, against a real Postgres-backed server (`scripts/e2e_run.sh`,
-`e2e/test_notifications.py::test_notifications_journey`) — not just unit-tested in-process — and
-every response body is captured verbatim in the named file.
+`e2e/test_notifications.py::test_notifications_journey` for Slice 1 and
+`e2e/test_notifications_email.py::test_email_delivery_and_preferences` for Slice 2) — not just
+unit-tested in-process — and every response body is captured verbatim in the named file.
 
 | Behaviour | Verified live? | Source |
 |---|---|---|
@@ -443,6 +631,16 @@ every response body is captured verbatim in the named file.
 | Non-member (`403 FORBIDDEN`) on any of the 4 routes | ⚠️ not captured — shared `require_workspace` dependency, no notifications-specific test needed | `app/db/tenancy.py::require_workspace` (used identically by every other workspace-scoped module) |
 | Malformed pagination `cursor` → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/services/notifications/test_service.py::test_bad_cursor_422` |
 | A failing notification handler is savepoint-isolated — the triggering action's own writes still commit, and a broken handler never 500s the caller | ⚠️ unit only | `tests/platform/test_events.py::test_failing_handler_is_isolated_and_does_not_raise` |
+| `GET /notifications/preferences` — all-defaults for a brand-new member (`master_email: true`, every category `true`) | ✅ | `tests/api/test_notification_preferences.py::test_get_returns_defaults` (unit); live shape confirmed via the `PUT` round-trip below |
+| `PUT /notifications/preferences` — partial merge (`{"categories": {"documents": false}}` leaves `master_email` and the other 4 categories untouched) | ✅ | `preferences_documents_off.json` |
+| `GET /notifications/preferences` — reflects the `PUT` above on a fresh `GET` | ✅ | `preferences_get.json` |
+| `PUT /notifications/preferences` with an unknown category key → `422 VALIDATION_ERROR`, no partial apply | ✅ | `preferences_put_unknown_category_422.json` |
+| `document.shared` for a recipient with `documents` email ON → an `email.notification` job is enqueued in the SAME transaction as the in-app row, then actually sent once the worker (`runner.run_once`, drained in-process) claims it — real delivery via the file email backend, correct `subject`/deep-link | ✅ | `delivered_email.json` |
+| Turning `documents` email OFF, then a second `document.shared` → a new in-app row still appears (in-app ignores preferences) but NO new `email.notification` job is enqueued / no new email is delivered after another drain | ✅ | asserted in `test_email_delivery_and_preferences` via `mailbox.count_for` before/after — no new capture file needed for a non-event (nothing new to paste) |
+| A rolled-back triggering action leaves no `email.notification` job queued (transactional correctness — enqueue happens in the same transaction as the in-app row, so a rollback undoes both) | ⚠️ unit only | `tests/services/notifications/test_email_enqueue.py::test_rolled_back_action_leaves_no_email_job` |
+| Worker job claim (`SELECT ... FOR UPDATE SKIP LOCKED`), retry/backoff on handler failure, stale-`RUNNING` reaper, unknown job type → terminal failure | ⚠️ unit only | `tests/worker/test_runner.py` |
+| Email HTML/subject is escaped (no header-injection via CR/LF in `subject`, no unescaped HTML in a title/body containing `<script>`/`&`/quotes) | ⚠️ unit only | `tests/worker/test_email_handler.py::test_render_email_escapes_html` |
+| Worker entrypoint (`python -m app.worker`) registers the email handler and runs `run_once` on a poll loop until a SIGTERM-set stop flag | ⚠️ unit only | `tests/worker/test_entrypoint.py` |
 
 The ⚠️ rows are genuine gaps in this one live journey (exercising all 15 event types live would need
 15 separate trigger actions across nearly every module in the codebase, judged not worth the added

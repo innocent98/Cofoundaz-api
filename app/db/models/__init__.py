@@ -17,6 +17,7 @@ from app.db.models.learning import Certificate, Enrollment, LessonProgress  # no
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
+from app.db.models.notification_preference import NotificationPreference  # noqa: F401
 from app.db.models.roadmap import (  # noqa: F401
     Roadmap,
     RoadmapMilestone,
