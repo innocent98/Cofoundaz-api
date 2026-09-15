@@ -22,38 +22,39 @@
 #   api        2.0         2048M       1024M
 #   db         1.5         3072M       1024M
 #   redis      0.5          512M        128M
+#   worker     0.5          512M        128M
 #   migrate    0.5          512M          -      (one-shot)
 #   ------------------------------------------------------------------
-#   nominal    4.5         6144M
+#   nominal    5.0         6656M
 #
 # THE NOMINAL TOTAL IS NOT A REAL PEAK. `api` and `migrate` can never run at the
 # same time: api declares `depends_on: migrate: condition:
 # service_completed_successfully`, so migrate has EXITED before api starts. The
-# two states that actually occur are:
+# worker has the same dependency, so it never overlaps migrate either. The two
+# states that actually occur are:
 #
-#   during migration :  db 1.5 + redis 0.5 + migrate 0.5 = 2.5 CPU / 4096M
-#   steady state     :  db 1.5 + redis 0.5 + api     2.0 = 4.0 CPU / 5632M
+#   during migration :  db 1.5 + redis 0.5 + migrate 0.5           = 2.5 CPU / 4096M
+#   steady state     :  db 1.5 + redis 0.5 + api 2.0 + worker 0.5  = 4.5 CPU / 6144M
 #
-# So the naive 4.5 CPU sum - which would be a 12.5% oversubscription of 4 vCPU -
-# is unreachable, and steady state lands exactly on 4.0. Worth stating plainly
-# because someone auditing this file WILL add the column up and worry.
+# Steady state's 4.5 CPU is a ceiling against the 4 vCPU box, not a guaranteed
+# allocation - see below for why that is fine.
 #
-# (Even if it were reachable, CPU limits are ceilings rather than reservations:
-# oversubscribing them throttles under contention, it does not fail to schedule.
-# Memory limits are the ones that kill.)
-#
-# 2560M (31%) is left unallocated at steady state for the host kernel, nginx,
-# sshd, and - most importantly - the page cache Postgres depends on for read
-# performance. Committing 100% of RAM to container limits is how a VPS starts
-# OOM-killing.
+# CPU limits are ceilings that throttle, not reservations that must be
+# schedulable: Docker does not refuse to start a container because the sum of
+# limits exceeds the host's vCPUs, it throttles under contention. Memory limits
+# are the ones that kill, and steady state's 6144M against 8192M leaves 2048M
+# (25%) unallocated for the host kernel, nginx, sshd, and - most importantly -
+# the page cache Postgres depends on for read performance. Committing 100% of
+# RAM to container limits is how a VPS starts OOM-killing.
 #
 # CONNECTION ARITHMETIC (the constraint people miss):
 #   api workers (WEB_CONCURRENCY)      = 4
 #   SQLAlchemy per worker              = DATABASE_POOL_SIZE 5 + MAX_OVERFLOW 5 = 10
 #   worst case from the API            = 4 x 10 = 40 connections
+#   worker (background job runner)     = DATABASE_POOL_SIZE 5 + MAX_OVERFLOW 5 = 10 (<=10)
 #   + migrate one-shot                 = ~2
 #   Postgres max_connections           = 100
-#   => ~58 spare for psql, pg_dump, and monitoring.
+#   => ~48 spare for psql, pg_dump, and monitoring.
 # Raising WEB_CONCURRENCY without raising max_connections is how you get
 # "FATAL: sorry, too many clients already" under load.
 
@@ -238,6 +239,45 @@ services:
         reservations:
           cpus: "1.0"
           memory: 1024M
+
+  # ------------------------------------------------------------------------- #
+  # Worker: background job runner (email notifications, etc.)
+  # ------------------------------------------------------------------------- #
+  worker:
+    # Same image as the api service, by design - deliberately NO `build:` block:
+    # two services declaring a build for the SAME image tag makes buildx export
+    # both concurrently and fail with `image ... already exists`. The api
+    # service owns the build; this service consumes the resulting tag.
+    image: ${API_IMAGE:-ghcr.io/innocent98/cofoundaz-api:latest}
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      # Same convention as api/migrate - defaults to `.env` on the server, and
+      # `STACK_ENV_FILE` only ever set for a local `make prod-*` run.
+      - ${STACK_ENV_FILE:-.env}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      LOG_FILE_PATH: ""
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        # Same reasoning as api: never poll against an un-migrated schema.
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # NO published ports - the worker serves no inbound traffic.
+    networks:
+      - backend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          memory: 128M
 
   # ------------------------------------------------------------------------- #
   # Postgres
