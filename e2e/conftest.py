@@ -106,8 +106,16 @@ def http() -> httpx.Client:
 
 @pytest.fixture()
 def unique_email():
+    # Recipients live at Resend's `delivered@resend.dev` test sink, plus-addressed for
+    # uniqueness. This matters for the REMOTE live-e2e gate, where staging runs
+    # EMAIL_BACKEND=resend: Resend REJECTS `example.com` recipients with a 422
+    # ("Invalid `to` field ... use our testing email address instead of domains like
+    # example.com"), which makes the fail-loud sender raise and every e2e signup 500.
+    # `delivered+<unique>@resend.dev` is accepted, always "delivered" to Resend's sink
+    # (no real inbox, no bounces), and unique per signup. Transparent to the local file
+    # backend + `mailbox` fixture, which match on the full `to` address either way.
     def _make(prefix: str = "e2e") -> str:
-        return f"{prefix}-{uuid.uuid4().hex[:12]}@example.com"
+        return f"delivered+{prefix}-{uuid.uuid4().hex[:12]}@resend.dev"
 
     return _make
 
