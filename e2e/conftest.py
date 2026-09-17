@@ -47,7 +47,11 @@ REMOTE = os.environ.get("E2E_REMOTE", "").strip().lower() in {"1", "true", "yes"
 # the test run. `make_verified_user` is included because it consumes `mailbox`
 # internally - most journey tests reach the mailbox through it without naming it.
 _MAILBOX_FIXTURES = frozenset({"mailbox", "make_verified_user"})
-_TOKEN_RE = re.compile(r"<code>([^<]+)</code>")
+# One-time tokens arrive two ways: the verification/password-reset emails now embed
+# the token in a clickable FE link (`/verify-email/<tok>`, `/reset-password/<tok>` -
+# see app/services/auth/emails.py), while the onboarding-invite email still uses a
+# bare `<code><tok></code>`. Match either and take whichever group captured.
+_TOKEN_RE = re.compile(r"/(?:verify-email|reset-password)/([A-Za-z0-9_\-]+)|<code>([^<]+)</code>")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -147,7 +151,7 @@ def mailbox():
                 continue
             m = _TOKEN_RE.search(data["html"])
             if m:
-                return m.group(1)
+                return m.group(1) or m.group(2)  # URL-token group, else <code> group
         raise AssertionError(f"no token email found for {email} (subject~={subject_contains})")
 
     class _Mailbox:

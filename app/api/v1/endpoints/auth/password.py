@@ -11,8 +11,9 @@ from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.audit import write_audit
-from app.platform.email import EmailMessage, get_email_sender
+from app.platform.email import get_email_sender
 from app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
+from app.services.auth.emails import password_reset_email
 from app.services.auth.password import validate_password_strength
 from app.services.auth.sessions import revoke_all_for_user
 from app.services.auth.tokens import (
@@ -40,13 +41,7 @@ def forgot(
         if user is not None and user.status != UserStatus.disabled:
             invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)
             raw = issue_auth_token(db, user, AuthTokenPurpose.password_reset, _RESET_TTL)
-            get_email_sender().send(
-                EmailMessage(
-                    to=user.email,
-                    subject="Reset your password",
-                    html=f"<p>Reset your password — token: <code>{raw}</code></p>",
-                )
-            )
+            get_email_sender().send(password_reset_email(user.email, raw))
             write_audit(
                 db,
                 "auth.password.reset_requested",
