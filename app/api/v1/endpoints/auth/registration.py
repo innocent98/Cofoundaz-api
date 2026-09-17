@@ -12,9 +12,10 @@ from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User, UserProfile
 from app.db.session import get_db
 from app.platform.audit import write_audit
-from app.platform.email import EmailMessage, get_email_sender
+from app.platform.email import get_email_sender
 from app.platform.events import event_bus
 from app.schemas.auth import EmailRequest, SignupRequest, TokenRequest
+from app.services.auth.emails import verification_email
 from app.services.auth.password import validate_password_strength
 from app.services.auth.tokens import (
     consume_auth_token,
@@ -30,13 +31,7 @@ _RESEND_COOLDOWN_SECONDS = 60
 def _send_verification(db: Session, user: User) -> None:
     invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.email_verification)
     raw = issue_auth_token(db, user, AuthTokenPurpose.email_verification, _VERIFY_TTL)
-    get_email_sender().send(
-        EmailMessage(
-            to=user.email,
-            subject="Verify your email",
-            html=f"<p>Verify your email — token: <code>{raw}</code></p>",
-        )
-    )
+    get_email_sender().send(verification_email(user.email, raw))
 
 
 @router.post("/signup", status_code=201)
