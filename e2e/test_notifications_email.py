@@ -34,9 +34,12 @@ from pathlib import Path
 
 import httpx
 
-from app.db.session import SessionLocal
-from app.worker import runner
-from app.worker.handlers import email as _email  # noqa: F401  (registers handler)
+# NOTE: app-internal imports (SessionLocal, worker) are done LAZILY inside `_drain`,
+# not at module level. Importing them here instantiates `app.core.config.Settings`
+# at pytest COLLECTION time, which requires the full app env (DATABASE_URL, SECRET_KEY,
+# ...). The remote live-e2e gate (E2E_REMOTE=1) has no such env and would fail to
+# COLLECT this module before conftest could deselect it (it needs the local `mailbox`
+# fixture, so it is remote-deselected anyway). Keep app imports out of module scope.
 
 _CAPTURE_DIR = Path(__file__).parent / "_captures" / "notifications_email"
 
@@ -72,6 +75,12 @@ def _drain() -> None:
     queued ahead of ours (FIFO by `created_at`). Looping until a batch claims nothing
     drains the whole backlog, same as leaving the real worker running long enough.
     """
+    # Lazy imports (see the module-header note): keep Settings instantiation out of
+    # collection so the remote live-e2e gate can collect + deselect this module.
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import email as _email  # noqa: F401  (registers the handler)
+
     db = SessionLocal()
     try:
         for _ in range(500):  # generous cap -- 5000 jobs -- so a real stall still fails loudly
