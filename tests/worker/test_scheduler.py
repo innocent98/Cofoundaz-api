@@ -85,6 +85,44 @@ def test_due_quarterly(db):
     assert str(s2.id) not in {d.scope_key for d in scheduler._due_quarterly(db, now)}
 
 
+def test_due_overdue_milestones_excludes_already_claimed(db):
+    _u, s = _ws(db)
+    r = create_roadmap(db, startup=s)
+    p = create_phase(db, roadmap=r)
+    overdue = create_milestone(
+        db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.todo
+    )
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    assert [d.scope_key for d in scheduler._due_overdue_milestones(db, now)] == [str(overdue.id)]
+
+    assert _claim(db, "roadmap.overdue", str(overdue.id), "once") is True
+    assert scheduler._due_overdue_milestones(db, now) == []
+
+
+def test_due_missions_excludes_already_claimed(db):
+    _u, s = _ws(db)
+    now = datetime(2026, 9, 18, 7, 0, tzinfo=UTC)  # past MISSION_GEN_HOUR
+    period = "2026-09-18"
+    assert [d.scope_key for d in scheduler._due_missions(db, now)] == [str(s.id)]
+
+    assert _claim(db, "mission.generate", str(s.id), period) is True
+    assert scheduler._due_missions(db, now) == []
+
+
+def test_due_quarterly_excludes_already_claimed(db):
+    _u, s = _ws(db)
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    a = create_assessment(
+        db, startup=s, type=AssessmentType.initial, status=AssessmentStatus.completed
+    )
+    a.completed_at = now - timedelta(days=100)
+    db.flush()
+    assert [d.scope_key for d in scheduler._due_quarterly(db, now)] == [str(s.id)]
+
+    assert _claim(db, "assessment.quarterly", str(s.id), "2026-Q3") is True
+    assert scheduler._due_quarterly(db, now) == []
+
+
 def test_soft_deleted_startups_excluded(db):
     now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
 

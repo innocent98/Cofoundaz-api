@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func
+from sqlalchemy import String, cast, exists, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -69,14 +69,26 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
     if local.hour < settings.MISSION_GEN_HOUR:
         return []
     period = local.date().isoformat()
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key)
+        .filter(ScheduledRun.task_key == "mission.generate", ScheduledRun.period_key == period)
+        .all()
+    }
     return [
         Due("mission.generate", str(sid), period, SCHED_MISSION, sid, {"startup_id": str(sid)})
         for sid in _active_startup_ids(db)
+        if str(sid) not in claimed
     ]
 
 
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
+    already_claimed = exists().where(
+        ScheduledRun.task_key == "roadmap.overdue",
+        ScheduledRun.period_key == "once",
+        ScheduledRun.scope_key == cast(RoadmapMilestone.id, String),
+    )
     rows = (
         db.query(RoadmapMilestone.id, Roadmap.startup_id)
         .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
@@ -86,6 +98,7 @@ def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
             RoadmapMilestone.due_on < today,
             RoadmapMilestone.status != RoadmapStatus.done,
             Startup.deleted_at.is_(None),
+            ~already_claimed,
         )
         .all()
     )
@@ -124,12 +137,18 @@ def _due_quarterly(db: Session, now: datetime) -> list[Due]:
         .filter(Assessment.status == AssessmentStatus.in_progress)
         .all()
     }
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key)
+        .filter(ScheduledRun.task_key == "assessment.quarterly", ScheduledRun.period_key == period)
+        .all()
+    }
     return [
         Due(
             "assessment.quarterly", str(sid), period, SCHED_QUARTERLY, sid, {"startup_id": str(sid)}
         )
         for sid in due_ids
-        if sid not in in_progress
+        if sid not in in_progress and str(sid) not in claimed
     ]
 
 
