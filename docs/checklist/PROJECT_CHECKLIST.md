@@ -18,46 +18,49 @@
 
 _Last reconciled: 2026-09-18 · **Module 17 (Learning Academy) is now MERGED to `develop`**
 (PR #59, junior build; migration `0023_learning`) — a fully complete module. **Module 20
-(Notifications) Slice 2 (Email Delivery + Preferences + Worker) is now MERGED** (PR #60,
-`0022_notifications_email`), joining Slice 1 (PR #58); Slices 3 (scheduler/cron) and 4
-(real-time/push) remain, so Module 20 is still open. Also merged this window: the Resend email
-backend went live + verified on staging, with clickable verification/password-reset emails
-(PR #67) and the `APP_BASE_URL` (FE origin) env wiring (PRs #63/#64/#69) — staging deploys green
-incl. the live-e2e gate. **9 modules are fully complete; 2 remain open (08, 20).** `develop` =
-staging, `main` = production; feature PRs target `develop`._
+(Notifications) Slice 3 (Scheduler/Cron) is now built** (branch `feat/notifications-scheduler`,
+migration `0024_scheduled_runs`, PR not yet opened), joining Slice 1 (PR #58) and Slice 2 (PR #60,
+`0022_notifications_email`) — only **Slice 4 (real-time/push)** remains, so Module 20 is still open
+but down to its last slice. Also merged this window: the Resend email backend went live + verified
+on staging, with clickable verification/password-reset emails (PR #67) and the `APP_BASE_URL` (FE
+origin) env wiring (PRs #63/#64/#69) — staging deploys green incl. the live-e2e gate. **9 modules
+are fully complete; 2 remain open (08, 20).** `develop` = staging, `main` = production; feature PRs
+target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **9 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, blocked on Module 03 (LLM provider). **20 Notifications** — Slices 1–2 merged (PRs #58/#60); Slices 3 (scheduler/cron) and 4 (real-time/push) remain. **15 not started** (03 · 09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **9 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, blocked on Module 03 (LLM provider). **20 Notifications** — Slices 1–3 built (PRs #58/#60, Slice 3 on branch `feat/notifications-scheduler`); only Slice 4 (real-time/push) remains. **15 not started** (03 · 09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 2 modules | **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **blocked on Module 03** (LLM provider). **Notifications (20)** — Slices 1–2 merged (In-App Feed PR #58; Email+Prefs+Worker PR #60, migration `0022_notifications_email`); **Slice 3 (scheduler/cron)** and **Slice 4 (real-time/push)** remain |
+| 🟡 Open (started, not finished) | 2 modules | **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **blocked on Module 03** (LLM provider). **Notifications (20)** — Slices 1–3 built (In-App Feed PR #58; Email+Prefs+Worker PR #60, migration `0022_notifications_email`; **Scheduler/Cron**, migration `0024_scheduled_runs`, PR not yet opened); only **Slice 4 (real-time/push)** remains |
 | ⬜ Not started | 15 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
-**Health at a glance:** **120 endpoints** (directly counted from the OpenAPI schema's
-path×method operations, `app.openapi()["paths"]` — 98 paths, 120 operations; supersedes the prior
-93-path/114-operation count from the Documents Slice 4 pass, +5 paths/+6 operations for
-Notifications Slices 1–2's 4 feed routes + 2 preferences routes) · **1057 unit tests** (real
-Postgres) + **39 live E2E** · **97.66% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff
-0.16.5 / mypy 2.3.1 clean (directly re-run this pass) · pylint 4.0.7 **9.89/10** (directly re-run
-this pass — was 9.94 at the last full sweep; the new worker/notifications-preferences code adds a
-handful of pre-existing-pattern `too-many-arguments`/`broad-exception-caught` warnings, still well
-above the 9.5 floor) · bandit clean, 0 findings (directly re-run this pass) · radon average
-complexity **A (2.36)**, every module MI **A** · hadolint / actionlint / `trivy config` / checkov
-all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** **128 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 106 paths, 128 operations; supersedes the prior
+98-path/120-operation count from the Slice 2 pass — the +8/+8 delta is entirely Learning Academy's 8
+routes, merged after that pass; **Slice 3 (this pass) adds zero new routes** — the scheduler has no
+API surface of its own) · **1199 unit tests** (real Postgres, up from 1057) + **41 live E2E** (up
+from 39) · **97.76% coverage** (floor 95, up from 97.66%) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5
+/ mypy 2.3.1 clean (directly re-run this pass — 5 pre-existing unformatted files from Slice 3's
+Tasks 1–6 plus one `ruff` unused-import and 4 `mypy` missing-annotation findings in
+`app/worker/scheduler.py` fixed in this pass) · pylint 4.0.7 **9.89/10** (directly re-run this pass,
+unchanged from the Slice 2 sweep — no new findings in scheduler code) · bandit clean, 0 findings
+(directly re-run this pass) · radon average complexity **A (2.36)**, every module MI **A** ·
+hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented
+ignore) · zero AI-attribution trailers.
 
 _Note: the radon/hadolint/actionlint/`trivy config`/checkov/pip-audit figures above are carried
 forward unchanged from the last full lint/security sweep (not re-run in this pass — this pass's own
 CI reproduction covered black/isort/ruff/mypy/pylint/bandit/pytest+coverage/alembic heads/e2e, all
-directly re-run and recorded above). `docker-compose.yml`/`docker-compose.prod.yml` did gain a new
-`worker` service in the Slice 2 work (Task 7, prior to this pass) — worth a `trivy config`/checkov
-re-run next time either tool's pass is refreshed, though the added service follows the same shape
-as the existing `api`/`migrate` services those tools already cleared. Endpoint count and unit/e2e
-test counts are freshly re-counted this pass (2026-09-15), not carried over._
+directly re-run and recorded above, per `.superpowers/sdd/2026-09-18-notifications-scheduler/
+task-7-report.md`). `docker-compose.yml`/`docker-compose.prod.yml` gained no new service in Slice 3
+— the scheduler runs inside the existing `worker` process/container (see the Slice 3 SOP's "Operate"
+section), so no new `trivy config`/checkov surface was added. Endpoint count and unit/e2e test
+counts are freshly re-counted this pass (2026-09-18), not carried over._
 
 ---
 
@@ -117,7 +120,9 @@ test counts are freshly re-counted this pass (2026-09-15), not carried over._
 - [x] `GET /assessments` · `GET /assessments/{id}` · `GET /assessments/compare`
 - [x] Race-safety on all 3 write paths + concurrency tests
 - [x] Live E2E adaptive journey + SOP
-- [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · quarterly re-assessment cron (Module 20)
+- [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · ~~quarterly re-assessment cron~~ now
+      fires via **Module 20 Slice 3** (`assessment.quarterly.due`, ≥ `QUARTERLY_REASSESS_DAYS`
+      since the last completed assessment — see that module's own section)
 
 ## ✅ E2E Full-Coverage Pass — *shipped (PR #5)*
 
@@ -162,7 +167,9 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
 - [x] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
-- [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
+- [ ] _Deferred:_ ~~`roadmap.milestone.overdue` event + notifications~~ now fires via **Module 20
+      Slice 3** (once per milestone, ever — no recurring re-nudge; see that module's own section) ·
+      workspace-tz base date still deferred (Slice 3's scheduler uses one global `SCHEDULER_TIMEZONE`, not per-workspace)
 
 **Slice 2 — Dependencies + Templates** — *✅ done, merged to `main`*
 - [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
@@ -212,7 +219,10 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] Access: reads = any member (mentor incl.) · writes = founder/team_member (mentor → 403) · cross-workspace → uniform 404
 - [x] Live E2E (`e2e/test_mission.py`, 6 captures) + smoke openapi surface (5 mission paths)
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
-- [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
+- [ ] _Deferred:_ ~~06:00 cron generation~~ now fires via **Module 20 Slice 3** (`mission.ready`,
+      pre-generates + notifies past `MISSION_GEN_HOUR` local — see that module's own section); push
+      notification still deferred to Module 20 Slice 4 · AI-authored reason line (Module 03) · real
+      `mission.*` event delivery (Module 20) · workspace-timezone base date
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
@@ -617,22 +627,25 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
 
-## 🟡 Module 20 — Notifications — *Slices 1–2 MERGED to `develop` (In-App Feed PR #58; Email +
-Preferences + Worker PR #60). OPEN: Slice 3 (scheduler/cron — mission 06:00, roadmap-overdue,
-quarterly re-assessment; enqueues into the Slice-2 worker) and Slice 4 (real-time/push)*
+## 🟡 Module 20 — Notifications — *Slices 1–3 BUILT (In-App Feed PR #58; Email + Preferences +
+Worker PR #60; Scheduler/Cron — branch `feat/notifications-scheduler`, migration
+`0024_scheduled_runs`, PR not yet opened). OPEN: only Slice 4 (real-time/push) remains*
 
 _Module 20 decomposes into ~4 slices (agreed 2026-09-14, `docs/superpowers/specs/
 2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
 becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows — ✅
 merged), **2 Email delivery + per-user preferences** (Resend backend already existed; this slice
 adds the preferences model/endpoints, the in-transaction enqueue, and a new background `worker`
-process — ✅ shipped, this pass), 3 Scheduler/cron (mission 06:00, roadmap-overdue, quarterly
-re-assessment — will enqueue into Slice 2's SAME `jobs` table/worker, no new infrastructure), 4
-Real-time (websocket) + push. Nearly every already-shipped module (Dashboard, Roadmap, Mission,
-Health Score, Documents, Business Builder, Assessment, onboarding) has a "real notification
-delivery — Module 20" deferred line in its own SOP; Slice 1 retired the in-app half, Slice 2 adds
-the email half. SOPs: `docs/sop/2026-09-14-notifications-feed-slice1.md`,
-`docs/sop/2026-09-15-notifications-email-delivery.md`._
+process — ✅ merged), **3 Scheduler/cron** (mission 06:00, roadmap-overdue, quarterly
+re-assessment — enqueues into Slice 2's SAME `jobs` table/worker, no new infrastructure — ✅ built,
+this pass), 4 Real-time (websocket) + push — still unbuilt, the only slice left. Nearly every
+already-shipped module (Dashboard, Roadmap, Mission, Health Score, Documents, Business Builder,
+Assessment, onboarding) has a "real notification delivery — Module 20" deferred line in its own
+SOP; Slice 1 retired the in-app half, Slice 2 added the email half, Slice 3 retires the "06:00 cron
+/ overdue / quarterly re-assess" deferred lines specifically. SOPs:
+`docs/sop/2026-09-14-notifications-feed-slice1.md`,
+`docs/sop/2026-09-15-notifications-email-delivery.md`,
+`docs/sop/2026-09-18-notifications-scheduler.md`._
 
 **Slice 1 — In-App Feed + Fan-Out** — *🟢 MERGED to `develop` (PR #58, Tasks 1–6 +
 final-review fix wave)*
@@ -752,6 +765,63 @@ final-review fix wave)*
       idempotency key if it becomes a real problem) · preferences are not retroactive (no "cancel a
       pending email" path) · no per-notification email-delivery status exposed via the API · same
       generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
+
+**Slice 3 — Scheduler / Cron** — *🟢 BUILT on branch `feat/notifications-scheduler` (PR not yet
+opened; migration `0024_scheduled_runs`, chains off `0023_learning`, sole head)* — 2026-09-18
+- [x] Design + decisions (`.superpowers/sdd/2026-09-18-notifications-scheduler/`, design doc
+      `docs/superpowers/specs/2026-09-18-notifications-scheduler-design.md`) — scheduler = a
+      throttled tick inside the existing `worker` loop, no new container · a DB claim ledger
+      (`scheduled_runs`, unique `(task_key, scope_key, period_key)`) makes firing once-per-period
+      safe, leader-free · tick claims + enqueues into Slice 2's SAME `jobs` table; handlers do the
+      work + publish · one config timezone (`SCHEDULER_TIMEZONE`) for the 06:00 check, per-workspace
+      tz deferred · overdue fires once per milestone, ever (no daily/weekly re-nudge) · quarterly
+      only for workspaces with a prior completed assessment
+- [x] `scheduled_runs` ledger table + migration `0024_scheduled_runs` (`app/db/models/
+      scheduled_run.py`)
+- [x] `app/worker/scheduler.py` — `_claim` (once-per-period, savepoint insert), three detectors
+      (`_due_missions` past `MISSION_GEN_HOUR`; `_due_overdue_milestones` past `due_on` + not done;
+      `_due_quarterly` last completed assessment ≥ `QUARTERLY_REASSESS_DAYS` old, excluding
+      in-progress and soft-deleted startups), `scheduler_tick(db, *, now)` — per-item isolated,
+      commits once, returns count enqueued
+- [x] `app/worker/handlers/scheduled.py` — three job handlers (`handle_mission_generate`,
+      `handle_roadmap_overdue`, `handle_assessment_quarterly`), each re-checking before publishing
+      (overdue re-fetches the milestone — no stale-notification publish if it was completed/deleted
+      between enqueue and run) — publish `mission.ready`, `roadmap.milestone.overdue`,
+      `assessment.quarterly.due`
+- [x] `app/worker/__main__.py::main_loop` — throttled `scheduler_tick` call (`SCHEDULER_INTERVAL`,
+      default 60s, monotonic-clock gated) alongside the existing `run_once` poll
+- [x] Registry (`app/services/notifications/registry.py`) — 3 new `SPECS` rows, all-active-members
+      recipients (no actor — these are scheduled/system events); categories
+      (`app/services/notifications/categories.py`) — `mission.ready`/`roadmap.milestone.overdue` →
+      `roadmap_missions`, `assessment.quarterly.due` → `health_assessment` (both pre-existing
+      categories, no 6th category added)
+- [x] Config (`app/core/config.py`) — `SCHEDULER_TIMEZONE` (default `UTC`), `MISSION_GEN_HOUR`
+      (default `6`), `SCHEDULER_INTERVAL` (default `60`), `QUARTERLY_REASSESS_DAYS` (default `90`)
+- [x] Live E2E journey (`e2e/test_notifications_scheduler.py::
+      test_scheduled_mission_ready_notification`, 1 capture): founder onboards to a generated
+      roadmap → scheduler tick at 07:00 UTC (past `MISSION_GEN_HOUR`) → worker queue drained
+      in-process → `mission.ready` notification in the founder's feed, `data == {startup_id,
+      mission_id}`, captured (`mission_ready_feed.json`) → a same-day re-tick does NOT duplicate it
+      (proves the claim ledger). `roadmap.milestone.overdue`/`assessment.quarterly.due` are NOT
+      reachable from a fresh e2e signup (need a backdated milestone / an assessment >90 days old) —
+      honestly labelled unit-only in the FE guide + SOP rather than faked, backed by
+      `tests/worker/test_scheduled_handlers.py`'s exact-payload assertions
+- [x] SOP + FE integration guide extension (new §10 "Scheduled / time-based notifications") + this
+      checklist reconcile — `docs/sop/2026-09-18-notifications-scheduler.md`,
+      `docs/fe-integration-guide-notifications.md` §10
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (5 pre-existing
+      unformatted files from Tasks 1–6 fixed in this pass, plus one `ruff` `F401` finding and 4
+      `mypy` missing-annotation findings in `app/worker/scheduler.py`'s detectors) · `mypy` clean ·
+      `pylint` 9.89/10 (≥ 9.5 floor, unchanged — no new findings in scheduler code) · `bandit` clean
+      · 1199 unit passed, 97.76% coverage (≥ 95% floor) · exactly one alembic head
+      (`0024_scheduled_runs`) · 41 e2e passed — see `.superpowers/sdd/
+      2026-09-18-notifications-scheduler/task-7-report.md` for the full per-gate breakdown
+- [ ] _Deferred:_ single global `SCHEDULER_TIMEZONE`, not per-workspace (D3 — no tz field on
+      `Startup` today) · overdue fires once per milestone ever, no recurring re-nudge (D5) ·
+      quarterly only for workspaces with a prior completed assessment, never for a
+      never-assessed workspace (D6) · roadmap TASK overdue out of scope, milestones only · the
+      claim/enqueue non-atomicity gap (safe for mission generation via its lazy fallback, not
+      mitigated for overdue/quarterly — see SOP "How") — see SOP Follow-ups
 
 ## ✅ Module 17 — Learning Academy — *MERGED to `develop` (PR #59; migration `0023_learning`)*
 
@@ -1254,9 +1324,9 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 - [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
 - [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) merged (PR #58); Slice 2
-      (Email Delivery + Preferences + Worker) merged (PR #60); see its own section above. Slices 3–4
-      (scheduler/cron, real-time/push) still ahead — Slice 3 will enqueue into the same `jobs`
-      table/worker Slice 2 just built, not new infrastructure
+      (Email Delivery + Preferences + Worker) merged (PR #60); Slice 3 (Scheduler/Cron) built
+      (branch `feat/notifications-scheduler`, migration `0024_scheduled_runs`, PR not yet opened);
+      see its own section above. Only **Slice 4 (real-time/push)** still ahead
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up

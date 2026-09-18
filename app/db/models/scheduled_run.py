@@ -21,5 +21,7 @@ class ScheduledRun(UUIDMixin, TimestampMixin, Base):
     period_key: Mapped[str] = mapped_column(String(32), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("task_key", "scope_key", "period_key", name="uq_scheduled_runs_task_scope_period"),
+        UniqueConstraint(
+            "task_key", "scope_key", "period_key", name="uq_scheduled_runs_task_scope_period"
+        ),
     )

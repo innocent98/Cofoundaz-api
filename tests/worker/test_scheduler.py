@@ -22,7 +22,9 @@ def test_claim_is_once_per_period(db):
     assert _claim(db, "mission.generate", "ws1", "2026-09-18") is False
     # different period → claimable
     assert _claim(db, "mission.generate", "ws1", "2026-09-19") is True
-    assert db.query(ScheduledRun).filter_by(task_key="mission.generate", scope_key="ws1").count() == 2
+    assert (
+        db.query(ScheduledRun).filter_by(task_key="mission.generate", scope_key="ws1").count() == 2
+    )
 
 
 def _ws(db):
@@ -46,9 +48,15 @@ def test_due_overdue_milestones(db):
     _u, s = _ws(db)
     r = create_roadmap(db, startup=s)
     p = create_phase(db, roadmap=r)
-    overdue = create_milestone(db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.todo)
-    create_milestone(db, phase=p, due_on=datetime(2026, 12, 1).date(), status=RoadmapStatus.todo)  # future
-    create_milestone(db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.done)  # done
+    overdue = create_milestone(
+        db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.todo
+    )
+    create_milestone(
+        db, phase=p, due_on=datetime(2026, 12, 1).date(), status=RoadmapStatus.todo
+    )  # future
+    create_milestone(
+        db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.done
+    )  # done
     now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
     due = scheduler._due_overdue_milestones(db, now)
     assert [d.scope_key for d in due] == [str(overdue.id)]

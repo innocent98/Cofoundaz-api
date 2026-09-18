@@ -53,7 +53,7 @@ def _quarter_key(d: datetime) -> str:
     return f"{d.year}-Q{(d.month - 1) // 3 + 1}"
 
 
-def _active_startup_ids(db):
+def _active_startup_ids(db: Session) -> list[Any]:
     rows = (
         db.query(Startup.id)
         .join(Membership, Membership.startup_id == Startup.id)
@@ -64,7 +64,7 @@ def _active_startup_ids(db):
     return [r[0] for r in rows]
 
 
-def _due_missions(db, now: datetime) -> list[Due]:
+def _due_missions(db: Session, now: datetime) -> list[Due]:
     local = _local(now)
     if local.hour < settings.MISSION_GEN_HOUR:
         return []
@@ -75,7 +75,7 @@ def _due_missions(db, now: datetime) -> list[Due]:
     ]
 
 
-def _due_overdue_milestones(db, now: datetime) -> list[Due]:
+def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     rows = (
         db.query(RoadmapMilestone.id, Roadmap.startup_id)
@@ -102,7 +102,7 @@ def _due_overdue_milestones(db, now: datetime) -> list[Due]:
     ]
 
 
-def _due_quarterly(db, now: datetime) -> list[Due]:
+def _due_quarterly(db: Session, now: datetime) -> list[Due]:
     period = _quarter_key(_local(now))
     cutoff = now - timedelta(days=settings.QUARTERLY_REASSESS_DAYS)
     latest = (
@@ -125,7 +125,9 @@ def _due_quarterly(db, now: datetime) -> list[Due]:
         .all()
     }
     return [
-        Due("assessment.quarterly", str(sid), period, SCHED_QUARTERLY, sid, {"startup_id": str(sid)})
+        Due(
+            "assessment.quarterly", str(sid), period, SCHED_QUARTERLY, sid, {"startup_id": str(sid)}
+        )
         for sid in due_ids
         if sid not in in_progress
     ]
