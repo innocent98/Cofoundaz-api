@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     WORKER_STALE_SECONDS: int = 300
     APP_BASE_URL: str = ""  # frontend origin for email deep links; falls back to SERVER_HOST
 
+    # Scheduler (Module 20 Slice 3)
+    SCHEDULER_TIMEZONE: str = "UTC"  # IANA name for the 06:00 check
+    MISSION_GEN_HOUR: int = 6  # local hour to pre-generate today's mission
+    SCHEDULER_INTERVAL: int = 60  # seconds; throttle the scheduler within the worker poll
+    QUARTERLY_REASSESS_DAYS: int = 90
+
     # Logging
     # Path for the loguru file sink. Set to "" to log to stderr only, which is
     # what containerised deployments want (Docker's json-file driver then owns

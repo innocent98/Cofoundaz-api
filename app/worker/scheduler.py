@@ -1,7 +1,31 @@
+from datetime import datetime, timedelta
+from typing import Any, NamedTuple
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.db.models.assessment import Assessment
+from app.db.models.enums import AssessmentStatus, MembershipStatus, RoadmapStatus
+from app.db.models.membership import Membership
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.scheduled_run import ScheduledRun
+from app.db.models.startup import Startup
+
+SCHED_MISSION = "scheduled.mission.generate"
+SCHED_OVERDUE = "scheduled.roadmap.overdue"
+SCHED_QUARTERLY = "scheduled.assessment.quarterly"
+
+
+class Due(NamedTuple):
+    task_key: str
+    scope_key: str
+    period_key: str
+    job_type: str
+    startup_id: Any
+    payload: dict
 
 
 def _claim(db: Session, task_key: str, scope_key: str, period_key: str) -> bool:
@@ -17,3 +41,78 @@ def _claim(db: Session, task_key: str, scope_key: str, period_key: str) -> bool:
         return True
     except IntegrityError:
         return False
+
+
+def _local(now: datetime) -> datetime:
+    return now.astimezone(ZoneInfo(settings.SCHEDULER_TIMEZONE))
+
+
+def _quarter_key(d: datetime) -> str:
+    return f"{d.year}-Q{(d.month - 1) // 3 + 1}"
+
+
+def _active_startup_ids(db):
+    rows = (
+        db.query(Startup.id)
+        .join(Membership, Membership.startup_id == Startup.id)
+        .filter(Membership.status == MembershipStatus.active)
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def _due_missions(db, now: datetime) -> list[Due]:
+    local = _local(now)
+    if local.hour < settings.MISSION_GEN_HOUR:
+        return []
+    period = local.date().isoformat()
+    return [
+        Due("mission.generate", str(sid), period, SCHED_MISSION, sid, {"startup_id": str(sid)})
+        for sid in _active_startup_ids(db)
+    ]
+
+
+def _due_overdue_milestones(db, now: datetime) -> list[Due]:
+    today = _local(now).date()
+    rows = (
+        db.query(RoadmapMilestone.id, Roadmap.startup_id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .join(Roadmap, RoadmapPhase.roadmap_id == Roadmap.id)
+        .filter(RoadmapMilestone.due_on < today, RoadmapMilestone.status != RoadmapStatus.done)
+        .all()
+    )
+    return [
+        Due(
+            "roadmap.overdue",
+            str(mid),
+            "once",
+            SCHED_OVERDUE,
+            sid,
+            {"startup_id": str(sid), "milestone_id": str(mid)},
+        )
+        for mid, sid in rows
+    ]
+
+
+def _due_quarterly(db, now: datetime) -> list[Due]:
+    period = _quarter_key(_local(now))
+    cutoff = now - timedelta(days=settings.QUARTERLY_REASSESS_DAYS)
+    latest = (
+        db.query(Assessment.startup_id, func.max(Assessment.completed_at).label("last"))
+        .filter(Assessment.status == AssessmentStatus.completed)
+        .group_by(Assessment.startup_id)
+        .subquery()
+    )
+    due_ids = [r[0] for r in db.query(latest.c.startup_id).filter(latest.c.last <= cutoff).all()]
+    in_progress = {
+        r[0]
+        for r in db.query(Assessment.startup_id)
+        .filter(Assessment.status == AssessmentStatus.in_progress)
+        .all()
+    }
+    return [
+        Due("assessment.quarterly", str(sid), period, SCHED_QUARTERLY, sid, {"startup_id": str(sid)})
+        for sid in due_ids
+        if sid not in in_progress
+    ]
