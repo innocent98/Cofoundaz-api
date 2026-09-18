@@ -113,6 +113,9 @@ preference rows needed.
   a generic string (a startup id or a milestone id depending on `task_key`), deliberately untyped so
   one ledger table serves all three task kinds.
 - `app/db/models/scheduled_run.py` (new) — `ScheduledRun(UUIDMixin, TimestampMixin, Base)`.
+- `alembic/versions/0025_roadmap_milestone_due_idx.py` — chains off `0024_scheduled_runs` (final head).
+  Adds a btree index on `roadmap_milestones(due_on)` so the overdue detector's per-tick
+  `due_on < today` range filter is index-backed rather than a sequential scan (whole-branch review F2).
 
 **Scheduler** (`app/worker/scheduler.py`, new)
 - `Due` (`NamedTuple`) — `task_key, scope_key, period_key, job_type, startup_id, payload`.
@@ -132,6 +135,13 @@ preference rows needed.
   (D6 — quarterly re-assessment is not the "do your first assessment" nudge).
 - `scheduler_tick(db, *, now) -> int` — runs all three detectors, claims + enqueues each, commits
   once, returns the count actually enqueued (0 is a normal "nothing due" outcome, not an error).
+- **Already-claimed scopes are pre-filtered out of each detector's candidate set** (whole-branch
+  review F1), so a steady-state tick no longer issues one doomed `INSERT` + savepoint-rollback per
+  already-done item every 60s. Overdue (period key `"once"`, an unbounded historical claim-set) is
+  de-duped in SQL via a correlated `NOT EXISTS` against `scheduled_runs`; missions and quarterly
+  (per-day / per-quarter, bounded claim-sets) are de-duped with a small in-memory claimed-scope set.
+  `_claim` is untouched and still runs — the unique constraint remains the correctness backstop under
+  concurrent workers; the pre-filter is only an optimization on top of it.
 
 **Handlers** (`app/worker/handlers/scheduled.py`, new) — `handle_mission_generate`,
 `handle_roadmap_overdue`, `handle_assessment_quarterly` (see "How" above) — each calls
@@ -304,7 +314,14 @@ Safe today because mission generation has a lazy fallback (the founder still get
 the normal "open the app" path even if the scheduled notification's enqueue silently failed);
 overdue/quarterly have no equivalent fallback, so a failed enqueue there would permanently skip that
 one occurrence. Given `job_dispatcher.enqueue` is a plain `INSERT` with no external dependency, this
-is judged low-probability enough not to warrant a two-phase-commit-style fix in v1.
+is judged low-probability enough not to warrant a two-phase-commit-style fix in v1. **The same
+one-shot exposure applies if an enqueued `scheduled.roadmap.overdue` (or quarterly) job is claimed but
+then exhausts `WORKER_MAX_ATTEMPTS` and lands in a terminal failed state** (whole-branch review F3):
+the `scheduled_runs` claim (period `"once"`) persists, so that milestone's overdue notification never
+re-fires. Accepted for v1 — it's within the D5 "once per milestone, ever" contract and the enqueued
+work is a plain publish with no external dependency; if it ever matters, the operational signal is a
+`jobs` row in a terminal-failed state for a `scheduled.*` type, which a future worker-DLQ/alerting
+slice should surface rather than this loop retrying forever.
 
 **Module 20 is now down to its last slice.** Slice 4 (real-time/push, websocket delivery) remains
 completely unbuilt — the FE still has zero server-pushed events for ANY notification type, scheduled

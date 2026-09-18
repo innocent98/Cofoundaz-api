@@ -767,7 +767,8 @@ final-review fix wave)*
       generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
 
 **Slice 3 — Scheduler / Cron** — *🟢 BUILT on branch `feat/notifications-scheduler` (PR not yet
-opened; migration `0024_scheduled_runs`, chains off `0023_learning`, sole head)* — 2026-09-18
+opened; migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, chain off
+`0023_learning`; `0025` is the sole head)* — 2026-09-18
 - [x] Design + decisions (`.superpowers/sdd/2026-09-18-notifications-scheduler/`, design doc
       `docs/superpowers/specs/2026-09-18-notifications-scheduler-design.md`) — scheduler = a
       throttled tick inside the existing `worker` loop, no new container · a DB claim ledger
@@ -797,6 +798,11 @@ opened; migration `0024_scheduled_runs`, chains off `0023_learning`, sole head)*
       categories, no 6th category added)
 - [x] Config (`app/core/config.py`) — `SCHEDULER_TIMEZONE` (default `UTC`), `MISSION_GEN_HOUR`
       (default `6`), `SCHEDULER_INTERVAL` (default `60`), `QUARTERLY_REASSESS_DAYS` (default `90`)
+- [x] Whole-branch-review perf hardening (F1/F2) — detectors pre-filter already-claimed scopes so a
+      steady-state tick issues no doomed re-`INSERT`s (overdue de-duped in SQL via `NOT EXISTS`;
+      missions/quarterly via a bounded in-memory set; `_claim` retained as the concurrency backstop)
+      + migration `0025_roadmap_milestone_due_idx` indexes `roadmap_milestones(due_on)` for the
+      overdue detector's per-tick range filter — now the sole alembic head
 - [x] Live E2E journey (`e2e/test_notifications_scheduler.py::
       test_scheduled_mission_ready_notification`, 1 capture): founder onboards to a generated
       roadmap → scheduler tick at 07:00 UTC (past `MISSION_GEN_HOUR`) → worker queue drained
@@ -821,7 +827,10 @@ opened; migration `0024_scheduled_runs`, chains off `0023_learning`, sole head)*
       quarterly only for workspaces with a prior completed assessment, never for a
       never-assessed workspace (D6) · roadmap TASK overdue out of scope, milestones only · the
       claim/enqueue non-atomicity gap (safe for mission generation via its lazy fallback, not
-      mitigated for overdue/quarterly — see SOP "How") — see SOP Follow-ups
+      mitigated for overdue/quarterly — see SOP "How") · an overdue/quarterly job that exhausts
+      `WORKER_MAX_ATTEMPTS` leaves its `"once"` claim in place, so that occurrence never re-fires
+      (F3 — within the D5 once-ever contract; a future worker-DLQ/alerting slice should surface a
+      terminal-failed `scheduled.*` job rather than this loop retrying forever) — see SOP Follow-ups
 
 ## ✅ Module 17 — Learning Academy — *MERGED to `develop` (PR #59; migration `0023_learning`)*
 
