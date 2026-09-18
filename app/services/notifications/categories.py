@@ -28,6 +28,9 @@ EVENT_CATEGORY: dict[str, str] = {
     "healthscore.dropped": "health_assessment",
     "assessment.completed": "health_assessment",
     "workspace.member.joined": "team",
+    "mission.ready": "roadmap_missions",
+    "roadmap.milestone.overdue": "roadmap_missions",
+    "assessment.quarterly.due": "health_assessment",
 }
 
 # All ON (opt-out model, spec D3). New categories default ON here.
