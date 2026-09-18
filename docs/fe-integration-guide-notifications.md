@@ -1,14 +1,18 @@
-# FE Integration Guide — Notifications (Module 20, Slices 1–2: In-App Feed + Email)
+# FE Integration Guide — Notifications (Module 20, Slices 1–3: In-App Feed + Email + Scheduler)
 
 All request/response bodies below are pasted **verbatim** from live captures taken by
-`e2e/test_notifications.py::test_notifications_journey` (Slice 1) and
-`e2e/test_notifications_email.py::test_email_delivery_and_preferences` (Slice 2) running against a
-real server (`scripts/e2e_run.sh`) — see `e2e/_captures/notifications/*.json` and
-`e2e/_captures/notifications_email/*.json`. Nothing here is retyped from the schema, the service, or
-memory. IDs, tokens, and timestamps are real values from that ephemeral test run (they differ on
-every real request; the shapes are exact). Every payload, status code, and error body in this guide
-was exercised live, except the rows explicitly marked "unit only" or "not captured live" in §8's
-verification table.
+`e2e/test_notifications.py::test_notifications_journey` (Slice 1),
+`e2e/test_notifications_email.py::test_email_delivery_and_preferences` (Slice 2), and
+`e2e/test_notifications_scheduler.py::test_scheduled_mission_ready_notification` (Slice 3) running
+against a real server (`scripts/e2e_run.sh`) — see `e2e/_captures/notifications/*.json`,
+`e2e/_captures/notifications_email/*.json`, and `e2e/_captures/notifications_scheduler/*.json`.
+Nothing here is retyped from the schema, the service, or memory. IDs, tokens, and timestamps are
+real values from that ephemeral test run (they differ on every real request; the shapes are exact).
+Every payload, status code, and error body in this guide was exercised live, except the rows
+explicitly marked "unit only" or "not captured live" in §8's verification table — Slice 3 adds two
+such rows (`roadmap.milestone.overdue`, `assessment.quarterly.due`): neither is naturally reachable
+from a fresh e2e signup (see §10), so their `data` shape is sourced from the handler unit tests
+(`tests/worker/test_scheduled_handlers.py`), cited inline, not invented.
 
 Base path: `/api/v1`. All four routes require a Bearer access token
 (`Authorization: Bearer <token>`) + `X-Workspace-Id` header — same convention as every other
@@ -28,9 +32,11 @@ out server-side into one row per recipient — if 3 members should see it, 3 sep
 independently readable/mark-readable/deletable-in-effect by only that one user. **Your feed and your
 teammate's feed for "the same event" are different rows with different `id`s** — never assume
 marking your own copy read affects anyone else's (§4a has a live-captured cross-user 404 proving
-this scoping). Delivery in this slice is **in-app only** — there is no email, push, or real-time
-(websocket) delivery yet; the FE must poll (§2 has a suggested cadence) rather than expect a push
-event when a new notification arrives.
+this scoping). Delivery is **in-app always** + **email, opt-out, gated by category** (§9); there is
+still no real-time (websocket/push) delivery — the FE must poll (§2 has a suggested cadence) rather
+than expect a push event when a new notification arrives. As of Slice 3, some events are fired by a
+**scheduler**, not by another user's action — §10 covers what that means for the FE (same feed/poll
+model, no new API shape, but "no user action happened" is a UX fact worth designing around).
 
 ---
 
@@ -280,11 +286,12 @@ delete — there is no delete endpoint for notifications in this slice.
 
 ---
 
-## 5. The `type` catalog — v1 handled events
+## 5. The `type` catalog — v1 + Slice 3 handled events
 
-Every notification's `type` is one of these 15 dotted event names. `data` is the **raw event
-payload** for that type — its shape is fixed per `type` but different across types (no shared
-schema), so the FE should switch/deep-link on `type` and read `data`'s fields accordingly.
+Every notification's `type` is one of these 18 dotted event names (15 from Slices 1–2, 3 new from
+Slice 3 — §10). `data` is the **raw event payload** for that type — its shape is fixed per `type`
+but different across types (no shared schema), so the FE should switch/deep-link on `type` and read
+`data`'s fields accordingly.
 
 | `type` | `data` fields (for deep-linking) | Recipients | Verified live? |
 |---|---|---|---|
@@ -303,9 +310,14 @@ schema), so the FE should switch/deep-link on `type` and read `data`'s fields ac
 | `healthscore.dropped` | `startup_id`, `score`, `previous_score`, `delta_7d`, `computed_at` | all active members (passive/system event — no member actor) | not captured live |
 | `assessment.completed` | `assessment_id`, `startup_id`, `dimension_scores` | all active members (passive/system event — no member actor) | not captured live |
 | `workspace.member.joined` | `startup_id`, `user_id`, `role` | existing active members, correctly excluding the new joiner | ✅ `actor_excluded_from_own_action.json` (shows this type present in the actor's own feed after a teammate joined) |
+| `mission.ready` | `startup_id`, `mission_id` | all active members (scheduled/system event — no member actor) | ✅ `mission_ready_feed.json` |
+| `roadmap.milestone.overdue` | `startup_id`, `milestone_id` | all active members (scheduled/system event — no member actor) | ⚠️ unit only — `tests/worker/test_scheduled_handlers.py::test_overdue_publishes_only_if_still_overdue` (asserts the exact payload published) |
+| `assessment.quarterly.due` | `startup_id` | all active members (scheduled/system event — no member actor) | ⚠️ unit only — `tests/worker/test_scheduled_handlers.py::test_quarterly_publishes` (asserts the exact payload published) |
 
 Non-`data`-shape columns (`title`/`body`) are fixed per type, not shown per-row above — see §1 for
-why `title` is generic and `body` is currently always `""`.
+why `title` is generic and `body` is currently always `""`. The 3 Slice-3 rows are **scheduled/system
+events**, same "no member actor" recipient shape as `mission.completed`/`healthscore.dropped`/etc. —
+see §10 for what triggers each one and why 2 of the 3 could not be captured live in this e2e run.
 
 **"not captured live" above means:** the `data` field list for that type is read directly from its
 publish-site source (cited per-row in the SOP), not captured live in this journey — only
@@ -418,9 +430,9 @@ on-demand when the panel opens).
 **As of Slice 2, an email may ALSO be sent for the same event — but never synchronously, and never
 guaranteed to arrive before (or even shortly after) the in-app row is visible.** See §9 for the full
 preferences contract, the category catalog, and what "asynchronous & best-effort" means concretely
-for UI design. Scheduler/cron-triggered notifications (e.g. "your mission is ready") are Slice 3;
-real-time push/websocket delivery is Slice 4 — neither is built yet, so still do not design a "you'll
-get a push for this" affordance based on this doc.
+for UI design. **As of Slice 3, some events are fired by a scheduler, not a user action** — §10
+covers the three triggers. Real-time push/websocket delivery is still Slice 4, unbuilt — do not
+design a "you'll get a push for this" affordance based on this doc.
 
 ---
 
@@ -456,14 +468,17 @@ in-memory, not a 404 — there is no "no preferences set yet" error state for th
 |---|---|---|
 | `documents` | `document.shared`, `document.signature.requested`, `document.signature.signed`, `document.signature.completed` | `true` |
 | `business` | `business.suggestion.created`, `business.suggestion.approved`, `business.suggestion.rejected`, `business.artifact.completed` | `true` |
-| `roadmap_missions` | `roadmap.replanned`, `roadmap.milestone.completed`, `mission.completed`, `mission.streak.milestone` | `true` |
-| `health_assessment` | `healthscore.dropped`, `assessment.completed` | `true` |
+| `roadmap_missions` | `roadmap.replanned`, `roadmap.milestone.completed`, `mission.completed`, `mission.streak.milestone`, `mission.ready`*, `roadmap.milestone.overdue`* | `true` |
+| `health_assessment` | `healthscore.dropped`, `assessment.completed`, `assessment.quarterly.due`* | `true` |
 | `team` | `workspace.member.joined` | `true` |
+
+\* Added in Slice 3 (§10) — scheduled/system events, no new category, folded into the existing
+`roadmap_missions`/`health_assessment` buckets.
 
 This is the exact same event→category map §5's `type` catalog uses for deep-linking (`app/services/
 notifications/categories.py::EVENT_CATEGORY`) — a category toggle in a Settings UI maps 1:1 onto a
 group of `type` rows the FE already renders per §5's table. There is no 6th "everything else"
-category; every one of the 15 v1 event types in §5 falls under exactly one of these 5.
+category; every one of the 18 v1+Slice-3 event types in §5 falls under exactly one of these 5.
 
 ### 9.3 `GET /api/v1/notifications/preferences`
 
@@ -605,13 +620,130 @@ actual Settings deep link there if that's wanted; the backend does not construct
 
 ---
 
+## 10. Scheduled / time-based notifications (Slice 3)
+
+New in Slice 3: three notification types that fire **with no user action at all** — a background
+scheduler (a throttled tick inside the existing `worker` process, `SCHEDULER_INTERVAL` seconds
+apart, default 60s) detects due work and enqueues it into the SAME `jobs` table Slice 2's worker
+already drains. There is no new route, no new auth model, no new response shape — these three types
+just start appearing in the same `GET /notifications` feed (§1) and the same `unread-count` (§2) as
+every other type, and follow the exact same email-gating contract as §9 (in-app always fires;
+email is opt-out per category, `master_email` AND the category must both be `true`).
+
+### 10.1 The three triggers
+
+| `type` | Fires when | Category (email gate, §9.2) |
+|---|---|---|
+| `mission.ready` | Once per workspace per calendar day, the first time the scheduler ticks past `MISSION_GEN_HOUR` (default `6`, i.e. 06:00) in `SCHEDULER_TIMEZONE` (default `UTC`) — pre-generates that workspace's mission for the day if it doesn't exist yet, then notifies | `roadmap_missions` |
+| `roadmap.milestone.overdue` | Once per milestone, ever — the first tick after a roadmap milestone's `due_on` passes with the milestone still not `done` | `roadmap_missions` |
+| `assessment.quarterly.due` | Once per workspace per calendar quarter — only for a workspace with a prior **completed** assessment whose `completed_at` is ≥ `QUARTERLY_REASSESS_DAYS` (default 90) days old; a workspace that has never completed an assessment is never targeted by this trigger | `health_assessment` |
+
+**"Once" is enforced server-side by a claim ledger** (`scheduled_runs`, unique on
+`(task_key, scope_key, period_key)`) — the FE cannot cause a duplicate by polling more, retrying a
+request, or refreshing; if the same `(workspace, day)` (or `(milestone)`, or `(workspace, quarter)`)
+already fired, it will not fire again, full stop, until the next period rolls over (or, for overdue,
+never again — it is genuinely once-per-milestone, not once-per-period).
+
+### 10.2 `mission.ready` — verified live
+
+Captured after onboarding a founder to a generated roadmap, then running the scheduler at 07:00 UTC
+and draining the worker (`e2e/_captures/notifications_scheduler/mission_ready_feed.json`):
+
+```json
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "aa573d19-c98d-4a90-86f8-da501b958604",
+        "type": "mission.ready",
+        "title": "Today's mission is ready",
+        "body": "",
+        "data": {
+          "mission_id": "459c2c52-aa0a-455f-883a-013920696c2f",
+          "startup_id": "8a56df9c-0ee0-49aa-8f87-07c71eee40cc"
+        },
+        "read": false,
+        "created_at": "2026-09-18T22:31:57.840751+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}
+```
+
+`data.mission_id` is the same id `GET /api/v1/mission/today` (Module 04) returns — the FE can deep
+link straight into Today's Mission from this notification without a lookup. Fires for **every**
+active member of the workspace, not just the founder (§5's "all active members" recipient rule) — a
+teammate opening the app also sees this notification, even though they didn't trigger it.
+
+### 10.3 `roadmap.milestone.overdue` and `assessment.quarterly.due` — verified by unit test, NOT captured live
+
+**Neither is reachable from a fresh e2e signup without contortion**, and per this task's own
+constraint, an unreachable-live shape is honestly labelled here rather than faked:
+- `roadmap.milestone.overdue` needs a roadmap milestone whose `due_on` is already in the past and
+  whose `status` is not `done` — no e2e journey in this suite backdates a milestone's due date.
+- `assessment.quarterly.due` needs a **completed** assessment more than `QUARTERLY_REASSESS_DAYS`
+  (90) days old — unreachable from a same-run signup without manipulating the clock or writing
+  directly to the DB, neither of which is a live HTTP journey.
+
+Both handlers are exercised at the unit level instead (`tests/worker/test_scheduled_handlers.py`),
+which asserts the **exact payload** each one publishes — reproduced verbatim below, not re-derived
+from the schema:
+
+**`roadmap.milestone.overdue`** (`test_overdue_publishes_only_if_still_overdue`) — `event_bus.publish`
+is called with:
+```json
+{ "startup_id": "<startup uuid>", "milestone_id": "<milestone uuid>" }
+```
+The same test file also proves the handler **re-checks** at run time and suppresses the publish (no
+notification, no email) if the milestone was marked `done` OR deleted between enqueue and the
+handler actually running (`test_overdue_suppresses_publish_when_milestone_already_done`,
+`test_overdue_suppresses_publish_when_milestone_missing`) — a milestone a teammate just finished will
+NOT generate a stale "overdue" notification even if it was already queued.
+
+**`assessment.quarterly.due`** (`test_quarterly_publishes`) — `event_bus.publish` is called with:
+```json
+{ "startup_id": "<startup uuid>" }
+```
+No `assessment_id` in the payload — the FE cannot deep-link to a specific past assessment from this
+notification; the correct action is always "start a new assessment" (Module 07), not "open assessment
+X".
+
+### 10.4 UX consequences the FE must design around
+
+- **These are the first notification types with genuinely "the system did this, not a person" as
+  the entire story.** Copy/iconography that implies "someone did X" (an avatar, "X shared...") is
+  wrong for all 3 — treat them as system/reminder notifications, visually distinct if your design
+  language has that affordance (Slices 1–2's 15 types already include several "passive/system"
+  events with the same property — §5a — so this is a continuation, not a new pattern).
+- **`mission.ready` can arrive for a workspace at any hour** from the FE's perspective — it fires the
+  first time the scheduler ticks past 06:00 workspace-tz, but the tick itself is throttled
+  (`SCHEDULER_INTERVAL`, default 60s) and only runs inside the worker's poll loop, so "06:00 sharp" is
+  not a real guarantee — do not write copy implying a precise delivery time.
+- **`roadmap.milestone.overdue` fires exactly once per milestone, forever** — there is no daily/weekly
+  re-nudge (explicit v1 scope decision, design doc §11 D5). If the FE wants a persistent "N overdue
+  milestones" indicator, it must compute that itself from the roadmap data (`due_on` vs. today,
+  `status != done`) rather than relying on a fresh notification arriving again — the notification is
+  a one-time nudge, not an ongoing badge source.
+- **`assessment.quarterly.due` never fires for a workspace that has never completed an assessment** —
+  do not read "no quarterly-due notification yet" as "this workspace is up to date"; it may simply
+  never have finished its first assessment. Cross-reference `GET /assessments` (Module 07) if the FE
+  needs to distinguish "never assessed" from "recently assessed" in its own UI.
+- **Email timing inherits Slice 2's async/best-effort contract unchanged** (§9.5) — a scheduled
+  event's email is enqueued the moment the handler publishes, then sent whenever the worker next
+  polls; same no-SLA, no-delivery-status guidance applies.
+
+---
+
 ## 8. Verification table
 
 All rows below except those marked "unit only" or "not captured" were exercised **live**, over real
 HTTP, against a real Postgres-backed server (`scripts/e2e_run.sh`,
-`e2e/test_notifications.py::test_notifications_journey` for Slice 1 and
-`e2e/test_notifications_email.py::test_email_delivery_and_preferences` for Slice 2) — not just
-unit-tested in-process — and every response body is captured verbatim in the named file.
+`e2e/test_notifications.py::test_notifications_journey` for Slice 1,
+`e2e/test_notifications_email.py::test_email_delivery_and_preferences` for Slice 2, and
+`e2e/test_notifications_scheduler.py::test_scheduled_mission_ready_notification` for Slice 3) — not
+just unit-tested in-process — and every response body is captured verbatim in the named file.
 
 | Behaviour | Verified live? | Source |
 |---|---|---|
@@ -641,9 +773,15 @@ unit-tested in-process — and every response body is captured verbatim in the n
 | Worker job claim (`SELECT ... FOR UPDATE SKIP LOCKED`), retry/backoff on handler failure, stale-`RUNNING` reaper, unknown job type → terminal failure | ⚠️ unit only | `tests/worker/test_runner.py` |
 | Email HTML/subject is escaped (no header-injection via CR/LF in `subject`, no unescaped HTML in a title/body containing `<script>`/`&`/quotes) | ⚠️ unit only | `tests/worker/test_email_handler.py::test_render_email_escapes_html` |
 | Worker entrypoint (`python -m app.worker`) registers the email handler and runs `run_once` on a poll loop until a SIGTERM-set stop flag | ⚠️ unit only | `tests/worker/test_entrypoint.py` |
+| Scheduler tick claims + enqueues due mission/overdue/quarterly jobs exactly once per `(task, scope, period)` via the `scheduled_runs` ledger | ⚠️ unit only | `tests/worker/test_scheduler.py` |
+| `mission.ready` — founder onboards to a generated roadmap → scheduler tick past `MISSION_GEN_HOUR` → mission generated + notification created for the founder → feed shows it → a second same-day tick does NOT duplicate it | ✅ | `mission_ready_feed.json`; no-duplicate assertion in `test_scheduled_mission_ready_notification` itself (no second capture — nothing new to paste for a non-event) |
+| `roadmap.milestone.overdue` — publishes `{startup_id, milestone_id}`; re-checked and suppressed if the milestone is done or deleted before the handler runs | ⚠️ unit only — not reachable from a fresh e2e signup without backdating a milestone | `tests/worker/test_scheduled_handlers.py::test_overdue_publishes_only_if_still_overdue`, `::test_overdue_suppresses_publish_when_milestone_already_done`, `::test_overdue_suppresses_publish_when_milestone_missing` |
+| `assessment.quarterly.due` — publishes `{startup_id}`; only for workspaces with a prior completed assessment ≥ `QUARTERLY_REASSESS_DAYS` old | ⚠️ unit only — not reachable from a fresh e2e signup without an assessment >90 days old | `tests/worker/test_scheduled_handlers.py::test_quarterly_publishes` |
+| All 3 scheduled events notify every active member and map to the correct email category (`roadmap_missions`/`roadmap_missions`/`health_assessment`) | ⚠️ unit only (registry-level, all 3 events in one test) | `tests/services/notifications/test_scheduled_events.py::test_scheduled_events_notify_active_members_and_map_categories` |
 
-The ⚠️ rows are genuine gaps in this one live journey (exercising all 15 event types live would need
-15 separate trigger actions across nearly every module in the codebase, judged not worth the added
-journey complexity/runtime for one slice-1 e2e run) rather than unexercised guesses — each is backed
-by a passing test at the cited path, or, for the two dependency-shared rows, by that dependency's own
-coverage elsewhere in the suite.
+The ⚠️ rows are genuine gaps in this one live journey (exercising all 18 event types live would need
+18 separate trigger actions across nearly every module in the codebase — for the 2 Slice-3 rows,
+specifically backdating a milestone or an assessment, which isn't a live HTTP journey at all — judged
+not worth the added journey complexity/runtime, or not achievable live, for one e2e run) rather than
+unexercised guesses — each is backed by a passing test at the cited path, or, for the two
+dependency-shared rows, by that dependency's own coverage elsewhere in the suite.

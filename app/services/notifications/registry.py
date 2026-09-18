@@ -46,6 +46,10 @@ def _existing_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=joiner)
 
 
+def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
+    return _active_member_ids(db, payload["startup_id"], exclude=None)
+
+
 @dataclass(frozen=True)
 class NotifSpec:
     recipients: Callable[[Session, dict], list[uuid.UUID]]
@@ -84,6 +88,11 @@ SPECS: dict[str, NotifSpec] = {
     "healthscore.dropped": _s(_members_minus_actor, "Your Startup Health Score dropped"),
     "assessment.completed": _s(_members_minus_actor, "A startup assessment was completed"),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
+    "mission.ready": _s(_all_active_members, "Today's mission is ready"),
+    "roadmap.milestone.overdue": _s(_all_active_members, "A roadmap milestone is overdue"),
+    "assessment.quarterly.due": _s(
+        _all_active_members, "Time for your quarterly startup assessment"
+    ),
 }
 
 

@@ -68,7 +68,10 @@ class RoadmapMilestone(UUIDMixin, TimestampMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Indexed for the scheduler's overdue detector (app/worker/scheduler.py), which
+    # filters `due_on < today` on every tick. Migration 0025 creates this index; the
+    # `index=True` here keeps the model and schema in sync (alembic drift check).
+    due_on: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     owner_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
