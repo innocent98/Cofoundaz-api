@@ -16,24 +16,26 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-15 (Module 20 Slice 2 pass) · **Module 18 (Documents & Templates) is
-COMPLETE — all four slices merged to `develop`**: Library Core (PR #48), Upload & Files (PR #50),
-Sharing (PR #53), E-signature (PR #55), plus the Resend email backend (PR #54) that powers
-slices 3–4's emails. **Module 20 (Notifications) Slice 1 (In-App Feed + Fan-Out) is now MERGED to
-`develop` (PR #58)**; **Slice 2 (Email Delivery + Preferences + Worker) shipped this pass** on
-`feat/notifications-email`, not yet merged. `develop` = staging, `main` = production; feature PRs
-target `develop`._
+_Last reconciled: 2026-09-18 · **Module 17 (Learning Academy) is now MERGED to `develop`**
+(PR #59, junior build; migration `0023_learning`) — a fully complete module. **Module 20
+(Notifications) Slice 2 (Email Delivery + Preferences + Worker) is now MERGED** (PR #60,
+`0022_notifications_email`), joining Slice 1 (PR #58); Slices 3 (scheduler/cron) and 4
+(real-time/push) remain, so Module 20 is still open. Also merged this window: the Resend email
+backend went live + verified on staging, with clickable verification/password-reset emails
+(PR #67) and the `APP_BASE_URL` (FE origin) env wiring (PRs #63/#64/#69) — staging deploys green
+incl. the live-e2e gate. **9 modules are fully complete; 2 remain open (08, 20).** `develop` =
+staging, `main` = production; feature PRs target `develop`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **10 modules fully merged to `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 08 Business Builder, Slices 1–3 · 18 Documents & Templates, all 4 slices · 20 Notifications, Slice 1 only (PR #58) · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. 1 in progress (17 Learning Academy — the junior's active build, not yet merged). 15 not started (03 · 09–16 · 19 · 22–26). Module 20 is counted as merged for its Slice 1 only — Slice 2 (this pass) sits on `feat/notifications-email`, unmerged, so the module as a whole is not yet complete; see its own section for the slice breakdown. Caveat: Module 08 is complete **except** its AI Business Plan Generator sub-screen (§08.11), which is deferred pending Module 03 (LLM provider).
+**PRD module tally: 26 total** — **9 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, blocked on Module 03 (LLM provider). **20 Notifications** — Slices 1–2 merged (PRs #58/#60); Slices 3 (scheduler/cron) and 4 (real-time/push) remain. **15 not started** (03 · 09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & merged (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · Business Builder (08, Slices 1–3; PRs #39/#46/#47) · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, Slice 1 In-App Feed + Fan-Out; PR #58)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 In progress | 2 modules | Learning Academy (17) — the junior's build (design Qs answered in issues #49/#51/#52; migration `0019`); not yet merged. Notifications (20) — Slice 1 merged (PR #58, above); Slice 2 (Email Delivery + Preferences + Worker) shipped on `feat/notifications-email` (migration `0022_notifications_email`), not yet merged; Slices 3–4 (scheduler, real-time) planned |
+| ✅ Fully complete (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 2 modules | **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **blocked on Module 03** (LLM provider). **Notifications (20)** — Slices 1–2 merged (In-App Feed PR #58; Email+Prefs+Worker PR #60, migration `0022_notifications_email`); **Slice 3 (scheduler/cron)** and **Slice 4 (real-time/push)** remain |
 | ⬜ Not started | 15 modules | AI Co-Founder (03, LLM-provider-gated) · Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **120 endpoints** (directly counted from the OpenAPI schema's
@@ -406,10 +408,9 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet) — see SOP
       Follow-ups
 
-## 🟢 Module 18 — Documents & Templates — *all 4 slices built — MODULE 18 COMPLETE: Slice 1
-(Library Core) merged to `develop` (PR #48) · Slice 2 (Upload & Files) merged to `develop` (PR
-#50) · Slice 3 (Sharing) merged to `develop` (PR #53) · Slice 4 (E-signature) shipped on branch
-`feat/documents-esignature`, not yet merged*
+## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
+(Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
+(E-signature) PR #55*
 
 _Module 18 has no detailed textual PRD entry — scope recovered from the UI comp
 (`Documents & Templates.dc.html`), decomposing into four slices: Library Core (a document store +
@@ -560,8 +561,7 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       (Slice 4's signature-request email send was built correctly wrapped from the start — see its
       SOP "How") — see SOP Follow-ups
 
-**Slice 4 — E-signature** — *🟢 shipped on branch `feat/documents-esignature`, not yet merged
-(Tasks 1–4) — completes Module 18*
+**Slice 4 — E-signature** — *✅ MERGED to `develop` (PR #55; Tasks 1–4) — completes Module 18*
 - [x] Scope + locked decisions (build-your-own tokenized-link signing, not a third-party e-sign
       provider · sign uploaded files (`document_files`), not structured `documents` · typed-name
       simple signature + audit trail (name/timestamp/IP/user-agent), no drawn-signature image · no
@@ -617,9 +617,9 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
 
-## 🟢 Module 20 — Notifications — *Slice 1 (In-App Feed + Fan-Out) MERGED to `develop`
-(PR #58); Slice 2 (Email Delivery + Preferences + Worker) shipped on branch
-`feat/notifications-email`, not yet merged — Slices 3–4 planned*
+## 🟡 Module 20 — Notifications — *Slices 1–2 MERGED to `develop` (In-App Feed PR #58; Email +
+Preferences + Worker PR #60). OPEN: Slice 3 (scheduler/cron — mission 06:00, roadmap-overdue,
+quarterly re-assessment; enqueues into the Slice-2 worker) and Slice 4 (real-time/push)*
 
 _Module 20 decomposes into ~4 slices (agreed 2026-09-14, `docs/superpowers/specs/
 2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
@@ -696,8 +696,8 @@ final-review fix wave)*
       notification grouping/digest · Slices 3–4 (scheduler/cron, real-time/push) — see SOP
       Follow-ups
 
-**Slice 2 — Email Delivery + Preferences + Worker** — *🟢 shipped on branch
-`feat/notifications-email` (Tasks 1–8), not yet merged*
+**Slice 2 — Email Delivery + Preferences + Worker** — *✅ MERGED to `develop` (PR #60; migration
+`0022_notifications_email`; the minimal job worker other slices/modules now build on)*
 - [x] Scope + locked decisions (in-transaction enqueue at the same fan-out point Slice 1 already
       writes in-app rows from — a rolled-back triggering action enqueues no email, same guarantee
       as the in-app row · a separate background `worker` process claims + sends, never inline in
@@ -753,7 +753,7 @@ final-review fix wave)*
       pending email" path) · no per-notification email-delivery status exposed via the API · same
       generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
 
-## 🟢 Module 17 — Learning Academy — *shipped on branch `feat/learning-academy`, not yet merged*
+## ✅ Module 17 — Learning Academy — *MERGED to `develop` (PR #59; migration `0023_learning`)*
 
 _A learning hub inside the workspace: a read-only, versioned **in-code catalog** of courses
 (ordered lessons), learning paths and articles — **labelled placeholder content; real content is
@@ -1257,7 +1257,7 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       (Email Delivery + Preferences + Worker) merged (PR #60); see its own section above. Slices 3–4
       (scheduler/cron, real-time/push) still ahead — Slice 3 will enqueue into the same `jobs`
       table/worker Slice 2 just built, not new infrastructure
-- [x] **Module 17 — Learning Academy** — *mapped into its own section above (🟢 shipped on branch `feat/learning-academy`, not yet merged)* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
