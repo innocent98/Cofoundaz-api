@@ -66,6 +66,11 @@ def test_quarterly_publishes(db, monkeypatch):
 
 
 def test_handlers_registered():
+    # The autouse `_fresh_handler_imports` fixture evicts this module from
+    # sys.modules before each test, and sibling tests clear JOB_HANDLERS, so
+    # re-import here to re-trigger the register_handler(...) import-time
+    # side-effect this assertion depends on (independent of collection order).
+    import app.worker.handlers.scheduled  # noqa: F401
     from app.worker import runner
     assert "scheduled.mission.generate" in runner.JOB_HANDLERS
     assert "scheduled.roadmap.overdue" in runner.JOB_HANDLERS
