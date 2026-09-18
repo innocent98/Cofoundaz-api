@@ -36,6 +36,27 @@ def test_overdue_publishes_only_if_still_overdue(db, monkeypatch):
     assert ("roadmap.milestone.overdue", {"startup_id": str(s.id), "milestone_id": str(m.id)}) in published
 
 
+def test_overdue_suppresses_publish_when_milestone_already_done(db, monkeypatch):
+    published = []
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda d, e, p: published.append((e, p)))
+    u = create_user(db); s = create_startup(db, owner=u)
+    r = create_roadmap(db, startup=s); p = create_phase(db, roadmap=r)
+    m = create_milestone(db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.done)
+    scheduled.handle_roadmap_overdue(
+        db, _job("scheduled.roadmap.overdue", {"startup_id": str(s.id), "milestone_id": str(m.id)}))
+    assert not any(e == "roadmap.milestone.overdue" for e, _ in published)
+
+
+def test_overdue_suppresses_publish_when_milestone_missing(db, monkeypatch):
+    published = []
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda d, e, p: published.append((e, p)))
+    u = create_user(db); s = create_startup(db, owner=u)
+    missing_id = uuid.uuid4()
+    scheduled.handle_roadmap_overdue(
+        db, _job("scheduled.roadmap.overdue", {"startup_id": str(s.id), "milestone_id": str(missing_id)}))
+    assert published == []
+
+
 def test_quarterly_publishes(db, monkeypatch):
     published = []
     monkeypatch.setattr(events_mod.event_bus, "publish", lambda d, e, p: published.append((e, p)))
