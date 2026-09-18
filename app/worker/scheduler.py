@@ -7,12 +7,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.logger import log
 from app.db.models.assessment import Assessment
 from app.db.models.enums import AssessmentStatus, MembershipStatus, RoadmapStatus
 from app.db.models.membership import Membership
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
+from app.platform.jobs import job_dispatcher
 
 SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
@@ -127,3 +129,22 @@ def _due_quarterly(db, now: datetime) -> list[Due]:
         for sid in due_ids
         if sid not in in_progress
     ]
+
+
+def scheduler_tick(db: Session, *, now: datetime) -> int:
+    """Claim + enqueue every due scheduled task. Returns the count enqueued.
+
+    Each (task, scope) is isolated: a lost claim (already fired this period) is a normal skip;
+    any other per-item error is logged and the rest proceed. Commits once at the end.
+    """
+    due = [*_due_missions(db, now), *_due_overdue_milestones(db, now), *_due_quarterly(db, now)]
+    enqueued = 0
+    for item in due:
+        try:
+            if _claim(db, item.task_key, item.scope_key, item.period_key):
+                job_dispatcher.enqueue(db, item.job_type, item.payload, item.startup_id)
+                enqueued += 1
+        except Exception as exc:  # noqa: BLE001 - one bad item must not stop the rest
+            log.warning(f"[scheduler] {item.task_key}/{item.scope_key} failed: {exc}")
+    db.commit()
+    return enqueued

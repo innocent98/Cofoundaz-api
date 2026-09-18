@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
 from app.db.models.enums import AssessmentStatus, AssessmentType, RoadmapStatus
+from app.db.models.job import Job
 from app.db.models.scheduled_run import ScheduledRun
 from app.worker import scheduler
-from app.worker.scheduler import _claim
+from app.worker.scheduler import _claim, scheduler_tick
 from tests.factories import (
     create_assessment,
     create_membership,
@@ -93,3 +94,14 @@ def test_soft_deleted_startups_excluded(db):
     assert scheduler._due_missions(db, now) == []
     assert scheduler._due_overdue_milestones(db, now) == []
     assert str(s.id) not in {d.scope_key for d in scheduler._due_quarterly(db, now)}
+
+
+def test_tick_enqueues_due_jobs_once(db):
+    _u, s = _ws(db)
+    now = datetime(2026, 9, 18, 7, 0, tzinfo=UTC)  # past 06:00
+    n = scheduler_tick(db, now=now)
+    jobs = db.query(Job).filter(Job.type == "scheduled.mission.generate").all()
+    assert n >= 1 and len(jobs) == 1 and jobs[0].payload["startup_id"] == str(s.id)
+    # a second tick the same period enqueues nothing new
+    assert scheduler_tick(db, now=now) == 0
+    assert db.query(Job).filter(Job.type == "scheduled.mission.generate").count() == 1
