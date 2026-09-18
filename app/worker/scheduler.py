@@ -55,7 +55,7 @@ def _active_startup_ids(db):
     rows = (
         db.query(Startup.id)
         .join(Membership, Membership.startup_id == Startup.id)
-        .filter(Membership.status == MembershipStatus.active)
+        .filter(Membership.status == MembershipStatus.active, Startup.deleted_at.is_(None))
         .distinct()
         .all()
     )
@@ -79,7 +79,12 @@ def _due_overdue_milestones(db, now: datetime) -> list[Due]:
         db.query(RoadmapMilestone.id, Roadmap.startup_id)
         .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
         .join(Roadmap, RoadmapPhase.roadmap_id == Roadmap.id)
-        .filter(RoadmapMilestone.due_on < today, RoadmapMilestone.status != RoadmapStatus.done)
+        .join(Startup, Roadmap.startup_id == Startup.id)
+        .filter(
+            RoadmapMilestone.due_on < today,
+            RoadmapMilestone.status != RoadmapStatus.done,
+            Startup.deleted_at.is_(None),
+        )
         .all()
     )
     return [
@@ -104,7 +109,13 @@ def _due_quarterly(db, now: datetime) -> list[Due]:
         .group_by(Assessment.startup_id)
         .subquery()
     )
-    due_ids = [r[0] for r in db.query(latest.c.startup_id).filter(latest.c.last <= cutoff).all()]
+    due_ids = [
+        r[0]
+        for r in db.query(latest.c.startup_id)
+        .join(Startup, Startup.id == latest.c.startup_id)
+        .filter(latest.c.last <= cutoff, Startup.deleted_at.is_(None))
+        .all()
+    ]
     in_progress = {
         r[0]
         for r in db.query(Assessment.startup_id)

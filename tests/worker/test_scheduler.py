@@ -74,3 +74,22 @@ def test_due_quarterly(db):
     a2.completed_at = now - timedelta(days=30)
     db.flush()
     assert str(s2.id) not in {d.scope_key for d in scheduler._due_quarterly(db, now)}
+
+
+def test_soft_deleted_startups_excluded(db):
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+
+    _u, s = _ws(db)
+    r = create_roadmap(db, startup=s)
+    p = create_phase(db, roadmap=r)
+    create_milestone(db, phase=p, due_on=datetime(2026, 9, 1).date(), status=RoadmapStatus.todo)
+    a = create_assessment(
+        db, startup=s, type=AssessmentType.initial, status=AssessmentStatus.completed
+    )
+    a.completed_at = now - timedelta(days=100)
+    s.deleted_at = datetime.now(UTC)
+    db.flush()
+
+    assert scheduler._due_missions(db, now) == []
+    assert scheduler._due_overdue_milestones(db, now) == []
+    assert str(s.id) not in {d.scope_key for d in scheduler._due_quarterly(db, now)}
