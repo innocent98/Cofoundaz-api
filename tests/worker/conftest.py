@@ -16,8 +16,12 @@ def _fresh_handler_imports():
     handler - which breaks `test_register_wires_email_handler` purely from
     test collection order (alphabetically, `test_email_handler.py` runs
     before `test_entrypoint.py`). Evicting the module before/after each test
-    keeps the behaviour independent of collection order.
+    keeps the behaviour independent of collection order. Same story for
+    `app.worker.handlers.scheduled` (imported directly by
+    `test_scheduled_handlers.py`).
     """
     sys.modules.pop("app.worker.handlers.email", None)
+    sys.modules.pop("app.worker.handlers.scheduled", None)
     yield
     sys.modules.pop("app.worker.handlers.email", None)
+    sys.modules.pop("app.worker.handlers.scheduled", None)
