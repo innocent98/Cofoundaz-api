@@ -108,6 +108,14 @@ class Settings(BaseSettings):
     EMAILS_FROM_NAME: str | None = None
     RESEND_API_KEY: str | None = None  # used only when EMAIL_BACKEND == "resend"
 
+    # --- LLM seam (Module 03) ---------------------------------------------
+    LLM_PROVIDER: str = "openai"      # openai | stub
+    LLM_API_KEY: str = ""             # required when LLM_PROVIDER == "openai"
+    LLM_MODEL: str = "gpt-5.6-luna"   # OpenAI model id
+    LLM_BASE_URL: str = ""            # blank -> OpenAI default; set for Azure/gateway/self-hosted
+    LLM_TIMEOUT: int = 60             # seconds per LLM HTTP call (LLM latency >> a normal request)
+    LLM_MAX_TOKENS: int = 800         # default output cap
+
     # Admin
     FIRST_SUPERUSER_EMAIL: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
