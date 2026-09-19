@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -19,6 +20,10 @@ class LLMClient(Protocol):
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
     ) -> str: ...
 
+    def complete_json(
+        self, messages: list[LLMMessage], *, schema: dict, max_tokens: int
+    ) -> dict: ...
+
 
 class StubLLMClient:
     """Deterministic, offline client for tests and local dev (LLM_PROVIDER=stub).
@@ -31,6 +36,14 @@ class StubLLMClient:
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
     ) -> str:
         return "[stub-llm] AI-generated assessment narrative."
+
+    def complete_json(
+        self, messages: list[LLMMessage], *, schema: dict, max_tokens: int
+    ) -> dict:
+        def _stub(prop: dict, key: str) -> object:
+            return [f"[stub-llm] {key}"] if prop.get("type") == "array" else f"[stub-llm] {key}"
+
+        return {k: _stub(v, k) for k, v in schema.get("properties", {}).items()}
 
 
 class OpenAILLMClient:
@@ -54,9 +67,7 @@ class OpenAILLMClient:
     it; this client just doesn't have anywhere live to put it for the configured model today.
     """
 
-    def complete(
-        self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
-    ) -> str:
+    def _post_chat(self, payload: dict) -> dict:
         if not settings.LLM_API_KEY:
             raise RuntimeError(
                 "LLM_API_KEY is empty but LLM_PROVIDER='openai'. Set LLM_API_KEY, or use "
@@ -64,15 +75,10 @@ class OpenAILLMClient:
             )
         base = settings.LLM_BASE_URL or "https://api.openai.com/v1"
         url = f"{base.rstrip('/')}/chat/completions"
-        payload = {
-            "model": settings.LLM_MODEL,
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
-            "max_completion_tokens": max_tokens,
-        }
         try:
             resp = httpx.post(
                 url,
-                json=payload,
+                json={"model": settings.LLM_MODEL, **payload},
                 headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
                 timeout=settings.LLM_TIMEOUT,
             )
@@ -81,12 +87,52 @@ class OpenAILLMClient:
         if resp.status_code // 100 != 2:
             raise RuntimeError(f"LLM API returned {resp.status_code}: {resp.text[:500]}")
         try:
-            text: str = resp.json()["choices"][0]["message"]["content"]
-        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            body: dict = resp.json()
+        except ValueError as exc:
             raise RuntimeError(f"LLM API returned an unparseable body: {exc}") from exc
+        return body
+
+    def _content(self, body: dict) -> str:
+        try:
+            return str(body["choices"][0]["message"]["content"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"LLM API returned an unexpected body shape: {exc}") from exc
+
+    def complete(
+        self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
+    ) -> str:
+        body = self._post_chat(
+            {
+                "messages": [{"role": m.role, "content": m.content} for m in messages],
+                "max_completion_tokens": max_tokens,
+            }
+        )
+        text = self._content(body)
         if not text or not text.strip():
             raise RuntimeError("LLM API returned an empty completion.")
         return text
+
+    def complete_json(
+        self, messages: list[LLMMessage], *, schema: dict, max_tokens: int
+    ) -> dict:
+        body = self._post_chat(
+            {
+                "messages": [{"role": m.role, "content": m.content} for m in messages],
+                "max_completion_tokens": max_tokens,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {"name": "result", "schema": schema, "strict": True},
+                },
+            }
+        )
+        content = self._content(body)
+        try:
+            data = json.loads(content)
+        except ValueError as exc:
+            raise RuntimeError(f"LLM API returned an unparseable JSON body: {exc}") from exc
+        if not isinstance(data, dict):
+            raise RuntimeError("LLM API returned a non-object JSON result.")
+        return data
 
 
 def get_llm_client() -> LLMClient:
