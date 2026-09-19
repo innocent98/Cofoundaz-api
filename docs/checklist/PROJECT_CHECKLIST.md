@@ -17,7 +17,7 @@
 > `develop → main` path.
 
 _Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 2 (Structured Output + Canvas AI
-Fill) is now built** (branch `feat/llm-structured-output`, no migration) — a structured
+Fill) is now MERGED** (PR #77, no migration) — a structured
 (JSON-Schema-constrained) output mode on the LLM seam (`complete_json`, alongside Slice 1's
 free-text `complete`) plus its first real consumer: `business.canvas.ai_fill` — the job Module 08
 Slice 1 has enqueued since it shipped, with no worker ever claiming it — now drafts a canvas's
@@ -48,7 +48,7 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker, this pass) built — the canvas-record `ai_fill` jobs (Module 08's `{kind}` records) and every other deferred AI consumer across the codebase remain unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on the structured-output capability (Module 03 Slice 2 built it) but the generator itself is still not started. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77) — the canvas-record `ai_fill` jobs (Module 08's `{kind}` records) and every other deferred AI consumer across the codebase remain unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on the structured-output capability (Module 03 Slice 2 built it) but the generator itself is still not started. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
@@ -333,8 +333,8 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       per-workspace LLM budget/rate limiting · no structured "AI enrichment failed / still
       templated" signal for the FE or an operator — see SOP Follow-ups
 
-**Slice 2 — Structured Output + Canvas AI Fill** — *✅ built (3 tasks, branch
-`feat/llm-structured-output`, no migration)*
+**Slice 2 — Structured Output + Canvas AI Fill** — *✅ MERGED to `develop` (PR #77;
+3 tasks, no migration)*
 - [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-llm-structured-output-canvas-fill/`)
       — `complete_json` as a second method on the SAME `LLMClient` Protocol, not a new seam ·
       schema derived from the existing `CANVAS_BLOCKS` registry, not hand-maintained · fill-empties-
