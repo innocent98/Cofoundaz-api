@@ -69,7 +69,9 @@ def canvas_json_schema(canvas_type: CanvasType) -> dict[str, Any]:
     props: dict[str, Any] = {}
     for b in CANVAS_BLOCKS[canvas_type]:
         props[b.key] = (
-            {"type": "array", "items": {"type": "string"}} if b.kind == "list" else {"type": "string"}
+            {"type": "array", "items": {"type": "string"}}
+            if b.kind == "list"
+            else {"type": "string"}
         )
     return {
         "type": "object",

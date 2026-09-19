@@ -1,0 +1,89 @@
+{
+  "data": {
+    "type": "business_model",
+    "version": 2,
+    "blocks": {
+      "channels": [
+        "[stub-llm] channels"
+      ],
+      "key_partners": [
+        "[stub-llm] key_partners"
+      ],
+      "key_resources": [
+        "[stub-llm] key_resources"
+      ],
+      "cost_structure": [
+        "[stub-llm] cost_structure"
+      ],
+      "key_activities": [
+        "[stub-llm] key_activities"
+      ],
+      "revenue_streams": [
+        "[stub-llm] revenue_streams"
+      ],
+      "customer_segments": [
+        "[stub-llm] customer_segments"
+      ],
+      "value_propositions": [
+        "[stub-llm] value_propositions"
+      ],
+      "customer_relationships": [
+        "[stub-llm] customer_relationships"
+      ]
+    },
+    "block_defs": [
+      {
+        "key": "key_partners",
+        "label": "Key Partners",
+        "kind": "list"
+      },
+      {
+        "key": "key_activities",
+        "label": "Key Activities",
+        "kind": "list"
+      },
+      {
+        "key": "key_resources",
+        "label": "Key Resources",
+        "kind": "list"
+      },
+      {
+        "key": "value_propositions",
+        "label": "Value Propositions",
+        "kind": "list"
+      },
+      {
+        "key": "customer_relationships",
+        "label": "Customer Relationships",
+        "kind": "list"
+      },
+      {
+        "key": "channels",
+        "label": "Channels",
+        "kind": "list"
+      },
+      {
+        "key": "customer_segments",
+        "label": "Customer Segments",
+        "kind": "list"
+      },
+      {
+        "key": "cost_structure",
+        "label": "Cost Structure",
+        "kind": "list"
+      },
+      {
+        "key": "revenue_streams",
+        "label": "Revenue Streams",
+        "kind": "list"
+      }
+    ],
+    "completion": {
+      "filled_blocks": 9,
+      "total_blocks": 9,
+      "completion_pct": 100,
+      "status": "complete"
+    }
+  },
+  "meta": null
+}

@@ -95,11 +95,16 @@ def test_openai_client_fails_loud_on_empty_completion(monkeypatch):
 def test_stub_complete_json_matches_schema_shape():
     schema = {
         "type": "object",
-        "properties": {"a": {"type": "string"}, "b": {"type": "array", "items": {"type": "string"}}},
+        "properties": {
+            "a": {"type": "string"},
+            "b": {"type": "array", "items": {"type": "string"}},
+        },
         "required": ["a", "b"],
         "additionalProperties": False,
     }
-    out = StubLLMClient().complete_json([LLMMessage(role="user", content="x")], schema=schema, max_tokens=100)
+    out = StubLLMClient().complete_json(
+        [LLMMessage(role="user", content="x")], schema=schema, max_tokens=100
+    )
     assert set(out) == {"a", "b"}
     assert isinstance(out["a"], str) and out["a"].startswith("[stub-llm]")
     assert isinstance(out["b"], list) and out["b"] and out["b"][0].startswith("[stub-llm]")
@@ -113,11 +118,20 @@ def test_openai_complete_json_sends_json_schema_and_parses(monkeypatch):
 
     def fake_post(url, json, headers, timeout):
         captured["json"] = json
-        return httpx.Response(200, json={"choices": [{"message": {"content": '{"a": "hi", "b": ["x"]}'}}]})
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": '{"a": "hi", "b": ["x"]}'}}]}
+        )
 
     monkeypatch.setattr(httpx, "post", fake_post)
-    schema = {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"], "additionalProperties": False}
-    out = OpenAILLMClient().complete_json([LLMMessage(role="user", content="u")], schema=schema, max_tokens=50)
+    schema = {
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "required": ["a"],
+        "additionalProperties": False,
+    }
+    out = OpenAILLMClient().complete_json(
+        [LLMMessage(role="user", content="u")], schema=schema, max_tokens=50
+    )
     assert out == {"a": "hi", "b": ["x"]}
     rf = captured["json"]["response_format"]
     assert rf["type"] == "json_schema"
@@ -129,25 +143,45 @@ def test_openai_complete_json_sends_json_schema_and_parses(monkeypatch):
 def test_openai_complete_json_requires_key(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
     with pytest.raises(RuntimeError, match="LLM_API_KEY"):
-        OpenAILLMClient().complete_json([LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10)
+        OpenAILLMClient().complete_json(
+            [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
+        )
 
 
 def test_openai_complete_json_fails_loud_on_non_2xx(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
     monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(429, text="rate limited"))
     with pytest.raises(RuntimeError, match="429"):
-        OpenAILLMClient().complete_json([LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10)
+        OpenAILLMClient().complete_json(
+            [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
+        )
 
 
 def test_openai_complete_json_fails_loud_on_bad_json(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(200, json={"choices": [{"message": {"content": "not json"}}]}))
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: httpx.Response(
+            200, json={"choices": [{"message": {"content": "not json"}}]}
+        ),
+    )
     with pytest.raises(RuntimeError, match="unparseable"):
-        OpenAILLMClient().complete_json([LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10)
+        OpenAILLMClient().complete_json(
+            [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
+        )
 
 
 def test_openai_complete_json_fails_loud_on_non_object(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(200, json={"choices": [{"message": {"content": "[1,2,3]"}}]}))
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: httpx.Response(
+            200, json={"choices": [{"message": {"content": "[1,2,3]"}}]}
+        ),
+    )
     with pytest.raises(RuntimeError, match="non-object"):
-        OpenAILLMClient().complete_json([LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10)
+        OpenAILLMClient().complete_json(
+            [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
+        )

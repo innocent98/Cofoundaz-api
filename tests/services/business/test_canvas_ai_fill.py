@@ -1,6 +1,11 @@
+from app.core.config import settings
 from app.db.models.enums import CanvasType
+from app.db.models.job import Job, JobStatus
 from app.services.business.ai_fill import build_canvas_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
+from app.services.business.service import get_or_create_canvas
+from app.worker.handlers.ai import handle_canvas_ai_fill
+from tests.factories import create_startup, create_user
 
 
 def test_canvas_json_schema_is_strict_and_typed():
@@ -21,7 +26,9 @@ def test_canvas_json_schema_is_strict_and_typed():
 
 def test_build_canvas_fill_messages_has_context_no_pii():
     msgs = build_canvas_fill_messages(
-        name="Acme", industry="Fintech", stage="validation",
+        name="Acme",
+        industry="Fintech",
+        stage="validation",
         blocks=CANVAS_BLOCKS[CanvasType.business_model],
     )
     assert [m.role for m in msgs] == ["system", "user"]
@@ -29,13 +36,6 @@ def test_build_canvas_fill_messages_has_context_no_pii():
     assert "Acme" in user and "Fintech" in user and "validation" in user
     assert "Key Partners" in user  # a block label is present
     assert "@" not in " ".join(m.content for m in msgs)  # no emails/PII
-
-
-from app.core.config import settings
-from app.db.models.job import Job, JobStatus
-from app.services.business.service import get_or_create_canvas
-from app.worker.handlers.ai import handle_canvas_ai_fill
-from tests.factories import create_startup, create_user
 
 
 def _job(startup_id, canvas_type):
@@ -48,19 +48,21 @@ def _job(startup_id, canvas_type):
 
 def test_ai_fill_fills_empty_canvas(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
-    u = create_user(db); s = create_startup(db, owner=u)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
     handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))
     canvas = get_or_create_canvas(db, s, CanvasType.business_model)
     # every block now filled with the stub marker
     for b in CANVAS_BLOCKS[CanvasType.business_model]:
         val = canvas.blocks[b.key]
-        assert (val and "[stub-llm]" in (val if isinstance(val, str) else val[0]))
+        assert val and "[stub-llm]" in (val if isinstance(val, str) else val[0])
     assert canvas.version >= 2  # bumped from the create's version 1
 
 
 def test_ai_fill_preserves_user_filled_blocks(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
-    u = create_user(db); s = create_startup(db, owner=u)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
     canvas = get_or_create_canvas(db, s, CanvasType.business_model)
     canvas.blocks = {**canvas.blocks, "value_propositions": ["MY OWN VALUE"]}
     db.flush()
@@ -73,13 +75,16 @@ def test_ai_fill_preserves_user_filled_blocks(db, monkeypatch):
 def test_ai_fill_noop_when_startup_missing(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
     import uuid
+
     handle_canvas_ai_fill(db, _job(uuid.uuid4(), CanvasType.business_model))  # must not raise
 
 
 def test_ai_fill_fails_loud_when_llm_errors(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
-    u = create_user(db); s = create_startup(db, owner=u)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
     import pytest
+
     with pytest.raises(RuntimeError):
         handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))

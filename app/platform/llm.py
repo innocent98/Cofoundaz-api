@@ -37,9 +37,7 @@ class StubLLMClient:
     ) -> str:
         return "[stub-llm] AI-generated assessment narrative."
 
-    def complete_json(
-        self, messages: list[LLMMessage], *, schema: dict, max_tokens: int
-    ) -> dict:
+    def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
         def _stub(prop: dict, key: str) -> object:
             return [f"[stub-llm] {key}"] if prop.get("type") == "array" else f"[stub-llm] {key}"
 
@@ -112,9 +110,7 @@ class OpenAILLMClient:
             raise RuntimeError("LLM API returned an empty completion.")
         return text
 
-    def complete_json(
-        self, messages: list[LLMMessage], *, schema: dict, max_tokens: int
-    ) -> dict:
+    def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
         body = self._post_chat(
             {
                 "messages": [{"role": m.role, "content": m.content} for m in messages],
