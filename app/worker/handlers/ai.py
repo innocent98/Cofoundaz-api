@@ -2,10 +2,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models.assessment import AssessmentResult
+from app.db.models.enums import CanvasType
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.platform.llm import get_llm_client
 from app.services.assessment.narrative import build_narrative_messages
+from app.services.business.ai_fill import build_canvas_fill_messages
+from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
+from app.services.business.service import get_or_create_canvas, validate_blocks
 from app.worker.runner import register_handler
 
 
@@ -37,3 +41,40 @@ def handle_assessment_narrative(db: Session, job: Job) -> None:
 
 
 register_handler("ai.assessment.narrative", handle_assessment_narrative)
+
+
+def handle_canvas_ai_fill(db: Session, job: Job) -> None:
+    """Draft a business canvas's EMPTY blocks with the LLM (structured output).
+
+    Fill-empties-only: re-reads the canvas at run time and never overwrites a block the
+    user already filled. No commit — the runner owns the txn.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return  # benign no-op
+    canvas_type = CanvasType(job.payload["canvas_type"])
+    canvas = get_or_create_canvas(db, startup, canvas_type)
+    current = dict(canvas.blocks or {})
+    empty_keys = [b.key for b in CANVAS_BLOCKS[canvas_type] if not current.get(b.key)]
+    if not empty_keys:
+        return  # nothing to fill
+    messages = build_canvas_fill_messages(
+        name=startup.name,
+        industry=startup.industry,
+        stage=(startup.stage.value if startup.stage else None),
+        blocks=CANVAS_BLOCKS[canvas_type],
+    )
+    filled = get_llm_client().complete_json(
+        messages, schema=canvas_json_schema(canvas_type), max_tokens=settings.LLM_MAX_TOKENS
+    )
+    merged = dict(current)
+    for key in empty_keys:
+        if key in filled:
+            merged[key] = filled[key]
+    validate_blocks(canvas_type, merged)
+    canvas.blocks = merged
+    canvas.version += 1
+    db.flush()
+
+
+register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)

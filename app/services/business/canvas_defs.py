@@ -61,3 +61,19 @@ CANVAS_BLOCKS: dict[CanvasType, tuple[BlockDef, ...]] = {
 
 def empty_blocks(canvas_type: CanvasType) -> dict[str, Any]:
     return {b.key: ("" if b.kind == "text" else []) for b in CANVAS_BLOCKS[canvas_type]}
+
+
+def canvas_json_schema(canvas_type: CanvasType) -> dict[str, Any]:
+    """A strict JSON Schema for one canvas type: text blocks -> string, list blocks -> array
+    of strings; every block required, no extra keys (OpenAI strict json_schema mode)."""
+    props: dict[str, Any] = {}
+    for b in CANVAS_BLOCKS[canvas_type]:
+        props[b.key] = (
+            {"type": "array", "items": {"type": "string"}} if b.kind == "list" else {"type": "string"}
+        )
+    return {
+        "type": "object",
+        "properties": props,
+        "required": list(props),
+        "additionalProperties": False,
+    }
