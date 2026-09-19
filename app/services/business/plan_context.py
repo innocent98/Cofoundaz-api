@@ -27,7 +27,9 @@ def build_plan_context(db: Session, startup: Startup) -> dict[str, Any]:
     result = (
         db.query(AssessmentResult)
         .join(Assessment, Assessment.id == AssessmentResult.assessment_id)
-        .filter(Assessment.startup_id == startup.id, Assessment.status == AssessmentStatus.completed)
+        .filter(
+            Assessment.startup_id == startup.id, Assessment.status == AssessmentStatus.completed
+        )
         .order_by(Assessment.completed_at.desc())
         .first()
     )
@@ -45,7 +47,9 @@ def build_plan_context(db: Session, startup: Startup) -> dict[str, Any]:
         .order_by(RoadmapPhase.order, RoadmapMilestone.order)
         .all()
     )
-    roadmap = [{"phase": p, "milestone": t, "status": (s.value if s else None)} for p, t, s in roadmap_rows]
+    roadmap = [
+        {"phase": p, "milestone": t, "status": (s.value if s else None)} for p, t, s in roadmap_rows
+    ]
 
     return {
         "profile": {

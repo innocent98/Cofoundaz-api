@@ -17,7 +17,11 @@ def test_build_plan_context_gathers_business_data_no_pii(db):
 
     u = create_user(db)
     s = create_startup(db, owner=u)  # confirm create_startup sets name/industry/stage
-    db.add(BusinessCanvas(startup_id=s.id, type=CanvasType.business_model, blocks={"value_propositions": ["Fast"]}))
+    db.add(
+        BusinessCanvas(
+            startup_id=s.id, type=CanvasType.business_model, blocks={"value_propositions": ["Fast"]}
+        )
+    )
     db.flush()
     ctx = build_plan_context(db, s)
     blob = str(ctx)
@@ -35,5 +39,8 @@ def test_build_section_messages_includes_guidance_and_context():
     }
     msgs = build_section_messages(PLAN_SECTIONS[0], ctx)
     assert [m.role for m in msgs] == ["system", "user"]
-    assert PLAN_SECTIONS[0].guidance[:12] in msgs[1].content or PLAN_SECTIONS[0].heading in msgs[1].content
+    assert (
+        PLAN_SECTIONS[0].guidance[:12] in msgs[1].content
+        or PLAN_SECTIONS[0].heading in msgs[1].content
+    )
     assert "Acme" in msgs[1].content

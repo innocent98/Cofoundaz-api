@@ -16,7 +16,30 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 2 (Structured Output + Canvas AI
+_Last reconciled: 2026-09-19 · **§08.11 AI Business Plan Generator is now built — MODULE 08
+(BUSINESS BUILDER) IS NOW FULLY COMPLETE, all 4 slices** (branch `feat/ai-business-plan-generator`,
+5 tasks, migration `0026_business_plans`) — the multi-section generator Module 08 Slice 3 flagged as
+"the ONLY Module 08 PRD sub-screen not yet shippable" is now real: a `business_plans` entity
+(`generating`/`complete`/`failed`) + `POST /business-builder/plan/generate` (editor, 202, enqueues
+`business.plan.generate`) + `GET /business-builder/plan` (member, latest plan status +
+`document_id`). The worker handler calls Module 03 Slice 1's free-text LLM seam directly
+(`get_llm_client().complete(...)`, NOT Slice 2's `complete_json` — a plan section is prose, not a
+fixed schema), one call per one of 10 fixed `PLAN_SECTIONS`, each built
+from a PII-free context gatherer over the startup's profile/canvases/records/assessment/roadmap),
+then stores the assembled `{heading, body}` sections as a Module 18 `Document`
+(`kind=business_plan`, `ai_generated=True`) and links `business_plans.document_id`, publishing
+`business.plan.generated` (maps to the existing `business` notification category — no new category
+needed). Proven live end to end (`e2e/test_business_plan.py`): enqueue → in-process worker drain →
+10 sequential LLM (stub) calls → `create_document` → `GET /plan` shows `status: "complete"` +
+`document_id` → `GET /documents/{id}` returns all 10 sections with stub bodies. This was the last
+open item in Module 08 and the last PRD sub-screen dependency-blocked on Module 03 — **11 modules
+now FULLY complete on `develop`-equivalent scope; only 1 remains open (03, itself now only blocked
+on the still-unbuilt typed-record `ai_fill` worker and the other pre-Module-03 AI consumers, not on
+any Business Builder scope)**. SOP: `docs/sop/2026-09-19-ai-business-plan-generator.md`; FE guide:
+`docs/fe-integration-guide-ai-business-plan.md`. Not yet pushed/merged — this reconciliation
+reflects the branch's local commit, PR number to be added at merge._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 2 (Structured Output + Canvas AI
 Fill) is now MERGED** (PR #77, no migration) — a structured
 (JSON-Schema-constrained) output mode on the LLM seam (`complete_json`, alongside Slice 1's
 free-text `complete`) plus its first real consumer: `business.canvas.ai_fill` — the job Module 08
@@ -48,37 +71,38 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77) — the canvas-record `ai_fill` jobs (Module 08's `{kind}` records) and every other deferred AI consumer across the codebase remain unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on the structured-output capability (Module 03 Slice 2 built it) but the generator itself is still not started. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, not yet merged**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77) — the canvas-record `ai_fill` jobs (Module 08's `{kind}` records — now the only ai-fill job left unconsumed; §08.11 shipped without needing it) and every other deferred AI consumer across the codebase remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 2 modules | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, this pass) merged, no migration either slice; SOP `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains — **unblocked on the structured-output capability (Module 03 Slice 2), generator itself not started** |
+| ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, not yet merged)** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged, no migration either slice; SOP `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The typed-record `business.{kind}.ai_fill` worker (Module 08's `{kind}` records) and every other pre-Module-03 AI consumer remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode. |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
-**Health at a glance:** **130 endpoints** (directly counted from the OpenAPI schema's
-path×method operations, `app.openapi()["paths"]` — 108 paths, 130 operations, **unchanged this
-pass** — Module 03 Slice 2 added no new route, only a worker handler for a job Module 08 Slice 1
-already enqueues) · **1245 unit tests** (real Postgres, up from 1227) + **44 live E2E** (up from 43)
-· **97.46% coverage** (floor 95; up fractionally from 97.36%) · black 26.5.1 / isort 6.1.0 / ruff
-0.16.5 / mypy clean (directly re-run this pass — 4 pre-existing unformatted files fixed in this
-pass, `app/platform/llm.py` / `app/services/business/canvas_defs.py` /
-`tests/platform/test_llm.py` / `tests/services/business/test_canvas_ai_fill.py`, all left
-unformatted by this slice's own Tasks 1–2, which only ran `black`/`ruff` against their own touched
-files; `tests/services/business/test_canvas_ai_fill.py` also had a mid-file `E402` import-order
-violation fixed) · pylint **9.89/10** (directly re-run this pass, unchanged — no new pylint
-findings) · bandit clean, 0 findings (directly re-run this pass) · radon average complexity
+**Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 110 paths, 132 operations, **up from 108
+paths/130 ops** — the two new §08.11 routes, `POST /business-builder/plan/generate` and
+`GET /business-builder/plan`) · **1257 unit tests** (real Postgres, up from 1245) + **45 live E2E**
+(up from 44) · **97.45% coverage** (floor 95; down fractionally from 97.46% — new lines added
+without a 1:1 test-line ratio, still comfortably above floor) · black 26.5.1 / isort 6.1.0 / ruff
+0.16.5 / mypy clean (directly re-run this pass — 3 pre-existing unformatted files fixed in this
+pass, `app/services/business/plan_context.py` / `tests/services/business/test_plan_generation.py` /
+`tests/worker/test_plan_handler.py`, all left unformatted by this slice's own Tasks 1–3, which only
+ran `black`/`ruff` against their own touched files; `tests/worker/test_plan_handler.py` also had an
+import-order violation fixed by `isort`) · pylint **9.89/10** (directly re-run this pass,
+unchanged — no new pylint findings) · bandit clean, 0 findings (directly re-run this pass) · alembic
+single head `0026_business_plans` (directly re-run this pass) · radon average complexity
 **A (2.36)**, every module MI **A** · hadolint / actionlint / `trivy config` / checkov all exit 0 ·
 `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the radon/hadolint/actionlint/`trivy config`/checkov/pip-audit figures above are carried
 forward unchanged from the last full lint/security sweep (not re-run in this pass — this pass's own
 CI reproduction covered black/isort/ruff/mypy/pylint/bandit/pytest+coverage/alembic heads/e2e, all
-directly re-run and recorded above, per `.superpowers/sdd/2026-09-19-llm-structured-output-canvas-
-fill/task-3-report.md`). `docker-compose.yml`/`docker-compose.prod.yml` gained no new service in
-this pass — `business.canvas.ai_fill` runs inside the existing `worker` process (see this slice's
-SOP's "Operate" section), so no new `trivy config`/checkov surface was added. Endpoint count and
-unit/e2e test counts are freshly re-counted this pass (2026-09-19), not carried over._
+directly re-run and recorded above, per `.superpowers/sdd/2026-09-19-ai-business-plan-generator/
+task-5-report.md`). `docker-compose.yml`/`docker-compose.prod.yml` gained no new service in this
+pass — `business.plan.generate` runs inside the existing `worker` process (see this slice's SOP's
+"Operate" section), so no new `trivy config`/checkov surface was added. Endpoint count and unit/e2e
+test counts are freshly re-counted this pass (2026-09-19), not carried over._
 
 ---
 
@@ -367,20 +391,24 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       `docs/fe-integration-guide-ai-canvas-fill.md`
 - [ ] _Deferred:_ `business.{kind}.ai_fill` worker for Module 08's typed records (personas/revenue
       streams/competitors/pricing) — needs a Pydantic-model-driven schema variant, a real design
-      decision, not a copy-paste of the canvas one · §08.11 AI Business Plan Generator itself
-      (unblocked on the capability, not started — a larger multi-section generator, not a
-      mechanical reuse of this slice's single-schema-single-call pattern) · no
-      `pydantic.TypeAdapter(...).json_schema()`-based helper for a future Pydantic-shaped consumer
-      · no Anthropic `complete_json` implementation (the wire shape is itself an OpenAI-specific
-      convention) · no overwrite/"regenerate everything" ai-fill mode · no structured "ai-fill
-      failed / still empty" signal beyond the existing job status — see SOP Follow-ups
+      decision, not a copy-paste of the canvas one — **now the only ai-fill job left unconsumed**:
+      §08.11 AI Business Plan Generator shipped (see Module 08, below) on this seam's free-text
+      `complete()` method (one call per fixed section), not `complete_json` — the plan generator
+      turned out not to need structured output after all, so it did not end up depending on this
+      deferred item · no `pydantic.TypeAdapter(...).json_schema()`-based helper for a future
+      Pydantic-shaped consumer · no Anthropic `complete_json` implementation (the wire shape is
+      itself an OpenAI-specific convention) · no overwrite/"regenerate everything" ai-fill mode ·
+      no structured "ai-fill failed / still empty" signal beyond the existing job status — see SOP
+      Follow-ups
 
-## ✅ Module 08 — Business Builder — *all 3 slices merged to `develop` (PR #39, PR #46, PR #47) —
-complete except the AI Business Plan Generator (§08.11); the Module 03 half of its dependency is now
-fully built (LLM seam Slice 1 + structured output Slice 2) — §08.11 is unblocked on the capability
-but the generator itself is still not started — see that module's entry above. The
-`business.canvas.ai_fill` job this module's Slice 1 enqueues now has a real worker (Module 03 Slice
-2, above); the typed-record `business.{kind}.ai_fill` job (Slice 2, below) still does not.*
+## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
+`feat/ai-business-plan-generator` — Slice 4/§08.11 not yet merged). Slice 4, the AI Business Plan
+Generator (§08.11), was the last open PRD sub-screen, blocked on Module 03 (AI Co-Founder) end to
+end — it now ships using Module 03 Slice 1's free-text LLM seam directly (`complete()`, one call
+per fixed section), not the structured-output mode Slice 2 built for canvas ai-fill; see Slice 4
+below for why. The `business.canvas.ai_fill` job Slice 1 enqueues has a real worker (Module 03
+Slice 2, above); the typed-record `business.{kind}.ai_fill` job (Slice 2, below) still does not —
+that gap is Module 03's, not Module 08's, going forward.*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
 `swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
@@ -431,9 +459,9 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       `docs/fe-integration-guide-business-builder.md`
 - [x] real `business.canvas.ai_fill` worker → **shipped, Module 03 Slice 2** (see Module 03 above,
       `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`)
-- [ ] _Deferred:_ AI Business Plan Generator (§08.11, dependency-blocked on Modules 03 + 18 — see
-      Slice 3 below; now unblocked on the structured-output capability, generator itself not
-      started) · canvas version history (no row-level history table) · no
+- [x] AI Business Plan Generator (§08.11) → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, not yet merged)
+- [ ] _Deferred:_ canvas version history (no row-level history table) · no
       `business.artifact.completed` consumer yet · no `write_activity` call site for canvas saves
       (doesn't show up in the dashboard activity feed) · JSONB doesn't preserve `blocks` key order
       (documented in the FE guide, not a bug) — see SOP Follow-ups
@@ -472,7 +500,10 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile —
       `docs/sop/2026-09-04-business-builder-records.md`,
       `docs/fe-integration-guide-business-builder.md` (§6–§11)
-- [ ] _Deferred:_ AI Business Plan Generator (§08.11, see Slice 3 below) · real
+- [x] AI Business Plan Generator (§08.11) → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, not yet merged) — did not end up needing this slice's
+      typed-record `ai_fill` capability
+- [ ] _Deferred:_ real
       `business.{kind}.ai_fill` worker → Module 03 (**still the only ai-fill job left unconsumed**
       — the canvas one shipped a worker in Module 03 Slice 2; records need a Pydantic-model-driven
       schema variant, not a copy-paste of the canvas one — see that Slice's SOP Follow-ups) ·
@@ -523,23 +554,70 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 - [x] SOP + FE integration guide (every body captured live, zero source-derived error rows) + this
       checklist reconcile — `docs/sop/2026-09-08-business-builder-slice3.md`,
       `docs/fe-integration-guide-business-builder-suggestions.md`
-- [ ] _Deferred:_ **AI Business Plan Generator (PRD §08.11)** — `POST
-      /business-builder/plan/generate`, `business_plans` entity, `business.plan.generated` event —
-      was dependency-blocked on Module 03 (AI Co-Founder) entirely; **now unblocked on the
-      capability, generator itself still not started.** Module 03 Slice 1
-      (`docs/sop/2026-09-19-llm-seam-assessment-narrative.md`) built the LLM seam itself; Module 03
-      Slice 2 (`docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`) then built the STRUCTURED
-      (JSON-Schema-constrained) output mode this generator needs for plan sections — proven against
-      a real consumer (`business.canvas.ai_fill`), not just designed — but §08.11 itself is a
-      larger, multi-section generator that needs its own design pass, not a mechanical reuse of
-      Slice 2's single-schema-single-call pattern. The document-store half of the dependency
-      landed on `feat/documents-templates` (Module 18 Slice 1 — see below), which exposes the
-      `create_document(..., ai_generated=True, kind=business_plan)` seam this generator will call,
-      but `business_plans.document_id` is not wired up and the generator itself is not built — this
-      is the ONLY Module 08 PRD sub-screen not yet shippable · reject-reason field
+- [x] **AI Business Plan Generator (PRD §08.11)** → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, not yet merged) — `POST /business-builder/plan/generate`,
+      `business_plans` entity, `business.plan.generated` event. Was dependency-blocked on Module 03
+      (AI Co-Founder) entirely; Module 03 Slice 1
+      (`docs/sop/2026-09-19-llm-seam-assessment-narrative.md`) built the LLM seam this generator
+      calls directly (`complete()`, free-text — see Slice 4 for why the Slice 2 structured-output
+      mode wasn't needed here). The document-store half of the dependency landed on
+      `feat/documents-templates` (Module 18 Slice 1 — see below), whose
+      `create_document(..., ai_generated=True, kind=business_plan)` seam this generator now calls.
+      This was the last Module 08 PRD sub-screen not yet shippable — **Module 08 is now fully
+      complete, all 4 slices.**
+- [ ] _Deferred:_ reject-reason field
       on `POST .../reject` (no structured "why" today) · no server-computed suggestion diff
       summary beyond raw `current`/`payload` · no notification wired to
       `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet) — see SOP
+      Follow-ups
+
+**Slice 4 — AI Business Plan Generator (§08.11)** — *✅ built on `feat/ai-business-plan-generator`
+(5 tasks, migration `0026_business_plans`; not yet merged — PR ref to be added at merge)*
+- [x] Design + implementation plan
+      (`.superpowers/sdd/2026-09-19-ai-business-plan-generator/`) — fixed 10-section outline
+      (`PLAN_SECTIONS`), not an LLM-decided structure · section-by-section free-text `complete()`
+      calls, not one giant prompt or `complete_json` (a plan section is prose, not a fixed schema
+      — Slice 2's structured mode doesn't fit this shape) · plan stored as a Module 18 `Document`
+      (`kind=business_plan`), not a new bespoke table for content · async worker job, same
+      enqueue-then-drain pattern as every other AI consumer on this seam
+- [x] `BusinessPlanStatus` enum (`generating`/`complete`/`failed`) + `BusinessPlan` model
+      (`startup_id`, `status`, `document_id`, `created_by_id`) + migration `0026_business_plans`
+      (chains off `0025_roadmap_milestone_due_idx`, sole alembic head)
+- [x] `PLAN_SECTIONS` — 10 fixed sections (`app/services/business/plan_defs.py`: Executive
+      Summary, Problem & Opportunity, Solution & Product, Market & Customers, Business Model,
+      Go-to-Market, Competition, Team, Financials & Projections, Roadmap & Milestones), each a
+      `{key, heading, guidance}` · `build_plan_context` (`app/services/business/plan_context.py`)
+      — PII-free context gatherer over the startup's profile/canvases/records/latest completed
+      assessment/roadmap phases+milestones · `build_section_messages` — per-section prompt builder
+- [x] `handle_plan_generate` (`app/worker/handlers/plan.py`), registered as
+      `"business.plan.generate"` — benign no-op if the plan row is missing or already resolved;
+      one `client.complete(...)` call per `PLAN_SECTIONS` entry; assembles `[{heading, body}]`,
+      calls `create_document(..., kind=business_plan, ai_generated=True)`, links
+      `plan.document_id`, flips `status` to `complete`, publishes `business.plan.generated`
+- [x] `POST /business-builder/plan/generate` (editor; 202, `{plan_id, status: "generating"}`,
+      enqueues `business.plan.generate`) · `GET /business-builder/plan` (any active member; latest
+      plan `{id, status, document_id, created_at}`, 404 if none yet)
+- [x] `business.plan.generated` event maps to the existing `business` notification category — no
+      new category needed (`tests/services/notifications/test_plan_notification.py`)
+- [x] Live E2E journey (`e2e/test_business_plan.py`, 3 captures) proving enqueue → in-process
+      worker drain → 10 sequential LLM (stub) calls → `create_document` → `GET /plan` shows
+      `status: "complete"` + `document_id` → `GET /documents/{id}` returns all 10 sections with
+      stub bodies, over real HTTP with a real Postgres-backed worker drain, zero network calls
+      (`LLM_PROVIDER=stub`, already exported by `scripts/e2e_run.sh` since Module 03 Slice 1) +
+      full existing e2e suite re-run green (45 e2e, 1257 unit)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-09-19-ai-business-plan-generator.md`,
+      `docs/fe-integration-guide-ai-business-plan.md`
+- [ ] _Deferred:_ no plan history/list endpoint (only the latest plan is retrievable — regenerating
+      creates a new row but the old one and its document are not surfaced) · a plan stuck
+      `generating` after the worker's retries are exhausted never flips to `failed` in v1 (no
+      terminal-failure transition wired yet, despite the enum having the value) · no incremental
+      per-section progress signal (the FE only sees `generating` → `complete`, not "3 of 10
+      sections done") · sections are free text, not structured financials (no numeric revenue/cost
+      fields a dashboard could chart) · no PDF/export format, Document markdown only ·
+      regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
+      previous version) · remaining Module 03 AI consumers (typed-record `ai_fill`, onboarding AI
+      panel, Mission/Roadmap/Health Score/Learning/Validation Hub) still unbuilt — see SOP
       Follow-ups
 
 ## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
@@ -550,8 +628,8 @@ _Module 18 has no detailed textual PRD entry — scope recovered from the UI com
 (`Documents & Templates.dc.html`), decomposing into four slices: Library Core (a document store +
 in-code template registry), Upload & Files (Cloudinary-backed binary storage), Sharing (external
 tokenized read links), and E-signature (this slice, tokenized signing links) — **all four now
-built**, closing out Module 18. Slice 1 is also the seam Module 08's deferred AI Business Plan
-Generator (§08.11) needs — see that module's entry above. SOPs:
+built**, closing out Module 18. Slice 1 is also the `create_document` seam Module 08's AI Business
+Plan Generator (§08.11, now shipped) calls — see that module's entry above. SOPs:
 `docs/sop/2026-09-09-documents-templates-slice1.md`,
 `docs/sop/2026-09-10-documents-files-slice2.md`,
 `docs/sop/2026-09-12-documents-sharing-slice3.md`,
@@ -597,10 +675,11 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
 - [x] Slice 3 (Sharing) landed — external tokenized share links are now available; merged (PR #53).
 - [x] Slice 4 (E-signature) landed — tokenized-link signing is now available, completing Module 18;
       see below.
+- [x] `business_plans.document_id` FK wired → **shipped, Module 08 §08.11 (AI Business Plan
+      Generator)** — see that module's entry above
 - [ ] _Deferred:_ no per-section endpoints (always full-replace `PUT`) · no `folders`
-      table/folder management UI · no user-authored templates (registry is read-only, in-code) ·
-      `business_plans.document_id` FK not wired — blocked on Module 03's AI Co-Founder landing
-      first (see Module 08 above) — see SOP Follow-ups
+      table/folder management UI · no user-authored templates (registry is read-only, in-code) —
+      see SOP Follow-ups
 
 **Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
