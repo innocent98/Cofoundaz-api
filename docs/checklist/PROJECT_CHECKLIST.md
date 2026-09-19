@@ -16,8 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) shipped
-on branch `feat/records-ai-fill`, not yet merged to `develop`** (3 tasks, no migration) — a real
+_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) MERGED
+(PR #81)** (3 tasks, no migration) — a real
 worker for `business.{kind}.ai_fill` (persona/revenue_stream/competitor/pricing), the job Module 08
 Slice 2 has enqueued since it shipped, with no worker ever claiming it — **the last ai_fill job type
 left unconsumed** now drafts up to 3 records for a kind that's completely EMPTY, via one
@@ -91,12 +91,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) shipped on `feat/records-ai-fill`, not yet merged — the LAST unconsumed `ai_fill` job type is now closed (Module 08's `{kind}` records), but every other deferred AI consumer across the codebase (mission reason line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) remains unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81) — the LAST unconsumed `ai_fill` job type is now closed (Module 08's `{kind}` records), but every other deferred AI consumer across the codebase (mission reason line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) remains unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) shipped on `feat/records-ai-fill`, not yet merged — no migration on any of the 3 slices; SOP `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type is now closed; the mission reason line, health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81) — no migration on any of the 3 slices; SOP `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type is now closed; the mission reason line, health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -330,7 +330,7 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
 
 ## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
 (structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
-ai-fill worker) shipped on `feat/records-ai-fill`, not yet merged — no migration any slice. The
+ai-fill worker) merged (PR #81) — no migration any slice. The
 last unconsumed `ai_fill` job type is now closed; every other deferred AI consumer (mission reason
 line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale)
 remains unbuilt*
@@ -424,8 +424,7 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       no structured "ai-fill failed / still empty" signal beyond the existing job status — see SOP
       Follow-ups
 
-**Slice 3 — Typed Records AI Fill** — *✅ shipped on `feat/records-ai-fill` (3 tasks, no
-migration), not yet merged to `develop`*
+**Slice 3 — Typed Records AI Fill** — *✅ MERGED to `develop` (PR #81; 3 tasks, no migration)*
 - [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-records-ai-fill/`) — records need a
       Pydantic-model-driven schema variant (`RECORD_SCHEMAS`), not a copy of Slice 2's
       dataclass-driven `canvas_json_schema` · fill-empties is a whole-kind gate (any existing record
@@ -467,7 +466,7 @@ end — it now ships using Module 03 Slice 1's free-text LLM seam directly (`com
 per fixed section), not the structured-output mode Slice 2 built for canvas ai-fill; see Slice 4
 below for why. The `business.canvas.ai_fill` job Slice 1 enqueues has a real worker (Module 03
 Slice 2, above), and the typed-record `business.{kind}.ai_fill` job (Slice 2, below) now does too
-(Module 03 Slice 3, shipped on `feat/records-ai-fill`, not yet merged) — every ai-fill job Module 08
+(Module 03 Slice 3, merged (PR #81)) — every ai-fill job Module 08
 enqueues now has a real handler.*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
@@ -564,7 +563,7 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       (`feat/ai-business-plan-generator`, merged (PR #79)) — did not end up needing this slice's
       typed-record `ai_fill` capability
 - [x] real `business.{kind}.ai_fill` worker → **shipped, Module 03 Slice 3** (see Module 03 above,
-      `docs/sop/2026-09-19-records-ai-fill.md`; branch `feat/records-ai-fill`, not yet merged) —
+      `docs/sop/2026-09-19-records-ai-fill.md`; merged (PR #81)) —
       needed a Pydantic-model-driven schema variant, not a copy-paste of the canvas one, exactly as
       flagged here
 - [ ] _Deferred:_ Module 12 (Revenue) sync for

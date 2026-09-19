@@ -198,8 +198,8 @@ process (Module 20 Slice 2) — no new container, no new health check, no new co
 Module 03 Slice 1 already introduced (`LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_URL`/
 `LLM_TIMEOUT`/`LLM_MAX_TOKENS`).
 
-**Rollback:** revert this slice's commits as a unit (the range `e93c2b7..<Task 3 commit>` on
-`feat/records-ai-fill`, or that branch's eventual PR merge commit on `develop`). No migration to
+**Rollback:** revert this slice's commits as a unit (the range `e93c2b7..436f980`, or the PR #81
+merge commit `b476bbf` on `develop`). No migration to
 downgrade. The only persisted side effect is `BusinessRecord` rows created by a successful ai-fill
 while this slice was live — those rows are NOT automatically reverted by rolling back the code
 (there is no "undo ai-fill" operation); same judgment call Slice 2's SOP made for canvas blocks: the
