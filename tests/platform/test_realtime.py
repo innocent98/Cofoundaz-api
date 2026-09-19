@@ -1,3 +1,5 @@
+import pytest
+
 import app.platform.realtime as rt
 from app.core.config import settings
 
@@ -55,3 +57,38 @@ def test_consume_unknown_ticket_returns_none(monkeypatch):
 def test_settings_defaults():
     assert settings.SSE_TICKET_TTL == 30
     assert settings.SSE_HEARTBEAT_INTERVAL == 20
+
+
+async def test_subscription_closes_client_on_subscribe_failure(monkeypatch):
+    """If Redis is down at connect time, `subscribe()` raises before yielding — the
+    client/pubsub must still be closed rather than leaked (one per failed EventSource
+    reconnect during an outage)."""
+    import redis.asyncio as aioredis
+
+    closed = {"pubsub": False, "client": False}
+
+    class FakePubSub:
+        async def subscribe(self, channel):
+            raise RuntimeError("redis down")
+
+        async def unsubscribe(self, channel):
+            pass
+
+        async def aclose(self):
+            closed["pubsub"] = True
+
+    class FakeClient:
+        def pubsub(self):
+            return FakePubSub()
+
+        async def aclose(self):
+            closed["client"] = True
+
+    monkeypatch.setattr(aioredis, "from_url", lambda *args, **kwargs: FakeClient())
+
+    with pytest.raises(RuntimeError, match="redis down"):
+        async with rt.subscription("notif:s1:u1"):
+            pass  # pragma: no cover - subscribe() raises before yield
+
+    assert closed["pubsub"] is True
+    assert closed["client"] is True

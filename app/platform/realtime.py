@@ -1,7 +1,7 @@
 import json
 import secrets
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING, cast
 
 from app.core.config import settings
@@ -49,10 +49,13 @@ async def subscription(channel: str) -> AsyncIterator["PubSub"]:
 
     client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     pubsub = client.pubsub()
-    await pubsub.subscribe(channel)
     try:
+        await pubsub.subscribe(channel)
         yield pubsub
     finally:
-        await pubsub.unsubscribe(channel)
-        await pubsub.aclose()
-        await client.aclose()
+        with suppress(Exception):
+            await pubsub.unsubscribe(channel)
+        with suppress(Exception):
+            await pubsub.aclose()
+        with suppress(Exception):
+            await client.aclose()
