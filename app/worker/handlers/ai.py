@@ -4,7 +4,8 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessRecord
-from app.db.models.enums import CanvasType, RecordKind
+from app.db.models.enums import CanvasType, RecommendationStatus, RecordKind
+from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.startup import Startup
@@ -15,6 +16,11 @@ from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
 from app.services.business.record_defs import record_json_schema
 from app.services.business.records import create_record
 from app.services.business.service import get_or_create_canvas, validate_blocks
+from app.services.health_score.ai_recommendations import (
+    build_health_recommendation_messages,
+    catalog_bodies,
+    health_recommendation_schema,
+)
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
 from app.worker.runner import register_handler
 
@@ -159,3 +165,47 @@ def handle_mission_reason(db: Session, job: Job) -> None:
 
 
 register_handler("ai.mission.reason", handle_mission_reason)
+
+
+def handle_health_recommendations(db: Session, job: Job) -> None:
+    """Personalize pending recommendation bodies via the LLM (structured output). No commit.
+
+    Idempotent: only rewrites pending rows whose body is still the catalog default, and makes no
+    LLM call when nothing is left to personalize -- so repeated recomputes cost nothing. Never
+    touches accepted/dismissed rows (user decisions).
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return  # benign no-op
+    defaults = catalog_bodies()
+    rows = (
+        db.query(HealthRecommendation)
+        .filter_by(startup_id=startup.id, status=RecommendationStatus.pending)
+        .all()
+    )
+    todo = [r for r in rows if r.body == defaults.get(r.key)]
+    if not todo:
+        return  # nothing to personalize -- no LLM call
+    result = get_llm_client().complete_json(
+        build_health_recommendation_messages(
+            [(r.key, r.dimension, r.title) for r in todo],
+            name=startup.name,
+            industry=startup.industry,
+            stage=(startup.stage.value if startup.stage else None),
+        ),
+        schema=health_recommendation_schema([r.key for r in todo]),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    by_key = {
+        r["key"]: r["body"]
+        for r in (result.get("recommendations") or [])
+        if isinstance(r, dict) and "key" in r and "body" in r
+    }
+    for r in todo:
+        new = by_key.get(r.key)
+        if new:
+            r.body = new
+    db.flush()
+
+
+register_handler("ai.health.recommendations", handle_health_recommendations)
