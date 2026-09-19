@@ -15,7 +15,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @event.listens_for(SessionLocal, "after_commit")
-def _publish_pending_realtime(session):  # noqa: ANN001
+def _publish_pending_realtime(session: Session) -> None:
     pending = session.info.pop("pending_realtime", None)
     if not pending:
         return
@@ -28,7 +28,7 @@ def _publish_pending_realtime(session):  # noqa: ANN001
 
 
 @event.listens_for(SessionLocal, "after_rollback")
-def _drop_pending_realtime(session):  # noqa: ANN001
+def _drop_pending_realtime(session: Session) -> None:
     session.info.pop("pending_realtime", None)
 
 
