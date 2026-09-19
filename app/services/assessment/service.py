@@ -214,6 +214,13 @@ def complete_assessment(
     job_payload = {"startup_id": str(startup.id), "assessment_id": str(assessment.id)}
     from app.services.health_score.service import recompute_health_score
 
+    # Flush the just-added AssessmentResult before recomputing: SessionLocal is
+    # autoflush=False (app/db/session.py), so recompute_health_score's first query
+    # (latest_completed_result, a SELECT joining Assessment -> AssessmentResult) would
+    # otherwise not see this unflushed row, bail, and produce no HealthScore/recommendations/
+    # ai.health.recommendations job from this request -- masked only by get_overview's
+    # lazy-on-read recompute on a later GET /health-score.
+    db.flush()
     recompute_health_score(db, startup, trigger="assessment_complete")
     job_dispatcher.enqueue(db, "roadmap.replan", job_payload, startup.id)
     job_dispatcher.enqueue(db, "ai.assessment.narrative", job_payload, startup.id)
