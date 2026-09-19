@@ -13,6 +13,7 @@ from app.worker.scheduler import scheduler_tick
 
 def register() -> None:
     """Import handler modules for their register_handler(...) side effects."""
+    import app.worker.handlers.ai  # noqa: F401
     import app.worker.handlers.email  # noqa: F401
     import app.worker.handlers.scheduled  # noqa: F401
 
