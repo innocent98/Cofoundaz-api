@@ -67,10 +67,17 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     filled = get_llm_client().complete_json(
         messages, schema=canvas_json_schema(canvas_type), max_tokens=settings.LLM_MAX_TOKENS
     )
-    merged = dict(current)
-    for key in empty_keys:
-        if key in filled:
-            merged[key] = filled[key]
+    # Re-read: a concurrent PATCH may have committed during the (multi-second) LLM call.
+    # Under READ COMMITTED this reflects the latest committed blocks/version, so we never
+    # clobber an edit that landed while we were waiting on the model.
+    db.refresh(canvas)
+    latest = dict(canvas.blocks or {})
+    merged = dict(latest)
+    for b in CANVAS_BLOCKS[canvas_type]:
+        if not latest.get(b.key) and b.key in filled:  # only blocks STILL empty now
+            merged[b.key] = filled[b.key]
+    if merged == latest:
+        return  # nothing left to fill (user filled everything meanwhile) — no version bump
     validate_blocks(canvas_type, merged)
     canvas.blocks = merged
     canvas.version += 1
