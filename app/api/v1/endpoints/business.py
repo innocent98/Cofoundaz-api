@@ -7,7 +7,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
-from app.db.models.enums import CanvasType, MembershipRole, RecordKind, SuggestionStatus
+from app.db.models.business import BusinessPlan
+from app.db.models.enums import (
+    BusinessPlanStatus,
+    CanvasType,
+    MembershipRole,
+    RecordKind,
+    SuggestionStatus,
+)
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -205,6 +212,52 @@ def put_positioning_map(
     update_axes(db, row, body.axes)
     db.commit()
     return success_response(serialize_map(row))
+
+
+@router.post("/plan/generate", status_code=status.HTTP_202_ACCEPTED)
+def generate_plan(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    plan = BusinessPlan(
+        startup_id=startup.id, status=BusinessPlanStatus.generating, created_by_id=user.id
+    )
+    db.add(plan)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "business.plan.generate",
+        {"startup_id": str(startup.id), "plan_id": str(plan.id)},
+        startup.id,
+    )
+    db.commit()
+    return success_response({"plan_id": str(plan.id), "status": plan.status.value})
+
+
+@router.get("/plan")
+def get_plan(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    plan = (
+        db.query(BusinessPlan)
+        .filter(BusinessPlan.startup_id == membership.startup_id)
+        .order_by(BusinessPlan.created_at.desc())
+        .first()
+    )
+    if plan is None:
+        raise NotFound()
+    return success_response(
+        {
+            "id": str(plan.id),
+            "status": plan.status.value,
+            "document_id": (str(plan.document_id) if plan.document_id else None),
+            "created_at": plan.created_at.isoformat(),
+        }
+    )
 
 
 @router.get("/{kind}")

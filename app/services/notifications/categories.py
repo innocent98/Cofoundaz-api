@@ -21,6 +21,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "business.suggestion.approved": "business",
     "business.suggestion.rejected": "business",
     "business.artifact.completed": "business",
+    "business.plan.generated": "business",
     "roadmap.replanned": "roadmap_missions",
     "roadmap.milestone.completed": "roadmap_missions",
     "mission.completed": "roadmap_missions",
