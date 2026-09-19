@@ -13,7 +13,9 @@ Commits (branch `feat/dashboard-ai-briefing`, off `develop`), oldest to newest:
 `8b6b33c` (`daily_briefings` model + migration `0027` + `BriefingStatus` enum) → `7021f9c` (AI
 briefing prompt builder + JSON schema) → `1f5ea89` (lazy generation + `get_summary` wiring) →
 `36faacc` (`ai.dashboard.briefing` worker handler) → `065cf8f` (live e2e + captures, plus a fix
-to a now-stale assertion in the existing dashboard e2e). PR to `develop` to follow.
+to a now-stale assertion in the existing dashboard e2e) → `0e6bef1` (FE guide, SOP, checklist) →
+`3c5d79a` (drop a stray unrelated `.env.example` edit). Merged into `develop` via **PR #87**
+(merge commit `6f1a29c`).
 
 ## Why
 
