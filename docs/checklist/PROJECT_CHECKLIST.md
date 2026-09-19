@@ -521,14 +521,15 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       mission endpoint is `/api/v1/missions/today` (**plural** "missions") · health recommendations
       actually materialize via `GET /health-score`'s lazy-on-read fallback, not (reliably) the
       assessment-complete request itself — a pre-existing `complete_assessment` autoflush-timing
-      quirk, documented inline, not fixed by this slice (see Follow-ups)
+      quirk, documented inline (**now fixed 2026-09-19** — `db.flush()` before the inline recompute;
+      `docs/sop/2026-09-19-complete-assessment-recompute-flush.md`)
 - [x] SOP + FE integration guide extensions (both payloads pasted verbatim from live captures) +
       this checklist reconcile — `docs/sop/2026-09-19-mission-health-ai.md`,
       `docs/fe-integration-guide-mission.md`, `docs/fe-integration-guide-health-score.md`
 - [ ] _Deferred:_ dashboard AI briefing, onboarding AI panel, and roadmap replan rationale (the
-      three remaining Module-03-deferred AI consumers) still unbuilt · the pre-existing
-      `complete_assessment` same-transaction recompute no-op (autoflush timing) is surfaced but not
-      fixed here · no structured "AI upgrade pending / still templated" signal on either
+      three remaining Module-03-deferred AI consumers) still unbuilt · ~~the pre-existing
+      `complete_assessment` same-transaction recompute no-op (autoflush timing)~~ **fixed 2026-09-19**
+      (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured "AI upgrade pending / still templated" signal on either
       `MissionTask` or `HealthRecommendation` · the live e2e only proves the single-item-rewrite
       path (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
 

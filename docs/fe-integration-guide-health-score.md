@@ -34,20 +34,17 @@ there is no async job to poll. The FE only needs to **re-fetch `GET /health-scor
 after the assessment-completion call succeeds**, to flip local state from
 `pending_assessment` to `ok`. No interval polling is needed.
 
-> ⚠️ **Correction (2026-09-19, live-verified) — the "same transaction" claim above is not
-> reliable in practice; keep calling `GET /health-score` right after completion regardless.**
-> `complete_assessment` (`app/services/assessment/service.py`) calls the recompute in the same
-> request, but a session-autoflush quirk means that call usually runs **before** the
-> just-completed `AssessmentResult` is visible to it, so `POST /assessments/{id}/complete` alone
-> does not reliably create the `HealthScore`/recommendation rows on the very first call. What
-> actually materializes them is `GET /health-score`'s own **lazy-on-read fallback**: if no
-> `HealthScore` row exists yet when this endpoint runs, it calls the same recompute itself, in a
-> fresh transaction that does see the committed assessment. This is invisible to the FE as long
-> as the guidance above is followed (call `GET /health-score` after completing the assessment) —
-> that call is what actually does the work. It also matters for recommendations: this is the
-> same lazy-read that enqueues the `ai.health.recommendations` job (§5). See
-> `docs/sop/2026-09-19-mission-health-ai.md` for the full investigation and the follow-up to fix
-> the `/complete`-path ordering directly.
+> ✅ **Update (2026-09-19, fixed & live-verified) — the "same transaction" claim above is now
+> correct.** A `2026-09-19` earlier note flagged that `complete_assessment` recomputed the Health
+> Score *before* the just-added `AssessmentResult` was visible to it (a `SessionLocal`
+> `autoflush=False` quirk), so `POST /assessments/{id}/complete` alone did not reliably create the
+> `HealthScore`/recommendation rows on the first call — only `GET /health-score`'s lazy-on-read
+> fallback did. That ordering is **now fixed**: `complete_assessment` flushes the `AssessmentResult`
+> before recomputing, so the `HealthScore`, pending recommendations, and the
+> `ai.health.recommendations` job (§5) are all created by `POST /assessments/{id}/complete` itself.
+> The `GET /health-score` re-fetch above is still the right FE step (it flips local state and
+> remains a harmless idempotent fallback if the row somehow doesn't exist), but it is no longer
+> load-bearing. See `docs/sop/2026-09-19-complete-assessment-recompute-flush.md`.
 
 ### 1a. `pending_assessment` — before the kickoff assessment
 
@@ -326,8 +323,8 @@ committed outcome.
 
 `body` starts life as the catalog's default sentence (the text embedded in
 `RECOMMENDATION_CATALOG`, e.g. the `"Put equity splits, vesting, and roles in writing..."` body
-shown above) the moment a recommendation row is generated. Loading (or recomputing) the health
-score — via the lazy-read path described in the §1 correction above — enqueues an
+shown above) the moment a recommendation row is generated. Completing the assessment (or any
+later health recompute) enqueues an
 `ai.health.recommendations` job (Module 03) that rewrites each **pending** recommendation's `body`
 with an LLM-authored, startup-specific version; this typically lands within a few seconds. There
 is no separate endpoint or webhook: **re-fetch `GET /health-score/recommendations`** (or the
@@ -473,7 +470,7 @@ in-process.
 | `POST /recommendations/{id}/dismiss` on a resolved id — 409 `RECOMMENDATION_RESOLVED` | ✅ |
 | Founder-only gate on accept/dismiss (member → 403) | ⬜ (unit-tested only, not in the live E2E journey) |
 | Cross-tenant enumeration guard — 404 on another workspace's recommendation id | ✅ |
-| Recompute triggered inline by assessment completion (no job/poll) | ⚠️ superseded — see the §1 correction above: the reliable trigger is `GET /health-score`'s lazy-read fallback, verified live in `e2e/test_health_recommendations_ai.py` |
+| Recompute triggered inline by assessment completion (no job/poll) | ✅ fixed — `complete_assessment` now flushes before recomputing, so `HealthScore` + pending recommendations + the `ai.health.recommendations` job are created by `POST /assessments/{id}/complete` itself (`tests/services/assessment/test_complete_recompute_flush.py`, autoflush=False reproduction). See §1 update. |
 | `recommendations[].body` AI-personalized via `ai.health.recommendations` worker (stub) within seconds of the lazy-read; `title` unchanged — `overview_after_complete.json` → `recommendations_after_drain.json` (`e2e/_captures/health_recommendations_ai/`) | ✅ |
 | Recommendations envelope is a flat list (`data: [...]`), not `data.recommendations` — `recommendations_after_drain.json` | ✅ |
 | `accepted`/`dismissed` recommendations never rewritten by the AI worker | ⬜ (unit-tested only — `tests/worker/test_health_recommendations_handler.py`; not re-exercised in the live e2e journey, which only has pending recommendations) |

@@ -249,16 +249,14 @@ slice closes two of the five Module-03-deferred AI consumers named across Module
 own SOPs; Module 03 stays **open**. Each of the three remaining consumers needs its own
 prompt/schema/trigger design, not a mechanical copy of this slice's pattern.
 
-**The `complete_assessment` same-transaction recompute no-op is a pre-existing gap, surfaced but
-not fixed here.** As documented in "How" above, `POST /assessments/{id}/complete` does not itself
-reliably create the `HealthScore`/recommendation rows due to an autoflush-timing quirk in
-`app/services/assessment/service.py` — only a subsequent `GET /health-score` does, via its
-lazy-on-read fallback. This is self-healing in practice (both FE guides now document the required
-`GET /health-score` follow-up call), but a client that completes an assessment and never calls
-`GET /health-score` afterward would never get recommendations — or this slice's AI personalization
-— materialized at all. Fixing the ordering directly (e.g. an explicit `db.flush()` before the
-inline recompute call in `complete_assessment`) is out of scope for this docs-only task and for
-Task 7 (test-only); it is a real follow-up against `app/services/assessment/service.py`.
+**The `complete_assessment` same-transaction recompute no-op — RESOLVED (2026-09-19).** This slice
+surfaced that `POST /assessments/{id}/complete` did not itself reliably create the
+`HealthScore`/recommendation rows due to an autoflush-timing quirk in
+`app/services/assessment/service.py` — only a subsequent `GET /health-score` did, via its
+lazy-on-read fallback. That ordering is now fixed by an explicit `db.flush()` before the inline
+recompute call, so completion materializes everything (including this slice's
+`ai.health.recommendations` job) directly. See
+`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`.
 
 **No structured "AI upgrade pending / still templated" signal.** Same gap every prior Module 03
 slice's SOP has flagged: neither `MissionTask` nor `HealthRecommendation` carries a field the FE
