@@ -207,8 +207,8 @@ Slice 1 already introduced (`LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_U
 `LLM_MAX_TOKENS`, unchanged by this slice — see that SOP's "Operate" section for the production
 requirements on those).
 
-**Rollback:** revert this slice's commits as a unit (`67471e2..`this commit`` on `develop`, or the
-whole branch if not yet merged). No migration to downgrade. The only persisted side effect is
+**Rollback:** revert this slice's commits as a unit (the range `9de888e..6135182`, or the PR #77
+merge commit `e6b0d6d` on `develop`). No migration to downgrade. The only persisted side effect is
 `BusinessCanvas.blocks`/`version` values that were written by a successful ai-fill while this slice
 was live — those rows are NOT automatically reverted by rolling back the code (there is no "undo
 ai-fill" operation); this is judged acceptable for the same reason Slice 1's narrative overwrite was:
