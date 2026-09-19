@@ -139,7 +139,11 @@ def test_dashboard_journey(base_url, make_verified_user, capture):
 
         # 2. GET /dashboard/summary -- all 9 top-level cards, health real (an
         # assessment is completed), mission drawn from the roadmap (<=3 tasks),
-        # calibration flipped, briefing/risks/opportunities still empty-state.
+        # calibration flipped. The kickoff assessment is already complete by this
+        # point, so this same call also opens the briefing gate
+        # (app/services/dashboard/service.py:get_or_generate_briefing) and creates a
+        # `generating` DailyBriefing row + enqueues ai.dashboard.briefing -- see
+        # e2e/test_dashboard_ai_briefing.py for the worker-drain -> `ready` journey.
         summary = c.get("/api/v1/dashboard/summary", headers=wh)
         assert summary.status_code == 200, summary.text
         summary_data = summary.json()["data"]
@@ -156,9 +160,9 @@ def test_dashboard_journey(base_url, make_verified_user, capture):
         assert isinstance(summary_data["upcoming"], list)
 
         assert summary_data["calibration"]["assessment_complete"] is True
-        assert summary_data["briefing"]["status"] == "empty"
-        assert summary_data["risks"]["status"] == "empty"
-        assert summary_data["opportunities"]["status"] == "empty"
+        assert summary_data["briefing"]["status"] == "generating"
+        assert summary_data["risks"]["status"] == "generating"
+        assert summary_data["opportunities"]["status"] == "generating"
         capture("dashboard", "summary", summary)
 
         # 3. Complete one mission task.

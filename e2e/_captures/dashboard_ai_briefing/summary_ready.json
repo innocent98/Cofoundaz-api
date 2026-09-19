@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-09-19T22:10:44.541687+00:00",
+      "computed_at": "2026-09-19T22:10:45.403279+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -46,7 +46,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "3024f4cb-c617-474c-9a98-b8dac20665dd",
+          "id": "6e9d7265-30d9-445f-9188-f8a2cc929218",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -57,18 +57,18 @@
           "priority": 1
         },
         {
-          "id": "83db3d39-b4bc-43ff-9a20-6d43168fe42b",
+          "id": "eaf57dab-1416-4e82-90bb-a668d68bff59",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
-          "body": "Put equity splits, vesting, and roles in writing before it is contentious. This prevents the most common founder disputes.",
+          "body": "[stub-llm] body",
           "estimated_lift": 7,
           "effort": "medium",
           "status": "pending",
           "priority": 2
         },
         {
-          "id": "d5abca0c-98f9-4516-a1f4-3b04d5d920f1",
+          "id": "c28bfbe2-8356-44d7-8366-b1af4d1060ea",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -87,10 +87,10 @@
       "streak": 0,
       "tasks": [
         {
-          "id": "5abf44a3-d039-4835-93b9-19846654b372",
-          "roadmap_task_id": "f0be400c-5240-4eb6-a5c0-81b29ac97140",
+          "id": "3221f763-6acc-4207-863d-6b06a09c2cbf",
+          "roadmap_task_id": "5a44d4fb-319d-4df9-afc1-0770c8794502",
           "title": "Run 10 customer interviews",
-          "reason": "From your 'Validate demand' milestone.",
+          "reason": "[stub-llm] reason",
           "effort": "medium",
           "status": "todo",
           "order": 0,
@@ -98,8 +98,8 @@
           "reject_reason": null
         },
         {
-          "id": "c02fc2f5-bad4-4bda-aee4-2f2c5e2cb266",
-          "roadmap_task_id": "b5dc3ccb-f766-43f8-b32f-092ba40188b6",
+          "id": "db742ed7-dfcb-469e-9d2f-2570c7b49557",
+          "roadmap_task_id": "0365befb-8874-4de4-8ae2-ab548f52e799",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -109,8 +109,8 @@
           "reject_reason": null
         },
         {
-          "id": "2af7d580-72ca-4b07-a903-c4dacc7b40dc",
-          "roadmap_task_id": "9f55992a-2da3-4a2e-ab53-47f3e130d634",
+          "id": "652be5a1-76dd-4f67-ba1b-a59e0468dad7",
+          "roadmap_task_id": "3127677c-35a3-43f3-8242-7e0174291ad7",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -133,16 +133,16 @@
       "assessment_complete": true
     },
     "briefing": {
-      "status": "generating",
-      "message": "Putting together your briefing\u2026"
+      "status": "ready",
+      "message": "[stub-llm] briefing"
     },
     "risks": {
-      "status": "generating",
-      "message": "Putting together your briefing\u2026"
+      "status": "ready",
+      "message": "[stub-llm] risks"
     },
     "opportunities": {
-      "status": "generating",
-      "message": "Putting together your briefing\u2026"
+      "status": "ready",
+      "message": "[stub-llm] opportunities"
     }
   },
   "meta": null
