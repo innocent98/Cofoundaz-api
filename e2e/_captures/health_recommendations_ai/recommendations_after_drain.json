@@ -1,0 +1,104 @@
+{
+  "data": [
+    {
+      "id": "5126fd95-7051-4d92-abdb-1b23ec7311c4",
+      "dimension": "legal",
+      "key": "legal.incorporate",
+      "title": "Complete incorporation",
+      "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
+      "estimated_lift": 9,
+      "effort": "high",
+      "status": "pending",
+      "priority": 1
+    },
+    {
+      "id": "2767435f-5fb9-4b67-9f3a-9f89fbad1340",
+      "dimension": "legal",
+      "key": "legal.founder_agreement",
+      "title": "Sign a founders' agreement",
+      "body": "[stub-llm] body",
+      "estimated_lift": 7,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 2
+    },
+    {
+      "id": "f5991bc6-05cb-4e8d-94ba-9d77d173777c",
+      "dimension": "product",
+      "key": "product.define_mvp",
+      "title": "Define your MVP scope",
+      "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
+      "estimated_lift": 8,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 3
+    },
+    {
+      "id": "49c94a5b-b41e-4626-9900-d32fdc436206",
+      "dimension": "product",
+      "key": "product.user_feedback_loop",
+      "title": "Set up a user feedback loop",
+      "body": "Put a lightweight channel in front of real users (calls, a form, a Slack) and commit to reviewing it weekly.",
+      "estimated_lift": 6,
+      "effort": "low",
+      "status": "pending",
+      "priority": 4
+    },
+    {
+      "id": "d4e317f1-59e1-408a-a4d0-644cc79e798b",
+      "dimension": "market",
+      "key": "market.icp_definition",
+      "title": "Write a one-page ICP",
+      "body": "Define your ideal customer profile: who they are, the pain, and why now. Specificity beats reach at this stage.",
+      "estimated_lift": 7,
+      "effort": "low",
+      "status": "pending",
+      "priority": 5
+    },
+    {
+      "id": "1aa51aaf-4513-40bb-ac94-f018f26db11c",
+      "dimension": "money",
+      "key": "money.runway_model",
+      "title": "Build a 12-month runway model",
+      "body": "Model monthly cash in/out for 12 months so you know your runway and the month you must raise or break even.",
+      "estimated_lift": 8,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 6
+    },
+    {
+      "id": "6c4c48e0-9199-4552-a41c-9bfb8419aa34",
+      "dimension": "market",
+      "key": "market.competitor_map",
+      "title": "Map your top 5 competitors",
+      "body": "List the five closest alternatives (including 'do nothing') and one sentence on how you differ from each.",
+      "estimated_lift": 5,
+      "effort": "low",
+      "status": "pending",
+      "priority": 7
+    },
+    {
+      "id": "d9031990-75a8-4a81-b37e-559c66ebcfe4",
+      "dimension": "team",
+      "key": "team.roles_clarity",
+      "title": "Clarify founder roles & equity",
+      "body": "Write down who owns what decisions and the equity split with vesting. Ambiguity here compounds fast.",
+      "estimated_lift": 7,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 8
+    },
+    {
+      "id": "edb29616-4781-4864-8fbf-c61ee7a9540d",
+      "dimension": "money",
+      "key": "money.pricing_experiment",
+      "title": "Run a pricing experiment",
+      "body": "Test one concrete price point with real prospects. Willingness-to-pay evidence de-risks your whole model.",
+      "estimated_lift": 6,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 9
+    }
+  ],
+  "meta": null
+}
