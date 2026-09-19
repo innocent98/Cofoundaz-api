@@ -84,7 +84,8 @@ def test_openai_client_fails_loud_on_non_2xx(monkeypatch):
 def test_openai_client_fails_loud_on_empty_completion(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
     monkeypatch.setattr(
-        httpx, "post",
+        httpx,
+        "post",
         lambda *a, **k: httpx.Response(200, json={"choices": [{"message": {"content": "  "}}]}),
     )
     with pytest.raises(RuntimeError, match="empty"):

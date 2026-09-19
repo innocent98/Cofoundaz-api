@@ -1,0 +1,75 @@
+{
+  "data": {
+    "id": "a5022b58-f3bb-4a81-891f-1a4f67d27e8d",
+    "type": "initial",
+    "status": "completed",
+    "answers_by_dimension": {
+      "product": [
+        {
+          "question_key": "product_stage",
+          "value": "live"
+        },
+        {
+          "question_key": "product_confidence",
+          "value": 3
+        }
+      ],
+      "market": [
+        {
+          "question_key": "market_clarity",
+          "value": 3
+        },
+        {
+          "question_key": "market_research",
+          "value": "deep"
+        }
+      ],
+      "money": [
+        {
+          "question_key": "has_revenue",
+          "value": "yes"
+        },
+        {
+          "question_key": "mrr",
+          "value": 1000
+        },
+        {
+          "question_key": "runway_confidence",
+          "value": 3
+        }
+      ],
+      "legal": [
+        {
+          "question_key": "incorporated",
+          "value": "yes"
+        },
+        {
+          "question_key": "ip_assigned",
+          "value": "yes"
+        }
+      ],
+      "team": [
+        {
+          "question_key": "team_size",
+          "value": "team"
+        },
+        {
+          "question_key": "team_confidence",
+          "value": 3
+        }
+      ]
+    },
+    "result": {
+      "dimension_scores": {
+        "team": 75,
+        "legal": 100,
+        "money": 71,
+        "market": 75,
+        "product": 78
+      },
+      "overall_provisional": 80,
+      "narrative": "[stub-llm] AI-generated assessment narrative."
+    }
+  },
+  "meta": null
+}

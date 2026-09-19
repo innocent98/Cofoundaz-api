@@ -26,6 +26,10 @@ MAIL_DIR="${E2E_MAIL_DIR:-./var/mail-e2e}"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${E2E_DB}"
 export EMAIL_BACKEND="file"
 export EMAIL_FILE_DIR="${MAIL_DIR}"
+# Deterministic, offline AI: both the server process and the pytest process (which
+# runs the in-process worker drain for e2e/test_ai_assessment_narrative.py) use the
+# stub LLM client -- no key, no network, no dependency on a real model being reachable.
+export LLM_PROVIDER="stub"
 export RATE_LIMIT_PER_MINUTE="100000"   # keep the limiter in the path but out of the way of journeys
 export E2E_BASE_URL="http://127.0.0.1:${PORT}"
 export E2E_MAIL_DIR="${MAIL_DIR}"
