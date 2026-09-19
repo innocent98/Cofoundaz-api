@@ -51,6 +51,15 @@ def create_notifications(
     ]
     db.add_all(rows)
     db.flush()
+    pending = db.info.setdefault("pending_realtime", [])
+    for n in rows:
+        pending.append(
+            (
+                str(n.startup_id),
+                str(n.user_id),
+                {"event": "notification.created", "notification": serialize_notification(n)},
+            )
+        )
     return rows
 
 

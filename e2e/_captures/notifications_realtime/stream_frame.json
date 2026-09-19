@@ -1,0 +1,11 @@
+{
+  "id": "4b5277e8-590e-463d-a5ce-5d1162e3807f",
+  "type": "x.realtime.test",
+  "title": "Live!",
+  "body": "",
+  "data": {
+    "hello": "world"
+  },
+  "read": false,
+  "created_at": "2026-09-19T11:20:05.249232+00:00"
+}

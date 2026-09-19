@@ -16,59 +16,64 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 1 is now built** (branch
+_Last reconciled: 2026-09-19 · **Module 20 (Notifications) Slice 4 (Real-Time SSE) is now built —
+MODULE 20 IS NOW FULLY COMPLETE, all 4 slices** (branch `feat/notifications-realtime-sse`, no
+migration) — a Redis pub/sub backplane (a SQLAlchemy `after_commit` listener publishes every
+committed notification, covering every creating call path with zero other call-site changes) plus a
+one-time-ticket-authed `GET /notifications/stream` SSE endpoint now deliver notification rows to an
+open app the instant they're created, closing the "the FE must poll, there is no push" gap every
+prior slice's FE guide called out. Proven live across two real OS processes, not just an in-process
+fake (`e2e/test_notifications_realtime.py`): the TEST process commits a notification, which publishes
+through Redis to the separate SERVER process's already-open stream. This moves Module 20 from "open,
+one slice left" to **fully complete — 10 modules now FULLY complete on `develop`; only 2 remain open
+(03, 08)**. SOP: `docs/sop/2026-09-19-notifications-realtime-sse.md`; new FE guide:
+`docs/fe-integration-guide-notifications-realtime.md` (cross-linked from the Slices 1–3 guide).
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 1 is now built** (branch
 `feat/llm-seam-assessment-narrative`, no migration) — a provider-agnostic LLM seam
 (`app/platform/llm.py`, `openai` + `stub` providers, fail-loud) with one real consumer: assessment
 completion now enqueues an `ai.assessment.narrative` job that asynchronously upgrades
-`AssessmentResult.narrative` from Module 07's templated text to an AI-generated one. This moves
-Module 03 from "not started" to "open," and **unblocks Module 08's §08.11 AI Business Plan
+`AssessmentResult.narrative` from Module 07's templated text to an AI-generated one. This moved
+Module 03 from "not started" to "open," and **unblocked Module 08's §08.11 AI Business Plan
 Generator on infrastructure** (still needs structured-output support — a later slice — see SOP
-Follow-ups). SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`.
-
-_Previously: 2026-09-18 · **Module 17 (Learning Academy) is now MERGED to `develop`**
-(PR #59, junior build; migration `0023_learning`) — a fully complete module. **Module 20
-(Notifications) Slice 3 (Scheduler/Cron) is now built** (branch `feat/notifications-scheduler`,
-migration `0024_scheduled_runs`, PR not yet opened), joining Slice 1 (PR #58) and Slice 2 (PR #60,
-`0022_notifications_email`) — only **Slice 4 (real-time/push)** remains, so Module 20 is still open
-but down to its last slice. Also merged this window: the Resend email backend went live + verified
-on staging, with clickable verification/password-reset emails (PR #67) and the `APP_BASE_URL` (FE
-origin) env wiring (PRs #63/#64/#69) — staging deploys green incl. the live-e2e gate. **9 modules
-are fully complete; 2 remain open (08, 20).** `develop` = staging, `main` = production; feature PRs
-target `develop`._
+Follow-ups). SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **9 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **3 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`); every other deferred AI consumer across the codebase remains unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on infrastructure (Module 03's seam exists) but still needs structured-output support — a later slice. **20 Notifications** — Slices 1–3 built (PRs #58/#60, Slice 3 on branch `feat/notifications-scheduler`); only Slice 4 (real-time/push) remains. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`); every other deferred AI consumer across the codebase remains unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on infrastructure (Module 03's seam exists) but still needs structured-output support — a later slice. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete (`develop`) | 9 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 3 modules | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`, no migration); SOP `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`. **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **unblocked on the Module 03 seam, still needs structured output**. **Notifications (20)** — Slices 1–3 built (In-App Feed PR #58; Email+Prefs+Worker PR #60, migration `0022_notifications_email`; **Scheduler/Cron**, migration `0024_scheduled_runs`, PR not yet opened); only **Slice 4 (real-time/push)** remains |
+| ✅ Fully complete (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60, Scheduler+Realtime PRs not yet opened)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 2 modules | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`, no migration); SOP `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`. **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **unblocked on the Module 03 seam, still needs structured output** |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
-**Health at a glance:** **128 endpoints** (directly counted from the OpenAPI schema's
-path×method operations, `app.openapi()["paths"]` — 106 paths, 128 operations; **this pass (Module
-03 Slice 1) adds zero new routes** — the LLM seam + narrative job have no API surface of their own)
-· **1216 unit tests** (real Postgres, up from 1199) + **42 live E2E** (up from 41) · **97.70%
-coverage** (floor 95; down fractionally from 97.76% — expected, new AI code added proportionally
-more lines than fully-covered lines in this one pass, still well above floor) · black 26.5.1 / isort
-6.1.0 / ruff 0.16.5 / mypy clean (directly re-run this pass — 2 pre-existing unformatted files from
-this slice's earlier tasks, `app/core/config.py` and `tests/platform/test_llm.py`, fixed in this
-pass) · pylint **9.89/10** (directly re-run this pass, unchanged — no new findings in AI/config
-code) · bandit clean, 0 findings (directly re-run this pass) · radon average complexity **A (2.36)**,
+**Health at a glance:** **130 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 108 paths, 130 operations; **this pass (Module
+20 Slice 4) adds exactly 2 new routes** — `POST /notifications/stream-ticket` and
+`GET /notifications/stream`, up from 106 paths/128 operations) · **1227 unit tests** (real Postgres,
+up from 1216) + **43 live E2E** (up from 42) · **97.36% coverage** (floor 95; down fractionally from
+97.70% — expected, this pass's own new code — the SSE endpoint/seam/listeners — is unit-tested but
+proportionally smaller relative to lines than some fully-covered modules, still well above floor) ·
+black 26.5.1 / isort 6.1.0 / ruff 0.16.5 / mypy clean (directly re-run this pass — 2 pre-existing
+unformatted files fixed in this pass, `tests/api/notifications/test_stream.py` left over from an
+earlier task in this same slice and the new `e2e/test_notifications_realtime.py`) · pylint
+**9.89/10** (directly re-run this pass, unchanged — this pass added no `app/` code, only `e2e/` +
+docs) · bandit clean, 0 findings (directly re-run this pass) · radon average complexity **A (2.36)**,
 every module MI **A** · hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit`
 clean (1 documented ignore) · zero AI-attribution trailers.
 
 _Note: the radon/hadolint/actionlint/`trivy config`/checkov/pip-audit figures above are carried
 forward unchanged from the last full lint/security sweep (not re-run in this pass — this pass's own
 CI reproduction covered black/isort/ruff/mypy/pylint/bandit/pytest+coverage/alembic heads/e2e, all
-directly re-run and recorded above, per `.superpowers/sdd/2026-09-19-llm-seam-assessment-narrative/
+directly re-run and recorded above, per `.superpowers/sdd/2026-09-19-notifications-realtime-sse/
 task-4-report.md`). `docker-compose.yml`/`docker-compose.prod.yml` gained no new service in this
-pass — the narrative job runs inside the existing `worker` process/container (see this slice's SOP's
-"Operate" section), so no new `trivy config`/checkov surface was added. Endpoint count and unit/e2e
-test counts are freshly re-counted this pass (2026-09-19), not carried over._
+pass — the SSE endpoint runs inside the existing API process(es) and the publish listener inside the
+existing DB session (see this slice's SOP's "Operate" section), so no new `trivy config`/checkov
+surface was added. Endpoint count and unit/e2e test counts are freshly re-counted this pass
+(2026-09-19), not carried over._
 
 ---
 
@@ -693,25 +698,30 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
 
-## 🟡 Module 20 — Notifications — *Slices 1–3 BUILT (In-App Feed PR #58; Email + Preferences +
-Worker PR #60; Scheduler/Cron — branch `feat/notifications-scheduler`, migration
-`0024_scheduled_runs`, PR not yet opened). OPEN: only Slice 4 (real-time/push) remains*
+## ✅ Module 20 — Notifications — *ALL 4 SLICES SHIPPED — MODULE 20 COMPLETE (In-App Feed PR #58;
+Email + Preferences + Worker PR #60; Scheduler/Cron, migration `0024_scheduled_runs`, branch
+`feat/notifications-scheduler`, PR not yet opened; Real-Time SSE, branch
+`feat/notifications-realtime-sse`, PR not yet opened)* — 2026-09-19
 
-_Module 20 decomposes into ~4 slices (agreed 2026-09-14, `docs/superpowers/specs/
+_Module 20 decomposed into 4 slices (agreed 2026-09-14, `docs/superpowers/specs/
 2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
 becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows — ✅
 merged), **2 Email delivery + per-user preferences** (Resend backend already existed; this slice
 adds the preferences model/endpoints, the in-transaction enqueue, and a new background `worker`
 process — ✅ merged), **3 Scheduler/cron** (mission 06:00, roadmap-overdue, quarterly
-re-assessment — enqueues into Slice 2's SAME `jobs` table/worker, no new infrastructure — ✅ built,
-this pass), 4 Real-time (websocket) + push — still unbuilt, the only slice left. Nearly every
-already-shipped module (Dashboard, Roadmap, Mission, Health Score, Documents, Business Builder,
-Assessment, onboarding) has a "real notification delivery — Module 20" deferred line in its own
-SOP; Slice 1 retired the in-app half, Slice 2 added the email half, Slice 3 retires the "06:00 cron
-/ overdue / quarterly re-assess" deferred lines specifically. SOPs:
+re-assessment — enqueues into Slice 2's SAME `jobs` table/worker, no new infrastructure — ✅ built),
+**4 Real-time (SSE) delivery** (a Redis pub/sub backplane + `after_commit` publish + a
+`GET /notifications/stream` SSE endpoint, one-time ticket auth, no new infrastructure — ✅ built,
+this pass — MODULE 20 NOW COMPLETE). Nearly every already-shipped module (Dashboard, Roadmap,
+Mission, Health Score, Documents, Business Builder, Assessment, onboarding) had a "real notification
+delivery — Module 20" deferred line in its own SOP; Slice 1 retired the in-app half, Slice 2 added
+the email half, Slice 3 retired the "06:00 cron / overdue / quarterly re-assess" lines, and Slice 4
+retires the remaining "no real-time delivery, the FE must poll" lines (device/closed-app push
+remains a genuinely separate, still-unbuilt follow-up — see Slice 4's SOP Follow-ups). SOPs:
 `docs/sop/2026-09-14-notifications-feed-slice1.md`,
 `docs/sop/2026-09-15-notifications-email-delivery.md`,
-`docs/sop/2026-09-18-notifications-scheduler.md`._
+`docs/sop/2026-09-18-notifications-scheduler.md`,
+`docs/sop/2026-09-19-notifications-realtime-sse.md`._
 
 **Slice 1 — In-App Feed + Fan-Out** — *🟢 MERGED to `develop` (PR #58, Tasks 1–6 +
 final-review fix wave)*
@@ -772,7 +782,8 @@ final-review fix wave)*
       of sharing one dict object. 1036 unit / 38 e2e green, `ruff`/`black`/`mypy` clean. SOP + FE
       guide updated in the same pass.
 - [ ] _Deferred:_ richer per-type/per-instance titles (today: one fixed string per event type) ·
-      notification grouping/digest · Slices 3–4 (scheduler/cron, real-time/push) — see SOP
+      notification grouping/digest · ~~Slices 3–4 (scheduler/cron, real-time/push)~~ both since
+      shipped (Slice 3 above; Slice 4, `docs/sop/2026-09-19-notifications-realtime-sse.md`) — see SOP
       Follow-ups
 
 **Slice 2 — Email Delivery + Preferences + Worker** — *✅ MERGED to `develop` (PR #60; migration
@@ -897,6 +908,65 @@ opened; migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, c
       `WORKER_MAX_ATTEMPTS` leaves its `"once"` claim in place, so that occurrence never re-fires
       (F3 — within the D5 once-ever contract; a future worker-DLQ/alerting slice should surface a
       terminal-failed `scheduled.*` job rather than this loop retrying forever) — see SOP Follow-ups
+
+**Slice 4 — Real-Time SSE Delivery** — *✅ BUILT on branch `feat/notifications-realtime-sse` (PR not
+yet opened; no migration — sole alembic head unchanged, `0025_roadmap_milestone_due_idx`)* —
+2026-09-19, **MODULE 20 NOW FULLY COMPLETE (all 4 slices)**
+- [x] Design + decisions (`.superpowers/sdd/2026-09-19-notifications-realtime-sse/`, design doc
+      `docs/superpowers/specs/2026-09-19-notifications-realtime-sse-design.md`) — Server-Sent Events
+      over a Redis pub/sub backplane, not websocket (one-way server→client, `EventSource` gives
+      auto-reconnect for free) · publish happens in a SQLAlchemy `after_commit` listener so an event
+      fires only for an actually-committed row, across every caller (request/worker/scheduler) ·
+      one-time ticket auth (native `EventSource` can't set `Authorization`; a token in the URL would
+      leak into logs) · reconcile-not-replay (no `Last-Event-ID`/server event log — FE re-fetches the
+      feed on reconnect) · fail-soft publish (SSE is a live optimization, the DB row + email job stay
+      the durable path) · device/closed-app push explicitly out of scope, a separate later slice
+- [x] Realtime seam (`app/platform/realtime.py`, new) — `channel_for(startup_id, user_id)` ·
+      fail-soft `publish_notification` (sync, via the existing `get_redis()` client) ·
+      `mint_stream_ticket`/`consume_stream_ticket` (one-time `SET NX EX` / `GETDEL` ticket pair,
+      `SSE_TICKET_TTL`) · async `subscription(channel)` context manager over a lazily-imported
+      `redis.asyncio` pubsub (no new dependency — already ships with `redis`)
+- [x] Publish-on-commit (`app/services/notifications/service.py` + `app/db/session.py`) —
+      `create_notifications` stashes one `(channel, payload)` per created row in
+      `db.info["pending_realtime"]` after flush; new `after_commit`/`after_rollback` listeners on
+      `SessionLocal` publish the stash (or drop it, no phantom events, on rollback) — automatically
+      covers every notification-creating call path with zero other call-site changes
+- [x] `POST /notifications/stream-ticket` (mints a ticket for the caller's own
+      `(user_id, startup_id)`) · `GET /notifications/stream?ticket=...` (consumes the ticket, 401
+      `INVALID_TICKET` if bad/expired/reused; re-checks active membership, 403 `FORBIDDEN`; then an
+      SSE `StreamingResponse` — initial authoritative `event: unread`, live `event:
+      notification.created` frames identical in shape to a `GET /notifications` row via the existing
+      `serialize_notification`, `: heartbeat` comments every `SSE_HEARTBEAT_INTERVAL`,
+      `X-Accel-Buffering: no`, no request-scoped DB session held open across the stream)
+- [x] Config (`app/core/config.py`) — `SSE_TICKET_TTL` (default 30s), `SSE_HEARTBEAT_INTERVAL`
+      (default 20s)
+- [x] Live E2E journey (`e2e/test_notifications_realtime.py::
+      test_realtime_notification_delivery`, 2 captures) — the one path a fake-pubsub unit test
+      cannot prove: a founder opens the SSE stream against the SERVER process; the TEST process then
+      creates + commits a notification, which fires `after_commit` IN THE TEST PROCESS → Redis
+      `PUBLISH` → the server process's already-subscribed stream forwards it down the open
+      connection — a genuine two-OS-process round trip through Redis, not two objects sharing a fake.
+      Hard `t.join(timeout=8.0)` + `assert not t.is_alive()` so a stalled stream fails loudly rather
+      than hangs the suite. Captured `stream_ticket.json` (ticket mint) + `stream_frame.json` (the
+      received `notification.created` frame)
+- [x] SOP + new FE integration guide + this checklist reconcile —
+      `docs/sop/2026-09-19-notifications-realtime-sse.md`,
+      `docs/fe-integration-guide-notifications-realtime.md` (new, cross-linked from
+      `docs/fe-integration-guide-notifications.md`'s §0/§7, whose stale "no real-time delivery"
+      claims are corrected in place rather than left to silently rot)
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (2 pre-existing
+      unformatted files fixed in this pass — `tests/api/notifications/test_stream.py`, left
+      unformatted by Task 3's narrower per-file check, and the new e2e test file) · `mypy app` clean
+      (156 files) · `pylint` 9.89/10 (≥ 9.5 floor, unchanged — this task added no `app/` code) ·
+      `bandit` clean, 0 findings · **1227 unit tests passed, 97.36% coverage** (≥ 95% floor) ·
+      exactly one alembic head (`0025_roadmap_milestone_due_idx`, unchanged from `develop` — no
+      migration in this slice) · **43 e2e passed** (up from 42) — see `.superpowers/sdd/
+      2026-09-19-notifications-realtime-sse/task-4-report.md` for the full per-gate breakdown
+- [ ] _Deferred:_ device/web push (VAPID/FCM/APNs) for a CLOSED app — the other half of "push",
+      genuinely unbuilt, its own later slice · no `Last-Event-ID` replay / server-side event log
+      (reconcile-via-refetch only) · one Redis pubsub connection per open SSE stream, not a shared
+      per-node subscriber (fine at current scale, a scaling optimization if connection counts grow) ·
+      no read-state fan-out across a user's own open tabs — see SOP Follow-ups
 
 ## ✅ Module 17 — Learning Academy — *MERGED to `develop` (PR #59; migration `0023_learning`)*
 
@@ -1400,10 +1470,12 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 - [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) built (branch
       `feat/llm-seam-assessment-narrative`); see its own section above. Every other deferred AI
       consumer (unblocks narratives/recommendations/panels across the codebase) still ahead
-- [ ] **Module 20 — Notifications** — Slice 1 (In-App Feed + Fan-Out) merged (PR #58); Slice 2
-      (Email Delivery + Preferences + Worker) merged (PR #60); Slice 3 (Scheduler/Cron) built
-      (branch `feat/notifications-scheduler`, migration `0024_scheduled_runs`, PR not yet opened);
-      see its own section above. Only **Slice 4 (real-time/push)** still ahead
+- [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
+      (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
+      merged (PR #60); Slice 3 (Scheduler/Cron) built (branch `feat/notifications-scheduler`,
+      migration `0024_scheduled_runs`, PR not yet opened); Slice 4 (Real-Time SSE) built (branch
+      `feat/notifications-realtime-sse`, no migration, PR not yet opened); see its own section above.
+      Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
