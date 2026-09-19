@@ -6,6 +6,7 @@ from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessRecord
 from app.db.models.enums import CanvasType, RecordKind
 from app.db.models.job import Job
+from app.db.models.mission import Mission, MissionTask
 from app.db.models.startup import Startup
 from app.platform.llm import get_llm_client
 from app.services.assessment.narrative import build_narrative_messages
@@ -14,6 +15,7 @@ from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
 from app.services.business.record_defs import record_json_schema
 from app.services.business.records import create_record
 from app.services.business.service import get_or_create_canvas, validate_blocks
+from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
 from app.worker.runner import register_handler
 
 
@@ -119,3 +121,41 @@ def handle_record_ai_fill(db: Session, job: Job) -> None:
 
 for _kind in RecordKind:
     register_handler(f"business.{_kind.value}.ai_fill", handle_record_ai_fill)
+
+
+def handle_mission_reason(db: Session, job: Job) -> None:
+    """Rewrite each task's reason for a mission via the LLM (structured output). No commit.
+
+    The templated reason written at generation stays as the instant value and the fallback: a
+    task the model returns no reason for is left untouched.
+    """
+    mission = db.get(Mission, job.payload["mission_id"])
+    if mission is None:
+        return  # benign no-op
+    tasks = db.query(MissionTask).filter_by(mission_id=mission.id).order_by(MissionTask.order).all()
+    if not tasks:
+        return
+    startup = db.get(Startup, mission.startup_id)
+    result = get_llm_client().complete_json(
+        build_mission_reason_messages(
+            [(t.order, t.title) for t in tasks],
+            name=(startup.name if startup else None),
+            industry=(startup.industry if startup else None),
+            stage=(startup.stage.value if (startup and startup.stage) else None),
+        ),
+        schema=mission_reason_schema(len(tasks)),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    by_order = {
+        r["order"]: r["reason"]
+        for r in (result.get("reasons") or [])
+        if isinstance(r, dict) and "order" in r and "reason" in r
+    }
+    for t in tasks:
+        new = by_order.get(t.order)
+        if new:
+            t.reason = new[:300]
+    db.flush()
+
+
+register_handler("ai.mission.reason", handle_mission_reason)
