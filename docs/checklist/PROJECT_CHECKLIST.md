@@ -16,7 +16,33 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) MERGED
+_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 4 (Mission Reason + Health
+Recommendation AI Upgrade)** (7 tasks, no migration, PR to `develop` to follow) — two more
+Module-03-deferred AI consumers upgraded from templated/catalog text to LLM-authored text, on the
+same async-upgrade pattern Slices 1–3 established: **today's mission's per-task `reason` line**
+(Module 04) now gets rewritten by a new `ai.mission.reason` job enqueued whenever
+`get_or_generate_today` generates a non-empty mission (gated on task count via a small
+`_enqueue_mission_reason` helper, so the weekends-off empty mission enqueues nothing), and **each
+health-score recommendation's `body`** (Module 06) now gets rewritten by a new
+`ai.health.recommendations` job enqueued at the end of every `recompute_health_score` call — made
+idempotent (and free of any LLM call at all once nothing is left to do) by a guard that only
+touches `pending` rows whose `body` still equals the catalog default. Both jobs re-use Slice 2's
+`complete_json` structured-output method; no new LLM capability, no migration (both fields are
+pre-existing columns). Proven live end to end (`e2e/test_mission_reason.py`,
+`e2e/test_health_recommendations_ai.py`): enqueue → in-process worker drain → structured LLM
+(stub) call → persisted overwrite, over real HTTP (48 e2e passed total, no regression). Along the
+way, live testing corrected two things the design/plan text had wrong: the mission endpoint is
+`/api/v1/missions/today` (plural), and health recommendations actually materialize via
+`GET /health-score`'s lazy-on-read fallback, not (reliably) the assessment-complete request itself
+— a pre-existing autoflush-timing quirk in `complete_assessment`, now documented inline in both FE
+guides and flagged as a follow-up, not fixed by this slice. **This does NOT complete Module 03**:
+the dashboard AI briefing, onboarding AI panel, and roadmap replan rationale (the other three
+Module-03-deferred AI consumers) remain unbuilt. **Counts unchanged: still 11 modules fully
+complete, 1 open (03), 14 not started.** SOP: `docs/sop/2026-09-19-mission-health-ai.md`; FE
+guides (extended): `docs/fe-integration-guide-mission.md`,
+`docs/fe-integration-guide-health-score.md`._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) MERGED
 (PR #81)** (3 tasks, no migration) — a real
 worker for `business.{kind}.ai_fill` (persona/revenue_stream/competitor/pricing), the job Module 08
 Slice 2 has enqueued since it shipped, with no worker ever claiming it — **the last ai_fill job type
@@ -91,12 +117,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81) — the LAST unconsumed `ai_fill` job type is now closed (Module 08's `{kind}` records), but every other deferred AI consumer across the codebase (mission reason line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) remains unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade) shipped on branch `work`, not yet merged — the mission reason line and health-score recommendations are now AI-upgraded, but the dashboard AI briefing, onboarding AI panel, and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81) — no migration on any of the 3 slices; SOP `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type is now closed; the mission reason line, health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) shipped on branch `work`, PR to follow — no migration on any of the 4 slices; SOP `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type closed in Slice 3, and the mission reason line + health-score recommendations are now AI-upgraded (Slice 4) — the dashboard AI briefing, onboarding AI panel, and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -211,7 +237,8 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 - [x] Data model: `health_scores` · `health_score_history` · `health_signals` + `health_recommendations` + migration `0005`
 - [x] Events: `healthscore.updated` · `healthscore.dropped` · `healthscore.record`
 - [x] Live E2E + SOP + **FE integration guide (captured live)** — `e2e/test_health_score.py`, `docs/sop/2026-08-19-health-score.md`, `docs/fe-integration-guide-health-score.md`
-- [ ] _Deferred:_ real benchmark cohort aggregation · async worker for the unconsumed stub jobs (Module 05) · AI-generated summary/recommendations (Module 03) — see SOP Follow-ups
+- [ ] _Deferred:_ real benchmark cohort aggregation · async worker for the unconsumed stub jobs (Module 05) · ~~AI-generated recommendation bodies~~ now shipped via **Module 03 Slice 4**
+      (`ai.health.recommendations`, 2026-09-19 — see that module's own section) — see SOP Follow-ups
 
 ---
 
@@ -266,7 +293,9 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] Generation → **inline + lazy-on-read** (`GET /missions/today` generates today's mission if none exists; no cron/worker — 06:00 cron + push deferred to Module 20)
 - [x] Roadmap link → **soft, unconstrained** `mission_tasks.roadmap_task_id` (nullable UUID, **no FK**) — mission is a snapshot, decoupled from roadmap tables
 - [x] Streak → **derived, not stored** (consecutive completed days ending today/yesterday)
-- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored rationale deferred to Module 03
+- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored
+      rewrite now shipped via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — templated
+      text stays the permanent fallback — see that module's own section)
 - [x] Spec → self-review → plan (7 TDD tasks) — `docs/superpowers/specs/2026-08-26-todays-mission-design.md`, `docs/superpowers/plans/2026-08-26-todays-mission.md`
 
 **Build (subagent-driven, Tasks 1–7):**
@@ -283,8 +312,9 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
 - [ ] _Deferred:_ ~~06:00 cron generation~~ now fires via **Module 20 Slice 3** (`mission.ready`,
       pre-generates + notifies past `MISSION_GEN_HOUR` local — see that module's own section); push
-      notification still deferred to Module 20 Slice 4 · AI-authored reason line (Module 03) · real
-      `mission.*` event delivery (Module 20) · workspace-timezone base date
+      notification still deferred to Module 20 Slice 4 · ~~AI-authored reason line~~ now shipped
+      via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
+      real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
@@ -330,10 +360,11 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
 
 ## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
 (structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
-ai-fill worker) merged (PR #81) — no migration any slice. The
-last unconsumed `ai_fill` job type is now closed; every other deferred AI consumer (mission reason
-line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale)
-remains unbuilt*
+ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade)
+shipped on branch `work`, PR to follow — no migration any slice. The
+last unconsumed `ai_fill` job type is closed (Slice 3); the mission reason line and health-score
+recommendations are now AI-upgraded (Slice 4, 2026-09-19); the dashboard briefing, onboarding
+panel, and roadmap replan rationale remain unbuilt*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
 `OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
@@ -453,11 +484,53 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       `docs/sop/2026-09-19-records-ai-fill.md`,
       `docs/fe-integration-guide-ai-canvas-fill.md` (§5)
 - [ ] _Deferred:_ no top-up/"regenerate" mode for a kind that already has some records (whole-kind
-      gate only) · every other Module-03-deferred AI consumer (mission reason line, health
-      recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) still unbuilt
-      · no structured "ai-fill failed / still empty" signal beyond the existing job status ·
-      `create_record`'s position assignment still not race-safe (pre-existing gap, unchanged) — see
-      SOP Follow-ups
+      gate only) · mission reason line and health recommendations → **shipped in Slice 4, below**
+      (2026-09-19) · dashboard briefing, onboarding panel, and roadmap replan rationale (the
+      remaining Module-03-deferred AI consumers) still unbuilt · no structured "ai-fill failed /
+      still empty" signal beyond the existing job status · `create_record`'s position assignment
+      still not race-safe (pre-existing gap, unchanged) — see SOP Follow-ups
+
+**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ shipped on branch `work`
+(7 tasks, no migration); PR to `develop` to follow — 2026-09-19*
+- [x] Design + implementation plan
+      (`.superpowers/sdd/2026-09-19-module-03-mission-health-ai/`) — same async-upgrade pattern as
+      Slices 1–3, reused twice, not redesigned · mission enqueue gated on task count (skip the
+      empty weekends-off mission) · health idempotency via a `body == catalog default` guard on
+      `pending` rows only, with a genuine no-LLM-call fast path once nothing is left to do
+- [x] `app/services/mission/ai_reason.py` (new) — `mission_reason_schema(n)` (strict,
+      `reasons: [{order, reason}]`) · `build_mission_reason_messages` (PII-free) ·
+      `handle_mission_reason` (`app/worker/handlers/ai.py`), registered `"ai.mission.reason"` —
+      rewrites only the tasks the model returned a reason for, `[:300]` truncation, templated
+      reason is the permanent fallback for any task the model skips
+- [x] `_enqueue_mission_reason` helper + call site in `get_or_generate_today`
+      (`app/services/mission/service.py`) — gated on `order` so the empty weekends-off mission
+      enqueues nothing (keeps the function under ruff's C901 ceiling)
+- [x] `app/services/health_score/ai_recommendations.py` (new) — `catalog_bodies()` ·
+      `health_recommendation_schema(keys)` (strict, `key` enum-constrained to the given pending
+      keys) · `build_health_recommendation_messages` (PII-free) · `handle_health_recommendations`
+      (`app/worker/handlers/ai.py`), registered `"ai.health.recommendations"` — idempotent,
+      `accepted`/`dismissed` rows never touched, `title` left as the catalog headline (only `body`
+      personalized)
+- [x] One new `job_dispatcher.enqueue(..., "ai.health.recommendations", ...)` call site at the end
+      of `recompute_health_score` (`app/services/health_score/service.py`)
+- [x] Live E2E (`e2e/test_mission_reason.py`, `e2e/test_health_recommendations_ai.py`, 4 captures)
+      proving enqueue → in-process worker drain → structured LLM (stub) call → persisted overwrite
+      end to end, over real HTTP, zero network calls (`LLM_PROVIDER=stub`) + full e2e suite
+      re-run green (48 e2e, no regression)
+- [x] Two live-verified corrections to the design/plan text, carried into both FE guides: the
+      mission endpoint is `/api/v1/missions/today` (**plural** "missions") · health recommendations
+      actually materialize via `GET /health-score`'s lazy-on-read fallback, not (reliably) the
+      assessment-complete request itself — a pre-existing `complete_assessment` autoflush-timing
+      quirk, documented inline, not fixed by this slice (see Follow-ups)
+- [x] SOP + FE integration guide extensions (both payloads pasted verbatim from live captures) +
+      this checklist reconcile — `docs/sop/2026-09-19-mission-health-ai.md`,
+      `docs/fe-integration-guide-mission.md`, `docs/fe-integration-guide-health-score.md`
+- [ ] _Deferred:_ dashboard AI briefing, onboarding AI panel, and roadmap replan rationale (the
+      three remaining Module-03-deferred AI consumers) still unbuilt · the pre-existing
+      `complete_assessment` same-transaction recompute no-op (autoflush timing) is surfaced but not
+      fixed here · no structured "AI upgrade pending / still templated" signal on either
+      `MissionTask` or `HealthRecommendation` · the live e2e only proves the single-item-rewrite
+      path (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
 
 ## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
 `feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
@@ -1664,10 +1737,10 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 - [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
       (structured output + canvas ai-fill worker, PR #77) merged; Slice 3 (typed records ai-fill
-      worker, closing the last unconsumed ai-fill job type) shipped on `feat/records-ai-fill`, not
-      yet merged; see its own section above. Every other deferred AI consumer (mission reason line,
-      health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) still
-      ahead
+      worker, closing the last unconsumed ai-fill job type) merged (PR #81); Slice 4 (mission
+      reason + health recommendation AI upgrade) shipped on branch `work`, not yet merged; see its
+      own section above. Dashboard briefing, onboarding panel, and roadmap replan rationale (the
+      remaining Module-03-deferred AI consumers) still ahead
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
       merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →
