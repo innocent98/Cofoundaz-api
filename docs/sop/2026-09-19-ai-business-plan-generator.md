@@ -261,3 +261,13 @@ did NOT end up needing it), the onboarding AI panel, Mission's reason line, Road
 rationale, Health Score's recommendation reasons, Learning's recommendations, and Validation Hub's
 insight synthesizer are all still on their pre-Module-03 fallback behavior — each remains its own
 future slice, unblocked on infrastructure but not started.
+
+**Worker throughput + stale-reap safety before scaling workers (whole-branch review, operational).**
+Plan generation makes 10 sequential LLM `complete` calls, so a single job holds the worker's
+`run_once` loop for its full duration (blocking `scheduler_tick` and other jobs meanwhile) — a
+throughput consideration, harmless at current volume with one worker. More important: if the worker
+is ever scaled past one replica (today `docker-compose.prod.yml` pins `container_name`, preventing
+that), note that `WORKER_STALE_SECONDS` (300) is *below* a long plan job's worst case, so the stale
+reaper could re-claim and double-run a still-running plan job → a duplicate Document, a duplicate
+`business.plan.generated` notification, and 2× LLM spend. Before scaling workers, add a job-level
+heartbeat (or raise the stale window above the max plan-job duration) so long jobs aren't reaped mid-run.
