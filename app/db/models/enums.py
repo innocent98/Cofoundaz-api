@@ -214,3 +214,9 @@ class BusinessPlanStatus(enum.StrEnum):
     generating = "generating"
     complete = "complete"
     failed = "failed"
+
+
+class BriefingStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
