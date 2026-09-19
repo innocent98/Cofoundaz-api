@@ -55,7 +55,7 @@ design for exactly one "this link is no longer valid" state (§5).
 
 ```json
 POST /api/v1/documents/{document_id}/shares
-{ "email": "shared-with-1623f86b66f1@example.com", "access_level": "view" }
+{ "email": "delivered+shared-with-6bbbda2b564f@resend.dev", "access_level": "view" }
 ```
 
 (`expires_in_days` omitted → defaults to 30, per the request model default.)
@@ -65,15 +65,15 @@ POST /api/v1/documents/{document_id}/shares
 ```json
 {
   "data": {
-    "id": "5be8545e-5dc2-4ba0-8dbb-ae8c085254b0",
-    "email": "shared-with-1623f86b66f1@example.com",
+    "id": "e9dd28ce-c7b6-4445-b3da-41294ba13a3f",
+    "email": "delivered+shared-with-6bbbda2b564f@resend.dev",
     "access_level": "view",
-    "expires_at": "2026-10-12T08:33:46.251925+00:00",
+    "expires_at": "2026-10-19T10:10:26.555734+00:00",
     "revoked_at": null,
     "last_viewed_at": null,
-    "created_at": "2026-09-12T08:33:46.247913+00:00",
+    "created_at": "2026-09-19T10:10:26.553829+00:00",
     "status": "active",
-    "link": "http://localhost/shared/vvAg3e23HwNOjrksxmoCicUqXVeY-ssTux1HzpijEuY"
+    "link": "http://localhost:3000/shared/Z0fDvGr2h3i9xOHSTlnQVhRlnNa81jy1HF9zXasOA2U"
   },
   "meta": null
 }
@@ -86,12 +86,14 @@ create, you must hold onto this response's `link` value client-side (e.g. in the
 state) — a page refresh loses it, and there is no "regenerate link" endpoint in v1.**
 
 The same link is also emailed to `email` (subject *"A document was shared with you on
-Cofoundaz"*, an `<a href>` pointing at this exact URL) — the FE does not need to send its own email;
-that happens server-side as part of this call. **⚠️ `link` is built as `{SERVER_HOST}/shared/{token}`
-— see the environment callout in §6: in staging/production today `SERVER_HOST` points at the API
-host, not the FE origin, so the emailed link currently does not open an FE page. This is a known,
-tracked gap (see the SOP), not something the FE needs to work around today, but don't be surprised
-if a staging-emailed link 200s with a raw JSON body instead of a rendered page until it's fixed.**
+Cofoundaz"*, an `<a href>` pointing at this exact URL — captured verbatim in
+`e2e/_captures/documents/share_email.json`) — the FE does not need to send its own email; that
+happens server-side as part of this call. **`link` is built as `{APP_BASE_URL}/shared/{token}` — the
+FRONTEND origin, not the API host** (see §6). So the link opens **your** app at `/shared/:token`, and
+that FE page is what calls `GET /api/v1/shared/{token}` (§5) to load and render the document. In
+staging/prod `APP_BASE_URL` is set to the FE origin (`https://app.cofoundaz.com`); locally in this
+e2e run it is `http://localhost:3000` (hence the captured `link` above). **This is the route you must
+build — see §6.**
 
 ---
 
@@ -121,7 +123,7 @@ granular (`expires_in_days: <int>`), but the FE only needs two states to match t
 
 | FE toggle state | Request field | Server behavior |
 |---|---|---|
-| **On (default)** | omit `expires_in_days`, or send `30` | `expires_at` set to `created_at + 30 days` (captured live: `2026-09-12T08:20:50` → `2026-10-12T08:20:50`, exactly +30d) |
+| **On (default)** | omit `expires_in_days`, or send `30` | `expires_at` set to `created_at + 30 days` (captured live: `2026-09-19T10:10:26` → `2026-10-19T10:10:26`, exactly +30d) |
 | **Off ("never expires")** | `expires_in_days: 0` or `expires_in_days: null` | `expires_at: null` in the response — verified in `tests/services/documents/test_shares.py::test_create_no_expiry_when_falsy` (not captured live in this journey; the live journey exercises the default-30-day path only, see §8) |
 
 **`expires_at: null` is a real, permanent state, not "not yet expired" — do not treat a `null`
@@ -145,13 +147,13 @@ active/expired/revoked — the FE greys out non-active rows using `status`, see 
   "data": {
     "shares": [
       {
-        "id": "5be8545e-5dc2-4ba0-8dbb-ae8c085254b0",
-        "email": "shared-with-1623f86b66f1@example.com",
+        "id": "e9dd28ce-c7b6-4445-b3da-41294ba13a3f",
+        "email": "delivered+shared-with-6bbbda2b564f@resend.dev",
         "access_level": "view",
-        "expires_at": "2026-10-12T08:33:46.251925+00:00",
+        "expires_at": "2026-10-19T10:10:26.555734+00:00",
         "revoked_at": null,
-        "last_viewed_at": "2026-09-12T08:33:46.262851+00:00",
-        "created_at": "2026-09-12T08:33:46.247913+00:00",
+        "last_viewed_at": "2026-09-19T10:10:26.566759+00:00",
+        "created_at": "2026-09-19T10:10:26.553829+00:00",
         "status": "active"
       }
     ]
@@ -177,15 +179,15 @@ this is the comp's `Document | Shared with | Access | Last viewed` table.
   "data": {
     "shares": [
       {
-        "id": "5be8545e-5dc2-4ba0-8dbb-ae8c085254b0",
-        "email": "shared-with-1623f86b66f1@example.com",
+        "id": "e9dd28ce-c7b6-4445-b3da-41294ba13a3f",
+        "email": "delivered+shared-with-6bbbda2b564f@resend.dev",
         "access_level": "view",
-        "expires_at": "2026-10-12T08:33:46.251925+00:00",
+        "expires_at": "2026-10-19T10:10:26.555734+00:00",
         "revoked_at": null,
-        "last_viewed_at": "2026-09-12T08:33:46.262851+00:00",
-        "created_at": "2026-09-12T08:33:46.247913+00:00",
+        "last_viewed_at": "2026-09-19T10:10:26.566759+00:00",
+        "created_at": "2026-09-19T10:10:26.553829+00:00",
         "status": "active",
-        "document_id": "3a9a48ca-8cef-4ee4-a387-c340d9de2e2d"
+        "document_id": "a9f9c75d-6fe7-4e4a-9a71-843b9d75cbfc"
       }
     ]
   },
@@ -218,7 +220,7 @@ brevity — the live capture has all 9):
 {
   "data": {
     "document": {
-      "id": "3a9a48ca-8cef-4ee4-a387-c340d9de2e2d",
+      "id": "a9f9c75d-6fe7-4e4a-9a71-843b9d75cbfc",
       "kind": "business_plan",
       "title": "Business Plan",
       "status": "draft",
@@ -226,15 +228,15 @@ brevity — the live capture has all 9):
       "folder": null,
       "template_key": "business_plan",
       "version": 1,
-      "updated_at": "2026-09-12T08:33:46.235982+00:00",
+      "updated_at": "2026-09-19T10:10:26.543837+00:00",
       "sections": [
-        { "id": "ba7d6484-878e-4c91-a10f-da13faa0b5be", "body": "", "heading": "Executive Summary" },
-        { "id": "590fc56f-406f-4324-84cb-6f9cd400eecc", "body": "", "heading": "Problem" },
-        { "id": "ac8a5503-8628-4a42-ab26-1bc5311d9450", "body": "", "heading": "Solution" }
+        { "id": "6e916097-5ca7-4e2f-8649-64f49c986c11", "body": "", "heading": "Executive Summary" },
+        { "id": "b9534027-b23a-4501-add7-2dd87be57c5e", "body": "", "heading": "Problem" },
+        { "id": "e1a8911e-883b-41e0-b746-05fb90d3a6e3", "body": "", "heading": "Solution" }
       ]
     },
     "access_level": "view",
-    "expires_at": "2026-10-12T08:33:46.251925+00:00"
+    "expires_at": "2026-10-19T10:10:26.555734+00:00"
   },
   "meta": null
 }
@@ -265,17 +267,30 @@ one added later without a deliberate, separate design decision.
 
 ---
 
-## 6. Environment note — `SERVER_HOST` and the emailed link
+## 6. The FE route to build — `/shared/:token` — and the `APP_BASE_URL` env
 
-The link in §1 is built server-side as `f"{SERVER_HOST}/shared/{raw_token}"`. In this local e2e
-capture, `SERVER_HOST=http://localhost` (the dev default), so the captured `link` above is
-`http://localhost/shared/...`. **Today, in both staging and production config, `SERVER_HOST` is set
-to the API's own host** (`https://staging-api.cofoundaz.com` / `https://api.cofoundaz.com`), **not
-the FE's origin.** That means the email currently links straight at the API, which returns the raw
-JSON from §5 rather than a rendered FE page. This is a tracked follow-up (see the SOP), not
-something already fixed — **don't build against an assumption that the emailed link opens an FE
-route today.** Once fixed, the FE should expect a route like `/shared/:token` in its own app that
-calls `GET /api/v1/shared/{token}` client-side and renders the result.
+**Fixed (2026-09-19):** the emailed/returned `link` now points at the **FE origin**, built as
+`f"{APP_BASE_URL}/shared/{raw_token}"` (falling back to `SERVER_HOST` only when `APP_BASE_URL` is
+unset). This mirrors the auth verify/reset emails, which already build off `APP_BASE_URL`. In this
+local e2e run `APP_BASE_URL=http://localhost:3000`, so the captured `link` is
+`http://localhost:3000/shared/...`; in **staging/production** `APP_BASE_URL` is set to the FE origin
+(`https://app.cofoundaz.com`), so the recipient lands on **your app**, not the API.
+
+**What the FE must build:** a route **`/shared/:token`** in the frontend app. That page:
+
+1. reads `:token` from its own URL,
+2. calls **`GET /api/v1/shared/{token}`** (§5) client-side — **no auth headers** (this is the one
+   public endpoint; the recipient has no login),
+3. renders the returned `document` (same full shape as `GET /documents/{id}`) read-only, and
+4. handles the uniform `404` (§5) as a single "this link is no longer valid" state.
+
+The email body is captured verbatim in `e2e/_captures/documents/share_email.json` — the `<a href>`
+in it is exactly the `link` from §1, so the token the FE parses out of the URL is the one §5 accepts.
+
+> **Env requirement:** `APP_BASE_URL` must be set to the FE origin in every non-local environment
+> (already set on staging/prod per prior work). If it is ever left blank, the link silently falls
+> back to `SERVER_HOST` (the API host) and the old broken behaviour returns — so treat `APP_BASE_URL`
+> as a required deploy var, not an optional one.
 
 ---
 
@@ -306,7 +321,9 @@ every response body is captured verbatim in the named file.
 | Behaviour | Verified live? | Source |
 |---|---|---|
 | `POST /documents/{id}/shares` — JSON body, 201, response includes `link` | ✅ | `share_create.json` |
-| `link` is the same value that was actually emailed (read back out of the file mail dir) | ✅ | `e2e/test_documents.py::test_documents_sharing_journey` (asserts `_latest_share_link(...) == link`); no separate capture file — the equality check happens in-test |
+| `link` is the same value that was actually emailed (read back out of the file mail dir) | ✅ | `e2e/test_documents.py::test_documents_sharing_journey` (asserts `_latest_share_link(...) == link`); emailed body captured verbatim in `share_email.json` |
+| `link` uses the **FE origin** (`APP_BASE_URL`), not the API host — opens `/shared/:token` | ✅ | `share_create.json` / `share_email.json` (`http://localhost:3000/shared/...`, the e2e `APP_BASE_URL`); unit: `tests/api/test_document_shares.py::test_share_link_uses_app_base_url_frontend_origin` |
+| Falls back to `SERVER_HOST` when `APP_BASE_URL` is unset (trailing slash trimmed) | ⚠️ unit only | `tests/api/test_document_shares.py::test_share_link_falls_back_to_server_host_when_app_base_url_empty` |
 | Default expiry = 30 days when `expires_in_days` omitted | ✅ | `share_create.json` (`created_at` → `expires_at` = +30d) |
 | `expires_in_days: 0`/`null` → `expires_at: null` ("never expires") | ⚠️ unit only | `tests/services/documents/test_shares.py::test_create_no_expiry_when_falsy` |
 | `GET /shared/{token}` — public, **no auth header at all**, returns the document + `access_level` + `expires_at` | ✅ | `share_open.json` |

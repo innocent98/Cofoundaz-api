@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
 
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.document import DocumentFile
 from app.db.models.enums import MembershipRole, StartupStage
+from app.platform.email import ConsoleEmailSender
 from tests.factories import create_membership, create_startup, create_user
 
 
@@ -101,6 +103,44 @@ def test_mentor_cannot_create_403(client, db):
         headers=h,
     )
     assert r.status_code == 403
+
+
+def test_signer_links_use_app_base_url_frontend_origin(client, db, monkeypatch):
+    """`signer_links` (returned + emailed on create) must point at the FRONTEND
+    origin (`APP_BASE_URL`) so a signer lands on the FE `/sign/{token}` page —
+    not the API origin."""
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
+    _u, _s, f, h = _member(db)
+    created = client.post(
+        f"/api/v1/documents/files/{f.id}/signature-requests",
+        json={"signers": [{"email": "a@x.com"}, {"email": "b@x.com"}]},
+        headers=h,
+    )
+    assert created.status_code == 201
+    links = created.json()["data"]["signer_links"]
+    assert links and all(link.startswith("https://app.example.test/sign/") for link in links)
+
+
+def test_remind_email_link_uses_app_base_url_frontend_origin(client, db, monkeypatch):
+    """The reminder resends a signing link by email only (no link in the response
+    body), so assert on the captured email HTML: it too must use the FE origin."""
+    import app.api.v1.endpoints.documents as documents_ep
+
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
+    sender = ConsoleEmailSender()
+    monkeypatch.setattr(documents_ep, "get_email_sender", lambda: sender)
+
+    _u, _s, f, h = _member(db)
+    created = client.post(
+        f"/api/v1/documents/files/{f.id}/signature-requests",
+        json={"signers": [{"email": "a@x.com"}]},
+        headers=h,
+    )
+    rid = created.json()["data"]["id"]
+    r = client.post(f"/api/v1/documents/signature-requests/{rid}/remind", headers=h)
+    assert r.status_code == 200 and r.json()["data"]["reminded"] == 1
+    # newest email is the reminder; its clickable link uses the FE origin
+    assert 'href="https://app.example.test/sign/' in sender.sent[-1].html
 
 
 def test_unknown_sign_token_404(client, db):

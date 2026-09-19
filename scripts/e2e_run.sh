@@ -26,6 +26,12 @@ MAIL_DIR="${E2E_MAIL_DIR:-./var/mail-e2e}"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${E2E_DB}"
 export EMAIL_BACKEND="file"
 export EMAIL_FILE_DIR="${MAIL_DIR}"
+# The FE origin for emailed deep links (share `/shared/{token}`, signing `/sign/{token}`,
+# and auth verify/reset links). Distinct from the API origin (E2E_BASE_URL, :8010) so the
+# captured emails prove the link opens an FE page, not an API route -- exactly how
+# staging/prod are configured (APP_BASE_URL=https://app.cofoundaz.com). Exported to BOTH
+# the uvicorn server and this pytest process so the e2e can assert the link against it.
+export APP_BASE_URL="${E2E_APP_BASE_URL:-http://localhost:3000}"
 # Deterministic, offline AI: both the server process and the pytest process (which
 # runs the in-process worker drain for e2e/test_ai_assessment_narrative.py) use the
 # stub LLM client -- no key, no network, no dependency on a real model being reachable.

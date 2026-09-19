@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.document import Document
 from app.db.models.enums import MembershipRole, StartupStage
@@ -47,6 +48,37 @@ def test_list_and_revoke_then_open_404(client, db):
     ]
     assert client.delete(f"/api/v1/documents/{doc.id}/shares/{sid}", headers=h).status_code == 200
     assert client.get(f"/api/v1/shared/{token}").status_code == 404
+
+
+def test_share_link_uses_app_base_url_frontend_origin(client, db, monkeypatch):
+    """The emailed/returned share link must point at the FRONTEND origin
+    (`APP_BASE_URL`) so the recipient lands on the FE `/shared/{token}` page —
+    not the API origin. Mirrors the auth-email base pattern (see
+    tests/services/auth/test_emails.py)."""
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
+    _u, _s, doc, h = _member(db)
+    r = client.post(
+        f"/api/v1/documents/{doc.id}/shares",
+        json={"email": "tayo@lawfirm.ng", "access_level": "view"},
+        headers=h,
+    )
+    assert r.status_code == 201
+    assert r.json()["data"]["link"].startswith("https://app.example.test/shared/")
+
+
+def test_share_link_falls_back_to_server_host_when_app_base_url_empty(client, db, monkeypatch):
+    """With no FE origin configured, the link falls back to `SERVER_HOST` and
+    trims any trailing slash (no `//shared`)."""
+    monkeypatch.setattr(settings, "APP_BASE_URL", "")
+    monkeypatch.setattr(settings, "SERVER_HOST", "https://api.example.test/")
+    _u, _s, doc, h = _member(db)
+    link = client.post(
+        f"/api/v1/documents/{doc.id}/shares",
+        json={"email": "a@y.com"},
+        headers=h,
+    ).json()["data"]["link"]
+    assert link.startswith("https://api.example.test/shared/")
+    assert "https://api.example.test//shared" not in link
 
 
 def test_unknown_token_404(client, db):
