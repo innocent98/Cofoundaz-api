@@ -70,6 +70,17 @@ _MAX_FILE_BYTES = 15 * 1024 * 1024
 _CHUNK_BYTES = 64 * 1024
 
 
+def _fe_base_url() -> str:
+    """The FRONTEND app origin for emailed deep links, falling back to the API origin.
+
+    Share (`/shared/{token}`) and signing (`/sign/{token}`) links are meant to open
+    FE pages, not API routes -- so they must be built off `APP_BASE_URL` (the FE
+    origin), not `SERVER_HOST` (the API origin). Mirrors the auth-email pattern in
+    app/services/auth/emails.py::_base_url so both flows resolve links the same way.
+    """
+    return (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
+
+
 def _startup(db: Session, membership: Membership) -> Startup:
     return db.query(Startup).filter(Startup.id == membership.startup_id).one()
 
@@ -271,7 +282,7 @@ def create_share_endpoint(
         access_level=body.access_level,
         expires_in_days=body.expires_in_days,
     )
-    link = f"{settings.SERVER_HOST}/shared/{raw}"
+    link = f"{_fe_base_url()}/shared/{raw}"
     # Best-effort: the share is created regardless of email delivery. The link is
     # returned in the response so the founder can copy it even if the mail send
     # fails (a flaky provider must not 500 share creation). Auth/invite sends
@@ -359,7 +370,7 @@ def create_signature_request_endpoint(
         signers=[s.model_dump() for s in body.signers],
         expires_in_days=body.expires_in_days,
     )
-    links = [f"{settings.SERVER_HOST}/sign/{raw}" for _signer, raw in pairs]
+    links = [f"{_fe_base_url()}/sign/{raw}" for _signer, raw in pairs]
     for (signer, _raw), link in zip(pairs, links, strict=True):
         _signature_email(signer.email, link, title)
     db.commit()
@@ -386,7 +397,7 @@ def remind_signature_request_endpoint(
     req = get_request(db, membership, request_id)
     pairs = reissue_unsigned(db, req)  # rotates unsigned signers' tokens; 409 if not active
     for signer, raw in pairs:
-        _signature_email(signer.email, f"{settings.SERVER_HOST}/sign/{raw}", req.title)
+        _signature_email(signer.email, f"{_fe_base_url()}/sign/{raw}", req.title)
     db.commit()
     return success_response({"reminded": len(pairs)})
 

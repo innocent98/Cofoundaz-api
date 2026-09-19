@@ -33,8 +33,8 @@ Every success response is the standard envelope `{"data": …, "meta": null}`. E
 A signature request targets one **already-uploaded file** (Slice 2's `document_files`, not a
 Slice 1 structured `document`) and lists N signers by email. `POST
 /documents/files/{file_id}/signature-requests` creates the request, emails each signer a secure
-`{SERVER_HOST}/sign/{token}` link, and returns every one of those links **once**, in the create
-response only. A signer opens their link with **zero authentication** — no login, no workspace
+`{APP_BASE_URL}/sign/{token}` link (the **FE** origin — see §1), and returns every one of those links
+**once**, in the create response only. A signer opens their link with **zero authentication** — no login, no workspace
 membership — via `GET /sign/{token}`, reviews the file, and signs by **typing their name**
 (`POST /sign/{token}`). This is a **simple electronic signature** (typed name + a server-recorded
 audit trail), not a certificate-based/notarized signature — see §8's legal caveat before shipping
@@ -63,11 +63,11 @@ Request body:
 **Request** (this journey's create call, two signers):
 
 ```json
-POST /api/v1/documents/files/a946b250-dfb8-462c-9808-34e35bc02848/signature-requests
+POST /api/v1/documents/files/067b0aad-43c8-469e-a02f-ca580508c9ce/signature-requests
 {
   "signers": [
-    { "email": "signer-one-4e0d876104fa@example.com", "name": "Ada Investor" },
-    { "email": "signer-two-50ccede83c5c@example.com", "name": "Bello Legal" }
+    { "email": "delivered+signer-one-9c893248fbd4@resend.dev", "name": "Ada Investor" },
+    { "email": "delivered+signer-two-505c5afa4fd5@resend.dev", "name": "Bello Legal" }
   ],
   "title": "Investor Agreement"
 }
@@ -78,19 +78,19 @@ POST /api/v1/documents/files/a946b250-dfb8-462c-9808-34e35bc02848/signature-requ
 ```json
 {
   "data": {
-    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
+    "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
     "title": "Investor Agreement",
     "status": "awaiting",
-    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
+    "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
     "filename": "investor-agreement.pdf",
     "signed_count": 0,
     "total": 2,
-    "expires_at": "2026-09-28T13:13:40.351626+00:00",
+    "expires_at": "2026-10-03T10:10:27.190291+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T13:13:40.347874+00:00",
+    "created_at": "2026-09-19T10:10:27.186441+00:00",
     "signers": [
       {
-        "email": "signer-one-4e0d876104fa@example.com",
+        "email": "delivered+signer-one-9c893248fbd4@resend.dev",
         "name": "Ada Investor",
         "position": 0,
         "status": "pending",
@@ -98,7 +98,7 @@ POST /api/v1/documents/files/a946b250-dfb8-462c-9808-34e35bc02848/signature-requ
         "signed_name": null
       },
       {
-        "email": "signer-two-50ccede83c5c@example.com",
+        "email": "delivered+signer-two-505c5afa4fd5@resend.dev",
         "name": "Bello Legal",
         "position": 1,
         "status": "pending",
@@ -107,8 +107,8 @@ POST /api/v1/documents/files/a946b250-dfb8-462c-9808-34e35bc02848/signature-requ
       }
     ],
     "signer_links": [
-      "http://localhost/sign/76eb_OxpfSuzS3ZA-C7AT6LrEskRng_TRVE7E0_uIs0",
-      "http://localhost/sign/5_3HoWCZ-G15TuufZcw5nEsIU34mGScnqRSTBG1YRyc"
+      "http://localhost:3000/sign/-5ApVpq-Lkl6wkVHpnRo2AcZPZ5Tqzc5yGcFFc8clrY",
+      "http://localhost:3000/sign/rWw0hICPo7FsnAOh3ooWbASsjob0fB98PJT1YaNyD0c"
     ]
   },
   "meta": null
@@ -125,16 +125,18 @@ signature" flow wants to show/copy a signer's link immediately after create, hol
 response's `signer_links` client-side — a page refresh loses it.**
 
 The same links are also emailed to each signer (subject *"Signature requested: {title}"*, an
-`<a href>` pointing at the exact link) — confirmed live in this journey by reading the link back out
-of the captured signature email and asserting it equals `signer_links[i]`. The FE does not need to
-send its own email.
+`<a href>` pointing at the exact link — captured verbatim in
+`e2e/_captures/documents/signature_email.json`) — confirmed live in this journey by reading the link
+back out of the captured signature email and asserting it equals `signer_links[i]`. The FE does not
+need to send its own email.
 
-**⚠️ Same `SERVER_HOST` caveat as Slice 3's Sharing guide:** `signer_links` are built as
-`{SERVER_HOST}/sign/{token}`. In this local e2e capture `SERVER_HOST=http://localhost`; in
-staging/production `SERVER_HOST` currently points at the **API's own host**, not the FE origin (see
-that guide's §6 and this slice's SOP) — the same fix is needed before an emailed signing link opens
-an FE page instead of raw JSON. Not re-litigated here; flagged so the FE doesn't assume it's already
-fixed for this slice just because it's a new endpoint.
+**✅ FE-origin fix (2026-09-19), same as Slice 3's Sharing:** `signer_links` are now built as
+`{APP_BASE_URL}/sign/{token}` — the **FRONTEND** origin, not the API host — falling back to
+`SERVER_HOST` only when `APP_BASE_URL` is unset. In this local e2e run `APP_BASE_URL=http://localhost:3000`
+(hence the captured links above); in staging/prod it is the FE origin (`https://app.cofoundaz.com`).
+So each signing link opens **your** app at **`/sign/:token`**, and that FE page calls `GET /sign/{token}`
+(§3) and `POST /sign/{token}` (§4). **This is the route you must build** — read §3–§4 for the two
+calls it makes. See the Sharing guide §6 for the shared `APP_BASE_URL` deploy requirement.
 
 ---
 
@@ -165,16 +167,16 @@ signing):
   "data": {
     "request": { "title": "Investor Agreement", "status": "awaiting" },
     "file": {
-      "id": "a946b250-dfb8-462c-9808-34e35bc02848",
+      "id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
       "filename": "investor-agreement.pdf",
       "content_type": "application/pdf",
       "size_bytes": 47,
       "folder": null,
-      "url": "var/storage/documents/5d1f26ba-4c9f-4199-a909-a3219661a6a6/1e0d6b20088d4273984666e98ea297a2.pdf",
-      "uploaded_at": "2026-09-14T13:13:40.338718+00:00"
+      "url": "var/storage/documents/b55d87ab-83ee-441c-b01b-9d7213321fd7/d05df11f91a040258a741ebf696ba2f4.pdf",
+      "uploaded_at": "2026-09-19T10:10:27.175617+00:00"
     },
     "signer": {
-      "email": "signer-one-4e0d876104fa@example.com",
+      "email": "delivered+signer-one-9c893248fbd4@resend.dev",
       "name": "Ada Investor"
     }
   },
@@ -211,7 +213,7 @@ VALIDATION_ERROR` (not exercised live; same shape as every other 422 in this API
 **Request** (first signer, this journey):
 
 ```json
-POST /api/v1/sign/76eb_OxpfSuzS3ZA-C7AT6LrEskRng_TRVE7E0_uIs0
+POST /api/v1/sign/-5ApVpq-Lkl6wkVHpnRo2AcZPZ5Tqzc5yGcFFc8clrY
 { "typed_name": "Ada Investor" }
 ```
 
@@ -221,16 +223,16 @@ the request **stays `awaiting`**, `signed_count` moves to 1:
 ```json
 {
   "data": {
-    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
+    "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
     "title": "Investor Agreement",
     "status": "awaiting",
-    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
+    "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
     "filename": "investor-agreement.pdf",
     "signed_count": 1,
     "total": 2,
-    "expires_at": "2026-09-28T13:13:40.351626+00:00",
+    "expires_at": "2026-10-03T10:10:27.190291+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T13:13:40.347874+00:00"
+    "created_at": "2026-09-19T10:10:27.186441+00:00"
   },
   "meta": null
 }
@@ -243,16 +245,16 @@ the request **stays `awaiting`**, `signed_count` moves to 1:
 ```json
 {
   "data": {
-    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
+    "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
     "title": "Investor Agreement",
     "status": "complete",
-    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
+    "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
     "filename": "investor-agreement.pdf",
     "signed_count": 2,
     "total": 2,
-    "expires_at": "2026-09-28T13:13:40.351626+00:00",
-    "completed_at": "2026-09-14T13:13:40.395673+00:00",
-    "created_at": "2026-09-14T13:13:40.347874+00:00"
+    "expires_at": "2026-10-03T10:10:27.190291+00:00",
+    "completed_at": "2026-09-19T10:10:27.249267+00:00",
+    "created_at": "2026-09-19T10:10:27.186441+00:00"
   },
   "meta": null
 }
@@ -400,31 +402,31 @@ Both are **workspace-scoped, member-readable, and never carry `signer_links`** (
 ```json
 {
   "data": {
-    "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
+    "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
     "title": "Investor Agreement",
     "status": "complete",
-    "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
+    "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
     "filename": "investor-agreement.pdf",
     "signed_count": 2,
     "total": 2,
-    "expires_at": "2026-09-28T13:13:40.351626+00:00",
-    "completed_at": "2026-09-14T13:13:40.395673+00:00",
-    "created_at": "2026-09-14T13:13:40.347874+00:00",
+    "expires_at": "2026-10-03T10:10:27.190291+00:00",
+    "completed_at": "2026-09-19T10:10:27.249267+00:00",
+    "created_at": "2026-09-19T10:10:27.186441+00:00",
     "signers": [
       {
-        "email": "signer-one-4e0d876104fa@example.com",
+        "email": "delivered+signer-one-9c893248fbd4@resend.dev",
         "name": "Ada Investor",
         "position": 0,
         "status": "signed",
-        "signed_at": "2026-09-14T13:13:40.380127+00:00",
+        "signed_at": "2026-09-19T10:10:27.226000+00:00",
         "signed_name": "Ada Investor"
       },
       {
-        "email": "signer-two-50ccede83c5c@example.com",
+        "email": "delivered+signer-two-505c5afa4fd5@resend.dev",
         "name": "Bello Legal",
         "position": 1,
         "status": "signed",
-        "signed_at": "2026-09-14T13:13:40.395673+00:00",
+        "signed_at": "2026-09-19T10:10:27.249267+00:00",
         "signed_name": "Bello Legal"
       }
     ]
@@ -444,19 +446,19 @@ against the same ephemeral database, filter client-side on `id` if you diff agai
   "data": {
     "requests": [
       {
-        "id": "dc067f1a-a569-4f32-93a8-ef9641ea4753",
+        "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
         "title": "Investor Agreement",
         "status": "complete",
-        "file_id": "a946b250-dfb8-462c-9808-34e35bc02848",
+        "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
         "filename": "investor-agreement.pdf",
         "signed_count": 2,
         "total": 2,
-        "expires_at": "2026-09-28T13:13:40.351626+00:00",
-        "completed_at": "2026-09-14T13:13:40.395673+00:00",
-        "created_at": "2026-09-14T13:13:40.347874+00:00",
+        "expires_at": "2026-10-03T10:10:27.190291+00:00",
+        "completed_at": "2026-09-19T10:10:27.249267+00:00",
+        "created_at": "2026-09-19T10:10:27.186441+00:00",
         "signers": [
-          { "email": "signer-one-4e0d876104fa@example.com", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-14T13:13:40.380127+00:00", "signed_name": "Ada Investor" },
-          { "email": "signer-two-50ccede83c5c@example.com", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-14T13:13:40.395673+00:00", "signed_name": "Bello Legal" }
+          { "email": "delivered+signer-one-9c893248fbd4@resend.dev", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-19T10:10:27.226000+00:00", "signed_name": "Ada Investor" },
+          { "email": "delivered+signer-two-505c5afa4fd5@resend.dev", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-19T10:10:27.249267+00:00", "signed_name": "Bello Legal" }
         ]
       }
     ]
@@ -539,7 +541,9 @@ every response body is captured verbatim in the named file.
 | Behaviour | Verified live? | Source |
 |---|---|---|
 | `POST /documents/files/{id}/signature-requests` — 2 signers, 201, response includes `signer_links` (once) | ✅ | `signature_create.json` |
-| `signer_links[i]` is the same value actually emailed to `signers[i].email` (read back out of the file mail dir) | ✅ | `e2e/test_documents.py::test_documents_esignature_journey` (asserts `_latest_sign_link(...) == signer_links[i]` for both signers); no separate capture file — the equality check happens in-test |
+| `signer_links[i]` is the same value actually emailed to `signers[i].email` (read back out of the file mail dir) | ✅ | `e2e/test_documents.py::test_documents_esignature_journey` (asserts `_latest_sign_link(...) == signer_links[i]` for both signers); emailed body captured verbatim in `signature_email.json` |
+| `signer_links` use the **FE origin** (`APP_BASE_URL`), not the API host — open `/sign/:token` | ✅ | `signature_create.json` / `signature_email.json` (`http://localhost:3000/sign/...`, the e2e `APP_BASE_URL`); unit: `tests/api/test_signatures.py::test_signer_links_use_app_base_url_frontend_origin` |
+| `remind`'s re-emailed link also uses the FE origin (`APP_BASE_URL`) | ⚠️ unit only | `tests/api/test_signatures.py::test_remind_email_link_uses_app_base_url_frontend_origin` |
 | `GET /sign/{token}` — public, **no auth header at all**, returns file + request + signer identity | ✅ | `signature_sign_view.json`, `signature_sign_view_second.json` |
 | `POST /sign/{token}` — first of two signers — request stays `awaiting`, `signed_count: 1` | ✅ | `signature_sign_first.json` |
 | `POST /sign/{token}` — last signer — request flips to `complete`, `completed_at` set | ✅ | `signature_sign_second.json` |

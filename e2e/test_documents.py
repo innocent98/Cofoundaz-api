@@ -59,6 +59,25 @@ import httpx
 _SHARE_LINK_RE = re.compile(r'href="([^"]*/shared/[^"]+)"')
 _SIGN_LINK_RE = re.compile(r'href="([^"]*/sign/[^"]+)"')
 
+# The FE origin the server was booted with (scripts/e2e_run.sh exports APP_BASE_URL to
+# both processes). Empty when someone runs `pytest e2e/` without the runner; the
+# journeys below only assert the FE-origin prefix when it is set. See the SOP and
+# docs/fe-integration-guide-documents-{sharing,esignature}.md.
+_FE_BASE = os.environ.get("APP_BASE_URL", "").rstrip("/")
+
+
+def _latest_email_for(email: str) -> dict:
+    """The newest captured email dict for `email`, read straight from the file
+    mail dir (same `E2E_MAIL_DIR` the link readers above use). Returned whole so
+    the journeys can capture the real delivered share/signature message body."""
+    mail_dir = Path(os.environ.get("E2E_MAIL_DIR", "./var/mail-e2e"))
+    files = sorted(mail_dir.glob("*.json"))
+    for f in reversed(files):  # newest first
+        data = json.loads(f.read_text())
+        if data["to"].lower() == email.lower():
+            return data
+    raise AssertionError(f"no email found for {email}")
+
 
 def _latest_share_link(email: str) -> str:
     """Reads the raw share link out of the file-backend mail dir.
@@ -306,7 +325,9 @@ def test_documents_files_journey(base_url, make_verified_user, capture):
         capture("documents", "file_get_after_delete", gone)
 
 
-def test_documents_sharing_journey(base_url, make_verified_user, unique_email, capture):
+def test_documents_sharing_journey(
+    base_url, make_verified_user, unique_email, capture, capture_json
+):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         # 0. Onboard a founder -- same shape as the journeys above.
         u = make_verified_user(c)
@@ -352,6 +373,14 @@ def test_documents_sharing_journey(base_url, make_verified_user, unique_email, c
         # href directly instead of reusing `mailbox.latest_token_for`).
         emailed_link = _latest_share_link(recipient)
         assert emailed_link == link
+        # The link must open an FE page (APP_BASE_URL origin), not the API host --
+        # this is the bug this change fixes. Capture the real delivered email body
+        # so the FE guide quotes it verbatim (not a hand-written approximation).
+        if _FE_BASE:
+            assert link.startswith(f"{_FE_BASE}/shared/"), link
+        else:
+            assert "/shared/" in link
+        capture_json("documents", "share_email", _latest_email_for(recipient))
         token = link.rsplit("/", 1)[-1]
 
         # 4. GET /shared/{token} -- PUBLIC, NO auth header at all -- returns
@@ -395,7 +424,9 @@ def test_documents_sharing_journey(base_url, make_verified_user, unique_email, c
         capture("documents", "share_open_after_revoke", gone)
 
 
-def test_documents_esignature_journey(base_url, make_verified_user, unique_email, capture):
+def test_documents_esignature_journey(
+    base_url, make_verified_user, unique_email, capture, capture_json
+):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         # 0. Onboard a founder -- same shape as the journeys above.
         u = make_verified_user(c)
@@ -452,6 +483,13 @@ def test_documents_esignature_journey(base_url, make_verified_user, unique_email
         emailed_link_2 = _latest_sign_link(signer2_email)
         assert emailed_link_1 == signer_links[0]
         assert emailed_link_2 == signer_links[1]
+        # Same FE-origin fix as Sharing: the signing link must open an FE page
+        # (APP_BASE_URL), not the API host. Capture the delivered email verbatim.
+        if _FE_BASE:
+            assert emailed_link_1.startswith(f"{_FE_BASE}/sign/"), emailed_link_1
+        else:
+            assert "/sign/" in emailed_link_1
+        capture_json("documents", "signature_email", _latest_email_for(signer1_email))
         token1 = emailed_link_1.rsplit("/", 1)[-1]
         token2 = emailed_link_2.rsplit("/", 1)[-1]
 

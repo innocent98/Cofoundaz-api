@@ -202,6 +202,24 @@ def capture():
 
 
 @pytest.fixture()
+def capture_json():
+    """Like `capture`, but writes an already-decoded JSON object (dict/list).
+
+    Used to capture things that are not an httpx.Response -- e.g. a delivered
+    email body read back out of the file email backend -- so the FE guides can
+    quote the real emailed message verbatim, not a hand-written approximation.
+    """
+    base_dir = Path(__file__).parent / "_captures"
+
+    def _capture(group: str, name: str, obj) -> None:
+        out_dir = base_dir / group
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.json").write_text(json.dumps(obj, indent=2) + "\n")
+
+    return _capture
+
+
+@pytest.fixture()
 def make_verified_user(mailbox, unique_email):
     """Signs up + verifies a fresh user over HTTP; returns {email, password}."""
 

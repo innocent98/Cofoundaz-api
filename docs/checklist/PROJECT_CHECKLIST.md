@@ -621,13 +621,16 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       unknown/expired-token 404, and the `expires_in_days: 0`/`null` "never expires" case) + this
       checklist reconcile — `docs/sop/2026-09-12-documents-sharing-slice3.md`,
       `docs/fe-integration-guide-documents-sharing.md`
-- [ ] _Deferred:_ **FOLLOW-UP — `SERVER_HOST` currently points at the API host in both
-      `.env.staging`/`.env.production`, not the FE origin, so the emailed share link does not
-      resolve to an FE page today** (returns raw API JSON instead; the same gap now also affects
-      Slice 4's emailed signing links, see below) — needs either repointing `SERVER_HOST` or
-      introducing a separate frontend-origin setting, a decision for whoever owns the FE deploy ·
-      Edit access tier + member-scoped ACL editing · Comment feature (tier stored, not yet
-      functional) · sharing uploaded files (`document_files`, Slice 2) · wrap the share-create
+- [x] **FE-origin link fix (2026-09-19, branch `fix/document-emails-fe-links`)** — the emailed
+      share link (and Slice 4's signing links) now build off `APP_BASE_URL` (the FE origin), falling
+      back to `SERVER_HOST` only when unset, mirroring `auth/emails.py`. So `/shared/:token` and
+      `/sign/:token` are the **FE routes** the app must serve; the emailed link opens them, and the
+      FE page then calls `GET /api/v1/shared/{token}` / `GET`+`POST /api/v1/sign/{token}`. Verified
+      live in the e2e (captured `share_email.json`/`signature_email.json` show the FE origin) + 4 new
+      unit tests. `APP_BASE_URL` already set to the FE origin on staging/prod. —
+      `docs/sop/2026-09-19-document-emails-fe-links.md`, both FE guides updated (§6/routes)
+- [ ] _Deferred:_ Edit access tier + member-scoped ACL editing · Comment feature (tier stored, not
+      yet functional) · sharing uploaded files (`document_files`, Slice 2) · wrap the share-create
       email send in `try`/`except` so a transient SMTP failure can't 500 an otherwise-valid create
       (Slice 4's signature-request email send was built correctly wrapped from the start — see its
       SOP "How") — see SOP Follow-ups
@@ -683,7 +686,9 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       image · signing structured `documents` (needs a freeze-to-file step first) · ordered/
       sequential signing enforcement (`position` is display-only today) · decline-to-sign ·
       owner in-app notification on completion (events publish, unconsumed until Module 20) ·
-      **same `SERVER_HOST`/FE-link gap as Slice 3**, now also affecting emailed signing links ·
+      ~~same `SERVER_HOST`/FE-link gap as Slice 3~~ **FIXED 2026-09-19** — signing links now use
+      `APP_BASE_URL` (FE origin); see the Slice 3 fix line above and
+      `docs/sop/2026-09-19-document-emails-fe-links.md` ·
       the audit trail (`signed_ip`/`signed_user_agent`) is captured but never exposed via any API
       response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
       Follow-ups
