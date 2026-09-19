@@ -1,0 +1,66 @@
+{
+  "data": {
+    "id": "02009be9-1d4d-4d76-ad7c-1d2779da4d79",
+    "kind": "business_plan",
+    "title": "Cofoundaz \u2014 Business Plan",
+    "status": "draft",
+    "ai_generated": true,
+    "folder": null,
+    "template_key": null,
+    "version": 1,
+    "updated_at": "2026-09-19T15:44:15.908335+00:00",
+    "sections": [
+      {
+        "id": "c0e214a5-9317-47ba-9389-e4b144a6202f",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Executive Summary"
+      },
+      {
+        "id": "f9a150b4-3e85-491f-aed6-0b2671d8cea3",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Problem & Opportunity"
+      },
+      {
+        "id": "b3b280fa-f7c4-45d3-9a52-65eb9d298f69",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Solution & Product"
+      },
+      {
+        "id": "a4bfa242-42dc-4543-ae86-c5ab01efcff2",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Market & Customers"
+      },
+      {
+        "id": "f00569b8-f29f-4c0e-bcbb-471b9cceeaa0",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Business Model"
+      },
+      {
+        "id": "29bd0f31-9002-483d-808a-3c22dcb952ff",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Go-to-Market"
+      },
+      {
+        "id": "2adc71f5-7ba6-40c5-a0e9-26fa57a324df",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Competition"
+      },
+      {
+        "id": "234ae1cc-ad35-4ad1-b822-47d888d207ba",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Team"
+      },
+      {
+        "id": "1b824d4e-c635-43de-a792-b1d3214e7a49",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Financials & Projections"
+      },
+      {
+        "id": "c85326d2-65da-4c65-9897-3bec49761825",
+        "body": "[stub-llm] AI-generated assessment narrative.",
+        "heading": "Roadmap & Milestones"
+      }
+    ]
+  },
+  "meta": null
+}

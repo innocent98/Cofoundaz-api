@@ -208,3 +208,9 @@ class CourseLevel(enum.StrEnum):
     beginner = "beginner"
     intermediate = "intermediate"
     advanced = "advanced"
+
+
+class BusinessPlanStatus(enum.StrEnum):
+    generating = "generating"
+    complete = "complete"
+    failed = "failed"

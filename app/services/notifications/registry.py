@@ -93,6 +93,7 @@ SPECS: dict[str, NotifSpec] = {
     "assessment.quarterly.due": _s(
         _all_active_members, "Time for your quarterly startup assessment"
     ),
+    "business.plan.generated": _s(_all_active_members, "Your AI business plan is ready"),
 }
 
 

@@ -9,7 +9,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
-from app.db.models.enums import CanvasType, RecordKind, SuggestionOp, SuggestionStatus
+from app.db.models.enums import (
+    BusinessPlanStatus,
+    CanvasType,
+    RecordKind,
+    SuggestionOp,
+    SuggestionStatus,
+)
 
 
 class BusinessCanvas(UUIDMixin, TimestampMixin, Base):
@@ -108,3 +114,26 @@ class BusinessPositioningMap(UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (UniqueConstraint("startup_id", name="uq_business_positioning_map_startup"),)
+
+
+class BusinessPlan(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "business_plans"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[BusinessPlanStatus] = mapped_column(
+        Enum(BusinessPlanStatus, native_enum=False, length=20), nullable=False
+    )
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_by_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
