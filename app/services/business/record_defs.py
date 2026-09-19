@@ -56,6 +56,42 @@ RECORD_SCHEMAS: dict[RecordKind, type[BaseModel]] = {
 }
 
 
+def _record_item_schema(kind: RecordKind) -> dict[str, Any]:
+    _str = {"type": "string"}
+    _strs = {"type": "array", "items": {"type": "string"}}
+    if kind == RecordKind.persona:
+        props = {"name": _str, "demographics": _str, "goals": _strs,
+                 "frustrations": _strs, "watering_holes": _strs, "quote": _str}
+    elif kind == RecordKind.revenue_stream:
+        props = {"name": _str, "pricing_basis": _str, "est_monthly": {"type": "number"}, "assumptions": _str}
+    elif kind == RecordKind.competitor:
+        props = {"name": _str, "positioning": _str, "price": _str, "strengths": _strs, "weaknesses": _strs,
+                 "threat_level": {"type": "string", "enum": [m.value for m in ThreatLevel]}}
+        # map_x/map_y (UI positioning coords) intentionally omitted — the AI shouldn't set them.
+    elif kind == RecordKind.pricing:
+        props = {
+            "model_type": {"type": "string", "enum": [m.value for m in PricingModelType]},
+            "tiers": {"type": "array", "items": {
+                "type": "object",
+                "properties": {"name": _str, "price": _str, "features": _strs},
+                "required": ["name", "price", "features"], "additionalProperties": False,
+            }},
+        }
+    else:  # pragma: no cover - exhaustive over RecordKind
+        raise ValueError(kind)
+    return {"type": "object", "properties": props, "required": list(props), "additionalProperties": False}
+
+
+def record_json_schema(kind: RecordKind) -> dict[str, Any]:
+    """Strict OpenAI JSON schema: an object with a `records` array (<=3) of the kind's shape."""
+    return {
+        "type": "object",
+        "properties": {"records": {"type": "array", "maxItems": 3, "items": _record_item_schema(kind)}},
+        "required": ["records"],
+        "additionalProperties": False,
+    }
+
+
 def fields(kind: RecordKind) -> list[dict[str, Any]]:
     """FE field descriptors for a kind: each dict has `key`, `required`, `type`,
     and `choices` (list of enum member values when the field's annotation is a

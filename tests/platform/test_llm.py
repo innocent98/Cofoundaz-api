@@ -110,6 +110,43 @@ def test_stub_complete_json_matches_schema_shape():
     assert isinstance(out["b"], list) and out["b"] and out["b"][0].startswith("[stub-llm]")
 
 
+def test_stub_complete_json_recurses_nested_objects_and_enums():
+    schema = {
+        "type": "object",
+        "properties": {
+            "records": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "score": {"type": "number"},
+                        "level": {"type": "string", "enum": ["low", "high"]},
+                        "tags": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["name", "score", "level", "tags"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["records"],
+        "additionalProperties": False,
+    }
+    out = StubLLMClient().complete_json([LLMMessage(role="user", content="x")], schema=schema, max_tokens=100)
+    assert isinstance(out["records"], list) and len(out["records"]) == 1
+    rec = out["records"][0]
+    assert isinstance(rec["name"], str) and rec["name"].startswith("[stub-llm]")
+    assert rec["score"] == 0
+    assert rec["level"] == "low"          # first enum value
+    assert rec["tags"] == ["[stub-llm] tags"]
+
+
+def test_stub_complete_json_still_flat_for_canvas_shape():
+    schema = {"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "array", "items": {"type": "string"}}}, "required": ["a", "b"], "additionalProperties": False}
+    out = StubLLMClient().complete_json([LLMMessage(role="user", content="x")], schema=schema, max_tokens=50)
+    assert out["a"].startswith("[stub-llm]") and out["b"] == ["[stub-llm] b"]
+
+
 def test_openai_complete_json_sends_json_schema_and_parses(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
     monkeypatch.setattr(settings, "LLM_MODEL", "gpt-5.6-luna")
