@@ -34,6 +34,21 @@ there is no async job to poll. The FE only needs to **re-fetch `GET /health-scor
 after the assessment-completion call succeeds**, to flip local state from
 `pending_assessment` to `ok`. No interval polling is needed.
 
+> ⚠️ **Correction (2026-09-19, live-verified) — the "same transaction" claim above is not
+> reliable in practice; keep calling `GET /health-score` right after completion regardless.**
+> `complete_assessment` (`app/services/assessment/service.py`) calls the recompute in the same
+> request, but a session-autoflush quirk means that call usually runs **before** the
+> just-completed `AssessmentResult` is visible to it, so `POST /assessments/{id}/complete` alone
+> does not reliably create the `HealthScore`/recommendation rows on the very first call. What
+> actually materializes them is `GET /health-score`'s own **lazy-on-read fallback**: if no
+> `HealthScore` row exists yet when this endpoint runs, it calls the same recompute itself, in a
+> fresh transaction that does see the committed assessment. This is invisible to the FE as long
+> as the guidance above is followed (call `GET /health-score` after completing the assessment) —
+> that call is what actually does the work. It also matters for recommendations: this is the
+> same lazy-read that enqueues the `ai.health.recommendations` job (§5). See
+> `docs/sop/2026-09-19-mission-health-ai.md` for the full investigation and the follow-up to fix
+> the `/complete`-path ordering directly.
+
 ### 1a. `pending_assessment` — before the kickoff assessment
 
 `e2e/_captures/health_score/overview_pending.json`:
@@ -307,6 +322,54 @@ accepted recommendation to an actual score change. **UI copy must hedge it**, e.
 or `"could help by roughly 9 points"` — never `"+9 guaranteed"` or bare `"+9"` presented as a
 committed outcome.
 
+### `body` — AI-personalized shortly after the health score loads
+
+`body` starts life as the catalog's default sentence (the text embedded in
+`RECOMMENDATION_CATALOG`, e.g. the `"Put equity splits, vesting, and roles in writing..."` body
+shown above) the moment a recommendation row is generated. Loading (or recomputing) the health
+score — via the lazy-read path described in the §1 correction above — enqueues an
+`ai.health.recommendations` job (Module 03) that rewrites each **pending** recommendation's `body`
+with an LLM-authored, startup-specific version; this typically lands within a few seconds. There
+is no separate endpoint or webhook: **re-fetch `GET /health-score/recommendations`** (or the
+`top_recommendations` slice on `GET /health-score`) to pick up the personalized text.
+
+**`title` is the stable catalog headline and is never rewritten** — only `body` is
+AI-personalized. Render `title` as a fixed label safe to cache/compare across reads; treat `body`
+as the field that can change out from under a cached copy.
+
+**`accepted` and `dismissed` recommendations are never rewritten.** The worker only touches rows
+whose `status` is still `pending`, and it is idempotent by construction: it re-checks each pending
+row's `body` against the catalog default and skips (no LLM call at all, for any row) once nothing
+is left to personalize. Reloading the health score repeatedly is safe — it never rewrites an
+accepted/dismissed row's `body`, and costs nothing once every pending row has already been
+personalized.
+
+`e2e/_captures/health_recommendations_ai/recommendations_after_drain.json` — `GET
+/health-score/recommendations` after the `ai.health.recommendations` worker drained; the
+`legal.founder_agreement` row's `body` is AI-personalized, `title` unchanged, every other row
+still shows its catalog-default `body` (same one-item-per-call stub behavior as the mission
+guide's AI reason section — not evidence only one recommendation is ever rewritten per run):
+
+```json
+{
+  "id": "2767435f-5fb9-4b67-9f3a-9f89fbad1340",
+  "dimension": "legal",
+  "key": "legal.founder_agreement",
+  "title": "Sign a founders' agreement",
+  "body": "[stub-llm] body",
+  "estimated_lift": 7,
+  "effort": "medium",
+  "status": "pending",
+  "priority": 2
+}
+```
+
+**Confirmed live: the envelope is a flat list.** `GET /health-score/recommendations` returns
+`data` as a **flat array** of recommendation objects (`data: [...]`) — matching the
+`recommendations.json` capture shape already shown above in this section, **not**
+`data.recommendations`. Full capture (9 rows):
+`e2e/_captures/health_recommendations_ai/recommendations_after_drain.json`.
+
 ### Accept — founder-only
 
 `POST /api/v1/health-score/recommendations/{rec_id}/accept` (and the parallel `/dismiss`)
@@ -410,7 +473,10 @@ in-process.
 | `POST /recommendations/{id}/dismiss` on a resolved id — 409 `RECOMMENDATION_RESOLVED` | ✅ |
 | Founder-only gate on accept/dismiss (member → 403) | ⬜ (unit-tested only, not in the live E2E journey) |
 | Cross-tenant enumeration guard — 404 on another workspace's recommendation id | ✅ |
-| Recompute triggered inline by assessment completion (no job/poll) | ✅ (implicit: `overview` flips to `ok` in the very next call) |
+| Recompute triggered inline by assessment completion (no job/poll) | ⚠️ superseded — see the §1 correction above: the reliable trigger is `GET /health-score`'s lazy-read fallback, verified live in `e2e/test_health_recommendations_ai.py` |
+| `recommendations[].body` AI-personalized via `ai.health.recommendations` worker (stub) within seconds of the lazy-read; `title` unchanged — `overview_after_complete.json` → `recommendations_after_drain.json` (`e2e/_captures/health_recommendations_ai/`) | ✅ |
+| Recommendations envelope is a flat list (`data: [...]`), not `data.recommendations` — `recommendations_after_drain.json` | ✅ |
+| `accepted`/`dismissed` recommendations never rewritten by the AI worker | ⬜ (unit-tested only — `tests/worker/test_health_recommendations_handler.py`; not re-exercised in the live e2e journey, which only has pending recommendations) |
 
 Rows marked ⬜ are covered by the unit suite (`tests/api/test_health_score.py`,
 `tests/api/test_health_recommendations.py`) but not independently re-asserted over live HTTP in

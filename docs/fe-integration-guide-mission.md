@@ -7,6 +7,8 @@ timestamps in the examples are real values from that ephemeral test run (not han
 placeholders) — they differ on every real request, but the shapes are exact. The three states
 that the live journey could not exercise (`no_roadmap` empty-state, weekend-off empty mission,
 and the 4xx error bodies) are called out **inline**, each labelled with where its shape came from.
+The "AI reason line" section (§1, below) is pasted verbatim from a separate live capture,
+`e2e/test_mission_reason.py::test_mission_reason_ai` — see `e2e/_captures/mission_reason/*.json`.
 
 Base path: `/api/v1/missions`. Every route requires a Bearer access token
 (`Authorization: Bearer <token>`) and an `X-Workspace-Id` header identifying the active workspace
@@ -116,6 +118,68 @@ if today's mission isn't complete yet) whose mission reached `complete`. It is `
 (nothing completed yet) and `1` in `today_complete.json` (§3, first complete day). **It is not
 stored** — a missed day silently resets it to a lower number on the next read. Render it as a live
 value from this endpoint; never cache it client-side across days as if it only ever increases.
+
+### `reason` — AI-personalized shortly after generation
+
+`reason` starts life as the templated string shown above (`"From your '<milestone>' milestone."`,
+or `null` for a custom task) the instant a mission is generated. If the mission has at least one
+task, generation also enqueues an `ai.mission.reason` job (Module 03) that rewrites each task's
+`reason` with an LLM-authored one-liner — this typically lands within a few seconds, well before a
+founder who just opened the app would notice. There is no separate endpoint or webhook for this:
+**re-fetch `GET /api/v1/missions/today`** (the same call the screen already makes on focus) to
+pick up the upgraded text once the job has run. The 06:00 scheduler (Module 20 Slice 3) pre-warms
+today's mission ahead of most founders' first open, so in practice `reason` is already
+AI-authored by the time the screen loads.
+
+`reason` is `string | null`, **≤300 characters** — the worker truncates defensively
+(`new_reason[:300]`) even though the model is asked for a single sentence. It is exactly the same
+field, same nullability, as the templated version — there is no separate "is this AI-authored"
+flag on the task; the FE cannot and should not try to distinguish templated from AI-personalized
+text at render time.
+
+`e2e/_captures/mission_reason/today_before_drain.json` — `GET /missions/today` immediately after
+generation, task at `order: 0`, templated `reason` (status `200`):
+
+```json
+{
+  "id": "4bfc3a44-a753-407e-ac3b-9fbb9af320e6",
+  "roadmap_task_id": "1b8b6f2c-12dd-4a80-8f2c-277537d7a1c1",
+  "title": "Describe the problem in one paragraph",
+  "reason": "From your 'Write your problem statement' milestone.",
+  "effort": "small",
+  "status": "todo",
+  "order": 0,
+  "completed_at": null,
+  "reject_reason": null
+}
+```
+
+`e2e/_captures/mission_reason/today_after_drain.json` — same task, same `id`, `GET
+/missions/today` re-fetched after the `ai.mission.reason` worker drained (status `200`):
+
+```json
+{
+  "id": "4bfc3a44-a753-407e-ac3b-9fbb9af320e6",
+  "roadmap_task_id": "1b8b6f2c-12dd-4a80-8f2c-277537d7a1c1",
+  "title": "Describe the problem in one paragraph",
+  "reason": "[stub-llm] reason",
+  "effort": "small",
+  "status": "todo",
+  "order": 0,
+  "completed_at": null,
+  "reject_reason": null
+}
+```
+
+`"[stub-llm] reason"` is the offline stub's deterministic marker (`LLM_PROVIDER=stub`, used in
+tests and e2e) — a real provider returns a genuine sentence in its place, same field, same shape.
+**Note the other two tasks in the same capture (`order: 1`, `order: 2`) keep their templated
+`reason` in `today_after_drain.json`** — the deterministic stub's `complete_json` only ever
+returns one array item per call in this harness, so only one task was rewritten in this
+particular run. This is a property of the stub, not evidence the real upgrade only rewrites one
+task per mission — the job's schema accepts up to `len(tasks)` reasons
+(`app/services/mission/ai_reason.py::mission_reason_schema`) and a real provider is expected to
+return one per task.
 
 ---
 
@@ -476,6 +540,7 @@ suite but were **not** re-asserted over live HTTP; the shape source is named.
 | `GET /missions/today` — `no_roadmap` empty-state | ⬜ | derived from code (`get_today`); unit-tested, **not captured live** |
 | `GET /missions/today` — weekends-off empty mission (`tasks: []`) | ⬜ | derived from code (`serialize_mission`); unit-tested, **not captured live** |
 | `roadmap_task_id`/`reason` populated on roadmap tasks, `null` on custom | ✅ | `today.json` (populated) + `task_create.json` (null) |
+| `tasks[].reason` — templated on generation, rewritten by `ai.mission.reason` worker (stub) within seconds; re-fetch `/today` to see it | ✅ | `today_before_drain.json` → `today_after_drain.json` (`e2e/_captures/mission_reason/`) |
 | `GET /missions/settings` — defaults, `delivery_time` as `"06:00:00"` | ✅ | `settings.json` |
 | `PATCH /missions/settings` — `{"weekend_missions": true}` → 200 | ⬜ | live **only on weekend runs** — the journey flips it only on Sat/Sun, and the captures were taken on a Thursday (2026-08-27), so this PATCH was **not exercised** in the capture run; body derived (identical to `settings.json` with `weekend_missions: true`); unit-tested |
 | `PATCH /missions/settings` — `mission_size` outside 1–3 → `422` | ⬜ | derived from `AppError`; unit-tested (`test_mission_today.py`) |

@@ -154,6 +154,18 @@ def test_complete_assessment_triggers_health_score(db):
     assert hs.score is not None
 
 
+def test_recompute_enqueues_health_recommendations_job(db):
+    from app.db.models.job import Job
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    _complete_with_scores(
+        db, s, {"product": 20, "market": 20, "money": 20, "legal": 20, "team": 20}
+    )
+    recompute_health_score(db, s, trigger="assessment_complete")
+    assert db.query(Job).filter(Job.type == "ai.health.recommendations").count() == 1
+
+
 def test_recompute_dropped_event(db, monkeypatch):
     published = []
     monkeypatch.setattr(event_bus, "publish", lambda db, e, p: published.append((e, p)))

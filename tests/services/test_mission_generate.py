@@ -13,6 +13,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus
+from app.db.models.job import Job
 from app.db.models.mission import MissionTask
 from app.services.mission import service as mission_service
 from app.services.mission.service import get_or_generate_today, serialize_mission, streak
@@ -214,6 +215,36 @@ def test_weekend_on_still_generates_tasks(monkeypatch, db):
     mission = get_or_generate_today(db, s)
 
     assert db.query(MissionTask).filter_by(mission_id=mission.id).count() == 1
+
+
+def _jobs(db):
+    return db.query(Job).filter(Job.type == "ai.mission.reason").count()
+
+
+def test_enqueues_once_when_mission_has_tasks(weekday, db):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    r = create_roadmap(db, s)
+    p = create_phase(db, r)
+    m = create_milestone(db, p, title="Launch")
+    create_task(db, m, title="Ship it", status=RoadmapStatus.todo)
+    get_or_generate_today(db, s)
+    assert _jobs(db) == 1
+    # cached same-day generation must not re-enqueue
+    get_or_generate_today(db, s)
+    assert _jobs(db) == 1
+
+
+def test_no_enqueue_for_empty_mission(weekday, db):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    r = create_roadmap(db, s)
+    p = create_phase(db, r)
+    m = create_milestone(db, p)
+    create_task(db, m, title="Done already", status=RoadmapStatus.done)  # no candidate tasks
+    mission = get_or_generate_today(db, s)
+    assert mission is not None  # empty mission materialized
+    assert _jobs(db) == 0
 
 
 def test_streak_counts_consecutive_completed(db):

@@ -1,0 +1,43 @@
+{
+  "data": {
+    "mission_date": "2026-09-19",
+    "status": "pending",
+    "streak": 0,
+    "tasks": [
+      {
+        "id": "4bfc3a44-a753-407e-ac3b-9fbb9af320e6",
+        "roadmap_task_id": "1b8b6f2c-12dd-4a80-8f2c-277537d7a1c1",
+        "title": "Describe the problem in one paragraph",
+        "reason": "[stub-llm] reason",
+        "effort": "small",
+        "status": "todo",
+        "order": 0,
+        "completed_at": null,
+        "reject_reason": null
+      },
+      {
+        "id": "8b3a3ba7-1d5a-4994-b5ce-7e8a0c54d166",
+        "roadmap_task_id": "57ad6115-a34d-495a-bf02-26ec393c035a",
+        "title": "List who has this problem",
+        "reason": "From your 'Write your problem statement' milestone.",
+        "effort": "small",
+        "status": "todo",
+        "order": 1,
+        "completed_at": null,
+        "reject_reason": null
+      },
+      {
+        "id": "cbe7d682-e264-4c33-afcc-5884b7b715b7",
+        "roadmap_task_id": "d1f2edd1-427b-4390-9f45-5e7a8b1cb5a2",
+        "title": "Draft a one-page concept",
+        "reason": "From your 'Sketch the solution' milestone.",
+        "effort": "medium",
+        "status": "todo",
+        "order": 2,
+        "completed_at": null,
+        "reject_reason": null
+      }
+    ]
+  },
+  "meta": null
+}

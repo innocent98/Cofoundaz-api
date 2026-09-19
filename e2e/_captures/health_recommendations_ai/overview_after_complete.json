@@ -1,0 +1,79 @@
+{
+  "data": {
+    "status": "ok",
+    "score": 31,
+    "band": "at_risk",
+    "delta_7d": 0,
+    "computed_at": "2026-09-19T19:46:22.797957+00:00",
+    "config_version": 1,
+    "dimensions": [
+      {
+        "key": "team",
+        "label": "Team",
+        "score": 50,
+        "band": "needs_work"
+      },
+      {
+        "key": "legal",
+        "label": "Legal",
+        "score": 0,
+        "band": "at_risk"
+      },
+      {
+        "key": "money",
+        "label": "Financial",
+        "score": 43,
+        "band": "needs_work"
+      },
+      {
+        "key": "market",
+        "label": "Market",
+        "score": 38,
+        "band": "at_risk"
+      },
+      {
+        "key": "product",
+        "label": "Product",
+        "score": 25,
+        "band": "at_risk"
+      }
+    ],
+    "top_recommendations": [
+      {
+        "id": "5126fd95-7051-4d92-abdb-1b23ec7311c4",
+        "dimension": "legal",
+        "key": "legal.incorporate",
+        "title": "Complete incorporation",
+        "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
+        "estimated_lift": 9,
+        "effort": "high",
+        "status": "pending",
+        "priority": 1
+      },
+      {
+        "id": "2767435f-5fb9-4b67-9f3a-9f89fbad1340",
+        "dimension": "legal",
+        "key": "legal.founder_agreement",
+        "title": "Sign a founders' agreement",
+        "body": "Put equity splits, vesting, and roles in writing before it is contentious. This prevents the most common founder disputes.",
+        "estimated_lift": 7,
+        "effort": "medium",
+        "status": "pending",
+        "priority": 2
+      },
+      {
+        "id": "f5991bc6-05cb-4e8d-94ba-9d77d173777c",
+        "dimension": "product",
+        "key": "product.define_mvp",
+        "title": "Define your MVP scope",
+        "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
+        "estimated_lift": 8,
+        "effort": "medium",
+        "status": "pending",
+        "priority": 3
+      }
+    ],
+    "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
+  },
+  "meta": null
+}
