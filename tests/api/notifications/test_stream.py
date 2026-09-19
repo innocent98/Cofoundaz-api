@@ -22,7 +22,10 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
     class FakePubSub:
         def __init__(self):
             self._msgs = [
-                {"type": "message", "data": '{"event":"notification.created","notification":{"id":"n1","type":"x.test"}}'},
+                {
+                    "type": "message",
+                    "data": '{"event":"notification.created","notification":{"id":"n1","type":"x.test"}}',
+                },
                 None,  # timeout -> heartbeat
             ]
 
@@ -53,6 +56,6 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
 
     frames = asyncio.run(collect())
     joined = "".join(frames)
-    assert 'event: unread' in joined and '"unread": 3' in joined
-    assert 'event: notification.created' in joined and '"id": "n1"' in joined
-    assert ': heartbeat' in joined
+    assert "event: unread" in joined and '"unread": 3' in joined
+    assert "event: notification.created" in joined and '"id": "n1"' in joined
+    assert ": heartbeat" in joined

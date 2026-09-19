@@ -1,5 +1,11 @@
 # FE Integration Guide — Notifications (Module 20, Slices 1–3: In-App Feed + Email + Scheduler)
 
+**Slice 4 (real-time SSE push delivery) has since shipped — see
+[`docs/fe-integration-guide-notifications-realtime.md`](./fe-integration-guide-notifications-realtime.md).**
+This document still covers everything else (the feed, pagination, mark-read, the `type` catalog,
+email preferences, scheduled events) and is not repeated there; only the "no real-time delivery yet"
+claims below are now superseded, called out inline where they occur (§0, §7).
+
 All request/response bodies below are pasted **verbatim** from live captures taken by
 `e2e/test_notifications.py::test_notifications_journey` (Slice 1),
 `e2e/test_notifications_email.py::test_email_delivery_and_preferences` (Slice 2), and
@@ -33,8 +39,11 @@ independently readable/mark-readable/deletable-in-effect by only that one user. 
 teammate's feed for "the same event" are different rows with different `id`s** — never assume
 marking your own copy read affects anyone else's (§4a has a live-captured cross-user 404 proving
 this scoping). Delivery is **in-app always** + **email, opt-out, gated by category** (§9); there is
-still no real-time (websocket/push) delivery — the FE must poll (§2 has a suggested cadence) rather
-than expect a push event when a new notification arrives. As of Slice 3, some events are fired by a
+no real-time (websocket/push) delivery in Slices 1–3 — the FE had to poll (§2 has a suggested
+cadence). **This is now superseded: Slice 4 adds a live SSE push channel on top of the same feed —
+see [the Slice 4 guide](./fe-integration-guide-notifications-realtime.md).** Polling still works
+unchanged and remains the source of truth; SSE is an additive live nudge, not a replacement for the
+APIs below. As of Slice 3, some events are fired by a
 **scheduler**, not by another user's action — §10 covers what that means for the FE (same feed/poll
 model, no new API shape, but "no user action happened" is a UX fact worth designing around).
 
@@ -425,14 +434,16 @@ Standard envelope:
 exists the instant its triggering action commits (same-transaction fan-out, unchanged from Slice 1),
 and the ONLY way the FE *reads* it is by calling this API; there is no server-pushed event, webhook,
 or SSE stream. **The FE must still poll** (§2's suggested cadence for the badge; fetch the full feed
-on-demand when the panel opens).
+on-demand when the panel opens). **As of Slice 4, there is ALSO a live SSE push channel layered on
+top of this same API — see [the Slice 4 guide](./fe-integration-guide-notifications-realtime.md)
+for the connect flow and event shapes.** The feed/poll model described in this section remains the
+source of truth and the required fallback; SSE never replaces it.
 
 **As of Slice 2, an email may ALSO be sent for the same event — but never synchronously, and never
 guaranteed to arrive before (or even shortly after) the in-app row is visible.** See §9 for the full
 preferences contract, the category catalog, and what "asynchronous & best-effort" means concretely
 for UI design. **As of Slice 3, some events are fired by a scheduler, not a user action** — §10
-covers the three triggers. Real-time push/websocket delivery is still Slice 4, unbuilt — do not
-design a "you'll get a push for this" affordance based on this doc.
+covers the three triggers.
 
 ---
 
