@@ -62,8 +62,8 @@ class OpenAILLMClient:
                 "LLM_API_KEY is empty but LLM_PROVIDER='openai'. Set LLM_API_KEY, or use "
                 "LLM_PROVIDER='stub' for local/dev (deterministic, no network)."
             )
-        base = settings.LLM_BASE_URL or "https://api.openai.com"
-        url = f"{base.rstrip('/')}/v1/chat/completions"
+        base = settings.LLM_BASE_URL or "https://api.openai.com/v1"
+        url = f"{base.rstrip('/')}/chat/completions"
         payload = {
             "model": settings.LLM_MODEL,
             "messages": [{"role": m.role, "content": m.content} for m in messages],

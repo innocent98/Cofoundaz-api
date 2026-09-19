@@ -112,7 +112,9 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai"      # openai | stub
     LLM_API_KEY: str = ""             # required when LLM_PROVIDER == "openai"
     LLM_MODEL: str = "gpt-5.6-luna"   # OpenAI model id
-    LLM_BASE_URL: str = ""            # blank -> OpenAI default; set for Azure/gateway/self-hosted
+    # Full API base INCLUDING /v1 (OpenAI SDK convention), e.g. https://api.openai.com/v1.
+    # Blank -> OpenAI default (https://api.openai.com/v1); set for Azure/gateway/self-hosted.
+    LLM_BASE_URL: str = ""
     LLM_TIMEOUT: int = 60             # seconds per LLM HTTP call (LLM latency >> a normal request)
     LLM_MAX_TOKENS: int = 800         # default output cap
 

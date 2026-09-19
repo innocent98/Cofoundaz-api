@@ -59,6 +59,21 @@ def test_openai_client_happy_path(monkeypatch):
     assert captured["json"]["messages"][0] == {"role": "system", "content": "s"}
 
 
+def test_openai_client_base_url_already_includes_v1(monkeypatch):
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(settings, "LLM_BASE_URL", "https://api.openai.com/v1")
+
+    captured = {}
+
+    def fake_post(url, json, headers, timeout):
+        captured["url"] = url
+        return httpx.Response(200, json={"choices": [{"message": {"content": "hello there"}}]})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=10)
+    assert captured["url"] == "https://api.openai.com/v1/chat/completions"
+
+
 def test_openai_client_fails_loud_on_non_2xx(monkeypatch):
     monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
     monkeypatch.setattr(httpx, "post", lambda *a, **k: httpx.Response(429, text="rate limited"))
