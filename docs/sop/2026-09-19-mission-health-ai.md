@@ -14,8 +14,8 @@ Commits (branch `work`, off `develop` @ `e72f783`), oldest to newest:
 `3d9a959` (enqueue `ai.mission.reason` when a mission is generated) → `6daec95` (health
 recommendation prompt builder + schema) → `09eeef6` (`ai.health.recommendations` worker) →
 `e43b120` (enqueue `ai.health.recommendations` after health recompute) → `95087ce` (live e2e for
-both, with captures) → **this commit** (FE guides, SOP, checklist reconcile). PR to `develop` to
-follow.
+both, with captures) → `d47f5e4` (FE guides, SOP, checklist) → `d51262f` (concurrency-test race-set
+fix). Merged into `develop` via **PR #83** (merge commit `e060141`).
 
 ## Why
 
