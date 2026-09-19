@@ -1,11 +1,11 @@
-from app.core.config import settings
+from app.core.config import Settings
 
 
 def test_llm_settings_have_expected_defaults():
-    assert settings.LLM_PROVIDER in {"openai", "stub"}
-    assert settings.LLM_MODEL == "gpt-5.6-luna"
-    assert settings.LLM_TIMEOUT == 60
-    assert settings.LLM_MAX_TOKENS == 800
-    # API key + base url exist as strings (may be empty in the test env)
-    assert isinstance(settings.LLM_API_KEY, str)
-    assert isinstance(settings.LLM_BASE_URL, str)
+    fields = Settings.model_fields
+    assert fields["LLM_PROVIDER"].default == "openai"
+    assert fields["LLM_MODEL"].default == "gpt-5.6-luna"
+    assert fields["LLM_TIMEOUT"].default == 60
+    assert fields["LLM_MAX_TOKENS"].default == 800
+    assert fields["LLM_API_KEY"].default == ""
+    assert fields["LLM_BASE_URL"].default == ""
