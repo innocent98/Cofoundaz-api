@@ -16,7 +16,28 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **§08.11 AI Business Plan Generator MERGED (PR #79) — MODULE 08
+_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) shipped
+on branch `feat/records-ai-fill`, not yet merged to `develop`** (3 tasks, no migration) — a real
+worker for `business.{kind}.ai_fill` (persona/revenue_stream/competitor/pricing), the job Module 08
+Slice 2 has enqueued since it shipped, with no worker ever claiming it — **the last ai_fill job type
+left unconsumed** now drafts up to 3 records for a kind that's completely EMPTY, via one
+`complete_json` call constrained to a strict per-kind JSON Schema derived from the existing
+`RECORD_SCHEMAS` Pydantic registry (`map_x`/`map_y` intentionally omitted from `competitor`), each
+drafted record validated (and skipped, not failed, on a bad one) through the same `create_record`
+path a manual `POST /{kind}` already uses. Required making `StubLLMClient._stub_value` genuinely
+recursive (Slice 2's version only handled one level, enough for canvases' flat shape but not
+records' nested `{records: [{...}]}` shape) — existing flat canvas stub behavior is unchanged and
+pinned by a new regression test. Proven live end to end (`e2e/test_records_ai_fill.py`): enqueue →
+in-process worker drain → structured LLM (stub) call → validated `create_record` write → `GET
+/personas` shows a stub-drafted record at `data.records[0].data.name`. This does NOT complete
+Module 03 or Module 08 — it closes the last unconsumed ai-fill job, but the mission reason line,
+health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan
+rationale (all Module 03 consumers) remain unbuilt, and there's no top-up/regenerate mode for a kind
+that already has some records. **Counts unchanged: still 11 modules fully complete, 1 open (03), 14
+not started.** SOP: `docs/sop/2026-09-19-records-ai-fill.md`; FE guide (extended):
+`docs/fe-integration-guide-ai-canvas-fill.md` (§5)._
+
+_Previously: 2026-09-19 · **§08.11 AI Business Plan Generator MERGED (PR #79) — MODULE 08
 (BUSINESS BUILDER) IS NOW FULLY COMPLETE, all 4 slices** (
 5 tasks, migration `0026_business_plans`) — the multi-section generator Module 08 Slice 3 flagged as
 "the ONLY Module 08 PRD sub-screen not yet shippable" is now real: a `business_plans` entity
@@ -70,12 +91,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77) — the canvas-record `ai_fill` jobs (Module 08's `{kind}` records — now the only ai-fill job left unconsumed; §08.11 shipped without needing it) and every other deferred AI consumer across the codebase remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) shipped on `feat/records-ai-fill`, not yet merged — the LAST unconsumed `ai_fill` job type is now closed (Module 08's `{kind}` records), but every other deferred AI consumer across the codebase (mission reason line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) remains unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged, no migration either slice; SOP `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The typed-record `business.{kind}.ai_fill` worker (Module 08's `{kind}` records) and every other pre-Module-03 AI consumer remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode. |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) shipped on `feat/records-ai-fill`, not yet merged — no migration on any of the 3 slices; SOP `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type is now closed; the mission reason line, health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -308,9 +329,11 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
 ## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
-(structured output + canvas ai-fill worker) MERGED to `develop`, no migration either slice — the
-canvas-record `ai_fill` jobs (Module 08's `{kind}` records) and every other deferred AI consumer
-remain unbuilt*
+(structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
+ai-fill worker) shipped on `feat/records-ai-fill`, not yet merged — no migration any slice. The
+last unconsumed `ai_fill` job type is now closed; every other deferred AI consumer (mission reason
+line, health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale)
+remains unbuilt*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
 `OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
@@ -388,17 +411,54 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       two job-completion polling options) + this checklist reconcile —
       `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`,
       `docs/fe-integration-guide-ai-canvas-fill.md`
-- [ ] _Deferred:_ `business.{kind}.ai_fill` worker for Module 08's typed records (personas/revenue
-      streams/competitors/pricing) — needs a Pydantic-model-driven schema variant, a real design
-      decision, not a copy-paste of the canvas one — **now the only ai-fill job left unconsumed**:
-      §08.11 AI Business Plan Generator shipped (see Module 08, below) on this seam's free-text
-      `complete()` method (one call per fixed section), not `complete_json` — the plan generator
-      turned out not to need structured output after all, so it did not end up depending on this
-      deferred item · no `pydantic.TypeAdapter(...).json_schema()`-based helper for a future
-      Pydantic-shaped consumer · no Anthropic `complete_json` implementation (the wire shape is
+- [x] `business.{kind}.ai_fill` worker for Module 08's typed records (personas/revenue
+      streams/competitors/pricing) → **shipped in Slice 3, below** (needed a Pydantic-model-driven
+      schema variant, not a copy-paste of the canvas one, as flagged here) — §08.11 AI Business Plan
+      Generator shipped (see Module 08, below) on this seam's free-text `complete()` method (one
+      call per fixed section), not `complete_json` — the plan generator turned out not to need
+      structured output after all, so it did not end up depending on this item
+- [ ] _Deferred:_ no `pydantic.TypeAdapter(...).json_schema()`-based helper for a future
+      Pydantic-shaped consumer (Slice 3 hand-built its schema the same way this slice hand-built
+      `canvas_json_schema`) · no Anthropic `complete_json` implementation (the wire shape is
       itself an OpenAI-specific convention) · no overwrite/"regenerate everything" ai-fill mode ·
       no structured "ai-fill failed / still empty" signal beyond the existing job status — see SOP
       Follow-ups
+
+**Slice 3 — Typed Records AI Fill** — *✅ shipped on `feat/records-ai-fill` (3 tasks, no
+migration), not yet merged to `develop`*
+- [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-records-ai-fill/`) — records need a
+      Pydantic-model-driven schema variant (`RECORD_SCHEMAS`), not a copy of Slice 2's
+      dataclass-driven `canvas_json_schema` · fill-empties is a whole-kind gate (any existing record
+      → no-op), not a per-block augment · validate-and-skip (not validate-and-fail) via the existing
+      `create_record` path
+- [x] `StubLLMClient._stub_value` made genuinely recursive (`app/platform/llm.py`) — object nodes
+      recurse per property key, array nodes recurse into `items` and wrap, enum nodes short-circuit
+      to the first member; flat canvas-shape behavior unchanged and pinned by a new regression test
+      (`test_stub_complete_json_still_flat_for_canvas_shape`)
+- [x] `record_json_schema(kind)` / `_record_item_schema(kind)` (`app/services/business/
+      record_defs.py`) — strict per kind, built from `RECORD_SCHEMAS`; `competitor.map_x`/`map_y`
+      intentionally omitted (AI shouldn't set UI positioning coords); enum fields constrained to
+      valid members · `build_record_fill_messages(kind, *, name, industry, stage)`
+      (`app/services/business/ai_fill.py`) — PII-free prompt
+- [x] `handle_record_ai_fill` (`app/worker/handlers/ai.py`), registered for all 4
+      `business.{kind}.ai_fill` job types — the exact job types `POST /{kind}/ai-fill` has enqueued
+      since Module 08 Slice 2; whole-kind empty-gate, up to 3 records via `complete_json`, each
+      validated (and skipped on failure, not aborted) through `create_record`, `db.flush()` only
+- [x] Live E2E journey (`e2e/test_records_ai_fill.py`, 2 captures) proving enqueue → job claim →
+      structured LLM (stub) call → validated `create_record` write end to end, over real HTTP with a
+      real Postgres-backed in-process worker drain, zero network calls (`LLM_PROVIDER=stub`, already
+      exported by `scripts/e2e_run.sh` since Slice 1) + full existing e2e suite re-run green
+      (46 e2e, 1266 unit)
+- [x] SOP + FE integration guide (extended, captured live, incl. the `data.records` field-nesting
+      trap vs. canvas's flat `data.blocks`) + this checklist reconcile —
+      `docs/sop/2026-09-19-records-ai-fill.md`,
+      `docs/fe-integration-guide-ai-canvas-fill.md` (§5)
+- [ ] _Deferred:_ no top-up/"regenerate" mode for a kind that already has some records (whole-kind
+      gate only) · every other Module-03-deferred AI consumer (mission reason line, health
+      recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) still unbuilt
+      · no structured "ai-fill failed / still empty" signal beyond the existing job status ·
+      `create_record`'s position assignment still not race-safe (pre-existing gap, unchanged) — see
+      SOP Follow-ups
 
 ## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
 `feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
@@ -406,8 +466,9 @@ Generator (§08.11), was the last open PRD sub-screen, blocked on Module 03 (AI 
 end — it now ships using Module 03 Slice 1's free-text LLM seam directly (`complete()`, one call
 per fixed section), not the structured-output mode Slice 2 built for canvas ai-fill; see Slice 4
 below for why. The `business.canvas.ai_fill` job Slice 1 enqueues has a real worker (Module 03
-Slice 2, above); the typed-record `business.{kind}.ai_fill` job (Slice 2, below) still does not —
-that gap is Module 03's, not Module 08's, going forward.*
+Slice 2, above), and the typed-record `business.{kind}.ai_fill` job (Slice 2, below) now does too
+(Module 03 Slice 3, shipped on `feat/records-ai-fill`, not yet merged) — every ai-fill job Module 08
+enqueues now has a real handler.*
 
 _Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
 `swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
@@ -487,7 +548,7 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       an omitted field resets to its schema default; unknown/cross-tenant id → 404) · `DELETE
       /business-builder/{kind}/{record_id}` (editor; `{deleted: true}`)
 - [x] `POST /business-builder/{kind}/ai-fill` (editor; 202, enqueues `business.{kind}.ai_fill`
-      job, writes no record; job stays `queued` — no worker yet)
+      job, writes no record synchronously — the job now has a real worker, see below)
 - [x] `GET /business-builder/overview` extended — 9 rows total (5 canvas + 4 record kinds);
       record rows: `{type, label, status, completion_pct, count}`, `status`/`completion_pct`
       derived from `count >= 1`
@@ -502,11 +563,11 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 - [x] AI Business Plan Generator (§08.11) → **shipped, Slice 4 below**
       (`feat/ai-business-plan-generator`, merged (PR #79)) — did not end up needing this slice's
       typed-record `ai_fill` capability
-- [ ] _Deferred:_ real
-      `business.{kind}.ai_fill` worker → Module 03 (**still the only ai-fill job left unconsumed**
-      — the canvas one shipped a worker in Module 03 Slice 2; records need a Pydantic-model-driven
-      schema variant, not a copy-paste of the canvas one — see that Slice's SOP Follow-ups) ·
-      Module 12 (Revenue) sync for
+- [x] real `business.{kind}.ai_fill` worker → **shipped, Module 03 Slice 3** (see Module 03 above,
+      `docs/sop/2026-09-19-records-ai-fill.md`; branch `feat/records-ai-fill`, not yet merged) —
+      needed a Pydantic-model-driven schema variant, not a copy-paste of the canvas one, exactly as
+      flagged here
+- [ ] _Deferred:_ Module 12 (Revenue) sync for
       `revenue_stream` records · no reorder/`PATCH .../{id}/reorder` endpoint (`position` is
       append-only) · `create_record`'s position assignment is not race-safe (no unique constraint
       on `(startup_id, kind, position)`, unlike Slice 1's race-safe `get_or_create_canvas`) ·
@@ -615,9 +676,9 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       sections done") · sections are free text, not structured financials (no numeric revenue/cost
       fields a dashboard could chart) · no PDF/export format, Document markdown only ·
       regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
-      previous version) · remaining Module 03 AI consumers (typed-record `ai_fill`, onboarding AI
-      panel, Mission/Roadmap/Health Score/Learning/Validation Hub) still unbuilt — see SOP
-      Follow-ups
+      previous version) · remaining Module 03 AI consumers (typed-record `ai_fill` → **shipped,
+      Module 03 Slice 3**, see above; onboarding AI panel, Mission/Roadmap/Health Score/Learning/
+      Validation Hub still unbuilt) — see SOP Follow-ups
 
 ## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
 (Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
@@ -1603,9 +1664,11 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
-      (structured output + canvas ai-fill worker) merged; see its own section above. Every other
-      deferred AI consumer (unblocks narratives/recommendations/panels/the typed-record ai-fill
-      jobs across the codebase) still ahead
+      (structured output + canvas ai-fill worker, PR #77) merged; Slice 3 (typed records ai-fill
+      worker, closing the last unconsumed ai-fill job type) shipped on `feat/records-ai-fill`, not
+      yet merged; see its own section above. Every other deferred AI consumer (mission reason line,
+      health recommendations, dashboard briefing, onboarding panel, roadmap replan rationale) still
+      ahead
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
       merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →

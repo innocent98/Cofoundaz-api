@@ -47,7 +47,9 @@ class StubLLMClient:
             return node["enum"][0]
         node_type = node.get("type")
         if node_type == "object":
-            return {k: StubLLMClient._stub_value(v, k) for k, v in node.get("properties", {}).items()}
+            return {
+                k: StubLLMClient._stub_value(v, k) for k, v in node.get("properties", {}).items()
+            }
         if node_type == "array":
             return [StubLLMClient._stub_value(node.get("items", {"type": "string"}), key)]
         if node_type in ("number", "integer"):

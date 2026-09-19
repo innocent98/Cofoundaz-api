@@ -6,7 +6,11 @@ from app.services.business.record_defs import record_json_schema
 def test_record_json_schema_is_strict_records_array():
     for kind in RecordKind:
         s = record_json_schema(kind)
-        assert s["type"] == "object" and s["required"] == ["records"] and s["additionalProperties"] is False
+        assert (
+            s["type"] == "object"
+            and s["required"] == ["records"]
+            and s["additionalProperties"] is False
+        )
         arr = s["properties"]["records"]
         assert arr["type"] == "array" and arr["maxItems"] == 3
         item = arr["items"]
@@ -24,7 +28,9 @@ def test_record_json_schema_enums():
 
 
 def test_build_record_fill_messages_pii_free():
-    msgs = build_record_fill_messages(RecordKind.persona, name="Acme", industry="Fintech", stage="validation")
+    msgs = build_record_fill_messages(
+        RecordKind.persona, name="Acme", industry="Fintech", stage="validation"
+    )
     assert [m.role for m in msgs] == ["system", "user"]
     blob = " ".join(m.content for m in msgs)
     assert "Acme" in blob and "persona" in blob.lower() and "@" not in blob

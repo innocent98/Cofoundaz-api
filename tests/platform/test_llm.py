@@ -132,18 +132,30 @@ def test_stub_complete_json_recurses_nested_objects_and_enums():
         "required": ["records"],
         "additionalProperties": False,
     }
-    out = StubLLMClient().complete_json([LLMMessage(role="user", content="x")], schema=schema, max_tokens=100)
+    out = StubLLMClient().complete_json(
+        [LLMMessage(role="user", content="x")], schema=schema, max_tokens=100
+    )
     assert isinstance(out["records"], list) and len(out["records"]) == 1
     rec = out["records"][0]
     assert isinstance(rec["name"], str) and rec["name"].startswith("[stub-llm]")
     assert rec["score"] == 0
-    assert rec["level"] == "low"          # first enum value
+    assert rec["level"] == "low"  # first enum value
     assert rec["tags"] == ["[stub-llm] tags"]
 
 
 def test_stub_complete_json_still_flat_for_canvas_shape():
-    schema = {"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "array", "items": {"type": "string"}}}, "required": ["a", "b"], "additionalProperties": False}
-    out = StubLLMClient().complete_json([LLMMessage(role="user", content="x")], schema=schema, max_tokens=50)
+    schema = {
+        "type": "object",
+        "properties": {
+            "a": {"type": "string"},
+            "b": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["a", "b"],
+        "additionalProperties": False,
+    }
+    out = StubLLMClient().complete_json(
+        [LLMMessage(role="user", content="x")], schema=schema, max_tokens=50
+    )
     assert out["a"].startswith("[stub-llm]") and out["b"] == ["[stub-llm] b"]
 
 

@@ -1,16 +1,20 @@
-# FE Integration Guide — AI Canvas Fill (Module 03 Slice 2)
+# FE Integration Guide — AI Canvas Fill (Module 03 Slices 2–3)
 
 All request/response bodies below are pasted **verbatim** from live captures taken by
-`e2e/test_canvas_ai_fill.py::test_canvas_ai_fill` running against a real server
-(`scripts/e2e_run.sh`) — see `e2e/_captures/canvas_ai_fill/*.json`. Nothing here is retyped from
-the schema, the service, or memory. IDs in the examples are real values from that ephemeral test
-run (they differ on every real request; the shapes are exact).
+`e2e/test_canvas_ai_fill.py::test_canvas_ai_fill` (§1–§4) and `e2e/test_records_ai_fill.py::
+test_records_ai_fill_personas` (§5, added in Slice 3) running against a real server
+(`scripts/e2e_run.sh`) — see `e2e/_captures/canvas_ai_fill/*.json` and
+`e2e/_captures/records_ai_fill/*.json`. Nothing here is retyped from the schema, the service, or
+memory. IDs in the examples are real values from those ephemeral test runs (they differ on every
+real request; the shapes are exact).
 
 This is **not a new endpoint.** `POST /api/v1/business-builder/canvases/{type}/ai-fill` already
 existed (Module 08 Slice 1) and already returned `202 {job_id, status}` — it just enqueued a job
-with **no worker**, so nothing ever actually filled the canvas. What changed in this slice: the
+with **no worker**, so nothing ever actually filled the canvas. What changed in Slice 2: the
 `business.canvas.ai_fill` job now has a real handler, so the 202 you already integrate against now
-completes for real, asynchronously, within seconds.
+completes for real, asynchronously, within seconds. Slice 3 (this update) does the exact same thing
+for the OTHER ai-fill trigger Module 08 shipped — `POST /business-builder/{kind}/ai-fill`
+(persona/revenue-streams/competitors/pricing) — see §5 below. §1–§4 are unchanged from Slice 2.
 
 ---
 
@@ -153,6 +157,120 @@ you're using Option B and not checking job status.
 
 ---
 
+## 5. Records ai-fill — `POST /business-builder/{kind}/ai-fill` (Module 03 Slice 3)
+
+`{kind}` is one of `personas` / `revenue-streams` / `competitors` / `pricing` — the same four
+typed-record kinds `GET`/`POST`/`PUT`/`DELETE /business-builder/{kind}[/…]` already cover (Module 08
+Slice 2). This trigger endpoint **already existed and already returned `202 {job_id, status}`** —
+it just enqueued a `business.{kind}.ai_fill` job with **no worker**, exactly the same "shipped
+enqueue point, missing handler" gap §1 described for canvases. This slice adds the worker; nothing
+about the request shape changes.
+
+### 5.0 The one thing the FE must know
+
+Records ai-fill is **fill-empties-only at the kind level, not a per-field augment like canvases.**
+The worker checks whether the kind has **any** records at all: if it already has one or more, the
+whole call is a **no-op** — no new records, nothing changes, even if you'd expect "add 2 more
+personas" to top the list up to 3. If the kind is completely empty, the worker drafts **up to 3**
+new records via one structured LLM call and creates each one through the same validated
+`create_record` path a manual `POST /{kind}` uses (a record that fails the kind's own Pydantic
+validation is silently skipped, not surfaced as a partial error — the good records still land).
+
+**There is no "top up" or "regenerate" mode in this slice.** A kind with 1 existing record stays at
+1 record after calling ai-fill again — see Follow-ups in the SOP. Don't call this expecting it to
+fill a partially-populated list the way canvas ai-fill fills partially-empty blocks.
+
+### 5.1 Trigger — same role gate, same 404 as every other `{kind}` route
+
+Requires founder/team_member (`_editor`); unknown `{kind}` → `404 NOT_FOUND`. No request body.
+
+`e2e/_captures/records_ai_fill/personas_ai_fill_enqueued.json` (status `202`):
+
+```json
+{
+  "data": {
+    "job_id": "f97bd433-47bf-4526-8712-97c46d234be8",
+    "status": "queued"
+  },
+  "meta": null
+}
+```
+
+Identical shape to canvas ai-fill's 202 (§1) — a plain job handle, nothing about the records
+themselves.
+
+### 5.2 `GET /business-builder/{kind}` — after the fill lands
+
+**Field-nesting trap: this is NOT the same response shape as canvas ai-fill's `GET`.** Canvas
+`GET /canvases/{type}` returns blocks flat at `data.blocks` (§2). Records `GET /{kind}` returns
+`{"records": [...], "fields": [...]}` **under** `data` — the records you want are at
+`data.records`, an array, not `data` itself. Each element is the same shape a manual
+`POST /{kind}` returns: `{id, kind, data, position}`.
+
+`e2e/_captures/records_ai_fill/personas_after_fill.json` (status `200`, a `personas` kind that
+started completely empty — the stub LLM drafted exactly 1 record, since the stub's deterministic
+array expansion always produces a single-item array regardless of `maxItems`; a real
+`LLM_PROVIDER=openai` call can return up to 3):
+
+```json
+{
+  "data": {
+    "records": [
+      {
+        "id": "0baa70e2-cb6b-4293-86e8-d4104644f8e3",
+        "kind": "persona",
+        "data": {
+          "name": "[stub-llm] name",
+          "goals": ["[stub-llm] goals"],
+          "quote": "[stub-llm] quote",
+          "demographics": "[stub-llm] demographics",
+          "frustrations": ["[stub-llm] frustrations"],
+          "watering_holes": ["[stub-llm] watering_holes"]
+        },
+        "position": 0
+      }
+    ],
+    "fields": [
+      { "key": "name", "required": true, "type": "<class 'str'>", "choices": null },
+      { "key": "demographics", "required": false, "type": "<class 'str'>", "choices": null },
+      { "key": "goals", "required": false, "type": "list[str]", "choices": null },
+      { "key": "frustrations", "required": false, "type": "list[str]", "choices": null },
+      { "key": "watering_holes", "required": false, "type": "list[str]", "choices": null },
+      { "key": "quote", "required": false, "type": "<class 'str'>", "choices": null }
+    ]
+  },
+  "meta": null
+}
+```
+
+**Note the `"[stub-llm] <field>"` markers** — same fixed `StubLLMClient` convention §2 documents for
+canvases (`LLM_PROVIDER=stub`, no real LLM call in this e2e run). In a real deployment each AI-drafted
+record instead holds real generated content per field, with the kind's own validation still applied
+(e.g. `competitor.threat_level` will always be a valid `ThreatLevel` enum value, `pricing.model_type`
+a valid `PricingModelType` — the LLM's structured output is schema-constrained to the same
+`RECORD_SCHEMAS` shape a manual create is validated against). `fields` is unchanged by this slice —
+same descriptor array `GET /{kind}` has always returned.
+
+### 5.3 How the FE learns the fill landed
+
+Same two options §3 describes for canvases — poll `GET /jobs/{job_id}` (Option A; `result` stays
+`null` here too, the handler writes straight to `business_records` rows) or just re-fetch
+`GET /{kind}` on a short interval / next screen visit (Option B). No push/SSE for this job type
+either.
+
+### 5.4 Errors — quick reference
+
+| Code | HTTP | When |
+|---|---|---|
+| `FORBIDDEN` | 403 | non-editor calls `POST /{kind}/ai-fill` — same role gate as every other `{kind}` write |
+| `NOT_FOUND` | 404 | unknown `{kind}` in the URL (not one of `personas`/`revenue-streams`/`competitors`/`pricing`) |
+
+No new error codes. Same fail-loud-to-the-job-not-the-HTTP-response posture as canvas ai-fill (§4):
+a downstream LLM failure never surfaces as an HTTP error on the trigger call, only as the job's
+`status: "failed"` (Option A) or as "the kind silently stayed empty" (Option B).
+
+---
+
 ## Verification table
 
 | Behaviour | Verified live? | Source |
@@ -167,6 +285,14 @@ you're using Option B and not checking job status.
 | `GET /jobs/{job_id}` for an ai-fill job — `result` stays `null` on success | ⚠️ derived from source, not captured live in this journey (the e2e asserts on the canvas, not the job's own detail endpoint) | `app/api/v1/endpoints/jobs.py`, `app/worker/handlers/ai.py::handle_canvas_ai_fill` (never writes `job.result`) |
 | A failed ai-fill job leaves the canvas completely untouched (fail-loud, no partial write) | ⚠️ unit only — forcing the configured LLM to fail is not reachable from a normal live HTTP walk without breaking the shared e2e process's `LLM_PROVIDER=stub` guarantee | `tests/services/business/test_canvas_ai_fill.py::test_ai_fill_fails_loud_when_llm_errors` |
 | Non-editor gets `403 FORBIDDEN` on `POST .../ai-fill` | ⚠️ not re-captured in this journey — same `_editor` dependency and error shape already captured live in the Module 08 Slice 1/3 guides | `docs/fe-integration-guide-business-builder.md`, `docs/fe-integration-guide-business-builder-suggestions.md` §5 |
+| **§5 (Slice 3):** `POST /{kind}/ai-fill` returns `202 {job_id, status: "queued"}` | ✅ | `records_ai_fill/personas_ai_fill_enqueued.json` |
+| Draining the worker runs `business.{kind}.ai_fill` and drafts records for an EMPTY kind via structured LLM (stub) output | ✅ | `records_ai_fill/personas_after_fill.json` |
+| Records land at `data.records` (NOT `data` directly — field-nesting trap, see §5.2), each `{id, kind, data, position}` | ✅ | `records_ai_fill/personas_after_fill.json` |
+| Each drafted record passes the kind's own `RECORD_SCHEMAS` validation (created via `create_record`, same path a manual `POST` uses) | ✅ (persona's `name` required field present and non-empty) | `records_ai_fill/personas_after_fill.json` |
+| Ai-fill on a kind that already has ≥1 record is a whole-kind no-op (not a per-field/per-record top-up) | ⚠️ unit only — this e2e journey starts from a completely empty kind, so it cannot ALSO prove a non-empty kind is skipped without a second, redundant live run | `tests/worker/test_records_ai_fill_handler.py::test_ai_fill_noop_when_kind_not_empty` |
+| Up to 3 records are created per call, and a record that fails validation is skipped rather than surfaced as an error | ⚠️ unit only — the stub LLM's deterministic array expansion always returns exactly 1 record, so this live journey cannot exercise the 2-or-3-record or skip-on-validation-failure paths | `tests/worker/test_records_ai_fill_handler.py::test_ai_fill_populates_empty_kind`, `app/worker/handlers/ai.py::handle_record_ai_fill` (`(result.get("records") or [])[:3]`, `except AppError: continue`) |
+| A failed ai-fill job leaves the kind completely untouched (fail-loud, no partial write) | ⚠️ unit only — same reasoning as §4's canvas row: forcing the configured LLM to fail is not reachable without breaking the shared e2e process's `LLM_PROVIDER=stub` guarantee | `tests/worker/test_records_ai_fill_handler.py::test_ai_fill_fails_loud_on_llm_error` |
+| Non-editor gets `403 FORBIDDEN` on `POST /{kind}/ai-fill`; unknown `{kind}` gets `404 NOT_FOUND` | ⚠️ not re-captured in this journey — same `_editor` dependency and `_parse_kind` 404 already captured live in the Module 08 Slice 2 FE guide | `docs/fe-integration-guide-business-builder.md` §6–§11 |
 
-The four ⚠️ rows are genuine gaps in this one live journey, each with a named unit test or an
+The ⚠️ rows are genuine gaps in these two live journeys, each with a named unit test or an
 already-live-captured shape covering the same behavior — not invented or schema-derived guesses.
