@@ -1,14 +1,18 @@
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.errors import AppError
 from app.db.models.assessment import AssessmentResult
-from app.db.models.enums import CanvasType
+from app.db.models.business import BusinessRecord
+from app.db.models.enums import CanvasType, RecordKind
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.platform.llm import get_llm_client
 from app.services.assessment.narrative import build_narrative_messages
-from app.services.business.ai_fill import build_canvas_fill_messages
+from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
+from app.services.business.record_defs import record_json_schema
+from app.services.business.records import create_record
 from app.services.business.service import get_or_create_canvas, validate_blocks
 from app.worker.runner import register_handler
 
@@ -85,3 +89,33 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
 
 
 register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)
+
+
+def handle_record_ai_fill(db: Session, job: Job) -> None:
+    """Draft up to 3 records for an EMPTY record kind via structured output. No commit."""
+    kind = RecordKind(job.payload["kind"])
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return
+    if db.query(BusinessRecord).filter_by(startup_id=startup.id, kind=kind).count():
+        return  # fill-empties only
+    result = get_llm_client().complete_json(
+        build_record_fill_messages(
+            kind,
+            name=startup.name,
+            industry=startup.industry,
+            stage=(startup.stage.value if startup.stage else None),
+        ),
+        schema=record_json_schema(kind),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    for rec in (result.get("records") or [])[:3]:
+        try:
+            create_record(db, startup, kind, rec)
+        except AppError:
+            continue  # skip a record that fails the kind's validation; keep the good ones
+    db.flush()
+
+
+for _kind in RecordKind:
+    register_handler(f"business.{_kind.value}.ai_fill", handle_record_ai_fill)

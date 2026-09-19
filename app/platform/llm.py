@@ -38,10 +38,25 @@ class StubLLMClient:
         return "[stub-llm] AI-generated assessment narrative."
 
     def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
-        def _stub(prop: dict, key: str) -> object:
-            return [f"[stub-llm] {key}"] if prop.get("type") == "array" else f"[stub-llm] {key}"
+        result = self._stub_value(schema, "value")
+        return result if isinstance(result, dict) else {"value": result}
 
-        return {k: _stub(v, k) for k, v in schema.get("properties", {}).items()}
+    @staticmethod
+    def _stub_value(node: dict, key: str) -> object:
+        if "enum" in node and node["enum"]:
+            return node["enum"][0]
+        node_type = node.get("type")
+        if node_type == "object":
+            return {
+                k: StubLLMClient._stub_value(v, k) for k, v in node.get("properties", {}).items()
+            }
+        if node_type == "array":
+            return [StubLLMClient._stub_value(node.get("items", {"type": "string"}), key)]
+        if node_type in ("number", "integer"):
+            return 0
+        if node_type == "boolean":
+            return False
+        return f"[stub-llm] {key}"
 
 
 class OpenAILLMClient:
