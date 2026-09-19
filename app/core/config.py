@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # --- Realtime (SSE) delivery (Module 20 Slice 4) -----------------------
+    SSE_TICKET_TTL: int = 30  # seconds a one-time stream ticket is valid
+    SSE_HEARTBEAT_INTERVAL: int = 20  # seconds between SSE heartbeat comments
+
     # Email (optional)
     SMTP_TLS: bool = True
     SMTP_PORT: int = 587
