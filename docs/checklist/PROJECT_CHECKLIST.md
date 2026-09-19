@@ -17,7 +17,7 @@
 > `develop → main` path.
 
 _Last reconciled: 2026-09-19 · **Module 20 (Notifications) Slice 4 (Real-Time SSE) is now built —
-MODULE 20 IS NOW FULLY COMPLETE, all 4 slices** (branch `feat/notifications-realtime-sse`, no
+MODULE 20 IS NOW FULLY COMPLETE, all 4 slices — MERGED** (Slice 4 Real-Time SSE = PR #74, no
 migration) — a Redis pub/sub backplane (a SQLAlchemy `after_commit` listener publishes every
 committed notification, covering every creating call path with zero other call-site changes) plus a
 one-time-ticket-authed `GET /notifications/stream` SSE endpoint now deliver notification rows to an
@@ -30,7 +30,7 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 `docs/fe-integration-guide-notifications-realtime.md` (cross-linked from the Slices 1–3 guide).
 
 _Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 1 is now built** (branch
-`feat/llm-seam-assessment-narrative`, no migration) — a provider-agnostic LLM seam
+MERGED, PR #72, no migration) — a provider-agnostic LLM seam
 (`app/platform/llm.py`, `openai` + `stub` providers, fail-loud) with one real consumer: assessment
 completion now enqueues an `ai.assessment.narrative` job that asynchronously upgrades
 `AssessmentResult.narrative` from Module 07's templated text to an AI-generated one. This moved
@@ -42,12 +42,12 @@ Follow-ups). SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`._
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`); every other deferred AI consumer across the codebase remains unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on infrastructure (Module 03's seam exists) but still needs structured-output support — a later slice. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **10 modules FULLY complete on `develop`** (01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal) + the Foundation/Tenancy spine + the Resend email backend. **2 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); every other deferred AI consumer across the codebase remains unbuilt. **08 Business Builder** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) is now unblocked on infrastructure (Module 03's seam exists) but still needs structured-output support — a later slice. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60, Scheduler+Realtime PRs not yet opened)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 2 modules | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative) built (branch `feat/llm-seam-assessment-narrative`, no migration); SOP `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`. **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **unblocked on the Module 03 seam, still needs structured output** |
+| ✅ Fully complete (`develop`) | 10 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 2 modules | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative) merged (PR #72, no migration); SOP `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`. **Business Builder (08)** — Slices 1–3 merged (PRs #39/#46/#47); the AI Business Plan Generator (§08.11) remains, **unblocked on the Module 03 seam, still needs structured output** |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **130 endpoints** (directly counted from the OpenAPI schema's
@@ -279,8 +279,8 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
       not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
 
-## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative) built (branch
-`feat/llm-seam-assessment-narrative`, no migration) — unblocks every other deferred AI consumer on
+## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative) MERGED to `develop`
+(PR #72, no migration) — unblocks every other deferred AI consumer on
 infrastructure; none of them are built yet*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
@@ -626,7 +626,7 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       unknown/expired-token 404, and the `expires_in_days: 0`/`null` "never expires" case) + this
       checklist reconcile — `docs/sop/2026-09-12-documents-sharing-slice3.md`,
       `docs/fe-integration-guide-documents-sharing.md`
-- [x] **FE-origin link fix (2026-09-19, branch `fix/document-emails-fe-links`)** — the emailed
+- [x] **FE-origin link fix (2026-09-19, PR #73)** — the emailed
       share link (and Slice 4's signing links) now build off `APP_BASE_URL` (the FE origin), falling
       back to `SERVER_HOST` only when unset, mirroring `auth/emails.py`. So `/shared/:token` and
       `/sign/:token` are the **FE routes** the app must serve; the emailed link opens them, and the
@@ -699,9 +699,8 @@ Generator (§08.11) needs — see that module's entry above. SOPs:
       Follow-ups
 
 ## ✅ Module 20 — Notifications — *ALL 4 SLICES SHIPPED — MODULE 20 COMPLETE (In-App Feed PR #58;
-Email + Preferences + Worker PR #60; Scheduler/Cron, migration `0024_scheduled_runs`, branch
-`feat/notifications-scheduler`, PR not yet opened; Real-Time SSE, branch
-`feat/notifications-realtime-sse`, PR not yet opened)* — 2026-09-19
+Email + Preferences + Worker PR #60; Scheduler/Cron PR #71 (migrations `0024_scheduled_runs` →
+`0025_roadmap_milestone_due_idx`); Real-Time SSE PR #74, no migration)* — 2026-09-19
 
 _Module 20 decomposed into 4 slices (agreed 2026-09-14, `docs/superpowers/specs/
 2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
@@ -843,8 +842,8 @@ final-review fix wave)*
       pending email" path) · no per-notification email-delivery status exposed via the API · same
       generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
 
-**Slice 3 — Scheduler / Cron** — *🟢 BUILT on branch `feat/notifications-scheduler` (PR not yet
-opened; migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, chain off
+**Slice 3 — Scheduler / Cron** — *✅ MERGED to `develop` (PR #71;
+migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, chain off
 `0023_learning`; `0025` is the sole head)* — 2026-09-18
 - [x] Design + decisions (`.superpowers/sdd/2026-09-18-notifications-scheduler/`, design doc
       `docs/superpowers/specs/2026-09-18-notifications-scheduler-design.md`) — scheduler = a
@@ -909,8 +908,8 @@ opened; migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, c
       (F3 — within the D5 once-ever contract; a future worker-DLQ/alerting slice should surface a
       terminal-failed `scheduled.*` job rather than this loop retrying forever) — see SOP Follow-ups
 
-**Slice 4 — Real-Time SSE Delivery** — *✅ BUILT on branch `feat/notifications-realtime-sse` (PR not
-yet opened; no migration — sole alembic head unchanged, `0025_roadmap_milestone_due_idx`)* —
+**Slice 4 — Real-Time SSE Delivery** — *✅ MERGED to `develop` (PR #74;
+no migration — sole alembic head unchanged, `0025_roadmap_milestone_due_idx`)* —
 2026-09-19, **MODULE 20 NOW FULLY COMPLETE (all 4 slices)**
 - [x] Design + decisions (`.superpowers/sdd/2026-09-19-notifications-realtime-sse/`, design doc
       `docs/superpowers/specs/2026-09-19-notifications-realtime-sse-design.md`) — Server-Sent Events
@@ -1467,14 +1466,14 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) built (branch
-      `feat/llm-seam-assessment-narrative`); see its own section above. Every other deferred AI
+- [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72);
+      see its own section above. Every other deferred AI
       consumer (unblocks narratives/recommendations/panels across the codebase) still ahead
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
-      merged (PR #60); Slice 3 (Scheduler/Cron) built (branch `feat/notifications-scheduler`,
-      migration `0024_scheduled_runs`, PR not yet opened); Slice 4 (Real-Time SSE) built (branch
-      `feat/notifications-realtime-sse`, no migration, PR not yet opened); see its own section above.
+      merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →
+      `0025_roadmap_milestone_due_idx`); Slice 4 (Real-Time SSE) merged (PR #74, no migration);
+      see its own section above.
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
