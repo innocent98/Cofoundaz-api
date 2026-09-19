@@ -286,3 +286,12 @@ is still queued, or exhausted its retries. If this becomes an operational pain p
 to alert on a spike of failed `ai.assessment.narrative` jobs), that needs the worker-DLQ/alerting
 work the notifications-scheduler SOP's Follow-ups already flagged as a future need for `scheduled.*`
 jobs — the same gap, now shared by a second job type.
+
+**The LLM call runs inside the worker's per-job DB transaction** (whole-branch review, Minor). The
+handler calls the provider over the network while the runner's `begin_nested()` savepoint is open, so
+the worker's DB connection sits idle-in-transaction for the call's latency (up to `LLM_TIMEOUT`, 60s).
+This is fine at Slice-1 volume — one low-frequency consumer on the worker's own dedicated connection,
+jobs run serially per batch — so it was deliberately not optimised (YAGNI). When higher-volume or
+slower LLM consumers land (e.g. §08.11 plan generation), revisit the worker's transaction/connection
+model: fetch the context in one short transaction, make the network call outside any open transaction,
+then re-open a short transaction to persist (re-checking the row, since it may have changed).
