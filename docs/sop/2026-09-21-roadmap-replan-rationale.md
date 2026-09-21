@@ -14,7 +14,9 @@ Commits (branch `feat/roadmap-replan-rationale`, off `develop`), oldest to newes
 `dac1f71` (`rationale` column + migration `0028`) → `3240b8e` (rationale prompt builder) →
 `78d8712` (`apply_replan` writes templated rationale + enqueues `ai.roadmap.rationale`) →
 `4b60ed5` (`ai.roadmap.rationale` worker overwrites the rationale) → `6d0a1d8` (remove the dead
-`roadmap.replan` job enqueue) → `c277c98` (live e2e + captures). PR to `develop` to follow.
+`roadmap.replan` job enqueue) → `c277c98` (live e2e + captures) → `7e866ca`/`6fdcc7b` (FE guide,
+SOP, checklist) → `1daf998` (final-review fixes). Merged into `develop` via **PR #90** (merge
+commit `dedcf7d`).
 
 ## Why
 
