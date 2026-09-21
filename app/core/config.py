@@ -26,12 +26,34 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
     MFA_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Master key the per-workspace journal keys are derived from (HKDF). Optional like
+    # MFA_ENCRYPTION_KEY so the app still boots without it; the journal service raises
+    # JournalNotConfigured at use time rather than failing startup for every deployment.
+    JOURNAL_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
 
     # Providers
     EMAIL_BACKEND: str = "console"  # console | smtp | file
     EMAIL_FILE_DIR: str = "./var/mail"  # where FileEmailSender writes captured emails (dev/e2e)
     STORAGE_BACKEND: str = "local"  # local
     LOCAL_STORAGE_DIR: str = "./var/storage"
+
+    # Cloudinary (only used when STORAGE_BACKEND == "cloudinary"; empty for local/CI).
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
+    # Background worker (Module 20 Slice 2)
+    WORKER_POLL_INTERVAL: float = 2.0
+    WORKER_BATCH_SIZE: int = 10
+    WORKER_MAX_ATTEMPTS: int = 5
+    WORKER_STALE_SECONDS: int = 300
+    APP_BASE_URL: str = ""  # frontend origin for email deep links; falls back to SERVER_HOST
+
+    # Scheduler (Module 20 Slice 3)
+    SCHEDULER_TIMEZONE: str = "UTC"  # IANA name for the 06:00 check
+    MISSION_GEN_HOUR: int = 6  # local hour to pre-generate today's mission
+    SCHEDULER_INTERVAL: int = 60  # seconds; throttle the scheduler within the worker poll
+    QUARTERLY_REASSESS_DAYS: int = 90
 
     # Logging
     # Path for the loguru file sink. Set to "" to log to stderr only, which is
@@ -76,6 +98,10 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # --- Realtime (SSE) delivery (Module 20 Slice 4) -----------------------
+    SSE_TICKET_TTL: int = 30  # seconds a one-time stream ticket is valid
+    SSE_HEARTBEAT_INTERVAL: int = 20  # seconds between SSE heartbeat comments
+
     # Email (optional)
     SMTP_TLS: bool = True
     SMTP_PORT: int = 587
@@ -84,12 +110,23 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     EMAILS_FROM_EMAIL: EmailStr | None = None
     EMAILS_FROM_NAME: str | None = None
+    RESEND_API_KEY: str | None = None  # used only when EMAIL_BACKEND == "resend"
+
+    # --- LLM seam (Module 03) ---------------------------------------------
+    LLM_PROVIDER: str = "openai"  # openai | stub
+    LLM_API_KEY: str = ""  # required when LLM_PROVIDER == "openai"
+    LLM_MODEL: str = "gpt-5.6-luna"  # OpenAI model id
+    # Full API base INCLUDING /v1 (OpenAI SDK convention), e.g. https://api.openai.com/v1.
+    # Blank -> OpenAI default (https://api.openai.com/v1); set for Azure/gateway/self-hosted.
+    LLM_BASE_URL: str = ""
+    LLM_TIMEOUT: int = 60  # seconds per LLM HTTP call (LLM latency >> a normal request)
+    LLM_MAX_TOKENS: int = 800  # default output cap
 
     # Admin
     FIRST_SUPERUSER_EMAIL: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
 # mypy flags this as missing required args (SECRET_KEY, DATABASE_URL, etc.) because

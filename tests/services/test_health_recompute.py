@@ -108,7 +108,7 @@ def test_recompute_emits_updated_and_record(db, monkeypatch):
     # R3: a record requires a prior maximum to beat. Seed a lower prior history
     # point so the new (higher) score is a genuine record.
     published = []
-    monkeypatch.setattr(event_bus, "publish", lambda e, p: published.append((e, p)))
+    monkeypatch.setattr(event_bus, "publish", lambda db, e, p: published.append((e, p)))
     u = create_user(db)
     s = create_startup(db, owner=u)
     create_history(db, s, score=50, computed_at=datetime.now(UTC) - timedelta(days=2))
@@ -124,7 +124,7 @@ def test_recompute_emits_updated_and_record(db, monkeypatch):
 def test_first_score_is_not_a_record(db, monkeypatch):
     # R3: the first-ever score has no prior maximum, so it must NOT emit a record.
     published = []
-    monkeypatch.setattr(event_bus, "publish", lambda e, p: published.append((e, p)))
+    monkeypatch.setattr(event_bus, "publish", lambda db, e, p: published.append((e, p)))
     u = create_user(db)
     s = create_startup(db, owner=u)
     _complete_with_scores(
@@ -154,9 +154,21 @@ def test_complete_assessment_triggers_health_score(db):
     assert hs.score is not None
 
 
+def test_recompute_enqueues_health_recommendations_job(db):
+    from app.db.models.job import Job
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    _complete_with_scores(
+        db, s, {"product": 20, "market": 20, "money": 20, "legal": 20, "team": 20}
+    )
+    recompute_health_score(db, s, trigger="assessment_complete")
+    assert db.query(Job).filter(Job.type == "ai.health.recommendations").count() == 1
+
+
 def test_recompute_dropped_event(db, monkeypatch):
     published = []
-    monkeypatch.setattr(event_bus, "publish", lambda e, p: published.append((e, p)))
+    monkeypatch.setattr(event_bus, "publish", lambda db, e, p: published.append((e, p)))
     u = create_user(db)
     s = create_startup(db, owner=u)
     # a prior history point 8 days ago at 80

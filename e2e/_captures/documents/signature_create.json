@@ -1,0 +1,37 @@
+{
+  "data": {
+    "id": "2fda1993-ea44-4834-abe0-0a5da875652f",
+    "title": "Investor Agreement",
+    "status": "awaiting",
+    "file_id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
+    "filename": "investor-agreement.pdf",
+    "signed_count": 0,
+    "total": 2,
+    "expires_at": "2026-10-03T10:10:27.190291+00:00",
+    "completed_at": null,
+    "created_at": "2026-09-19T10:10:27.186441+00:00",
+    "signers": [
+      {
+        "email": "delivered+signer-one-9c893248fbd4@resend.dev",
+        "name": "Ada Investor",
+        "position": 0,
+        "status": "pending",
+        "signed_at": null,
+        "signed_name": null
+      },
+      {
+        "email": "delivered+signer-two-505c5afa4fd5@resend.dev",
+        "name": "Bello Legal",
+        "position": 1,
+        "status": "pending",
+        "signed_at": null,
+        "signed_name": null
+      }
+    ],
+    "signer_links": [
+      "http://localhost:3000/sign/-5ApVpq-Lkl6wkVHpnRo2AcZPZ5Tqzc5yGcFFc8clrY",
+      "http://localhost:3000/sign/rWw0hICPo7FsnAOh3ooWbASsjob0fB98PJT1YaNyD0c"
+    ]
+  },
+  "meta": null
+}

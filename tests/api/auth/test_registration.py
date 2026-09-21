@@ -79,7 +79,11 @@ def test_resend_invalidates_prior_unconsumed_verification_token(client, db, monk
     r = client.post("/api/v1/auth/verify/resend", json={"email": "old@x.com"})
     assert r.status_code == 200
     assert len(sender.sent) == 1
-    new_raw = re.search(r"<code>(.+?)</code>", sender.sent[-1].html).group(1)  # type: ignore[union-attr]
+    new_raw = re.search(  # token now lives in the verify-email link, not a <code> tag
+        r"/verify-email/([A-Za-z0-9_-]+)", sender.sent[-1].html
+    ).group(
+        1
+    )  # type: ignore[union-attr]
 
     stale = client.post("/api/v1/auth/verify", json={"token": old_raw})
     assert stale.status_code == 400

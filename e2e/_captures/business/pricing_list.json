@@ -1,0 +1,52 @@
+{
+  "data": {
+    "records": [
+      {
+        "id": "d83cdb40-9241-4f50-9abe-0554f173de95",
+        "kind": "pricing",
+        "data": {
+          "tiers": [
+            {
+              "name": "Starter",
+              "price": "$19/mo",
+              "features": [
+                "1 seat"
+              ]
+            },
+            {
+              "name": "Pro",
+              "price": "$49/mo",
+              "features": [
+                "5 seats",
+                "Priority support"
+              ]
+            }
+          ],
+          "model_type": "tiered"
+        },
+        "position": 0
+      }
+    ],
+    "fields": [
+      {
+        "key": "model_type",
+        "required": true,
+        "type": "<enum 'PricingModelType'>",
+        "choices": [
+          "subscription",
+          "one_time",
+          "usage",
+          "freemium",
+          "tiered"
+        ]
+      },
+      {
+        "key": "tiers",
+        "required": false,
+        "type": "list[app.services.business.record_defs.PricingTier]",
+        "choices": null
+      }
+    ]
+  },
+  "meta": null
+}

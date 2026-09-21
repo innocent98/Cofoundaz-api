@@ -1,0 +1,17 @@
+{
+  "data": {
+    "axes": {
+      "x": {
+        "low": "Slow",
+        "high": "Fast",
+        "label": "Growth Rate"
+      },
+      "y": {
+        "low": "Poor",
+        "high": "Great",
+        "label": "Retention"
+      }
+    }
+  },
+  "meta": null
+}

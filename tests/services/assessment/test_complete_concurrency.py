@@ -129,8 +129,10 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
             jobs = verify.query(Job).filter(Job.startup_id == startup_id).all()
             types = sorted(j.type for j in jobs)
             assert types == [
+                "ai.assessment.narrative",
+                "ai.health.recommendations",
                 "roadmap.replan",
-            ], f"expected exactly one roadmap.replan job (not one per racer), got {types}"
+            ], f"expected exactly one of each completion job (not one per racer), got {types}"
 
             assert (
                 verify.query(HealthScore).filter_by(startup_id=startup_id).count() == 1

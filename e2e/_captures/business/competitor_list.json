@@ -1,0 +1,80 @@
+{
+  "data": {
+    "records": [
+      {
+        "id": "bc9245be-5951-4dd4-9cd3-86cf94924a01",
+        "kind": "competitor",
+        "data": {
+          "name": "BigCo Rival",
+          "map_x": null,
+          "map_y": null,
+          "price": "$$$$",
+          "strengths": [
+            "Brand recognition"
+          ],
+          "weaknesses": [
+            "Slow to ship"
+          ],
+          "positioning": "Enterprise incumbent",
+          "threat_level": "high"
+        },
+        "position": 0
+      }
+    ],
+    "fields": [
+      {
+        "key": "name",
+        "required": true,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "positioning",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "price",
+        "required": false,
+        "type": "<class 'str'>",
+        "choices": null
+      },
+      {
+        "key": "strengths",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "weaknesses",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "threat_level",
+        "required": false,
+        "type": "<enum 'ThreatLevel'>",
+        "choices": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      {
+        "key": "map_x",
+        "required": false,
+        "type": "float | None",
+        "choices": null
+      },
+      {
+        "key": "map_y",
+        "required": false,
+        "type": "float | None",
+        "choices": null
+      }
+    ]
+  },
+  "meta": null
+}

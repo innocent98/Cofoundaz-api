@@ -47,7 +47,11 @@ REMOTE = os.environ.get("E2E_REMOTE", "").strip().lower() in {"1", "true", "yes"
 # the test run. `make_verified_user` is included because it consumes `mailbox`
 # internally - most journey tests reach the mailbox through it without naming it.
 _MAILBOX_FIXTURES = frozenset({"mailbox", "make_verified_user"})
-_TOKEN_RE = re.compile(r"<code>([^<]+)</code>")
+# One-time tokens arrive two ways: the verification/password-reset emails now embed
+# the token in a clickable FE link (`/verify-email/<tok>`, `/reset-password/<tok>` -
+# see app/services/auth/emails.py), while the onboarding-invite email still uses a
+# bare `<code><tok></code>`. Match either and take whichever group captured.
+_TOKEN_RE = re.compile(r"/(?:verify-email|reset-password)/([A-Za-z0-9_\-]+)|<code>([^<]+)</code>")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -106,8 +110,16 @@ def http() -> httpx.Client:
 
 @pytest.fixture()
 def unique_email():
+    # Recipients live at Resend's `delivered@resend.dev` test sink, plus-addressed for
+    # uniqueness. This matters for the REMOTE live-e2e gate, where staging runs
+    # EMAIL_BACKEND=resend: Resend REJECTS `example.com` recipients with a 422
+    # ("Invalid `to` field ... use our testing email address instead of domains like
+    # example.com"), which makes the fail-loud sender raise and every e2e signup 500.
+    # `delivered+<unique>@resend.dev` is accepted, always "delivered" to Resend's sink
+    # (no real inbox, no bounces), and unique per signup. Transparent to the local file
+    # backend + `mailbox` fixture, which match on the full `to` address either way.
     def _make(prefix: str = "e2e") -> str:
-        return f"{prefix}-{uuid.uuid4().hex[:12]}@example.com"
+        return f"delivered+{prefix}-{uuid.uuid4().hex[:12]}@resend.dev"
 
     return _make
 
@@ -139,7 +151,7 @@ def mailbox():
                 continue
             m = _TOKEN_RE.search(data["html"])
             if m:
-                return m.group(1)
+                return m.group(1) or m.group(2)  # URL-token group, else <code> group
         raise AssertionError(f"no token email found for {email} (subject~={subject_contains})")
 
     class _Mailbox:
@@ -152,6 +164,22 @@ def mailbox():
                 if json.loads(f.read_text())["to"].lower() == email.lower():
                     n += 1
             return n
+
+        @staticmethod
+        def latest_for(email: str) -> dict | None:
+            """The newest captured email JSON dict for `email`, or None.
+
+            Unlike `latest_token_for` (which extracts a one-time token from the
+            HTML body), this returns the whole captured email dict as written by
+            the file email backend -- used to assert on/capture the raw delivered
+            message itself (subject, to, html) rather than a token inside it.
+            """
+            files = sorted(Path(MAIL_DIR).glob("*.json"))
+            for f in reversed(files):
+                data = json.loads(f.read_text())
+                if data["to"].lower() == email.lower():
+                    return data
+            return None
 
     return _Mailbox()
 
@@ -169,6 +197,24 @@ def capture():
         out_dir = base_dir / group
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / f"{name}.json").write_text(json.dumps(resp.json(), indent=2) + "\n")
+
+    return _capture
+
+
+@pytest.fixture()
+def capture_json():
+    """Like `capture`, but writes an already-decoded JSON object (dict/list).
+
+    Used to capture things that are not an httpx.Response -- e.g. a delivered
+    email body read back out of the file email backend -- so the FE guides can
+    quote the real emailed message verbatim, not a hand-written approximation.
+    """
+    base_dir = Path(__file__).parent / "_captures"
+
+    def _capture(group: str, name: str, obj) -> None:
+        out_dir = base_dir / group
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{name}.json").write_text(json.dumps(obj, indent=2) + "\n")
 
     return _capture
 

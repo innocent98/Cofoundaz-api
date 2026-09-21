@@ -20,6 +20,7 @@ from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
 
 _DEFAULT_MISSION_SIZE = 3
 _WEEKEND_ISO_WEEKDAYS = (5, 6)  # Saturday, Sunday (date.weekday())
@@ -79,6 +80,16 @@ def _snoozed_tasks(db: Session, mission: Mission) -> list[MissionTask]:
         .order_by(MissionTask.order)
         .all()
     )
+
+
+def _enqueue_mission_reason(db: Session, mission: Mission, startup: Startup, order: int) -> None:
+    """Queue the `ai.mission.reason` job for a freshly-generated mission.
+
+    `order` is the task counter from `get_or_generate_today`: 0 for an empty
+    (e.g. weekend) mission, which has no task to explain and so is skipped.
+    """
+    if order:
+        job_dispatcher.enqueue(db, "ai.mission.reason", {"mission_id": str(mission.id)}, startup.id)
 
 
 def get_or_generate_today(db: Session, startup: Startup) -> Mission | None:
@@ -156,6 +167,7 @@ def get_or_generate_today(db: Session, startup: Startup) -> Mission | None:
             order += 1
 
     db.flush()
+    _enqueue_mission_reason(db, mission, startup, order)
     return mission
 
 
@@ -349,6 +361,7 @@ def _maybe_complete_mission(db: Session, mission: Mission) -> None:
     db.flush()
 
     event_bus.publish(
+        db,
         "mission.completed",
         {
             "startup_id": str(mission.startup_id),
@@ -362,6 +375,7 @@ def _maybe_complete_mission(db: Session, mission: Mission) -> None:
         new_streak = streak(db, startup)
         if new_streak in _STREAK_MILESTONES:
             event_bus.publish(
+                db,
                 "mission.streak.milestone",
                 {"startup_id": str(mission.startup_id), "streak": new_streak},
             )
@@ -380,6 +394,7 @@ def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTa
     db.flush()
 
     event_bus.publish(
+        db,
         "mission.task.completed",
         {
             "startup_id": str(startup.id),

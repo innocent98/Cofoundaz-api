@@ -26,6 +26,16 @@ MAIL_DIR="${E2E_MAIL_DIR:-./var/mail-e2e}"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${E2E_DB}"
 export EMAIL_BACKEND="file"
 export EMAIL_FILE_DIR="${MAIL_DIR}"
+# The FE origin for emailed deep links (share `/shared/{token}`, signing `/sign/{token}`,
+# and auth verify/reset links). Distinct from the API origin (E2E_BASE_URL, :8010) so the
+# captured emails prove the link opens an FE page, not an API route -- exactly how
+# staging/prod are configured (APP_BASE_URL=https://app.cofoundaz.com). Exported to BOTH
+# the uvicorn server and this pytest process so the e2e can assert the link against it.
+export APP_BASE_URL="${E2E_APP_BASE_URL:-http://localhost:3000}"
+# Deterministic, offline AI: both the server process and the pytest process (which
+# runs the in-process worker drain for e2e/test_ai_assessment_narrative.py) use the
+# stub LLM client -- no key, no network, no dependency on a real model being reachable.
+export LLM_PROVIDER="stub"
 export RATE_LIMIT_PER_MINUTE="100000"   # keep the limiter in the path but out of the way of journeys
 export E2E_BASE_URL="http://127.0.0.1:${PORT}"
 export E2E_MAIL_DIR="${MAIL_DIR}"
@@ -38,6 +48,10 @@ export REFRESH_COOKIE_SECURE="False"
 # Self-contained MFA: generate an ephemeral Fernet key so the run never depends on
 # a populated .env. (Note: a real deployment MUST set a persistent MFA_ENCRYPTION_KEY.)
 export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+
+# Self-contained journal encryption: same pattern as MFA above, so Module 21's
+# journal writes work in e2e. (A real deployment MUST set a persistent JOURNAL_ENCRYPTION_KEY.)
+export JOURNAL_ENCRYPTION_KEY="${JOURNAL_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 
 SERVER_PID=""
 SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"

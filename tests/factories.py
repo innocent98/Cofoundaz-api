@@ -6,9 +6,11 @@ from sqlalchemy.orm import Session
 from app.db.models.activity import ActivityLog
 from app.db.models.assessment import Assessment, AssessmentAnswer
 from app.db.models.auth import AuthSession
+from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.enums import (
     AssessmentStatus,
     AssessmentType,
+    CanvasType,
     InvitationStatus,
     MembershipRole,
     MembershipStatus,
@@ -16,6 +18,7 @@ from app.db.models.enums import (
     MissionTaskStatus,
     RecommendationEffort,
     RecommendationStatus,
+    RecordKind,
     RoadmapStatus,
     StartupStage,
     TaskEffort,
@@ -34,6 +37,7 @@ from app.db.models.roadmap import (
 )
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User, UserProfile
+from app.services.business.canvas_defs import empty_blocks
 
 
 def create_user(db: Session, *, email: str | None = None, **kw) -> User:
@@ -411,6 +415,44 @@ def create_activity(
         entity_type=entity_type,
         entity_id=entity_id,
         meta=meta,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def create_business_canvas(
+    db: Session,
+    *,
+    startup: Startup,
+    type: CanvasType = CanvasType.business_model,
+    blocks: dict | None = None,
+    version: int = 1,
+) -> BusinessCanvas:
+    row = BusinessCanvas(
+        startup_id=startup.id,
+        type=type,
+        blocks=blocks if blocks is not None else empty_blocks(type),
+        version=version,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def create_business_record(
+    db: Session,
+    *,
+    startup: Startup,
+    kind: RecordKind = RecordKind.persona,
+    data: dict | None = None,
+    position: int = 0,
+) -> BusinessRecord:
+    row = BusinessRecord(
+        startup_id=startup.id,
+        kind=kind,
+        data=data if data is not None else {"name": "Sample"},
+        position=position,
     )
     db.add(row)
     db.flush()

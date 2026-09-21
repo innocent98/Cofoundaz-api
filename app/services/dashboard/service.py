@@ -9,11 +9,14 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.db.models.activity import ActivityLog
-from app.db.models.enums import MissionTaskStatus, RoadmapStatus
+from app.db.models.dashboard import DailyBriefing
+from app.db.models.enums import BriefingStatus, MissionTaskStatus, RoadmapStatus
+from app.db.models.health_score import HealthScore
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
+from app.platform.jobs import job_dispatcher
 from app.services.health_score.service import get_overview, latest_completed_result
 from app.services.mission.service import get_or_generate_today, serialize_mission, streak
 
@@ -25,6 +28,7 @@ _BRIEFING_EMPTY = (
 )
 _RISKS_EMPTY = "No open risks. I'm watching runway, deadlines, and pipeline for you."
 _OPPS_EMPTY = "Opportunities I spot — grants, quick wins, market signals — will show up here."
+_BRIEFING_GENERATING = "Putting together your briefing…"
 
 
 def _salutation(now: datetime) -> str:
@@ -149,6 +153,83 @@ def _mission_section(db: Session, startup: Startup) -> Any:
     return serialize_mission(db, m, streak(db, startup))
 
 
+def gather_briefing_context(db: Session, startup: Startup) -> dict[str, Any]:
+    """Read-only context for the AI briefing prompt (Task 4's worker handler). Keys match
+    `build_dashboard_briefing_messages`'s kwargs exactly (app/services/dashboard/ai_briefing.py)."""
+    hs = db.query(HealthScore).filter_by(startup_id=startup.id).first()
+    today_mission = (
+        db.query(Mission).filter_by(startup_id=startup.id, mission_date=date.today()).first()
+    )
+    if today_mission is not None:
+        tasks = db.query(MissionTask).filter_by(mission_id=today_mission.id).all()
+        mission_total = len(tasks)
+        mission_done = sum(1 for t in tasks if t.status == MissionTaskStatus.done)
+    else:
+        mission_total = mission_done = 0
+    return {
+        "name": startup.name,
+        "industry": startup.industry,
+        "stage": startup.stage.value if startup.stage else None,
+        "health_score": hs.score if hs else None,
+        "health_band": hs.band if hs else None,
+        "mission_total": mission_total,
+        "mission_done": mission_done,
+        "upcoming_count": len(_upcoming(db, startup)),
+        "tasks_done_week": _tasks_done_this_week(db, startup),
+    }
+
+
+def get_or_generate_briefing(db: Session, startup: Startup) -> DailyBriefing | None:
+    """Return today's briefing, generating a `generating` row + enqueuing the AI job on the
+    first load of the day. Returns None when no kickoff assessment exists (caller renders the
+    static empty block). Idempotent per (startup, day): the AI job is enqueued only on the
+    create path, never for an existing (cached or race-losing) row.
+    """
+    if latest_completed_result(db, startup.id) is None:
+        return None
+    today = date.today()
+    existing = db.query(DailyBriefing).filter_by(startup_id=startup.id, briefing_date=today).first()
+    if existing is not None:
+        return existing
+    try:
+        with db.begin_nested():
+            row = DailyBriefing(
+                startup_id=startup.id,
+                briefing_date=today,
+                status=BriefingStatus.generating,
+                briefing=_BRIEFING_GENERATING,
+                risks=_BRIEFING_GENERATING,
+                opportunities=_BRIEFING_GENERATING,
+            )
+            db.add(row)
+            db.flush()
+    except IntegrityError:  # concurrent first-load won the unique constraint
+        return db.query(DailyBriefing).filter_by(startup_id=startup.id, briefing_date=today).first()
+    job_dispatcher.enqueue(
+        db,
+        "ai.dashboard.briefing",
+        {"startup_id": str(startup.id), "briefing_date": today.isoformat()},
+        startup.id,
+    )
+    return row
+
+
+def _briefing_blocks(db: Session, startup: Startup) -> dict[str, Any]:
+    row = _section_isolated(db, lambda: get_or_generate_briefing(db, startup))
+    if not isinstance(row, DailyBriefing):  # None (no assessment) or {"error": True}
+        return {
+            "briefing": {"status": "empty", "message": _BRIEFING_EMPTY},
+            "risks": {"status": "empty", "message": _RISKS_EMPTY},
+            "opportunities": {"status": "empty", "message": _OPPS_EMPTY},
+        }
+    st = row.status.value
+    return {
+        "briefing": {"status": st, "message": row.briefing},
+        "risks": {"status": st, "message": row.risks},
+        "opportunities": {"status": st, "message": row.opportunities},
+    }
+
+
 def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
     return {
         "greeting": {
@@ -172,9 +253,7 @@ def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
         "calibration": _section_isolated(
             db, lambda: {"assessment_complete": latest_completed_result(db, startup.id) is not None}
         ),
-        "briefing": {"status": "empty", "message": _BRIEFING_EMPTY},
-        "risks": {"status": "empty", "message": _RISKS_EMPTY},
-        "opportunities": {"status": "empty", "message": _OPPS_EMPTY},
+        **_briefing_blocks(db, startup),
     }
 
 

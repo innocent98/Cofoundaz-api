@@ -1,0 +1,65 @@
+{
+  "data": {
+    "document": {
+      "id": "a9f9c75d-6fe7-4e4a-9a71-843b9d75cbfc",
+      "kind": "business_plan",
+      "title": "Business Plan",
+      "status": "draft",
+      "ai_generated": false,
+      "folder": null,
+      "template_key": "business_plan",
+      "version": 1,
+      "updated_at": "2026-09-19T10:10:26.543837+00:00",
+      "sections": [
+        {
+          "id": "6e916097-5ca7-4e2f-8649-64f49c986c11",
+          "body": "",
+          "heading": "Executive Summary"
+        },
+        {
+          "id": "b9534027-b23a-4501-add7-2dd87be57c5e",
+          "body": "",
+          "heading": "Problem"
+        },
+        {
+          "id": "e1a8911e-883b-41e0-b746-05fb90d3a6e3",
+          "body": "",
+          "heading": "Solution"
+        },
+        {
+          "id": "d426cbd6-4782-44ec-bb23-594dfa4366ba",
+          "body": "",
+          "heading": "Market & Customer"
+        },
+        {
+          "id": "837aaea4-02e0-44eb-8df5-925850e6e34c",
+          "body": "",
+          "heading": "Business Model"
+        },
+        {
+          "id": "7fe06a1e-79f0-4a1f-b2b2-5b48bd5d5ac5",
+          "body": "",
+          "heading": "Go-to-Market"
+        },
+        {
+          "id": "ba1c2293-9567-41c0-9c62-8c8feafdb2a3",
+          "body": "",
+          "heading": "Team"
+        },
+        {
+          "id": "21009fb8-4af8-4faa-904b-2eefd24ba5ca",
+          "body": "",
+          "heading": "Financials"
+        },
+        {
+          "id": "ba7ecb88-0114-4898-a08d-65359f8988bb",
+          "body": "",
+          "heading": "The Ask"
+        }
+      ]
+    },
+    "access_level": "view",
+    "expires_at": "2026-10-19T10:10:26.555734+00:00"
+  },
+  "meta": null
+}

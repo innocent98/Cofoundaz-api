@@ -78,6 +78,28 @@ def test_openapi_served(http: httpx.Client):
         # dashboard surface
         "/api/v1/dashboard/summary",
         "/api/v1/dashboard/activity",
+        # business builder surface
+        "/api/v1/business-builder/overview",
+        "/api/v1/business-builder/canvases/{type}",
+        "/api/v1/business-builder/canvases/{type}/ai-fill",
+        # business builder records surface (Slice 2 — typed artifacts)
+        "/api/v1/business-builder/{kind}",
+        "/api/v1/business-builder/{kind}/ai-fill",
+        "/api/v1/business-builder/{kind}/{record_id}",
+        # journal ("Founder Journal") surface
+        "/api/v1/journal/entries",
+        "/api/v1/journal/entries/{entry_id}",
+        "/api/v1/journal/mood",
+        "/api/v1/journal/prompts/today",
+        # learning academy surface
+        "/api/v1/learning/recommendations",
+        "/api/v1/learning/courses",
+        "/api/v1/learning/courses/{course_id}",
+        "/api/v1/learning/paths",
+        "/api/v1/learning/articles",
+        "/api/v1/learning/enrollments",
+        "/api/v1/learning/lessons/{lesson_id}/progress",
+        "/api/v1/learning/certificates",
     ]:
         assert p in paths, f"missing route {p}"
 

@@ -1,0 +1,73 @@
+{
+  "data": {
+    "type": "business_model",
+    "version": 2,
+    "blocks": {
+      "channels": [],
+      "key_partners": [
+        "Acme Corp"
+      ],
+      "key_resources": [],
+      "cost_structure": [],
+      "key_activities": [],
+      "revenue_streams": [],
+      "customer_segments": [],
+      "value_propositions": [],
+      "customer_relationships": []
+    },
+    "block_defs": [
+      {
+        "key": "key_partners",
+        "label": "Key Partners",
+        "kind": "list"
+      },
+      {
+        "key": "key_activities",
+        "label": "Key Activities",
+        "kind": "list"
+      },
+      {
+        "key": "key_resources",
+        "label": "Key Resources",
+        "kind": "list"
+      },
+      {
+        "key": "value_propositions",
+        "label": "Value Propositions",
+        "kind": "list"
+      },
+      {
+        "key": "customer_relationships",
+        "label": "Customer Relationships",
+        "kind": "list"
+      },
+      {
+        "key": "channels",
+        "label": "Channels",
+        "kind": "list"
+      },
+      {
+        "key": "customer_segments",
+        "label": "Customer Segments",
+        "kind": "list"
+      },
+      {
+        "key": "cost_structure",
+        "label": "Cost Structure",
+        "kind": "list"
+      },
+      {
+        "key": "revenue_streams",
+        "label": "Revenue Streams",
+        "kind": "list"
+      }
+    ],
+    "completion": {
+      "filled_blocks": 1,
+      "total_blocks": 9,
+      "completion_pct": 11,
+      "status": "continue"
+    }
+  },
+  "meta": null
+}

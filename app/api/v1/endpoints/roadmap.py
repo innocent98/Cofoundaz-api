@@ -348,6 +348,7 @@ def apply_template_ep(
         )
     added = apply_template(db, roadmap, tmpl)
     event_bus.publish(
+        db,
         "roadmap.template.applied",
         {
             "startup_id": str(membership.startup_id),
@@ -470,12 +471,14 @@ def update_milestone_ep(
     if now_done and not was_done:
         roadmap = _require_roadmap(db, membership)
         event_bus.publish(
+            db,
             "roadmap.milestone.completed",
             {
                 "startup_id": str(membership.startup_id),
                 "roadmap_id": str(roadmap.id),
                 "milestone_id": str(m.id),
                 "title": m.title,
+                "actor_id": str(membership.user_id),
             },
         )
         write_activity(

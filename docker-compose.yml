@@ -61,6 +61,30 @@ services:
       retries: 3
       start_period: 15s
 
+  worker:
+    build:
+      context: .
+      args:
+        GIT_SHA: dev
+        VERSION: dev
+    image: cofoundaz-api:dev
+    container_name: cofoundaz-api_worker
+    command: ["python", "-m", "app.worker"]
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/cofoundaz-api_db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: postgres:17-alpine
     container_name: cofoundaz-api_db

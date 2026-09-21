@@ -1,0 +1,79 @@
+{
+  "data": {
+    "templates": [
+      {
+        "key": "business_plan",
+        "name": "Business Plan",
+        "description": "A full business plan.",
+        "kind": "business_plan",
+        "sections": [
+          "Executive Summary",
+          "Problem",
+          "Solution",
+          "Market & Customer",
+          "Business Model",
+          "Go-to-Market",
+          "Team",
+          "Financials",
+          "The Ask"
+        ]
+      },
+      {
+        "key": "pitch_deck",
+        "name": "Pitch Deck",
+        "description": "An investor pitch narrative.",
+        "kind": "pitch_deck",
+        "sections": [
+          "Hook",
+          "Problem",
+          "Solution",
+          "Why Now",
+          "Market",
+          "Product",
+          "Team",
+          "The Ask"
+        ]
+      },
+      {
+        "key": "financial_model",
+        "name": "Financial Model",
+        "description": "A lightweight financial narrative.",
+        "kind": "financial_model",
+        "sections": [
+          "Assumptions",
+          "Revenue",
+          "Costs",
+          "Runway",
+          "Projections"
+        ]
+      },
+      {
+        "key": "meeting_notes",
+        "name": "Meeting Notes",
+        "description": "Structured meeting notes.",
+        "kind": "meeting_notes",
+        "sections": [
+          "Attendees",
+          "Agenda",
+          "Discussion",
+          "Decisions",
+          "Action Items"
+        ]
+      },
+      {
+        "key": "one_pager",
+        "name": "One-Pager",
+        "description": "A concise one-page overview.",
+        "kind": "one_pager",
+        "sections": [
+          "Overview",
+          "Problem",
+          "Solution",
+          "Traction",
+          "The Ask"
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

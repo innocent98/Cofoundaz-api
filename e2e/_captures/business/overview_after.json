@@ -1,0 +1,73 @@
+{
+  "data": [
+    {
+      "type": "business_model",
+      "label": "Business Model",
+      "filled_blocks": 1,
+      "total_blocks": 9,
+      "completion_pct": 11,
+      "status": "continue"
+    },
+    {
+      "type": "lean",
+      "label": "Lean",
+      "filled_blocks": 0,
+      "total_blocks": 9,
+      "completion_pct": 0,
+      "status": "start"
+    },
+    {
+      "type": "value_prop",
+      "label": "Value Prop",
+      "filled_blocks": 0,
+      "total_blocks": 6,
+      "completion_pct": 0,
+      "status": "start"
+    },
+    {
+      "type": "mission_vision",
+      "label": "Mission Vision",
+      "filled_blocks": 0,
+      "total_blocks": 2,
+      "completion_pct": 0,
+      "status": "start"
+    },
+    {
+      "type": "swot",
+      "label": "Swot",
+      "filled_blocks": 0,
+      "total_blocks": 4,
+      "completion_pct": 0,
+      "status": "start"
+    },
+    {
+      "type": "persona",
+      "label": "Persona",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "revenue_stream",
+      "label": "Revenue Stream",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "competitor",
+      "label": "Competitor",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    },
+    {
+      "type": "pricing",
+      "label": "Pricing",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0
+    }
+  ],
+  "meta": null
+}

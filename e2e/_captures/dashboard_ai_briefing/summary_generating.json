@@ -1,0 +1,149 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good evening",
+      "first_name": "Ada",
+      "startup_name": "Cofoundaz"
+    },
+    "health": {
+      "status": "ok",
+      "score": 31,
+      "band": "at_risk",
+      "delta_7d": 0,
+      "computed_at": "2026-09-19T22:10:45.403279+00:00",
+      "config_version": 1,
+      "dimensions": [
+        {
+          "key": "team",
+          "label": "Team",
+          "score": 50,
+          "band": "needs_work"
+        },
+        {
+          "key": "legal",
+          "label": "Legal",
+          "score": 0,
+          "band": "at_risk"
+        },
+        {
+          "key": "money",
+          "label": "Financial",
+          "score": 43,
+          "band": "needs_work"
+        },
+        {
+          "key": "market",
+          "label": "Market",
+          "score": 38,
+          "band": "at_risk"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "score": 25,
+          "band": "at_risk"
+        }
+      ],
+      "top_recommendations": [
+        {
+          "id": "6e9d7265-30d9-445f-9188-f8a2cc929218",
+          "dimension": "legal",
+          "key": "legal.incorporate",
+          "title": "Complete incorporation",
+          "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
+          "estimated_lift": 9,
+          "effort": "high",
+          "status": "pending",
+          "priority": 1
+        },
+        {
+          "id": "eaf57dab-1416-4e82-90bb-a668d68bff59",
+          "dimension": "legal",
+          "key": "legal.founder_agreement",
+          "title": "Sign a founders' agreement",
+          "body": "Put equity splits, vesting, and roles in writing before it is contentious. This prevents the most common founder disputes.",
+          "estimated_lift": 7,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 2
+        },
+        {
+          "id": "c28bfbe2-8356-44d7-8366-b1af4d1060ea",
+          "dimension": "product",
+          "key": "product.define_mvp",
+          "title": "Define your MVP scope",
+          "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
+          "estimated_lift": 8,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 3
+        }
+      ],
+      "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
+    },
+    "mission": {
+      "mission_date": "2026-09-19",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [
+        {
+          "id": "3221f763-6acc-4207-863d-6b06a09c2cbf",
+          "roadmap_task_id": "5a44d4fb-319d-4df9-afc1-0770c8794502",
+          "title": "Run 10 customer interviews",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "medium",
+          "status": "todo",
+          "order": 0,
+          "completed_at": null,
+          "reject_reason": null
+        },
+        {
+          "id": "db742ed7-dfcb-469e-9d2f-2570c7b49557",
+          "roadmap_task_id": "0365befb-8874-4de4-8ae2-ab548f52e799",
+          "title": "Synthesize problem hypotheses",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 1,
+          "completed_at": null,
+          "reject_reason": null
+        },
+        {
+          "id": "652be5a1-76dd-4f67-ba1b-a59e0468dad7",
+          "roadmap_task_id": "3127677c-35a3-43f3-8242-7e0174291ad7",
+          "title": "Draft 3 pricing options",
+          "reason": "From your 'Pricing test' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 2,
+          "completed_at": null,
+          "reject_reason": null
+        }
+      ]
+    },
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": true
+    },
+    "briefing": {
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
+    },
+    "risks": {
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
+    },
+    "opportunities": {
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
+    }
+  },
+  "meta": null
+}

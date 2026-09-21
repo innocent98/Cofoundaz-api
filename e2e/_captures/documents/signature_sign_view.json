@@ -1,0 +1,22 @@
+{
+  "data": {
+    "request": {
+      "title": "Investor Agreement",
+      "status": "awaiting"
+    },
+    "file": {
+      "id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
+      "filename": "investor-agreement.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 47,
+      "folder": null,
+      "url": "var/storage/documents/b55d87ab-83ee-441c-b01b-9d7213321fd7/d05df11f91a040258a741ebf696ba2f4.pdf",
+      "uploaded_at": "2026-09-19T10:10:27.175617+00:00"
+    },
+    "signer": {
+      "email": "delivered+signer-one-9c893248fbd4@resend.dev",
+      "name": "Ada Investor"
+    }
+  },
+  "meta": null
+}

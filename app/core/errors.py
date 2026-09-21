@@ -68,6 +68,18 @@ class MfaInvalidCode(AppError):  # noqa: N818
     message = "That code isn't right. Try again."
 
 
+class JournalNotConfigured(AppError):  # noqa: N818
+    code, http_status = "JOURNAL_NOT_CONFIGURED", 500
+    message = "Journal storage is not configured on the server."
+
+
+class JournalContentUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor the plaintext may ever appear in an
+    # error surfaced to a client or a log.
+    code, http_status = "JOURNAL_CONTENT_UNREADABLE", 500
+    message = "That entry could not be read."
+
+
 class FeatureNotEnabled(AppError):  # noqa: N818
     code, http_status = "FEATURE_NOT_ENABLED", 501
     message = "This feature isn't available yet."
@@ -101,6 +113,26 @@ class InviteEmailMismatch(AppError):  # noqa: N818
 class AlreadyMember(AppError):  # noqa: N818
     code, http_status = "ALREADY_MEMBER", 409
     message = "That person is already on this workspace."
+
+
+class CanvasVersionConflict(AppError):  # noqa: N818
+    code, http_status = "CANVAS_VERSION_CONFLICT", 409
+    message = "This canvas was changed elsewhere. Refresh and try again."
+
+
+class DocumentVersionConflict(AppError):  # noqa: N818
+    code, http_status = "DOCUMENT_VERSION_CONFLICT", 409
+    message = "This document was changed elsewhere. Reload and reapply your edits."
+
+
+class SuggestionNotPending(AppError):  # noqa: N818
+    code, http_status = "SUGGESTION_NOT_PENDING", 409
+    message = "This suggestion has already been resolved."
+
+
+class SignatureNotActive(AppError):  # noqa: N818
+    code, http_status = "SIGNATURE_NOT_ACTIVE", 409
+    message = "This signature request is already complete or cancelled."
 
 
 class EmailNotVerified(AppError):  # noqa: N818

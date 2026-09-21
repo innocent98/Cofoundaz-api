@@ -16,6 +16,7 @@ from app.db.models.health_score import (
 )
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
 from app.services.health_score.config import (
     DIMENSION_LABELS,
     DIMENSION_WEIGHTS,
@@ -132,6 +133,9 @@ def recompute_health_score(
     from app.services.health_score.recommendations import generate_recommendations
 
     generate_recommendations(db, startup.id, dim_scores)
+    job_dispatcher.enqueue(
+        db, "ai.health.recommendations", {"startup_id": str(startup.id)}, startup.id
+    )
 
     db.flush()
     # populate_existing=True forces a refresh from the DB row we just upserted via
@@ -146,6 +150,7 @@ def recompute_health_score(
 
     # 5. Events
     event_bus.publish(
+        db,
         "healthscore.updated",
         {
             "startup_id": str(startup.id),
@@ -159,6 +164,7 @@ def recompute_health_score(
     )
     if delta <= -5:
         event_bus.publish(
+            db,
             "healthscore.dropped",
             {
                 "startup_id": str(startup.id),
@@ -170,6 +176,7 @@ def recompute_health_score(
         )
     if prior_max is not None and overall > prior_max:
         event_bus.publish(
+            db,
             "healthscore.record",
             {
                 "startup_id": str(startup.id),

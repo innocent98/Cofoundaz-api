@@ -2,16 +2,24 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     assessments,
+    business,
     dashboard,
+    documents,
     health,
     health_score,
     invitations,
     jobs,
+    journal,
+    learning,
     mission,
+    notifications,
     roadmap,
 )
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.onboarding import router as onboarding_router
+from app.services.notifications.registry import register as register_notifications
+
+register_notifications()
 
 api_router = APIRouter()
 
@@ -25,3 +33,8 @@ api_router.include_router(health_score.router, prefix="/health-score", tags=["he
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(business.router, prefix="/business-builder", tags=["business-builder"])
+api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
+api_router.include_router(documents.router, tags=["documents"])
+api_router.include_router(notifications.router, tags=["notifications"])
+api_router.include_router(learning.router, prefix="/learning", tags=["learning"])

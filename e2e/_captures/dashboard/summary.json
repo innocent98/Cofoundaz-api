@@ -1,7 +1,7 @@
 {
   "data": {
     "greeting": {
-      "salutation": "Good afternoon",
+      "salutation": "Good evening",
       "first_name": "Ada",
       "startup_name": "Cofoundaz"
     },
@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-08-31T16:56:32.465287+00:00",
+      "computed_at": "2026-09-19T22:10:44.541687+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -46,7 +46,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "bb0bf2d5-61f0-4ecb-b7dc-bbbd1fb697a3",
+          "id": "3024f4cb-c617-474c-9a98-b8dac20665dd",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -57,7 +57,7 @@
           "priority": 1
         },
         {
-          "id": "9c19ede4-64d8-49a9-993f-5cb779720dd4",
+          "id": "83db3d39-b4bc-43ff-9a20-6d43168fe42b",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
@@ -68,7 +68,7 @@
           "priority": 2
         },
         {
-          "id": "b8ac279f-0b65-451a-8699-4883cebbd4c8",
+          "id": "d5abca0c-98f9-4516-a1f4-3b04d5d920f1",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -82,13 +82,13 @@
       "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
     },
     "mission": {
-      "mission_date": "2026-08-31",
+      "mission_date": "2026-09-19",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "721e79af-c219-4a3a-94d8-699e597929a3",
-          "roadmap_task_id": "8baf2855-ca05-4ff2-a4b0-a11174ef9752",
+          "id": "5abf44a3-d039-4835-93b9-19846654b372",
+          "roadmap_task_id": "f0be400c-5240-4eb6-a5c0-81b29ac97140",
           "title": "Run 10 customer interviews",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "medium",
@@ -98,8 +98,8 @@
           "reject_reason": null
         },
         {
-          "id": "30de2629-33d2-43b2-adc5-4b0cd8fda1da",
-          "roadmap_task_id": "67ff93d0-113f-4cfb-9063-1a4e44d9647b",
+          "id": "c02fc2f5-bad4-4bda-aee4-2f2c5e2cb266",
+          "roadmap_task_id": "b5dc3ccb-f766-43f8-b32f-092ba40188b6",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -109,8 +109,8 @@
           "reject_reason": null
         },
         {
-          "id": "ed0d6ad0-6e5c-420d-94d0-d0397f404189",
-          "roadmap_task_id": "87ec7057-0b01-464f-b0f0-ae791edb7415",
+          "id": "2af7d580-72ca-4b07-a903-c4dacc7b40dc",
+          "roadmap_task_id": "9f55992a-2da3-4a2e-ab53-47f3e130d634",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -133,16 +133,16 @@
       "assessment_complete": true
     },
     "briefing": {
-      "status": "empty",
-      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace."
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
     },
     "risks": {
-      "status": "empty",
-      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you."
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
     },
     "opportunities": {
-      "status": "empty",
-      "message": "Opportunities I spot \u2014 grants, quick wins, market signals \u2014 will show up here."
+      "status": "generating",
+      "message": "Putting together your briefing\u2026"
     }
   },
   "meta": null

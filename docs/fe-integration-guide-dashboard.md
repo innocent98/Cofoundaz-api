@@ -23,21 +23,29 @@ Every success response is the standard envelope `{"data": …, "meta": null}`. E
 ## 1. `GET /api/v1/dashboard/summary` — the founder's home screen
 
 The one call the dashboard/home screen is built on. It aggregates 9 sections from across the
-already-shipped modules (Health Score, Mission, Roadmap, Assessment) plus 3 static
-not-yet-built sections. **Calling this may have a side effect**: if today's mission doesn't
-exist yet, this call lazily generates it (same lazy-generation Mission's own
-`GET /missions/today` does — see `docs/fe-integration-guide-mission.md` §1) — the endpoint
-commits after the read specifically to persist that.
+already-shipped modules (Health Score, Mission, Roadmap, Assessment), the AI-generated
+`briefing`/`risks`/`opportunities` trio (Module 03 — see the "AI daily briefing" subsection
+below), and the still-static/`null` financial KPIs (`kpis.revenue`/`runway`/`pipeline_value`/
+`campaign_performance` — Modules 09–11, not yet built). **Calling this may have a side effect**:
+if today's mission doesn't exist yet, this call lazily generates it (same lazy-generation
+Mission's own `GET /missions/today` does — see `docs/fe-integration-guide-mission.md` §1) — the
+endpoint commits after the read specifically to persist that. **Same for the AI daily briefing**:
+if the founder has completed the kickoff assessment and today's briefing row doesn't exist yet,
+this call also creates it (status `generating`) and enqueues the `ai.dashboard.briefing` job —
+see below.
 
 `e2e/_captures/dashboard/summary.json` — captured **after** the founder completed the kickoff
 assessment (so `health` and `calibration` are in their real, non-empty states) and **before**
-any mission task was completed (status `200`):
+any mission task was completed (status `200`). **Regenerated 2026-09-19** when the AI daily
+briefing shipped: the first summary read after the kickoff assessment completes now opens the
+briefing gate immediately, so `briefing`/`risks`/`opportunities` read `"generating"` here, not
+`"empty"` — see the "AI daily briefing" subsection below for the full state machine:
 
 ```json
 {
   "data": {
     "greeting": {
-      "salutation": "Good afternoon",
+      "salutation": "Good evening",
       "first_name": "Ada",
       "startup_name": "Cofoundaz"
     },
@@ -46,7 +54,7 @@ any mission task was completed (status `200`):
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-08-31T16:56:32.465287+00:00",
+      "computed_at": "2026-09-19T22:10:44.541687+00:00",
       "config_version": 1,
       "dimensions": [
         { "key": "team", "label": "Team", "score": 50, "band": "needs_work" },
@@ -57,7 +65,7 @@ any mission task was completed (status `200`):
       ],
       "top_recommendations": [
         {
-          "id": "bb0bf2d5-61f0-4ecb-b7dc-bbbd1fb697a3",
+          "id": "3024f4cb-c617-474c-9a98-b8dac20665dd",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -68,7 +76,7 @@ any mission task was completed (status `200`):
           "priority": 1
         },
         {
-          "id": "9c19ede4-64d8-49a9-993f-5cb779720dd4",
+          "id": "83db3d39-b4bc-43ff-9a20-6d43168fe42b",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
@@ -79,7 +87,7 @@ any mission task was completed (status `200`):
           "priority": 2
         },
         {
-          "id": "b8ac279f-0b65-451a-8699-4883cebbd4c8",
+          "id": "d5abca0c-98f9-4516-a1f4-3b04d5d920f1",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -93,13 +101,13 @@ any mission task was completed (status `200`):
       "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
     },
     "mission": {
-      "mission_date": "2026-08-31",
+      "mission_date": "2026-09-19",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "721e79af-c219-4a3a-94d8-699e597929a3",
-          "roadmap_task_id": "8baf2855-ca05-4ff2-a4b0-a11174ef9752",
+          "id": "5abf44a3-d039-4835-93b9-19846654b372",
+          "roadmap_task_id": "f0be400c-5240-4eb6-a5c0-81b29ac97140",
           "title": "Run 10 customer interviews",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "medium",
@@ -109,8 +117,8 @@ any mission task was completed (status `200`):
           "reject_reason": null
         },
         {
-          "id": "30de2629-33d2-43b2-adc5-4b0cd8fda1da",
-          "roadmap_task_id": "67ff93d0-113f-4cfb-9063-1a4e44d9647b",
+          "id": "c02fc2f5-bad4-4bda-aee4-2f2c5e2cb266",
+          "roadmap_task_id": "b5dc3ccb-f766-43f8-b32f-092ba40188b6",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -120,8 +128,8 @@ any mission task was completed (status `200`):
           "reject_reason": null
         },
         {
-          "id": "ed0d6ad0-6e5c-420d-94d0-d0397f404189",
-          "roadmap_task_id": "87ec7057-0b01-464f-b0f0-ae791edb7415",
+          "id": "2af7d580-72ca-4b07-a903-c4dacc7b40dc",
+          "roadmap_task_id": "9f55992a-2da3-4a2e-ab53-47f3e130d634",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -142,16 +150,16 @@ any mission task was completed (status `200`):
     },
     "calibration": { "assessment_complete": true },
     "briefing": {
-      "status": "empty",
-      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace."
+      "status": "generating",
+      "message": "Putting together your briefing…"
     },
     "risks": {
-      "status": "empty",
-      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you."
+      "status": "generating",
+      "message": "Putting together your briefing…"
     },
     "opportunities": {
-      "status": "empty",
-      "message": "Opportunities I spot — grants, quick wins, market signals — will show up here."
+      "status": "generating",
+      "message": "Putting together your briefing…"
     }
   },
   "meta": null
@@ -169,7 +177,7 @@ any mission task was completed (status `200`):
 | `kpis.tasks_done_this_week` | **live** — the only real KPI in v1 | Mission tasks completed in the trailing 7 days (by `completed_at`, not by which day's mission they were assigned to). |
 | `kpis.revenue` / `runway` / `pipeline_value` / `campaign_performance` | **always `null` in v1** | No financial/CRM/campaign module exists yet — Modules 09–11. Render these as "coming soon" placeholders, not as "$0". |
 | `calibration.assessment_complete` | real, boolean | `true` once the founder has completed the kickoff assessment (any completed `Assessment` row) — **nested under `calibration`, not a top-level field** (see the nesting trap below). **`calibration` itself can also be `{"error": true}`** on a rare DB error, same as `health`/`mission`/`upcoming`/`kpis` — check for the error shape before reading `assessment_complete` (see the error-marker trap below). |
-| `briefing` / `risks` / `opportunities` | **always the static empty-state shape in v1** | No AI panel exists yet — Module 03. `status` is always `"empty"`; `message` is a fixed string per section. The shape (`{status, message}`) is stable so Module 03 can later swap in a non-`"empty"` status without breaking the FE contract — but nothing today drives that transition. Don't build UI that assumes `status` can currently be anything else. |
+| `briefing` / `risks` / `opportunities` | **dynamic as of 2026-09-19** — `status` is `"empty"`, `"generating"`, or `"ready"` | Module 03's dashboard AI briefing. **`status: "generating"` in this capture** — see the "AI daily briefing" subsection below for the full state machine, both other states' verbatim payloads, and why the FE should re-fetch this endpoint shortly after first load. |
 
 ### Field-nesting traps
 
@@ -190,6 +198,73 @@ any mission task was completed (status `200`):
   (`tests/services/test_dashboard_summary.py::test_a_failing_section_becomes_error_marker_not_a_raise`).
   If you see `{"error": true}` in place of a section's normal shape, render that widget's own
   degraded/retry state rather than crashing on the missing fields.
+
+### AI daily briefing — `briefing` / `risks` / `opportunities` statuses
+
+**Shipped 2026-09-19 (Module 03).** These three sections are no longer permanently static.
+`status` is now one of:
+
+| `status` | Meaning | FE behavior |
+|---|---|---|
+| `"empty"` | The founder hasn't completed the kickoff assessment yet — there's nothing to brief on. | Unchanged from before this shipment: render the static `message` as-is. |
+| `"generating"` | The assessment is complete and today's briefing has been enqueued to `ai.dashboard.briefing`, but the worker hasn't written it yet. | Show a subtle loading state for the section. `message` is a friendly placeholder — don't render it as if it were the real AI text. |
+| `"ready"` | The AI has written this section for today. | Render `message` as the actual AI-authored text. |
+
+**Re-fetch `GET /dashboard/summary` shortly after first load to pick up the `generating` →
+`ready` transition.** There's no push/websocket notification for this (Module 20's real-time
+feed doesn't cover dashboard sections) — a short client-side poll or a single delayed re-fetch a
+few seconds after the page loads is the intended pattern. A section still reading `"generating"`
+across a few polls is normal (worker latency), not an error — the model has a `failed` status
+reserved in the DB enum for future use, but nothing writes it today; an LLM error currently
+raises inside the job and relies on the job runner's own retry, leaving the row on
+`"generating"` until a retry succeeds.
+
+Captured **verbatim** from `e2e/_captures/dashboard_ai_briefing/summary_generating.json` — right
+after the kickoff assessment completes, before the `ai.dashboard.briefing` job has run:
+
+```json
+"briefing": {
+  "status": "generating",
+  "message": "Putting together your briefing…"
+},
+"risks": {
+  "status": "generating",
+  "message": "Putting together your briefing…"
+},
+"opportunities": {
+  "status": "generating",
+  "message": "Putting together your briefing…"
+}
+```
+
+Captured **verbatim** from `e2e/_captures/dashboard_ai_briefing/summary_ready.json` — same
+startup, same day, after draining the worker. The e2e runs against the stub LLM provider, so the
+text is the literal `[stub-llm] ...` marker rather than real prose — a real provider returns
+actual generated sentences in this same `{status, message}` shape:
+
+```json
+"briefing": {
+  "status": "ready",
+  "message": "[stub-llm] briefing"
+},
+"risks": {
+  "status": "ready",
+  "message": "[stub-llm] risks"
+},
+"opportunities": {
+  "status": "ready",
+  "message": "[stub-llm] opportunities"
+}
+```
+
+**Don't confuse this `[stub-llm]` marker with the `[stub-llm]` text also visible elsewhere in the
+same `summary_ready.json` capture.** That file's `health.top_recommendations[].body` and
+`mission.tasks[].reason` also contain `[stub-llm]` text — those come from Module 03 Slice 4's
+already-shipped `ai.health.recommendations` and `ai.mission.reason` workers (see
+`docs/fe-integration-guide-health-score.md` §5 and `docs/fe-integration-guide-mission.md` §1),
+which the e2e's broad worker-drain step happened to also complete while draining the queue for
+this test. They're unrelated, already-documented features — only the `briefing`/`risks`/
+`opportunities` block above is produced by `ai.dashboard.briefing`.
 
 ### ⚠️ Honesty note — `upcoming: []` in this capture is real, but not the only real shape
 
@@ -379,7 +454,9 @@ re-asserted over live HTTP; the shape source is named.
 | `kpis.tasks_done_this_week` — live count | ✅ | `summary.json` (`0`, since captured before any completion) |
 | `kpis.revenue`/`runway`/`pipeline_value`/`campaign_performance` — always `null` | ✅ | `summary.json` |
 | `calibration.assessment_complete: true` after a completed assessment | ✅ | `summary.json` |
-| `briefing`/`risks`/`opportunities` — static empty-state shape | ✅ | `summary.json` |
+| `briefing`/`risks`/`opportunities` — `"empty"` shape (no assessment yet) | ⬜ | unit-tested (`tests/services/dashboard/test_briefing_generation.py::test_no_briefing_without_assessment`), **not captured live** — no e2e journey in this repo exercises `GET /dashboard/summary` for a founder who hasn't completed the kickoff assessment. (A pre-2026-09-19 capture once showed this shape, but for a different reason — Module 02's original code returned it unconditionally, even post-assessment; that capture has since been superseded and no longer reflects current behavior.) |
+| `briefing`/`risks`/`opportunities` — `"generating"` shape, right after the kickoff assessment | ✅ | `summary.json`, `dashboard_ai_briefing/summary_generating.json` |
+| `briefing`/`risks`/`opportunities` — `"ready"` shape after worker drain (stub LLM text) | ✅ | `dashboard_ai_briefing/summary_ready.json` |
 | `upcoming: []` for a freshly-onboarded founder (window miss) | ✅ | `summary.json` |
 | `upcoming` — populated item shape `{id, title, due_on, milestone_id}` | ⬜ | derived from `_upcoming` (`app/services/dashboard/service.py:50`); unit-tested (`test_upcoming_window_and_done_exclusion`), **not captured live** — structurally unreachable in this journey (see honesty note) |
 | A section throwing server-side → `{"error": true}` marker | ⬜ | derived from `_section`; unit-tested (`test_a_failing_section_becomes_error_marker_not_a_raise`), **not observed live** (nothing failed during the journey) |

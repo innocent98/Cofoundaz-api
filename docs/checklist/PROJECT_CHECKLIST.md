@@ -16,31 +16,159 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-03 (evening) · `fix/cd-ghcr-auth-regression`, branched from `develop` —
-repairs the GHCR-auth regression PR #42 shipped, which broke the first-ever `cd-staging.yml` run;
-see the **CI/CD — branching restructure** section below._
+_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Dashboard AI Briefing** shipped on
+branch `feat/dashboard-ai-briefing` (5 tasks, migration `0027_daily_briefings`), PR to `develop`
+to follow — the third of five Module-03-deferred AI consumers now built: the dashboard's
+`briefing`/`risks`/`opportunities` panel (previously permanently static — see Module 02's own
+SOP) is now backed by a new `daily_briefings` table, lazily generated on the first
+`GET /dashboard/summary` read of the day for a founder who has completed the kickoff assessment
+— `status: "generating"` immediately (a placeholder row + enqueued job), `status: "ready"` once
+the new `ai.dashboard.briefing` worker job writes AI-authored text via the existing
+`complete_json` structured-output method. A founder who hasn't completed the kickoff assessment
+still sees the original static `"empty"` shape, byte-for-byte unchanged. Proven live end to end
+(`e2e/test_dashboard_ai_briefing.py`, 2 captures): enqueue → in-process worker drain → structured
+LLM (stub) call → persisted `ready` row, over real HTTP (49 e2e passed total, no regression) —
+this run also fixed a stale assertion in the pre-existing `e2e/test_dashboard.py` journey (a
+just-assessed founder's first summary read now shows `briefing.status: "generating"`, not
+`"empty"`, immediately). **This does NOT complete Module 03**: only two Module-03-deferred AI
+consumers remain unbuilt — **the onboarding AI panel and the roadmap replan rationale**. **Counts
+unchanged: still 11 modules fully complete, 1 open (03), 14 not started.** SOP:
+`docs/sop/2026-09-19-dashboard-ai-briefing.md`; FE guide (extended):
+`docs/fe-integration-guide-dashboard.md`._
 
-_Previously: 2026-09-03 · `chore/cicd-branching-restructure` (CD split into `cd-staging.yml` /
-`cd-production.yml` + reusable `live-e2e.yml`, registry-carried staging-verified proof, `cd.yml`
-deleted) branched from `main` — NOT from `feat/dashboard`, which carries Module 02 (Founder
-Dashboard, aggregation BFF + activity feed) and is still unmerged. `main` is at the passlib → direct bcrypt migration (PR #33), the
-nginx TLS edge + two-stack compose (PR #31), the slowapi router-descent rate-limit fix (PR #32),
-the image-CMD CI gate and weekend test bug (PR #28), and the Dependabot pause (PR #34)_
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 4 (Mission Reason + Health
+Recommendation AI Upgrade)** (7 tasks, no migration, merged — PR #83) — two more
+Module-03-deferred AI consumers upgraded from templated/catalog text to LLM-authored text, on the
+same async-upgrade pattern Slices 1–3 established: **today's mission's per-task `reason` line**
+(Module 04) now gets rewritten by a new `ai.mission.reason` job enqueued whenever
+`get_or_generate_today` generates a non-empty mission (gated on task count via a small
+`_enqueue_mission_reason` helper, so the weekends-off empty mission enqueues nothing), and **each
+health-score recommendation's `body`** (Module 06) now gets rewritten by a new
+`ai.health.recommendations` job enqueued at the end of every `recompute_health_score` call — made
+idempotent (and free of any LLM call at all once nothing is left to do) by a guard that only
+touches `pending` rows whose `body` still equals the catalog default. Both jobs re-use Slice 2's
+`complete_json` structured-output method; no new LLM capability, no migration (both fields are
+pre-existing columns). Proven live end to end (`e2e/test_mission_reason.py`,
+`e2e/test_health_recommendations_ai.py`): enqueue → in-process worker drain → structured LLM
+(stub) call → persisted overwrite, over real HTTP (48 e2e passed total, no regression). Along the
+way, live testing corrected two things the design/plan text had wrong: the mission endpoint is
+`/api/v1/missions/today` (plural), and health recommendations actually materialize via
+`GET /health-score`'s lazy-on-read fallback, not (reliably) the assessment-complete request itself
+— a pre-existing autoflush-timing quirk in `complete_assessment`, now documented inline in both FE
+guides and flagged as a follow-up, not fixed by this slice. **This does NOT complete Module 03**:
+the dashboard AI briefing, onboarding AI panel, and roadmap replan rationale (the other three
+Module-03-deferred AI consumers) remain unbuilt. **Counts unchanged: still 11 modules fully
+complete, 1 open (03), 14 not started.** SOP: `docs/sop/2026-09-19-mission-health-ai.md`; FE
+guides (extended): `docs/fe-integration-guide-mission.md`,
+`docs/fe-integration-guide-health-score.md`._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 3 (Typed Records AI Fill) MERGED
+(PR #81)** (3 tasks, no migration) — a real
+worker for `business.{kind}.ai_fill` (persona/revenue_stream/competitor/pricing), the job Module 08
+Slice 2 has enqueued since it shipped, with no worker ever claiming it — **the last ai_fill job type
+left unconsumed** now drafts up to 3 records for a kind that's completely EMPTY, via one
+`complete_json` call constrained to a strict per-kind JSON Schema derived from the existing
+`RECORD_SCHEMAS` Pydantic registry (`map_x`/`map_y` intentionally omitted from `competitor`), each
+drafted record validated (and skipped, not failed, on a bad one) through the same `create_record`
+path a manual `POST /{kind}` already uses. Required making `StubLLMClient._stub_value` genuinely
+recursive (Slice 2's version only handled one level, enough for canvases' flat shape but not
+records' nested `{records: [{...}]}` shape) — existing flat canvas stub behavior is unchanged and
+pinned by a new regression test. Proven live end to end (`e2e/test_records_ai_fill.py`): enqueue →
+in-process worker drain → structured LLM (stub) call → validated `create_record` write → `GET
+/personas` shows a stub-drafted record at `data.records[0].data.name`. This does NOT complete
+Module 03 or Module 08 — it closes the last unconsumed ai-fill job, but the mission reason line,
+health-score recommendations, dashboard AI briefing, onboarding AI panel, and roadmap replan
+rationale (all Module 03 consumers) remain unbuilt, and there's no top-up/regenerate mode for a kind
+that already has some records. **Counts unchanged: still 11 modules fully complete, 1 open (03), 14
+not started.** SOP: `docs/sop/2026-09-19-records-ai-fill.md`; FE guide (extended):
+`docs/fe-integration-guide-ai-canvas-fill.md` (§5)._
+
+_Previously: 2026-09-19 · **§08.11 AI Business Plan Generator MERGED (PR #79) — MODULE 08
+(BUSINESS BUILDER) IS NOW FULLY COMPLETE, all 4 slices** (
+5 tasks, migration `0026_business_plans`) — the multi-section generator Module 08 Slice 3 flagged as
+"the ONLY Module 08 PRD sub-screen not yet shippable" is now real: a `business_plans` entity
+(`generating`/`complete`/`failed`) + `POST /business-builder/plan/generate` (editor, 202, enqueues
+`business.plan.generate`) + `GET /business-builder/plan` (member, latest plan status +
+`document_id`). The worker handler calls Module 03 Slice 1's free-text LLM seam directly
+(`get_llm_client().complete(...)`, NOT Slice 2's `complete_json` — a plan section is prose, not a
+fixed schema), one call per one of 10 fixed `PLAN_SECTIONS`, each built
+from a PII-free context gatherer over the startup's profile/canvases/records/assessment/roadmap),
+then stores the assembled `{heading, body}` sections as a Module 18 `Document`
+(`kind=business_plan`, `ai_generated=True`) and links `business_plans.document_id`, publishing
+`business.plan.generated` (maps to the existing `business` notification category — no new category
+needed). Proven live end to end (`e2e/test_business_plan.py`): enqueue → in-process worker drain →
+10 sequential LLM (stub) calls → `create_document` → `GET /plan` shows `status: "complete"` +
+`document_id` → `GET /documents/{id}` returns all 10 sections with stub bodies. This was the last
+open item in Module 08 and the last PRD sub-screen dependency-blocked on Module 03 — **11 modules
+now FULLY complete on `develop`-equivalent scope; only 1 remains open (03, itself now only blocked
+on the still-unbuilt typed-record `ai_fill` worker and the other pre-Module-03 AI consumers, not on
+any Business Builder scope)**. SOP: `docs/sop/2026-09-19-ai-business-plan-generator.md`; FE guide:
+`docs/fe-integration-guide-ai-business-plan.md`. Merged to `develop` via PR #79._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Slice 2 (Structured Output + Canvas AI
+Fill) is now MERGED** (PR #77, no migration) — a structured
+(JSON-Schema-constrained) output mode on the LLM seam (`complete_json`, alongside Slice 1's
+free-text `complete`) plus its first real consumer: `business.canvas.ai_fill` — the job Module 08
+Slice 1 has enqueued since it shipped, with no worker ever claiming it — now drafts a canvas's
+EMPTY blocks via one schema-constrained LLM call (schema derived from the existing `CANVAS_BLOCKS`
+registry), never overwriting a block the founder already filled. Proven live end to end
+(`e2e/test_canvas_ai_fill.py`): enqueue → in-process worker drain → structured LLM (stub) call →
+merged write → `GET /canvases/{type}` shows every previously-empty block filled, `version`
+incremented, `completion.status: "complete"`. This keeps Module 03 **open** (the canvas-record
+`ai_fill` jobs and Module 08's §08.11 generator itself both remain unbuilt) but **unblocks §08.11 on
+the capability** — the structured-output mechanism it needs now exists and is proven against a real
+consumer, not just designed. SOP: `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`; new FE
+guide: `docs/fe-integration-guide-ai-canvas-fill.md`.
+
+_Previously: 2026-09-19 · **Module 20 (Notifications) Slice 4 (Real-Time SSE) is now built —
+MODULE 20 IS NOW FULLY COMPLETE, all 4 slices — MERGED** (Slice 4 Real-Time SSE = PR #74, no
+migration) — a Redis pub/sub backplane (a SQLAlchemy `after_commit` listener publishes every
+committed notification, covering every creating call path with zero other call-site changes) plus a
+one-time-ticket-authed `GET /notifications/stream` SSE endpoint now deliver notification rows to an
+open app the instant they're created, closing the "the FE must poll, there is no push" gap every
+prior slice's FE guide called out. Proven live across two real OS processes, not just an in-process
+fake (`e2e/test_notifications_realtime.py`): the TEST process commits a notification, which publishes
+through Redis to the separate SERVER process's already-open stream. This moved Module 20 from "open,
+one slice left" to **fully complete — 10 modules now FULLY complete on `develop`; only 2 remain open
+(03, 08)**. SOP: `docs/sop/2026-09-19-notifications-realtime-sse.md`; FE guide:
+`docs/fe-integration-guide-notifications-realtime.md` (cross-linked from the Slices 1–3 guide)._
 
 ---
 
 ## Snapshot
 
-**PRD module tally: 26 total** — 5 fully complete & merged (01 Auth+Onboarding · 04 Today's Mission · 05 Roadmap · 06 Health Score · 07 Assessment) + 1 shipped on branch, not yet merged (02 Dashboard) · 20 not started (03·08–26).
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — the mission reason line, health-score recommendations, and the dashboard AI briefing are now AI-upgraded/live, but the onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Shipped & certified (merged) | 5 modules (+spine) | Foundation/Tenancy spine · Auth (01) · Onboarding (01.6) · Assessment (07) · Health Score (06) · Roadmap (05, all 3 slices) · Today's Mission (04) |
-| 🟢 Shipped on branch, not yet merged | 1 module | Founder Dashboard (02) — `feat/dashboard` |
-| 🟡 In progress | 0 | — |
-| ⬜ Planned / next | 20 | AI Co-Founder (03) · Business Builder (08) · 09–26 |
+| ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87) — SOP `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type closed in Slice 3; the mission reason line and health-score recommendations were AI-upgraded in Slice 4; the dashboard AI briefing is now live (Slice 5) — only the onboarding AI panel and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
+| ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
-**Health at a glance:** ~67 endpoints · **747 unit tests** (real Postgres) + **28 live E2E** · **98% coverage** (floor 95) · black 26.5.1 / isort 6.1.0 / ruff 0.16.5 (incl. C901) / mypy 2.3.1 clean · pylint 4.0.7 **9.94/10** · radon average complexity **A (2.36)**, every module MI **A** · bandit / hadolint / actionlint / `trivy config` / checkov all exit 0 · `pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+**Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
+path×method operations, `app.openapi()["paths"]` — 110 paths, 132 operations, **up from 108
+paths/130 ops** — the two new §08.11 routes, `POST /business-builder/plan/generate` and
+`GET /business-builder/plan`) · **1257 unit tests** (real Postgres, up from 1245) + **45 live E2E**
+(up from 44) · **97.45% coverage** (floor 95; down fractionally from 97.46% — new lines added
+without a 1:1 test-line ratio, still comfortably above floor) · black 26.5.1 / isort 6.1.0 / ruff
+0.16.5 / mypy clean (directly re-run this pass — 3 pre-existing unformatted files fixed in this
+pass, `app/services/business/plan_context.py` / `tests/services/business/test_plan_generation.py` /
+`tests/worker/test_plan_handler.py`, all left unformatted by this slice's own Tasks 1–3, which only
+ran `black`/`ruff` against their own touched files; `tests/worker/test_plan_handler.py` also had an
+import-order violation fixed by `isort`) · pylint **9.89/10** (directly re-run this pass,
+unchanged — no new pylint findings) · bandit clean, 0 findings (directly re-run this pass) · alembic
+single head `0026_business_plans` (directly re-run this pass) · radon average complexity
+**A (2.36)**, every module MI **A** · hadolint / actionlint / `trivy config` / checkov all exit 0 ·
+`pip-audit` clean (1 documented ignore) · zero AI-attribution trailers.
+
+_Note: the radon/hadolint/actionlint/`trivy config`/checkov/pip-audit figures above are carried
+forward unchanged from the last full lint/security sweep (not re-run in this pass — this pass's own
+CI reproduction covered black/isort/ruff/mypy/pylint/bandit/pytest+coverage/alembic heads/e2e, all
+directly re-run and recorded above, per `.superpowers/sdd/2026-09-19-ai-business-plan-generator/
+task-5-report.md`). `docker-compose.yml`/`docker-compose.prod.yml` gained no new service in this
+pass — `business.plan.generate` runs inside the existing `worker` process (see this slice's SOP's
+"Operate" section), so no new `trivy config`/checkov surface was added. Endpoint count and unit/e2e
+test counts are freshly re-counted this pass (2026-09-19), not carried over._
 
 ---
 
@@ -100,7 +228,9 @@ the image-CMD CI gate and weekend test bug (PR #28), and the Dependabot pause (P
 - [x] `GET /assessments` · `GET /assessments/{id}` · `GET /assessments/compare`
 - [x] Race-safety on all 3 write paths + concurrency tests
 - [x] Live E2E adaptive journey + SOP
-- [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · quarterly re-assessment cron (Module 20)
+- [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · ~~quarterly re-assessment cron~~ now
+      fires via **Module 20 Slice 3** (`assessment.quarterly.due`, ≥ `QUARTERLY_REASSESS_DAYS`
+      since the last completed assessment — see that module's own section)
 
 ## ✅ E2E Full-Coverage Pass — *shipped (PR #5)*
 
@@ -127,7 +257,8 @@ _Explainable 0–100 score · 5 dimension sub-scores · trend history · benchma
 - [x] Data model: `health_scores` · `health_score_history` · `health_signals` + `health_recommendations` + migration `0005`
 - [x] Events: `healthscore.updated` · `healthscore.dropped` · `healthscore.record`
 - [x] Live E2E + SOP + **FE integration guide (captured live)** — `e2e/test_health_score.py`, `docs/sop/2026-08-19-health-score.md`, `docs/fe-integration-guide-health-score.md`
-- [ ] _Deferred:_ real benchmark cohort aggregation · async worker for the unconsumed stub jobs (Module 05) · AI-generated summary/recommendations (Module 03) — see SOP Follow-ups
+- [ ] _Deferred:_ real benchmark cohort aggregation · async worker for the unconsumed stub jobs (Module 05) · ~~AI-generated recommendation bodies~~ now shipped via **Module 03 Slice 4**
+      (`ai.health.recommendations`, 2026-09-19 — see that module's own section) — see SOP Follow-ups
 
 ---
 
@@ -145,7 +276,9 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] `POST /roadmap/generate` (202 job) + wire inline into `complete_onboarding` (retire stub)
 - [x] Phases CRUD · Milestones CRUD (+ mark-complete transition event) · Tasks CRUD (+ progress recompute)
 - [x] Live E2E + SOP + FE integration guide (captured live) — `e2e/test_roadmap.py`, `docs/sop/2026-08-21-roadmap-core.md`, `docs/fe-integration-guide-roadmap.md`
-- [ ] _Deferred:_ `roadmap.milestone.overdue` event + notifications (Module 20, needs scheduler) · workspace-tz base date
+- [ ] _Deferred:_ ~~`roadmap.milestone.overdue` event + notifications~~ now fires via **Module 20
+      Slice 3** (once per milestone, ever — no recurring re-nudge; see that module's own section) ·
+      workspace-tz base date still deferred (Slice 3's scheduler uses one global `SCHEDULER_TIMEZONE`, not per-workspace)
 
 **Slice 2 — Dependencies + Templates** — *✅ done, merged to `main`*
 - [x] Scope + locked decisions (separate gallery catalog · apply = append + dedup by template id · write-time DFS cycle detection · duplicate-edge idempotent 200 · dedicated graph endpoint)
@@ -180,7 +313,9 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] Generation → **inline + lazy-on-read** (`GET /missions/today` generates today's mission if none exists; no cron/worker — 06:00 cron + push deferred to Module 20)
 - [x] Roadmap link → **soft, unconstrained** `mission_tasks.roadmap_task_id` (nullable UUID, **no FK**) — mission is a snapshot, decoupled from roadmap tables
 - [x] Streak → **derived, not stored** (consecutive completed days ending today/yesterday)
-- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored rationale deferred to Module 03
+- [x] Reason line → **templated** v1 (`"From your '{milestone}' milestone."`); AI-authored
+      rewrite now shipped via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — templated
+      text stays the permanent fallback — see that module's own section)
 - [x] Spec → self-review → plan (7 TDD tasks) — `docs/superpowers/specs/2026-08-26-todays-mission-design.md`, `docs/superpowers/plans/2026-08-26-todays-mission.md`
 
 **Build (subagent-driven, Tasks 1–7):**
@@ -195,9 +330,13 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
 - [x] Access: reads = any member (mentor incl.) · writes = founder/team_member (mentor → 403) · cross-workspace → uniform 404
 - [x] Live E2E (`e2e/test_mission.py`, 6 captures) + smoke openapi surface (5 mission paths)
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile — `docs/sop/2026-08-26-todays-mission.md`, `docs/fe-integration-guide-mission.md`
-- [ ] _Deferred:_ 06:00 cron generation + push notification (Module 20) · AI-authored reason line (Module 03) · real `mission.*` event delivery (Module 20) · workspace-timezone base date
+- [ ] _Deferred:_ ~~06:00 cron generation~~ now fires via **Module 20 Slice 3** (`mission.ready`,
+      pre-generates + notifies past `MISSION_GEN_HOUR` local — see that module's own section); push
+      notification still deferred to Module 20 Slice 4 · ~~AI-authored reason line~~ now shipped
+      via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
+      real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
-## ✅ Module 02 — Founder Dashboard — *shipped on branch `feat/dashboard` (not yet merged to `main`)*
+## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
 _The founder's home screen: `GET /dashboard/summary` (9-section aggregation of Modules 04/05/06/07)
 and `GET /dashboard/activity` (keyset-paginated team feed). In-process aggregation BFF, no new
@@ -221,7 +360,8 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       (7-day roadmap-milestone window, `UPCOMING_WINDOW_DAYS`), `kpis`
       (`tasks_done_this_week` live; `revenue`/`runway`/`pipeline_value`/`campaign_performance`
       honestly `null`), `calibration`, `briefing`/`risks`/`opportunities` (honest static
-      empty-states)
+      empty-states at launch — **upgraded to a live AI-generated `generating`/`ready` state
+      2026-09-19, see below**)
 - [x] `GET /dashboard/activity` — keyset pagination on `(created_at, id)`, opaque base64 cursor,
       `limit` clamped 1–50, `actor: {id, name} | null` (outer-joined, no N+1), malformed cursor →
       `422 VALIDATION_ERROR`
@@ -231,13 +371,1004 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       (`/dashboard/summary`, `/dashboard/activity`)
 - [x] SOP + FE integration guide (captured live) + this checklist reconcile —
       `docs/sop/2026-08-31-dashboard.md`, `docs/fe-integration-guide-dashboard.md`
-- [ ] _Deferred:_ AI briefing/risks/opportunities → Module 03 · financial KPIs
-      (`revenue`/`runway`/`pipeline_value`/`campaign_performance`) → Modules 09–11 · realtime
-      activity delivery (websocket/push) → Module 20 · widget-level role/grant filtering ·
-      `kpi_snapshots`/`briefings` tables deliberately not built (nothing to persist yet) ·
-      `_section`'s swallowed exceptions have no Sentry capture · no dedicated
-      `app/schemas/dashboard.py` (plain-dict responses) · `write_activity` call sites are manual,
-      not event-bus-driven · workspace-timezone base date — see SOP Follow-ups
+- [x] AI briefing/risks/opportunities → **shipped 2026-09-19 as Module 03's dashboard AI
+      briefing** (new `daily_briefings` table, lazy-on-read generation gated on assessment-
+      complete, `ai.dashboard.briefing` worker) — see Module 03, below, and
+      `docs/sop/2026-09-19-dashboard-ai-briefing.md`
+- [ ] _Deferred:_ financial KPIs (`revenue`/`runway`/`pipeline_value`/`campaign_performance`) →
+      Modules 09–11 · realtime activity delivery (websocket/push) → Module 20 · widget-level
+      role/grant filtering · `kpi_snapshots` table deliberately not built (nothing to persist
+      yet — `daily_briefings` now exists, see above) · `_section`'s swallowed exceptions have no
+      Sentry capture · no dedicated `app/schemas/dashboard.py` (plain-dict responses) ·
+      `write_activity` call sites are manual, not event-bus-driven · workspace-timezone base
+      date — see SOP Follow-ups
+
+## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
+(structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
+ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade)
+merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — no migration on Slices 2–4, migration
+`0027_daily_briefings` on Slice 5. The last unconsumed `ai_fill` job type is closed (Slice 3);
+the mission reason line and health-score recommendations are now AI-upgraded (Slice 4,
+2026-09-19); the dashboard AI briefing is now live (Slice 5, 2026-09-19) — only the **onboarding
+AI panel** and the **roadmap replan rationale** remain unbuilt*
+
+_Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
+`OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
+`LLM_PROVIDER`, mirroring the existing email seam's shape) plus ONE real consumer wired onto an
+existing flow: assessment completion (Module 07) now enqueues an `ai.assessment.narrative` job that
+asynchronously upgrades `AssessmentResult.narrative` from a templated string to an AI-generated one,
+with the templated version as the permanent fallback if the AI job ever fails. No new API surface,
+no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`. FE guide:
+`docs/fe-integration-guide-ai-assessment-narrative.md`._
+
+**Slice 1 — LLM Seam + Assessment Narrative** — *✅ built (4 tasks, this branch)*
+- [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-llm-seam-assessment-narrative/`) —
+      seam mirrors the email seam's shape; async job not an inline call; templated-first,
+      AI-upgrade-second, templated-forever-on-failure; fail-loud client so the job's own
+      retry/backoff can act on real signal
+- [x] `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_URL`/`LLM_TIMEOUT`/`LLM_MAX_TOKENS`
+      config settings (`app/core/config.py`), `gpt-5.6-luna` default, `.env.example` documented
+      (provider-agnostic scheme + `LLM_BASE_URL` = full base incl. `/v1` convention)
+- [x] `app/platform/llm.py` — `LLMMessage`/`LLMClient` Protocol/`StubLLMClient`/`OpenAILLMClient`/
+      `get_llm_client()`; live-verified against real `gpt-5.6-luna`: sends
+      `max_completion_tokens` not `max_tokens`, does NOT forward `temperature` (model 400s on any
+      explicit value); `LLM_BASE_URL` full-base-incl-`/v1` convention (fixed after review caught a
+      double-`/v1` bug)
+- [x] `app/services/assessment/narrative.py::build_narrative_messages` — data-minimized prompt
+      (dimension scores, overall score, industry, stage only — no PII) · `app/worker/handlers/
+      ai.py::handle_assessment_narrative` — re-fetches result, calls the LLM, overwrites
+      `narrative`, benign no-op if the result is missing · `complete_assessment` enqueues
+      `ai.assessment.narrative` alongside the pre-existing `roadmap.replan`
+- [x] Live E2E journey (`e2e/test_ai_assessment_narrative.py`, 2 captures) proving enqueue → job
+      claim → LLM (stub) call → persisted overwrite end to end, over real HTTP with a real
+      Postgres-backed in-process worker drain, zero network calls (`LLM_PROVIDER=stub` pinned in
+      `scripts/e2e_run.sh`) + full existing e2e suite re-run green (42 e2e, 1216 unit)
+- [x] SOP + FE integration guide (captured live, incl. a called-out field-nesting trap: `complete`
+      returns `data.narrative` flat, `GET` returns `data.result.narrative` nested) + this checklist
+      reconcile — `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`,
+      `docs/fe-integration-guide-ai-assessment-narrative.md`
+- [x] structured (JSON-shaped) LLM output → **built in Slice 2** (`complete_json`, below) · every
+      other deferred-to-Module-03 AI consumer (onboarding AI panel, Mission reason line, Roadmap
+      replan rationale, Health Score recommendation reasons, Learning recommendations, Validation
+      Hub insight synthesizer, Business Builder's typed-record `ai-fill` jobs) still unbuilt, now
+      unblocked on infrastructure only
+- [ ] _Deferred:_ no Anthropic (or other non-OpenAI-compatible) provider implementation · no
+      per-workspace LLM budget/rate limiting · no structured "AI enrichment failed / still
+      templated" signal for the FE or an operator — see SOP Follow-ups
+
+**Slice 2 — Structured Output + Canvas AI Fill** — *✅ MERGED to `develop` (PR #77;
+3 tasks, no migration)*
+- [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-llm-structured-output-canvas-fill/`)
+      — `complete_json` as a second method on the SAME `LLMClient` Protocol, not a new seam ·
+      schema derived from the existing `CANVAS_BLOCKS` registry, not hand-maintained · fill-empties-
+      only re-read at run time, never overwrite a user-filled block · fail-loud + job retry, no
+      partial write on an LLM error
+- [x] `LLMClient.complete_json(messages, *, schema: dict, max_tokens: int) -> dict`
+      (`app/platform/llm.py`) — `StubLLMClient` deterministic per-property stub;
+      `OpenAILLMClient` strict `response_format: {type: json_schema, strict: true}` mode,
+      live-verified against real `gpt-5.6-luna` (Chat Completions supports it as-is, no Responses-
+      API migration needed); `_post_chat`/`_content` DRY'd out of `complete()`, all 8 pre-existing
+      `complete()` tests pass unchanged after the extraction
+- [x] `canvas_json_schema(canvas_type)` (`app/services/business/canvas_defs.py`) — strict schema
+      built from `CANVAS_BLOCKS` (list block → array-of-string, text block → string, every key
+      required, `additionalProperties: false`) · `build_canvas_fill_messages`
+      (`app/services/business/ai_fill.py`, new) — data-minimized prompt (startup name/industry/
+      stage + block key/label/kind lines only, no PII)
+- [x] `handle_canvas_ai_fill` (`app/worker/handlers/ai.py`), registered as
+      `"business.canvas.ai_fill"` — the exact job type `POST /canvases/{type}/ai-fill` has enqueued
+      since Module 08 Slice 1; re-reads the canvas's current blocks, drafts only the empty ones via
+      `complete_json`, merges back only previously-empty keys present in the LLM response,
+      `validate_blocks`, `version += 1`
+- [x] Live E2E journey (`e2e/test_canvas_ai_fill.py`, 2 captures) proving enqueue → job claim →
+      structured LLM (stub) call → schema-constrained merge → persisted write end to end, over real
+      HTTP with a real Postgres-backed in-process worker drain, zero network calls
+      (`LLM_PROVIDER=stub`, already exported by `scripts/e2e_run.sh` since Slice 1) + full existing
+      e2e suite re-run green (44 e2e, 1245 unit)
+- [x] SOP + FE integration guide (captured live, incl. the augment-never-overwrite contract and the
+      two job-completion polling options) + this checklist reconcile —
+      `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`,
+      `docs/fe-integration-guide-ai-canvas-fill.md`
+- [x] `business.{kind}.ai_fill` worker for Module 08's typed records (personas/revenue
+      streams/competitors/pricing) → **shipped in Slice 3, below** (needed a Pydantic-model-driven
+      schema variant, not a copy-paste of the canvas one, as flagged here) — §08.11 AI Business Plan
+      Generator shipped (see Module 08, below) on this seam's free-text `complete()` method (one
+      call per fixed section), not `complete_json` — the plan generator turned out not to need
+      structured output after all, so it did not end up depending on this item
+- [ ] _Deferred:_ no `pydantic.TypeAdapter(...).json_schema()`-based helper for a future
+      Pydantic-shaped consumer (Slice 3 hand-built its schema the same way this slice hand-built
+      `canvas_json_schema`) · no Anthropic `complete_json` implementation (the wire shape is
+      itself an OpenAI-specific convention) · no overwrite/"regenerate everything" ai-fill mode ·
+      no structured "ai-fill failed / still empty" signal beyond the existing job status — see SOP
+      Follow-ups
+
+**Slice 3 — Typed Records AI Fill** — *✅ MERGED to `develop` (PR #81; 3 tasks, no migration)*
+- [x] Design + implementation plan (`.superpowers/sdd/2026-09-19-records-ai-fill/`) — records need a
+      Pydantic-model-driven schema variant (`RECORD_SCHEMAS`), not a copy of Slice 2's
+      dataclass-driven `canvas_json_schema` · fill-empties is a whole-kind gate (any existing record
+      → no-op), not a per-block augment · validate-and-skip (not validate-and-fail) via the existing
+      `create_record` path
+- [x] `StubLLMClient._stub_value` made genuinely recursive (`app/platform/llm.py`) — object nodes
+      recurse per property key, array nodes recurse into `items` and wrap, enum nodes short-circuit
+      to the first member; flat canvas-shape behavior unchanged and pinned by a new regression test
+      (`test_stub_complete_json_still_flat_for_canvas_shape`)
+- [x] `record_json_schema(kind)` / `_record_item_schema(kind)` (`app/services/business/
+      record_defs.py`) — strict per kind, built from `RECORD_SCHEMAS`; `competitor.map_x`/`map_y`
+      intentionally omitted (AI shouldn't set UI positioning coords); enum fields constrained to
+      valid members · `build_record_fill_messages(kind, *, name, industry, stage)`
+      (`app/services/business/ai_fill.py`) — PII-free prompt
+- [x] `handle_record_ai_fill` (`app/worker/handlers/ai.py`), registered for all 4
+      `business.{kind}.ai_fill` job types — the exact job types `POST /{kind}/ai-fill` has enqueued
+      since Module 08 Slice 2; whole-kind empty-gate, up to 3 records via `complete_json`, each
+      validated (and skipped on failure, not aborted) through `create_record`, `db.flush()` only
+- [x] Live E2E journey (`e2e/test_records_ai_fill.py`, 2 captures) proving enqueue → job claim →
+      structured LLM (stub) call → validated `create_record` write end to end, over real HTTP with a
+      real Postgres-backed in-process worker drain, zero network calls (`LLM_PROVIDER=stub`, already
+      exported by `scripts/e2e_run.sh` since Slice 1) + full existing e2e suite re-run green
+      (46 e2e, 1266 unit)
+- [x] SOP + FE integration guide (extended, captured live, incl. the `data.records` field-nesting
+      trap vs. canvas's flat `data.blocks`) + this checklist reconcile —
+      `docs/sop/2026-09-19-records-ai-fill.md`,
+      `docs/fe-integration-guide-ai-canvas-fill.md` (§5)
+- [ ] _Deferred:_ no top-up/"regenerate" mode for a kind that already has some records (whole-kind
+      gate only) · mission reason line and health recommendations → **shipped in Slice 4, below**
+      (2026-09-19) · dashboard briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
+      panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still
+      unbuilt · no structured "ai-fill failed / still empty" signal beyond the existing job
+      status · `create_record`'s position assignment still not race-safe (pre-existing gap,
+      unchanged) — see SOP Follow-ups
+
+**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ shipped on branch `work`
+(7 tasks, no migration); PR to `develop` to follow — 2026-09-19*
+- [x] Design + implementation plan
+      (`.superpowers/sdd/2026-09-19-module-03-mission-health-ai/`) — same async-upgrade pattern as
+      Slices 1–3, reused twice, not redesigned · mission enqueue gated on task count (skip the
+      empty weekends-off mission) · health idempotency via a `body == catalog default` guard on
+      `pending` rows only, with a genuine no-LLM-call fast path once nothing is left to do
+- [x] `app/services/mission/ai_reason.py` (new) — `mission_reason_schema(n)` (strict,
+      `reasons: [{order, reason}]`) · `build_mission_reason_messages` (PII-free) ·
+      `handle_mission_reason` (`app/worker/handlers/ai.py`), registered `"ai.mission.reason"` —
+      rewrites only the tasks the model returned a reason for, `[:300]` truncation, templated
+      reason is the permanent fallback for any task the model skips
+- [x] `_enqueue_mission_reason` helper + call site in `get_or_generate_today`
+      (`app/services/mission/service.py`) — gated on `order` so the empty weekends-off mission
+      enqueues nothing (keeps the function under ruff's C901 ceiling)
+- [x] `app/services/health_score/ai_recommendations.py` (new) — `catalog_bodies()` ·
+      `health_recommendation_schema(keys)` (strict, `key` enum-constrained to the given pending
+      keys) · `build_health_recommendation_messages` (PII-free) · `handle_health_recommendations`
+      (`app/worker/handlers/ai.py`), registered `"ai.health.recommendations"` — idempotent,
+      `accepted`/`dismissed` rows never touched, `title` left as the catalog headline (only `body`
+      personalized)
+- [x] One new `job_dispatcher.enqueue(..., "ai.health.recommendations", ...)` call site at the end
+      of `recompute_health_score` (`app/services/health_score/service.py`)
+- [x] Live E2E (`e2e/test_mission_reason.py`, `e2e/test_health_recommendations_ai.py`, 4 captures)
+      proving enqueue → in-process worker drain → structured LLM (stub) call → persisted overwrite
+      end to end, over real HTTP, zero network calls (`LLM_PROVIDER=stub`) + full e2e suite
+      re-run green (48 e2e, no regression)
+- [x] Two live-verified corrections to the design/plan text, carried into both FE guides: the
+      mission endpoint is `/api/v1/missions/today` (**plural** "missions") · health recommendations
+      actually materialize via `GET /health-score`'s lazy-on-read fallback, not (reliably) the
+      assessment-complete request itself — a pre-existing `complete_assessment` autoflush-timing
+      quirk, documented inline (**now fixed 2026-09-19** — `db.flush()` before the inline recompute;
+      `docs/sop/2026-09-19-complete-assessment-recompute-flush.md`)
+- [x] SOP + FE integration guide extensions (both payloads pasted verbatim from live captures) +
+      this checklist reconcile — `docs/sop/2026-09-19-mission-health-ai.md`,
+      `docs/fe-integration-guide-mission.md`, `docs/fe-integration-guide-health-score.md`
+- [ ] _Deferred:_ dashboard AI briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
+      AI panel and roadmap replan rationale (the two remaining Module-03-deferred AI consumers)
+      still unbuilt · ~~the pre-existing `complete_assessment` same-transaction recompute no-op
+      (autoflush timing)~~ **fixed 2026-09-19**
+      (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured "AI upgrade pending / still templated" signal on either
+      `MissionTask` or `HealthRecommendation` · the live e2e only proves the single-item-rewrite
+      path (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
+
+**Slice 5 — Dashboard AI Briefing** — *✅ shipped on branch `feat/dashboard-ai-briefing`
+(5 tasks, migration `0027_daily_briefings`); PR to `develop` to follow — 2026-09-19*
+- [x] Design + implementation plan
+      (`docs/superpowers/specs/2026-09-19-dashboard-ai-briefing-design.md`,
+      `docs/superpowers/plans/2026-09-19-dashboard-ai-briefing.md`) — same async-upgrade pattern
+      as Slices 2–4, applied to a new table rather than an existing column, since Module 02 never
+      persisted `briefing`/`risks`/`opportunities` · lazy-on-read generation gated on
+      assessment-complete, mirroring Mission's own lazy-generation shape and race guard
+- [x] `daily_briefings` table + migration `0027_daily_briefings` (chains off
+      `0026_business_plans`, sole alembic head) + `BriefingStatus` enum
+      (`generating`/`ready`/`failed`) + `DailyBriefing` model (`app/db/models/dashboard.py`),
+      unique on `(startup_id, briefing_date)`
+- [x] `app/services/dashboard/ai_briefing.py` (new) — `dashboard_briefing_schema()` (strict, 3
+      required string fields) · `build_dashboard_briefing_messages` (PII-free: startup
+      name/industry/stage + health score/band + mission/upcoming/weekly-task counts)
+- [x] `gather_briefing_context` + `get_or_generate_briefing` + `_briefing_blocks`
+      (`app/services/dashboard/service.py`) — assessment-complete gate (no assessment → original
+      static `"empty"` shape, unchanged), lazy create + enqueue-once,
+      `IntegrityError`-race-guarded (mirrors `_get_or_generate_today_race_safe`),
+      `_section_isolated`-wrapped so a briefing failure can't 500 the dashboard; `get_summary`
+      wired to the new `_briefing_blocks(...)` output
+- [x] `handle_dashboard_briefing` (`app/worker/handlers/ai.py`), registered
+      `"ai.dashboard.briefing"` — idempotent on `status == generating`, `complete_json` call,
+      overwrites all 3 fields + flips `status = ready`, `db.flush()` only
+- [x] Live E2E journey (`e2e/test_dashboard_ai_briefing.py`, 2 captures) proving enqueue →
+      in-process worker drain → structured LLM (stub) call → persisted `ready` row end to end,
+      over real HTTP, zero network calls (`LLM_PROVIDER=stub`) + full e2e suite re-run green
+      (49 e2e, no regression) — also fixed a stale `"empty"` assertion in the pre-existing
+      `e2e/test_dashboard.py` journey (now `"generating"` immediately post-assessment) and
+      regenerated its capture
+- [x] SOP + FE integration guide extension (both `"generating"`/`"ready"` payloads pasted
+      verbatim from live captures, plus a callout distinguishing this feature's `[stub-llm]`
+      markers from Slice 4's unrelated ones in the same capture) + this checklist reconcile —
+      `docs/sop/2026-09-19-dashboard-ai-briefing.md`, `docs/fe-integration-guide-dashboard.md`
+- [ ] _Deferred:_ onboarding AI panel and roadmap replan rationale (the two remaining
+      Module-03-deferred AI consumers) still unbuilt · `briefing`/`risks`/`opportunities` remain
+      single prose strings, not structured lists · no 06:00 prewarm / scheduled regeneration
+      (purely lazy-on-read) · no intra-day regeneration once a day's row exists ·
+      `BriefingStatus.failed` defined but never written (no structured "generation failed" signal
+      to the FE) · the race-guard path is unit-covered only, not proven under real concurrency —
+      see SOP Follow-ups
+
+## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
+`feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
+Generator (§08.11), was the last open PRD sub-screen, blocked on Module 03 (AI Co-Founder) end to
+end — it now ships using Module 03 Slice 1's free-text LLM seam directly (`complete()`, one call
+per fixed section), not the structured-output mode Slice 2 built for canvas ai-fill; see Slice 4
+below for why. The `business.canvas.ai_fill` job Slice 1 enqueues has a real worker (Module 03
+Slice 2, above), and the typed-record `business.{kind}.ai_fill` job (Slice 2, below) now does too
+(Module 03 Slice 3, merged (PR #81)) — every ai-fill job Module 08
+enqueues now has a real handler.*
+
+_Slice 1: five structured strategy canvases (`business_model`/`lean`/`value_prop`/`mission_vision`/
+`swot`), each a generic `business_canvases` row + an in-code block registry. Optimistic-concurrency
+versioned full-replace saves, derived completion, and an AI-fill job seam deliberately left
+unconsumed until Module 03. Migration `0011_business_canvases`. SOP:
+`docs/sop/2026-09-01-business-builder-canvas.md`.
+Slice 2: four typed-artifact record kinds (`persona`/`revenue_stream`/`competitor`/`pricing`), each
+a generic `business_records` row + an in-code Pydantic schema registry, under a uniform `{kind}`
+CRUD surface. Same full-replace-PUT and deferred-ai-fill-job conventions as Slice 1; `GET
+/overview` now returns 9 rows (5 canvas + 4 record). Migration `0012_business_records`. SOP:
+`docs/sop/2026-09-04-business-builder-records.md`.
+Slice 3: a non-editor member (PRD's `business_consultant` "suggest mode") can propose a
+`canvas_update`/`record_create`/`record_update`/`record_delete` via `POST /suggestions`; a founder
+or team_member reviews (`GET /suggestions?status=pending`) and resolves
+(`POST /suggestions/{id}/approve|reject`) — applied through the SAME Slice 1/2 write functions, so
+the existing full-replace and optimistic-concurrency contracts apply to a suggestion's approval for
+free. Plus the competitor positioning map: editable 2×2 axes (`business_positioning_maps`, a new
+singleton-per-startup table) and `map_x`/`map_y` on the existing `CompetitorData` record (no new
+table for coordinates). Migrations `0013_business_suggestions`, `0014_business_positioning_maps`.
+SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
+
+**Slice 1 — Canvas Core** — *✅ merged to `develop` (PR #39, Tasks 1–6)*
+- [x] Scope + locked decisions (generic table + `CANVAS_BLOCKS` code registry, not 5 tables ·
+      optimistic-concurrency version counter, not a row lock · PUT is full-replace, not a merge ·
+      completion derived on read, not cached · ai-fill enqueue-only, real worker deferred to
+      Module 03) — `.superpowers/sdd/2026-09-01-business-builder-canvas/`
+- [x] `CanvasType` enum + `BusinessCanvas` model + migration `0011_business_canvases` (chains off
+      `0010_dashboard`, sole alembic head) + standalone `startup_id` index
+- [x] `CANVAS_BLOCKS` block registry (`app/services/business/canvas_defs.py`) — 5 canvas types,
+      `BlockDef{key,label,kind}`, `empty_blocks()` scaffold
+- [x] Canvas service — `get_or_create_canvas` (lazy-get/create) · `validate_blocks` (per-block-kind
+      422) · `save_canvas` (version check → full-replace merge, pinned by a dedicated test → 
+      `business.artifact.completed` on the not-complete→complete transition only) · `completion`
+      (derived `filled_blocks`/`total_blocks`/`completion_pct`/`status`) · `overview`
+- [x] `GET /business-builder/overview` (member, read-only, creates no rows) · `GET
+      /business-builder/canvases/{type}` (member, lazy-creates on first read; unknown type → 404)
+- [x] `PUT /business-builder/canvases/{type}` (editor; stale `version` → 409
+      `CANVAS_VERSION_CONFLICT`; bad block → 422; **full-replace**, not a partial merge — an
+      omitted block key resets to empty)
+- [x] `POST /business-builder/canvases/{type}/ai-fill` (editor; 202, enqueues
+      `business.canvas.ai_fill` job, writes no canvas row; job stays `queued` — no worker yet)
+- [x] Access: reads = any active member (mentor incl.) · writes = founder/team_member (mentor →
+      403 `FORBIDDEN`)
+- [x] Live E2E journey (`e2e/test_business_builder.py`, 6 captures) + smoke openapi surface (3
+      business-builder paths)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-09-01-business-builder-canvas.md`,
+      `docs/fe-integration-guide-business-builder.md`
+- [x] real `business.canvas.ai_fill` worker → **shipped, Module 03 Slice 2** (see Module 03 above,
+      `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md`)
+- [x] AI Business Plan Generator (§08.11) → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, merged (PR #79))
+- [ ] _Deferred:_ canvas version history (no row-level history table) · no
+      `business.artifact.completed` consumer yet · no `write_activity` call site for canvas saves
+      (doesn't show up in the dashboard activity feed) · JSONB doesn't preserve `blocks` key order
+      (documented in the FE guide, not a bug) — see SOP Follow-ups
+
+**Slice 2 — Typed Artifacts** — *✅ merged to `develop` (PR #46, Tasks 1–6)*
+- [x] Scope + locked decisions (generic `business_records` table + `RECORD_SCHEMAS` Pydantic
+      registry, not 4 tables · real Pydantic model validation per kind, not a hand-rolled checker ·
+      PUT is full-replace, not a merge, same as Slice 1 · record-kind overview rows are binary
+      (`count >= 1` → complete), no partial "continue" state · ai-fill enqueue-only, real worker
+      deferred to Module 03) — `.superpowers/sdd/2026-09-04-business-builder-records/`
+- [x] `RecordKind`/`ThreatLevel`/`PricingModelType` enums + `BusinessRecord` model + migration
+      `0012_business_records` (chains off `0011_business_canvases`, sole alembic head) +
+      standalone `startup_id` index + composite `(startup_id, kind, position)` index
+- [x] `RECORD_SCHEMAS` registry (`app/services/business/record_defs.py`) — 4 Pydantic v2 models
+      (`PersonaData`/`RevenueStreamData`/`CompetitorData`/`PricingData` + nested `PricingTier`),
+      each `extra="forbid"`; `fields(kind)` descriptor incl. enum `choices` (FE dropdown source)
+- [x] Records service — `validate` (Pydantic → 422 `field_errors`) · `create_record`
+      (position-by-count append, `business.artifact.completed` on a kind's first record only) ·
+      `update_record` (full-replace, pinned by a dedicated test) · `delete_record` ·
+      `list_records` (ordered) · `overview()` extended with the 4 record-kind rows
+- [x] `GET /business-builder/{kind}` (member; `{records, fields}`; unknown kind → 404) · `POST
+      /business-builder/{kind}` (editor; 201; bad `data` → 422 `VALIDATION_ERROR`)
+- [x] `PUT /business-builder/{kind}/{record_id}` (editor; **full-replace**, not a partial merge —
+      an omitted field resets to its schema default; unknown/cross-tenant id → 404) · `DELETE
+      /business-builder/{kind}/{record_id}` (editor; `{deleted: true}`)
+- [x] `POST /business-builder/{kind}/ai-fill` (editor; 202, enqueues `business.{kind}.ai_fill`
+      job, writes no record synchronously — the job now has a real worker, see below)
+- [x] `GET /business-builder/overview` extended — 9 rows total (5 canvas + 4 record kinds);
+      record rows: `{type, label, status, completion_pct, count}`, `status`/`completion_pct`
+      derived from `count >= 1`
+- [x] Access: reads = any active member (mentor incl.) · writes = founder/team_member (mentor →
+      403 `FORBIDDEN`) — same as Slice 1
+- [x] Live E2E journey (`e2e/test_business_builder.py::test_business_builder_records_journey`,
+      10 new captures) + the pre-existing Slice 1 journey re-verified (its `/overview` assertions
+      widened for the 4 new record rows) + smoke openapi surface (3 new `{kind}` paths)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-09-04-business-builder-records.md`,
+      `docs/fe-integration-guide-business-builder.md` (§6–§11)
+- [x] AI Business Plan Generator (§08.11) → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, merged (PR #79)) — did not end up needing this slice's
+      typed-record `ai_fill` capability
+- [x] real `business.{kind}.ai_fill` worker → **shipped, Module 03 Slice 3** (see Module 03 above,
+      `docs/sop/2026-09-19-records-ai-fill.md`; merged (PR #81)) —
+      needed a Pydantic-model-driven schema variant, not a copy-paste of the canvas one, exactly as
+      flagged here
+- [ ] _Deferred:_ Module 12 (Revenue) sync for
+      `revenue_stream` records · no reorder/`PATCH .../{id}/reorder` endpoint (`position` is
+      append-only) · `create_record`'s position assignment is not race-safe (no unique constraint
+      on `(startup_id, kind, position)`, unlike Slice 1's race-safe `get_or_create_canvas`) ·
+      `test_put_cross_tenant_404` is not yet a genuine cross-tenant test (asserts against an
+      unknown id, not a real second tenant's record; same gap for `DELETE`) · JSONB doesn't
+      preserve `data` key order (documented in the FE guide, not a bug) — see SOP Follow-ups
+
+**Slice 3 — Suggestions + Positioning Map** — *✅ merged to `develop` (PR #47, Tasks 1–6)*
+- [x] Scope + locked decisions (suggestions apply through the EXISTING Slice 1/2 write functions,
+      not a parallel apply path · `base_version` pinned at create time vs. `current` recomputed
+      live at every read — two different mechanisms, not the same snapshot · positioning
+      coordinates live on the competitor RECORD (`map_x`/`map_y`), not a separate points table ·
+      `PositioningMapSave` carries `axes` only — no way to set coordinates through the map
+      endpoint, by design · any active member can suggest, only `_editor` can approve/reject, same
+      role split as every other Business Builder write) —
+      `.superpowers/sdd/2026-09-08-business-builder-suggestions/`
+- [x] `SuggestionOp`/`SuggestionStatus` enums + `BusinessSuggestion`/`BusinessPositioningMap`
+      models + migrations `0013_business_suggestions`, `0014_business_positioning_maps` (chain off
+      `0012_business_records`, sole alembic head) + `CompetitorData.map_x`/`map_y` (no migration —
+      new JSONB keys on the existing `data` column)
+- [x] Suggestions service (`app/services/business/suggestions.py`) — `create_suggestion` (per-op
+      target/payload validation, `base_version` capture for `canvas_update`) · `list_suggestions`
+      (status filter) · `_current` (live diff-view read) · `serialize_suggestion` · `_apply`
+      (dispatches to `save_canvas`/`create_record`/`update_record`/`delete_record`) ·
+      `approve_suggestion`/`reject_suggestion` (pending → approved/rejected state machine)
+- [x] Positioning service (`app/services/business/positioning.py`) — `get_or_create_map`
+      (race-safe lazy-create, mirrors `get_or_create_canvas`) · `validate_axes` · `update_axes` ·
+      `assemble_map` (joins map axes with every competitor's coordinates)
+- [x] `POST /business-builder/suggestions` (any member; per-op 404/422) · `GET
+      /business-builder/suggestions` (any member; `?status=` filter, unknown status → 404)
+- [x] `POST /business-builder/suggestions/{id}/approve` (editor; applies via `_apply()`; 409
+      `SUGGESTION_NOT_PENDING` / 409 `CANVAS_VERSION_CONFLICT` / 404 target-gone) · `POST
+      /business-builder/suggestions/{id}/reject` (editor; 409 `SUGGESTION_NOT_PENDING`)
+- [x] `GET /business-builder/positioning-map` (any member; lazy-creates axes row) · `PUT
+      /business-builder/positioning-map` (editor; axes only — coordinates via the EXISTING
+      `POST`/`PUT /competitors`, not a new route)
+- [x] Access: suggest = any active member · approve/reject/PUT-axes = founder/team_member
+      (`business_consultant`/mentor/accountant/legal_advisor/investor → 403 `FORBIDDEN` on
+      resolve, same as every other Business Builder write)
+- [x] Live E2E journeys (`e2e/test_business_builder.py::test_business_suggestions_journey`,
+      `::test_business_positioning_map_journey`, 25 new captures — both 409s and the 403
+      exercised live, not just derived from source) + full existing suite re-run green (32 e2e, 824
+      unit) + smoke openapi surface
+- [x] SOP + FE integration guide (every body captured live, zero source-derived error rows) + this
+      checklist reconcile — `docs/sop/2026-09-08-business-builder-slice3.md`,
+      `docs/fe-integration-guide-business-builder-suggestions.md`
+- [x] **AI Business Plan Generator (PRD §08.11)** → **shipped, Slice 4 below**
+      (`feat/ai-business-plan-generator`, merged (PR #79)) — `POST /business-builder/plan/generate`,
+      `business_plans` entity, `business.plan.generated` event. Was dependency-blocked on Module 03
+      (AI Co-Founder) entirely; Module 03 Slice 1
+      (`docs/sop/2026-09-19-llm-seam-assessment-narrative.md`) built the LLM seam this generator
+      calls directly (`complete()`, free-text — see Slice 4 for why the Slice 2 structured-output
+      mode wasn't needed here). The document-store half of the dependency landed on
+      `feat/documents-templates` (Module 18 Slice 1 — see below), whose
+      `create_document(..., ai_generated=True, kind=business_plan)` seam this generator now calls.
+      This was the last Module 08 PRD sub-screen not yet shippable — **Module 08 is now fully
+      complete, all 4 slices.**
+- [ ] _Deferred:_ reject-reason field
+      on `POST .../reject` (no structured "why" today) · no server-computed suggestion diff
+      summary beyond raw `current`/`payload` · no notification wired to
+      `business.suggestion.created`/`approved`/`rejected` (events fire, no consumer yet) — see SOP
+      Follow-ups
+
+**Slice 4 — AI Business Plan Generator (§08.11)** — *✅ MERGED to `develop` (PR #79;
+5 tasks, migration `0026_business_plans`)*
+- [x] Design + implementation plan
+      (`.superpowers/sdd/2026-09-19-ai-business-plan-generator/`) — fixed 10-section outline
+      (`PLAN_SECTIONS`), not an LLM-decided structure · section-by-section free-text `complete()`
+      calls, not one giant prompt or `complete_json` (a plan section is prose, not a fixed schema
+      — Slice 2's structured mode doesn't fit this shape) · plan stored as a Module 18 `Document`
+      (`kind=business_plan`), not a new bespoke table for content · async worker job, same
+      enqueue-then-drain pattern as every other AI consumer on this seam
+- [x] `BusinessPlanStatus` enum (`generating`/`complete`/`failed`) + `BusinessPlan` model
+      (`startup_id`, `status`, `document_id`, `created_by_id`) + migration `0026_business_plans`
+      (chains off `0025_roadmap_milestone_due_idx`, sole alembic head)
+- [x] `PLAN_SECTIONS` — 10 fixed sections (`app/services/business/plan_defs.py`: Executive
+      Summary, Problem & Opportunity, Solution & Product, Market & Customers, Business Model,
+      Go-to-Market, Competition, Team, Financials & Projections, Roadmap & Milestones), each a
+      `{key, heading, guidance}` · `build_plan_context` (`app/services/business/plan_context.py`)
+      — PII-free context gatherer over the startup's profile/canvases/records/latest completed
+      assessment/roadmap phases+milestones · `build_section_messages` — per-section prompt builder
+- [x] `handle_plan_generate` (`app/worker/handlers/plan.py`), registered as
+      `"business.plan.generate"` — benign no-op if the plan row is missing or already resolved;
+      one `client.complete(...)` call per `PLAN_SECTIONS` entry; assembles `[{heading, body}]`,
+      calls `create_document(..., kind=business_plan, ai_generated=True)`, links
+      `plan.document_id`, flips `status` to `complete`, publishes `business.plan.generated`
+- [x] `POST /business-builder/plan/generate` (editor; 202, `{plan_id, status: "generating"}`,
+      enqueues `business.plan.generate`) · `GET /business-builder/plan` (any active member; latest
+      plan `{id, status, document_id, created_at}`, 404 if none yet)
+- [x] `business.plan.generated` event maps to the existing `business` notification category — no
+      new category needed (`tests/services/notifications/test_plan_notification.py`)
+- [x] Live E2E journey (`e2e/test_business_plan.py`, 3 captures) proving enqueue → in-process
+      worker drain → 10 sequential LLM (stub) calls → `create_document` → `GET /plan` shows
+      `status: "complete"` + `document_id` → `GET /documents/{id}` returns all 10 sections with
+      stub bodies, over real HTTP with a real Postgres-backed worker drain, zero network calls
+      (`LLM_PROVIDER=stub`, already exported by `scripts/e2e_run.sh` since Module 03 Slice 1) +
+      full existing e2e suite re-run green (45 e2e, 1257 unit)
+- [x] SOP + FE integration guide (captured live) + this checklist reconcile —
+      `docs/sop/2026-09-19-ai-business-plan-generator.md`,
+      `docs/fe-integration-guide-ai-business-plan.md`
+- [ ] _Deferred:_ no plan history/list endpoint (only the latest plan is retrievable — regenerating
+      creates a new row but the old one and its document are not surfaced) · a plan stuck
+      `generating` after the worker's retries are exhausted never flips to `failed` in v1 (no
+      terminal-failure transition wired yet, despite the enum having the value) · no incremental
+      per-section progress signal (the FE only sees `generating` → `complete`, not "3 of 10
+      sections done") · sections are free text, not structured financials (no numeric revenue/cost
+      fields a dashboard could chart) · no PDF/export format, Document markdown only ·
+      regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
+      previous version) · remaining Module 03 AI consumers (typed-record `ai_fill` → **shipped,
+      Module 03 Slice 3**, see above; onboarding AI panel, Mission/Roadmap/Health Score/Learning/
+      Validation Hub still unbuilt) — see SOP Follow-ups
+
+## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
+(Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
+(E-signature) PR #55*
+
+_Module 18 has no detailed textual PRD entry — scope recovered from the UI comp
+(`Documents & Templates.dc.html`), decomposing into four slices: Library Core (a document store +
+in-code template registry), Upload & Files (Cloudinary-backed binary storage), Sharing (external
+tokenized read links), and E-signature (this slice, tokenized signing links) — **all four now
+built**, closing out Module 18. Slice 1 is also the `create_document` seam Module 08's AI Business
+Plan Generator (§08.11, now shipped) calls — see that module's entry above. SOPs:
+`docs/sop/2026-09-09-documents-templates-slice1.md`,
+`docs/sop/2026-09-10-documents-files-slice2.md`,
+`docs/sop/2026-09-12-documents-sharing-slice3.md`,
+`docs/sop/2026-09-14-documents-esignature-slice4.md`._
+
+**Slice 1 — Document Library Core** — *✅ merged to `develop` (PR #48, Tasks 1–5)*
+- [x] Scope + locked decisions (generic `documents` table + JSONB `sections` array, canvas
+      pattern, not a normalized child table · optimistic-concurrency `version` counter, full-
+      replace `PUT`, same as Business Builder · in-code `DOCUMENT_TEMPLATES` registry, not a DB
+      table, same as `CANVAS_BLOCKS` · `folder` is a freeform string column, not a `folders`
+      table · no export/uploads/sharing/e-sign in this slice) —
+      `.superpowers/sdd/2026-09-09-documents-templates-slice1/`
+- [x] `DocumentKind`/`DocumentStatus` enums + `Document` model + migration `0016_documents`
+      (chains off `0015_business_positioning_maps`, sole alembic head) + standalone
+      `startup_id`/`created_by_id` indexes + composite `(startup_id, kind)` index
+- [x] `DOCUMENT_TEMPLATES` registry (`app/services/documents/template_defs.py`) — 5 templates
+      (Business Plan/Pitch Deck/Financial Model/Meeting Notes/One-Pager), `instantiate()` (assigns
+      section ids, empty bodies), `catalog()`/`template_view()`
+- [x] Document service (`app/services/documents/service.py`) — `validate_sections` (shape check +
+      id assignment, 422 on bad shape) · `create_document` (the Module 08 AI-generator seam,
+      publishes `document.created`) · `list_documents` (kind/folder/status filters) ·
+      `get_document` (tenant-scoped 404) · `update_document` (version check → 409
+      `DOCUMENT_VERSION_CONFLICT`, else full-replace + version bump) · `delete_document` ·
+      `serialize_summary`/`serialize_document` (the summary-vs-full split)
+- [x] `GET /document-templates` · `GET /document-templates/{key}` (member; unknown key → 404) ·
+      `GET /documents?kind=&folder=&status=` (member; **summaries only, no `sections`**; unknown
+      filter value → 404)
+- [x] `POST /documents` (editor; 201; `template_key` seeds `kind`/`title`/`sections`, else
+      explicit/blank) · `GET /documents/{id}` (member; full document **with `sections`**) · `PUT
+      /documents/{id}` (editor; full-replace; stale `version` → 409
+      `DOCUMENT_VERSION_CONFLICT`) · `DELETE /documents/{id}` (editor; `{deleted: true}`)
+- [x] Access: reads = any active member · writes = founder/team_member (mentor → 403
+      `FORBIDDEN`) — same `require_workspace`/`_editor` split as Business Builder
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_journey`, 9 captures: templates
+      catalog + detail → create-from-template → get → full-replace edit (version bump) → stale-
+      version 409 → folder-filtered list (summary shape confirmed) → delete → 404) + full existing
+      suite re-run green (34 e2e, 961 unit) + smoke openapi surface
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 403 write-
+      role row, cited from a passing unit test) + this checklist reconcile —
+      `docs/sop/2026-09-09-documents-templates-slice1.md`,
+      `docs/fe-integration-guide-documents-templates.md`
+- [x] Slice 2 (Upload & Files) landed — Cloudinary-backed storage is now available; merged (PR #50).
+- [x] Slice 3 (Sharing) landed — external tokenized share links are now available; merged (PR #53).
+- [x] Slice 4 (E-signature) landed — tokenized-link signing is now available, completing Module 18;
+      see below.
+- [x] `business_plans.document_id` FK wired → **shipped, Module 08 §08.11 (AI Business Plan
+      Generator)** — see that module's entry above
+- [ ] _Deferred:_ no per-section endpoints (always full-replace `PUT`) · no `folders`
+      table/folder management UI · no user-authored templates (registry is read-only, in-code) —
+      see SOP Follow-ups
+
+**Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
+- [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
+      `documents` · `Storage` protocol extended with `delete` · Cloudinary behind that protocol,
+      `resource_type="raw"` for deterministic delete · allowlist-by-content-type + 15 MB cap,
+      enforced server-side against actual streamed bytes, not a trusted `Content-Length` · no
+      attachments-to-document FK in this slice) —
+      `.superpowers/sdd/2026-09-10-documents-files-slice2/`
+- [x] `Storage.delete` added to the protocol · `CloudinaryStorage` (`save`/`delete`, both
+      `resource_type="raw"`) alongside the existing `LocalStorage` · `get_storage()` switches on
+      `settings.STORAGE_BACKEND` (`app/platform/storage.py`)
+- [x] `DocumentFile` model + migration `0017_document_files` (chains off `0016_documents`, sole
+      alembic head) + standalone `startup_id`/`uploaded_by_id` indexes + composite
+      `(startup_id, folder)` index
+- [x] File service (`app/services/documents/files.py`) — `EXT_BY_CONTENT_TYPE` allowlist ·
+      `upload_file` (storage key + save + row + `document.file.uploaded` event) · `list_files`
+      (folder filter, newest-first) · `get_file` (tenant-scoped 404) · `delete_file` (storage
+      delete + row delete + `document.file.deleted` event) · `serialize_file` (one shape, no
+      summary/full split)
+- [x] `POST /documents/files` (editor; `multipart/form-data`, field `file` + form field `folder`;
+      201; allowlist/15 MB-cap violations → 422 `VALIDATION_ERROR`) · `GET /documents/files?folder=`
+      (member; summaries) · `GET /documents/files/{id}` (member) · `DELETE /documents/files/{id}`
+      (editor; `{deleted: true}`) — registered ahead of `/documents/{document_id}` so the literal
+      `files` segment isn't shadowed (regression-tested)
+- [x] Access: reads = any active member · writes = founder/team_member (mentor → 403 `FORBIDDEN`)
+      — same `require_workspace`/`_editor` split as Slice 1
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_files_journey`, 6 captures: upload
+      (multipart PDF + folder) → folder-filtered list → get → disallowed-type 422 → delete → 404)
+      + full existing suite re-run green (35 e2e, 978 unit) — both upload and delete confirmed to
+      persist (`db.commit()` verified via a follow-up `GET` after each write)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 403 write-
+      role row and the 15 MB-cap row, both cited from passing unit tests) + this checklist
+      reconcile — `docs/sop/2026-09-10-documents-files-slice2.md`,
+      `docs/fe-integration-guide-documents-files.md`
+- [ ] _Deferred:_ **DEPLOY FOLLOW-UP — set `STORAGE_BACKEND=cloudinary` +
+      `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET` in
+      `.env.staging.enc`/`.env.production.enc` before this slice reaches either environment** —
+      without it, uploads silently fall back to `LocalStorage` (ephemeral, not shared across
+      replicas) with no startup-time warning · attachments-to-document FK (no `document_id` link
+      from a file to a specific document yet) · no content/malware scanning · no file versioning
+      (re-upload creates a new row, not an in-place update) · no per-file access level beyond the
+      tenant's member/editor split — Slice 3 (Sharing) shipped external share links for
+      structured `documents` only, not `document_files`; file sharing remains a follow-up (see
+      Slice 3's own SOP Follow-ups) — see SOP Follow-ups
+
+**Slice 3 — Sharing** — *✅ merged to `develop` (PR #53, Tasks 1–4)*
+- [x] Scope + locked decisions (external expiring-link/token model, View/Comment only, mirroring
+      the existing invitation-token pattern (`token_urlsafe(32)` + `hash_token` sha256 + uniform
+      404) · `comment` tier stored but functionally `view` until a comment entity exists · `edit`
+      not offered — anonymous edits can't be attributed in version history · shares target
+      structured `documents` only, not `document_files` · email via the existing `EmailSender`
+      seam, not blocked on Module 20) —
+      `.superpowers/sdd/2026-09-12-documents-sharing-slice3/`
+- [x] `ShareAccess` enum (`view`/`comment`) + `DocumentShare` model + migration
+      `0018_document_shares` (chains off `0017_document_files`, sole alembic head) + standalone
+      `startup_id`/`document_id`/`shared_by_id` indexes + unique `token_hash` + composite
+      `(startup_id, created_at)` index
+- [x] Sharing service (`app/services/documents/shares.py`) — `create_share` (token gen + hash +
+      row + `document.shared` event, returns the raw token) · `list_shares` (per-document) ·
+      `list_workspace_shares` (per-startup overview) · `revoke_share` (`document.share.revoked`
+      event) · `open_shared` (hash lookup, uniform 404 for unknown/expired/revoked, sets
+      `last_viewed_at`) · `serialize_share` (derives `status`, omits `token_hash`)
+- [x] `POST /documents/{id}/shares` (editor; 201; JSON body `{email, access_level?,
+      expires_in_days?}`; builds the link, emails it, response returns `link` **once**) · `GET
+      /documents/{id}/shares` (member; per-document "Shared with" list, no `link`) · `DELETE
+      /documents/{id}/shares/{share_id}` (editor; `{revoked: true}`) · `GET /documents/shares`
+      (member; workspace "Shared with others" overview, `document_id` on each row; registered
+      ahead of `/documents/{document_id}` so the literal `shares` segment isn't shadowed) · `GET
+      /shared/{token}` (**public, no auth at all**; returns `{document, access_level,
+      expires_at}`; uniform 404 unknown/expired/revoked; persists `last_viewed_at`)
+- [x] Access: authenticated reads = any active member · authenticated writes = founder/team_member
+      (mentor → 403 `FORBIDDEN`) — same `require_workspace`/`_editor` split as Slices 1–2; the
+      public open route has no auth dependency at all, by design
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_sharing_journey`, 6 captures:
+      create (returns `link`, cross-checked against the raw link parsed out of the captured share
+      email in the file mail dir) → public open with zero auth headers → per-document list
+      (`last_viewed_at` now set) → workspace overview (`document_id` present) → revoke → public
+      open → 404) + full existing suite re-run green (36 e2e, 992 unit)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the rows listed
+      unit-only in that guide's verification table — non-editor 403, cross-tenant revoke,
+      unknown/expired-token 404, and the `expires_in_days: 0`/`null` "never expires" case) + this
+      checklist reconcile — `docs/sop/2026-09-12-documents-sharing-slice3.md`,
+      `docs/fe-integration-guide-documents-sharing.md`
+- [x] **FE-origin link fix (2026-09-19, PR #73)** — the emailed
+      share link (and Slice 4's signing links) now build off `APP_BASE_URL` (the FE origin), falling
+      back to `SERVER_HOST` only when unset, mirroring `auth/emails.py`. So `/shared/:token` and
+      `/sign/:token` are the **FE routes** the app must serve; the emailed link opens them, and the
+      FE page then calls `GET /api/v1/shared/{token}` / `GET`+`POST /api/v1/sign/{token}`. Verified
+      live in the e2e (captured `share_email.json`/`signature_email.json` show the FE origin) + 4 new
+      unit tests. `APP_BASE_URL` already set to the FE origin on staging/prod. —
+      `docs/sop/2026-09-19-document-emails-fe-links.md`, both FE guides updated (§6/routes)
+- [ ] _Deferred:_ Edit access tier + member-scoped ACL editing · Comment feature (tier stored, not
+      yet functional) · sharing uploaded files (`document_files`, Slice 2) · wrap the share-create
+      email send in `try`/`except` so a transient SMTP failure can't 500 an otherwise-valid create
+      (Slice 4's signature-request email send was built correctly wrapped from the start — see its
+      SOP "How") — see SOP Follow-ups
+
+**Slice 4 — E-signature** — *✅ MERGED to `develop` (PR #55; Tasks 1–4) — completes Module 18*
+- [x] Scope + locked decisions (build-your-own tokenized-link signing, not a third-party e-sign
+      provider · sign uploaded files (`document_files`), not structured `documents` · typed-name
+      simple signature + audit trail (name/timestamp/IP/user-agent), no drawn-signature image · no
+      draft state — create sends immediately · default 14-day expiry · any-order signing, `position`
+      display-only · migration `0020_signatures`, chaining off `0018_document_shares` with `0019`
+      intentionally skipped, reserved for another engineer's Module 17 work) —
+      `.superpowers/sdd/2026-09-14-documents-esignature-slice4/`
+- [x] `SignatureRequestStatus` enum (`awaiting`/`complete`/`cancelled`, `expired` derived not
+      stored) + `SignatureRequest`/`SignatureSigner` models + migration `0020_signatures` (chains
+      off `0018_document_shares`, sole alembic head) + standalone `startup_id`/`file_id`/
+      `created_by_id`/`request_id` indexes + unique `token_hash` + composite
+      `(startup_id, created_at)` index
+- [x] E-signature service (`app/services/documents/signatures.py`) — `create_request` (≥1-signer
+      required else 422; fresh token per signer; `document.signature.requested` event) ·
+      `list_requests`/`get_request` (tenant-scoped) · `cancel_request` (409 `SIGNATURE_NOT_ACTIVE`
+      guard) · `unsigned_signers`/`reissue_unsigned` (remind rotates unsigned signers' tokens —
+      the OLD link stops working) · `open_for_signing` (uniform 404
+      unknown/expired/cancelled/complete/already-signed) · `record_signature` (audit fields;
+      flips to `complete` + `completed_at` the instant every signer has signed) ·
+      `request_status` (derives `expired`) · `serialize_request` (never emits `token_hash`,
+      never emits `signed_ip`/`signed_user_agent` either — audit trail is captured, not exposed)
+- [x] `POST /documents/files/{id}/signature-requests` (editor; 201; body `{signers, title?,
+      expires_in_days?}`; response returns `signer_links` **once**) · `GET
+      /documents/signature-requests` (member; full `signers` array per row, not summary-shaped) ·
+      `GET /documents/signature-requests/{id}` (member) · `POST
+      /documents/signature-requests/{id}/remind` (editor; rotates unsigned tokens, re-emails) ·
+      `POST /documents/signature-requests/{id}/cancel` (editor; 409 if not active) · `GET`/`POST
+      /sign/{token}` (**public, no auth at all**; view returns file + request + signer identity;
+      sign takes `{typed_name}`, records IP/user-agent, returns the full updated request) —
+      registered ahead of `/documents/{document_id}` so the literal `signature-requests` segment
+      isn't shadowed
+- [x] Access: authenticated reads = any active member · authenticated writes = founder/team_member
+      (mentor → 403 `FORBIDDEN`) — same `require_workspace`/`_editor` split as Slices 1–3; both
+      public signing routes have no auth dependency at all, by design
+- [x] Live E2E journey (`e2e/test_documents.py::test_documents_esignature_journey`, 11 captures:
+      upload → create 2-signer request (`signer_links` returned once, cross-checked against the
+      captured signature emails) → view + sign each signer publicly (first stays `awaiting`,
+      second flips to `complete`) → re-opening a signed token 404s → get + list both show `2 of 2`
+      + `complete` → a second request created then cancelled, its signer's link 404s afterward) +
+      full existing suite re-run green (37 e2e, 1016 unit)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the rows listed
+      unit-only in that guide's verification table — non-editor 403, cross-tenant cancel, unknown-
+      token 404, expired-clock derivation, remind's token rotation, and the already-complete 409
+      guard) + this checklist reconcile — `docs/sop/2026-09-14-documents-esignature-slice4.md`,
+      `docs/fe-integration-guide-documents-esignature.md`
+- [ ] _Deferred:_ third-party provider for certificate-based signing (v1 is a simple electronic
+      signature — typed name + audit trail, not notarized/certificate-based) · drawn-signature
+      image · signing structured `documents` (needs a freeze-to-file step first) · ordered/
+      sequential signing enforcement (`position` is display-only today) · decline-to-sign ·
+      owner in-app notification on completion (events publish, unconsumed until Module 20) ·
+      ~~same `SERVER_HOST`/FE-link gap as Slice 3~~ **FIXED 2026-09-19** — signing links now use
+      `APP_BASE_URL` (FE origin); see the Slice 3 fix line above and
+      `docs/sop/2026-09-19-document-emails-fe-links.md` ·
+      the audit trail (`signed_ip`/`signed_user_agent`) is captured but never exposed via any API
+      response · no generated "signed certificate" PDF for the comp's Download CTA — see SOP
+      Follow-ups
+
+## ✅ Module 20 — Notifications — *ALL 4 SLICES SHIPPED — MODULE 20 COMPLETE (In-App Feed PR #58;
+Email + Preferences + Worker PR #60; Scheduler/Cron PR #71 (migrations `0024_scheduled_runs` →
+`0025_roadmap_milestone_due_idx`); Real-Time SSE PR #74, no migration)* — 2026-09-19
+
+_Module 20 decomposed into 4 slices (agreed 2026-09-14, `docs/superpowers/specs/
+2026-09-14-notifications-feed-design.md`): **1 In-app feed + fan-out** (the platform event bus
+becomes a real same-transaction dispatcher and ~15 domain events fan out to per-user rows — ✅
+merged), **2 Email delivery + per-user preferences** (Resend backend already existed; this slice
+adds the preferences model/endpoints, the in-transaction enqueue, and a new background `worker`
+process — ✅ merged), **3 Scheduler/cron** (mission 06:00, roadmap-overdue, quarterly
+re-assessment — enqueues into Slice 2's SAME `jobs` table/worker, no new infrastructure — ✅ built),
+**4 Real-time (SSE) delivery** (a Redis pub/sub backplane + `after_commit` publish + a
+`GET /notifications/stream` SSE endpoint, one-time ticket auth, no new infrastructure — ✅ built,
+this pass — MODULE 20 NOW COMPLETE). Nearly every already-shipped module (Dashboard, Roadmap,
+Mission, Health Score, Documents, Business Builder, Assessment, onboarding) had a "real notification
+delivery — Module 20" deferred line in its own SOP; Slice 1 retired the in-app half, Slice 2 added
+the email half, Slice 3 retired the "06:00 cron / overdue / quarterly re-assess" lines, and Slice 4
+retires the remaining "no real-time delivery, the FE must poll" lines (device/closed-app push
+remains a genuinely separate, still-unbuilt follow-up — see Slice 4's SOP Follow-ups). SOPs:
+`docs/sop/2026-09-14-notifications-feed-slice1.md`,
+`docs/sop/2026-09-15-notifications-email-delivery.md`,
+`docs/sop/2026-09-18-notifications-scheduler.md`,
+`docs/sop/2026-09-19-notifications-realtime-sse.md`._
+
+**Slice 1 — In-App Feed + Fan-Out** — *🟢 MERGED to `develop` (PR #58, Tasks 1–6 +
+final-review fix wave)*
+- [x] Scope + locked decisions (real synchronous same-transaction event bus, not a queue — a
+      notification exists iff the triggering action committed · per-handler `db.begin_nested()`
+      savepoint + try/except so a notification bug never breaks the triggering action · data-driven
+      registry, one file, ~15 rows · recipient default = active members minus actor, overridable per
+      event · generic per-type copy, not per-instance rendering · in-app delivery only this slice ·
+      migration `0021_notifications`, `0019` reserved/skipped for a concurrent Module 17 branch) —
+      `.superpowers/sdd/2026-09-14-notifications-feed-slice1/`
+- [x] `app/platform/events.py` — `EventBus.publish` gains a `db: Session` parameter and now
+      dispatches to subscribed handlers inside a per-handler savepoint; `subscribe(event, handler)`
+      added — 32 `event_bus.publish(...)` call sites (28 in `app/services/**`, 4 in
+      `app/api/v1/endpoints/**`) mechanically updated to the new signature, behavior-preserving for
+      every caller with no registered handlers
+- [x] `Notification` model + migration `0021_notifications` (chains off `0020_signatures`, sole
+      alembic head) + standalone `user_id`/`startup_id` indexes + composite
+      `(user_id, startup_id, created_at)` index for the feed query
+- [x] Notifications service (`app/services/notifications/service.py`) — `create_notifications`
+      (bulk-insert per recipient) · `list_notifications` (keyset pagination on
+      `(created_at, id) desc`, `limit` clamped `[1, 50]`) · `unread_count` · `mark_read` (404
+      cross-user, idempotent) · `mark_all_read` (bulk update, returns count) ·
+      `serialize_notification`
+- [x] Registry (`app/services/notifications/registry.py`) — `SPECS` dict, 15 v1 handled events
+      (`document.shared`, `document.signature.{requested,signed,completed}`,
+      `business.suggestion.{created,approved,rejected}`, `business.artifact.completed`,
+      `roadmap.replanned`, `roadmap.milestone.completed`, `mission.completed`,
+      `mission.streak.milestone`, `healthscore.dropped`, `assessment.completed`,
+      `workspace.member.joined`) · `register()` subscribes all 15 at import time, called from
+      `app/api/v1/api.py`
+- [x] `GET /notifications?unread=&limit=&cursor=` (feed, keyset pagination) · `GET
+      /notifications/unread-count` (bell badge) · `POST /notifications/{id}/read` (404 if not the
+      caller's row) · `POST /notifications/read-all` (`{marked: N}`) — all four scoped strictly to
+      `(membership.user_id, membership.startup_id)`, verified user + `require_workspace`
+- [x] Live E2E journey (`e2e/test_notifications.py::test_notifications_journey`, 19 captures):
+      founder A invites teammate B (a REAL second active member) → B accepts → A shares a document
+      twice → B's feed shows exactly 2 unread `document.shared` rows (`data.shared_by_id` = A) → A's
+      own feed has **zero** `document.shared` rows (actor exclusion, fixed in `42e00ef` — see below)
+      → keyset pagination (`limit=1` → non-null `next_cursor` → the other row + `next_cursor: null`)
+      → mark-read (idempotent) → unknown-id 404 → **cross-user 404** (A's own `workspace.member.
+      joined` row 404s for B) → `read-all` → unread-count → 0 → full feed still shows both rows, now
+      `read: true` + full existing suite re-run green (38 e2e, 1036 unit)
+- [x] SOP + FE integration guide (every payload/status/error captured live except the 13 event
+      types' `data` shape and a handful of shared-dependency rows, all cited in that guide's
+      verification table) + this checklist reconcile —
+      `docs/sop/2026-09-14-notifications-feed-slice1.md`,
+      `docs/fe-integration-guide-notifications.md`
+- [x] **Final-review fix wave (`42e00ef`)** — fixed the actor-exclusion known gap above: added an
+      actor-identifying payload key (`shared_by_id`/`created_by`/`actor_id`) at the 6 publish sites
+      for events with a genuine member actor (`document.shared`, `document.signature.requested`,
+      the 3 `business.suggestion.*` events, `roadmap.milestone.completed`) and recognized
+      `roadmap.replanned`'s existing `applied_by` key in `_actor()` — 7 events now genuinely exclude
+      the actor; confirmed live (`e2e/_captures/notifications/actor_excluded_from_own_action.json`,
+      superseding the deleted `actor_not_excluded_known_gap.json`) and by a new unit test using the
+      real `document.shared` payload shape. Passive/system events (missions, health score, signature
+      completion, etc.) intentionally left notify-all — no member actor exists to exclude. Also
+      hardened `create_notifications` to give each fanned-out row its own `dict(data)` copy instead
+      of sharing one dict object. 1036 unit / 38 e2e green, `ruff`/`black`/`mypy` clean. SOP + FE
+      guide updated in the same pass.
+- [ ] _Deferred:_ richer per-type/per-instance titles (today: one fixed string per event type) ·
+      notification grouping/digest · ~~Slices 3–4 (scheduler/cron, real-time/push)~~ both since
+      shipped (Slice 3 above; Slice 4, `docs/sop/2026-09-19-notifications-realtime-sse.md`) — see SOP
+      Follow-ups
+
+**Slice 2 — Email Delivery + Preferences + Worker** — *✅ MERGED to `develop` (PR #60; migration
+`0022_notifications_email`; the minimal job worker other slices/modules now build on)*
+- [x] Scope + locked decisions (in-transaction enqueue at the same fan-out point Slice 1 already
+      writes in-app rows from — a rolled-back triggering action enqueues no email, same guarantee
+      as the in-app row · a separate background `worker` process claims + sends, never inline in
+      the request · opt-out preferences model, `master_email` + 5 categories, all default ON ·
+      at-least-once email delivery accepted as a waiver, not built around · migration
+      `0022_notifications_email`, chains off `0021_notifications`, sole head) —
+      `.superpowers/sdd/2026-09-15-notifications-email-delivery/`
+- [x] `notification_preferences` table (`user_id`/`startup_id` FKs, unique per pair,
+      `master_email` bool default true, `categories` JSONB default `{}`) + `jobs.attempts`/
+      `jobs.run_after` columns, migration `0022_notifications_email`
+- [x] Category catalog (`app/services/notifications/categories.py`) — 5 categories (`documents`,
+      `business`, `roadmap_missions`, `health_assessment`, `team`) covering all 15 v1 event types,
+      same map powers both the preferences gate and Slice 1's email deep-link path
+- [x] Preferences service (`app/services/notifications/preferences.py`) — `effective_preferences`
+      (defaults-merged, always all 5 keys present) · `set_preferences` (genuine partial merge) ·
+      `email_enabled` (the enqueue-time gate: `master_email AND categories[category]`)
+- [x] `GET`/`PUT /api/v1/notifications/preferences` — verified user + `require_workspace`, same
+      auth convention as Slice 1's 4 routes; unknown category key → `422 VALIDATION_ERROR`
+      (request-level `field_validator`, nothing partially applied)
+- [x] Registry enqueue (`app/services/notifications/registry.py::_handle`) — captures
+      `create_notifications`'s return value, enqueues one `email.notification` job per opted-in
+      recipient, in the SAME transaction/savepoint as the in-app rows
+- [x] Worker (`app/worker/`) — `runner.py` (claim via `SELECT ... FOR UPDATE SKIP LOCKED`,
+      per-job `db.begin_nested()` isolation, exponential backoff capped at 1h,
+      `WORKER_MAX_ATTEMPTS`=5 terminal failure, stale-`RUNNING` reaper) · `handlers/email.py`
+      (re-fetches the notification + recipient, HTML-escapes title/body, validates the deep-link
+      URL scheme) · `__main__.py` (poll loop, graceful `SIGTERM`/`SIGINT` shutdown) · new `worker`
+      service in `docker-compose.yml`/`docker-compose.prod.yml` (dev: `build:`; prod: `image:`,
+      0.5 CPU/512M limit, no published ports) · `DEPLOYMENT_GUIDE.md` resource/connection tables
+      updated
+- [x] Live E2E journey (`e2e/test_notifications_email.py::test_email_delivery_and_preferences`, 4
+      captures): mirrors Slice 1's A/B setup verbatim → B's preferences default all-ON → A shares a
+      document → queue drained in-process (looped `run_once` — the shared e2e `jobs` table has a
+      backlog from every earlier test, so a single batch under-drains) → B's mailbox has the new
+      email, subject verified, captured (`delivered_email.json`) → B turns `documents` email OFF
+      (`preferences_documents_off.json`) → A shares again → drain again → B's mailbox count
+      UNCHANGED (no new job enqueued) → `GET /preferences` reflects the toggle
+      (`preferences_get.json`) → unknown category `PUT` → `422`, captured
+      (`preferences_put_unknown_category_422.json`) · full suite re-run green (39 e2e, up from 38)
+- [x] SOP + FE integration guide extension (every payload/status/error captured live) + this
+      checklist reconcile — `docs/sop/2026-09-15-notifications-email-delivery.md`,
+      `docs/fe-integration-guide-notifications.md` §9 "Preferences & email (Slice 2)"
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (12 pre-existing
+      unformatted files from Tasks 1–7 fixed in this pass, plus one `ruff` `C420` finding in
+      `categories.py` and one `mypy` missing-annotation finding in `worker/__main__.py`'s SIGTERM
+      handler) · `mypy` clean · `pylint` 9.89/10 (≥ 9.5 floor) · `bandit` clean · 1057 unit passed,
+      97.66% coverage (≥ 95% floor) · exactly one alembic head · 39 e2e passed — see
+      `.superpowers/sdd/2026-09-15-notifications-email-delivery/task-8-report.md` for the full
+      per-gate breakdown
+- [ ] _Deferred:_ at-least-once email delivery (a worker crash between a successful Resend send and
+      its `_finalize_success` commit can re-send — accepted waiver, mitigated later by an
+      idempotency key if it becomes a real problem) · preferences are not retroactive (no "cancel a
+      pending email" path) · no per-notification email-delivery status exposed via the API · same
+      generic per-type (not per-instance) copy limitation as Slice 1 — see SOP Follow-ups
+
+**Slice 3 — Scheduler / Cron** — *✅ MERGED to `develop` (PR #71;
+migrations `0024_scheduled_runs` → `0025_roadmap_milestone_due_idx`, chain off
+`0023_learning`; `0025` is the sole head)* — 2026-09-18
+- [x] Design + decisions (`.superpowers/sdd/2026-09-18-notifications-scheduler/`, design doc
+      `docs/superpowers/specs/2026-09-18-notifications-scheduler-design.md`) — scheduler = a
+      throttled tick inside the existing `worker` loop, no new container · a DB claim ledger
+      (`scheduled_runs`, unique `(task_key, scope_key, period_key)`) makes firing once-per-period
+      safe, leader-free · tick claims + enqueues into Slice 2's SAME `jobs` table; handlers do the
+      work + publish · one config timezone (`SCHEDULER_TIMEZONE`) for the 06:00 check, per-workspace
+      tz deferred · overdue fires once per milestone, ever (no daily/weekly re-nudge) · quarterly
+      only for workspaces with a prior completed assessment
+- [x] `scheduled_runs` ledger table + migration `0024_scheduled_runs` (`app/db/models/
+      scheduled_run.py`)
+- [x] `app/worker/scheduler.py` — `_claim` (once-per-period, savepoint insert), three detectors
+      (`_due_missions` past `MISSION_GEN_HOUR`; `_due_overdue_milestones` past `due_on` + not done;
+      `_due_quarterly` last completed assessment ≥ `QUARTERLY_REASSESS_DAYS` old, excluding
+      in-progress and soft-deleted startups), `scheduler_tick(db, *, now)` — per-item isolated,
+      commits once, returns count enqueued
+- [x] `app/worker/handlers/scheduled.py` — three job handlers (`handle_mission_generate`,
+      `handle_roadmap_overdue`, `handle_assessment_quarterly`), each re-checking before publishing
+      (overdue re-fetches the milestone — no stale-notification publish if it was completed/deleted
+      between enqueue and run) — publish `mission.ready`, `roadmap.milestone.overdue`,
+      `assessment.quarterly.due`
+- [x] `app/worker/__main__.py::main_loop` — throttled `scheduler_tick` call (`SCHEDULER_INTERVAL`,
+      default 60s, monotonic-clock gated) alongside the existing `run_once` poll
+- [x] Registry (`app/services/notifications/registry.py`) — 3 new `SPECS` rows, all-active-members
+      recipients (no actor — these are scheduled/system events); categories
+      (`app/services/notifications/categories.py`) — `mission.ready`/`roadmap.milestone.overdue` →
+      `roadmap_missions`, `assessment.quarterly.due` → `health_assessment` (both pre-existing
+      categories, no 6th category added)
+- [x] Config (`app/core/config.py`) — `SCHEDULER_TIMEZONE` (default `UTC`), `MISSION_GEN_HOUR`
+      (default `6`), `SCHEDULER_INTERVAL` (default `60`), `QUARTERLY_REASSESS_DAYS` (default `90`)
+- [x] Whole-branch-review perf hardening (F1/F2) — detectors pre-filter already-claimed scopes so a
+      steady-state tick issues no doomed re-`INSERT`s (overdue de-duped in SQL via `NOT EXISTS`;
+      missions/quarterly via a bounded in-memory set; `_claim` retained as the concurrency backstop)
+      + migration `0025_roadmap_milestone_due_idx` indexes `roadmap_milestones(due_on)` for the
+      overdue detector's per-tick range filter — now the sole alembic head
+- [x] Live E2E journey (`e2e/test_notifications_scheduler.py::
+      test_scheduled_mission_ready_notification`, 1 capture): founder onboards to a generated
+      roadmap → scheduler tick at 07:00 UTC (past `MISSION_GEN_HOUR`) → worker queue drained
+      in-process → `mission.ready` notification in the founder's feed, `data == {startup_id,
+      mission_id}`, captured (`mission_ready_feed.json`) → a same-day re-tick does NOT duplicate it
+      (proves the claim ledger). `roadmap.milestone.overdue`/`assessment.quarterly.due` are NOT
+      reachable from a fresh e2e signup (need a backdated milestone / an assessment >90 days old) —
+      honestly labelled unit-only in the FE guide + SOP rather than faked, backed by
+      `tests/worker/test_scheduled_handlers.py`'s exact-payload assertions
+- [x] SOP + FE integration guide extension (new §10 "Scheduled / time-based notifications") + this
+      checklist reconcile — `docs/sop/2026-09-18-notifications-scheduler.md`,
+      `docs/fe-integration-guide-notifications.md` §10
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (5 pre-existing
+      unformatted files from Tasks 1–6 fixed in this pass, plus one `ruff` `F401` finding and 4
+      `mypy` missing-annotation findings in `app/worker/scheduler.py`'s detectors) · `mypy` clean ·
+      `pylint` 9.89/10 (≥ 9.5 floor, unchanged — no new findings in scheduler code) · `bandit` clean
+      · 1199 unit passed, 97.76% coverage (≥ 95% floor) · exactly one alembic head
+      (`0024_scheduled_runs`) · 41 e2e passed — see `.superpowers/sdd/
+      2026-09-18-notifications-scheduler/task-7-report.md` for the full per-gate breakdown
+- [ ] _Deferred:_ single global `SCHEDULER_TIMEZONE`, not per-workspace (D3 — no tz field on
+      `Startup` today) · overdue fires once per milestone ever, no recurring re-nudge (D5) ·
+      quarterly only for workspaces with a prior completed assessment, never for a
+      never-assessed workspace (D6) · roadmap TASK overdue out of scope, milestones only · the
+      claim/enqueue non-atomicity gap (safe for mission generation via its lazy fallback, not
+      mitigated for overdue/quarterly — see SOP "How") · an overdue/quarterly job that exhausts
+      `WORKER_MAX_ATTEMPTS` leaves its `"once"` claim in place, so that occurrence never re-fires
+      (F3 — within the D5 once-ever contract; a future worker-DLQ/alerting slice should surface a
+      terminal-failed `scheduled.*` job rather than this loop retrying forever) — see SOP Follow-ups
+
+**Slice 4 — Real-Time SSE Delivery** — *✅ MERGED to `develop` (PR #74;
+no migration — sole alembic head unchanged, `0025_roadmap_milestone_due_idx`)* —
+2026-09-19, **MODULE 20 NOW FULLY COMPLETE (all 4 slices)**
+- [x] Design + decisions (`.superpowers/sdd/2026-09-19-notifications-realtime-sse/`, design doc
+      `docs/superpowers/specs/2026-09-19-notifications-realtime-sse-design.md`) — Server-Sent Events
+      over a Redis pub/sub backplane, not websocket (one-way server→client, `EventSource` gives
+      auto-reconnect for free) · publish happens in a SQLAlchemy `after_commit` listener so an event
+      fires only for an actually-committed row, across every caller (request/worker/scheduler) ·
+      one-time ticket auth (native `EventSource` can't set `Authorization`; a token in the URL would
+      leak into logs) · reconcile-not-replay (no `Last-Event-ID`/server event log — FE re-fetches the
+      feed on reconnect) · fail-soft publish (SSE is a live optimization, the DB row + email job stay
+      the durable path) · device/closed-app push explicitly out of scope, a separate later slice
+- [x] Realtime seam (`app/platform/realtime.py`, new) — `channel_for(startup_id, user_id)` ·
+      fail-soft `publish_notification` (sync, via the existing `get_redis()` client) ·
+      `mint_stream_ticket`/`consume_stream_ticket` (one-time `SET NX EX` / `GETDEL` ticket pair,
+      `SSE_TICKET_TTL`) · async `subscription(channel)` context manager over a lazily-imported
+      `redis.asyncio` pubsub (no new dependency — already ships with `redis`)
+- [x] Publish-on-commit (`app/services/notifications/service.py` + `app/db/session.py`) —
+      `create_notifications` stashes one `(channel, payload)` per created row in
+      `db.info["pending_realtime"]` after flush; new `after_commit`/`after_rollback` listeners on
+      `SessionLocal` publish the stash (or drop it, no phantom events, on rollback) — automatically
+      covers every notification-creating call path with zero other call-site changes
+- [x] `POST /notifications/stream-ticket` (mints a ticket for the caller's own
+      `(user_id, startup_id)`) · `GET /notifications/stream?ticket=...` (consumes the ticket, 401
+      `INVALID_TICKET` if bad/expired/reused; re-checks active membership, 403 `FORBIDDEN`; then an
+      SSE `StreamingResponse` — initial authoritative `event: unread`, live `event:
+      notification.created` frames identical in shape to a `GET /notifications` row via the existing
+      `serialize_notification`, `: heartbeat` comments every `SSE_HEARTBEAT_INTERVAL`,
+      `X-Accel-Buffering: no`, no request-scoped DB session held open across the stream)
+- [x] Config (`app/core/config.py`) — `SSE_TICKET_TTL` (default 30s), `SSE_HEARTBEAT_INTERVAL`
+      (default 20s)
+- [x] Live E2E journey (`e2e/test_notifications_realtime.py::
+      test_realtime_notification_delivery`, 2 captures) — the one path a fake-pubsub unit test
+      cannot prove: a founder opens the SSE stream against the SERVER process; the TEST process then
+      creates + commits a notification, which fires `after_commit` IN THE TEST PROCESS → Redis
+      `PUBLISH` → the server process's already-subscribed stream forwards it down the open
+      connection — a genuine two-OS-process round trip through Redis, not two objects sharing a fake.
+      Hard `t.join(timeout=8.0)` + `assert not t.is_alive()` so a stalled stream fails loudly rather
+      than hangs the suite. Captured `stream_ticket.json` (ticket mint) + `stream_frame.json` (the
+      received `notification.created` frame)
+- [x] SOP + new FE integration guide + this checklist reconcile —
+      `docs/sop/2026-09-19-notifications-realtime-sse.md`,
+      `docs/fe-integration-guide-notifications-realtime.md` (new, cross-linked from
+      `docs/fe-integration-guide-notifications.md`'s §0/§7, whose stale "no real-time delivery"
+      claims are corrected in place rather than left to silently rot)
+- [x] Full local CI reproduction green before commit: `black`/`isort`/`ruff` (2 pre-existing
+      unformatted files fixed in this pass — `tests/api/notifications/test_stream.py`, left
+      unformatted by Task 3's narrower per-file check, and the new e2e test file) · `mypy app` clean
+      (156 files) · `pylint` 9.89/10 (≥ 9.5 floor, unchanged — this task added no `app/` code) ·
+      `bandit` clean, 0 findings · **1227 unit tests passed, 97.36% coverage** (≥ 95% floor) ·
+      exactly one alembic head (`0025_roadmap_milestone_due_idx`, unchanged from `develop` — no
+      migration in this slice) · **43 e2e passed** (up from 42) — see `.superpowers/sdd/
+      2026-09-19-notifications-realtime-sse/task-4-report.md` for the full per-gate breakdown
+- [ ] _Deferred:_ device/web push (VAPID/FCM/APNs) for a CLOSED app — the other half of "push",
+      genuinely unbuilt, its own later slice · no `Last-Event-ID` replay / server-side event log
+      (reconcile-via-refetch only) · one Redis pubsub connection per open SSE stream, not a shared
+      per-node subscriber (fine at current scale, a scaling optimization if connection counts grow) ·
+      no read-state fan-out across a user's own open tabs — see SOP Follow-ups
+
+## ✅ Module 17 — Learning Academy — *MERGED to `develop` (PR #59; migration `0023_learning`)*
+
+_A learning hub inside the workspace: a read-only, versioned **in-code catalog** of courses
+(ordered lessons), learning paths and articles — **labelled placeholder content; real content is
+required before go-live** — plus per-person, per-workspace enrolments, lesson progress and
+certificates. Eight routes under `/learning`, founders and team members only (reads included).
+Deterministic recommendations with continue watching, race-safe automatic enrolment, derived course
+and path progress. Migration `0022_learning`. Spec:
+`docs/superpowers/specs/2026-09-11-learning-academy-design.md` (decisions D1–D10 agreed with the
+lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
+
+**Build (Tasks 1–6):**
+- [x] Scope + locked decisions D1–D10, agreed with the lead on GitHub (in-code catalog, moving to
+      the DB with Module 25.4 · deterministic recommendations, Health Score key deferred ·
+      certificate record + credential code + job stub, no PDF · lesson notes deferred · continue
+      watching inside recommendations · founders + team members only · enrolment unique per
+      workspace · labelled placeholder catalog · auto-enrol on lesson completion · course % and
+      path % formula) — spec + plan under `docs/superpowers/`
+- [x] `CourseLevel` enum + `Enrollment`/`LessonProgress`/`Certificate` models + migration
+      `0022_learning` (chains off `0021_notifications`, so the chain runs `0018` → `0020` → `0021`
+      → `0022`; sole alembic head, `alembic check` clean) — unique `(startup_id, user_id,
+      course_id)` on enrolments and certificates, unique `(startup_id, user_id, lesson_id)` on
+      lesson progress, unique `credential_code`, `ck_enrollments_progress_range` (0–100), `CASCADE`
+      FKs + `startup_id`/`user_id` indexes
+- [x] In-code catalog (`app/services/learning/catalog.py`, `LEARNING_CATALOG_VERSION = 1`) — 6
+      stage-tagged courses (one per stage, three levels), 2 paths, 2 articles, every title prefixed
+      `[Placeholder] ` · stable ids · lesson ids unique catalog-wide · durations derived
+- [x] Service write path (`app/services/learning/service.py`) — `get_or_create_enrollment`
+      (SAVEPOINT + re-select on `IntegrityError`, as `get_or_create_canvas`) · `complete_lesson`
+      (auto-enrol + enrolment row lock `FOR UPDATE`, so concurrent completions can't store a stale
+      %) · course % = `round(100 × completed ÷ total)` · one certificate at 100%
+      (`secrets.token_urlsafe(16)`) + `learning.course.completed` event +
+      `learning.certificate.generate` job
+- [x] Service read path — `recommended_courses` (stage filter, completed excluded,
+      `RECOMMENDATION_SORT_KEYS` level → catalog order; no stage → beginner courses) ·
+      `continue_watching` · path % = `round(mean of course %)`, unenrolled = 0, halves to even ·
+      course / path / article views
+- [x] 8 routes — `GET /learning/recommendations` · `GET /learning/courses` ·
+      `GET /learning/courses/{course_id}` · `GET /learning/paths` · `GET /learning/articles` ·
+      `POST /learning/enrollments` (201 first time, 200 on a repeat) ·
+      `PATCH /learning/lessons/{lesson_id}/progress` (`completed: true` only, `false` → 422;
+      `certificate` key always present) · `GET /learning/certificates` — both writes `db.commit()`
+- [x] Access: every route = founder/team_member (mentor, accountant, legal_advisor,
+      business_consultant, investor → 403) + verified email; progress is personal and per
+      workspace — access matrix and isolation unit-tested
+- [x] Tests — 124 learning unit/API tests (models 7 · migration 2 · catalog 6 · service 13 ·
+      concurrency 3 · browse 11 · API 82) · full project suite on the latest `develop`: 1,160
+      passed, coverage 97.97% (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the 8 learning routes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_learning.py`, written: onboard → recommendations → catalog +
+      course → enrol 201/200 → continue watching → lesson 1 = 50% → lesson 2 = 100% + certificate
+      → shelf and continue watching cleared → paths / articles / certificates; 11 captures) —
+      **not yet run**; how to run the e2e suite on Windows is with the lead
+- [x] SOP — `docs/sop/2026-09-14-learning-academy.md`
+- [ ] FE integration guide (`docs/fe-integration-guide-learning.md`) — waits on the live e2e
+      captures
+- [ ] _Deferred:_ **Replace the placeholder catalog with real content — REQUIRED before go-live** ·
+      move the catalog into the DB when Module 25.4 lands · Health Score signal as a
+      recommendation sort key · PDF rendering, sharing and a public certificate verification
+      endpoint (jobs are enqueued, nothing renders them) · private lesson notes · AI
+      recommendations + reason line (Module 03) · notifications (Module 20) · video hosting
+      (`video_ref` only) · un-completing a lesson — see SOP Follow-ups
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
@@ -675,9 +1806,20 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 03 — AI Co-Founder** (unblocks deferred AI narratives/recommendations/panels)
-- [ ] **Module 20 — Notifications** (real delivery + quarterly re-assessment cron)
-- [ ] **Module 17 — Learning Academy** — *junior handoff prepared* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
+      (structured output + canvas ai-fill worker, PR #77) merged; Slice 3 (typed records ai-fill
+      worker, closing the last unconsumed ai-fill job type) merged (PR #81); Slice 4 (mission
+      reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing)
+      merged (PR #87); see its own section above.
+      Onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI
+      consumers) still ahead
+- [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
+      (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
+      merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →
+      `0025_roadmap_milestone_due_idx`); Slice 4 (Real-Time SSE) merged (PR #74, no migration);
+      see its own section above.
+      Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
+- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
@@ -687,6 +1829,7 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## Deferred follow-ups (tracked, non-blocking)
 
+- [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
 - [ ] Index `assessments.created_by` FK
 - [ ] `compare` error distinction (in-progress vs not-found) if FE needs it

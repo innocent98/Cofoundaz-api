@@ -194,6 +194,7 @@ def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uu
         db.flush()
         replan_id = str(replan.id)
         event_bus.publish(
+            db,
             "roadmap.replanned",
             {
                 "startup_id": str(roadmap.startup_id),

@@ -127,3 +127,96 @@ class MissionTaskStatus(enum.StrEnum):
     done = "done"
     snoozed = "snoozed"
     rejected = "rejected"
+
+
+class CanvasType(enum.StrEnum):
+    business_model = "business_model"
+    lean = "lean"
+    value_prop = "value_prop"
+    mission_vision = "mission_vision"
+    swot = "swot"
+
+
+class RecordKind(enum.StrEnum):
+    persona = "persona"
+    revenue_stream = "revenue_stream"
+    competitor = "competitor"
+    pricing = "pricing"
+
+
+class ThreatLevel(enum.StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class PricingModelType(enum.StrEnum):
+    subscription = "subscription"
+    one_time = "one_time"
+    usage = "usage"
+    freemium = "freemium"
+    tiered = "tiered"
+
+
+class SuggestionOp(enum.StrEnum):
+    canvas_update = "canvas_update"
+    record_create = "record_create"
+    record_update = "record_update"
+    record_delete = "record_delete"
+
+
+class SuggestionStatus(enum.StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class JournalMood(enum.StrEnum):
+    rough = "rough"
+    meh = "meh"
+    okay = "okay"
+    good = "good"
+    great = "great"
+
+
+class DocumentKind(enum.StrEnum):
+    business_plan = "business_plan"
+    pitch_deck = "pitch_deck"
+    financial_model = "financial_model"
+    meeting_notes = "meeting_notes"
+    one_pager = "one_pager"
+    custom = "custom"
+
+
+class DocumentStatus(enum.StrEnum):
+    draft = "draft"
+    final = "final"
+
+
+class ShareAccess(enum.StrEnum):
+    view = "view"
+    comment = "comment"
+
+
+class SignatureRequestStatus(enum.StrEnum):
+    awaiting = "awaiting"
+    complete = "complete"
+    cancelled = "cancelled"
+
+
+class CourseLevel(enum.StrEnum):
+    beginner = "beginner"
+    intermediate = "intermediate"
+    advanced = "advanced"
+
+
+class BusinessPlanStatus(enum.StrEnum):
+    generating = "generating"
+    complete = "complete"
+    failed = "failed"
+
+
+class BriefingStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"

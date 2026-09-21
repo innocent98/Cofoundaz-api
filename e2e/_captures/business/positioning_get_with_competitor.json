@@ -1,0 +1,26 @@
+{
+  "data": {
+    "axes": {
+      "x": {
+        "low": "Slow",
+        "high": "Fast",
+        "label": "Growth Rate"
+      },
+      "y": {
+        "low": "Poor",
+        "high": "Great",
+        "label": "Retention"
+      }
+    },
+    "competitors": [
+      {
+        "id": "a2f84723-7941-49d5-ba9d-d5b468e7b5b6",
+        "name": "BigCo Rival",
+        "x": 0.7,
+        "y": 0.3,
+        "threat_level": "high"
+      }
+    ]
+  },
+  "meta": null
+}

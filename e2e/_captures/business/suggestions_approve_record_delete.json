@@ -1,0 +1,27 @@
+{
+  "data": {
+    "id": "50316459-2fd0-45fa-9d6f-10609a28c6ab",
+    "op": "record_delete",
+    "target": {
+      "kind": "persona",
+      "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998"
+    },
+    "payload": null,
+    "base_version": null,
+    "current": null,
+    "note": "This persona turned out to be a duplicate",
+    "status": "approved",
+    "author": {
+      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "name": null,
+      "email": "consultant-ef3da62188e1@example.com"
+    },
+    "resolved_by": {
+      "id": "b3a9fb75-ce6e-468f-b081-ff420eec3eeb",
+      "name": "Ada Founder"
+    },
+    "resolved_at": "2026-09-08T14:03:13.941430+00:00",
+    "created_at": "2026-09-08T14:03:13.923118+00:00"
+  },
+  "meta": null
+}

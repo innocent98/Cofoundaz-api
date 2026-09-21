@@ -1,0 +1,24 @@
+{
+  "data": {
+    "id": "18531663-0187-41fd-8b8f-c10f98b72ad7",
+    "kind": "persona",
+    "data": {
+      "name": "Busy Founder Bea",
+      "goals": [
+        "Ship an MVP",
+        "Get first 10 customers"
+      ],
+      "quote": "I just need this to work.",
+      "demographics": "28-40, solo/early-stage founder",
+      "frustrations": [
+        "No time to research tools"
+      ],
+      "watering_holes": [
+        "Indie Hackers",
+        "Twitter/X"
+      ]
+    },
+    "position": 0
+  },
+  "meta": null
+}
