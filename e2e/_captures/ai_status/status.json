@@ -1,0 +1,10 @@
+{
+  "data": {
+    "tokens_used_today": 0,
+    "daily_budget": 15000,
+    "over_budget": false,
+    "resets_at": "2026-09-22T00:00:00+00:00",
+    "recent_enrichment_failures": []
+  },
+  "meta": null
+}
