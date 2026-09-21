@@ -548,8 +548,8 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       still empty" signal beyond the existing job status · `create_record`'s position assignment
       still not race-safe (pre-existing gap, unchanged) — see SOP Follow-ups
 
-**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ shipped on branch `work`
-(7 tasks, no migration); PR to `develop` to follow — 2026-09-19*
+**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ merged (PR #83)
+(7 tasks, no migration) — 2026-09-19*
 - [x] Design + implementation plan
       (`.superpowers/sdd/2026-09-19-module-03-mission-health-ai/`) — same async-upgrade pattern as
       Slices 1–3, reused twice, not redesigned · mission enqueue gated on task count (skip the
@@ -593,8 +593,8 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       `HealthRecommendation` · the live e2e only proves the single-item-rewrite path
       (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
 
-**Slice 5 — Dashboard AI Briefing** — *✅ shipped on branch `feat/dashboard-ai-briefing`
-(5 tasks, migration `0027_daily_briefings`); PR to `develop` to follow — 2026-09-19*
+**Slice 5 — Dashboard AI Briefing** — *✅ merged (PR #87)
+(5 tasks, migration `0027_daily_briefings`) — 2026-09-19*
 - [x] Design + implementation plan
       (`docs/superpowers/specs/2026-09-19-dashboard-ai-briefing-design.md`,
       `docs/superpowers/plans/2026-09-19-dashboard-ai-briefing.md`) — same async-upgrade pattern
@@ -635,8 +635,8 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       "generation failed" signal to the FE) · the race-guard path is unit-covered only, not proven
       under real concurrency — see SOP Follow-ups
 
-**Slice 6 — Roadmap Re-plan Rationale** — *✅ shipped on branch `feat/roadmap-replan-rationale`
-(7 tasks, migration `0028_roadmap_replan_rationale`); PR to `develop` to follow — 2026-09-21*
+**Slice 6 — Roadmap Re-plan Rationale** — *✅ merged (PR #90)
+(7 tasks, migration `0028_roadmap_replan_rationale`) — 2026-09-21*
 - [x] Design + implementation plan
       (`docs/superpowers/specs/2026-09-21-roadmap-replan-rationale-design.md`,
       `docs/superpowers/plans/2026-09-21-roadmap-replan-rationale.md`) — same async-upgrade
