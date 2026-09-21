@@ -701,6 +701,7 @@ def replan_history(
                 "id": str(r.id),
                 "change_count": r.change_count,
                 "summary": r.summary,
+                "rationale": r.rationale,
                 "applied_by": person_ref(db, r.applied_by),
                 "created_at": r.created_at.isoformat(),
                 "changes": r.changes,
