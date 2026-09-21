@@ -5,7 +5,7 @@ import pytest
 from app.core.config import settings
 from app.db.models.job import Job, JobStatus
 from app.db.models.roadmap import RoadmapReplan
-from app.worker.handlers import ai as ai_mod
+from app.platform import llm_budget
 from app.worker.handlers.ai import handle_roadmap_rationale
 from tests.factories import create_roadmap, create_startup, create_user
 
@@ -54,9 +54,10 @@ def _job(replan_id):
 
 
 def test_overwrites_rationale(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     replan = _replan(db)
     fake = _FakeLLM("Your roadmap shifted because demand validation slipped.")
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_roadmap_rationale(db, _job(replan.id))
     db.refresh(replan)
     assert replan.rationale == "Your roadmap shifted because demand validation slipped."
@@ -78,6 +79,7 @@ def test_stub_marks_rationale(db, monkeypatch):
 def test_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     replan = _replan(db)
     with pytest.raises(RuntimeError):
         handle_roadmap_rationale(db, _job(replan.id))

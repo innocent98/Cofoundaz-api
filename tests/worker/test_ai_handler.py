@@ -53,6 +53,7 @@ def test_handler_fails_loud_when_llm_errors(db, monkeypatch):
     # openai provider + empty key => get_llm_client() returns OpenAILLMClient, complete() raises
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     a, r = _completed_result(db, s)

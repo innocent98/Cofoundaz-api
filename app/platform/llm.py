@@ -32,6 +32,8 @@ class StubLLMClient:
     a network call or an API key.
     """
 
+    last_usage_tokens: int = 0
+
     def complete(
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
     ) -> str:
@@ -80,6 +82,9 @@ class OpenAILLMClient:
     it; this client just doesn't have anywhere live to put it for the configured model today.
     """
 
+    def __init__(self) -> None:
+        self.last_usage_tokens: int = 0
+
     def _post_chat(self, payload: dict) -> dict:
         if not settings.LLM_API_KEY:
             raise RuntimeError(
@@ -120,6 +125,7 @@ class OpenAILLMClient:
                 "max_completion_tokens": max_tokens,
             }
         )
+        self.last_usage_tokens = int((body.get("usage") or {}).get("total_tokens", 0) or 0)
         text = self._content(body)
         if not text or not text.strip():
             raise RuntimeError("LLM API returned an empty completion.")
@@ -136,6 +142,7 @@ class OpenAILLMClient:
                 },
             }
         )
+        self.last_usage_tokens = int((body.get("usage") or {}).get("total_tokens", 0) or 0)
         content = self._content(body)
         try:
             data = json.loads(content)

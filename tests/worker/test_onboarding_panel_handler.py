@@ -5,7 +5,7 @@ import pytest
 from app.core.config import settings
 from app.db.models.enums import StartupStage
 from app.db.models.job import Job, JobStatus
-from app.worker.handlers import ai as ai_mod
+from app.platform import llm_budget
 from app.worker.handlers.ai import handle_onboarding_panel
 from tests.factories import create_startup, create_user
 
@@ -41,9 +41,10 @@ def _job(startup_id):
 
 
 def test_overwrites_ai_panel(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     s = _startup(db)
     fake = _FakeLLM("Welcome — a fintech founder at the idea stage.")
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_onboarding_panel(db, _job(s.id))
     db.refresh(s.profile)
     assert s.profile.ai_panel == "Welcome — a fintech founder at the idea stage."
@@ -65,6 +66,7 @@ def test_stub_marks_panel(db, monkeypatch):
 def test_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     s = _startup(db)
     with pytest.raises(RuntimeError):
         handle_onboarding_panel(db, _job(s.id))
