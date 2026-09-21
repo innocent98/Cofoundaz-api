@@ -8,7 +8,8 @@ complete on 2026-09-21 (`docs/checklist/PROJECT_CHECKLIST.md`); the third (a non
 `LLMClient` provider implementation) is **dropped won't-do (OpenAI-only)** in this same pass — see
 Follow-ups.
 
-Commits, oldest to newest, branch `feat/llm-budget-ai-status` (off `develop`), PR to follow:
+Commits, oldest to newest, branch `feat/llm-budget-ai-status` (off `develop`), merged into `develop`
+via **PR #95** (merge commit `ec783ac`):
 
 | Commit | Subject |
 |---|---|
