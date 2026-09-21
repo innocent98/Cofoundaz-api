@@ -31,6 +31,7 @@ from app.services.health_score.ai_recommendations import (
     health_recommendation_schema,
 )
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
+from app.services.onboarding.ai_panel import build_onboarding_panel_messages
 from app.services.roadmap.ai_rationale import build_roadmap_rationale_messages
 from app.worker.runner import register_handler
 
@@ -278,3 +279,24 @@ def handle_roadmap_rationale(db: Session, job: Job) -> None:
 
 
 register_handler("ai.roadmap.rationale", handle_roadmap_rationale)
+
+
+def handle_onboarding_panel(db: Session, job: Job) -> None:
+    """Overwrite a startup's onboarding AI panel with the LLM (prose). No commit.
+
+    The templated panel written at signals-complete stays as the instant value and fallback.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None or startup.profile is None:
+        return  # benign no-op
+    messages = build_onboarding_panel_messages(
+        industry=startup.industry,
+        stage=(startup.stage.value if startup.stage else None),
+        goals=(startup.profile.goals or []),
+    )
+    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    startup.profile.ai_panel = text.strip()
+    db.flush()
+
+
+register_handler("ai.onboarding.panel", handle_onboarding_panel)
