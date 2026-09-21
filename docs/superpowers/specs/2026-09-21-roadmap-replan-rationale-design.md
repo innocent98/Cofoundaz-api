@@ -24,7 +24,7 @@ One sentence: *the assessment-narrative async-upgrade pattern, applied to a new 
 - It reuses the shipped free-text seam (`complete`) with no new capability, and it's the natural next
   Module 03 consumer.
 - The `roadmap.replan` job enqueued at assessment-complete (`app/services/assessment/service.py`) has
-  **no registered handler** — a queued job nothing runs. It is unrelated to this rationale (auto-replan
+  **no registered handler** — every enqueued job failed on claim (unregistered job type). It is unrelated to this rationale (auto-replan
   applies no changes, so no `RoadmapReplan` row exists at assessment time); removing the dead enqueue
   keeps the queue honest.
 

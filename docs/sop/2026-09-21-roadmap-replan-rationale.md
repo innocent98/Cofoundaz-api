@@ -28,7 +28,7 @@ onboarding AI panel. This slice closes the roadmap one, reusing the free-text LL
 
 Separately, `app/services/assessment/service.py` had enqueued a `roadmap.replan` job on every
 assessment completion since Module 07 shipped, and **no handler was ever registered to consume
-it** — every such job sat `queued` forever. It has no relationship to this feature (an
+it** — every such enqueued job failed on claim (unregistered job type). It has no relationship to this feature (an
 assessment-triggered auto-replan never applies any changes, so no `RoadmapReplan` row exists at
 that point), but it was flagged as dead code during this slice's design pass and removed in the
 same branch rather than filed as a separate follow-up.
@@ -212,7 +212,7 @@ line — upgrading those individually (own-slip / cascade / both) is a separate,
 follow-up, not started here.
 
 **The `roadmap.replan` job type itself is gone, not repurposed.** Removing its dead enqueue closes
-the "queued forever, no consumer" gap, but it does not revisit the original product idea an
+the "no handler, fails on claim" gap, but it does not revisit the original product idea an
 auto-drift advisory notification might have used that job type for — Module 05 Slice 3's own SOP
 had already ruled out ever auto-draining it "by design," and this slice doesn't change that
 verdict, it just stops writing rows nobody will ever read. Repurposing the job type for a
