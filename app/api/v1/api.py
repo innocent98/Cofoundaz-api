@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    ai,
     assessments,
     business,
     dashboard,
@@ -38,3 +39,4 @@ api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
 api_router.include_router(documents.router, tags=["documents"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
