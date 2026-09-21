@@ -13,7 +13,7 @@ from app.db.models.job import Job
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
-from app.platform.llm import get_llm_client
+from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
@@ -56,7 +56,9 @@ def handle_assessment_narrative(db: Session, job: Job) -> None:
         industry=industry,
         stage=stage,
     )
-    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    text = metered_complete(db, startup_id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated narrative
     result.narrative = text.strip()
     # Flush (not commit) so the change is visible to any read on this connection before
     # the runner's own db.commit() finalizes the job — the runner still owns the txn.
@@ -87,9 +89,15 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         stage=(startup.stage.value if startup.stage else None),
         blocks=CANVAS_BLOCKS[canvas_type],
     )
-    filled = get_llm_client().complete_json(
-        messages, schema=canvas_json_schema(canvas_type), max_tokens=settings.LLM_MAX_TOKENS
+    filled = metered_complete_json(
+        db,
+        startup.id,
+        messages,
+        schema=canvas_json_schema(canvas_type),
+        max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if filled is None:
+        return  # over budget — skip enrichment, keep the empty blocks
     # Re-read: a concurrent PATCH may have committed during the (multi-second) LLM call.
     # Under READ COMMITTED this reflects the latest committed blocks/version, so we never
     # clobber an edit that landed while we were waiting on the model.
@@ -118,7 +126,9 @@ def handle_record_ai_fill(db: Session, job: Job) -> None:
         return
     if db.query(BusinessRecord).filter_by(startup_id=startup.id, kind=kind).count():
         return  # fill-empties only
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        startup.id,
         build_record_fill_messages(
             kind,
             name=startup.name,
@@ -128,6 +138,8 @@ def handle_record_ai_fill(db: Session, job: Job) -> None:
         schema=record_json_schema(kind),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the kind empty
     for rec in (result.get("records") or [])[:3]:
         try:
             create_record(db, startup, kind, rec)
@@ -153,7 +165,9 @@ def handle_mission_reason(db: Session, job: Job) -> None:
     if not tasks:
         return
     startup = db.get(Startup, mission.startup_id)
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        mission.startup_id,
         build_mission_reason_messages(
             [(t.order, t.title) for t in tasks],
             name=(startup.name if startup else None),
@@ -163,6 +177,8 @@ def handle_mission_reason(db: Session, job: Job) -> None:
         schema=mission_reason_schema(len(tasks)),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the templated reasons
     by_order = {
         r["order"]: r["reason"]
         for r in (result.get("reasons") or [])
@@ -197,7 +213,9 @@ def handle_health_recommendations(db: Session, job: Job) -> None:
     todo = [r for r in rows if r.body == defaults.get(r.key)]
     if not todo:
         return  # nothing to personalize -- no LLM call
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        startup.id,
         build_health_recommendation_messages(
             [(r.key, r.dimension, r.title) for r in todo],
             name=startup.name,
@@ -207,6 +225,8 @@ def handle_health_recommendations(db: Session, job: Job) -> None:
         schema=health_recommendation_schema([r.key for r in todo]),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the catalog default bodies
     by_key = {
         r["key"]: r["body"]
         for r in (result.get("recommendations") or [])
@@ -242,11 +262,15 @@ def handle_dashboard_briefing(db: Session, job: Job) -> None:
     if row is None or row.status != BriefingStatus.generating:
         return
     ctx = gather_briefing_context(db, startup)
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        startup.id,
         build_dashboard_briefing_messages(**ctx),
         schema=dashboard_briefing_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the "generating" placeholder
     row.briefing = result["briefing"]
     row.risks = result["risks"]
     row.opportunities = result["opportunities"]
@@ -266,14 +290,18 @@ def handle_roadmap_rationale(db: Session, job: Job) -> None:
     if replan is None:
         return  # benign no-op
     roadmap = db.get(Roadmap, replan.roadmap_id)
-    startup = db.get(Startup, roadmap.startup_id) if roadmap else None
+    if roadmap is None:
+        return  # benign no-op (orphaned replan)
+    startup = db.get(Startup, roadmap.startup_id)
     messages = build_roadmap_rationale_messages(
         stage=(startup.stage.value if (startup and startup.stage) else None),
         name=(startup.name if startup else None),
         industry=(startup.industry if startup else None),
         changes=list(replan.changes or []),
     )
-    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    text = metered_complete(db, roadmap.startup_id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated rationale
     replan.rationale = text.strip()
     db.flush()
 
@@ -294,7 +322,9 @@ def handle_onboarding_panel(db: Session, job: Job) -> None:
         stage=(startup.stage.value if startup.stage else None),
         goals=(startup.profile.goals or []),
     )
-    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated panel
     startup.profile.ai_panel = text.strip()
     db.flush()
 

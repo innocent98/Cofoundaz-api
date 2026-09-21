@@ -90,7 +90,8 @@ def test_ai_fill_preserves_concurrent_edit_during_llm_call(db, monkeypatch):
                 for k, v in schema["properties"].items()
             }
 
-    monkeypatch.setattr("app.worker.handlers.ai.get_llm_client", lambda: RacyLLMClient())
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    monkeypatch.setattr("app.platform.llm_budget.get_llm_client", lambda: RacyLLMClient())
     handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))
     db.refresh(canvas)
     assert canvas.blocks["value_propositions"] == ["USER EDIT"]  # concurrent edit preserved
@@ -111,6 +112,7 @@ def test_ai_fill_noop_when_startup_missing(db, monkeypatch):
 def test_ai_fill_fails_loud_when_llm_errors(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     import pytest

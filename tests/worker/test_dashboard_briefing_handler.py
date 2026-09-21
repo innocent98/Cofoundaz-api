@@ -8,7 +8,7 @@ from app.db.models.assessment import AssessmentResult
 from app.db.models.dashboard import DailyBriefing
 from app.db.models.enums import AssessmentStatus, BriefingStatus
 from app.db.models.job import Job, JobStatus
-from app.worker.handlers import ai as ai_mod
+from app.platform import llm_budget
 from app.worker.handlers.ai import handle_dashboard_briefing
 from tests.factories import create_assessment, create_startup, create_user
 
@@ -60,9 +60,10 @@ def _job(startup_id):
 
 
 def test_fills_generating_row(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     s, row = _seed(db)
     fake = _FakeLLM({"briefing": "B", "risks": "R", "opportunities": "O"})
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_dashboard_briefing(db, _job(s.id))
     db.refresh(row)
     assert (row.status, row.briefing, row.risks, row.opportunities) == (
@@ -77,7 +78,7 @@ def test_fills_generating_row(db, monkeypatch):
 def test_noop_when_already_ready(db, monkeypatch):
     s, row = _seed(db, status=BriefingStatus.ready)
     monkeypatch.setattr(
-        ai_mod, "get_llm_client", lambda: (_ for _ in ()).throw(AssertionError("no LLM call"))
+        llm_budget, "get_llm_client", lambda: (_ for _ in ()).throw(AssertionError("no LLM call"))
     )
     handle_dashboard_briefing(db, _job(s.id))
     db.refresh(row)
@@ -100,6 +101,7 @@ def test_stub_marks_fields(db, monkeypatch):
 def test_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     s, row = _seed(db)
     with pytest.raises(RuntimeError):
         handle_dashboard_briefing(db, _job(s.id))
