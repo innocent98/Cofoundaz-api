@@ -1,0 +1,31 @@
+{
+  "data": {
+    "step": 4,
+    "completed": false,
+    "assessment_pending": true,
+    "founder_profile": {
+      "full_name": "Ada Founder",
+      "role_title": "Founder & CEO",
+      "country": null,
+      "phone": null,
+      "how_heard": null
+    },
+    "startup": {
+      "id": "c06bc716-dd1c-433d-93fd-7e512c2c1e8f",
+      "name": "Cofoundaz",
+      "description": null,
+      "website": null,
+      "logo_url": null,
+      "industry": "Fintech",
+      "business_model": "b2b",
+      "stage": "idea"
+    },
+    "goals": [
+      "Get first customers"
+    ],
+    "ai_panel": "Got it \u2014 a Fintech startup at the idea stage. Let's calibrate your workspace.",
+    "notes": null,
+    "invites": []
+  },
+  "meta": null
+}
