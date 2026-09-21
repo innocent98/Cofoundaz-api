@@ -459,12 +459,10 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       reconcile — `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`,
       `docs/fe-integration-guide-ai-assessment-narrative.md`
 - [x] structured (JSON-shaped) LLM output → **built in Slice 2** (`complete_json`, below) · every
-      other deferred-to-Module-03 AI consumer named at Slice 1 time (onboarding AI panel, Mission
-      reason line, Roadmap replan rationale, Health Score recommendation reasons, Business
-      Builder's typed-record `ai-fill` jobs) unblocked on infrastructure only, then shipped one by
-      one across Slices 2–6 — **only the onboarding AI panel remains unbuilt** as of Slice 6
-      (2026-09-21); Learning/Validation Hub recommendations were never actually in this Module's
-      scope (see Module 08's §08.11 deferred note, above)
+      other deferred-to-Module-03 AI consumer (onboarding AI panel, Mission reason line, Roadmap
+      replan rationale, Health Score recommendation reasons, Learning recommendations, Validation
+      Hub insight synthesizer, Business Builder's typed-record `ai-fill` jobs) still unbuilt, now
+      unblocked on infrastructure only
 - [ ] _Deferred:_ no Anthropic (or other non-OpenAI-compatible) provider implementation · no
       per-workspace LLM budget/rate limiting · no structured "AI enrichment failed / still
       templated" signal for the FE or an operator — see SOP Follow-ups
@@ -899,13 +897,14 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       sections done") · sections are free text, not structured financials (no numeric revenue/cost
       fields a dashboard could chart) · no PDF/export format, Document markdown only ·
       regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
-      previous version) · remaining Module 03 AI consumers as of this section's own write-up
-      (2026-09-19) — typed-record `ai_fill` → **shipped, Module 03 Slice 3**; mission reason +
-      health-score recommendations → **shipped, Module 03 Slice 4**; dashboard briefing →
-      **shipped, Module 03 Slice 5**; roadmap re-plan rationale → **shipped, Module 03 Slice 6**
-      (2026-09-21) — see Module 03, above; only the onboarding AI panel remains unbuilt.
-      Learning/Validation Hub recommendations are a separate, not-yet-scoped future AI surface,
-      not part of the Module-03-deferred consumer list above — see SOP Follow-ups
+      previous version) · remaining Module 03 AI consumers (typed-record `ai_fill` → **shipped,
+      Module 03 Slice 3**, see above; mission reason + health-score recommendations → **shipped,
+      Module 03 Slice 4**; dashboard briefing → **shipped, Module 03 Slice 5**; roadmap re-plan
+      rationale → **shipped, Module 03 Slice 6** (2026-09-21) — of the five core Module-03
+      consumer slices, only the onboarding AI panel remains; Learning recommendations and
+      Validation Hub's insight synthesizer remain separately deferred, unblocked on
+      infrastructure only, not yet started — see `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`
+      and `docs/sop/2026-09-19-ai-business-plan-generator.md`) — see SOP Follow-ups
 
 ## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
 (Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
