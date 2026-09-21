@@ -73,6 +73,7 @@ def serialize_state(db: Session, startup: Startup, user: User) -> dict[str, Any]
             "stage": startup.stage.value if startup.stage else None,
         },
         "goals": profile.goals or [],
+        "ai_panel": profile.ai_panel,
         "notes": profile.notes,
         "invites": [
             {"email": i.email, "role": i.role.value, "status": i.status.value} for i in invites
