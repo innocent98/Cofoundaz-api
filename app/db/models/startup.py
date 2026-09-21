@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -50,5 +50,6 @@ class StartupProfile(TimestampMixin, Base):
     assessment_pending: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
+    ai_panel: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     startup: Mapped["Startup"] = relationship(back_populates="profile")
