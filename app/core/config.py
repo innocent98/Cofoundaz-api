@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_TIMEOUT: int = 60  # seconds per LLM HTTP call (LLM latency >> a normal request)
     LLM_MAX_TOKENS: int = 800  # default output cap
+    LLM_DAILY_TOKEN_BUDGET: int = 15000  # per-startup per-UTC-day token cap; <= 0 = unlimited
 
     # Admin
     FIRST_SUPERUSER_EMAIL: EmailStr
