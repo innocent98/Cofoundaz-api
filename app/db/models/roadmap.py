@@ -131,6 +131,7 @@ class RoadmapReplan(UUIDMixin, TimestampMixin, Base):
     change_count: Mapped[int] = mapped_column(Integer, nullable=False)
     changes: Mapped[list] = mapped_column(JSONB, nullable=False)
     summary: Mapped[str] = mapped_column(String(200), nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RoadmapTaskDependency(Base):

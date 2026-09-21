@@ -11,6 +11,7 @@ from app.db.models.enums import BriefingStatus, CanvasType, RecommendationStatus
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
 from app.db.models.mission import Mission, MissionTask
+from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
 from app.platform.llm import get_llm_client
 from app.services.assessment.narrative import build_narrative_messages
@@ -30,6 +31,7 @@ from app.services.health_score.ai_recommendations import (
     health_recommendation_schema,
 )
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
+from app.services.roadmap.ai_rationale import build_roadmap_rationale_messages
 from app.worker.runner import register_handler
 
 
@@ -252,3 +254,27 @@ def handle_dashboard_briefing(db: Session, job: Job) -> None:
 
 
 register_handler("ai.dashboard.briefing", handle_dashboard_briefing)
+
+
+def handle_roadmap_rationale(db: Session, job: Job) -> None:
+    """Overwrite a roadmap re-plan's rationale with the LLM (prose). No commit.
+
+    The templated rationale written at apply time stays as the instant value and fallback.
+    """
+    replan = db.get(RoadmapReplan, job.payload["replan_id"])
+    if replan is None:
+        return  # benign no-op
+    roadmap = db.get(Roadmap, replan.roadmap_id)
+    startup = db.get(Startup, roadmap.startup_id) if roadmap else None
+    messages = build_roadmap_rationale_messages(
+        stage=(startup.stage.value if (startup and startup.stage) else None),
+        name=(startup.name if startup else None),
+        industry=(startup.industry if startup else None),
+        changes=list(replan.changes or []),
+    )
+    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    replan.rationale = text.strip()
+    db.flush()
+
+
+register_handler("ai.roadmap.rationale", handle_roadmap_rationale)

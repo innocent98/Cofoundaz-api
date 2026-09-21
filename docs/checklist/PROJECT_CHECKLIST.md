@@ -16,7 +16,30 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Dashboard AI Briefing** shipped on
+_Last reconciled: 2026-09-21 · **Module 03 (AI Co-Founder) Roadmap Re-plan Rationale** shipped on
+branch `feat/roadmap-replan-rationale` (7 tasks, migration `0028_roadmap_replan_rationale`), PR to
+`develop` to follow — the fifth of six Module-03-deferred AI consumers now built: applying a
+roadmap re-plan (`POST /replan/apply`) now writes a holistic, AI-authored `rationale` onto the new
+`RoadmapReplan.rationale` column (nullable Text) — a **templated fallback written synchronously**
+(so `apply`'s response never has to wait on the LLM) that a new `ai.roadmap.rationale` worker job
+then overwrites with LLM prose within seconds; `GET /replan/history` exposes the current value on
+every row (`null` for any pre-existing row, no backfill). **`apply`'s `rationale` is always the
+templated value, never AI-authored** — the FE must re-fetch `GET /replan/history` to see the
+upgrade; this nuance is called out explicitly in the FE guide. Uses the free-text `complete()`
+seam (Slice 1), not the structured `complete_json` mode (Slice 2) — a holistic rationale is prose,
+not typed fields, same choice §08.11's plan generator made. As a same-branch cleanup, the dead
+`roadmap.replan` job enqueued at assessment-complete (no handler was ever registered for it) was
+also removed; assessment completion still enqueues `ai.assessment.narrative` and
+`ai.health.recommendations`. Proven live end to end (`e2e/test_roadmap_replan_rationale.py`, 2
+captures): force a slip → preview → apply (templated `rationale` asserted) → in-process worker
+drain → `GET /replan/history` (AI-authored `[stub-llm]` `rationale` asserted), over real HTTP (50
+e2e passed total, no regression; 1,311 unit passed; single alembic head, no migration drift).
+**This does NOT complete Module 03**: only one Module-03-deferred AI consumer remains unbuilt —
+**the onboarding AI panel**. **Counts unchanged: still 11 modules fully complete, 1 open (03), 14
+not started.** SOP: `docs/sop/2026-09-21-roadmap-replan-rationale.md`; FE guide (extended):
+`docs/fe-integration-guide-roadmap.md` (§9)._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Dashboard AI Briefing** shipped on
 branch `feat/dashboard-ai-briefing` (5 tasks, migration `0027_daily_briefings`), PR to `develop`
 to follow — the third of five Module-03-deferred AI consumers now built: the dashboard's
 `briefing`/`risks`/`opportunities` panel (previously permanently static — see Module 02's own
@@ -137,12 +160,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — the mission reason line, health-score recommendations, and the dashboard AI briefing are now AI-upgraded/live, but the onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87); Slice 6 (roadmap re-plan rationale) shipped on `feat/roadmap-replan-rationale`, PR to follow (2026-09-21) — the mission reason line, health-score recommendations, the dashboard AI briefing, and the roadmap re-plan rationale are now AI-upgraded/live, but the onboarding AI panel (the last remaining Module-03-deferred AI consumer) still remains unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87) — SOP `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type closed in Slice 3; the mission reason line and health-score recommendations were AI-upgraded in Slice 4; the dashboard AI briefing is now live (Slice 5) — only the onboarding AI panel and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
+| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) shipped, PR to follow (2026-09-21) — SOP `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type closed in Slice 3; the mission reason line and health-score recommendations were AI-upgraded in Slice 4; the dashboard AI briefing went live in Slice 5; the roadmap re-plan rationale went live in Slice 6 — only the onboarding AI panel remains unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -301,7 +324,13 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] `GET /roadmap/replan/history` + tree `roadmap.drift.slipped_count` + per-milestone `replanned` marker
 - [x] Live E2E (26 passed) + smoke surface — `e2e/test_roadmap_replan.py`
 - [x] SOP + FE integration guide update + checklist reconcile — `docs/sop/2026-08-26-roadmap-replan.md`, `docs/fe-integration-guide-roadmap.md` (updated)
-- [ ] _Deferred:_ AI-authored rationale (Module 03) · notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job permanently unconsumed (by design) · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids` not deduped on apply — see SOP Follow-ups
+- [ ] _Deferred:_ ~~AI-authored rationale (Module 03)~~ now shipped via **Module 03 Slice 6**
+      (`ai.roadmap.rationale`, 2026-09-21 — a holistic `rationale` field, not an upgrade of the
+      per-change `reason` strings below, which remain templated — see that module's own section) ·
+      notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job's enqueue **removed**
+      2026-09-21 (dead code — no handler was ever registered for it; see Module 03 Slice 6's SOP)
+      · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids`
+      not deduped on apply — see SOP Follow-ups
 
 ---
 
@@ -386,11 +415,13 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
 ## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
 (structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
 ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade)
-merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — no migration on Slices 2–4, migration
-`0027_daily_briefings` on Slice 5. The last unconsumed `ai_fill` job type is closed (Slice 3);
-the mission reason line and health-score recommendations are now AI-upgraded (Slice 4,
-2026-09-19); the dashboard AI briefing is now live (Slice 5, 2026-09-19) — only the **onboarding
-AI panel** and the **roadmap replan rationale** remain unbuilt*
+merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87); Slice 6 (roadmap re-plan
+rationale) shipped on `feat/roadmap-replan-rationale`, PR to follow (2026-09-21) — no migration on
+Slices 2–4, migration `0027_daily_briefings` on Slice 5, migration
+`0028_roadmap_replan_rationale` on Slice 6. The last unconsumed `ai_fill` job type is closed
+(Slice 3); the mission reason line and health-score recommendations are now AI-upgraded (Slice 4,
+2026-09-19); the dashboard AI briefing is now live (Slice 5, 2026-09-19); the roadmap re-plan
+rationale is now live (Slice 6, 2026-09-21) — only the **onboarding AI panel** remains unbuilt*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
 `OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
@@ -511,11 +542,11 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       `docs/fe-integration-guide-ai-canvas-fill.md` (§5)
 - [ ] _Deferred:_ no top-up/"regenerate" mode for a kind that already has some records (whole-kind
       gate only) · mission reason line and health recommendations → **shipped in Slice 4, below**
-      (2026-09-19) · dashboard briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
-      panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still
-      unbuilt · no structured "ai-fill failed / still empty" signal beyond the existing job
-      status · `create_record`'s position assignment still not race-safe (pre-existing gap,
-      unchanged) — see SOP Follow-ups
+      (2026-09-19) · dashboard briefing → **shipped in Slice 5, below** (2026-09-19) · roadmap
+      re-plan rationale → **shipped in Slice 6, below** (2026-09-21) · onboarding panel (the last
+      remaining Module-03-deferred AI consumer) still unbuilt · no structured "ai-fill failed /
+      still empty" signal beyond the existing job status · `create_record`'s position assignment
+      still not race-safe (pre-existing gap, unchanged) — see SOP Follow-ups
 
 **Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ shipped on branch `work`
 (7 tasks, no migration); PR to `develop` to follow — 2026-09-19*
@@ -553,13 +584,14 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
 - [x] SOP + FE integration guide extensions (both payloads pasted verbatim from live captures) +
       this checklist reconcile — `docs/sop/2026-09-19-mission-health-ai.md`,
       `docs/fe-integration-guide-mission.md`, `docs/fe-integration-guide-health-score.md`
-- [ ] _Deferred:_ dashboard AI briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
-      AI panel and roadmap replan rationale (the two remaining Module-03-deferred AI consumers)
-      still unbuilt · ~~the pre-existing `complete_assessment` same-transaction recompute no-op
-      (autoflush timing)~~ **fixed 2026-09-19**
-      (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured "AI upgrade pending / still templated" signal on either
-      `MissionTask` or `HealthRecommendation` · the live e2e only proves the single-item-rewrite
-      path (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
+- [ ] _Deferred:_ dashboard AI briefing → **shipped in Slice 5, below** (2026-09-19) · roadmap
+      re-plan rationale → **shipped in Slice 6, below** (2026-09-21) · onboarding AI panel (the
+      last remaining Module-03-deferred AI consumer) still unbuilt · ~~the pre-existing
+      `complete_assessment` same-transaction recompute no-op (autoflush timing)~~ **fixed
+      2026-09-19** (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured
+      "AI upgrade pending / still templated" signal on either `MissionTask` or
+      `HealthRecommendation` · the live e2e only proves the single-item-rewrite path
+      (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
 
 **Slice 5 — Dashboard AI Briefing** — *✅ shipped on branch `feat/dashboard-ai-briefing`
 (5 tasks, migration `0027_daily_briefings`); PR to `develop` to follow — 2026-09-19*
@@ -595,13 +627,59 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       verbatim from live captures, plus a callout distinguishing this feature's `[stub-llm]`
       markers from Slice 4's unrelated ones in the same capture) + this checklist reconcile —
       `docs/sop/2026-09-19-dashboard-ai-briefing.md`, `docs/fe-integration-guide-dashboard.md`
-- [ ] _Deferred:_ onboarding AI panel and roadmap replan rationale (the two remaining
-      Module-03-deferred AI consumers) still unbuilt · `briefing`/`risks`/`opportunities` remain
-      single prose strings, not structured lists · no 06:00 prewarm / scheduled regeneration
-      (purely lazy-on-read) · no intra-day regeneration once a day's row exists ·
-      `BriefingStatus.failed` defined but never written (no structured "generation failed" signal
-      to the FE) · the race-guard path is unit-covered only, not proven under real concurrency —
-      see SOP Follow-ups
+- [ ] _Deferred:_ roadmap re-plan rationale → **shipped in Slice 6, below** (2026-09-21) ·
+      onboarding AI panel (the last remaining Module-03-deferred AI consumer) still unbuilt ·
+      `briefing`/`risks`/`opportunities` remain single prose strings, not structured lists · no
+      06:00 prewarm / scheduled regeneration (purely lazy-on-read) · no intra-day regeneration
+      once a day's row exists · `BriefingStatus.failed` defined but never written (no structured
+      "generation failed" signal to the FE) · the race-guard path is unit-covered only, not proven
+      under real concurrency — see SOP Follow-ups
+
+**Slice 6 — Roadmap Re-plan Rationale** — *✅ shipped on branch `feat/roadmap-replan-rationale`
+(7 tasks, migration `0028_roadmap_replan_rationale`); PR to `develop` to follow — 2026-09-21*
+- [x] Design + implementation plan
+      (`docs/superpowers/specs/2026-09-21-roadmap-replan-rationale-design.md`,
+      `docs/superpowers/plans/2026-09-21-roadmap-replan-rationale.md`) — same async-upgrade
+      pattern as Slices 1–5, applied to a new column on the existing `RoadmapReplan` row rather
+      than a new table · free-text `complete()` chosen over `complete_json` (a holistic rationale
+      is prose, not typed fields, same choice §08.11's plan generator made) · opportunistic
+      same-branch removal of the dead `roadmap.replan` enqueue (no handler ever existed for it)
+- [x] `roadmap_replans.rationale` (nullable `Text`) + migration `0028_roadmap_replan_rationale`
+      (chains off `0027_daily_briefings`, sole alembic head)
+- [x] `app/services/roadmap/ai_rationale.py` (new) — `build_roadmap_rationale_messages(*, stage,
+      name, industry, changes)` (PII-free: startup name/industry/stage + shifted milestones'
+      titles/dates/reasons only)
+- [x] `_templated_rationale(summary, snapshot)` + `apply_replan` wiring
+      (`app/services/roadmap/replan.py`) — writes the templated instant-fallback `rationale` into
+      the new `RoadmapReplan` row synchronously, enqueues `ai.roadmap.rationale` once per applied
+      re-plan, returns `rationale` in the apply result dict
+- [x] `handle_roadmap_rationale` (`app/worker/handlers/ai.py`), registered
+      `"ai.roadmap.rationale"` — re-fetches the replan row, one `complete()` call, overwrites
+      `rationale`, `db.flush()` only; benign no-op if the row is missing
+- [x] `GET /replan/history` (`app/api/v1/endpoints/roadmap.py`) — each row gains `"rationale":
+      r.rationale`; no new route, no status-code change
+- [x] Removed the dead `job_dispatcher.enqueue(db, "roadmap.replan", ...)` at
+      `app/services/assessment/service.py` (no handler was ever registered for it) — assessment
+      completion still enqueues `ai.assessment.narrative` + `ai.health.recommendations`;
+      `tests/api/assessment/test_complete.py` and
+      `tests/services/assessment/test_complete_concurrency.py` (incl. its docstring) updated to
+      assert the new completion-job set and that `roadmap.replan` is no longer enqueued
+- [x] Live E2E journey (`e2e/test_roadmap_replan_rationale.py`, 2 captures) proving force-a-slip →
+      preview → apply (templated `rationale` asserted) → in-process worker drain → `GET
+      /replan/history` (AI-authored `[stub-llm]` `rationale` asserted) end to end, over real HTTP,
+      zero network calls (`LLM_PROVIDER=stub`) + full e2e suite re-run green (50 e2e, no
+      regression); full non-e2e suite re-run — 1,311 passed; single alembic head, no drift
+- [x] SOP + FE integration guide extension (both `apply`/`history` payloads pasted verbatim from
+      live captures, incl. the apply-is-templated / history-is-AI-authored nuance called out
+      explicitly) + this checklist reconcile — `docs/sop/2026-09-21-roadmap-replan-rationale.md`,
+      `docs/fe-integration-guide-roadmap.md` (§9)
+- [ ] _Deferred:_ **onboarding AI panel is now the only remaining Module-03-deferred AI
+      consumer** · per-change `reason` strings inside `changes[]` remain templated, not
+      AI-upgraded (only the holistic record-level `rationale` was added) · the `roadmap.replan`
+      job type is gone, not repurposed (Module 05 Slice 3's SOP had already ruled out ever
+      auto-draining it) · no structured "AI enrichment failed / still templated" signal · the
+      live e2e only proves the single-replan path; a re-plan with more than 3 shifted milestones
+      (the `_templated_rationale` "and N more" branch) is unit-tested only — see SOP Follow-ups
 
 ## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
 `feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
@@ -820,8 +898,13 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       fields a dashboard could chart) · no PDF/export format, Document markdown only ·
       regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
       previous version) · remaining Module 03 AI consumers (typed-record `ai_fill` → **shipped,
-      Module 03 Slice 3**, see above; onboarding AI panel, Mission/Roadmap/Health Score/Learning/
-      Validation Hub still unbuilt) — see SOP Follow-ups
+      Module 03 Slice 3**, see above; mission reason + health-score recommendations → **shipped,
+      Module 03 Slice 4**; dashboard briefing → **shipped, Module 03 Slice 5**; roadmap re-plan
+      rationale → **shipped, Module 03 Slice 6** (2026-09-21) — of the five core Module-03
+      consumer slices, only the onboarding AI panel remains; Learning recommendations and
+      Validation Hub's insight synthesizer remain separately deferred, unblocked on
+      infrastructure only, not yet started — see `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`
+      and `docs/sop/2026-09-19-ai-business-plan-generator.md`) — see SOP Follow-ups
 
 ## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
 (Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
@@ -1810,9 +1893,9 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       (structured output + canvas ai-fill worker, PR #77) merged; Slice 3 (typed records ai-fill
       worker, closing the last unconsumed ai-fill job type) merged (PR #81); Slice 4 (mission
       reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing)
-      merged (PR #87); see its own section above.
-      Onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI
-      consumers) still ahead
+      merged (PR #87); Slice 6 (roadmap re-plan rationale) shipped, PR to follow (2026-09-21); see
+      its own section above.
+      The onboarding AI panel (the last remaining Module-03-deferred AI consumer) still ahead
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
       merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →

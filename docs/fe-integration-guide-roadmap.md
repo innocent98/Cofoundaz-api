@@ -825,9 +825,11 @@ an error** — this is the common steady-state response for a roadmap that hasn'
 an empty/"you're on track" state, not a spinner or error banner.
 
 `reason` is a **templated string**, not a stable enum — three shapes exist today (own-slip only,
-cascade only, both), and the exact wording may grow more shapes over time (see the SOP's Follow-
-ups on AI-authored rationale). Render it as opaque prose; don't parse or pattern-match it
-client-side.
+cascade only, both), and the exact wording may grow more shapes over time. Render it as opaque
+prose; don't parse or pattern-match it client-side. `reason` is per-change (one line per shifted
+milestone); it's distinct from `rationale` (below), a single holistic paragraph for the whole
+re-plan — the SOP's Follow-ups that used to reserve "AI-authored rationale" for Module 03 is now
+**delivered**, see below.
 
 ### `POST /roadmap/replan/apply` — commit selected changes
 
@@ -867,6 +869,10 @@ shifting (already at their target `due_on`), so the fresh proposal omits them an
 After a successful apply, `GET /roadmap` (§1) reflects the new `due_on` and the milestone's
 `replanned` marker (below) — the apply response itself only returns ids/counts, not the updated
 milestone bodies; re-fetch the tree to render the new dates.
+
+**New in this slice: `rationale` (string | null) on a successful apply.** See the dedicated
+`rationale` subsection below `GET /replan/history` for the full field contract — in short, the
+value you get back here is the **instant templated fallback**, not AI-authored text yet.
 
 ### `GET /roadmap/replan/history` — past re-plans, newest first
 
@@ -908,6 +914,115 @@ whatever the JSONB blob happened to serialize as; don't rely on key ordering, on
 themselves, which match the `changes[]` entries from `preview`/`apply` minus `change_id` (the
 history snapshot doesn't carry a separate `change_id` — use `milestone_id` if you need to
 correlate a past change back to a specific milestone).
+
+**The capture above predates this slice's `rationale` field** (captured before the re-plan
+rationale feature existed, so its history row doesn't show the key at all — a live `GET
+/replan/history` response today always includes `rationale`, see immediately below). Every
+history row's top-level shape is otherwise unchanged — one new key, no restructuring.
+
+### `rationale` — AI-authored re-plan narrative (new in this slice)
+
+**New field on both the `apply` response (`data.rationale`) and every `GET /replan/history` item
+(`data[].rationale`): `string | null`.** It's a single holistic paragraph explaining *why* the
+re-plan happened, distinct from each change's own per-milestone `reason` line above — think
+"one-sentence coach summary for the whole re-plan" vs. "one line per shifted milestone."
+
+**The critical nuance: `apply`'s `rationale` and a subsequent `history` read's `rationale` are
+NOT the same text, even for the exact same re-plan.**
+
+1. `apply_replan` writes a **templated fallback** synchronously, in the same call that creates
+   the `RoadmapReplan` row — this is the value `POST /replan/apply` returns immediately in
+   `data.rationale`. It is deterministic prose built from the change count + shifted milestone
+   titles, never `null` once at least one change was applied.
+2. That same call also enqueues an `ai.roadmap.rationale` job. Once a worker drains it (typically
+   seconds later), the job **overwrites the same row's `rationale`** with LLM-authored prose — the
+   apply response has already been returned by then, so the FE never sees this upgrade inline.
+3. **To pick up the AI-authored version, re-fetch `GET /replan/history` after a short delay** (a
+   few seconds is enough in practice) — the newest row's `rationale` will have changed from the
+   templated fallback to the AI-authored text. There is no separate "is it upgraded yet" flag;
+   diff against the templated value if you need to detect the swap, or simply always re-render
+   from the latest `history` read rather than caching the `apply` response's `rationale`.
+
+**Render `rationale` as opaque prose, same guidance as `reason`** — don't parse it, don't assume
+a fixed sentence count or format; both the templated and AI-authored versions are meant to be
+displayed as-is, not parsed.
+
+**`rationale` is `null` on any history row that predates this feature** — the column is a new
+nullable one added by migration `0028`, with no backfill for pre-existing `roadmap_replans` rows.
+Treat `null` as "no rationale recorded for this older re-plan," not an error or a loading state;
+only render a loading affordance for a freshly-applied re-plan whose `history` row you haven't
+re-fetched yet (and even then, it already has the templated value, never a bare `null`).
+
+**If the AI job fails, the templated fallback written at apply time is permanent** — there is no
+separate "AI enrichment failed" signal, and no retry the FE needs to trigger; a `rationale` that
+never changes between two `history` reads a few minutes apart just means the upgrade didn't land
+(same fire-and-forget shape as the assessment-narrative and mission-reason upgrades documented in
+the sibling FE guides).
+
+`e2e/_captures/roadmap_replan_rationale/apply.json` (same re-plan as above, this slice's own live
+run — one milestone shifted) — status `200`:
+
+```json
+{
+  "data": {
+    "applied": [
+      "b15906ac-b14b-46e6-af62-3f6fb5105795"
+    ],
+    "skipped": [],
+    "replan_id": "afa98998-50a2-43dc-8281-ab6030f51240",
+    "summary": "Re-planned 1 milestone",
+    "rationale": "Re-planned 1 milestone: adjusted the dates for Validate demand to keep your roadmap realistic after recent slips."
+  },
+  "meta": null
+}
+```
+
+`e2e/_captures/roadmap_replan_rationale/history_after_drain.json` (`GET /replan/history` for the
+same startup, called **after** draining the worker that processes `ai.roadmap.rationale`) —
+status `200`:
+
+```json
+{
+  "data": [
+    {
+      "id": "afa98998-50a2-43dc-8281-ab6030f51240",
+      "change_count": 1,
+      "summary": "Re-planned 1 milestone",
+      "rationale": "[stub-llm] AI-generated assessment narrative.",
+      "applied_by": {
+        "id": "f628140b-897c-46ec-b5e7-496fd6907c95",
+        "name": "Ada Founder"
+      },
+      "created_at": "2026-09-21T09:15:19.788190+00:00",
+      "changes": [
+        {
+          "title": "Validate demand",
+          "reason": "10 days overdue and not yet done.",
+          "new_due": "2026-09-28",
+          "old_due": "2026-09-11",
+          "milestone_id": "b15906ac-b14b-46e6-af62-3f6fb5105795"
+        }
+      ]
+    }
+  ],
+  "meta": null
+}
+```
+
+Compare the two captures: same `id`/`replan_id` (`afa98998-...`), but `rationale` moved from the
+templated sentence ("Re-planned 1 milestone: adjusted the dates for...") to the AI-authored one
+("[stub-llm] AI-generated assessment narrative.") — this is exactly the swap described above,
+proven live by draining the worker in between the two calls.
+
+**About that AI-authored string in the capture:** `[stub-llm] AI-generated assessment narrative.`
+is not a roadmap-specific bug — it's the offline `StubLLMClient`'s fixed, generic marker string
+for **every** free-text `complete()` call in this codebase (assessment narrative, business plan
+sections, and now roadmap rationale all return the exact same literal string in
+tests/e2e/dev with `LLM_PROVIDER=stub`), used so a test can assert the AI path ran without a real
+network call. **In production** (`LLM_PROVIDER=openai` or compatible), the real LLM returns
+contextual 2–3 sentence prose built from `build_roadmap_rationale_messages` (the shifted
+milestones' titles/dates/reasons + startup name/industry/stage) — don't build any FE logic that
+depends on the literal stub string.
 
 ### `GET /roadmap` tree — `drift` summary + per-milestone `replanned` marker
 
@@ -1040,6 +1155,8 @@ Every row below was exercised **live**, over real HTTP, against a real Postgres-
 | `POST /roadmap/replan/apply` — stale `change_id` skipped, re-apply idempotent | ⬜ (unit-tested only, `test_apply_skips_stale_change_id` / `test_reapply_is_idempotent`) |
 | `POST /roadmap/replan/apply` — mentor (non-editor) → `403 FORBIDDEN` | ⬜ (unit-tested only, `test_apply_forbidden_for_mentor`) |
 | `GET /roadmap/replan/history` — lists an applied re-plan with `applied_by` + `changes` snapshot | ✅ |
+| `POST /roadmap/replan/apply` — `rationale` present, templated fallback value | ✅ |
+| `GET /roadmap/replan/history` — `rationale` AI-upgraded after draining `ai.roadmap.rationale` | ✅ |
 | `GET /roadmap` tree — `roadmap.drift.slipped_count` before (>0) and after (reduced) an apply | ✅ |
 | `GET /roadmap` tree — milestone `replanned` marker `null` before, populated after | ✅ |
 | Cascade: downstream milestone shifts with its slipped upstream dependency | ⬜ (unit-tested only, `test_downstream_dependency_shifts`) |
@@ -1048,6 +1165,8 @@ Every row below was exercised **live**, over real HTTP, against a real Postgres-
 Rows marked ⬜ are covered by the unit suite (`tests/api/test_roadmap_phases.py`,
 `test_roadmap_milestones.py`, `test_roadmap_tasks.py`, `test_roadmap_dependencies_api.py`,
 `test_roadmap_templates_gallery.py`, `test_roadmap_apply_api.py`, `test_roadmap_replan_api.py`,
-`tests/services/test_roadmap_replan_compute.py`, `test_roadmap_replan_apply.py`) but not
-independently re-asserted over live HTTP in `e2e/test_roadmap.py` / `e2e/test_roadmap_replan.py`
-— safe to build against, just not double-verified end-to-end.
+`tests/services/test_roadmap_replan_compute.py`, `test_roadmap_replan_apply.py`,
+`tests/services/roadmap/test_ai_rationale.py`, `tests/worker/test_roadmap_rationale_handler.py`)
+but not independently re-asserted over live HTTP in `e2e/test_roadmap.py` /
+`e2e/test_roadmap_replan.py` / `e2e/test_roadmap_replan_rationale.py` — safe to build against,
+just not double-verified end-to-end.

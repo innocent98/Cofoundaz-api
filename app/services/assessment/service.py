@@ -222,7 +222,6 @@ def complete_assessment(
     # lazy-on-read recompute on a later GET /health-score.
     db.flush()
     recompute_health_score(db, startup, trigger="assessment_complete")
-    job_dispatcher.enqueue(db, "roadmap.replan", job_payload, startup.id)
     job_dispatcher.enqueue(db, "ai.assessment.narrative", job_payload, startup.id)
     event_bus.publish(
         db,
