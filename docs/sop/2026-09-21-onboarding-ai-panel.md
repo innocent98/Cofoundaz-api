@@ -21,7 +21,8 @@ Commits (branch `feat/onboarding-ai-panel`, off `develop`), oldest to newest:
 `bba01ff` (`ai_panel` column + migration `0029`) → `6d297fe` (prompt builder + templated fallback)
 → `1ed6a40` (generate-on-signals-complete trigger + `serialize_state` exposure) → `a70fd42`
 (`ai.onboarding.panel` worker) → `2ca17a8` (remove the dead `app/platform/ai.py` seam) → `a1ff692`
-(live e2e + captures) → this docs commit. PR to `develop` to follow.
+(live e2e + captures) → `e4e8c41` (FE guide, SOP, checklist). Merged into `develop` via **PR #92**
+(merge commit `30d7ed2`).
 
 ## Why
 
