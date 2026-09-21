@@ -16,7 +16,24 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-21 · **Module 03 (AI Co-Founder) marked COMPLETE** — owner decision. All
+_Last reconciled: 2026-09-21 · **Module 03 (AI Co-Founder)'s deferred infra follow-ups reconciled —
+2 of 3 shipped, 1 dropped won't-do.** Branch `feat/llm-budget-ai-status` (commits `40996dd` →
+`fa6f0cc`, PR to `develop` to follow) ships a per-workspace daily LLM token budget
+(`llm_usage_daily` ledger + migration `0030`, `LLM_DAILY_TOKEN_BUDGET` config — default `15000`,
+`≤0` = unlimited kill-switch — enforced via `metered_complete`/`metered_complete_json` across all 8
+`ai.py` AI handlers + the business-plan generator, skip-and-keep-templated on over-budget) and a
+new workspace-scoped `GET /ai/status` endpoint (today's token usage vs. budget, `over_budget`,
+`resets_at`, recent failed AI-enrichment jobs). Of Slice 1's 3 named infra items: **✅ per-workspace
+LLM budget/rate-limiting** is done (token-volume budgeting; call-*rate* limiting specifically was
+not built — see the SOP Follow-ups) and **✅ the enrichment-status signal** is done (workspace-level
+via `/ai/status`; not a per-field/per-record marker — see the SOP Follow-ups). The third,
+a non-OpenAI/Anthropic `LLMClient` provider implementation, is **dropped won't-do (OpenAI-only,
+2026-09-21)** — a scope decision, not a build. **Module 03 now has no remaining open follow-ups.**
+SOP: `docs/sop/2026-09-21-llm-budget-ai-status.md`. FE guide:
+`docs/fe-integration-guide-ai-status.md`. **Counts unchanged (Module 03 was already complete): 12
+modules fully complete, 0 open, 14 not started.**_
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder) marked COMPLETE** — owner decision. All
 seven build slices (PR #72, #77, #81, #83, #87, #90, #92) and all six AI consumers (assessment
 narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing,
 roadmap rationale, onboarding panel), plus the LLM seam itself, are shipped. The three items Slice
@@ -200,11 +217,11 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); the 3 infra items named since Slice 1 (non-OpenAI/Anthropic `LLMClient` provider implementation, per-workspace LLM budget/rate limiting, a structured "AI enrichment failed / still templated" signal) remain unbuilt and are deferred, non-blocking follow-ups scoped out of Module 03's completion on 2026-09-21 — see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **0 open. 14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21 on `feat/llm-budget-ai-status` (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **0 open. 14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; the 3 infra items (provider impl, budget/rate-limiting, enrichment-status signal) are deferred non-blocking follow-ups scoped out on 2026-09-21** (owner decision; still unbuilt, still tracked as `- [ ]` in the Module 03 section) · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21 on `feat/llm-budget-ai-status` and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
 | 🟡 Open (started, not finished) | 0 modules | none — Module 03 (AI Co-Founder) was the last open module; marked COMPLETE 2026-09-21 by owner decision (see the row above and the Module 03 section for its deferred, non-blocking infra follow-ups). |
 | ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
@@ -470,7 +487,11 @@ decision, 2026-09-21) — not because every item underneath it is built, but bec
 items Slice 1's Deferred list still carries (non-OpenAI/Anthropic `LLMClient` provider
 implementation, per-workspace LLM budget/rate limiting, and a structured "AI enrichment failed /
 still templated" signal) are scoped out of Module 03's completion as non-blocking deferred
-follow-ups — still unbuilt, still `- [ ]` below; see Slice 1's Deferred bullet*
+follow-ups. **Update 2026-09-21 (`feat/llm-budget-ai-status`):** 2 of these 3 are now shipped — a
+per-workspace daily LLM token budget and a workspace-level `GET /ai/status` endpoint — and the
+third (non-OpenAI provider) is dropped won't-do (OpenAI-only). Module 03 has no remaining open
+follow-ups; see Slice 1's Deferred bullet, updated below, and SOP
+`docs/sop/2026-09-21-llm-budget-ai-status.md`*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
 `OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
@@ -512,10 +533,23 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       replan rationale, Health Score recommendation reasons, Learning recommendations, Validation
       Hub insight synthesizer, Business Builder's typed-record `ai-fill` jobs) still unbuilt, now
       unblocked on infrastructure only
-- [ ] **Deferred follow-ups (scoped out of Module 03 completion, 2026-09-21, non-blocking):** no
-      Anthropic (or other non-OpenAI-compatible) provider implementation · no
-      per-workspace LLM budget/rate limiting · no structured "AI enrichment failed / still
-      templated" signal for the FE or an operator — see SOP Follow-ups
+- [x] **Deferred follow-ups (scoped out of Module 03 completion, 2026-09-21) — reconciled
+      2026-09-21 on `feat/llm-budget-ai-status`, PR to `develop` to follow:** ✅
+      **per-workspace LLM daily token budget** — `llm_usage_daily` ledger + migration `0030`,
+      `LLM_DAILY_TOKEN_BUDGET` config (default `15000`, `≤0`=unlimited), `metered_complete`/
+      `metered_complete_json` enforced across all 8 `ai.py` handlers + the business-plan
+      generator (skip-and-keep-templated on over-budget); call-*rate* limiting (request
+      frequency, as opposed to token volume) was **not** built — still a genuine gap, tracked as
+      a follow-up in the SOP · ✅ **enrichment-status signal** — `GET /ai/status` (workspace-scoped:
+      token usage vs. budget, `over_budget`, `resets_at`, recent failed AI-enrichment jobs); this
+      is a workspace-level aggregate, not a per-field/per-record "still templated" marker on any
+      individual `MissionTask`/`HealthRecommendation`/etc. — that finer-grained signal is still
+      unbuilt, tracked as a follow-up in the SOP · **won't-do (2026-09-21, OpenAI-only):** a
+      non-Anthropic/non-OpenAI-compatible `LLMClient` provider implementation — a scope decision,
+      not a build; the existing `LLMClient` Protocol still supports adding one later if ever
+      needed. **No remaining open Module-03 follow-ups.** SOP:
+      `docs/sop/2026-09-21-llm-budget-ai-status.md`. FE guide:
+      `docs/fe-integration-guide-ai-status.md`.
 
 **Slice 2 — Structured Output + Canvas AI Fill** — *✅ MERGED to `develop` (PR #77;
 3 tasks, no migration)*
@@ -770,13 +804,18 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
 - [ ] _Deferred:_ **this closes the Module-03 AI-consumer set — all six named consumers are now
       shipped, across seven build slices.** Module 03 itself is now marked **COMPLETE** (owner
       decision, 2026-09-21) — the non-OpenAI/Anthropic provider implementation and per-workspace
-      LLM budget/rate limiting (named since Slice 1, still unbuilt) are deferred, non-blocking
-      follow-ups scoped out of completion — see this module's own Slice 1 Deferred bullet and the Snapshot above · no
-      regenerate-on-edit (the one-shot guard is permanent; changing industry/stage/goals after
-      the panel exists does not re-trigger it) · no interactive chat panel (a single one-time
-      greeting, not a two-way conversation) · no structured "AI enrichment failed / still
-      templated" signal · the live e2e only proves the single-panel happy path; the no-op paths
-      (missing startup, LLM failure) are unit-tested only — see SOP Follow-ups
+      LLM budget/rate limiting (named since Slice 1) were, at the time of this slice, still
+      unbuilt; **reconciled 2026-09-21 on `feat/llm-budget-ai-status`:** the per-workspace LLM
+      token budget and a workspace-level `GET /ai/status` enrichment-status endpoint are now
+      shipped, and the non-OpenAI provider item is dropped won't-do (OpenAI-only) — no remaining
+      open Module-03 follow-ups; see this module's own Slice 1 Deferred bullet and the Snapshot
+      above · no regenerate-on-edit (the one-shot guard is permanent; changing
+      industry/stage/goals after the panel exists does not re-trigger it) · no interactive chat
+      panel (a single one-time greeting, not a two-way conversation) · no *per-field* "AI
+      enrichment failed / still templated" signal specific to `ai_panel` (the new `/ai/status`
+      endpoint is a workspace-level aggregate, not a per-record marker) · the live e2e only
+      proves the single-panel happy path; the no-op paths (missing startup, LLM failure) are
+      unit-tested only — see SOP Follow-ups
 
 ## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
 `feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
@@ -1995,9 +2034,11 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       merged (PR #87); Slice 6 (roadmap re-plan rationale) merged (PR #90); Slice 7 (onboarding
       AI panel) merged (PR #92); see its own section above.
       All six named Module-03 AI consumers and the LLM seam are shipped, across seven build
-      slices — the non-OpenAI/Anthropic provider implementation, per-workspace LLM budget/rate
-      limiting, and a structured "AI enrichment failed / still templated" signal remain unbuilt,
-      deferred as non-blocking follow-ups scoped out of completion on 2026-09-21
+      slices. Of the 3 infra items named since Slice 1: per-workspace LLM token budget and a
+      workspace-level enrichment-status endpoint (`GET /ai/status`) shipped 2026-09-21 on
+      `feat/llm-budget-ai-status` (SOP `docs/sop/2026-09-21-llm-budget-ai-status.md`); the
+      non-OpenAI/Anthropic provider implementation is dropped won't-do (OpenAI-only,
+      2026-09-21) — no remaining open Module-03 follow-ups
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
       merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →
