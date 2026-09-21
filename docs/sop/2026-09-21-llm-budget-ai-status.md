@@ -236,12 +236,16 @@ every prior Module 03 slice's own SOP has flagged for its one feature; this slic
 for any of them, it only adds one new, coarser, workspace-wide signal.
 
 **No per-consumer terminal state on a budget-skip.** When a job skips enrichment over-budget, most
-handlers just leave a field templated (fine — the templated value is legitimate content). But
-`handle_plan_generate`'s early-return leaves the business plan's document status as `generating`
-indefinitely, with nothing to flip it to a terminal "stuck, will retry when budget resets" state or
-to actually retry it once `resets_at` passes — a founder generating a plan while over budget sees a
-dashboard that says "generating" forever unless something re-triggers the job. No scheduled
-re-drive of skipped jobs exists.
+handlers just leave a field templated (fine — the templated value is legitimate content). But a few
+surfaces show placeholder/empty states: `handle_dashboard_briefing`'s skip leaves the `DailyBriefing`
+row with `status = "generating"` and its placeholder body indefinitely (no terminal state, not
+re-driven until manually re-enqueued); `handle_canvas_ai_fill` and `handle_record_ai_fill` skip
+leaves their block/kind empty (no records added, no blocks filled) rather than templated prose.
+Also, `handle_plan_generate`'s early-return leaves the business plan's document status as
+`generating` indefinitely, with nothing to flip it to a terminal "stuck, will retry when budget
+resets" state or to actually retry it once `resets_at` passes — a founder generating a plan while
+over budget sees a dashboard that says "generating" forever unless something re-triggers the job.
+No scheduled re-drive of skipped jobs exists.
 
 **`resets_at` (and the whole daily window) is fixed UTC midnight, not workspace-timezone-aware.**
 Every workspace shares the exact same reset instant regardless of the founder's actual timezone —

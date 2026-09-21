@@ -22,6 +22,10 @@ call and **keeps whatever templated/default value it already has**. This is not 
 no job fails, no field flips to a "failed" status, nothing 4xxs. It's a quiet degrade: the founder
 keeps working with deterministic, already-good-enough copy instead of AI-upgraded copy, and
 enrichment resumes automatically at `resets_at` with no action needed from the FE or the founder.
+**Note:** a few surfaces show placeholder/empty states rather than presentable prose when skipped —
+specifically the dashboard briefing (remains in its `generating` state with placeholder body) and
+canvas/records `ai_fill` (remain empty with no blocks/records added) — so ensure the FE gracefully
+handles these placeholder states until enrichment resumes.
 
 **Existing AI-authored text already on a record is never touched or reverted** — `over_budget`
 only affects *new* enrichment attempts going forward, not anything already written.
