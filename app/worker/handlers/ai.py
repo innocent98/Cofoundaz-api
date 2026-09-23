@@ -16,10 +16,12 @@ from app.db.models.enums import (
 )
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
+from app.db.models.journal import JournalPrompt
 from app.db.models.learning import LearningRecommendation
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
+from app.db.models.user import User
 from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
@@ -36,6 +38,11 @@ from app.services.health_score.ai_recommendations import (
     build_health_recommendation_messages,
     catalog_bodies,
     health_recommendation_schema,
+)
+from app.services.journal.ai_prompt import (
+    build_journal_prompt_messages,
+    gather_prompt_context,
+    journal_prompt_schema,
 )
 from app.services.learning.ai_reason import build_learning_reason_messages, learning_reason_schema
 from app.services.learning.service import recommended_courses
@@ -374,3 +381,46 @@ def handle_learning_recommendations(db: Session, job: Job) -> None:
 
 
 register_handler("ai.learning.recommendations", handle_learning_recommendations)
+
+
+def handle_journal_prompt(db: Session, job: Job) -> None:
+    """Personalize a founder's daily journal prompt via the LLM. No commit.
+
+    Grounds ONLY in operational signals (shipped milestone + mission focus) — never journal
+    content or mood. Idempotent: no-ops unless the row is still `generating`. Keeps the static
+    prompt when there is no signal or the workspace is over budget.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return
+    founder = db.get(User, job.payload["founder_id"])
+    if founder is None:
+        return
+    d = date.fromisoformat(job.payload["date"])
+    row = (
+        db.query(JournalPrompt)
+        .filter_by(startup_id=startup.id, founder_id=founder.id, date=d)
+        .one_or_none()
+    )
+    if row is None or row.status != EnrichmentStatus.generating:
+        return
+    milestone_title, mission_focus = gather_prompt_context(db, startup.id)
+    if milestone_title is None and mission_focus is None:  # no signal -> keep static, no LLM
+        row.status = EnrichmentStatus.ready
+        db.flush()
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        build_journal_prompt_messages(milestone_title=milestone_title, mission_focus=mission_focus),
+        schema=journal_prompt_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        return  # over budget — keep the static prompt, stay generating
+    row.prompt = str(result["prompt"])[:300]
+    row.status = EnrichmentStatus.ready
+    db.flush()
+
+
+register_handler("ai.journal.prompt", handle_journal_prompt)
