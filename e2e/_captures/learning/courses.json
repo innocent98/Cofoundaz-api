@@ -1,0 +1,87 @@
+{
+  "data": {
+    "courses": [
+      {
+        "id": "idea-shape-the-problem",
+        "title": "[Placeholder] Shape the problem",
+        "level": "beginner",
+        "stage_tags": [
+          "idea",
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "validation-talk-to-customers",
+        "title": "[Placeholder] Talk to customers",
+        "level": "beginner",
+        "stage_tags": [
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 34,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "build-scope-the-mvp",
+        "title": "[Placeholder] Scope the MVP",
+        "level": "intermediate",
+        "stage_tags": [
+          "validation",
+          "build"
+        ],
+        "lesson_count": 2,
+        "duration_min": 22,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "launch-plan-go-to-market",
+        "title": "[Placeholder] Plan your go-to-market",
+        "level": "intermediate",
+        "stage_tags": [
+          "launch"
+        ],
+        "lesson_count": 2,
+        "duration_min": 20,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "growth-find-a-channel",
+        "title": "[Placeholder] Find a repeatable channel",
+        "level": "advanced",
+        "stage_tags": [
+          "growth"
+        ],
+        "lesson_count": 2,
+        "duration_min": 23,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "scale-build-the-org",
+        "title": "[Placeholder] Build the org",
+        "level": "advanced",
+        "stage_tags": [
+          "scale"
+        ],
+        "lesson_count": 2,
+        "duration_min": 26,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      }
+    ]
+  },
+  "meta": null
+}

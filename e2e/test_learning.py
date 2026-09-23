@@ -10,6 +10,15 @@ this live run, complete and untrimmed.
 
 The Learning Academy has no roadmap or assessment dependency, so onboarding here is steps 1-4 +
 complete -- the same shape as e2e/test_documents.py and e2e/test_journal.py.
+
+Module 03 deferred AI upgrade: the shelf-level `recommendation_reason` starts templated
+(`get_or_create_recommendation_reason`, app/services/learning/service.py) and enqueues
+`ai.learning.recommendations`; draining the worker in-process (LLM_PROVIDER=stub, same pattern
+as e2e/test_dashboard_ai_briefing.py) runs `handle_learning_recommendations`
+(app/worker/handlers/ai.py:351), which personalizes the reason from the stub LLM client and flips
+its status to ready. At the "validation" stage used throughout this journey,
+`recommended_courses` always yields titles (COURSE is one of them), so the drain reliably takes
+the LLM path rather than the no-signal fallback.
 """
 
 import httpx
@@ -19,6 +28,20 @@ COURSE = "build-scope-the-mvp"
 
 def _auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _drain() -> None:
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers ai.learning.recommendations)
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):  # generous cap -- a real stall still fails loudly
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
 
 
 def _onboard_steps(c: httpx.Client, auth: dict, *, stage: str, name: str) -> None:
@@ -50,12 +73,24 @@ def test_learning_journey(base_url, make_verified_user, capture):
         me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
         wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
 
-        # 1. Front page: a stage-matched shelf, nothing to continue yet.
+        # 1. Front page: a stage-matched shelf, nothing to continue yet. The shelf-level
+        # `recommendation_reason` (Module 03 deferred AI upgrade) is present from the very
+        # first read -- templated until the worker drains.
         recs = c.get("/api/v1/learning/recommendations", headers=wh)
         assert recs.status_code == 200, recs.text
         assert COURSE in [x["id"] for x in recs.json()["data"]["recommended"]]
         assert recs.json()["data"]["continue_watching"] == []
+        assert "recommendation_reason" in recs.json()["data"]
         capture("learning", "recommendations_before", recs)
+
+        # 1b. Drain the worker in-process (LLM_PROVIDER=stub) -> ai.learning.recommendations
+        # personalizes the shelf reason (app/worker/handlers/ai.py:handle_learning_recommendations)
+        # and flips its status to ready. Re-fetch to capture the AI-upgraded reason.
+        _drain()
+        reason_recs = c.get("/api/v1/learning/recommendations", headers=wh)
+        assert reason_recs.status_code == 200, reason_recs.text
+        assert "[stub-llm]" in reason_recs.json()["data"]["recommendation_reason"]
+        capture("learning", "recommendations_reason", reason_recs)
 
         # 2. The catalog grid and one course.
         courses = c.get("/api/v1/learning/courses", headers=wh)

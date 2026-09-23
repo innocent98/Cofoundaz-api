@@ -83,6 +83,24 @@ def test_one_certificate_per_course_per_person_per_workspace(db):
         db.flush()
 
 
+def test_learning_recommendation_persists(db):
+    from app.db.models.enums import EnrichmentStatus, StartupStage
+    from app.db.models.learning import LearningRecommendation
+
+    s = create_startup(db, owner=create_user(db))
+    row = LearningRecommendation(
+        startup_id=s.id,
+        stage=StartupStage.build.value,
+        reason="Recommended for your build stage.",
+        status=EnrichmentStatus.generating,
+    )
+    db.add(row)
+    db.flush()
+    got = db.query(LearningRecommendation).filter_by(startup_id=s.id).one()
+    assert got.status == EnrichmentStatus.generating
+    assert got.reason == "Recommended for your build stage."
+
+
 def test_credential_codes_are_unique(db):
     u, s = _ctx(db)
     now = datetime.now(UTC)

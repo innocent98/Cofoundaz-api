@@ -1,0 +1,37 @@
+{
+  "data": {
+    "id": "build-scope-the-mvp",
+    "title": "[Placeholder] Scope the MVP",
+    "level": "intermediate",
+    "stage_tags": [
+      "validation",
+      "build"
+    ],
+    "lesson_count": 2,
+    "duration_min": 22,
+    "enrolled": false,
+    "progress": 0,
+    "completed": false,
+    "lessons": [
+      {
+        "id": "build-scope-the-mvp-1",
+        "title": "[Placeholder] Pick the one core flow",
+        "order": 1,
+        "video_ref": "placeholder://build-scope-the-mvp/1",
+        "duration_min": 12,
+        "transcript": "Placeholder transcript.",
+        "completed": false
+      },
+      {
+        "id": "build-scope-the-mvp-2",
+        "title": "[Placeholder] Cut everything else",
+        "order": 2,
+        "video_ref": "placeholder://build-scope-the-mvp/2",
+        "duration_min": 10,
+        "transcript": "Placeholder transcript.",
+        "completed": false
+      }
+    ]
+  },
+  "meta": null
+}

@@ -16,7 +16,25 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-21 · **Module 03 (AI Co-Founder)'s deferred infra follow-ups reconciled —
+_Last reconciled: 2026-09-23 · **Two more Module-03-deferred AI consumers shipped, on branch
+`feat/module-03-deferred-ai-upgrades` (not yet merged, no PR opened yet):** the Learning
+Academy's (Module 17) shelf-level `recommendation_reason` on `GET /learning/recommendations`
+(migration `0031_learning_recommendations`, `ai.learning.recommendations` worker) and the
+Founder Journal's (Module 21) daily `prompt` on `GET /journal/prompts/today` (migration
+`0032_journal_prompts`, `ai.journal.prompt` worker, grounded only in operational signals —
+never journal content or mood). Both follow the same lazy-generate-then-upgrade pattern as the
+dashboard briefing/mission-reason/health-recommendation/roadmap-rationale/onboarding-panel
+upgrades already shipped under Module 03. **Module 03 itself has no remaining open follow-ups**
+(unchanged by this pass — these two consumers live in Modules 17/21, not Module 03's own
+section); this pass also fixed stale drift on the Module 17/21 checkboxes below (Module 21 had
+never been flipped to `[x]` despite being merged and already counted complete in the Snapshot).
+**Module 09 (Validation Hub) remains unstarted, still with the junior** — untouched by this
+pass. SOP: `docs/sop/2026-09-23-deferred-ai-upgrades.md`. FE guides:
+`docs/fe-integration-guide-learning-recommendations.md` (new),
+`docs/fe-integration-guide-journal.md` (§1 extended). **Counts unchanged: 12 modules fully
+complete, 0 open, 14 not started.**_
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder)'s deferred infra follow-ups reconciled —
 2 of 3 shipped, 1 dropped won't-do.** Merged (**PR #95**, commits `40996dd` →
 `fa6f0cc`) — a per-workspace daily LLM token budget
 (`llm_usage_daily` ledger + migration `0030`, `LLM_DAILY_TOKEN_BUDGET` config — default `15000`,
@@ -1586,9 +1604,14 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
 - [ ] _Deferred:_ **Replace the placeholder catalog with real content — REQUIRED before go-live** ·
       move the catalog into the DB when Module 25.4 lands · Health Score signal as a
       recommendation sort key · PDF rendering, sharing and a public certificate verification
-      endpoint (jobs are enqueued, nothing renders them) · private lesson notes · AI
-      recommendations + reason line (Module 03) · notifications (Module 20) · video hosting
+      endpoint (jobs are enqueued, nothing renders them) · private lesson notes ·
+      ~~AI recommendations + reason line (Module 03)~~ · notifications (Module 20) · video hosting
       (`video_ref` only) · un-completing a lesson — see SOP Follow-ups
+- [x] **AI shelf-level `recommendation_reason` (Module 03 deferred AI upgrade)** — shipped
+      2026-09-23 on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`,
+      `ai.learning.recommendations` worker). Struck through above; see its own reconcile entry
+      under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
+      and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
@@ -2045,8 +2068,8 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       `0025_roadmap_milestone_due_idx`); Slice 4 (Real-Time SSE) merged (PR #74, no migration);
       see its own section above.
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
-- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
-- [x] **Module 21 — Founder Journal** — *✅ MERGED to `develop` (PR #37); see its own section above* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -2055,23 +2078,29 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## Deferred follow-ups (tracked, non-blocking)
 
-### Deferred AI upgrades (unblocked by Module 03, not yet built)
+### Deferred AI upgrades (unblocked by Module 03)
 
 Each is a small "seam it, defer it" AI slice inside an otherwise-complete (or in-progress)
 module. Module 03's LLM seam, structured output, async-upgrade worker pattern, and the
-per-workspace token budget all exist — so none of these are *blocked*, only *unbuilt*. They
+per-workspace token budget all exist — so none of these are *blocked*. They
 follow the established async-upgrade pattern (templated fallback written synchronously, an
 `ai.*` worker job overwrites it via `complete*()`), and each is metered through
-`app/platform/llm_budget.py`.
+`app/platform/llm_budget.py`. **Modules 17 and 21 shipped 2026-09-23** on
+`feat/module-03-deferred-ai-upgrades`; Module 09 remains with the junior.
 
-- [ ] **Module 17 — AI-picked learning recommendations** (the "Because your assessment flagged
-      pricing…" reason line). v1 ships **deterministic** stage-tag matching; the AI reason-line
-      was seamed and deferred. Module 17 otherwise complete (PR #59). Brief:
-      `docs/handoff/module-17-learning-academy.md` (Defer/stub table).
-- [ ] **Module 21 — AI context-aware journal prompts** ("You shipped {milestone}…"). v1 serves
-      prompts from a **static pool**; the context-aware AI prompt was seamed and deferred. Module
-      21 otherwise complete (PR #37). Brief: `docs/handoff/module-21-founder-journal.md`
-      (Defer/stub table).
+- [x] **Module 17 — AI-picked learning recommendations** — **shipped 2026-09-23** as the
+      shelf-level `recommendation_reason` (templated→AI on `GET /learning/recommendations`;
+      migration `0031_learning_recommendations`, `ai.learning.recommendations` worker). Was v1
+      deterministic stage-tag matching; the AI reason-line is now built. SOP
+      `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-learning-recommendations.md`. Per-course reasons +
+      Health-Score-weighted sort key remain unbuilt follow-ups.
+- [x] **Module 21 — AI context-aware journal prompts** — **shipped 2026-09-23** as the daily
+      `prompt` upgrade (static→AI on `GET /journal/prompts/today`, grounded only in operational
+      signals — never journal content or mood; migration `0032_journal_prompts`,
+      `ai.journal.prompt` worker). SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-journal.md` §1. Mood/journal-aware prompts (behind consent)
+      remain an unbuilt follow-up.
 - [ ] **Module 09 — Validation Hub AI insight synthesizer** (`POST /validation/synthesize`) +
       interview-script generation (`POST /validation/scripts/generate`). Both are enqueue-a-job
       seams; v1 enqueues / ships plain CRUD. **In progress with the junior** (handoff + issue

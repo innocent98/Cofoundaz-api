@@ -14,7 +14,7 @@ def test_learning_migration_applies():
             "-c",
             "from sqlalchemy import create_engine, inspect; from app.core.config import settings; "
             "e=create_engine(settings.DATABASE_URL); i=inspect(e); n=set(i.get_table_names()); "
-            "assert {'enrollments','lesson_progress','certificates'} <= n, n; "
+            "assert {'enrollments','lesson_progress','certificates','learning_recommendations'} <= n, n; "
             "uq={x['name'] for x in i.get_unique_constraints('enrollments')}; "
             "assert 'uq_enrollments_startup_user_course' in uq, uq; "
             "uq={x['name'] for x in i.get_unique_constraints('lesson_progress')}; "
@@ -24,6 +24,8 @@ def test_learning_migration_applies():
             "assert 'uq_certificates_credential_code' in uq, uq; "
             "ck={x['name'] for x in i.get_check_constraints('enrollments')}; "
             "assert 'ck_enrollments_progress_range' in ck, ck; "
+            "uq={x['name'] for x in i.get_unique_constraints('learning_recommendations')}; "
+            "assert 'uq_learning_reco_startup' in uq, uq; "
             "print('ok')",
         ],
         capture_output=True,

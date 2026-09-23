@@ -7,8 +7,8 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import CourseLevel, StartupStage
-from app.db.models.learning import Certificate, Enrollment, LessonProgress
+from app.db.models.enums import CourseLevel, EnrichmentStatus, StartupStage
+from app.db.models.learning import Certificate, Enrollment, LearningRecommendation, LessonProgress
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.learning.catalog import (
@@ -65,6 +65,53 @@ def get_or_create_enrollment(
         )
         return existing, False
     return row, True
+
+
+def _templated_reason(stage: StartupStage | None) -> str:
+    if stage is None:
+        return "Recommended to help you get started."
+    return f"Recommended for your {stage.value} stage."
+
+
+def _enqueue_learning_reason(db: Session, startup_id: uuid.UUID) -> None:
+    job_dispatcher.enqueue(
+        db, "ai.learning.recommendations", {"startup_id": str(startup_id)}, startup_id
+    )
+
+
+def get_or_create_recommendation_reason(
+    db: Session, startup_id: uuid.UUID, stage: StartupStage | None
+) -> LearningRecommendation:
+    """Return the startup's shelf-reason row, regenerating (templated + enqueue) when the row is
+    absent or its stage no longer matches. Mirrors get_or_create_enrollment's SAVEPOINT + re-select
+    on the unique-constraint race.
+    """
+    stage_val = stage.value if stage is not None else None
+    row = db.query(LearningRecommendation).filter_by(startup_id=startup_id).first()
+    if row is not None and row.stage == stage_val:
+        return row
+    if row is not None:  # stage changed -> regenerate in place
+        row.stage = stage_val
+        row.reason = _templated_reason(stage)
+        row.status = EnrichmentStatus.generating
+        db.flush()
+        _enqueue_learning_reason(db, startup_id)
+        return row
+    try:
+        with db.begin_nested():
+            row = LearningRecommendation(
+                startup_id=startup_id,
+                stage=stage_val,
+                reason=_templated_reason(stage),
+                status=EnrichmentStatus.generating,
+            )
+            db.add(row)
+            db.flush()
+    except IntegrityError:
+        # A concurrent caller won the race -- their row is now committed and visible.
+        return db.query(LearningRecommendation).filter_by(startup_id=startup_id).one()
+    _enqueue_learning_reason(db, startup_id)
+    return row
 
 
 def course_progress(db: Session, startup_id: uuid.UUID, user_id: uuid.UUID, course: Course) -> int:
