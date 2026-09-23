@@ -23,6 +23,7 @@ from app.services.learning.service import (
     course_summary,
     enrollments_by_course,
     get_or_create_enrollment,
+    get_or_create_recommendation_reason,
     list_certificates,
     path_view,
     recommended_courses,
@@ -50,9 +51,12 @@ def get_recommendations(
     completed = {cid for cid, e in enrollments.items() if e.completed_at is not None}
     shelf = recommended_courses(startup.stage, completed)
     watching = continue_watching(db, startup.id, membership.user_id)
+    reason_row = get_or_create_recommendation_reason(db, startup.id, startup.stage)
+    db.commit()  # lazy-create persists (mirrors GET /canvases/{type})
     return success_response(
         {
             "stage": startup.stage.value if startup.stage is not None else None,
+            "recommendation_reason": reason_row.reason,
             "recommended": [course_summary(c, enrollments.get(c.id)) for c in shelf],
             "continue_watching": [course_summary(c, e) for c, e in watching],
         }
