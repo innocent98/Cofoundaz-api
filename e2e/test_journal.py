@@ -8,6 +8,18 @@ They must be REAL bodies from this live run, complete and untrimmed.
 
 The journal is founder-only and author-only, so this journey needs nothing but a
 freshly onboarded founder: no roadmap, no assessment, no mission.
+
+Module 03 deferred AI upgrade: today's prompt starts static (`get_or_create_today_prompt`,
+app/services/journal/service.py) and enqueues `ai.journal.prompt`. The handler
+(app/worker/handlers/ai.py:handle_journal_prompt) grounds ONLY in operational signals --
+a *shipped* (status=done) roadmap milestone or the current mission's focus task
+(app/services/journal/ai_prompt.py:gather_prompt_context) -- and no-ops (keeps the static
+prompt) when neither exists. Onboarding to the "validation" stage auto-generates a roadmap
+inline (same as e2e/test_mission.py), but none of its tasks are marked done here, so this
+journey seeds the mission-focus signal instead by lazily generating today's mission
+(GET /missions/today, same lazy-on-read pattern as e2e/test_mission.py) before draining the
+worker in-process (LLM_PROVIDER=stub, same pattern as e2e/test_dashboard_ai_briefing.py), so
+the drain reliably takes the LLM path.
 """
 
 from datetime import date
@@ -17,6 +29,20 @@ import httpx
 
 def _auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _drain() -> None:
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers ai.journal.prompt)
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):  # generous cap -- a real stall still fails loudly
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
 
 
 def _onboard_steps(c: httpx.Client, auth: dict, *, stage: str, name: str) -> None:
@@ -52,11 +78,34 @@ def test_journal_journey(base_url, make_verified_user, capture):
 
         today = date.today().isoformat()
 
-        # 1. Today's prompt -- the writing surface asks for this first.
+        # 1. Today's prompt -- the writing surface asks for this first. Static/templated on
+        # first read (Module 03 deferred AI upgrade); the body carries only `prompt`.
         prompt = c.get("/api/v1/journal/prompts/today", headers=wh)
         assert prompt.status_code == 200, prompt.text
         assert prompt.json()["data"]["prompt"]
+        assert set(prompt.json()["data"].keys()) == {"prompt"}
         capture("journal", "prompts_today", prompt)
+
+        # 1b. Seed an operational signal for the AI prompt (gather_prompt_context grounds
+        # ONLY in a shipped roadmap milestone or the current mission's focus task -- this
+        # journey has no roadmap, so lazily generate today's mission). Weekend guard: see
+        # e2e/test_mission.py -- only on Sat/Sun, and only before the first /missions/today
+        # call, which materialises an empty mission when weekend_missions is off.
+        if date.today().weekday() in (5, 6):
+            wk = c.patch("/api/v1/missions/settings", headers=wh, json={"weekend_missions": True})
+            assert wk.status_code == 200, wk.text
+        mission = c.get("/api/v1/missions/today", headers=wh)
+        assert mission.status_code == 200, mission.text
+
+        # 1c. Drain the worker in-process (LLM_PROVIDER=stub) -> ai.journal.prompt personalizes
+        # today's prompt from the mission signal (app/worker/handlers/ai.py:handle_journal_prompt)
+        # and flips its status to ready. Re-fetch to capture the AI-upgraded prompt.
+        _drain()
+        ai_prompt = c.get("/api/v1/journal/prompts/today", headers=wh)
+        assert ai_prompt.status_code == 200, ai_prompt.text
+        assert set(ai_prompt.json()["data"].keys()) == {"prompt"}
+        assert "[stub-llm]" in ai_prompt.json()["data"]["prompt"]
+        capture("journal", "prompt_today_ai", ai_prompt)
 
         # 2. Write today's entry.
         created = c.post(
