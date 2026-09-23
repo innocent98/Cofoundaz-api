@@ -249,9 +249,11 @@ def get_today_journal_prompt(
         startup=startup,
     )
 
-    prompt = JournalService.get_prompt()
+    row = JournalService.get_or_create_today_prompt(db, startup_id=startup.id, founder_id=user.id)
 
-    return success_response(JournalPromptResponse(prompt=prompt).model_dump())
+    db.commit()  # get_or_create_today_prompt may have lazily created today's row + job
+
+    return success_response(JournalPromptResponse(prompt=row.prompt).model_dump())
 
 
 # ----------------------------------------------------------------------
