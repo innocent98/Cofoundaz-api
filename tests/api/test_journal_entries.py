@@ -133,6 +133,7 @@ def test_delete_removes_the_entry(client, db):
 
     r = client.delete(f"/api/v1/journal/entries/{entry_id}", headers=h)
     assert r.status_code in (200, 204), r.text
+    assert db.query(JournalEntry).filter_by(startup_id=s.id).count() == 0
 
 
 def test_prompt_today_shape_unchanged_and_enqueues(client, db):
@@ -151,4 +152,3 @@ def test_prompt_today_shape_unchanged_and_enqueues(client, db):
 
     jobs = db.query(Job).filter_by(type="ai.journal.prompt", startup_id=s.id).all()
     assert len(jobs) == 1
-    assert db.query(JournalEntry).filter_by(startup_id=s.id).count() == 0
