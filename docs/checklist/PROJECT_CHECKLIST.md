@@ -2078,6 +2078,34 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ## Deferred follow-ups (tracked, non-blocking)
 
+### Deferred AI upgrades (unblocked by Module 03)
+
+Each is a small "seam it, defer it" AI slice inside an otherwise-complete (or in-progress)
+module. Module 03's LLM seam, structured output, async-upgrade worker pattern, and the
+per-workspace token budget all exist — so none of these are *blocked*. They
+follow the established async-upgrade pattern (templated fallback written synchronously, an
+`ai.*` worker job overwrites it via `complete*()`), and each is metered through
+`app/platform/llm_budget.py`. **Modules 17 and 21 shipped 2026-09-23** on
+`feat/module-03-deferred-ai-upgrades`; Module 09 remains with the junior.
+
+- [x] **Module 17 — AI-picked learning recommendations** — **shipped 2026-09-23** as the
+      shelf-level `recommendation_reason` (templated→AI on `GET /learning/recommendations`;
+      migration `0031_learning_recommendations`, `ai.learning.recommendations` worker). Was v1
+      deterministic stage-tag matching; the AI reason-line is now built. SOP
+      `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-learning-recommendations.md`. Per-course reasons +
+      Health-Score-weighted sort key remain unbuilt follow-ups.
+- [x] **Module 21 — AI context-aware journal prompts** — **shipped 2026-09-23** as the daily
+      `prompt` upgrade (static→AI on `GET /journal/prompts/today`, grounded only in operational
+      signals — never journal content or mood; migration `0032_journal_prompts`,
+      `ai.journal.prompt` worker). SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-journal.md` §1. Mood/journal-aware prompts (behind consent)
+      remain an unbuilt follow-up.
+- [ ] **Module 09 — Validation Hub AI insight synthesizer** (`POST /validation/synthesize`) +
+      interview-script generation (`POST /validation/scripts/generate`). Both are enqueue-a-job
+      seams; v1 enqueues / ships plain CRUD. **In progress with the junior** (handoff + issue
+      #62). Brief: `docs/handoff/module-09-validation-hub.md`.
+
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
 - [ ] Index `assessments.created_by` FK
