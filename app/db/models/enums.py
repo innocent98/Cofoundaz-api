@@ -220,3 +220,8 @@ class BriefingStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
+
+
+class EnrichmentStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
