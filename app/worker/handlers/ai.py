@@ -7,9 +7,16 @@ from app.core.errors import AppError
 from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessRecord
 from app.db.models.dashboard import DailyBriefing
-from app.db.models.enums import BriefingStatus, CanvasType, RecommendationStatus, RecordKind
+from app.db.models.enums import (
+    BriefingStatus,
+    CanvasType,
+    EnrichmentStatus,
+    RecommendationStatus,
+    RecordKind,
+)
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
+from app.db.models.learning import LearningRecommendation
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
@@ -30,6 +37,8 @@ from app.services.health_score.ai_recommendations import (
     catalog_bodies,
     health_recommendation_schema,
 )
+from app.services.learning.ai_reason import build_learning_reason_messages, learning_reason_schema
+from app.services.learning.service import recommended_courses
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
 from app.services.onboarding.ai_panel import build_onboarding_panel_messages
 from app.services.roadmap.ai_rationale import build_roadmap_rationale_messages
@@ -330,3 +339,38 @@ def handle_onboarding_panel(db: Session, job: Job) -> None:
 
 
 register_handler("ai.onboarding.panel", handle_onboarding_panel)
+
+
+def handle_learning_recommendations(db: Session, job: Job) -> None:
+    """Write the shelf-level recommendation reason via the LLM. No commit.
+
+    Idempotent: no-ops unless the row is still `generating`. Keeps the templated fallback when the
+    startup has no stage, no recommendable courses, or the workspace is over budget.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return
+    row = db.query(LearningRecommendation).filter_by(startup_id=startup.id).one_or_none()
+    if row is None or row.status != EnrichmentStatus.generating:
+        return
+    stage = startup.stage
+    titles = [c.title for c in recommended_courses(stage, set())] if stage is not None else []
+    if stage is None or not titles:  # nothing to personalize -> keep fallback, no LLM call
+        row.status = EnrichmentStatus.ready
+        db.flush()
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        build_learning_reason_messages(stage=stage, course_titles=titles),
+        schema=learning_reason_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        return  # over budget — keep the templated reason, stay generating
+    row.reason = str(result["reason"])[:300]
+    row.status = EnrichmentStatus.ready
+    db.flush()
+
+
+register_handler("ai.learning.recommendations", handle_learning_recommendations)
