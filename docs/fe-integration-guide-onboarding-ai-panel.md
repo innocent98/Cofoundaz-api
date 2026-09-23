@@ -37,6 +37,10 @@ onboarding session:
    consumer (assessment narrative, mission reason, health recommendations, dashboard briefing,
    roadmap rationale). There is no field indicating "AI enrichment failed" or "still templated."
 
+> **AI budget note:** if the workspace is over its daily LLM token budget, step 3 is skipped and
+> `ai_panel` stays on the templated value from step 2 until budget resets (see
+> `docs/fe-integration-guide-ai-status.md` — `GET /ai/status` reports `over_budget`).
+
 **Consequence for the FE:** render `ai_panel` opaquely as prose (a message bubble / calibration
 card) whenever it is non-null; render nothing (or a neutral placeholder) while it is null. Because
 the templated value already appears synchronously, there's no need to poll immediately after the

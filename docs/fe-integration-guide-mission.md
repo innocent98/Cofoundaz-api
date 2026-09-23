@@ -137,6 +137,10 @@ field, same nullability, as the templated version — there is no separate "is t
 flag on the task; the FE cannot and should not try to distinguish templated from AI-personalized
 text at render time.
 
+> **AI budget note:** if the workspace is over its daily LLM token budget, this rewrite is skipped
+> and `reason` stays on the templated string (see `docs/fe-integration-guide-ai-status.md` —
+> `GET /ai/status` reports `over_budget`).
+
 `e2e/_captures/mission_reason/today_before_drain.json` — `GET /missions/today` immediately after
 generation, task at `order: 0`, templated `reason` (status `200`):
 
