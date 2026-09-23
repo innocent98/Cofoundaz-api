@@ -927,6 +927,11 @@ history row's top-level shape is otherwise unchanged — one new key, no restruc
 re-plan happened, distinct from each change's own per-milestone `reason` line above — think
 "one-sentence coach summary for the whole re-plan" vs. "one line per shifted milestone."
 
+> **AI budget note:** if the workspace is over its daily LLM token budget, the
+> `ai.roadmap.rationale` upgrade is skipped and `rationale` stays on the templated fallback written
+> at apply time (see `docs/fe-integration-guide-ai-status.md` — `GET /ai/status` reports
+> `over_budget`).
+
 **The critical nuance: `apply`'s `rationale` and a subsequent `history` read's `rationale` are
 NOT the same text, even for the exact same re-plan.**
 
