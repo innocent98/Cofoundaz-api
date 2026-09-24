@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     jobs,
     journal,
     learning,
+    marketing,
     mission,
     notifications,
     roadmap,
@@ -39,4 +40,5 @@ api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
 api_router.include_router(documents.router, tags=["documents"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.include_router(marketing.router, prefix="/marketing", tags=["marketing"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
