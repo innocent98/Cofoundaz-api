@@ -22,6 +22,12 @@ def _load(db: Session, job: Job) -> MarketingAiGeneration | None:
     return g
 
 
+def _fail_over_budget(db: Session, g: MarketingAiGeneration) -> None:
+    g.status = MarketingGenerationStatus.failed
+    g.error = "over_budget"
+    db.flush()
+
+
 def handle_marketing_copy(db: Session, job: Job) -> None:
     """Fill a copy generation with 3 variants via the LLM. No commit."""
     g = _load(db, job)
@@ -48,9 +54,7 @@ def handle_marketing_copy(db: Session, job: Job) -> None:
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     if result is None:
-        g.status = MarketingGenerationStatus.failed
-        g.error = "over_budget"
-        db.flush()
+        _fail_over_budget(db, g)
         return
     variants = [str(v) for v in (result.get("variants") or [])][:3]
     g.output = {"variants": variants}
@@ -81,9 +85,7 @@ def handle_marketing_plan_week(db: Session, job: Job) -> None:
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     if result is None:
-        g.status = MarketingGenerationStatus.failed
-        g.error = "over_budget"
-        db.flush()
+        _fail_over_budget(db, g)
         return
     valid = {c.value for c in ChannelKey}
     entries = [
