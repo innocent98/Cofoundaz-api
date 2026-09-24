@@ -219,6 +219,11 @@ reserved in the DB enum for future use, but nothing writes it today; an LLM erro
 raises inside the job and relies on the job runner's own retry, leaving the row on
 `"generating"` until a retry succeeds.
 
+> **AI budget note:** if the workspace is over its daily LLM token budget, `ai.dashboard.briefing`
+> is skipped and the section stays in its `generating` state until budget resets or it's
+> re-triggered (see `docs/fe-integration-guide-ai-status.md` — `GET /ai/status` reports
+> `over_budget`).
+
 Captured **verbatim** from `e2e/_captures/dashboard_ai_briefing/summary_generating.json` — right
 after the kickoff assessment completes, before the `ai.dashboard.briefing` job has run:
 

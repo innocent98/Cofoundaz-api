@@ -5,16 +5,19 @@ from datetime import date
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, Forbidden, NotFound
 from app.db.models.enums import (
+    EnrichmentStatus,
     JournalMood,
     MembershipRole,
     MembershipStatus,
 )
-from app.db.models.journal import JournalEntry, MoodLog
+from app.db.models.journal import JournalEntry, JournalPrompt, MoodLog
 from app.db.models.membership import Membership
+from app.platform.jobs import job_dispatcher
 from app.schemas.journal import JournalEntryCreate, JournalEntryUpdate
 from app.services.journal.encryption import (
     decrypt_content,
@@ -530,3 +533,50 @@ class JournalService:
         )
 
         return prompts[current_date.toordinal() % len(prompts)]
+
+    @staticmethod
+    def get_or_create_today_prompt(
+        db: Session,
+        *,
+        startup_id: uuid.UUID,
+        founder_id: uuid.UUID,
+        today: date | None = None,
+    ) -> JournalPrompt:
+        """Return today's prompt row, seeding the static fallback + enqueuing the AI job on
+        first read. Idempotent per (startup, founder, day); tolerates the unique-constraint
+        race the same way ``get_or_create_enrollment``/``get_or_create_recommendation_reason``
+        do: insert inside a SAVEPOINT, and on ``IntegrityError`` re-select the winner's
+        now-committed row."""
+        d = today or date.today()
+        row = (
+            db.query(JournalPrompt)
+            .filter_by(startup_id=startup_id, founder_id=founder_id, date=d)
+            .first()
+        )
+        if row is not None:
+            return row
+        try:
+            with db.begin_nested():
+                row = JournalPrompt(
+                    startup_id=startup_id,
+                    founder_id=founder_id,
+                    date=d,
+                    prompt=JournalService.get_prompt(today=d),
+                    status=EnrichmentStatus.generating,
+                )
+                db.add(row)
+                db.flush()
+        except IntegrityError:
+            # A concurrent caller won the race -- their row is now committed and visible.
+            return (
+                db.query(JournalPrompt)
+                .filter_by(startup_id=startup_id, founder_id=founder_id, date=d)
+                .one()
+            )
+        job_dispatcher.enqueue(
+            db,
+            "ai.journal.prompt",
+            {"startup_id": str(startup_id), "founder_id": str(founder_id), "date": d.isoformat()},
+            startup_id,
+        )
+        return row

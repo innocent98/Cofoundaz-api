@@ -1,11 +1,16 @@
 # FE Integration Guide — Founder Journal (Module 21)
 
-> ⚠️ **Provenance — read this first.** Unlike the other guides in this folder, the bodies below
-> are **derived from the response models** in `app/schemas/journal.py`, **not** pasted from live
-> captures. `e2e/test_journal.py` exists and captures every body to `e2e/_captures/journal/`,
-> but it has not yet been run. The **shapes and field names are exact** (they come from the
-> Pydantic models the API actually serialises); the **values are illustrative**. Regenerate this
-> guide from the real captures after the first `scripts/e2e_run.sh` run and delete this note.
+> ⚠️ **Provenance.** `e2e/test_journal.py::test_journal_journey` has now been run
+> (`bash scripts/e2e_run.sh`) and every body is captured verbatim under
+> `e2e/_captures/journal/`. **§1 below (today's prompt, including the AI upgrade) is pasted
+> verbatim from those captures** — that part of this guide is live-verified. The **rest of this
+> guide (§2–§7) has not yet been regenerated from the real captures** and remains derived from
+> the response models in `app/schemas/journal.py`: the shapes and field names are exact (they
+> come from the Pydantic models the API actually serialises), but the example values are
+> illustrative, not copied from a live run. This is a known, pre-existing gap flagged for a
+> future docs pass — it predates and is out of scope for the Module 03 deferred-AI-upgrades work
+> that added §1's AI-prompt section. Regenerate §2–§7 from `e2e/_captures/journal/*.json` and
+> delete this note when that pass happens.
 
 Base path: `/api/v1/journal`. Every route requires a Bearer access token
 (`Authorization: Bearer <token>`) and an `X-Workspace-Id` header identifying the active
@@ -25,22 +30,76 @@ Every success response is the standard envelope `{"data": …, "meta": null}`. E
 
 ## 1. `GET /api/v1/journal/prompts/today` — the daily prompt
 
-The writing surface asks for this first, to fill the dismissible prompt card.
+The writing surface asks for this first, to fill the dismissible prompt card. The response shape
+is always exactly `{"prompt": "..."}` — no other keys, ever (verified live, see the assertion in
+Verification).
+
+`e2e/_captures/journal/prompts_today.json` — the first read of the day, before any AI upgrade:
 
 ```json
 {
   "data": {
-    "prompt": "What moved forward today, and what surprised you about it?"
+    "prompt": "What went well today that you do not want to overlook?"
   },
   "meta": null
 }
 ```
 
-The prompt rotates deterministically by date — the same founder gets the same prompt all day,
-and a different one tomorrow. It takes no parameters.
+The static prompt rotates deterministically by date — the same founder gets the same prompt all
+day, and a different one tomorrow (one of 7 fixed strings, `JournalService.get_prompt`). It takes
+no parameters.
 
 > **Not yet built:** the PRD's themed prompt library (Decisions / Energy / Team / Wins) and
 > the `/journal/prompts` browse screen. Today there is one prompt string and no theme field.
+
+### `prompt` — static first, AI-personalized on a later poll (Module 03 deferred AI upgrade)
+
+**The shape never changes — this is still just `{"prompt": "..."}`.** What changes is the
+*value*, in place, after a later poll:
+
+1. The **first** `GET /journal/prompts/today` for a given founder+day writes a row seeded with
+   the static rotating line above and enqueues an `ai.journal.prompt` job. The static line is
+   returned immediately.
+2. Within seconds, the `ai.journal.prompt` worker (`app/worker/handlers/ai.py:386`) tries to
+   personalize it, **grounded only in operational signals** — the founder's most recently
+   *shipped* (`status: done`) roadmap milestone, and/or today's mission's current focus task
+   (`app/services/journal/ai_prompt.py::gather_prompt_context`). **It never reads journal
+   content or mood/stress** — this is a deliberate privacy boundary (the module that grounds the
+   prompt does not import `JournalEntry` or `MoodLog` at all), so nothing the founder has written
+   or felt can leak into a system-generated prompt.
+3. If **neither** signal exists (no shipped milestone, no mission focus task), the job no-ops and
+   the static line is kept **permanently** for that day — there is no infinite-retry, no
+   "still trying" state.
+4. **There is no separate "is this AI-authored" flag and no `status` field on this response** —
+   poll `GET /journal/prompts/today` again (the same call the screen already makes on load) to
+   pick up the personalized line once the job has run. Do not try to distinguish static from
+   AI-authored text at render time.
+
+`e2e/_captures/journal/prompt_today_ai.json` — the same founder, same day, re-fetched after
+seeding a mission-focus signal and draining the `ai.journal.prompt` worker:
+
+```json
+{
+  "data": {
+    "prompt": "[stub-llm] prompt"
+  },
+  "meta": null
+}
+```
+
+**`"[stub-llm] prompt"` is the offline stub provider's deterministic marker**
+(`LLM_PROVIDER=stub`, used in tests and e2e) — a real OpenAI provider returns a genuine
+reflective question in its place, same field, same shape, same ≤300-character cap (the worker
+truncates defensively, `prompt[:300]`).
+
+### Over-budget behavior
+
+When the workspace is over its daily LLM token budget, `ai.journal.prompt` skips its LLM call
+entirely and `prompt` **stays on the static line** — not an error state, no "failed" signal on
+this endpoint. See `docs/fe-integration-guide-ai-status.md` — `GET /ai/status`'s `over_budget`
+field explains *why* new AI enrichment is paused workspace-wide; as with every other AI consumer
+in this API, this endpoint gives no per-record signal distinguishing "still static because of
+budget" from "still static because no operational signal existed yet."
 
 ---
 
@@ -300,4 +359,9 @@ try later" state, not a validation message — retrying with different input wil
 | Upsert on repeat POST | `tests/api/test_journal_entries.py`, `tests/services/journal/test_upsert.py` |
 | Validation 422s | `tests/api/test_journal_entries.py`, `tests/api/test_journal_edit.py` |
 | List ordering, `total`, `first_line` | `tests/api/test_journal_list.py` |
-| **Example response bodies** | ⚠️ **Derived from the schemas, not a live run.** Regenerate from `e2e/_captures/journal/` after `scripts/e2e_run.sh` |
+| `GET /journal/prompts/today` — static line on first read, shape is exactly `{"prompt": ...}` | ✅ | `prompts_today.json` |
+| `prompt` upgraded to AI-authored text after `ai.journal.prompt` drains; re-fetch picks it up | ✅ | `prompts_today.json` → `prompt_today_ai.json` |
+| `gather_prompt_context` grounds only in a shipped milestone / mission focus, never journal content or mood | ⚠️ unit only — the live journey seeds a mission-focus signal, not journal content, so there's nothing live to *not* leak; the negative-case proof (seeding a diary entry with distinctive content and asserting it never reaches the LLM messages) is a unit test | `tests/services/journal/test_ai_prompt.py::test_privacy_journal_and_mood_never_surface` |
+| No-signal fallback keeps the static prompt permanently, no LLM call | ⚠️ unit only | `tests/services/journal/test_ai_prompt.py::test_gather_returns_none_without_signals` |
+| Over-budget → `ai.journal.prompt` skips the LLM call, keeps the static prompt | ⚠️ unit only — same class of gap as every other AI consumer in this API (see `docs/fe-integration-guide-ai-status.md`) | `app/worker/handlers/ai.py::handle_journal_prompt` (`metered_complete_json` returns `None`), `tests/worker/test_journal_prompt_handler.py` |
+| **Example response bodies (§2–§7, entries/mood/errors)** | ⚠️ **Still derived from the schemas, not yet regenerated from the live run.** `e2e/_captures/journal/` now has real bodies for every one of these calls (`entry_created.json`, `entry_autosaved.json`, `entries_list.json`, `entries_search.json`, `entry_detail.json`, `entry_updated.json`, `entry_deleted.json`, `mood_trend.json`) — swapping them in is a follow-up docs pass, not done here (see the provenance note at the top of this guide) |

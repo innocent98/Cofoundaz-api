@@ -68,3 +68,30 @@ def test_plan_generate_fails_loud_on_llm_error(db, monkeypatch):
     p = _plan(db, s, u)
     with pytest.raises(RuntimeError):
         handle_plan_generate(db, _job(p.id, s.id))
+
+
+def test_plan_skips_when_over_budget(db, monkeypatch):
+    from app.platform import llm_budget
+
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    p = _plan(db, s, u)
+    llm_budget.debit(db, s.id, 100)  # over budget
+    handle_plan_generate(db, _job(p.id, s.id))
+    db.refresh(p)
+    assert p.status == BusinessPlanStatus.generating  # untouched — no partial plan
+    assert p.document_id is None
+
+
+def test_plan_generates_and_debits_under_budget(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100_000)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    p = _plan(db, s, u)
+    handle_plan_generate(db, _job(p.id, s.id))
+    db.refresh(p)
+    assert p.status == BusinessPlanStatus.complete
+    assert p.document_id is not None

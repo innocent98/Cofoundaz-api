@@ -157,6 +157,15 @@ def test_recommendations_include_continue_watching(client, db):
     assert [c["id"] for c in data["continue_watching"]] == ["validation-talk-to-customers"]
 
 
+def test_recommendations_include_reason(client, db):
+    _u, _s, h = _member(db)
+    resp = client.get(f"{BASE}/recommendations", headers=h)
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert "recommendation_reason" in data
+    assert isinstance(data["recommendation_reason"], str) and data["recommendation_reason"]
+
+
 def test_path_progress_over_http(client, db):
     _u, _s, h = _member(db)
     for n in (1, 2, 3):

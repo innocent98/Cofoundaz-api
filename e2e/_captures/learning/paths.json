@@ -1,0 +1,32 @@
+{
+  "data": {
+    "paths": [
+      {
+        "id": "path-validation-foundations",
+        "title": "[Placeholder] Validation foundations",
+        "stage": "validation",
+        "course_ids": [
+          "idea-shape-the-problem",
+          "validation-talk-to-customers",
+          "build-scope-the-mvp"
+        ],
+        "course_count": 3,
+        "duration_min": 86,
+        "progress": 33
+      },
+      {
+        "id": "path-launch-to-growth",
+        "title": "[Placeholder] From launch to growth",
+        "stage": "launch",
+        "course_ids": [
+          "launch-plan-go-to-market",
+          "growth-find-a-channel"
+        ],
+        "course_count": 2,
+        "duration_min": 43,
+        "progress": 0
+      }
+    ]
+  },
+  "meta": null
+}

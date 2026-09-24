@@ -220,3 +220,84 @@ class BriefingStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
+
+
+class EnrichmentStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+
+
+class ContentStatus(enum.StrEnum):
+    draft = "draft"
+    scheduled = "scheduled"
+    published = "published"
+
+
+class ChannelStatus(enum.StrEnum):
+    active = "active"
+    testing = "testing"
+    paused = "paused"
+    not_started = "not_started"
+
+
+class ChannelKey(enum.StrEnum):
+    organic_social = "organic_social"
+    paid_social = "paid_social"
+    search = "search"
+    email = "email"
+    content_seo = "content_seo"
+    partnerships = "partnerships"
+    events = "events"
+    referral = "referral"
+
+
+class CampaignObjective(enum.StrEnum):
+    awareness = "awareness"
+    leads = "leads"
+    sales = "sales"
+    launch = "launch"
+
+
+class CampaignStatus(enum.StrEnum):
+    draft = "draft"
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+
+
+class RiskLevel(enum.StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class AssumptionStatus(enum.StrEnum):
+    untested = "untested"
+    testing = "testing"
+    validated = "validated"
+    invalidated = "invalidated"
+
+
+class ExperimentType(enum.StrEnum):
+    smoke_test = "smoke_test"
+    landing_page = "landing_page"
+    ad_test = "ad_test"
+    other = "other"
+
+
+class ExperimentStatus(enum.StrEnum):
+    draft = "draft"
+    live = "live"
+    ended = "ended"
+
+
+class InterviewVerdict(enum.StrEnum):
+    supports = "supports"
+    contradicts = "contradicts"
+    neutral = "neutral"
+
+
+class SurveyStatus(enum.StrEnum):
+    draft = "draft"
+    open = "open"
+    closed = "closed"

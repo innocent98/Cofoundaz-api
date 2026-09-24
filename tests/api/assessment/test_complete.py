@@ -86,16 +86,14 @@ def test_complete_scores_and_sideeffects(client, db):
 
     # As of Module 06 the Health Score is recomputed inline (see
     # test_health_recompute.py::test_complete_assessment_triggers_health_score), not via
-    # a healthscore.recalculate job -- that stub job is retired. roadmap.replan is
-    # still enqueued for Module 05 to consume.
+    # a healthscore.recalculate job -- that stub job is retired. The roadmap.replan job
+    # enqueue has also been removed as dead code -- no handler was ever registered to
+    # consume it.
     jobs = db.query(Job).filter(Job.status == JobStatus.queued).all()
     types = {j.type for j in jobs}
     assert "healthscore.recalculate" not in types
-    assert "roadmap.replan" in types
-    for j in jobs:
-        if j.type == "roadmap.replan":
-            assert j.payload["startup_id"] == str(s.id)
-            assert j.payload["assessment_id"] == aid
+    assert "roadmap.replan" not in types
+    assert {"ai.assessment.narrative", "ai.health.recommendations"} <= types
 
     assert db.query(HealthScore).filter_by(startup_id=s.id).count() == 1
 

@@ -1,0 +1,53 @@
+{
+  "data": [
+    {
+      "id": "a2af59e3-3cd3-450d-8e18-80834e5d187f",
+      "key": "organic_social",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "962430c5-60bb-4f68-9657-c15bf1432af2",
+      "key": "paid_social",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "ea3a1d03-572d-43a9-970e-4dcd291c9350",
+      "key": "search",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "689ccd2b-3c69-4a2b-8a08-2cb47a3aa4c8",
+      "key": "email",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "ad682f27-3239-411a-a0fb-20b69ae03ad9",
+      "key": "content_seo",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "931f91d5-4bcd-4b5f-8b21-6aad0699994c",
+      "key": "partnerships",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "bb8ecbe1-0619-461d-b315-37476873df8b",
+      "key": "events",
+      "status": "not_started",
+      "notes": null
+    },
+    {
+      "id": "a0b5ecd0-d5d7-4e07-8b29-dad5cde65683",
+      "key": "referral",
+      "status": "not_started",
+      "notes": null
+    }
+  ],
+  "meta": null
+}

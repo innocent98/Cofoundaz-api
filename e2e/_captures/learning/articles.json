@@ -1,0 +1,25 @@
+{
+  "data": {
+    "articles": [
+      {
+        "id": "article-interview-questions",
+        "title": "[Placeholder] Questions that get honest answers",
+        "tags": [
+          "validation",
+          "customers"
+        ],
+        "body": "Placeholder article body."
+      },
+      {
+        "id": "article-pricing-basics",
+        "title": "[Placeholder] Pricing basics",
+        "tags": [
+          "pricing",
+          "validation"
+        ],
+        "body": "Placeholder article body."
+      }
+    ]
+  },
+  "meta": null
+}

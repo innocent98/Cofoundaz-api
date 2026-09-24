@@ -10,12 +10,12 @@ Regression target: complete_assessment claims the in_progress -> completed trans
 with an UPDATE ... WHERE status = 'in_progress' conditioned on the very predicate it's
 about to flip -- the same pattern as rotate_refresh (app/services/auth/sessions.py). Two
 concurrent completions of the same fully-answered assessment must score, write the
-AssessmentResult, recompute the Health Score, and enqueue the roadmap.replan job EXACTLY
-ONCE. A plain read-then-write ("if assessment.status == in_progress: ...") would let both
-callers pass the check before either commits, double-scoring and double-enqueuing/
-double-recomputing. This test fails against that naive version (two AssessmentResult
-rows / two roadmap.replan jobs / two HealthScoreHistory rows) and passes against the
-atomic claim.
+AssessmentResult, recompute the Health Score, and enqueue the ai.assessment.narrative and
+ai.health.recommendations jobs EXACTLY ONCE each. A plain read-then-write ("if
+assessment.status == in_progress: ...") would let both callers pass the check before
+either commits, double-scoring and double-enqueuing/double-recomputing. This test fails
+against that naive version (two AssessmentResult rows / two of each completion job / two
+HealthScoreHistory rows) and passes against the atomic claim.
 
 As of Module 06 the Health Score is recomputed inline within complete_assessment
 instead of via a healthscore.recalculate job (see docs/sop/2026-08-19-health-score.md),
@@ -131,7 +131,6 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
             assert types == [
                 "ai.assessment.narrative",
                 "ai.health.recommendations",
-                "roadmap.replan",
             ], f"expected exactly one of each completion job (not one per racer), got {types}"
 
             assert (

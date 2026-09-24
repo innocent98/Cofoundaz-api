@@ -4,8 +4,10 @@ from datetime import date
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    Enum,
     ForeignKey,
     Integer,
+    String,
     Text,
     UniqueConstraint,
 )
@@ -14,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
+from app.db.models.enums import EnrichmentStatus
 
 
 class JournalEntry(UUIDMixin, TimestampMixin, Base):
@@ -75,5 +78,35 @@ class MoodLog(UUIDMixin, TimestampMixin, Base):
         CheckConstraint(
             "stress BETWEEN 1 AND 10",
             name="stress_range",
+        ),
+    )
+
+
+class JournalPrompt(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "journal_prompts"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    founder_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    prompt: Mapped[str] = mapped_column(String(300), nullable=False)
+    status: Mapped[EnrichmentStatus] = mapped_column(
+        Enum(EnrichmentStatus, native_enum=False, length=12),
+        nullable=False,
+        default=EnrichmentStatus.generating,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "startup_id", "founder_id", "date", name="uq_journal_prompts_startup_founder_date"
         ),
     )

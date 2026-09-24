@@ -1,0 +1,66 @@
+{
+  "data": {
+    "stage": "validation",
+    "recommendation_reason": "[stub-llm] reason",
+    "recommended": [
+      {
+        "id": "idea-shape-the-problem",
+        "title": "[Placeholder] Shape the problem",
+        "level": "beginner",
+        "stage_tags": [
+          "idea",
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "validation-talk-to-customers",
+        "title": "[Placeholder] Talk to customers",
+        "level": "beginner",
+        "stage_tags": [
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 34,
+        "enrolled": false,
+        "progress": 0,
+        "completed": false
+      },
+      {
+        "id": "build-scope-the-mvp",
+        "title": "[Placeholder] Scope the MVP",
+        "level": "intermediate",
+        "stage_tags": [
+          "validation",
+          "build"
+        ],
+        "lesson_count": 2,
+        "duration_min": 22,
+        "enrolled": true,
+        "progress": 0,
+        "completed": false
+      }
+    ],
+    "continue_watching": [
+      {
+        "id": "build-scope-the-mvp",
+        "title": "[Placeholder] Scope the MVP",
+        "level": "intermediate",
+        "stage_tags": [
+          "validation",
+          "build"
+        ],
+        "lesson_count": 2,
+        "duration_min": 22,
+        "enrolled": true,
+        "progress": 0,
+        "completed": false
+      }
+    ]
+  },
+  "meta": null
+}

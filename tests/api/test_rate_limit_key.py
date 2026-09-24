@@ -1,5 +1,5 @@
+from app.core.rate_limit import _rate_limit_key
 from app.core.security import create_access_token
-from app.main import _rate_limit_key
 
 
 class _Req:
