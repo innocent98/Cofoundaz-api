@@ -263,3 +263,29 @@ class CampaignStatus(enum.StrEnum):
     active = "active"
     paused = "paused"
     completed = "completed"
+
+
+class MarketingGenerationKind(enum.StrEnum):
+    copy = "copy"
+    plan_week = "plan_week"
+
+
+class MarketingGenerationStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
+class AssetType(enum.StrEnum):
+    ad = "ad"
+    social_post = "social_post"
+    email = "email"
+    landing_headline = "landing_headline"
+    product_description = "product_description"
+
+
+class CopyTone(enum.StrEnum):
+    bold = "bold"
+    friendly = "friendly"
+    expert = "expert"
+    playful = "playful"

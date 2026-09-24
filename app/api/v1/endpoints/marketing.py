@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import ChannelKey, ContentStatus, MembershipRole
+from app.db.models.enums import ChannelKey, ContentStatus, MarketingGenerationKind, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
@@ -19,10 +19,12 @@ from app.schemas.marketing import (
     CampaignUpdate,
     ChannelResponse,
     ChannelUpdate,
+    CopyGenerateRequest,
     OverviewResponse,
     SegmentCreate,
     SegmentUpdate,
 )
+from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import segments as segments_svc
 from app.services.marketing import service as svc
@@ -293,3 +295,77 @@ def delete_campaign(
     campaigns_svc.delete_campaign(db, startup_id=membership.startup_id, campaign_id=campaign_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+# ---- AI generation (copy + plan-week) ----
+@router.post("/copy/generate", status_code=status.HTTP_202_ACCEPTED, response_model=dict[str, Any])
+def generate_copy(
+    payload: CopyGenerateRequest,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_copy_generation(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/copy/generations", response_model=dict[str, Any])
+def list_copy_generations(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = ai_content_svc.list_copy_generations(db, startup_id=membership.startup_id)
+    return success_response(
+        {"generations": [ai_content_svc.serialize_generation(g).model_dump() for g in rows]}
+    )
+
+
+@router.get("/copy/generations/{generation_id}", response_model=dict[str, Any])
+def get_copy_generation(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.copy,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post(
+    "/calendar/plan-week", status_code=status.HTTP_202_ACCEPTED, response_model=dict[str, Any]
+)
+def generate_plan_week(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_plan_week_generation(
+        db, startup_id=membership.startup_id, created_by=user.id
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/calendar/plan-week/{generation_id}", response_model=dict[str, Any])
+def get_plan_week(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.plan_week,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())

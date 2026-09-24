@@ -1,0 +1,29 @@
+{
+  "data": {
+    "generations": [
+      {
+        "id": "72f64ccc-046a-4da3-8c23-099feac1f0a3",
+        "startup_id": "d46495a7-e6c4-4e6a-8e2c-e26e7946b093",
+        "kind": "copy",
+        "status": "ready",
+        "inputs": {
+          "cta": null,
+          "tone": "bold",
+          "channel": "email",
+          "asset_type": "ad",
+          "key_message": "Launch week is here",
+          "audience_segment_id": null
+        },
+        "output": {
+          "variants": [
+            "[stub-llm] variants"
+          ]
+        },
+        "error": null,
+        "created_at": "2026-09-24T21:06:34.147530Z",
+        "updated_at": "2026-09-24T21:06:34.183341Z"
+      }
+    ]
+  },
+  "meta": null
+}
