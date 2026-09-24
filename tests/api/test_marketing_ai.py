@@ -87,3 +87,12 @@ def test_rbac_forbidden(client, db, role):
 
     planned = client.post(f"{BASE}/calendar/plan-week", headers=h)
     assert planned.status_code == 403, planned.text
+
+    # RBAC is enforced by Depends(_marketing) before the handler, so a forbidden
+    # role is rejected on the {id} GET routes regardless of whether the id exists.
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    copy_got = client.get(f"{BASE}/copy/generations/{fake_id}", headers=h)
+    assert copy_got.status_code == 403, copy_got.text
+
+    plan_got = client.get(f"{BASE}/calendar/plan-week/{fake_id}", headers=h)
+    assert plan_got.status_code == 403, plan_got.text
