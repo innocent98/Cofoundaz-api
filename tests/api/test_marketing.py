@@ -120,7 +120,8 @@ def test_calendar_entry_by_id_routes_are_forbidden_for_non_marketing_roles(clien
         ).status_code
         == 403
     )
-    assert client.delete(f"{BASE}/calendar-entries/{eid}", headers=other_h).status_code == 403
+    deleted = client.delete(f"{BASE}/calendar-entries/{eid}", headers=other_h)
+    assert deleted.status_code == 403
 
 
 def test_scheduled_without_time_is_422(client, db):
