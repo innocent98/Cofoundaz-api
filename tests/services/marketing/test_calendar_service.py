@@ -59,6 +59,43 @@ def test_scheduled_requires_scheduled_at(db):
     assert ei.value.http_status == 422
 
 
+def test_update_to_scheduled_without_time_is_422(db):
+    u, s = _mk(db)
+    e = svc.create_entry(
+        db,
+        startup_id=s.id,
+        created_by=u.id,
+        data=CalendarEntryCreate(title="P", channel=ChannelKey.email, status=ContentStatus.draft),
+    )
+    with pytest.raises(AppError) as ei:
+        svc.update_entry(
+            db,
+            startup_id=s.id,
+            entry_id=e.id,
+            actor_id=u.id,
+            data=CalendarEntryUpdate(status=ContentStatus.scheduled),
+        )
+    assert ei.value.http_status == 422
+
+
+def test_update_to_scheduled_with_time_succeeds(db):
+    u, s = _mk(db)
+    e = svc.create_entry(
+        db,
+        startup_id=s.id,
+        created_by=u.id,
+        data=CalendarEntryCreate(title="P", channel=ChannelKey.email, status=ContentStatus.draft),
+    )
+    updated = svc.update_entry(
+        db,
+        startup_id=s.id,
+        entry_id=e.id,
+        actor_id=u.id,
+        data=CalendarEntryUpdate(status=ContentStatus.scheduled, scheduled_at=WHEN),
+    )
+    assert updated.status == ContentStatus.scheduled and updated.scheduled_at == WHEN
+
+
 def test_list_filters_by_date_range_and_channel(db):
     u, s = _mk(db)
     svc.create_entry(
