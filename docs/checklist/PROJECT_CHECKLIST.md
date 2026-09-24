@@ -16,7 +16,20 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-23 · **Two more Module-03-deferred AI consumers shipped, on branch
+_Last reconciled: 2026-09-24 · **Module 10 (Marketing Hub) Slice 1 of 5 shipped, on branch
+`feat/module-10-marketing-slice1` (not yet merged, no PR opened yet):** the Content Calendar +
+Channels + Overview CRUD spine — `content_calendar`/`marketing_channels` tables (migration
+`0033_marketing_calendar_channels`), 8 `/marketing` endpoints behind
+`require_role(founder, team_member)`, a fixed 8-key lazy-seeded Channels board, and a
+`marketing.post.published` event wired to an in-app notification via the existing Module 20
+registry pattern. AI content generation, campaigns, SEO tools, and performance analytics are
+explicitly deferred to Slices 2–5 (Overview's `active_campaigns`/`top_channel_by_conversions`/
+`ai_content_ideas` stay `null` until each lands). Unit **1446 passed**; live e2e **53/53 passed**
+(`e2e/test_marketing.py`, 7 captures). SOP: `docs/sop/2026-09-24-marketing-slice1.md`. FE guide:
+`docs/fe-integration-guide-marketing-calendar.md` (new). **Module 10 moves from not-started to
+open (in progress): 12 modules fully complete, 1 open, 13 not started.**_
+
+_Previously: 2026-09-23 · **Two more Module-03-deferred AI consumers shipped, on branch
 `feat/module-03-deferred-ai-upgrades` (not yet merged, no PR opened yet):** the Learning
 Academy's (Module 17) shelf-level `recommendation_reason` on `GET /learning/recommendations`
 (migration `0031_learning_recommendations`, `ai.learning.recommendations` worker) and the
@@ -235,13 +248,13 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **0 open. 14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 of 5 (Content Calendar + Channels + Overview CRUD spine) shipped 2026-09-24 on `feat/module-10-marketing-slice1` (not yet merged); Slices 2–5 (Campaigns, AI Content Assistant, SEO Tools, Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 0 modules | none — Module 03 (AI Co-Founder) was the last open module; marked COMPLETE 2026-09-21 by owner decision (see the row above and the Module 03 section for its deferred, non-blocking infra follow-ups). |
-| ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
+| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 of 5 (Content Calendar + Channels + Overview CRUD spine) shipped 2026-09-24 on `feat/module-10-marketing-slice1` (migration `0033_marketing_calendar_channels`; not yet merged, no PR opened yet); Slices 2–5 (Campaigns/Segments, AI Content Assistant, SEO Tools, Performance Analytics) planned, not started. SOP `docs/sop/2026-09-24-marketing-slice1.md`, FE guide `docs/fe-integration-guide-marketing-calendar.md`. See the Module 10 section below. |
+| ⬜ Not started | 13 modules | Validation Hub (09) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
 path×method operations, `app.openapi()["paths"]` — 110 paths, 132 operations, **up from 108
@@ -2047,6 +2060,60 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
+## 🟡 Module 10 — Marketing Hub — *Slice 1 of 5 shipped on `feat/module-10-marketing-slice1` (not yet merged, no PR opened)*
+
+Content Calendar + Channels + Overview CRUD spine. Follows the same slice discipline as Modules
+03/08/18/20: CRUD spine first, AI layer seamed-and-deferred, analytics last. Migration
+`0033_marketing_calendar_channels`. SOP: `docs/sop/2026-09-24-marketing-slice1.md`. FE guide:
+`docs/fe-integration-guide-marketing-calendar.md`. Design spec:
+`docs/superpowers/specs/2026-09-24-module-10-marketing-slice1-design.md`.
+
+- [x] **Slice 1 — Content Calendar + Channels core** — *shipped on `feat/module-10-marketing-slice1`
+      (commits `545f7f2`→`eef03d8`), unit **1446 passed**, e2e **53/53 passed***
+  - [x] Enums (`ContentStatus`, `ChannelStatus`, 8-value `ChannelKey`) + `ContentCalendarEntry`/
+        `MarketingChannel` models, migration `0033` (`content_calendar`, `marketing_channels`
+        tables — the PRD's `channels` name was reserved to avoid a future collision)
+  - [x] Calendar service: create/list (date-range + channel + status filters)/get/update/delete;
+        `status=scheduled` requires `scheduled_at` (422 otherwise, enforced identically on create
+        and update); publish transition (`PATCH status:"published"`) sets `published_at` once and
+        is idempotent on repeat (no re-fire, no duplicate notification)
+  - [x] Channels: fixed 8-key board, lazy-seeded on first `GET /marketing/channels`
+        (SAVEPOINT + re-select race guard, mirrors `get_or_create_enrollment`); `PATCH
+        /channels/{key}` updates status/notes but does **not** itself seed — 404s if called before
+        the workspace's first `GET /channels` (documented sharp edge, not a defect — see the SOP's
+        Follow-ups)
+  - [x] Overview stat strip: `scheduled_this_week` + `active_channels` computed live;
+        `active_campaigns`/`top_channel_by_conversions`/`ai_content_ideas` explicit `null`
+        constants naming which later slice fills each (S2/S5/S3)
+  - [x] `/marketing` endpoints (8 routes) behind `require_role(founder, team_member)`; every other
+        role gets 403 — no granular per-module "Marketing grant" yet (deferred, no per-module
+        grant infra exists anywhere in this codebase)
+  - [x] `marketing.post.published` domain event → in-app notification (`_members_minus_actor`,
+        "Scheduled post published: {title}") via the existing Module 20 event/registry pattern; no
+        email channel wired for this event in Slice 1
+  - [x] Tests: `tests/db/test_marketing_models.py` (2) + `tests/test_marketing_migration.py` (2) +
+        `tests/services/marketing/test_calendar_service.py` (8) +
+        `tests/services/marketing/test_channel_service.py` (4) + `tests/api/test_marketing.py`
+        (49 parametrized RBAC/CRUD cases) +
+        `tests/services/notifications/test_marketing_notification.py` (2) +
+        `e2e/test_marketing.py::test_marketing_journey` (7 live captures under
+        `e2e/_captures/marketing/`)
+- [ ] **Slice 2 — Campaigns + Audience Segments** — *planned, not started.* Fills
+      `active_campaigns` on the Overview.
+- [ ] **Slice 3 — AI Content Assistant** (`Write with AI` / `Plan my week` / copy generation) —
+      *planned, not started.* Fills `ai_content_ideas`; Slice 1's calendar CRUD is exactly what
+      AI-generated entries will be created through — nothing to rework.
+- [ ] **Slice 4 — SEO Tools** — *planned, not started.*
+- [ ] **Slice 5 — Performance Analytics** (+ Module 22 export) — *planned, not started.* Fills
+      `top_channel_by_conversions`.
+
+**Deferred within the Slice 1 CRUD spine itself** (tracked in the Deferred follow-ups section
+below): auto-publish at `scheduled_at` (manual `PATCH` only today); multi-channel entries (single
+`ChannelKey` per entry today); media upload integration with Module 18 (`media_ref` is an
+untouched opaque string slot); granular per-module Marketing grant.
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [x] **Module 03 — AI Co-Founder** — *✅ MODULE 03 COMPLETE (owner decision, 2026-09-21)*: Slice 1
@@ -2070,6 +2137,12 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slice 1 of 5 shipped 2026-09-24* on
+      `feat/module-10-marketing-slice1` (not yet merged, no PR opened yet) — Content Calendar +
+      Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`); see its own
+      section above. Slices 2–5 (Campaigns/Segments, AI Content Assistant, SEO Tools, Performance
+      Analytics) planned, not started. SOP `docs/sop/2026-09-24-marketing-slice1.md`, FE guide
+      `docs/fe-integration-guide-marketing-calendar.md`.
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -2105,6 +2178,27 @@ follow the established async-upgrade pattern (templated fallback written synchro
       interview-script generation (`POST /validation/scripts/generate`). Both are enqueue-a-job
       seams; v1 enqueues / ships plain CRUD. **In progress with the junior** (handoff + issue
       #62). Brief: `docs/handoff/module-09-validation-hub.md`.
+
+### Module 10 (Marketing Hub) Slice 1 follow-ups
+
+Deferred by the Slice 1 design spec, not gaps introduced by accident — tracked here so Slices
+2–5 (and any interim hardening) can pick them up deliberately. SOP:
+`docs/sop/2026-09-24-marketing-slice1.md`.
+
+- [ ] Auto-publish at `scheduled_at` — today's status transitions are manual `PATCH` only; would
+      hook Module 20's cron/scheduler infra.
+- [ ] Multi-channel calendar entries — `ContentCalendarEntry.channel` is a single `ChannelKey`
+      today; broadening to multiple channels per entry needs a model change, not a mechanical
+      extension.
+- [ ] Media upload integration with Module 18 — `media_ref` is an untouched opaque string slot,
+      not fetched/validated server-side yet.
+- [ ] Granular per-module "Marketing grant" — access is workspace-wide founder/team_member today;
+      no per-entry ownership or narrower grant (no per-module grant infra exists anywhere in this
+      codebase yet).
+- [ ] `PATCH /marketing/channels/{key}` 404s if called before that workspace's first
+      `GET /marketing/channels` (which lazy-seeds the 8 rows) — documented as a deliberate
+      write-path-simplicity tradeoff in the FE guide, not fixed here; a future pass could make
+      `PATCH` auto-seed instead.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
