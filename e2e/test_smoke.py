@@ -100,6 +100,21 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/learning/enrollments",
         "/api/v1/learning/lessons/{lesson_id}/progress",
         "/api/v1/learning/certificates",
+        # validation hub surface
+        "/api/v1/validation/assumptions",
+        "/api/v1/validation/assumptions/{assumption_id}",
+        "/api/v1/validation/experiments",
+        "/api/v1/validation/experiments/{experiment_id}",
+        "/api/v1/validation/smoke-tests/{experiment_id}/stats",
+        "/api/v1/validation/interviews",
+        "/api/v1/validation/interviews/{interview_id}",
+        "/api/v1/validation/surveys",
+        "/api/v1/validation/surveys/{survey_id}",
+        "/api/v1/validation/surveys/{survey_id}/analytics",
+        "/api/v1/validation/surveys/{token}",
+        "/api/v1/validation/surveys/{token}/responses",
+        "/api/v1/validation/synthesize",
+        "/api/v1/validation/scripts/generate",
     ]:
         assert p in paths, f"missing route {p}"
 
