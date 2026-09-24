@@ -104,6 +104,89 @@ def test_illegal_transition_rejected(db):
     assert ei.value.http_status == 422
 
 
+def test_illegal_transition_emits_no_event_and_leaves_timestamps(db, monkeypatch):
+    s = _startup(db)
+    u = create_user(db)
+    c = svc.create_campaign(
+        db, startup_id=s.id, data=CampaignCreate(name="C", objective=CampaignObjective.leads)
+    )
+    seen = []
+    real = events_mod.event_bus.publish
+
+    def spy(dbx, e, p):
+        if e.startswith("marketing.campaign."):
+            seen.append(p)
+        return real(dbx, e, p)
+
+    monkeypatch.setattr(events_mod.event_bus, "publish", spy)
+    with pytest.raises(AppError) as ei:  # draft -> completed is illegal
+        svc.update_campaign(
+            db,
+            startup_id=s.id,
+            campaign_id=c.id,
+            actor_id=u.id,
+            data=CampaignUpdate(status=CampaignStatus.completed),
+        )
+    assert ei.value.http_status == 422
+    assert seen == []
+    assert c.status == CampaignStatus.draft
+    assert c.launched_at is None
+    assert c.completed_at is None
+
+
+def test_reissue_current_status_emits_no_event(db, monkeypatch):
+    s = _startup(db)
+    u = create_user(db)
+    c = svc.create_campaign(
+        db, startup_id=s.id, data=CampaignCreate(name="C", objective=CampaignObjective.leads)
+    )
+    seen = []
+    real = events_mod.event_bus.publish
+
+    def spy(dbx, e, p):
+        if e.startswith("marketing.campaign."):
+            seen.append(p)
+        return real(dbx, e, p)
+
+    monkeypatch.setattr(events_mod.event_bus, "publish", spy)
+
+    # Re-issuing the current status (draft -> draft) must be a no-op.
+    svc.update_campaign(
+        db,
+        startup_id=s.id,
+        campaign_id=c.id,
+        actor_id=u.id,
+        data=CampaignUpdate(status=CampaignStatus.draft),
+    )
+    assert seen == []
+    assert c.launched_at is None
+    assert c.completed_at is None
+
+    svc.update_campaign(
+        db,
+        startup_id=s.id,
+        campaign_id=c.id,
+        actor_id=u.id,
+        data=CampaignUpdate(status=CampaignStatus.active),
+    )
+    assert len(seen) == 1
+    launched_at = c.launched_at
+    assert launched_at is not None
+
+    # Re-issuing the current status (active -> active) must not re-fire the event
+    # or move the timestamp already set by the first launch.
+    svc.update_campaign(
+        db,
+        startup_id=s.id,
+        campaign_id=c.id,
+        actor_id=u.id,
+        data=CampaignUpdate(status=CampaignStatus.active),
+    )
+    assert len(seen) == 1
+    assert c.launched_at == launched_at
+    assert c.completed_at is None
+
+
 def test_full_lifecycle(db):
     s = _startup(db)
     u = create_user(db)

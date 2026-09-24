@@ -119,16 +119,20 @@ def update_campaign(
     new_status = fields.pop("status", None)
     if segment_ids is not None:
         _validate_segment_ids(db, startup_id, segment_ids)
-    for name, value in fields.items():
-        setattr(campaign, name, value)
     event: str | None = None
-    if new_status is not None and new_status != campaign.status:
+    status_changing = new_status is not None and new_status != campaign.status
+    if status_changing:
         transition = (campaign.status, new_status)
         if transition not in _TRANSITIONS:
+            # Raise before any field is set on `campaign` -- an illegal transition must not
+            # dirty the ORM object.
             raise _validation(
                 "status", f"Illegal transition {campaign.status.value} -> {new_status.value}."
             )
         event = _TRANSITIONS[transition]
+    for name, value in fields.items():
+        setattr(campaign, name, value)
+    if status_changing:
         campaign.status = new_status
         if new_status == CampaignStatus.active and campaign.launched_at is None:
             campaign.launched_at = datetime.now(UTC)
