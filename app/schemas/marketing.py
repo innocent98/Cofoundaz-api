@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -71,3 +72,35 @@ class OverviewResponse(BaseModel):
     active_campaigns: int | None = None
     top_channel_by_conversions: str | None = None
     ai_content_ideas: int | None = None
+
+
+class SegmentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    definition: dict[str, Any] = Field(default_factory=dict)
+    est_size: int | None = Field(default=None, ge=0)
+    persona_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be blank.")
+        return v
+
+
+class SegmentUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    definition: dict[str, Any] | None = None
+    est_size: int | None = Field(default=None, ge=0)
+    persona_id: uuid.UUID | None = None
+
+
+class SegmentResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    name: str
+    definition: dict[str, Any]
+    est_size: int | None
+    persona_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
