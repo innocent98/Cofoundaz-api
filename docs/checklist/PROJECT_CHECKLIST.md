@@ -1644,6 +1644,66 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
       and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
 
+## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, not yet merged*
+
+_The "prove it before you build it" workspace: assumptions on a four-column board (untested →
+testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
+and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
+founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
+and submit an answer set. Migration `0035_validation` (renumbered twice as 03/08/10 merged ahead).
+Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
+plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
+`docs/sop/2026-09-24-validation-hub.md`._
+
+**Build (Tasks 1–7):**
+- [x] Scope + locked decisions D1–D10 agreed with the lead (token-addressed public endpoint with a
+      public read alongside it · 20/minute per-route rate limit · anonymous responses, repeats
+      allowed · MVP feedback cut from v1 · AI synthesizer and script generation stubbed as enqueued
+      jobs · JSONB question schema with caps · free assumption transitions, events only on a real
+      change · derived evidence counts · JSONB assumption links)
+- [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
+      `survey_responses`) + migration `0035_validation` (chains off `0034_campaigns_segments`, sole
+      alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
+      `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
+- [x] Question/answer validation (`app/services/validation/questions.py`) — types
+      `choice|scale|nps|open`, server-assigned stable ids kept across edits, caps of 50 questions,
+      20 options and 4 000 characters per open answer; every message safe to show the public
+- [x] Assumptions + experiments service — free status transitions publishing
+      `validation.assumption.validated|invalidated` only on an actual change into those states ·
+      `evidence_counts` derived on read from linked experiments and interviews · `link_ids`
+      rejecting assumptions outside the workspace (422) · smoke-test conversion returning 0.0
+      rather than dividing by zero
+- [x] Interviews + surveys service — filters by segment, verdict and assumption; survey token
+      minted on first open, only its SHA-256 hash stored, raw value returned **once**; analytics
+      with per-option counts (including unpicked options), scale/NPS counts + averages, answered
+      counts for open questions, and the completion rate
+- [x] Public surface (`app/services/validation/public.py`) copying Module 18's share/sign pattern —
+      uniform 404 for unknown/draft/closed, acknowledgement-only reply, nothing about the
+      respondent stored beyond `submitted_at`
+- [x] **`Limiter` moved from `app/main.py` to `app/core/rate_limit.py`** (behaviour unchanged) so
+      endpoint modules can carry per-route limits without a circular import; the public submit
+      route takes the project's first one at `20/minute`. `tests/api/test_rate_limit_key.py` had
+      its import updated to the new home
+- [x] 16 member routes + 2 public routes + schemas + router registration at `prefix="/validation"`;
+      write handlers commit
+- [x] Tests — 144 validation tests (models 6 · migration 2 · questions 8 · assumptions 8 ·
+      experiments 8 · interviews 6 · surveys 7 · public 7 · API 92) · full project suite **1,616
+      passed**, coverage **97.20%** (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the fourteen validation route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_validation.py`, written: onboard → assumption → survey built and
+      opened → **public form read and answered with no authentication** → wrong token 404 →
+      analytics → experiment + interview linked → assumption validated with evidence count 2; 12
+      captures) — **not yet run**; the e2e runner needs Poetry on the host, so CI runs it first
+- [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
+- [ ] FE integration guide (`docs/fe-integration-guide-validation.md`) — written from the response
+      builders with a provenance note; **regenerate from the real captures after the first e2e run**
+- [ ] _Deferred:_ AI Insight Synthesizer + interview-script generation (stubs enqueue
+      `validation.synthesize` / `validation.scripts.generate`, nothing drains them until Module 03)
+      · hosted smoke-test pages · MVP feedback + theme clustering (PRD 09.7) · a members-only route
+      to read raw open answers · delete routes · survey token rotation/expiry and response
+      de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
+      the validation events — see SOP Follow-ups
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -2207,6 +2267,7 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
       `docs/sop/2026-09-24-marketing-slice2.md`, FE guides
       `docs/fe-integration-guide-marketing-calendar.md` +
       `docs/fe-integration-guide-marketing-campaigns.md`.
+- [ ] **Module 09 — Validation Hub** — *🟢 shipped on branch `feat/validation-hub`, not yet merged; see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
