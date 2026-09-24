@@ -5,11 +5,15 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 from app.db.models.enums import (
+    AssetType,
     CampaignObjective,
     CampaignStatus,
     ChannelKey,
     ChannelStatus,
     ContentStatus,
+    CopyTone,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
 )
 
 
@@ -176,5 +180,26 @@ class CampaignResponse(BaseModel):
     period_end: date | None
     launched_at: datetime | None
     completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CopyGenerateRequest(BaseModel):
+    asset_type: AssetType
+    channel: ChannelKey | None = None
+    audience_segment_id: uuid.UUID | None = None
+    tone: CopyTone
+    key_message: str = Field(min_length=1, max_length=2000)
+    cta: str | None = Field(default=None, max_length=200)
+
+
+class GenerationResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    kind: MarketingGenerationKind
+    status: MarketingGenerationStatus
+    inputs: dict[str, Any]
+    output: dict[str, Any]
+    error: str | None
     created_at: datetime
     updated_at: datetime
