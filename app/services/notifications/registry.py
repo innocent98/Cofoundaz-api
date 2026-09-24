@@ -99,6 +99,16 @@ SPECS: dict[str, NotifSpec] = {
         lambda p: f"Scheduled post published: {p.get('title', 'a post')}",
         lambda _p: "",
     ),
+    "marketing.campaign.launched": NotifSpec(
+        _members_minus_actor,
+        lambda p: f"Campaign launched: {p.get('name', 'a campaign')}",
+        lambda _p: "",
+    ),
+    "marketing.campaign.completed": NotifSpec(
+        _members_minus_actor,
+        lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",
+        lambda _p: "",
+    ),
 }
 
 
