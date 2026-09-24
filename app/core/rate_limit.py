@@ -58,8 +58,13 @@ from collections.abc import Callable, Iterable, MutableMapping
 from typing import Any
 
 import slowapi.middleware
+from fastapi import Request
+from jose import JWTError, jwt
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from starlette.routing import BaseRoute, Match
 
+from app.core.config import settings
 from app.core.logger import log
 
 # Depth cap for descending nested `include_router` chains. Routers nested more
@@ -233,3 +238,31 @@ def verify_included_router_resolution() -> None:
             "Refusing to start. See app/core/rate_limit.py and the fastapi pin in "
             "pyproject.toml."
         )
+
+
+def _rate_limit_key(request: Request) -> str:
+    """Key rate limits on the authenticated user when possible, falling back
+    to remote address for unauthenticated requests. This keeps limits tied to
+    the caller rather than the source IP, so users behind a shared IP (NAT,
+    corporate proxy) aren't penalized by each other's traffic.
+
+    Lives here rather than in app/main.py so endpoint modules can import
+    `limiter` for per-route `@limiter.limit(...)` decorators without importing
+    the app, which imports them back.
+    """
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            payload = jwt.decode(auth[7:], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            sub = payload.get("sub")
+            if sub:
+                return f"user:{sub}"
+        except JWTError:
+            pass
+    return get_remote_address(request)
+
+
+limiter = Limiter(
+    key_func=_rate_limit_key,
+    default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
+)
