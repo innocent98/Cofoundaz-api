@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "3e13fc2c-7333-46e6-8fb2-6f357a12fe0c",
+    "startup_id": "9a9862f5-7446-4761-8a3b-04f5294d245e",
+    "name": "SMB founders",
+    "definition": {
+      "rules": []
+    },
+    "est_size": 1200,
+    "persona_id": null,
+    "created_at": "2026-09-24T18:15:44.253023Z",
+    "updated_at": "2026-09-24T18:15:44.253023Z"
+  },
+  "meta": null
+}

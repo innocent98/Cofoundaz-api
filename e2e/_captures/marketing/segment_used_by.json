@@ -1,0 +1,29 @@
+{
+  "data": {
+    "campaigns": [
+      {
+        "id": "69121419-1a12-44c6-8d7c-9d2c72cd95db",
+        "startup_id": "9a9862f5-7446-4761-8a3b-04f5294d245e",
+        "name": "Q4 launch push",
+        "objective": "launch",
+        "budget": 50000,
+        "channel_mix": {
+          "email": 60.0,
+          "search": 40.0
+        },
+        "status": "completed",
+        "metrics": {},
+        "segment_ids": [
+          "3e13fc2c-7333-46e6-8fb2-6f357a12fe0c"
+        ],
+        "period_start": null,
+        "period_end": null,
+        "launched_at": "2026-09-24T18:15:44.295871Z",
+        "completed_at": "2026-09-24T18:15:44.329776Z",
+        "created_at": "2026-09-24T18:15:44.264966Z",
+        "updated_at": "2026-09-24T18:15:44.325218Z"
+      }
+    ]
+  },
+  "meta": null
+}

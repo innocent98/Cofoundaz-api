@@ -249,3 +249,17 @@ class ChannelKey(enum.StrEnum):
     partnerships = "partnerships"
     events = "events"
     referral = "referral"
+
+
+class CampaignObjective(enum.StrEnum):
+    awareness = "awareness"
+    leads = "leads"
+    sales = "sales"
+    launch = "launch"
+
+
+class CampaignStatus(enum.StrEnum):
+    draft = "draft"
+    active = "active"
+    paused = "paused"
+    completed = "completed"
