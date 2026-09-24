@@ -26,6 +26,7 @@ from app.db.models.marketing import (  # noqa: F401
     Campaign,
     CampaignSegment,
     ContentCalendarEntry,
+    MarketingAiGeneration,
     MarketingChannel,
 )
 from app.db.models.membership import Membership  # noqa: F401

@@ -15,6 +15,8 @@ from app.db.models.enums import (
     ChannelKey,
     ChannelStatus,
     ContentStatus,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
 )
 
 
@@ -136,3 +138,31 @@ class CampaignSegment(UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (UniqueConstraint("campaign_id", "segment_id", name="uq_campaign_segment"),)
+
+
+class MarketingAiGeneration(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "marketing_ai_generations"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    kind: Mapped[MarketingGenerationKind] = mapped_column(
+        Enum(MarketingGenerationKind, native_enum=False, length=12), nullable=False, index=True
+    )
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[MarketingGenerationStatus] = mapped_column(
+        Enum(MarketingGenerationStatus, native_enum=False, length=12),
+        nullable=False,
+        default=MarketingGenerationStatus.generating,
+    )
+    output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(String(200), nullable=True)
