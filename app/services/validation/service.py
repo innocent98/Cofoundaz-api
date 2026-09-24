@@ -1,18 +1,30 @@
-"""Validation Hub service (Module 09) — assumptions and experiments.
+"""Validation Hub service (Module 09) — assumptions, experiments, interviews and surveys.
 
 Services flush; the endpoints commit (spec section 5). Everything here takes ``startup_id`` from
 the caller's membership, never from a request body.
 """
 
+import secrets
 import uuid
+from datetime import date
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import AssumptionStatus, ExperimentStatus, ExperimentType, RiskLevel
-from app.db.models.validation import Assumption, Experiment, Interview
+from app.db.models.enums import (
+    AssumptionStatus,
+    ExperimentStatus,
+    ExperimentType,
+    InterviewVerdict,
+    RiskLevel,
+    SurveyStatus,
+)
+from app.db.models.validation import Assumption, Experiment, Interview, Survey, SurveyResponse
 from app.platform.events import event_bus
+from app.services.auth.sessions import hash_token
+from app.services.validation.questions import validate_questions
 
 # Only these two transitions are worth telling the rest of the system about (spec D8).
 _EVENT_BY_STATUS = {
@@ -271,4 +283,250 @@ def smoke_test_stats(db: Session, startup_id: uuid.UUID, experiment_id: Any) -> 
         "visits": visits,
         "signups": signups,
         "conversion": round(100 * signups / visits, 1) if visits else 0.0,
+    }
+
+
+# --- interviews ----------------------------------------------------------------------------
+
+
+def _quotes(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise AppError("VALIDATION_ERROR", "Key quotes must be a list.", 422)
+    if any(not isinstance(quote, str) or not quote.strip() for quote in value):
+        raise AppError("VALIDATION_ERROR", "Each key quote must be non-empty text.", 422)
+    return [quote.strip() for quote in value]
+
+
+def list_interviews(
+    db: Session,
+    startup_id: uuid.UUID,
+    *,
+    segment: str | None = None,
+    verdict: InterviewVerdict | None = None,
+    assumption_id: str | None = None,
+) -> list[Interview]:
+    query = db.query(Interview).filter_by(startup_id=startup_id)
+    if segment is not None:
+        query = query.filter(Interview.segment == segment)
+    if verdict is not None:
+        query = query.filter(Interview.verdict == verdict)
+    rows = query.order_by(Interview.held_on.desc(), Interview.created_at.desc()).all()
+    if assumption_id is not None:
+        rows = [row for row in rows if str(assumption_id) in (row.assumption_ids or [])]
+    return rows
+
+
+def get_interview(db: Session, startup_id: uuid.UUID, interview_id: Any) -> Interview:
+    row = db.query(Interview).filter_by(id=interview_id, startup_id=startup_id).first()
+    if row is None:
+        raise NotFound()
+    return row
+
+
+def create_interview(
+    db: Session,
+    startup_id: uuid.UUID,
+    *,
+    interviewee: str,
+    held_on: date,
+    verdict: InterviewVerdict,
+    segment: str | None = None,
+    notes: str = "",
+    key_quotes: Any = None,
+    assumption_ids: Any = None,
+) -> Interview:
+    row = Interview(
+        startup_id=startup_id,
+        interviewee=interviewee.strip(),
+        segment=segment,
+        held_on=held_on,
+        notes=notes or "",
+        key_quotes=_quotes(key_quotes),
+        verdict=verdict,
+        assumption_ids=link_ids(db, startup_id, assumption_ids),
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def update_interview(
+    db: Session,
+    interview: Interview,
+    *,
+    interviewee: str | None = None,
+    segment: str | None = None,
+    held_on: date | None = None,
+    notes: str | None = None,
+    key_quotes: Any = None,
+    verdict: InterviewVerdict | None = None,
+    assumption_ids: Any = None,
+) -> Interview:
+    if interviewee is not None:
+        interview.interviewee = interviewee.strip()
+    if segment is not None:
+        interview.segment = segment
+    if held_on is not None:
+        interview.held_on = held_on
+    if notes is not None:
+        interview.notes = notes
+    if key_quotes is not None:
+        interview.key_quotes = _quotes(key_quotes)
+    if verdict is not None:
+        interview.verdict = verdict
+    if assumption_ids is not None:
+        interview.assumption_ids = link_ids(db, interview.startup_id, assumption_ids)
+    db.flush()
+    return interview
+
+
+def serialize_interview(interview: Interview) -> dict[str, Any]:
+    return {
+        "id": str(interview.id),
+        "interviewee": interview.interviewee,
+        "segment": interview.segment,
+        "held_on": interview.held_on.isoformat(),
+        "notes": interview.notes,
+        "key_quotes": interview.key_quotes,
+        "verdict": interview.verdict.value,
+        "assumption_ids": interview.assumption_ids,
+        "created_at": interview.created_at.isoformat(),
+        "updated_at": interview.updated_at.isoformat(),
+    }
+
+
+# --- surveys -------------------------------------------------------------------------------
+
+
+def list_surveys(db: Session, startup_id: uuid.UUID) -> list[Survey]:
+    return (
+        db.query(Survey)
+        .filter_by(startup_id=startup_id)
+        .order_by(Survey.created_at.desc(), Survey.id.desc())
+        .all()
+    )
+
+
+def get_survey(db: Session, startup_id: uuid.UUID, survey_id: Any) -> Survey:
+    row = db.query(Survey).filter_by(id=survey_id, startup_id=startup_id).first()
+    if row is None:
+        raise NotFound()
+    return row
+
+
+def create_survey(
+    db: Session, startup_id: uuid.UUID, *, title: str, questions: Any = None
+) -> Survey:
+    row = Survey(
+        startup_id=startup_id,
+        title=title.strip(),
+        questions=validate_questions(questions or []),
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def update_survey(
+    db: Session,
+    survey: Survey,
+    *,
+    title: str | None = None,
+    questions: Any = None,
+    status: SurveyStatus | None = None,
+) -> tuple[Survey, str | None]:
+    """Edit a survey.
+
+    Opening it for the first time mints the public token and returns the raw value **once**; only
+    its hash is stored, and re-opening never hands it out again (spec section 4).
+    """
+    raw: str | None = None
+    if title is not None:
+        survey.title = title.strip()
+    if questions is not None:
+        survey.questions = validate_questions(questions)
+    if status is not None:
+        survey.status = status
+        if status == SurveyStatus.open and survey.token_hash is None:
+            raw = secrets.token_urlsafe(32)
+            survey.token_hash = hash_token(raw)
+    db.flush()
+    return survey, raw
+
+
+def response_counts(db: Session, startup_id: uuid.UUID, surveys: list[Survey]) -> dict[str, int]:
+    counts = {str(row.id): 0 for row in surveys}
+    if not counts:
+        return counts
+    rows = (
+        db.query(SurveyResponse.survey_id, func.count(SurveyResponse.id))
+        .filter(SurveyResponse.startup_id == startup_id)
+        .group_by(SurveyResponse.survey_id)
+        .all()
+    )
+    for survey_id, count in rows:
+        if str(survey_id) in counts:
+            counts[str(survey_id)] = count
+    return counts
+
+
+def serialize_survey(survey: Survey, response_count: int = 0) -> dict[str, Any]:
+    """The owner's view of a survey. The token never appears here, in any form."""
+    return {
+        "id": str(survey.id),
+        "title": survey.title,
+        "status": survey.status.value,
+        "questions": survey.questions,
+        "response_count": response_count,
+        "has_link": survey.token_hash is not None,
+        "created_at": survey.created_at.isoformat(),
+        "updated_at": survey.updated_at.isoformat(),
+    }
+
+
+def survey_analytics(db: Session, startup_id: uuid.UUID, survey_id: Any) -> dict[str, Any]:
+    """Per-question counts and the completion rate (spec section 5).
+
+    Open answers are counted, never listed: reading raw responses is a follow-up.
+    """
+    survey = get_survey(db, startup_id, survey_id)
+    rows = db.query(SurveyResponse).filter_by(survey_id=survey.id).all()
+    total = len(rows)
+    questions = survey.questions or []
+    required = [question["id"] for question in questions if question.get("required")]
+    complete = sum(1 for row in rows if all(key in (row.answers or {}) for key in required))
+    out: list[dict[str, Any]] = []
+    for question in questions:
+        given = [
+            (row.answers or {})[question["id"]]
+            for row in rows
+            if question["id"] in (row.answers or {})
+        ]
+        entry: dict[str, Any] = {
+            "id": question["id"],
+            "type": question["type"],
+            "prompt": question["prompt"],
+            "answered": len(given),
+        }
+        if question["type"] == "choice":
+            entry["counts"] = {
+                option: sum(1 for value in given if value == option)
+                for option in question.get("options", [])
+            }
+        elif question["type"] in ("scale", "nps"):
+            numbers = [
+                value for value in given if isinstance(value, int) and not isinstance(value, bool)
+            ]
+            entry["counts"] = {str(value): numbers.count(value) for value in sorted(set(numbers))}
+            entry["average"] = round(sum(numbers) / len(numbers), 1) if numbers else 0.0
+        out.append(entry)
+    return {
+        "survey_id": str(survey.id),
+        "title": survey.title,
+        "status": survey.status.value,
+        "responses": total,
+        "completion_rate": round(100 * complete / total) if total else 0,
+        "questions": out,
     }
