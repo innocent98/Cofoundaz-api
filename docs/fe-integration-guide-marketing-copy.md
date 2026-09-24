@@ -396,7 +396,7 @@ failures use the `{"error": {...}}` envelope.
 |---|---|---|
 | `POST /copy/generate` → 202 `{id, status: "generating"}` | ✅ | `copy_generate_accepted.json` |
 | `GET /copy/generations/{id}` → ready, full `GenerationResponse` shape | ✅ | `copy_generation_ready.json` |
-| `output.variants` under stub provider is `["[stub-llm] variants"]` (1 item, not 3) | ✅ live (stub) | `copy_generation_ready.json`; real-provider "up to 3" behavior is schema/worker-verified, not live | `app/services/marketing/ai_prompts.py::copy_schema`, `app/worker/handlers/marketing_ai.py:59` |
+| `output.variants` under stub provider is `["[stub-llm] variants"]` (1 item, not 3); real-provider "up to 3" is schema/worker-verified, not live | ✅ live (stub) | `copy_generation_ready.json`, `app/services/marketing/ai_prompts.py::copy_schema`, `app/worker/handlers/marketing_ai.py:59` |
 | `GET /copy/generations` history list includes the generation | ✅ | `copy_generations_history.json` |
 | `POST /calendar/plan-week` → 202 `{id, status: "generating"}`, no request body | ✅ | `plan_week_accepted.json` |
 | `GET /calendar/plan-week/{id}` → ready | ✅ | `plan_week_ready.json` |
@@ -405,6 +405,6 @@ failures use the `{"error": {...}}` envelope.
 | `audience_segment_id` 422 (foreign/unknown segment) | ⚠️ unit only | `app/services/marketing/ai_content.py::create_copy_generation` |
 | `status: "failed"`, `error: "over_budget"`, `output: {}` on budget exhaustion | ⚠️ unit only — not reachable from a normal live journey without seeding the ledger (see §6) | `tests/worker/test_marketing_ai_handlers.py::test_copy_over_budget_fails` |
 | Kind-mismatch (`plan_week` id via copy route, and vice versa) → 404 | ⚠️ unit/integration only, not separately e2e-captured | `tests/api/test_marketing_ai.py::test_kind_mismatch_poll_404` |
-| RBAC: 403 for non-marketing roles on all 6 routes, including both `{id}` GET routes | ⚠️ unit/integration only | `tests/api/test_marketing_ai.py::test_rbac_forbidden` |
+| RBAC: 403 for non-marketing roles on all 5 routes, including both `{id}` GET routes | ⚠️ unit/integration only | `tests/api/test_marketing_ai.py::test_rbac_forbidden` |
 | Copy history list is `copy`-kind only, never returns `plan_week` rows | ⚠️ unit only | `app/services/marketing/ai_content.py::list_copy_generations` |
-| Table name (`marketing_ai_generations`), `kind`/`status` discriminator columns | `alembic/versions/0035_marketing_ai_generations.py` |
+| Table name (`marketing_ai_generations`), `kind`/`status` discriminator columns | ✅ live (migration applied in e2e) | `alembic/versions/0035_marketing_ai_generations.py` |
