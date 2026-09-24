@@ -94,6 +94,11 @@ SPECS: dict[str, NotifSpec] = {
         _all_active_members, "Time for your quarterly startup assessment"
     ),
     "business.plan.generated": _s(_all_active_members, "Your AI business plan is ready"),
+    "marketing.post.published": NotifSpec(
+        _members_minus_actor,
+        lambda p: f"Scheduled post published: {p.get('title', 'a post')}",
+        lambda _p: "",
+    ),
 }
 
 
