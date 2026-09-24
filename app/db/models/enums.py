@@ -225,3 +225,27 @@ class BriefingStatus(enum.StrEnum):
 class EnrichmentStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
+
+
+class ContentStatus(enum.StrEnum):
+    draft = "draft"
+    scheduled = "scheduled"
+    published = "published"
+
+
+class ChannelStatus(enum.StrEnum):
+    active = "active"
+    testing = "testing"
+    paused = "paused"
+    not_started = "not_started"
+
+
+class ChannelKey(enum.StrEnum):
+    organic_social = "organic_social"
+    paid_social = "paid_social"
+    search = "search"
+    email = "email"
+    content_seo = "content_seo"
+    partnerships = "partnerships"
+    events = "events"
+    referral = "referral"

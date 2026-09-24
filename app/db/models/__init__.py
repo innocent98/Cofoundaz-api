@@ -21,6 +21,7 @@ from app.db.models.learning import (  # noqa: F401
     LessonProgress,
 )
 from app.db.models.llm_usage import LlmUsageDaily  # noqa: F401
+from app.db.models.marketing import ContentCalendarEntry, MarketingChannel  # noqa: F401
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
