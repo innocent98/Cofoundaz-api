@@ -68,6 +68,10 @@ class MarketingChannel(UUIDMixin, TimestampMixin, Base):
         default=ChannelStatus.not_started,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_fit_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fit_note_generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         UniqueConstraint("startup_id", "key", name="uq_marketing_channel_startup_key"),
