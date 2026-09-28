@@ -1,6 +1,9 @@
 from typing import Any
 
+from app.db.models.enums import ChannelKey
 from app.platform.llm import LLMMessage
+
+CHANNEL_KEYS = [c.value for c in ChannelKey]
 
 
 def copy_schema() -> dict[str, Any]:
@@ -48,7 +51,7 @@ def plan_week_schema() -> dict[str, Any]:
                     "type": "object",
                     "properties": {
                         "title": {"type": "string"},
-                        "channel": {"type": "string"},
+                        "channel": {"type": "string", "enum": CHANNEL_KEYS},
                         "body": {"type": "string"},
                         "day_offset": {"type": "integer"},
                     },
@@ -74,5 +77,71 @@ def build_plan_week_messages(
     user = (
         f"Startup: {name or 'unnamed'}. Industry: {industry or 'unspecified'}. "
         f"Stage: {stage or 'early'}."
+    )
+    return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
+
+
+def channel_plan_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "channel_mix": {
+                "type": "object",
+                "properties": {k: {"type": "integer"} for k in CHANNEL_KEYS},
+                "required": CHANNEL_KEYS,
+                "additionalProperties": False,
+            },
+            "rationale": {"type": "string"},
+        },
+        "required": ["channel_mix", "rationale"],
+        "additionalProperties": False,
+    }
+
+
+def build_channel_plan_messages(
+    *, objective: str, stage: str | None, industry: str | None, budget: int | None
+) -> list[LLMMessage]:
+    system = (
+        "You are a startup growth strategist. Recommend how to split marketing effort across "
+        "these eight channels: " + ", ".join(CHANNEL_KEYS) + ". Return an integer percentage for "
+        "every channel (0 allowed); the percentages should sum to about 100. Also give a short "
+        "rationale a founder can act on. Weight the split for the campaign objective and stage."
+    )
+    budget_line = f" Monthly budget (cents): {budget}." if budget is not None else ""
+    user = (
+        f"Objective: {objective}. Stage: {stage or 'early'}. "
+        f"Industry: {industry or 'unspecified'}.{budget_line}"
+    )
+    return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
+
+
+def channel_fit_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "notes": {
+                "type": "object",
+                "properties": {k: {"type": "string"} for k in CHANNEL_KEYS},
+                "required": CHANNEL_KEYS,
+                "additionalProperties": False,
+            }
+        },
+        "required": ["notes"],
+        "additionalProperties": False,
+    }
+
+
+def build_channel_fit_messages(
+    *, stage: str | None, industry: str | None, statuses: dict[str, str]
+) -> list[LLMMessage]:
+    system = (
+        "You are a marketing channel advisor. For each of these eight channels, write ONE short "
+        "fit note (one or two sentences) telling this founder how well the channel fits their "
+        "business and why. Channels: " + ", ".join(CHANNEL_KEYS) + "."
+    )
+    status_line = ", ".join(f"{k}={v}" for k, v in sorted(statuses.items())) or "all not_started"
+    user = (
+        f"Stage: {stage or 'early'}. Industry: {industry or 'unspecified'}. "
+        f"Current channel statuses: {status_line}."
     )
     return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
