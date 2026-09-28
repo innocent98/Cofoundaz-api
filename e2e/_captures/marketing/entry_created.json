@@ -1,8 +1,8 @@
 {
   "data": {
-    "id": "e9f31744-69b2-447e-8e67-8ce943333249",
-    "startup_id": "f862b69a-1029-4d04-81ff-9bbb7e84d63c",
-    "created_by": "43e6cc92-f264-4584-999d-01a16eb917be",
+    "id": "e160cb67-bf41-49ee-81eb-3be6692a7b72",
+    "startup_id": "c100e5c7-2b92-4d2f-b681-b362a31266e1",
+    "created_by": "ad26ed53-1d8b-4133-bdb2-99202725cece",
     "title": "Launch week kickoff",
     "channel": "email",
     "status": "scheduled",
@@ -10,8 +10,8 @@
     "media_ref": null,
     "scheduled_at": "2026-10-01T09:00:00Z",
     "published_at": null,
-    "created_at": "2026-09-24T14:33:17.927743Z",
-    "updated_at": "2026-09-24T14:33:17.927743Z"
+    "created_at": "2026-09-28T18:10:31.825189Z",
+    "updated_at": "2026-09-28T18:10:31.825189Z"
   },
   "meta": null
 }

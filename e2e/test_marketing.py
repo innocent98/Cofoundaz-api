@@ -308,3 +308,62 @@ def test_marketing_ai_generation_journey(base_url, make_verified_user, capture):
         assert plan_ready.status_code == 200, plan_ready.text
         assert plan_ready.json()["data"]["status"] in ("ready", "failed")
         capture("marketing", "plan_week_ready", plan_ready)
+
+
+def test_marketing_channel_ai_journey(base_url, make_verified_user, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder -- marketing AI generation needs nothing else.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Channels")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. Kick off a channel-plan recommendation -- 202 Accepted, row starts `generating`.
+        plan = c.post(
+            "/api/v1/marketing/channel-plan/recommend",
+            headers=wh,
+            json={"objective": "leads"},
+        )
+        assert plan.status_code == 202, plan.text
+        plan_body = plan.json()["data"]
+        assert plan_body["status"] == "generating"
+        capture("marketing", "channel_plan_accepted", plan)
+        pid = plan_body["id"]
+
+        # 2. Drain the worker in-process (LLM_PROVIDER=stub) -> handle_marketing_channel_plan
+        # runs, fills `output` from the stub LLM client, flips status to ready.
+        _drain()
+
+        # 3. Poll the recommendation -- now ready.
+        plan_ready = c.get(f"/api/v1/marketing/channel-plan/recommendations/{pid}", headers=wh)
+        assert plan_ready.status_code == 200, plan_ready.text
+        assert plan_ready.json()["data"]["status"] in ("ready", "failed")
+        capture("marketing", "channel_plan_ready", plan_ready)
+
+        # 4. Kick off fit-notes generation for the workspace's channels -- 202 Accepted.
+        fit = c.post("/api/v1/marketing/channels/fit-notes/generate", headers=wh, json={})
+        assert fit.status_code == 202, fit.text
+        fit_body = fit.json()["data"]
+        assert fit_body["status"] == "generating"
+        capture("marketing", "fit_notes_accepted", fit)
+        fid = fit_body["id"]
+
+        # 5. Drain -> handle_marketing_channel_fit runs, persists ai_fit_note per channel.
+        _drain()
+
+        # 6. Poll the fit-notes generation -- now ready.
+        fit_ready = c.get(f"/api/v1/marketing/channels/fit-notes/{fid}", headers=wh)
+        assert fit_ready.status_code == 200, fit_ready.text
+        assert fit_ready.json()["data"]["status"] in ("ready", "failed")
+        capture("marketing", "fit_notes_ready", fit_ready)
+
+        # 7. Channels now carry ai_fit_note/fit_note_generated_at from the generation above.
+        channels = c.get("/api/v1/marketing/channels", headers=wh)
+        assert channels.status_code == 200, channels.text
+        capture("marketing", "channels_with_fit_notes", channels)

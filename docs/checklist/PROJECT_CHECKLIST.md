@@ -16,7 +16,32 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-24 · **Module 10 (Marketing Hub) Slice 3a of 5 shipped, on branch
+_Last reconciled: 2026-09-28 · **Module 10 (Marketing Hub) Slice 3b of 5 shipped, on branch
+`feat/module-10-marketing-slice3b` (off Slice 3a; not yet merged, no PR opened yet):** the second
+half of the AI layer — an **AI channel-plan recommender** (standalone `objective` + `budget?` →
+an 8-channel percentage split always summing to 100 + rationale, for the campaign wizard) and
+**per-channel AI fit notes** (one LLM call → a fit note for all 8 channels, persisted onto the
+channel rows and surfaced inline on `GET /marketing/channels`) — two new `kind` values
+(`channel_plan`/`channel_fit`) on Slice 3a's `marketing_ai_generations` table, plus two nullable
+columns on `marketing_channels` (migration `0036_channel_fit_notes`), 4 new `/marketing` endpoints
+behind the same `require_role(founder, team_member)` dependency, same `POST -> 202 -> poll` async
+pattern, metered via the same `llm_budget` guard. `normalize_channel_mix` guarantees the FE always
+gets integers summing to exactly 100 (largest-remainder rounding, even-split fallback when nothing
+valid — this is what the stub-provider capture actually exercises). Also closes a Slice 3a review
+follow-up: `plan_week_schema()`'s `channel` field now enum-constrains to `ChannelKey`, so
+`plan_week`'s `output.entries` is no longer silently empty under the stub provider. `Overview.
+ai_content_ideas` stays deferred (design decision D5 — least-defined AI surface in the PRD); the
+pre-existing `Overview.active_campaigns: null` gap (Slice 2 leftover) noted but out of scope here.
+Slice 4 (SEO Tools) and Slice 5 (Performance Analytics) remain deferred. Per-task unit tests green
+(60 passed on the focused `tests/api/` slice); live e2e **56/56 passed**
+(`e2e/test_marketing.py::test_marketing_channel_ai_journey`, 5 new captures alongside Slices 1–3a's
+19, plus a refreshed `plan_week_ready.json`). SOP: `docs/sop/2026-09-28-marketing-slice3b.md`. FE
+guide: `docs/fe-integration-guide-marketing-channel-ai.md` (new, cross-references the Slice 1/2/3a
+guides and `docs/fe-integration-guide-ai-status.md`); `docs/fe-integration-guide-marketing-copy.md`
+updated for the now-populated `plan_week` capture. **Module 10 remains open (Slice 3b of 5 done):
+12 modules fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-24 · **Module 10 (Marketing Hub) Slice 3a of 5 shipped, on branch
 `feat/module-10-marketing-slice3a` (off Slice 2; not yet merged, no PR opened yet):** the first
 half of the AI Content Assistant — AI **copy generation** (asset-type + tone-directed ad/social/
 email copy, up to 3 variants) and AI **plan-week** (a proposed 7-day content calendar, up to 7
@@ -27,8 +52,8 @@ kind-discriminated `copy`/`plan_week`), 5 new `/marketing` endpoints behind the 
 existing `llm_budget` guard (`error: "over_budget"` on exhaustion, same shape as every other AI
 consumer). Copy truncates the model's variants to 3; plan-week drops any entry whose `channel`
 isn't a valid `ChannelKey` — under the stub LLM provider this legitimately empties `plan_week`'s
-`output.entries` (documented explicitly in the FE guide, not a bug). Slice 3b (AI channel-plan
-recommender for `channel_mix`, fills `ai_content_ideas`), Slice 4 (SEO Tools), and Slice 5
+`output.entries` (documented explicitly in the FE guide, not a bug; **resolved in Slice 3b**, see
+above). Slice 3b (AI channel-plan recommender + fit notes), Slice 4 (SEO Tools), and Slice 5
 (Performance Analytics) remain deferred to later slices. Unit **1490 passed**; live e2e **55/55
 passed** (`e2e/test_marketing.py::test_marketing_ai_generation_journey`, 5 new captures alongside
 Slices 1–2's 14). SOP: `docs/sop/2026-09-24-marketing-slice3a.md`. FE guide:
@@ -2098,20 +2123,23 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
-## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a of 5 shipped (none yet merged, no PR opened)*
+## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a–3b of 5 shipped (none yet merged, no PR opened)*
 
 Content Calendar + Channels + Overview CRUD spine (Slice 1), then Campaigns + Audience Segments
-(Slice 2), then the first half of the AI Content Assistant — AI copy generation + AI plan-week
-(Slice 3a). Follows the same slice discipline as Modules 03/08/18/20: CRUD spine first, AI layer
-seamed-and-deferred, analytics last. Migrations `0033_marketing_calendar_channels` →
-`0034_campaigns_segments` → `0035_marketing_ai_generations`. SOPs:
+(Slice 2), then the full AI Content Assistant — AI copy generation + AI plan-week (Slice 3a),
+then the AI channel-plan recommender + per-channel fit notes (Slice 3b). Follows the same slice
+discipline as Modules 03/08/18/20: CRUD spine first, AI layer seamed-and-deferred, analytics last.
+Migrations `0033_marketing_calendar_channels` → `0034_campaigns_segments` →
+`0035_marketing_ai_generations` → `0036_channel_fit_notes`. SOPs:
 `docs/sop/2026-09-24-marketing-slice1.md`, `docs/sop/2026-09-24-marketing-slice2.md`,
-`docs/sop/2026-09-24-marketing-slice3a.md`. FE guides:
+`docs/sop/2026-09-24-marketing-slice3a.md`, `docs/sop/2026-09-28-marketing-slice3b.md`. FE guides:
 `docs/fe-integration-guide-marketing-calendar.md`,
 `docs/fe-integration-guide-marketing-campaigns.md`,
-`docs/fe-integration-guide-marketing-copy.md` (all cross-referenced). Design specs:
+`docs/fe-integration-guide-marketing-copy.md`,
+`docs/fe-integration-guide-marketing-channel-ai.md` (all cross-referenced). Design specs:
 `docs/superpowers/specs/2026-09-24-module-10-marketing-slice1-design.md`,
-`docs/superpowers/specs/2026-09-24-module-10-marketing-slice2-design.md`.
+`docs/superpowers/specs/2026-09-24-module-10-marketing-slice2-design.md`,
+`docs/superpowers/specs/2026-09-28-module-10-marketing-slice3b-design.md`.
 
 - [x] **Slice 1 — Content Calendar + Channels core** — *shipped on `feat/module-10-marketing-slice1`
       (commits `545f7f2`→`eef03d8`), unit **1446 passed**, e2e **53/53 passed***
@@ -2206,9 +2234,43 @@ seamed-and-deferred, analytics last. Migrations `0033_marketing_calendar_channel
         `POST /marketing/calendar-entries` (S1) per kept plan-week entry; Write-with-AI =
         `copy/generate` then `PATCH /marketing/calendar-entries/{id}` (S1)
   - [x] `Overview.ai_content_ideas` stays an explicit `null` after 3a — unchanged by this slice;
-        Slice 3b is what fills it
-- [ ] **Slice 3b — AI channel-plan recommender** (fit notes + `channel_mix` recommendation for
-      campaigns) — *planned, not started.* Fills `ai_content_ideas` on the Overview.
+        deferred again by 3b (see below) — its meaning is still the least-defined AI surface in
+        the PRD
+- [x] **Slice 3b — AI channel-plan recommender + per-channel fit notes** — *shipped on
+      `feat/module-10-marketing-slice3b` (commits `39eb2d3`→`bc56aee`), unit tests green per-task
+      (60 passed on the focused `tests/api/` slice), e2e **56/56 passed***
+  - [x] `MarketingGenerationKind` gains `channel_plan`/`channel_fit` (fits the existing 12-char
+        column, no enum-length migration) + `marketing_channels.ai_fit_note`/
+        `fit_note_generated_at` columns, migration `0036_channel_fit_notes`
+  - [x] Prompt/schema builders: `channel_plan_schema` + `build_channel_plan_messages`,
+        `channel_fit_schema` + `build_channel_fit_messages`; `plan_week_schema()`'s `channel` field
+        gained an `enum` constraint (closes the Slice 3a review follow-up — plan-week entries no
+        longer silently empty under the stub provider)
+  - [x] AI generation service: `create_channel_plan_generation` (standalone, not tied to a
+        `campaign_id` — D1), `create_channel_fit_generation` (one job, all 8 channels — D2); both
+        reuse Slice 3a's kind-scoped `get_generation`/`serialize_generation` unchanged
+  - [x] `ai.marketing.channel_plan` (normalizes `channel_mix` to sum-to-100 via largest-remainder
+        rounding, even-split fallback when nothing valid, rejects non-finite/negative/bool values)
+        + `ai.marketing.channel_fit` (lazy-seeds the 8 channels before the budget check, writes
+        `ai_fit_note`/`fit_note_generated_at` per valid key, keeps a channel's prior note when its
+        key is omitted from the model's response) worker handlers
+  - [x] `POST /marketing/channel-plan/recommend` + `GET
+        /marketing/channel-plan/recommendations/{id}` + `POST /marketing/channels/fit-notes/generate`
+        + `GET /marketing/channels/fit-notes/{id}` (4 new routes) behind the same
+        `require_role(founder, team_member)` dependency; `GET /marketing/channels` now surfaces
+        `ai_fit_note`/`fit_note_generated_at` inline per card, no endpoint code change needed
+  - [x] Tests: `tests/db/test_marketing_channel_fit_columns.py` +
+        `tests/test_marketing_slice3b_migration.py` (4) +
+        `tests/services/marketing/test_ai_prompts.py` (10, 5 new) +
+        `tests/services/marketing/test_ai_content_service.py` (9, 2 new) +
+        `tests/worker/test_marketing_ai_handlers.py` (15, 11 new) +
+        `tests/api/test_marketing_ai.py` + `tests/api/test_marketing.py` (6 new across both) +
+        `e2e/test_marketing.py::test_marketing_channel_ai_journey` (5 live captures under
+        `e2e/_captures/marketing/`; refreshed Slice 3a's `plan_week_ready.json` in the same run)
+  - [x] `Overview.ai_content_ideas` stays an explicit `null` after 3b too (D5 — deliberately
+        deferred, not this slice's job); the pre-existing `Overview.active_campaigns: null` gap
+        (never wired up despite Slice 2 shipping campaigns) noted as out-of-scope-for-3b, tracked
+        in the follow-ups below
 - [ ] **Slice 4 — SEO Tools** — *planned, not started.*
 - [ ] **Slice 5 — Performance Analytics** (+ Module 22 export) — *planned, not started.* Fills
       `top_channel_by_conversions` and campaign `metrics` (currently always `{}`).
@@ -2221,8 +2283,15 @@ untouched opaque string slot); granular per-module Marketing grant.
 **Deferred within Slice 3a itself** (tracked in the Deferred follow-ups section below): no inline
 "Refine" on a generation's output; no server-side link between a generation and the calendar
 entry it informs (FE compositions track that association client-side); no history-list endpoint
-for `plan_week` (unlike copy's); stub-provider `plan_week` entries are always empty (real-provider
-behavior unaffected — see the SOP).
+for `plan_week` (unlike copy's). ~~stub-provider `plan_week` entries are always empty~~ **resolved
+in Slice 3b** — `plan_week_schema()`'s `channel` field now enum-constrains to `ChannelKey`, so
+`output.entries` is populated under the stub too; see the Slice 3b SOP.
+
+**Deferred within Slice 3b itself** (tracked in the Deferred follow-ups section below): no
+history-list endpoint for `channel_plan`/`channel_fit` (same YAGNI reasoning as plan-week); no
+server-side link between a channel-plan recommendation and the campaign it informs; inline
+"Refine" still unbuilt; stub-provider `channel_mix` is always the even-split fallback, never a
+differentiated recommendation (real-provider behavior unaffected — see the SOP).
 
 **Deferred within the Slice 2 CRUD spine itself** (tracked in the Deferred follow-ups section
 below): segment rule execution against real data (`definition` is an opaque, unevaluated JSON
@@ -2332,8 +2401,12 @@ Deferred by the Slice 2 design spec, not gaps introduced by accident — tracked
 3–5 (and any interim hardening) can pick them up deliberately. SOP:
 `docs/sop/2026-09-24-marketing-slice2.md`.
 
-- [ ] AI channel-plan recommender for `channel_mix` — Slice 3b's job; today `channel_mix` is
-      100% manually entered by the founder.
+- [x] AI channel-plan recommender for `channel_mix` — *shipped in Slice 3b*
+      (`POST /marketing/channel-plan/recommend` → `GET
+      /marketing/channel-plan/recommendations/{id}`, standalone, objective + stage → an 8-channel
+      split summing to 100 + rationale). `channel_mix` on the campaign itself is still 100%
+      manually entered — the recommendation is applied to the wizard's sliders client-side, no
+      server-side write to the campaign row. See `docs/sop/2026-09-28-marketing-slice3b.md`.
 - [ ] Campaign `metrics` stays `{}` and `top_channel_by_conversions` stays `null` until Slice 5
       (Performance Analytics) — same "ship the shape now, fill it in later" pattern as every
       other deferred Overview field in this API.
@@ -2360,12 +2433,40 @@ Deferred by the Slice 3a design spec, not gaps introduced by accident — tracke
       endpoints; "written with AI" provenance, if wanted, must be tracked client-side.
 - [ ] No history-list endpoint for `plan_week` (unlike copy's `GET /copy/generations`) — a founder
       can poll a plan-week id they already have, but not browse past plan-week generations.
-- [ ] Stub-provider `plan_week` entries are always empty — `plan_week_schema()`'s `channel` field
-      has no JSON-schema `enum` constraint, so the stub LLM's placeholder value never matches a
-      real `ChannelKey` and every entry gets filtered out; only affects the stub provider
-      (staging/e2e), not a real LLM provider. See the FE guide §5 and the SOP for the full trace.
-- [ ] AI channel-plan recommender + fit notes for `channel_mix` — Slice 3b's job (tracked above
-      under Slice 2 follow-ups too, since it fills a Slice-2-owned field).
+- [x] ~~Stub-provider `plan_week` entries are always empty~~ — *resolved in Slice 3b*
+      (`plan_week_schema()`'s `channel` field now carries an `"enum"` constraint listing the 8
+      `ChannelKey` values; `StubLLMClient._stub_value` already honored `enum` fields, so the stub
+      now emits a valid `ChannelKey` and entries survive the worker's filter — `output.entries` is
+      populated under the stub too. See `docs/sop/2026-09-28-marketing-slice3b.md` and the updated
+      `docs/fe-integration-guide-marketing-copy.md` §5.)
+- [x] AI channel-plan recommender + fit notes for `channel_mix` — *shipped in Slice 3b* (tracked
+      above under Slice 2 follow-ups too, since it fills a Slice-2-owned field).
+
+### Module 10 (Marketing Hub) Slice 3b follow-ups
+
+Deferred by the Slice 3b design spec, not gaps introduced by accident — tracked here so Slice
+3c/4/5 (and any interim hardening) can pick them up deliberately. SOP:
+`docs/sop/2026-09-28-marketing-slice3b.md`.
+
+- [ ] `Overview.ai_content_ideas` stays an explicit `null` — deferred per design decision D5 as
+      "the least-defined AI surface" in the PRD; no committed slice number yet.
+- [ ] `Overview.active_campaigns` stays `null` — a pre-existing Slice-2 leftover (campaigns shipped
+      in Slice 2, but `overview()` never wires a live count for this field); noticed during Slice
+      3b design but explicitly out of scope for that slice. Whichever slice picks it up should wire
+      a real `Campaign.status == active` count, same shape as `active_channels`'s existing count.
+- [ ] No history-list endpoint for `channel_plan` or `channel_fit` (design decision D1/D2 — YAGNI,
+      same reasoning as plan-week's missing history list).
+- [ ] No server-side link between a channel-plan recommendation and the campaign it informs — pure
+      client-side orchestration (FE applies the split to the wizard's sliders).
+- [ ] Inline "Refine" on a generation's output — still unbuilt, carried over from Slice 3a.
+- [ ] Stub-provider `channel_mix` is always the even-split fallback (13/12 across the 8 channels),
+      never a differentiated recommendation — `channel_plan_schema()`'s per-channel values are
+      plain `integer`s with no `enum` (unlike a name-like field, an arbitrary percentage has no
+      small fixed vocabulary to enumerate), so the stub always emits `0` for every channel and
+      `normalize_channel_mix`'s all-zero fallback always fires. A real fix would need a
+      `StubLLMClient` change (e.g. a per-property stub-value override), not attempted here as it's
+      out of this slice's scope; real-provider behavior is unaffected. See the FE guide's boxed
+      note and the SOP's Follow-ups.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)

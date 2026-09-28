@@ -268,6 +268,8 @@ class CampaignStatus(enum.StrEnum):
 class MarketingGenerationKind(enum.StrEnum):
     copy = "copy"
     plan_week = "plan_week"
+    channel_plan = "channel_plan"
+    channel_fit = "channel_fit"
 
 
 class MarketingGenerationStatus(enum.StrEnum):

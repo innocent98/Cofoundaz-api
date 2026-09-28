@@ -1,9 +1,16 @@
+from app.db.models.enums import ChannelKey
 from app.services.marketing.ai_prompts import (
+    build_channel_fit_messages,
+    build_channel_plan_messages,
     build_copy_messages,
     build_plan_week_messages,
+    channel_fit_schema,
+    channel_plan_schema,
     copy_schema,
     plan_week_schema,
 )
+
+_KEYS = [c.value for c in ChannelKey]
 
 
 def test_copy_schema_requires_three_variants():
@@ -49,3 +56,37 @@ def test_plan_week_messages_include_context():
     msgs = build_plan_week_messages(stage="build", industry="fintech", name="Acme")
     assert msgs[0].role == "system"
     assert "build" in msgs[1].content and "fintech" in msgs[1].content
+
+
+def test_channel_plan_schema_enumerates_the_eight_channels():
+    schema = channel_plan_schema()
+    mix = schema["properties"]["channel_mix"]["properties"]
+    assert sorted(mix.keys()) == sorted(_KEYS)
+    assert all(v["type"] == "integer" for v in mix.values())
+    assert "rationale" in schema["properties"]
+
+
+def test_channel_fit_schema_enumerates_the_eight_channels():
+    notes = channel_fit_schema()["properties"]["notes"]["properties"]
+    assert sorted(notes.keys()) == sorted(_KEYS)
+
+
+def test_plan_week_channel_is_enum_constrained():
+    item = plan_week_schema()["properties"]["entries"]["items"]
+    assert sorted(item["properties"]["channel"]["enum"]) == sorted(_KEYS)
+
+
+def test_channel_plan_messages_carry_objective_and_stage():
+    msgs = build_channel_plan_messages(
+        objective="leads", stage="mvp", industry="fintech", budget=50000
+    )
+    joined = " ".join(m.content for m in msgs)
+    assert "leads" in joined and "mvp" in joined
+
+
+def test_channel_fit_messages_carry_statuses():
+    msgs = build_channel_fit_messages(
+        stage="mvp", industry="fintech", statuses={"search": "active"}
+    )
+    joined = " ".join(m.content for m in msgs)
+    assert "search" in joined and "active" in joined

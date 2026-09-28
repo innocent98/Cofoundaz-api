@@ -1,9 +1,11 @@
 {
   "data": {
-    "id": "689ccd2b-3c69-4a2b-8a08-2cb47a3aa4c8",
+    "id": "372d979f-8ef2-46e2-8d38-e93a18c3ee98",
     "key": "email",
     "status": "active",
-    "notes": "warming up"
+    "notes": "warming up",
+    "ai_fit_note": null,
+    "fit_note_generated_at": null
   },
   "meta": null
 }

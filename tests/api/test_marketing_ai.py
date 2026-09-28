@@ -96,3 +96,46 @@ def test_rbac_forbidden(client, db, role):
 
     plan_got = client.get(f"{BASE}/calendar/plan-week/{fake_id}", headers=h)
     assert plan_got.status_code == 403, plan_got.text
+
+
+def test_channel_plan_recommend_is_202_and_pollable(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/channel-plan/recommend", json={"objective": "leads"}, headers=h)
+    assert r.status_code == 202, r.text
+    gid = r.json()["data"]["id"]
+    got = client.get(f"{BASE}/channel-plan/recommendations/{gid}", headers=h)
+    assert got.status_code == 200, got.text
+    assert got.json()["data"]["kind"] == "channel_plan"
+
+
+def test_fit_notes_generate_is_202_and_pollable(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/channels/fit-notes/generate", headers=h)
+    assert r.status_code == 202, r.text
+    gid = r.json()["data"]["id"]
+    got = client.get(f"{BASE}/channels/fit-notes/{gid}", headers=h)
+    assert got.status_code == 200, got.text
+    assert got.json()["data"]["kind"] == "channel_fit"
+
+
+def test_channel_plan_kind_mismatch_404(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/channels/fit-notes/generate", headers=h)
+    gid = r.json()["data"]["id"]  # a channel_fit id
+    wrong = client.get(f"{BASE}/channel-plan/recommendations/{gid}", headers=h)
+    assert wrong.status_code == 404, wrong.text
+
+
+@pytest.mark.parametrize("role", NON_MARKETING_ROLES)
+def test_channel_ai_rbac_forbidden(client, db, role):
+    _f, startup, _fh = _member(db)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    fake = "00000000-0000-0000-0000-000000000000"
+    posted = client.post(f"{BASE}/channel-plan/recommend", json={"objective": "leads"}, headers=h)
+    assert posted.status_code == 403, posted.text
+    got = client.get(f"{BASE}/channel-plan/recommendations/{fake}", headers=h)
+    assert got.status_code == 403, got.text
+    gen = client.post(f"{BASE}/channels/fit-notes/generate", headers=h)
+    assert gen.status_code == 403, gen.text
+    fit = client.get(f"{BASE}/channels/fit-notes/{fake}", headers=h)
+    assert fit.status_code == 403, fit.text

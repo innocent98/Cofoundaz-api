@@ -74,6 +74,8 @@ class ChannelResponse(BaseModel):
     key: ChannelKey
     status: ChannelStatus
     notes: str | None
+    ai_fit_note: str | None = None
+    fit_note_generated_at: datetime | None = None
 
 
 class OverviewResponse(BaseModel):
@@ -182,6 +184,15 @@ class CampaignResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class ChannelPlanRequest(BaseModel):
+    objective: CampaignObjective
+    budget: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional monthly budget in cents (matches campaign budget).",
+    )
 
 
 class CopyGenerateRequest(BaseModel):
