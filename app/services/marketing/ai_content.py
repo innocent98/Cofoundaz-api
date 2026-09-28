@@ -6,7 +6,7 @@ from app.core.errors import NotFound
 from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
 from app.db.models.marketing import AudienceSegment, MarketingAiGeneration
 from app.platform.jobs import job_dispatcher
-from app.schemas.marketing import CopyGenerateRequest, GenerationResponse
+from app.schemas.marketing import ChannelPlanRequest, CopyGenerateRequest, GenerationResponse
 from app.services.marketing.service import _validation
 
 
@@ -58,6 +58,48 @@ def create_plan_week_generation(
     job_dispatcher.enqueue(
         db,
         "ai.marketing.plan_week",
+        {"generation_id": str(g.id), "startup_id": str(startup_id)},
+        startup_id,
+    )
+    return g
+
+
+def create_channel_plan_generation(
+    db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID, data: ChannelPlanRequest
+) -> MarketingAiGeneration:
+    g = MarketingAiGeneration(
+        startup_id=startup_id,
+        created_by=created_by,
+        kind=MarketingGenerationKind.channel_plan,
+        inputs=data.model_dump(mode="json"),
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(g)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "ai.marketing.channel_plan",
+        {"generation_id": str(g.id), "startup_id": str(startup_id)},
+        startup_id,
+    )
+    return g
+
+
+def create_channel_fit_generation(
+    db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID
+) -> MarketingAiGeneration:
+    g = MarketingAiGeneration(
+        startup_id=startup_id,
+        created_by=created_by,
+        kind=MarketingGenerationKind.channel_fit,
+        inputs={},
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(g)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "ai.marketing.channel_fit",
         {"generation_id": str(g.id), "startup_id": str(startup_id)},
         startup_id,
     )

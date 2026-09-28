@@ -1,11 +1,16 @@
 import pytest
 
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
+from app.db.models.enums import CampaignObjective, MarketingGenerationKind, MarketingGenerationStatus
 from app.db.models.job import Job
-from app.schemas.marketing import CopyGenerateRequest, SegmentCreate
+from app.schemas.marketing import ChannelPlanRequest, CopyGenerateRequest, SegmentCreate
 from app.services.marketing import ai_content as svc
 from app.services.marketing import segments as seg_svc
+from app.services.marketing.ai_content import (
+    create_channel_fit_generation,
+    create_channel_plan_generation,
+    get_generation,
+)
 from tests.factories import create_startup, create_user
 
 
@@ -93,3 +98,30 @@ def test_list_copy_generations_only_copy(db):
     rows = svc.list_copy_generations(db, startup_id=s.id)
     assert len(rows) == 1
     assert rows[0].kind == MarketingGenerationKind.copy
+
+
+def test_create_channel_plan_generation_enqueues_and_scopes(db):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    g = create_channel_plan_generation(
+        db, startup_id=s.id, created_by=u.id,
+        data=ChannelPlanRequest(objective=CampaignObjective.leads, budget=50000),
+    )
+    db.flush()
+    assert g.kind == MarketingGenerationKind.channel_plan
+    assert g.status == MarketingGenerationStatus.generating
+    assert g.inputs["objective"] == "leads"
+    assert g.inputs["budget"] == 50000
+    got = get_generation(
+        db, startup_id=s.id, generation_id=g.id, kind=MarketingGenerationKind.channel_plan
+    )
+    assert got.id == g.id
+
+
+def test_create_channel_fit_generation(db):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    g = create_channel_fit_generation(db, startup_id=s.id, created_by=u.id)
+    db.flush()
+    assert g.kind == MarketingGenerationKind.channel_fit
+    assert g.inputs == {}
