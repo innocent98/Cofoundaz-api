@@ -116,12 +116,7 @@ def normalize_channel_mix(raw: dict) -> dict[str, int]:
     cleaned = {}
     for k in valid:
         v = raw.get(k)
-        if (
-            isinstance(v, bool)
-            or not isinstance(v, (int, float))
-            or not math.isfinite(v)
-            or v < 0
-        ):
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
             continue
         cleaned[k] = float(v)
     total = sum(cleaned.values())

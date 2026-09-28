@@ -1,7 +1,11 @@
 import pytest
 
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import CampaignObjective, MarketingGenerationKind, MarketingGenerationStatus
+from app.db.models.enums import (
+    CampaignObjective,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
+)
 from app.db.models.job import Job
 from app.schemas.marketing import ChannelPlanRequest, CopyGenerateRequest, SegmentCreate
 from app.services.marketing import ai_content as svc
@@ -104,7 +108,9 @@ def test_create_channel_plan_generation_enqueues_and_scopes(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
     g = create_channel_plan_generation(
-        db, startup_id=s.id, created_by=u.id,
+        db,
+        startup_id=s.id,
+        created_by=u.id,
         data=ChannelPlanRequest(objective=CampaignObjective.leads, budget=50000),
     )
     db.flush()

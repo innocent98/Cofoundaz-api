@@ -135,7 +135,7 @@ the job (`LLM_PROVIDER=stub`):
 | Field | Meaning |
 |---|---|
 | `inputs` | The exact request body from §1, round-tripped as stored JSON (`budget` appears explicitly as `null` when omitted, not absent) |
-| `output.channel_mix` | All 8 `ChannelKey` values, each an **integer percent, always summing to exactly 100** — the worker normalizes server-side (see the boxed note below). Never render this as "may not sum to 100"; it always does. |
+| `output.channel_mix` | `ChannelKey` → **integer percent**, **always summing to exactly 100** — the worker normalizes server-side (see the boxed note below). Never render this as "may not sum to 100"; it always does. A schema-compliant provider returns all 8 keys (the response schema requires them); in the rare event a provider omits one, the server still normalizes whatever valid keys it returned to sum to 100, so treat a missing key as 0% rather than assuming all 8 are always present. |
 | `output.rationale` | A short string a founder can read next to the mix |
 | `error` | `null` while `generating`/`ready`; a string (`"over_budget"` today) when `status == "failed"` — see §7 |
 

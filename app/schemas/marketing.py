@@ -188,7 +188,11 @@ class CampaignResponse(BaseModel):
 
 class ChannelPlanRequest(BaseModel):
     objective: CampaignObjective
-    budget: int | None = Field(default=None, ge=0)
+    budget: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional monthly budget in cents (matches campaign budget).",
+    )
 
 
 class CopyGenerateRequest(BaseModel):

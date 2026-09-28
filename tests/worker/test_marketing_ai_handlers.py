@@ -27,9 +27,11 @@ def _gen(db, startup_id, kind, created_by, inputs=None):
         startup_id=startup_id,
         created_by=created_by,
         kind=kind,
-        inputs=inputs
-        if inputs is not None
-        else {"asset_type": "ad", "tone": "bold", "key_message": "Ship it"},
+        inputs=(
+            inputs
+            if inputs is not None
+            else {"asset_type": "ad", "tone": "bold", "key_message": "Ship it"}
+        ),
         status=MarketingGenerationStatus.generating,
     )
     db.add(g)
