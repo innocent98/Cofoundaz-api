@@ -17,6 +17,7 @@ from app.schemas.marketing import (
     CalendarEntryUpdate,
     CampaignCreate,
     CampaignUpdate,
+    ChannelPlanRequest,
     ChannelResponse,
     ChannelUpdate,
     CopyGenerateRequest,
@@ -367,5 +368,70 @@ def get_plan_week(
         startup_id=membership.startup_id,
         generation_id=generation_id,
         kind=MarketingGenerationKind.plan_week,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post(
+    "/channel-plan/recommend", status_code=status.HTTP_202_ACCEPTED, response_model=dict[str, Any]
+)
+def recommend_channel_plan(
+    payload: ChannelPlanRequest,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_channel_plan_generation(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/channel-plan/recommendations/{generation_id}", response_model=dict[str, Any])
+def get_channel_plan(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.channel_plan,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post(
+    "/channels/fit-notes/generate",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dict[str, Any],
+)
+def generate_fit_notes(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_channel_fit_generation(
+        db, startup_id=membership.startup_id, created_by=user.id
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/channels/fit-notes/{generation_id}", response_model=dict[str, Any])
+def get_fit_notes(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.channel_fit,
     )
     return success_response(ai_content_svc.serialize_generation(g).model_dump())

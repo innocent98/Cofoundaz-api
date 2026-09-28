@@ -146,6 +146,14 @@ def test_channels_seed_and_update(client, db):
     assert r2.json()["data"]["notes"] == "go"
 
 
+def test_channels_list_includes_fit_note_fields(client, db):
+    _u, _s, h = _member(db)  # reuse this file's member helper
+    resp = client.get(f"{BASE}/channels", headers=h)
+    assert resp.status_code == 200, resp.text
+    card = resp.json()["data"][0]
+    assert "ai_fit_note" in card and "fit_note_generated_at" in card
+
+
 def test_overview_shape(client, db):
     _u, _s, h = _member(db)
     r = client.get(BASE, headers=h)
