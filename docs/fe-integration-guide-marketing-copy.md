@@ -1,14 +1,17 @@
 # FE Integration Guide — Marketing Hub: AI Content Generation (Module 10, Slice 3a)
 
 > **Provenance.** `e2e/test_marketing.py::test_marketing_ai_generation_journey` has been run
-> (`bash scripts/e2e_run.sh`, 55/55 e2e passed) and every response body in §1–§5 below is pasted
+> (`bash scripts/e2e_run.sh`, 56/56 e2e passed) and every response body in §1–§5 below is pasted
 > **verbatim** from the captures it wrote to `e2e/_captures/marketing/`
 > (`copy_generate_accepted.json`, `copy_generation_ready.json`, `copy_generations_history.json`,
 > `plan_week_accepted.json`, `plan_week_ready.json`). Nothing here is hand-written or "tidied"
 > from the schema or from memory. The captures were taken with `LLM_PROVIDER=stub` (this repo's
-> e2e default — no real LLM call, no network) — every place that matters is flagged inline below,
-> most importantly §4's empty `entries` array, which is **real stub behavior**, not a mistake (see
-> the boxed note in §4).
+> e2e default — no real LLM call, no network).
+>
+> **Update (Slice 3b, 2026-09-28):** `plan_week_ready.json` was refreshed after
+> `plan_week_schema()`'s `channel` field gained an `enum` constraint (the Slice 3a review's deferred
+> follow-up) — `output.entries` is now **non-empty** under the stub provider. §5 below reflects the
+> refreshed capture; the previous "empty under stub" caveat no longer applies (see §5).
 >
 > Not e2e-captured: the `failed`/`over_budget` status (forcing a real over-budget failure would
 > require seeding the `llm_usage_daily` ledger directly, breaking the shared e2e process's budget
@@ -255,17 +258,24 @@ job (`LLM_PROVIDER=stub`):
 ```json
 {
   "data": {
-    "id": "1dd578f4-2e1c-4183-a416-0b887dbe4d97",
-    "startup_id": "d46495a7-e6c4-4e6a-8e2c-e26e7946b093",
+    "id": "21b103f6-df10-45bb-a903-c130e1626332",
+    "startup_id": "dd564e50-966a-4b32-98b4-e8601fb5ffc6",
     "kind": "plan_week",
     "status": "ready",
     "inputs": {},
     "output": {
-      "entries": []
+      "entries": [
+        {
+          "body": "[stub-llm] body",
+          "title": "[stub-llm] title",
+          "channel": "organic_social",
+          "day_offset": 0
+        }
+      ]
     },
     "error": null,
-    "created_at": "2026-09-24T21:06:34.206235Z",
-    "updated_at": "2026-09-24T21:06:34.215145Z"
+    "created_at": "2026-09-28T18:10:33.279774Z",
+    "updated_at": "2026-09-28T18:10:33.290209Z"
   },
   "meta": null
 }
@@ -273,10 +283,9 @@ job (`LLM_PROVIDER=stub`):
 
 `inputs` is always `{}` for `plan_week` (no request fields to echo — the request has no body).
 
-### ⚠️ The one thing the FE must know: `output.entries` is `[]` here, and that is expected under the stub provider — not a bug
+### `output.entries` is now non-empty under the stub provider (Slice 3b fix)
 
-The **intended, real-provider shape** of each entry, per
-`app/services/marketing/ai_prompts.py::plan_week_schema()`, is:
+The **shape** of each entry, per `app/services/marketing/ai_prompts.py::plan_week_schema()`, is:
 
 ```json
 { "title": "string", "channel": "string (a ChannelKey value)", "body": "string", "day_offset": 0 }
@@ -285,23 +294,29 @@ The **intended, real-provider shape** of each entry, per
 — up to **7** entries, `day_offset` is `0`–`6` (`0` = today, matching the founder's local "start of
 week" the FE chooses to render from).
 
-**Under the stub LLM provider (this capture, and every staging/e2e run using
-`LLM_PROVIDER=stub`), `output.entries` legitimately comes back empty (`[]`).** This is real,
-reproducible stub behavior, not a copy/paste mistake in this guide or a transient flake. Root
-cause: `handle_marketing_plan_week`
-(`app/worker/handlers/marketing_ai.py:90-95`) filters the model's proposed entries down to only
-those whose `"channel"` value is a member of the `ChannelKey` enum. The stub LLM
-(`StubLLMClient`) has no `enum` constraint to honor on the `channel` field (the JSON-schema
-declares it as a plain `"type": "string"`), so it falls through to its generic placeholder value,
-literally the string `"[stub-llm] channel"` — which is **not** a valid `ChannelKey` — and every
-entry gets dropped by the filter. Under a real LLM provider, `channel` is a real enum string
-(e.g. `"email"`) and entries survive the filter, so `output.entries` will actually contain up to 7
-populated objects there.
+**As of Slice 3b, `output.entries` is populated under the stub LLM provider too** (this capture:
+one entry, `channel: "organic_social"`, `day_offset: 0`). Root cause of the fix:
+`handle_marketing_plan_week` (`app/worker/handlers/marketing_ai.py`) filters the model's proposed
+entries down to only those whose `"channel"` value is a member of the `ChannelKey` enum — that
+filter is unchanged, but `plan_week_schema()`'s `channel` property now declares `"enum": [<the 8
+ChannelKey values>]` (it previously had no `enum` constraint, just `"type": "string"`).
+`StubLLMClient._stub_value` already returns `node["enum"][0]` whenever a field declares an `enum`,
+so with the constraint present the stub emits a real `ChannelKey` value (`organic_social`, the
+first member) instead of its generic placeholder string — and the entry now survives the filter.
+No `StubLLMClient` change was needed for this fix, only the schema constraint.
 
-**FE handling:** render an empty-`entries` "ready" plan-week generation as a legitimate (if
-unhelpful) empty result under stub/staging — not as an error, and not as still-generating. Don't
-assume `entries.length > 0` whenever `status == "ready"`; check the array's actual length before
-rendering an "Add all to calendar" action (§7) — there is nothing to add when it's empty.
+**Under the stub provider specifically, every entry's `channel` will be `"organic_social"`**
+(the stub always picks the enum's first value) and `title`/`body` are always the placeholder
+strings `"[stub-llm] title"` / `"[stub-llm] body"` — do not treat these specific values as
+production behavior. **Under a real LLM provider**, `channel` varies per entry (the model spreads
+across channels per the prompt), and `title`/`body` are real, distinct proposed copy per entry —
+this guide's schema/count guarantees (≤7 entries, valid `ChannelKey` per entry, `day_offset` 0–6)
+hold either way.
+
+**FE handling:** render each `entries[]` item as a proposed calendar entry the founder can accept
+into "Add all to calendar" (§7) or discard individually. Still don't hardcode "always 7 entries" —
+render however many `entries` actually contains (as few as 0 in principle, if every proposed entry
+somehow failed the `ChannelKey` filter; 1 in this stub capture; up to 7 under a real provider).
 
 ### Kind-mismatch is a 404, not a 400/422
 
@@ -400,8 +415,8 @@ failures use the `{"error": {...}}` envelope.
 | `GET /copy/generations` history list includes the generation | ✅ | `copy_generations_history.json` |
 | `POST /calendar/plan-week` → 202 `{id, status: "generating"}`, no request body | ✅ | `plan_week_accepted.json` |
 | `GET /calendar/plan-week/{id}` → ready | ✅ | `plan_week_ready.json` |
-| `output.entries` real shape `{title, channel, body, day_offset}`, ≤7 | ⚠️ shape verified from schema, not live (stub filters entries — see §5) | `app/services/marketing/ai_prompts.py::plan_week_schema`, `app/worker/handlers/marketing_ai.py:90-95` |
-| `output.entries` is `[]` under the stub provider specifically because the stub's placeholder `channel` value fails the `ChannelKey` filter | ✅ live (the empty array itself), root cause traced statically | `plan_week_ready.json`; `app/worker/handlers/marketing_ai.py:90-95`, `app/platform/llm.py::StubLLMClient._stub_value` |
+| `output.entries` real shape `{title, channel, body, day_offset}`, ≤7 | ✅ live (stub, 1-entry capture) | `plan_week_ready.json`, `app/services/marketing/ai_prompts.py::plan_week_schema` |
+| `output.entries` is now non-empty under the stub provider, because `plan_week_schema()`'s `channel` field gained an `enum` constraint (Slice 3b fix) that `StubLLMClient._stub_value` honors | ✅ live (the populated capture), root cause traced statically | `plan_week_ready.json`; `app/services/marketing/ai_prompts.py::plan_week_schema`, `app/platform/llm.py::StubLLMClient._stub_value` |
 | `audience_segment_id` 422 (foreign/unknown segment) | ⚠️ unit only | `app/services/marketing/ai_content.py::create_copy_generation` |
 | `status: "failed"`, `error: "over_budget"`, `output: {}` on budget exhaustion | ⚠️ unit only — not reachable from a normal live journey without seeding the ledger (see §6) | `tests/worker/test_marketing_ai_handlers.py::test_copy_over_budget_fails` |
 | Kind-mismatch (`plan_week` id via copy route, and vice versa) → 404 | ⚠️ unit/integration only, not separately e2e-captured | `tests/api/test_marketing_ai.py::test_kind_mismatch_poll_404` |
