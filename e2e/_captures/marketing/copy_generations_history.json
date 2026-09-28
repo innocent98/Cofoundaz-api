@@ -2,8 +2,8 @@
   "data": {
     "generations": [
       {
-        "id": "72f64ccc-046a-4da3-8c23-099feac1f0a3",
-        "startup_id": "d46495a7-e6c4-4e6a-8e2c-e26e7946b093",
+        "id": "6d3e94b7-e94f-4bb7-ad98-1ea3b87b7752",
+        "startup_id": "dd564e50-966a-4b32-98b4-e8601fb5ffc6",
         "kind": "copy",
         "status": "ready",
         "inputs": {
@@ -20,8 +20,8 @@
           ]
         },
         "error": null,
-        "created_at": "2026-09-24T21:06:34.147530Z",
-        "updated_at": "2026-09-24T21:06:34.183341Z"
+        "created_at": "2026-09-28T18:10:33.184591Z",
+        "updated_at": "2026-09-28T18:10:33.250335Z"
       }
     ]
   },

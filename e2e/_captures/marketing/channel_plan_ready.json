@@ -1,0 +1,29 @@
+{
+  "data": {
+    "id": "0c60c699-bf25-4d85-89b6-7f7a94ed146e",
+    "startup_id": "fba8ff9f-6b69-46aa-941b-74342b68ef6a",
+    "kind": "channel_plan",
+    "status": "ready",
+    "inputs": {
+      "budget": null,
+      "objective": "leads"
+    },
+    "output": {
+      "rationale": "[stub-llm] rationale",
+      "channel_mix": {
+        "email": 13,
+        "events": 12,
+        "search": 13,
+        "referral": 12,
+        "content_seo": 12,
+        "paid_social": 13,
+        "partnerships": 12,
+        "organic_social": 13
+      }
+    },
+    "error": null,
+    "created_at": "2026-09-28T18:10:33.923923Z",
+    "updated_at": "2026-09-28T18:10:33.948056Z"
+  },
+  "meta": null
+}
