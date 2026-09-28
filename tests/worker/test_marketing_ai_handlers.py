@@ -126,6 +126,17 @@ def test_normalize_rejects_bool_str_and_negative_values():
     assert out["referral"] == 100
 
 
+def test_normalize_rejects_nan_and_inf():
+    # NaN/Inf must be dropped, not crash; with no other valid values -> even split summing to 100.
+    out = normalize_channel_mix({"search": float("nan"), "email": float("inf")})
+    assert sum(out.values()) == 100
+    assert len(out) == 8
+    # a finite value alongside a non-finite one: only the finite one survives, scaled to 100.
+    out2 = normalize_channel_mix({"search": float("nan"), "email": 40})
+    assert out2["email"] == 100
+    assert sum(out2.values()) == 100
+
+
 def test_normalize_largest_remainder_sums_exactly_100():
     out = normalize_channel_mix(
         {
@@ -211,6 +222,30 @@ def test_channel_fit_keeps_prior_note_when_key_omitted(db, monkeypatch):
     handle_marketing_channel_fit(db, _job(MarketingGenerationKind.channel_fit, g.id, s.id))
     row = db.query(MarketingChannel).filter_by(startup_id=s.id, key=ChannelKey.search).one()
     assert row.ai_fit_note == "prior note"  # omitted key keeps its prior note
+
+
+def test_channel_fit_drops_invalid_key_from_notes(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    g = _gen(db, s.id, MarketingGenerationKind.channel_fit, u.id, inputs={})
+    payload = {
+        "notes": {
+            **{k.value: f"note for {k.value}" for k in ChannelKey},
+            "not_a_channel": "bogus note",
+        }
+    }
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _FakeLLM(payload))
+    handle_marketing_channel_fit(db, _job(MarketingGenerationKind.channel_fit, g.id, s.id))
+    row = db.query(MarketingAiGeneration).filter_by(id=g.id).one()
+    assert row.status == MarketingGenerationStatus.ready
+    # invalid key dropped from output, valid keys all present
+    assert "not_a_channel" not in row.output["notes"]
+    assert set(row.output["notes"]) == {c.value for c in ChannelKey}
+    # invalid key never reached any MarketingChannel row
+    rows = db.query(MarketingChannel).filter_by(startup_id=s.id).all()
+    assert {c.key.value for c in rows} == {c.value for c in ChannelKey}
+    assert all(c.ai_fit_note != "bogus note" for c in rows)
 
 
 def test_channel_fit_over_budget_fails(db, monkeypatch):

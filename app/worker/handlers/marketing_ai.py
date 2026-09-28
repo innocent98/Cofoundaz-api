@@ -1,3 +1,4 @@
+import math
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
@@ -115,7 +116,12 @@ def normalize_channel_mix(raw: dict) -> dict[str, int]:
     cleaned = {}
     for k in valid:
         v = raw.get(k)
-        if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0:
+        if (
+            isinstance(v, bool)
+            or not isinstance(v, (int, float))
+            or not math.isfinite(v)
+            or v < 0
+        ):
             continue
         cleaned[k] = float(v)
     total = sum(cleaned.values())
@@ -175,7 +181,9 @@ def handle_marketing_channel_fit(db: Session, job: Job) -> None:
     startup = db.get(Startup, g.startup_id)
     if startup is None:
         return
-    channels = list_channels(db, startup_id=g.startup_id)  # lazy-seeds all 8
+    # Lazy-seeds the 8 channels (idempotent; founder's own rows). Runs before the budget
+    # check, so an over-budget run may seed rows but writes no notes.
+    channels = list_channels(db, startup_id=g.startup_id)
     statuses = {c.key.value: c.status.value for c in channels}
     result = metered_complete_json(
         db,
