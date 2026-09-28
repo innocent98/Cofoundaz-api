@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "1dd578f4-2e1c-4183-a416-0b887dbe4d97",
+    "startup_id": "d46495a7-e6c4-4e6a-8e2c-e26e7946b093",
+    "kind": "plan_week",
+    "status": "ready",
+    "inputs": {},
+    "output": {
+      "entries": []
+    },
+    "error": null,
+    "created_at": "2026-09-24T21:06:34.206235Z",
+    "updated_at": "2026-09-24T21:06:34.215145Z"
+  },
+  "meta": null
+}

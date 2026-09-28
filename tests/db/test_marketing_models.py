@@ -83,3 +83,25 @@ def test_campaign_segment_unique(db):
     db.add(CampaignSegment(campaign_id=camp.id, segment_id=seg.id))
     with pytest.raises(IntegrityError):
         db.flush()
+
+
+def test_marketing_ai_generation_persists(db):
+    from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
+    from app.db.models.marketing import MarketingAiGeneration
+    from tests.factories import create_startup, create_user
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    g = MarketingAiGeneration(
+        startup_id=s.id,
+        created_by=u.id,
+        kind=MarketingGenerationKind.copy,
+        inputs={"asset_type": "ad", "tone": "bold"},
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(g)
+    db.flush()
+    got = db.query(MarketingAiGeneration).filter_by(startup_id=s.id).one()
+    assert got.kind == MarketingGenerationKind.copy
+    assert got.status == MarketingGenerationStatus.generating
+    assert got.output == {} and got.error is None

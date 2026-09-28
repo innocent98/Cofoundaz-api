@@ -10,6 +10,13 @@ lifecycle (draft -> active -> paused -> active -> completed, asserting
 `launched_at`/`completed_at`), then confirms the segment's used-by view shows
 the campaign.
 
+`test_marketing_ai_generation_journey`: a founder generates ad copy
+(`POST /marketing/copy/generate` -> 202 `generating`), drains the in-process
+worker (LLM_PROVIDER=stub, set by scripts/e2e_run.sh) so `ai.marketing.copy`
+(app/worker/handlers/marketing_ai.py) runs and flips the row to `ready`, polls
+the generation, lists copy-generation history, then does the same round trip
+for `POST /marketing/calendar/plan-week` -> `ai.marketing.plan_week`.
+
 Every response body along the way is captured to `e2e/_captures/marketing/*.json`
 -- those files are the verbatim source for `docs/fe-integration-guide-marketing.md`.
 They must be REAL bodies from this live run, complete and untrimmed.
@@ -218,3 +225,86 @@ def test_marketing_campaigns_journey(base_url, make_verified_user, capture):
             row["id"] == campaign_id for row in segment_used_by.json()["data"]["campaigns"]
         )
         capture("marketing", "segment_used_by", segment_used_by)
+
+
+def _drain() -> None:
+    """Drains the in-process job queue (same pattern as e2e/test_dashboard_ai_briefing.py)."""
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import (
+        marketing_ai as _marketing_ai,  # noqa: F401  (registers ai.marketing.copy / .plan_week)
+    )
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):  # generous cap -- a real stall still fails loudly
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
+
+
+def test_marketing_ai_generation_journey(base_url, make_verified_user, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder -- marketing AI generation needs nothing else.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz AI")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. Kick off an ad-copy generation -- 202 Accepted, row starts `generating`.
+        gen = c.post(
+            "/api/v1/marketing/copy/generate",
+            headers=wh,
+            json={
+                "asset_type": "ad",
+                "channel": "email",
+                "tone": "bold",
+                "key_message": "Launch week is here",
+            },
+        )
+        assert gen.status_code == 202, gen.text
+        gen_body = gen.json()["data"]
+        assert gen_body["status"] == "generating"
+        capture("marketing", "copy_generate_accepted", gen)
+        gid = gen_body["id"]
+
+        # 2. Drain the worker in-process (LLM_PROVIDER=stub) -> handle_marketing_copy runs,
+        # fills `output` from the stub LLM client, flips status to ready.
+        _drain()
+
+        # 3. Poll the generation -- now ready, `output` carries [stub-llm] values.
+        ready = c.get(f"/api/v1/marketing/copy/generations/{gid}", headers=wh)
+        assert ready.status_code == 200, ready.text
+        ready_body = ready.json()["data"]
+        assert ready_body["status"] in ("ready", "failed")
+        capture("marketing", "copy_generation_ready", ready)
+
+        # 4. History lists the generation just completed.
+        history = c.get("/api/v1/marketing/copy/generations", headers=wh)
+        assert history.status_code == 200, history.text
+        assert any(row["id"] == gid for row in history.json()["data"]["generations"])
+        capture("marketing", "copy_generations_history", history)
+
+        # 5. Same round trip for the weekly calendar plan -- 202 Accepted, no request body.
+        plan = c.post("/api/v1/marketing/calendar/plan-week", headers=wh, json={})
+        assert plan.status_code == 202, plan.text
+        plan_body = plan.json()["data"]
+        assert plan_body["status"] == "generating"
+        capture("marketing", "plan_week_accepted", plan)
+        pid = plan_body["id"]
+
+        # 6. Drain -> handle_marketing_plan_week runs and flips status to ready.
+        _drain()
+
+        # 7. Poll the plan-week generation -- now ready.
+        plan_ready = c.get(f"/api/v1/marketing/calendar/plan-week/{pid}", headers=wh)
+        assert plan_ready.status_code == 200, plan_ready.text
+        assert plan_ready.json()["data"]["status"] in ("ready", "failed")
+        capture("marketing", "plan_week_ready", plan_ready)

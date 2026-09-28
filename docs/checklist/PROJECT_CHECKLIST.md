@@ -16,7 +16,27 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-24 · **Module 10 (Marketing Hub) Slice 2 of 5 shipped, on branch
+_Last reconciled: 2026-09-24 · **Module 10 (Marketing Hub) Slice 3a of 5 shipped, on branch
+`feat/module-10-marketing-slice3a` (off Slice 2; not yet merged, no PR opened yet):** the first
+half of the AI Content Assistant — AI **copy generation** (asset-type + tone-directed ad/social/
+email copy, up to 3 variants) and AI **plan-week** (a proposed 7-day content calendar, up to 7
+entries) — `marketing_ai_generations` table (migration `0035_marketing_ai_generations`,
+kind-discriminated `copy`/`plan_week`), 5 new `/marketing` endpoints behind the same
+`require_role(founder, team_member)` dependency Slices 1–2 built, both flows on the same
+`POST -> 202 -> poll` async pattern every other AI feature in this API uses, metered via the
+existing `llm_budget` guard (`error: "over_budget"` on exhaustion, same shape as every other AI
+consumer). Copy truncates the model's variants to 3; plan-week drops any entry whose `channel`
+isn't a valid `ChannelKey` — under the stub LLM provider this legitimately empties `plan_week`'s
+`output.entries` (documented explicitly in the FE guide, not a bug). Slice 3b (AI channel-plan
+recommender for `channel_mix`, fills `ai_content_ideas`), Slice 4 (SEO Tools), and Slice 5
+(Performance Analytics) remain deferred to later slices. Unit **1490 passed**; live e2e **55/55
+passed** (`e2e/test_marketing.py::test_marketing_ai_generation_journey`, 5 new captures alongside
+Slices 1–2's 14). SOP: `docs/sop/2026-09-24-marketing-slice3a.md`. FE guide:
+`docs/fe-integration-guide-marketing-copy.md` (new, cross-references the Slice 1/2 guides and
+`docs/fe-integration-guide-ai-status.md`). **Module 10 remains open (Slice 3a of 5 done): 12
+modules fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-24 · **Module 10 (Marketing Hub) Slice 2 of 5 shipped, on branch
 `feat/module-10-marketing-slice2` (off Slice 1; not yet merged, no PR opened yet):** Campaigns +
 Audience Segments — `campaigns`/`audience_segments`/`campaign_segments` tables (migration
 `0034_campaigns_segments`), 11 new `/marketing` endpoints (6 segment + 5 campaign routes) behind
@@ -266,12 +286,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 (Content Calendar + Channels + Overview CRUD spine, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, `feat/module-10-marketing-slice2`) of 5 shipped 2026-09-24 (neither yet merged); Slices 3–5 (AI Content Assistant, SEO Tools, Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 (Content Calendar + Channels + Overview CRUD spine, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, `feat/module-10-marketing-slice3a`) of 5 shipped 2026-09-24 (none yet merged); Slice 3b (AI channel-plan recommender), Slice 4 (SEO Tools), and Slice 5 (Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 (Content Calendar + Channels + Overview CRUD spine, migration `0033_marketing_calendar_channels`, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, migration `0034_campaigns_segments`, `feat/module-10-marketing-slice2`) of 5 shipped 2026-09-24 (neither yet merged, no PR opened yet); Slices 3–5 (AI Content Assistant, SEO Tools, Performance Analytics) planned, not started. SOP `docs/sop/2026-09-24-marketing-slice1.md` + `docs/sop/2026-09-24-marketing-slice2.md`. FE guide `docs/fe-integration-guide-marketing-calendar.md` + `docs/fe-integration-guide-marketing-campaigns.md`. See the Module 10 section below. |
+| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 (Content Calendar + Channels + Overview CRUD spine, migration `0033_marketing_calendar_channels`, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, migration `0034_campaigns_segments`, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, migration `0035_marketing_ai_generations`, `feat/module-10-marketing-slice3a`) of 5 shipped 2026-09-24 (none yet merged, no PR opened yet); Slice 3b (AI channel-plan recommender), Slice 4 (SEO Tools), and Slice 5 (Performance Analytics) planned, not started. SOP `docs/sop/2026-09-24-marketing-slice1.md` + `docs/sop/2026-09-24-marketing-slice2.md` + `docs/sop/2026-09-24-marketing-slice3a.md`. FE guide `docs/fe-integration-guide-marketing-calendar.md` + `docs/fe-integration-guide-marketing-campaigns.md` + `docs/fe-integration-guide-marketing-copy.md`. See the Module 10 section below. |
 | ⬜ Not started | 13 modules | Validation Hub (09) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -2078,15 +2098,18 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
-## 🟡 Module 10 — Marketing Hub — *Slices 1–2 of 5 shipped (neither yet merged, no PR opened)*
+## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a of 5 shipped (none yet merged, no PR opened)*
 
 Content Calendar + Channels + Overview CRUD spine (Slice 1), then Campaigns + Audience Segments
-(Slice 2). Follows the same slice discipline as Modules 03/08/18/20: CRUD spine first, AI layer
+(Slice 2), then the first half of the AI Content Assistant — AI copy generation + AI plan-week
+(Slice 3a). Follows the same slice discipline as Modules 03/08/18/20: CRUD spine first, AI layer
 seamed-and-deferred, analytics last. Migrations `0033_marketing_calendar_channels` →
-`0034_campaigns_segments`. SOPs: `docs/sop/2026-09-24-marketing-slice1.md`,
-`docs/sop/2026-09-24-marketing-slice2.md`. FE guides:
+`0034_campaigns_segments` → `0035_marketing_ai_generations`. SOPs:
+`docs/sop/2026-09-24-marketing-slice1.md`, `docs/sop/2026-09-24-marketing-slice2.md`,
+`docs/sop/2026-09-24-marketing-slice3a.md`. FE guides:
 `docs/fe-integration-guide-marketing-calendar.md`,
-`docs/fe-integration-guide-marketing-campaigns.md` (cross-referenced). Design specs:
+`docs/fe-integration-guide-marketing-campaigns.md`,
+`docs/fe-integration-guide-marketing-copy.md` (all cross-referenced). Design specs:
 `docs/superpowers/specs/2026-09-24-module-10-marketing-slice1-design.md`,
 `docs/superpowers/specs/2026-09-24-module-10-marketing-slice2-design.md`.
 
@@ -2153,10 +2176,39 @@ seamed-and-deferred, analytics last. Migrations `0033_marketing_calendar_channel
         `e2e/test_marketing.py::test_marketing_campaigns_journey` (7 live captures under
         `e2e/_captures/marketing/`, alongside Slice 1's 7)
   - [x] `metrics` stays an explicit `{}` on every campaign — Slice 5 is what fills it
-- [ ] **Slice 3 — AI Content Assistant** (`Write with AI` / `Plan my week` / copy generation,
-      **plus an AI channel-plan recommender for `channel_mix`**) — *planned, not started.* Fills
-      `ai_content_ideas`; Slice 1's calendar CRUD is exactly what AI-generated entries will be
-      created through — nothing to rework.
+- [x] **Slice 3a — AI Content Assistant: copy generation + plan-week** — *shipped on
+      `feat/module-10-marketing-slice3a` (commits `d7096e2`→`1ff400f`), unit **1490 passed**,
+      e2e **55/55 passed***
+  - [x] Enums (`MarketingGenerationKind`, `MarketingGenerationStatus`, 5-value `AssetType`,
+        4-value `CopyTone`) + unified `MarketingAiGeneration` model (kind-discriminated —
+        `copy`/`plan_week` share one table), migration `0035_marketing_ai_generations`
+  - [x] Prompt/schema builders (`app/services/marketing/ai_prompts.py`): `copy_schema` +
+        `build_copy_messages`, `plan_week_schema` + `build_plan_week_messages`
+  - [x] AI generation service: `create_copy_generation` (validates `audience_segment_id`
+        per-workspace), `create_plan_week_generation`, kind-scoped `get_generation` (a
+        `plan_week` id via the copy route, or vice versa, 404s), `list_copy_generations`
+        (copy-kind history only, no plan-week history endpoint)
+  - [x] `ai.marketing.copy` (fills up to 3 variants, truncated) + `ai.marketing.plan_week`
+        (fills up to 7 entries, dropping any with a `channel` outside `ChannelKey`) worker
+        handlers; shared over-budget failure path (`status:"failed"`, `error:"over_budget"`)
+        deduped across both in `fdde2b9`
+  - [x] `POST /marketing/copy/generate` + `GET /marketing/copy/generations` +
+        `GET /marketing/copy/generations/{id}` + `POST /marketing/calendar/plan-week` +
+        `GET /marketing/calendar/plan-week/{id}` (5 new routes) behind the same
+        `require_role(founder, team_member)` dependency; 403 asserted on both `{id}` GET routes
+        too, not just the mutating ones
+  - [x] Tests: `tests/services/marketing/test_ai_prompts.py` (5) +
+        `tests/services/marketing/test_ai_content_service.py` (7) +
+        `tests/worker/test_marketing_ai_handlers.py` (4) + `tests/api/test_marketing_ai.py` (5) +
+        `e2e/test_marketing.py::test_marketing_ai_generation_journey` (5 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] FE compositions documented (no new endpoints): Save-to-calendar/"Add all" =
+        `POST /marketing/calendar-entries` (S1) per kept plan-week entry; Write-with-AI =
+        `copy/generate` then `PATCH /marketing/calendar-entries/{id}` (S1)
+  - [x] `Overview.ai_content_ideas` stays an explicit `null` after 3a — unchanged by this slice;
+        Slice 3b is what fills it
+- [ ] **Slice 3b — AI channel-plan recommender** (fit notes + `channel_mix` recommendation for
+      campaigns) — *planned, not started.* Fills `ai_content_ideas` on the Overview.
 - [ ] **Slice 4 — SEO Tools** — *planned, not started.*
 - [ ] **Slice 5 — Performance Analytics** (+ Module 22 export) — *planned, not started.* Fills
       `top_channel_by_conversions` and campaign `metrics` (currently always `{}`).
@@ -2165,6 +2217,12 @@ seamed-and-deferred, analytics last. Migrations `0033_marketing_calendar_channel
 below): auto-publish at `scheduled_at` (manual `PATCH` only today); multi-channel entries (single
 `ChannelKey` per entry today); media upload integration with Module 18 (`media_ref` is an
 untouched opaque string slot); granular per-module Marketing grant.
+
+**Deferred within Slice 3a itself** (tracked in the Deferred follow-ups section below): no inline
+"Refine" on a generation's output; no server-side link between a generation and the calendar
+entry it informs (FE compositions track that association client-side); no history-list endpoint
+for `plan_week` (unlike copy's); stub-provider `plan_week` entries are always empty (real-provider
+behavior unaffected — see the SOP).
 
 **Deferred within the Slice 2 CRUD spine itself** (tracked in the Deferred follow-ups section
 below): segment rule execution against real data (`definition` is an opaque, unevaluated JSON
@@ -2197,16 +2255,19 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
-- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slices 1–2 of 5 shipped 2026-09-24* —
+- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slices 1–2 + 3a of 5 shipped 2026-09-24* —
       Slice 1 on `feat/module-10-marketing-slice1` (Content Calendar + Channels + Overview CRUD
       spine, migration `0033_marketing_calendar_channels`) + Slice 2 on
       `feat/module-10-marketing-slice2` (Campaigns + Audience Segments, migration
-      `0034_campaigns_segments`); neither yet merged, no PR opened yet — see its own section
-      above. Slices 3–5 (AI Content Assistant, SEO Tools, Performance Analytics) planned, not
-      started. SOPs `docs/sop/2026-09-24-marketing-slice1.md` +
-      `docs/sop/2026-09-24-marketing-slice2.md`, FE guides
+      `0034_campaigns_segments`) + Slice 3a on `feat/module-10-marketing-slice3a` (AI copy
+      generation + plan-week, migration `0035_marketing_ai_generations`); none yet merged, no PR
+      opened yet — see its own section above. Slice 3b (AI channel-plan recommender), Slice 4
+      (SEO Tools), and Slice 5 (Performance Analytics) planned, not started. SOPs
+      `docs/sop/2026-09-24-marketing-slice1.md` + `docs/sop/2026-09-24-marketing-slice2.md` +
+      `docs/sop/2026-09-24-marketing-slice3a.md`, FE guides
       `docs/fe-integration-guide-marketing-calendar.md` +
-      `docs/fe-integration-guide-marketing-campaigns.md`.
+      `docs/fe-integration-guide-marketing-campaigns.md` +
+      `docs/fe-integration-guide-marketing-copy.md`.
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -2271,7 +2332,7 @@ Deferred by the Slice 2 design spec, not gaps introduced by accident — tracked
 3–5 (and any interim hardening) can pick them up deliberately. SOP:
 `docs/sop/2026-09-24-marketing-slice2.md`.
 
-- [ ] AI channel-plan recommender for `channel_mix` — Slice 3's job; today `channel_mix` is
+- [ ] AI channel-plan recommender for `channel_mix` — Slice 3b's job; today `channel_mix` is
       100% manually entered by the founder.
 - [ ] Campaign `metrics` stays `{}` and `top_channel_by_conversions` stays `null` until Slice 5
       (Performance Analytics) — same "ship the shape now, fill it in later" pattern as every
@@ -2285,6 +2346,26 @@ Deferred by the Slice 2 design spec, not gaps introduced by accident — tracked
 - [ ] No `cancelled` terminal status — only `draft`/`active`/`paused`/`completed` exist;
       `completed` is the only terminal state, with no server-side "abandon this campaign"
       transition distinct from delete.
+
+### Module 10 (Marketing Hub) Slice 3a follow-ups
+
+Deferred by the Slice 3a design spec, not gaps introduced by accident — tracked here so Slice 3b
+(and later slices) can pick them up deliberately. SOP:
+`docs/sop/2026-09-24-marketing-slice3a.md`.
+
+- [ ] Inline "Refine" on a generation's output — no endpoint to iterate on an existing
+      generation (e.g. "make variant 2 punchier"); a founder must start a brand-new generation.
+- [ ] No generation↔calendar-entry link persisted server-side — both FE compositions
+      (Write-with-AI, Save-to-calendar/Add-all) are pure client-side orchestration over existing
+      endpoints; "written with AI" provenance, if wanted, must be tracked client-side.
+- [ ] No history-list endpoint for `plan_week` (unlike copy's `GET /copy/generations`) — a founder
+      can poll a plan-week id they already have, but not browse past plan-week generations.
+- [ ] Stub-provider `plan_week` entries are always empty — `plan_week_schema()`'s `channel` field
+      has no JSON-schema `enum` constraint, so the stub LLM's placeholder value never matches a
+      real `ChannelKey` and every entry gets filtered out; only affects the stub provider
+      (staging/e2e), not a real LLM provider. See the FE guide §5 and the SOP for the full trace.
+- [ ] AI channel-plan recommender + fit notes for `channel_mix` — Slice 3b's job (tracked above
+      under Slice 2 follow-ups too, since it fills a Slice-2-owned field).
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
