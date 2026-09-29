@@ -3,8 +3,15 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 
 from app.core.security import create_access_token
-from app.db.models.enums import CampaignObjective, CampaignStatus, MembershipRole, StartupStage
-from app.db.models.marketing import Campaign
+from app.db.models.enums import (
+    CampaignObjective,
+    CampaignStatus,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
+    MembershipRole,
+    StartupStage,
+)
+from app.db.models.marketing import Campaign, MarketingAiGeneration
 from tests.factories import create_membership, create_startup, create_user
 
 BASE = "/api/v1/marketing"
@@ -287,3 +294,58 @@ def test_analytics_is_tenant_scoped(client, db):
     assert data["leaderboard"] == []
     assert data["funnel"]["clicks"] == 0
     assert data["funnel"]["conversions"] == 2
+
+
+def test_overview_fills(client, db):
+    _u, _s, h = _member(db)
+    today = date.today().isoformat()
+    _seed(
+        client,
+        db,
+        h,
+        [
+            {"ts": today, "channel": "search", "metric": "conversions", "value": 40},
+            {"ts": today, "channel": "email", "metric": "conversions", "value": 10},
+        ],
+    )
+    ov = client.get(BASE, headers=h).json()["data"]
+    assert ov["top_channel_by_conversions"] == "search"
+    assert ov["ai_content_ideas"] == 0  # no ready content_gap generations
+    assert ov["active_campaigns"] == 0  # none active
+
+
+def test_overview_top_channel_null_when_empty(client, db):
+    _u, _s, h = _member(db)
+    ov = client.get(BASE, headers=h).json()["data"]
+    assert ov["top_channel_by_conversions"] is None
+    assert ov["ai_content_ideas"] == 0
+
+
+def test_overview_active_campaigns_counts_only_active(client, db):
+    _u, s, h = _member(db)
+    for status in (CampaignStatus.active, CampaignStatus.active, CampaignStatus.paused):
+        db.add(
+            Campaign(startup_id=s.id, name="C", objective=CampaignObjective.leads, status=status)
+        )
+    db.flush()
+    ov = client.get(BASE, headers=h).json()["data"]
+    assert ov["active_campaigns"] == 2
+
+
+def test_overview_ai_content_ideas_counts_ready_gaps_only(client, db):
+    _u, s, h = _member(db)
+    specs = [
+        (MarketingGenerationKind.content_gap, MarketingGenerationStatus.ready, {"gaps": [1, 2, 3]}),
+        (MarketingGenerationKind.content_gap, MarketingGenerationStatus.ready, {}),
+        (MarketingGenerationKind.content_gap, MarketingGenerationStatus.failed, {"gaps": [1]}),
+        (MarketingGenerationKind.copy, MarketingGenerationStatus.ready, {"gaps": [1, 2]}),
+    ]
+    for kind, status, output in specs:
+        db.add(
+            MarketingAiGeneration(
+                startup_id=s.id, kind=kind, status=status, inputs={}, output=output
+            )
+        )
+    db.flush()
+    ov = client.get(BASE, headers=h).json()["data"]
+    assert ov["ai_content_ideas"] == 3

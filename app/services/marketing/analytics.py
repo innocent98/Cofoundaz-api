@@ -4,8 +4,12 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import Case, and_, case, func
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import MarketingMetricName
-from app.db.models.marketing import Campaign, MarketingMetric
+from app.db.models.enums import (
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
+    MarketingMetricName,
+)
+from app.db.models.marketing import Campaign, MarketingAiGeneration, MarketingMetric
 from app.schemas.marketing import MetricsIngest
 from app.services.marketing.service import _validation
 
@@ -150,3 +154,31 @@ def get_analytics(db: Session, *, startup_id: uuid.UUID, range_key: str) -> dict
         "funnel": funnel,
         "leaderboard": leaderboard,
     }
+
+
+def top_channel_by_conversions(db: Session, *, startup_id: uuid.UUID) -> str | None:
+    row = (
+        db.query(MarketingMetric.channel, func.sum(MarketingMetric.value).label("c"))
+        .filter(
+            MarketingMetric.startup_id == startup_id,
+            MarketingMetric.metric == MarketingMetricName.conversions,
+            MarketingMetric.channel.isnot(None),
+        )
+        .group_by(MarketingMetric.channel)
+        .order_by(func.sum(MarketingMetric.value).desc())
+        .first()
+    )
+    return row[0].value if row is not None else None
+
+
+def count_ai_content_ideas(db: Session, *, startup_id: uuid.UUID) -> int:
+    rows = (
+        db.query(MarketingAiGeneration.output)
+        .filter(
+            MarketingAiGeneration.startup_id == startup_id,
+            MarketingAiGeneration.kind == MarketingGenerationKind.content_gap,
+            MarketingAiGeneration.status == MarketingGenerationStatus.ready,
+        )
+        .all()
+    )
+    return sum(len((out or {}).get("gaps", []) or []) for (out,) in rows)
