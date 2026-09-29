@@ -109,6 +109,11 @@ def test_tracked_page_duplicate_url_422(client, db):
     assert first.status_code == 200, first.text
     dup = client.post(f"{BASE}/seo/pages", json={"url": "/dup"}, headers=h)
     assert dup.status_code == 422, dup.text
+    # The SAVEPOINT must leave the session usable: a follow-up read still works and
+    # only the first page persisted (the dup was never committed).
+    after = client.get(f"{BASE}/seo/pages", headers=h)
+    assert after.status_code == 200, after.text
+    assert len(after.json()["data"]["pages"]) == 1
 
 
 def test_tracked_page_unknown_checklist_key_422(client, db):
