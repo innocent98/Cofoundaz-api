@@ -1,7 +1,7 @@
 """validation
 
-Revision ID: 0039_validation
-Revises: 0038_marketing_metrics
+Revision ID: 0041_validation
+Revises: 0040_finance_runway
 Create Date: 2026-09-24
 
 Module 09 (Validation Hub) schema (Task 1: app/db/models/validation.py;
@@ -48,8 +48,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "0039_validation"
-down_revision = "0038_marketing_metrics"
+revision = "0041_validation"
+down_revision = "0040_finance_runway"
 branch_labels = None
 depends_on = None
 

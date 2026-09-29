@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "880cf9b3-cc08-4e3f-8d0a-d4bc9ebbd347",
+    "date": "2026-09-29",
+    "description": "Bank transfer - unknown vendor",
+    "category": "Operations",
+    "amount_minor": 4000000,
+    "currency": "NGN",
+    "direction": "out",
+    "source": "manual",
+    "created_at": "2026-09-29T12:46:38.798398Z",
+    "updated_at": "2026-09-29T12:46:38.823734Z"
+  },
+  "meta": null
+}

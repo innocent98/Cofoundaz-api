@@ -16,7 +16,52 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-29 · **Module 10 (Marketing Hub) Slice 5 of 5 (Performance Analytics) shipped, on
+_Last reconciled: 2026-09-29 · **Module 12 (Finance Hub) Slice 2 of 6 (Runway & Scenarios) shipped, on branch
+`feat/module-12-finance-slice2` (off `develop` at `b973548`; not yet merged, no PR opened yet).** Slice 2 adds a
+`finance_runway_settings` row per workspace (3 editable assumptions — `mom_growth_percent`,
+`hiring_spend_minor`, `one_off_costs_minor` — plus the alert dedup state), **`GET /finance/runway` +
+`PUT /finance/runway/assumptions`** (one call: `assumptions` + `baseline` + `horizon_months: 12` + three
+scenarios `base`/`best`/`worst`, each with `runway_months`, `cash_out_date`, `avg_net_burn_minor` and a
+12-point `by_month`; the PUT is partial and returns the same recomputed shape), the **`finance.runway.low`
+event + in-app notification** (fires once per transition into low runway, recovery re-arms, in-app only,
+shares the `_runway_is_low` predicate with Slice 1's `runway_low` flag), and an **informational,
+non-scoring `money.runway_live` Health Score signal** (visible on `GET /health-score/dimensions/money`;
+`value: 0` is ambiguous between cash-positive and out-of-cash, called out in the FE guide) — migration
+`0040_finance_runway` (1 new table; single alembic head), 2 new routes (**183 operations** in the OpenAPI
+schema now), same RBAC as Slice 1. Full unit suite **1632 passed**; live e2e **60/60 passed**
+(`e2e/test_finance_runway.py::test_finance_runway_journey`, 21 new captures; no Resend-429 flake this run);
+black / isort / ruff / mypy clean. **Semantics called out in the FE guide:** the Runway screen's hiring /
+one-off inputs are ₦ **thousands** while the API is **kobo** (× / ÷ 100 000); scenario `runway_months` /
+`cash_out_date` are `null` when the balance never reaches zero inside the 12-month horizon and `0.0` when
+already out of cash; scenario runway differs from `GET /finance/cash-flow` runway (it applies the saved
+assumptions). SOP: `docs/sop/2026-09-29-finance-slice2.md`. FE guide:
+`docs/fe-integration-guide-finance-runway.md` (new; every body pasted from the captures, unit-only claims
+labelled). **Module tally unchanged: 13 fully complete, 1 open (12 — Slices 1–2 of 6 done), 12 not started.**
+_The "Health at a glance" counters below were last hand-reconciled at Module 08 and have drifted; only the
+figures quoted in this paragraph were re-measured this pass._
+
+_Previously: 2026-09-29 · **Module 12 (Finance Hub) Slice 1 of 6 (Cash Flow) shipped, on branch
+`feat/module-12-finance-slice1` (off `develop`; not yet merged, no PR opened yet) — MODULE 12 IS NOW
+OPEN.** Slice 1 adds a `transactions` ledger (`amount_minor` integer minor units + ISO `currency`;
+`direction` wire values `in`/`out`, enums stored by value; `source` always `manual` this slice),
+**transactions CRUD + inline categorize** (`POST/GET/PATCH/DELETE /finance/transactions`, filters
+`uncategorized` / `category` / `direction` / `date_from` / `date_to`; negative or over-int32 amount and an
+explicit `null` on a non-nullable PATCH field -> 422), and **`GET /finance/cash-flow`** (`cash_on_hand`,
+`monthly_burn`, `monthly_revenue`, null-safe `runway_months`, `runway_low` danger flag, `currency`, and a
+6-point zero-filled `by_month` series) — migration `0039_finance_transactions` (1 new table), a new
+`app/services/finance/` package, 5 new routes behind `require_role(founder, team_member, accountant)`.
+**FE cross-check:** the cash-flow read and money-in-minor-units are **FE-aligned**. Live e2e **59/59
+passed** (`e2e/test_finance.py::test_finance_cash_flow_journey`, 5 new captures). **Semantics called out
+in the FE guide:** `runway_months` is `null` both when not burning (healthy) and when out of cash while
+burning (critical) — the FE must drive the danger banner from `runway_low`, never render null as
+"healthy"; burn/revenue are a trailing-3-calendar-month average (÷ 3), so a startup younger than 3
+months is diluted; future-dated transactions are excluded from the summary; multi-currency is **not
+converted** (single-currency workspaces only). SOP: `docs/sop/2026-09-29-finance-slice1.md`. FE guide:
+`docs/fe-integration-guide-finance-cashflow.md` (new; every success body pasted from the captures,
+uncaptured shapes labelled). **Module 12 moves from not started to open: 13 modules fully complete, 1
+open (12), 12 not started** (26 total; 09 Validation Hub is still with the junior, in review as PR #103).
+
+_Previously: 2026-09-29 · **Module 10 (Marketing Hub) Slice 5 of 5 (Performance Analytics) shipped, on
 branch `feat/module-10-marketing-slice5` (off Slice 4's merge, PR #105; not yet merged, no PR opened
 yet) — MODULE 10 IS NOW FULLY COMPLETE, all 5 slices.** Slice 5 adds a `marketing_metrics` time-series
 store (optional `channel` / `campaign_id` dimensions; new `MarketingMetricName` enum — `visits`,
@@ -353,13 +398,13 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **0 open** (Module 10 was the last open module; it completed with Slice 5 and moved to the fully-complete count). **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
+**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — Slices 1–2 of 6 done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`, PR pending); Slices 3–6 planned; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 13 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37) · **Marketing Hub (10, all 5 slices — MODULE 10 COMPLETE)** — Slice 1 Content Calendar + Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`, PR #100) + Slice 2 Campaigns + Audience Segments (`0034_campaigns_segments`, PR #101) + Slice 3a AI copy generation + plan-week (`0035_marketing_ai_generations`, PR #102) + Slice 3b AI channel-plan recommender + fit notes (`0036_channel_fit_notes`, PR #104) + Slice 4 SEO Tools (`0037_seo_tools`, PR #105) merged to `develop`; Slice 5 Performance Analytics (`0038_marketing_metrics`, `feat/module-10-marketing-slice5`) built, PR pending — SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`. Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 0 modules | _None — Module 10 (Marketing Hub), the only open module, completed with Slice 5 and moved to the fully-complete row above._ |
-| ⬜ Not started | 13 modules | Validation Hub (09) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
+| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–2 of 6 done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`, PR pending); Slices 3–6 (invoices · expenses/budgets · financial model · integrations) planned — see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway}.md`. |
+| ⬜ Not started | 12 modules | Validation Hub (09) · Sales Hub (11) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
 path×method operations, `app.openapi()["paths"]` — 110 paths, 132 operations, **up from 108
@@ -1737,7 +1782,7 @@ _The "prove it before you build it" workspace: assumptions on a four-column boar
 testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
 and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
 founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
-and submit an answer set. Migration `0039_validation` (renumbered four times as 03/08/10 merged ahead).
+and submit an answer set. Migration `0041_validation` (renumbered five times as 03/08/10/Finance-12 merged ahead).
 Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
 plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
 `docs/sop/2026-09-24-validation-hub.md`._
@@ -1749,7 +1794,7 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       jobs · JSONB question schema with caps · free assumption transitions, events only on a real
       change · derived evidence counts · JSONB assumption links)
 - [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
-      `survey_responses`) + migration `0039_validation` (chains off `0038_marketing_metrics`, sole
+      `survey_responses`) + migration `0041_validation` (chains off `0040_finance_runway`, sole
       alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
       `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
 - [x] Question/answer validation (`app/services/validation/questions.py`) — types
@@ -1785,7 +1830,8 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
 - [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
 - [x] **Review round 1 (2026-09-29, PR #103)** — rebased onto `develop` and renumbered
       `0035_validation` → `0039_validation` off `0038_marketing_metrics` (single head restored) · PR
-      retargeted `main` → `develop` · blank answers rejected for required open questions and
+      retargeted `main` → `develop` · later renumbered `0039_validation` → `0041_validation` off
+      `0040_finance_runway` after Finance Slices 1–2 merged · blank answers rejected for required open questions and
       excluded from the completion rate · `link_ids` dedupes · `/scripts/generate` validates its
       assumption links · explicit `20/minute` on the public read · conversion capped at 100%.
       _Deferred with reasons:_ a live 429 test, and a size cap on an experiment's `config`/`metrics`
@@ -2489,6 +2535,79 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
 
 ---
 
+## 🟡 Module 12 — Finance Hub — *OPEN: Slices 1–2 of 6 SHIPPED (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`, PR pending); Slices 3–6 planned*
+
+Follows the same slice discipline as Modules 03/08/10/18/20: ledger + read spine first, then the
+projections/AI layer, then the money-in/money-out documents, then integrations. PRD 12.x. Slice 1
+migration `0039_finance_transactions`; Slice 2 migration `0040_finance_runway`. SOPs:
+`docs/sop/2026-09-29-finance-slice1.md`, `docs/sop/2026-09-29-finance-slice2.md`. FE guides:
+`docs/fe-integration-guide-finance-cashflow.md`, `docs/fe-integration-guide-finance-runway.md`.
+Design specs / plans: `docs/superpowers/specs/2026-09-29-module-12-finance-slice{1,2}-design.md`,
+`docs/superpowers/plans/2026-09-29-module-12-finance-slice{1,2}.md`.
+
+- [x] **Slice 1 — Cash Flow (PRD 12.1)** — *shipped on `feat/module-12-finance-slice1` (commits
+      `540f2f0`→`1fea1c6` + docs), e2e **59/59 passed**, single alembic head `0039_finance_transactions`*
+  - [x] Enums (`TransactionDirection` `in`/`out`, `TransactionSource` `manual`/`bank`/`accounting`/
+        `stripe`) stored by value (`values_callable`) + `Transaction` model, migration `0039`
+        (`transactions` table; `(startup_id, date)` index; `external_ref` reserved for integrations)
+  - [x] Money as `amount_minor` (int, `0..2_147_483_647`) + ISO `currency`; `direction` carries the
+        sign; FE maps the code to a symbol (₦) and divides by 100
+  - [x] Transactions CRUD: `POST/GET/PATCH/DELETE /finance/transactions`; list filters
+        `uncategorized` / `category` / `direction` / `date_from` / `date_to`; inline categorize is a
+        PATCH; `source` forced to `manual`; explicit `null` on a non-nullable PATCH field -> 422
+        (`category` may be null); cross-tenant -> 404
+  - [x] `GET /finance/cash-flow`: `cash_on_hand`, `monthly_burn`, `monthly_revenue`,
+        `runway_months` (float | null), `runway_low`, `currency`, 6-point zero-filled `by_month`
+  - [x] Null-safe runway + `runway_low` fires when out of cash while burning; trailing-3-calendar-month
+        average (÷ 3); future-dated transactions excluded; UTC dates
+  - [x] RBAC `founder` / `team_member` / `accountant` (others 403); `_validation` in
+        `app/services/finance/errors.py`
+  - [x] Tests: model + migration + `tests/api/test_finance.py`; e2e `test_finance_cash_flow_journey`
+        with 5 captures
+  - [x] FE integration guide (captures verbatim) + SOP
+- [x] **Slice 2 — Runway & Scenarios (PRD 12.2)** — *shipped on `feat/module-12-finance-slice2` (commits
+      `d758e03`→`5db85c7` + docs), unit **1632 passed**, e2e **60/60 passed**, single alembic head
+      `0040_finance_runway`*
+  - [x] `FinanceRunwaySettings` model + migration `0040_finance_runway` (one row per workspace: 3
+        assumptions + `alert_is_low` / `alert_last_fired_at`; unique index on `startup_id`) — `66ce13c`
+  - [x] Scenario projection engine (`runway_math.py`, `scenario_config.py`): base / best (+10 pp,
+        costs × 0.90) / worst (−10 pp, costs × 1.15) over a 12-month horizon; fractional runway via
+        zero-crossing interpolation; `null` = never runs out, `0.0` = already out — `753a86f`
+  - [x] Shared `_runway_is_low` predicate (one source for `cash_flow_summary.runway_low` and the alert)
+  - [x] Projection uses true unclamped monthly costs + zero-cash runway fix; baseline-split
+        regression guard — `aa14810`, `f07379d`
+  - [x] `GET /finance/runway` + `PUT /finance/runway/assumptions` (partial update, returns the same
+        recomputed payload; growth `0..1000`, minor units `0..2_147_483_647`; explicit null → 422; GET
+        creates no row; first-writer race adopts the winner's row) — `c4fd43d`
+  - [x] `finance.runway.low` event + in-app notification: fires once on transition into low runway,
+        recovery re-arms, all active members, in-app only — `e054318`
+  - [x] Informational non-scoring `money.runway_live` Health-Score signal (`contribution` 0; refreshed on
+        transaction writes and rebuilt on Health Score recompute) — `02ff300`
+  - [x] Tests: scenarios (11), API (19), alert (3), signal (7), model (2), migration (1);
+        e2e `test_finance_runway_journey` with 21 captures (incl. fire-once, re-arm, out-of-cash)
+  - [x] FE integration guide (captures verbatim; ₦-thousands vs kobo trap, null vs `0.0`, signal value-0
+        ambiguity, notification rules) + SOP
+- [ ] **Slice 3 — Invoices** *(planned)*
+- [ ] **Slice 4 — Expenses & budgets** *(planned)*
+- [ ] **Slice 5 — Financial model** *(planned)*
+- [ ] **Slice 6 — Integrations (bank / accounting / Stripe)** *(planned; uses the reserved `source` values
+      and `external_ref`)*
+
+**Deferred within Slice 1 itself** (tracked in the Deferred follow-ups section below): multi-currency
+conversion / mixed-currency summary (sums add unlike currencies as one unit); revenue-vs-financing
+split (`monthly_revenue` counts all inflow); transactions list is unpaginated; DELETE, the
+`category`/`direction`/date filters and error bodies are unit/source-verified only (no live capture).
+
+**Deferred within Slice 2 itself** (tracked in the Deferred follow-ups section below): concurrent
+double-fire race on the low-runway alert (unlocked read); first transaction mutation creates a settings
+row without a PUT; +1 `cash_flow_summary` per transaction mutation; `money.runway_live` has no
+`unique(startup_id, key)` constraint (self-heals); signal can appear before a completed assessment;
+`money.runway_live` value 0 is ambiguous (cash-positive vs out-of-cash); no email category for
+`finance.runway.low` (in-app only); 403 / over-int32 422 / PATCH-DELETE alert hook / other-member
+fan-out are unit-verified only (no live capture).
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
 - [x] **Module 03 — AI Co-Founder** — *✅ MODULE 03 COMPLETE (owner decision, 2026-09-21)*: Slice 1
@@ -2524,6 +2643,13 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
       `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
       `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
 - [ ] **Module 09 — Validation Hub** — *🟢 shipped on branch `feat/validation-hub`, not yet merged (PR #103, in review); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
+- [ ] **Module 12 — Finance Hub** — *🟡 OPEN, Slices 1–2 of 6 built (2026-09-29)*: Slice 1 transactions
+      ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
+      `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
+      projection, `finance.runway.low` alert, informational `money.runway_live` signal (migration
+      `0040_finance_runway`, `feat/module-12-finance-slice2`, PR pending); Slices 3–6 planned; see its own
+      section above. SOPs `docs/sop/2026-09-29-finance-slice{1,2}.md`, FE guides
+      `docs/fe-integration-guide-finance-{cashflow,runway}.md`.
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -2689,6 +2815,46 @@ Deferred by the Slice 5 design spec, not gaps introduced by accident. SOP:
       dedicated test).
 - [ ] `campaign.metrics` JSONB — stays `{}` and is now dead weight; remove or populate once the FE
       confirms it reads `analytics.leaderboard`.
+
+### Module 12 (Finance Hub) Slice 1 follow-ups
+
+Deferred by the Slice 1 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-finance-slice1.md`. None block Slice 2.
+
+- [x] Runway scenarios + `finance.runway.low` event + Health-Score finance signal — **done in Slice 2** (2026-09-29).
+- [ ] Multi-currency conversion — summary sums `amount_minor` across currencies as one unit; needs a
+      reporting currency + FX source.
+- [ ] Mixed-currency summary — `currency` is only the most common one; no test exercises mixed
+      currencies today.
+- [ ] Revenue-vs-financing split — `monthly_revenue` counts every inflow, including a fundraise inside
+      the trailing-3-month window.
+- [ ] Transactions list pagination — currently returns the full filtered set.
+- [ ] Missing live captures / tests: DELETE, the `category`/`direction`/`date_from`/`date_to` filters,
+      and the 422/403/404 bodies are unit- or source-verified only.
+
+### Module 12 (Finance Hub) Slice 2 follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-29-finance-slice2.md`.
+
+- [ ] Concurrent double-fire race on `finance.runway.low` — `evaluate_runway_alert` reads
+      `alert_is_low` unlocked, so two concurrent transaction commits can each publish. Fix:
+      `with_for_update()` (+ `populate_existing`) on the settings row in the alert path.
+- [ ] First transaction mutation creates a `finance_runway_settings` row without a PUT (alert dedup
+      needs the row); harmless defaults `0/0/0`.
+- [ ] +1 `cash_flow_summary` per transaction mutation (alert + signal each run it) — consolidate if it
+      shows in profiles.
+- [ ] `money.runway_live` has no `unique(startup_id, key)` constraint (delete-then-add upsert; a
+      concurrent pair could leave two rows — self-heals on next write/recompute).
+- [ ] `money.runway_live` can appear before a completed assessment (`score: null`) — FE must not assume
+      signal ⇒ score.
+- [ ] `money.runway_live` value `0` is ambiguous (cash-positive vs out-of-cash) — consider a sentinel or
+      second key.
+- [ ] No email category for `finance.runway.low` — in-app only.
+- [ ] Fundraises count as revenue in scenario projections (inherits the Slice 1 revenue-vs-financing
+      gap above).
+- [ ] Unit-only (no live capture): 403 for non-finance roles + accountant access; over-int32 422;
+      PATCH/DELETE running the alert hook; alert fan-out to other members; empty-workspace runway
+      response (scenario `runway_months` `0.0`).
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)

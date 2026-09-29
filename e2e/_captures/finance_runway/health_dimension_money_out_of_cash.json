@@ -1,0 +1,19 @@
+{
+  "data": {
+    "key": "money",
+    "label": "Financial",
+    "score": null,
+    "band": null,
+    "signals": [
+      {
+        "key": "money.runway_live",
+        "value": 0.0,
+        "contribution": 0.0,
+        "source_ref": "finance:cash-flow"
+      }
+    ],
+    "trend": [],
+    "recommendations": []
+  },
+  "meta": null
+}
