@@ -17,6 +17,11 @@ worker (LLM_PROVIDER=stub, set by scripts/e2e_run.sh) so `ai.marketing.copy`
 the generation, lists copy-generation history, then does the same round trip
 for `POST /marketing/calendar/plan-week` -> `ai.marketing.plan_week`.
 
+`test_marketing_seo_journey`: a founder tracks a keyword (create/list/patch rank), tracks a
+page and ticks an on-page checklist item, upserts the brand positioning statement, then
+runs the AI content-gap round trip (`POST /marketing/seo/content-gaps/generate` -> 202 ->
+drain `ai.marketing.content_gap` -> poll).
+
 Every response body along the way is captured to `e2e/_captures/marketing/*.json`
 -- those files are the verbatim source for `docs/fe-integration-guide-marketing.md`.
 They must be REAL bodies from this live run, complete and untrimmed.
@@ -175,9 +180,7 @@ def test_marketing_campaigns_journey(base_url, make_verified_user, capture):
         # 3. List campaigns -- the new one shows up in draft status.
         campaigns_list = c.get("/api/v1/marketing/campaigns", headers=wh)
         assert campaigns_list.status_code == 200, campaigns_list.text
-        assert any(
-            row["id"] == campaign_id for row in campaigns_list.json()["data"]["campaigns"]
-        )
+        assert any(row["id"] == campaign_id for row in campaigns_list.json()["data"]["campaigns"])
         capture("marketing", "campaigns_list", campaigns_list)
 
         # 4. Launch it -- draft -> active sets launched_at and fires campaign.launched.
@@ -221,9 +224,7 @@ def test_marketing_campaigns_journey(base_url, make_verified_user, capture):
         # 7. The segment's used-by view shows this campaign.
         segment_used_by = c.get(f"/api/v1/marketing/segments/{segment_id}/campaigns", headers=wh)
         assert segment_used_by.status_code == 200, segment_used_by.text
-        assert any(
-            row["id"] == campaign_id for row in segment_used_by.json()["data"]["campaigns"]
-        )
+        assert any(row["id"] == campaign_id for row in segment_used_by.json()["data"]["campaigns"])
         capture("marketing", "segment_used_by", segment_used_by)
 
 
@@ -367,3 +368,97 @@ def test_marketing_channel_ai_journey(base_url, make_verified_user, capture):
         channels = c.get("/api/v1/marketing/channels", headers=wh)
         assert channels.status_code == 200, channels.text
         capture("marketing", "channels_with_fit_notes", channels)
+
+
+def test_marketing_seo_journey(base_url, make_verified_user, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder -- SEO tools need nothing else.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz SEO")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. Keyword tracker: create -> list -> patch rank.
+        kw = c.post(
+            "/api/v1/marketing/keywords",
+            headers=wh,
+            json={
+                "keyword": "automated daily savings",
+                "volume": "2.4K",
+                "difficulty": 45,
+                "current_rank": 12,
+                "target_page": "/x",
+            },
+        )
+        assert kw.status_code == 200, kw.text
+        kw_body = kw.json()["data"]
+        assert kw_body["keyword"] == "automated daily savings"
+        capture("marketing", "keyword_created", kw)
+        kid = kw_body["id"]
+
+        kws = c.get("/api/v1/marketing/keywords", headers=wh)
+        assert kws.status_code == 200, kws.text
+        assert any(row["id"] == kid for row in kws.json()["data"]["keywords"])
+        capture("marketing", "keywords_list", kws)
+
+        kw_patched = c.patch(
+            f"/api/v1/marketing/keywords/{kid}", headers=wh, json={"current_rank": 8}
+        )
+        assert kw_patched.status_code == 200, kw_patched.text
+        assert kw_patched.json()["data"]["current_rank"] == 8
+        capture("marketing", "keyword_updated", kw_patched)
+
+        # 2. Tracked page on-page checklist: create -> tick one item.
+        page = c.post("/api/v1/marketing/seo/pages", headers=wh, json={"url": "/pricing"})
+        assert page.status_code == 200, page.text
+        page_body = page.json()["data"]
+        assert page_body["url"] == "/pricing"
+        capture("marketing", "tracked_page_created", page)
+        pid = page_body["id"]
+
+        page_checked = c.patch(
+            f"/api/v1/marketing/seo/pages/{pid}",
+            headers=wh,
+            json={"checklist": {"h1": True}},
+        )
+        assert page_checked.status_code == 200, page_checked.text
+        assert page_checked.json()["data"]["checklist"]["h1"] is True
+        capture("marketing", "tracked_page_checklist", page_checked)
+
+        # 3. Brand positioning: upsert -> composed statement.
+        positioning = c.put(
+            "/api/v1/marketing/positioning",
+            headers=wh,
+            json={
+                "audience": "freelancers in Lagos",
+                "need": "save money without thinking about it",
+                "product": "Cofoundaz Save",
+                "category": "savings app",
+                "differentiator": "rounds up every payment automatically",
+            },
+        )
+        assert positioning.status_code == 200, positioning.text
+        assert positioning.json()["data"]["statement"]
+        capture("marketing", "positioning_upserted", positioning)
+
+        # 4. AI content-gap suggestions: 202 -> drain the in-process worker -> poll.
+        gap = c.post("/api/v1/marketing/seo/content-gaps/generate", headers=wh)
+        assert gap.status_code == 202, gap.text
+        gap_body = gap.json()["data"]
+        assert gap_body["status"] == "generating"
+        capture("marketing", "content_gap_accepted", gap)
+        gid = gap_body["id"]
+
+        # Drain the worker in-process (LLM_PROVIDER=stub) -> handle_marketing_content_gap runs.
+        _drain()
+
+        gap_ready = c.get(f"/api/v1/marketing/seo/content-gaps/{gid}", headers=wh)
+        assert gap_ready.status_code == 200, gap_ready.text
+        assert gap_ready.json()["data"]["status"] in ("ready", "failed")
+        capture("marketing", "content_gap_ready", gap_ready)
