@@ -109,3 +109,34 @@ def test_accountant_allowed(client, db):
     _u, _s, h = _member(db, role=MembershipRole.accountant, startup=startup)
     listed = client.get(f"{BASE}/transactions", headers=h)
     assert listed.status_code == 200, listed.text
+
+
+def test_patch_explicit_null_on_required_field_422(client, db):
+    # Explicit null on a non-nullable field must 422 (not 500 at flush); category-null is allowed.
+    _u, _s, h = _member(db)
+    created = client.post(
+        f"{BASE}/transactions",
+        json={"date": "2026-03-10", "description": "x", "amount_minor": 100, "direction": "out"},
+        headers=h,
+    )
+    tid = created.json()["data"]["id"]
+    bad = client.patch(f"{BASE}/transactions/{tid}", json={"amount_minor": None}, headers=h)
+    assert bad.status_code == 422, bad.text
+    ok = client.patch(f"{BASE}/transactions/{tid}", json={"category": None}, headers=h)
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["data"]["category"] is None
+
+
+def test_cross_tenant_transaction_404(client, db):
+    _u, s1, h1 = _member(db)
+    created = client.post(
+        f"{BASE}/transactions",
+        json={"date": "2026-03-10", "description": "x", "amount_minor": 100, "direction": "out"},
+        headers=h1,
+    )
+    tid = created.json()["data"]["id"]
+    _u2, _s2, h2 = _member(db)  # different startup
+    got = client.patch(f"{BASE}/transactions/{tid}", json={"category": "x"}, headers=h2)
+    assert got.status_code == 404, got.text
+    deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h2)
+    assert deleted.status_code == 404, deleted.text
