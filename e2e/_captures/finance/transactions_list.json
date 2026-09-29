@@ -1,0 +1,67 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "880cf9b3-cc08-4e3f-8d0a-d4bc9ebbd347",
+        "date": "2026-09-29",
+        "description": "Bank transfer - unknown vendor",
+        "category": null,
+        "amount_minor": 4000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "manual",
+        "created_at": "2026-09-29T12:46:38.798398Z",
+        "updated_at": "2026-09-29T12:46:38.798398Z"
+      },
+      {
+        "id": "1f9a96e2-995f-4b8e-9fa1-eb7fde0f86a2",
+        "date": "2026-09-29",
+        "description": "Cloud hosting",
+        "category": "Infrastructure",
+        "amount_minor": 12000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "manual",
+        "created_at": "2026-09-29T12:46:38.790441Z",
+        "updated_at": "2026-09-29T12:46:38.790441Z"
+      },
+      {
+        "id": "e0dc0310-c0ec-45c5-a64a-ba72159ec288",
+        "date": "2026-08-15",
+        "description": "Team salaries",
+        "category": "Payroll",
+        "amount_minor": 20000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "manual",
+        "created_at": "2026-09-29T12:46:38.781039Z",
+        "updated_at": "2026-09-29T12:46:38.781039Z"
+      },
+      {
+        "id": "a510a9f5-25ab-4129-95e8-f4e9a7aaae46",
+        "date": "2026-08-15",
+        "description": "First customer invoice",
+        "category": "Revenue",
+        "amount_minor": 6000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-09-29T12:46:38.772705Z",
+        "updated_at": "2026-09-29T12:46:38.772705Z"
+      },
+      {
+        "id": "1f368374-4881-43d9-9d52-ac82792d708f",
+        "date": "2026-05-15",
+        "description": "Pre-seed round",
+        "category": "Fundraising",
+        "amount_minor": 100000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-09-29T12:46:38.759726Z",
+        "updated_at": "2026-09-29T12:46:38.759726Z"
+      }
+    ]
+  },
+  "meta": null
+}

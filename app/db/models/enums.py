@@ -300,3 +300,15 @@ class MarketingMetricName(enum.StrEnum):
     clicks = "clicks"
     conversions = "conversions"
     spend = "spend"
+
+
+class TransactionDirection(enum.StrEnum):
+    inflow = "in"
+    outflow = "out"
+
+
+class TransactionSource(enum.StrEnum):
+    manual = "manual"
+    bank = "bank"
+    accounting = "accounting"
+    stripe = "stripe"
