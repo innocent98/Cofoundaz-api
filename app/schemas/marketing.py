@@ -248,3 +248,21 @@ class KeywordResponse(BaseModel):
     target_page: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class TrackedPageCreate(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+
+
+class TrackedPageUpdate(BaseModel):
+    checklist: dict[str, bool] = Field(default_factory=dict)
+
+
+class TrackedPageResponse(BaseModel):
+    id: uuid.UUID
+    url: str
+    checklist: dict[str, bool]
+    completed: int
+    total: int
+    created_at: datetime
+    updated_at: datetime

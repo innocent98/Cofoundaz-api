@@ -84,3 +84,38 @@ def test_keyword_rbac_forbidden(client, db, role):
     assert posted.status_code == 403, posted.text
     listed = client.get(f"{BASE}/keywords", headers=h)
     assert listed.status_code == 403, listed.text
+
+
+def test_tracked_page_create_seeds_checklist_and_toggles(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(f"{BASE}/seo/pages", json={"url": "/pricing"}, headers=h)
+    assert created.status_code == 200, created.text
+    pid = created.json()["data"]["id"]
+    cl = created.json()["data"]["checklist"]
+    assert cl["h1"] is False
+    assert created.json()["data"]["total"] == 8
+    assert created.json()["data"]["completed"] == 0
+
+    patched = client.patch(f"{BASE}/seo/pages/{pid}", json={"checklist": {"h1": True}}, headers=h)
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["data"]["checklist"]["h1"] is True
+    assert patched.json()["data"]["checklist"]["meta_description"] is False  # others preserved
+    assert patched.json()["data"]["completed"] == 1
+
+
+def test_tracked_page_duplicate_url_422(client, db):
+    _u, _s, h = _member(db)
+    first = client.post(f"{BASE}/seo/pages", json={"url": "/dup"}, headers=h)
+    assert first.status_code == 200, first.text
+    dup = client.post(f"{BASE}/seo/pages", json={"url": "/dup"}, headers=h)
+    assert dup.status_code == 422, dup.text
+
+
+def test_tracked_page_unknown_checklist_key_422(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(f"{BASE}/seo/pages", json={"url": "/p"}, headers=h)
+    pid = created.json()["data"]["id"]
+    bad = client.patch(
+        f"{BASE}/seo/pages/{pid}", json={"checklist": {"not_a_real_item": True}}, headers=h
+    )
+    assert bad.status_code == 422, bad.text

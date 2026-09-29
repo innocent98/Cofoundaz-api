@@ -26,6 +26,8 @@ from app.schemas.marketing import (
     OverviewResponse,
     SegmentCreate,
     SegmentUpdate,
+    TrackedPageCreate,
+    TrackedPageUpdate,
 )
 from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import campaigns as campaigns_svc
@@ -485,5 +487,54 @@ def delete_keyword(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     seo_svc.delete_keyword(db, startup_id=membership.startup_id, keyword_id=keyword_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/seo/pages", response_model=dict[str, Any])
+def create_tracked_page(
+    payload: TrackedPageCreate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.create_page(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_page(row).model_dump())
+
+
+@router.get("/seo/pages", response_model=dict[str, Any])
+def list_tracked_pages(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = seo_svc.list_pages(db, startup_id=membership.startup_id)
+    return success_response({"pages": [seo_svc.serialize_page(r).model_dump() for r in rows]})
+
+
+@router.patch("/seo/pages/{page_id}", response_model=dict[str, Any])
+def update_tracked_page(
+    page_id: uuid.UUID,
+    payload: TrackedPageUpdate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.update_page_checklist(
+        db, startup_id=membership.startup_id, page_id=page_id, data=payload
+    )
+    db.commit()
+    return success_response(seo_svc.serialize_page(row).model_dump())
+
+
+@router.delete("/seo/pages/{page_id}", response_model=dict[str, Any])
+def delete_tracked_page(
+    page_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    seo_svc.delete_page(db, startup_id=membership.startup_id, page_id=page_id)
     db.commit()
     return success_response({"deleted": True})
