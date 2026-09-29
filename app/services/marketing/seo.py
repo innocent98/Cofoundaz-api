@@ -148,8 +148,13 @@ def compose_statement(
     product: str | None,
     category: str | None,
     differentiator: str | None,
-) -> str:
-    a, n, p, c, d = (v or "" for v in (audience, need, product, category, differentiator))
+) -> str | None:
+    parts = [(v or "").strip() for v in (audience, need, product, category, differentiator)]
+    if not any(parts):
+        # All five parts blank -> no statement, matching the GET-before-PUT null shape
+        # (so the FE never renders a dangling "For  who ,  is the  that ." skeleton).
+        return None
+    a, n, p, c, d = parts
     return f"For {a} who {n}, {p} is the {c} that {d}."
 
 

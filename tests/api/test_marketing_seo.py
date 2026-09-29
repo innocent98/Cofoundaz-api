@@ -134,6 +134,15 @@ def test_positioning_get_before_put_is_empty(client, db):
     assert got.json()["data"]["audience"] is None
 
 
+def test_positioning_empty_put_yields_null_statement(client, db):
+    # An all-blank PUT must not store a dangling "For  who ,  is the  that ." skeleton;
+    # statement stays null, consistent with the GET-before-PUT shape.
+    _u, _s, h = _member(db)
+    put = client.put(f"{BASE}/positioning", json={}, headers=h)
+    assert put.status_code == 200, put.text
+    assert put.json()["data"]["statement"] is None
+
+
 def test_positioning_upsert_composes_statement_and_is_single_row(client, db):
     _u, _s, h = _member(db)
     body = {
