@@ -140,3 +140,102 @@ def test_cross_tenant_transaction_404(client, db):
     assert got.status_code == 404, got.text
     deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h2)
     assert deleted.status_code == 404, deleted.text
+
+
+def _seed(client, h, txns):
+    for t in txns:
+        r = client.post(f"{BASE}/transactions", json=t, headers=h)
+        assert r.status_code == 200, r.text
+
+
+def _today_utc() -> str:
+    return datetime.now(UTC).date().isoformat()
+
+
+def test_cash_flow_empty_is_zeroed(client, db):
+    _u, _s, h = _member(db)
+    resp = client.get(f"{BASE}/cash-flow", headers=h)
+    assert resp.status_code == 200, resp.text
+    d = resp.json()["data"]
+    assert d["cash_on_hand"] == 0 and d["monthly_burn"] == 0
+    assert d["monthly_revenue"] == 0
+    assert d["runway_months"] is None and d["runway_low"] is False
+    assert d["currency"] == "NGN"
+    assert len(d["by_month"]) == 6
+    assert all(m["inflow"] == 0 and m["outflow"] == 0 and m["net"] == 0 for m in d["by_month"])
+    months = [m["month"] for m in d["by_month"]]
+    assert months == sorted(months)
+    assert months[-1] == _today_utc()[:7]
+
+
+def _txn(day: str, amount: int, direction: str, desc: str = "t") -> dict:
+    return {
+        "date": day,
+        "description": desc,
+        "amount_minor": amount,
+        "currency": "NGN",
+        "direction": direction,
+    }
+
+
+def test_cash_flow_runway_and_low_flag(client, db):
+    _u, _s, h = _member(db)
+    today = datetime.now(UTC).date()
+    old = today.replace(year=today.year - 1, day=1).isoformat()  # outside the trailing-3mo window
+    # The raise is old, so it counts toward cash on hand but not toward the trailing burn window.
+    _seed(client, h, [_txn(old, 1_000_000, "in", "raise"), _txn(today.isoformat(), 600_000, "out")])
+    d = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert d["cash_on_hand"] == 400_000
+    assert d["monthly_burn"] == 200_000  # 600_000 / 3
+    assert d["runway_months"] == 2.0
+    assert d["runway_low"] is True  # < 6 months
+
+
+def test_cash_flow_runway_not_low_and_null_when_cash_not_positive(client, db):
+    _u, _s, h = _member(db)
+    today = datetime.now(UTC).date()
+    old = today.replace(year=today.year - 1, day=1).isoformat()
+    _seed(
+        client, h, [_txn(old, 10_000_000, "in", "raise"), _txn(today.isoformat(), 300_000, "out")]
+    )
+    d = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert d["monthly_burn"] == 100_000
+    assert d["runway_months"] == 97.0
+    assert d["runway_low"] is False
+
+    # Overspent: cash on hand <= 0 -> no runway (never a negative/zero-divide value).
+    _u2, _s2, h2 = _member(db)
+    _seed(client, h2, [_txn(today.isoformat(), 300_000, "out")])
+    d2 = client.get(f"{BASE}/cash-flow", headers=h2).json()["data"]
+    assert d2["cash_on_hand"] == -300_000 and d2["monthly_burn"] == 100_000
+    assert d2["runway_months"] is None and d2["runway_low"] is False
+
+
+def test_cash_flow_runway_null_when_net_positive(client, db):
+    _u, _s, h = _member(db)
+    today = _today_utc()
+    _seed(
+        client,
+        h,
+        [
+            {
+                "date": today,
+                "description": "raise",
+                "amount_minor": 5_000_000,
+                "currency": "NGN",
+                "direction": "in",
+            },
+            {
+                "date": today,
+                "description": "spend",
+                "amount_minor": 100_000,
+                "currency": "NGN",
+                "direction": "out",
+            },
+        ],
+    )
+    d = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert d["monthly_burn"] == 0 and d["runway_months"] is None and d["runway_low"] is False
+    assert d["cash_on_hand"] == 4_900_000
+    assert d["monthly_revenue"] == round(5_000_000 / 3)
+    assert d["by_month"][-1]["inflow"] == 5_000_000 and d["by_month"][-1]["net"] == 4_900_000

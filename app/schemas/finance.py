@@ -47,3 +47,20 @@ class TransactionResponse(BaseModel):
     source: str
     created_at: dt.datetime
     updated_at: dt.datetime
+
+
+class MonthPoint(BaseModel):
+    month: str  # "YYYY-MM"
+    inflow: int
+    outflow: int
+    net: int
+
+
+class CashFlowResponse(BaseModel):
+    cash_on_hand: int
+    monthly_burn: int
+    monthly_revenue: int
+    runway_months: float | None
+    runway_low: bool
+    currency: str
+    by_month: list[MonthPoint]

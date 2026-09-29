@@ -12,7 +12,8 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.finance import TransactionCreate, TransactionUpdate
+from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
+from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import service as finance_svc
 
 router = APIRouter()
@@ -86,3 +87,13 @@ def delete_transaction(
     )
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.get("/cash-flow", response_model=dict[str, Any])
+def cash_flow(
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    data = cashflow_svc.cash_flow_summary(db, startup_id=membership.startup_id)
+    return success_response(CashFlowResponse(**data).model_dump(mode="json"))
