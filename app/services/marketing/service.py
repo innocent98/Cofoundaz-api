@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import AppError, NotFound
-from app.db.models.enums import ChannelKey, ChannelStatus, ContentStatus
-from app.db.models.marketing import ContentCalendarEntry, MarketingChannel
+from app.core.errors import NotFound
+from app.db.models.enums import CampaignStatus, ChannelKey, ChannelStatus, ContentStatus
+from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingChannel
 from app.platform.events import event_bus
 from app.schemas.marketing import (
     CalendarEntryCreate,
@@ -14,12 +14,13 @@ from app.schemas.marketing import (
     CalendarEntryUpdate,
     ChannelUpdate,
 )
+from app.services.marketing import analytics as analytics_svc
 
+# Re-exported so the other marketing services (segments, campaigns, ai_content, seo) keep
+# importing `_validation` from here; it lives in errors.py to avoid a service<->analytics cycle.
+from app.services.marketing.errors import _validation
 
-def _validation(field: str, message: str) -> AppError:
-    return AppError(
-        "VALIDATION_ERROR", message, 422, field_errors=[{"field": field, "message": message}]
-    )
+__all__ = ["_validation"]
 
 
 def serialize_entry(e: ContentCalendarEntry) -> CalendarEntryResponse:
@@ -193,10 +194,18 @@ def overview(db: Session, *, startup_id: uuid.UUID) -> dict:
         )
         .count()
     )
+    active_campaigns = (
+        db.query(Campaign)
+        .filter(Campaign.startup_id == startup_id, Campaign.status == CampaignStatus.active)
+        .count()
+    )
+
     return {
         "scheduled_this_week": scheduled_this_week,
         "active_channels": active_channels,
-        "active_campaigns": None,  # Slice 2
-        "top_channel_by_conversions": None,  # Slice 5
-        "ai_content_ideas": None,  # Slice 3
+        "active_campaigns": active_campaigns,
+        "top_channel_by_conversions": analytics_svc.top_channel_by_conversions(
+            db, startup_id=startup_id
+        ),
+        "ai_content_ideas": analytics_svc.count_ai_content_ideas(db, startup_id=startup_id),
     }

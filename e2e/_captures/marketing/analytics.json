@@ -1,0 +1,47 @@
+{
+  "data": {
+    "range": "30d",
+    "traffic_by_week": [
+      {
+        "week_start": "2026-09-14",
+        "visits": 310
+      },
+      {
+        "week_start": "2026-09-21",
+        "visits": 420
+      }
+    ],
+    "cac_by_channel": [
+      {
+        "channel": "email",
+        "spend": 21000,
+        "conversions": 21,
+        "cac": 1000
+      },
+      {
+        "channel": "search",
+        "spend": 30000,
+        "conversions": 10,
+        "cac": 3000
+      }
+    ],
+    "funnel": {
+      "impressions": 8000,
+      "clicks": 640,
+      "conversions": 52,
+      "click_through_rate": 8.0,
+      "conversion_rate": 8.1
+    },
+    "leaderboard": [
+      {
+        "campaign_id": "2e91564d-1265-4d3f-a06b-1ffbd6697702",
+        "name": "Q4 launch push",
+        "clicks": 640,
+        "conversions": 21,
+        "spend": 25000,
+        "cac": 1190
+      }
+    ]
+  },
+  "meta": null
+}

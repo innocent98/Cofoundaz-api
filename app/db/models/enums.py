@@ -292,3 +292,11 @@ class CopyTone(enum.StrEnum):
     friendly = "friendly"
     expert = "expert"
     playful = "playful"
+
+
+class MarketingMetricName(enum.StrEnum):
+    visits = "visits"
+    impressions = "impressions"
+    clicks = "clicks"
+    conversions = "conversions"
+    spend = "spend"
