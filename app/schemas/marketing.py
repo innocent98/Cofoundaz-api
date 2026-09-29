@@ -14,6 +14,7 @@ from app.db.models.enums import (
     CopyTone,
     MarketingGenerationKind,
     MarketingGenerationStatus,
+    MarketingMetricName,
 )
 
 
@@ -283,3 +284,15 @@ class PositioningResponse(BaseModel):
     category: str | None
     differentiator: str | None
     statement: str | None
+
+
+class MetricPoint(BaseModel):
+    ts: date
+    channel: ChannelKey | None = None
+    campaign_id: uuid.UUID | None = None
+    metric: MarketingMetricName
+    value: int = Field(ge=0)
+
+
+class MetricsIngest(BaseModel):
+    points: list[MetricPoint] = Field(default_factory=list)

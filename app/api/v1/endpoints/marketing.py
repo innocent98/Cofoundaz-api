@@ -23,6 +23,7 @@ from app.schemas.marketing import (
     CopyGenerateRequest,
     KeywordCreate,
     KeywordUpdate,
+    MetricsIngest,
     OverviewResponse,
     PositioningUpsert,
     SegmentCreate,
@@ -31,6 +32,7 @@ from app.schemas.marketing import (
     TrackedPageUpdate,
 )
 from app.services.marketing import ai_content as ai_content_svc
+from app.services.marketing import analytics as analytics_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import segments as segments_svc
 from app.services.marketing import seo as seo_svc
@@ -606,3 +608,15 @@ def put_positioning(
     row = seo_svc.upsert_positioning(db, startup_id=membership.startup_id, data=payload)
     db.commit()
     return success_response(seo_svc.serialize_positioning(row).model_dump())
+
+
+@router.post("/metrics", response_model=dict[str, Any])
+def ingest_metrics(
+    payload: MetricsIngest,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    created = analytics_svc.ingest_metrics(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response({"created": created})
