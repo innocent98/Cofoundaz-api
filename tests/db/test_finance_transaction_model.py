@@ -29,3 +29,29 @@ def test_transaction_persists(db):
     db.refresh(row)
     assert row.amount_minor == 45000000 and row.category is None
     assert row.direction == TransactionDirection.inflow and row.source == TransactionSource.manual
+
+
+def test_direction_stored_as_wire_value(db):
+    """The DB column stores the enum *value* ('in'/'out'), not the member name."""
+    from sqlalchemy import text
+
+    from app.db.models.enums import TransactionSource
+    from tests.factories import create_startup, create_user
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    row = Transaction(
+        startup_id=s.id,
+        date=date(2026, 3, 1),
+        description="x",
+        amount_minor=1,
+        currency="NGN",
+        direction=TransactionDirection.outflow,
+        source=TransactionSource.manual,
+    )
+    db.add(row)
+    db.flush()
+    stored = db.execute(
+        text("SELECT direction FROM transactions WHERE id = :i"), {"i": str(row.id)}
+    ).scalar_one()
+    assert stored == "out"

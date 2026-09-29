@@ -25,10 +25,23 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
     amount_minor: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="NGN")
     direction: Mapped[TransactionDirection] = mapped_column(
-        Enum(TransactionDirection, native_enum=False, length=8), nullable=False
+        # values_callable so the DB stores the enum *value* ("in"/"out"), matching the migration
+        # labels and the FE `direction` strings — the member names (inflow/outflow) differ.
+        Enum(
+            TransactionDirection,
+            native_enum=False,
+            length=8,
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
     )
     source: Mapped[TransactionSource] = mapped_column(
-        Enum(TransactionSource, native_enum=False, length=12),
+        Enum(
+            TransactionSource,
+            native_enum=False,
+            length=12,
+            values_callable=lambda e: [m.value for m in e],
+        ),
         nullable=False,
         default=TransactionSource.manual,
     )
