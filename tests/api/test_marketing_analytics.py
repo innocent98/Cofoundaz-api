@@ -50,6 +50,17 @@ def test_ingest_rejects_negative_value(client, db):
     assert resp.status_code == 422, resp.text
 
 
+def test_ingest_rejects_value_over_int32(client, db):
+    # A value above Postgres int32 max must 422 at validation, not 500 at flush.
+    _u, _s, h = _member(db)
+    resp = client.post(
+        f"{BASE}/metrics",
+        json={"points": [{"ts": "2026-09-01", "metric": "visits", "value": 3_000_000_000}]},
+        headers=h,
+    )
+    assert resp.status_code == 422, resp.text
+
+
 def test_ingest_rejects_foreign_campaign(client, db):
     _u, _s, h = _member(db)
     _u2, s2, _h2 = _member(db)  # a different startup; build a campaign there

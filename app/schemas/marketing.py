@@ -291,8 +291,10 @@ class MetricPoint(BaseModel):
     channel: ChannelKey | None = None
     campaign_id: uuid.UUID | None = None
     metric: MarketingMetricName
-    value: int = Field(ge=0)
+    # Upper bound = Postgres int32 max, so an oversized value is a 422 (not a 500 at flush).
+    value: int = Field(ge=0, le=2_147_483_647)
 
 
 class MetricsIngest(BaseModel):
-    points: list[MetricPoint] = Field(default_factory=list)
+    # Bound the batch so one request can't insert an unbounded number of rows.
+    points: list[MetricPoint] = Field(default_factory=list, max_length=1000)
