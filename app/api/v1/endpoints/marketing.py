@@ -443,6 +443,51 @@ def get_fit_notes(
     return success_response(ai_content_svc.serialize_generation(g).model_dump())
 
 
+@router.post(
+    "/seo/content-gaps/generate",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dict[str, Any],
+)
+def generate_content_gaps(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_content_gap_generation(
+        db, startup_id=membership.startup_id, created_by=user.id
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/seo/content-gaps", response_model=dict[str, Any])
+def list_content_gaps(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = ai_content_svc.list_content_gap_generations(db, startup_id=membership.startup_id)
+    return success_response(
+        {"generations": [ai_content_svc.serialize_generation(g).model_dump() for g in rows]}
+    )
+
+
+@router.get("/seo/content-gaps/{generation_id}", response_model=dict[str, Any])
+def get_content_gap(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.content_gap,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
 @router.post("/keywords", response_model=dict[str, Any])
 def create_keyword(
     payload: KeywordCreate,

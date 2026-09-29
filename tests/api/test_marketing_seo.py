@@ -162,3 +162,42 @@ def test_positioning_upsert_composes_statement_and_is_single_row(client, db):
     assert "KoloPay" in put2.json()["data"]["statement"]
     got = client.get(f"{BASE}/positioning", headers=h)
     assert got.json()["data"]["product"] == "KoloPay"
+
+
+def test_content_gap_generate_202_and_pollable(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/seo/content-gaps/generate", headers=h)
+    assert r.status_code == 202, r.text
+    gid = r.json()["data"]["id"]
+    got = client.get(f"{BASE}/seo/content-gaps/{gid}", headers=h)
+    assert got.status_code == 200, got.text
+    assert got.json()["data"]["kind"] == "content_gap"
+    hist = client.get(f"{BASE}/seo/content-gaps", headers=h)
+    assert hist.status_code == 200
+    assert any(g["id"] == gid for g in hist.json()["data"]["generations"])
+
+
+def test_content_gap_kind_mismatch_404(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(
+        f"{BASE}/copy/generate",
+        json={"asset_type": "ad", "tone": "bold", "key_message": "x"},
+        headers=h,
+    )
+    copy_id = r.json()["data"]["id"]  # a copy id
+    wrong = client.get(f"{BASE}/seo/content-gaps/{copy_id}", headers=h)
+    assert wrong.status_code == 404, wrong.text
+
+
+@pytest.mark.parametrize("role", NON_MARKETING_ROLES)
+def test_content_gap_rbac_forbidden(client, db, role):
+    _f, startup, fh = _member(db)
+    created = client.post(f"{BASE}/seo/content-gaps/generate", headers=fh)
+    gid = created.json()["data"]["id"]
+    _u, _s, h = _member(db, role=role, startup=startup)
+    posted = client.post(f"{BASE}/seo/content-gaps/generate", headers=h)
+    assert posted.status_code == 403, posted.text
+    polled = client.get(f"{BASE}/seo/content-gaps/{gid}", headers=h)
+    assert polled.status_code == 403, polled.text
+    listed = client.get(f"{BASE}/seo/content-gaps", headers=h)
+    assert listed.status_code == 403, listed.text
