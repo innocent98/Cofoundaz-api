@@ -13,6 +13,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.marketing import (
+    AnalyticsResponse,
     CalendarEntryCreate,
     CalendarEntryUpdate,
     CampaignCreate,
@@ -620,3 +621,14 @@ def ingest_metrics(
     created = analytics_svc.ingest_metrics(db, startup_id=membership.startup_id, data=payload)
     db.commit()
     return success_response({"created": created})
+
+
+@router.get("/analytics", response_model=dict[str, Any])
+def get_analytics(
+    range: str = "30d",
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    data = analytics_svc.get_analytics(db, startup_id=membership.startup_id, range_key=range)
+    return success_response(AnalyticsResponse(**data).model_dump(mode="json"))

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -87,3 +87,61 @@ def test_ingest_rbac_forbidden(client, db, role):
     _u, _s, h = _member(db, role=role, startup=startup)
     resp = client.post(f"{BASE}/metrics", json={"points": []}, headers=h)
     assert resp.status_code == 403, resp.text
+
+
+def _seed(client, db, h, points):
+    resp = client.post(f"{BASE}/metrics", json={"points": points}, headers=h)
+    assert resp.status_code == 200, resp.text
+
+
+def test_analytics_empty_is_zeroed(client, db):
+    _u, _s, h = _member(db)
+    resp = client.get(f"{BASE}/analytics", headers=h)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["traffic_by_week"] == []
+    assert data["cac_by_channel"] == []
+    assert data["leaderboard"] == []
+    assert data["funnel"] == {
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "click_through_rate": 0.0,
+        "conversion_rate": 0.0,
+    }
+
+
+def test_analytics_cac_and_funnel(client, db):
+    _u, _s, h = _member(db)
+    today = date.today().isoformat()
+    _seed(
+        client,
+        db,
+        h,
+        [
+            {"ts": today, "channel": "paid_social", "metric": "spend", "value": 64000},
+            {"ts": today, "channel": "paid_social", "metric": "conversions", "value": 20},
+            {"ts": today, "metric": "impressions", "value": 1000},
+            {"ts": today, "metric": "clicks", "value": 100},
+            {"ts": today, "metric": "conversions", "value": 20},
+        ],
+    )
+    data = client.get(f"{BASE}/analytics?range=30d", headers=h).json()["data"]
+    paid = next(c for c in data["cac_by_channel"] if c["channel"] == "paid_social")
+    assert paid["spend"] == 64000 and paid["conversions"] == 20 and paid["cac"] == 3200
+    assert data["funnel"]["clicks"] == 100 and data["funnel"]["click_through_rate"] == 10.0
+
+
+def test_analytics_cac_null_when_no_conversions(client, db):
+    _u, _s, h = _member(db)
+    today = date.today().isoformat()
+    _seed(client, db, h, [{"ts": today, "channel": "search", "metric": "spend", "value": 500}])
+    data = client.get(f"{BASE}/analytics", headers=h).json()["data"]
+    search = next(c for c in data["cac_by_channel"] if c["channel"] == "search")
+    assert search["cac"] is None
+
+
+def test_analytics_bad_range_422(client, db):
+    _u, _s, h = _member(db)
+    resp = client.get(f"{BASE}/analytics?range=nope", headers=h)
+    assert resp.status_code == 422, resp.text

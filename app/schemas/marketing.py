@@ -298,3 +298,40 @@ class MetricPoint(BaseModel):
 class MetricsIngest(BaseModel):
     # Bound the batch so one request can't insert an unbounded number of rows.
     points: list[MetricPoint] = Field(default_factory=list, max_length=1000)
+
+
+class TrafficPoint(BaseModel):
+    week_start: date
+    visits: int
+
+
+class ChannelCac(BaseModel):
+    channel: ChannelKey
+    spend: int
+    conversions: int
+    cac: int | None
+
+
+class Funnel(BaseModel):
+    impressions: int
+    clicks: int
+    conversions: int
+    click_through_rate: float
+    conversion_rate: float
+
+
+class LeaderboardRow(BaseModel):
+    campaign_id: uuid.UUID
+    name: str
+    clicks: int
+    conversions: int
+    spend: int
+    cac: int | None
+
+
+class AnalyticsResponse(BaseModel):
+    range: str
+    traffic_by_week: list[TrafficPoint]
+    cac_by_channel: list[ChannelCac]
+    funnel: Funnel
+    leaderboard: list[LeaderboardRow]
