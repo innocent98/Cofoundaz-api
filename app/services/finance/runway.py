@@ -13,9 +13,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.finance_runway import FinanceRunwaySettings
+from app.platform.events import event_bus
 from app.schemas.finance_runway import AssumptionsUpdate
 from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
-from app.services.finance.runway_math import project_scenarios
+from app.services.finance.runway_math import _runway_is_low, project_scenarios
 from app.services.finance.scenario_config import RUNWAY_HORIZON_MONTHS
 
 
@@ -26,12 +27,10 @@ def get_or_default_settings(db: Session, *, startup_id: uuid.UUID) -> FinanceRun
     ).one_or_none()
 
 
-def upsert_assumptions(
-    db: Session, *, startup_id: uuid.UUID, data: AssumptionsUpdate
-) -> FinanceRunwaySettings:
+def _get_or_create_settings(db: Session, *, startup_id: uuid.UUID) -> FinanceRunwaySettings:
     row = get_or_default_settings(db, startup_id=startup_id)
     if row is None:
-        # add() INSIDE begin_nested: a concurrent first PUT loses the unique(startup_id) race,
+        # add() INSIDE begin_nested: a concurrent first writer loses the unique(startup_id) race,
         # the savepoint rolls back cleanly, and we adopt the winner's row instead of a 500.
         try:
             with db.begin_nested():
@@ -41,6 +40,13 @@ def upsert_assumptions(
             row = get_or_default_settings(db, startup_id=startup_id)
             if row is None:  # pragma: no cover - the conflicting row vanished mid-request
                 raise
+    return row
+
+
+def upsert_assumptions(
+    db: Session, *, startup_id: uuid.UUID, data: AssumptionsUpdate
+) -> FinanceRunwaySettings:
+    row = _get_or_create_settings(db, startup_id=startup_id)
     for name, value in data.model_dump(exclude_unset=True).items():
         setattr(row, name, value)
     db.flush()
@@ -79,3 +85,32 @@ def runway_payload(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
         "horizon_months": RUNWAY_HORIZON_MONTHS,
         "scenarios": scenarios,
     }
+
+
+def evaluate_runway_alert(db: Session, *, startup_id: uuid.UUID) -> None:
+    """Fire `finance.runway.low` once per transition into danger; re-arm on recovery.
+
+    `alert_is_low` is the dedup state: it flips True when the event fires and back to False when
+    runway recovers, so a still-low startup never re-notifies on every transaction.
+    """
+    summary = cash_flow_summary(db, startup_id=startup_id)
+    monthly_burn = int(summary["monthly_burn"])
+    low_now = _runway_is_low(monthly_burn, summary["runway_months"])
+    row = _get_or_create_settings(db, startup_id=startup_id)
+    if low_now and not row.alert_is_low:
+        row.alert_is_low = True
+        row.alert_last_fired_at = datetime.now(UTC)
+        db.flush()
+        event_bus.publish(
+            db,
+            "finance.runway.low",
+            {
+                "startup_id": str(startup_id),
+                "runway_months": summary["runway_months"],
+                "monthly_burn": monthly_burn,
+                "currency": summary["currency"],
+            },
+        )
+    elif not low_now and row.alert_is_low:
+        row.alert_is_low = False
+        db.flush()

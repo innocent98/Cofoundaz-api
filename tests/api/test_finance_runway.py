@@ -219,3 +219,88 @@ def test_profitable_startup_projection_uses_true_costs_not_clamped_burn(client, 
     assert first["cash_balance"] == d["baseline"]["cash_on_hand"] + 2_000_000
     # Worst scenario inflates true costs by 15%: net = 3,000,000 - 1,150,000.
     assert d["scenarios"]["worst"]["by_month"][0]["net"] == 1_850_000
+
+
+def _post_out(client, h, amount):
+    resp = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": datetime.now(UTC).date().isoformat(),
+            "description": "spend",
+            "amount_minor": amount,
+            "currency": "NGN",
+            "direction": "out",
+        },
+        headers=h,
+    )
+    assert resp.status_code == 200, resp.text
+    return resp
+
+
+def _runway_notifs(db, startup, user):
+    from app.db.models.notification import Notification
+
+    return (
+        db.query(Notification)
+        .filter_by(startup_id=startup.id, user_id=user.id, type="finance.runway.low")
+        .all()
+    )
+
+
+def test_transaction_into_low_runway_notifies_once(client, db):
+    founder, startup, h = _member(db)
+    _post_out(client, h, 600_000)
+    first = _runway_notifs(db, startup, founder)
+    assert len(first) == 1
+    assert first[0].title == "Your runway is running low"
+
+    # Still low: a second transaction must not notify again.
+    _post_out(client, h, 100_000)
+    second = _runway_notifs(db, startup, founder)
+    assert len(second) == 1
+
+
+def test_healthy_transaction_creates_no_runway_notification(client, db):
+    founder, startup, h = _member(db)
+    today = datetime.now(UTC).date().isoformat()
+    resp = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": today,
+            "description": "raise",
+            "amount_minor": 5_000_000,
+            "currency": "NGN",
+            "direction": "in",
+        },
+        headers=h,
+    )
+    assert resp.status_code == 200, resp.text
+    assert _runway_notifs(db, startup, founder) == []
+
+
+def test_update_and_delete_transaction_run_the_alert_hook(client, db):
+    founder, startup, h = _member(db)
+    healthy = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": datetime.now(UTC).date().isoformat(),
+            "description": "raise",
+            "amount_minor": 5_000_000,
+            "currency": "NGN",
+            "direction": "in",
+        },
+        headers=h,
+    )
+    tid = healthy.json()["data"]["id"]
+    # Flip the inflow into an outflow via PATCH -> now burning with negative cash -> low.
+    patched = client.patch(f"{BASE}/transactions/{tid}", json={"direction": "out"}, headers=h)
+    assert patched.status_code == 200, patched.text
+    assert len(_runway_notifs(db, startup, founder)) == 1
+
+    deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+    from app.db.models.finance_runway import FinanceRunwaySettings
+
+    row = db.query(FinanceRunwaySettings).filter_by(startup_id=startup.id).one()
+    db.refresh(row)
+    assert row.alert_is_low is False
