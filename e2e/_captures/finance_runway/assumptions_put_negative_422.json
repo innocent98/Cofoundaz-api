@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "hiring_spend_minor",
+        "message": "Input should be greater than or equal to 0"
+      }
+    ]
+  }
+}

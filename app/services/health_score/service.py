@@ -17,6 +17,7 @@ from app.db.models.health_score import (
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.finance.runway import build_runway_signal
 from app.services.health_score.config import (
     DIMENSION_LABELS,
     DIMENSION_WEIGHTS,
@@ -92,6 +93,11 @@ def recompute_health_score(
                 source_ref=f"assessment:{result.assessment_id}",
             )
         )
+    # Informational, non-scoring: the blanket delete above wipes the live runway signal, so
+    # rebuild it here. weighted_overall reads dim_scores only, never signals.
+    runway_signal = build_runway_signal(db, startup_id=startup.id)
+    if runway_signal is not None:
+        db.add(HealthSignal(**runway_signal))
 
     # 2. Upsert the current score
     stmt = (
