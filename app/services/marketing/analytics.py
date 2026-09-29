@@ -1,7 +1,7 @@
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import Case, case, func
+from sqlalchemy import Case, and_, case, func
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import MarketingMetricName
@@ -46,7 +46,7 @@ _RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 def _range_cutoff(range_key: str) -> date:
     if range_key not in _RANGE_DAYS:
         raise _validation("range", "range must be one of 7d, 30d, 90d.")
-    return date.today() - timedelta(days=_RANGE_DAYS[range_key])
+    return datetime.now(UTC).date() - timedelta(days=_RANGE_DAYS[range_key])
 
 
 def _rate(numerator: int, denominator: int) -> float:
@@ -114,7 +114,10 @@ def get_analytics(db: Session, *, startup_id: uuid.UUID, range_key: str) -> dict
     # leaderboard (campaign-scoped rows, joined to campaign name)
     lb_rows = (
         base.filter(MarketingMetric.campaign_id.isnot(None))
-        .join(Campaign, Campaign.id == MarketingMetric.campaign_id)
+        .join(
+            Campaign,
+            and_(Campaign.id == MarketingMetric.campaign_id, Campaign.startup_id == startup_id),
+        )
         .with_entities(
             Campaign.id,
             Campaign.name,
