@@ -13,6 +13,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.marketing import (
+    AnalyticsResponse,
     CalendarEntryCreate,
     CalendarEntryUpdate,
     CampaignCreate,
@@ -23,6 +24,7 @@ from app.schemas.marketing import (
     CopyGenerateRequest,
     KeywordCreate,
     KeywordUpdate,
+    MetricsIngest,
     OverviewResponse,
     PositioningUpsert,
     SegmentCreate,
@@ -31,6 +33,7 @@ from app.schemas.marketing import (
     TrackedPageUpdate,
 )
 from app.services.marketing import ai_content as ai_content_svc
+from app.services.marketing import analytics as analytics_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import segments as segments_svc
 from app.services.marketing import seo as seo_svc
@@ -606,3 +609,26 @@ def put_positioning(
     row = seo_svc.upsert_positioning(db, startup_id=membership.startup_id, data=payload)
     db.commit()
     return success_response(seo_svc.serialize_positioning(row).model_dump())
+
+
+@router.post("/metrics", response_model=dict[str, Any])
+def ingest_metrics(
+    payload: MetricsIngest,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    created = analytics_svc.ingest_metrics(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response({"created": created})
+
+
+@router.get("/analytics", response_model=dict[str, Any])
+def get_analytics(
+    range: str = "30d",
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    data = analytics_svc.get_analytics(db, startup_id=membership.startup_id, range_key=range)
+    return success_response(AnalyticsResponse(**data).model_dump(mode="json"))

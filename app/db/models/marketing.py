@@ -2,7 +2,17 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,6 +27,7 @@ from app.db.models.enums import (
     ContentStatus,
     MarketingGenerationKind,
     MarketingGenerationStatus,
+    MarketingMetricName,
 )
 
 
@@ -219,3 +230,30 @@ class BrandPositioning(UUIDMixin, TimestampMixin, Base):
     category: Mapped[str | None] = mapped_column(String(300), nullable=True)
     differentiator: Mapped[str | None] = mapped_column(String(300), nullable=True)
     statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class MarketingMetric(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "marketing_metrics"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ts: Mapped[date] = mapped_column(Date, nullable=False)
+    channel: Mapped[ChannelKey | None] = mapped_column(
+        Enum(ChannelKey, native_enum=False, length=20), nullable=True
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    metric: Mapped[MarketingMetricName] = mapped_column(
+        Enum(MarketingMetricName, native_enum=False, length=12), nullable=False
+    )
+    value: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (Index("ix_marketing_metrics_startup_ts", "startup_id", "ts"),)

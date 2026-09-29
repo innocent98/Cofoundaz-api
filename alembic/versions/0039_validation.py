@@ -1,7 +1,7 @@
 """validation
 
-Revision ID: 0038_validation
-Revises: 0037_seo_tools
+Revision ID: 0039_validation
+Revises: 0038_marketing_metrics
 Create Date: 2026-09-24
 
 Module 09 (Validation Hub) schema (Task 1: app/db/models/validation.py;
@@ -25,8 +25,8 @@ tables — no lock on any existing table:
     about them is recorded beyond submitted_at (spec D3). startup_id is copied
     from the survey so member reads stay workspace-scoped (D4).
 
-This revision chains off 0037_seo_tools, the develop head when this branch was
-last rebased. It has been renumbered three times (0026 -> 0034 -> 0035 -> 0038) as
+This revision chains off 0038_marketing_metrics, the develop head when this branch was
+last merged. It has been renumbered four times (0026 -> 0034 -> 0035 -> 0038 -> 0039) as
 Modules 03, 08 and 10 merged ahead of it; the head is re-checked before pushing and
 renumbered again if anything else lands first.
 
@@ -48,8 +48,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "0038_validation"
-down_revision = "0037_seo_tools"
+revision = "0039_validation"
+down_revision = "0038_marketing_metrics"
 branch_labels = None
 depends_on = None
 

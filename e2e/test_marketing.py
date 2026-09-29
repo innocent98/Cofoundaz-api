@@ -22,6 +22,11 @@ page and ticks an on-page checklist item, upserts the brand positioning statemen
 runs the AI content-gap round trip (`POST /marketing/seo/content-gaps/generate` -> 202 ->
 drain `ai.marketing.content_gap` -> poll).
 
+`test_marketing_analytics_journey`: a founder creates and launches a campaign, bulk-ingests
+metric points (`POST /marketing/metrics`) across two channels plus the campaign, reads the
+aggregation (`GET /marketing/analytics?range=30d`), then re-reads the overview to see
+`top_channel_by_conversions` / `active_campaigns` / `ai_content_ideas` filled.
+
 Every response body along the way is captured to `e2e/_captures/marketing/*.json`
 -- those files are the verbatim source for `docs/fe-integration-guide-marketing.md`.
 They must be REAL bodies from this live run, complete and untrimmed.
@@ -30,6 +35,8 @@ Marketing is founder/team_member RBAC (app/db/tenancy.py:require_role), so these
 journeys need nothing but a freshly onboarded founder + workspace -- no roadmap,
 no assessment, no mission.
 """
+
+from datetime import date, timedelta
 
 import httpx
 
@@ -462,3 +469,94 @@ def test_marketing_seo_journey(base_url, make_verified_user, capture):
         assert gap_ready.status_code == 200, gap_ready.text
         assert gap_ready.json()["data"]["status"] in ("ready", "failed")
         capture("marketing", "content_gap_ready", gap_ready)
+
+
+def test_marketing_analytics_journey(base_url, make_verified_user, capture):
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        # 0. Onboard a founder.
+        u = make_verified_user(c)
+        access = c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"]
+        auth = _auth_header(access)
+
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz Analytics")
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200, onboarded.text
+
+        me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
+        wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+
+        # 1. A real campaign (campaign-scoped metrics need a real id), launched so it counts
+        # toward the overview's active_campaigns.
+        campaign_created = c.post(
+            "/api/v1/marketing/campaigns",
+            headers=wh,
+            json={
+                "name": "Q4 launch push",
+                "objective": "launch",
+                "budget": 50000,
+                "channel_mix": {"email": 60, "search": 40},
+                "segment_ids": [],
+            },
+        )
+        assert campaign_created.status_code == 200, campaign_created.text
+        campaign_id = campaign_created.json()["data"]["id"]
+
+        campaign_launched = c.patch(
+            f"/api/v1/marketing/campaigns/{campaign_id}",
+            headers=wh,
+            json={"status": "active"},
+        )
+        assert campaign_launched.status_code == 200, campaign_launched.text
+
+        # 2. Ingest metric points: two channels (email, search) over two ISO weeks, plus
+        # campaign-scoped rows. Spend is in cents. Dates are relative to today so they
+        # always fall inside range=30d.
+        today = date.today()
+        d1 = (today - timedelta(days=2)).isoformat()
+        d2 = (today - timedelta(days=9)).isoformat()
+
+        def pt(ts: str, metric: str, value: int, **scope) -> dict:
+            return {"ts": ts, "metric": metric, "value": value, **scope}
+
+        points = [
+            # Site traffic (unscoped) across two weeks.
+            pt(d1, "visits", 420),
+            pt(d2, "visits", 310),
+            # email channel
+            pt(d1, "spend", 12000, channel="email"),
+            pt(d1, "conversions", 12, channel="email"),
+            pt(d2, "spend", 9000, channel="email"),
+            pt(d2, "conversions", 9, channel="email"),
+            # search channel
+            pt(d1, "spend", 30000, channel="search"),
+            pt(d1, "conversions", 10, channel="search"),
+            # Funnel + campaign leaderboard (campaign-scoped rows).
+            pt(d1, "impressions", 8000, campaign_id=campaign_id),
+            pt(d1, "clicks", 640, campaign_id=campaign_id),
+            pt(d1, "conversions", 21, campaign_id=campaign_id),
+            pt(d1, "spend", 25000, campaign_id=campaign_id),
+        ]
+        ingested = c.post("/api/v1/marketing/metrics", headers=wh, json={"points": points})
+        assert ingested.status_code == 200, ingested.text
+        capture("marketing", "metrics_ingested", ingested)
+
+        # 3. Aggregate.
+        analytics = c.get("/api/v1/marketing/analytics", headers=wh, params={"range": "30d"})
+        assert analytics.status_code == 200, analytics.text
+        a = analytics.json()["data"]
+        assert a["range"] == "30d"
+        assert a["traffic_by_week"]
+        assert {row["channel"] for row in a["cac_by_channel"]} == {"email", "search"}
+        assert a["funnel"]["impressions"] == 8000
+        assert a["funnel"]["clicks"] == 640
+        assert any(row["campaign_id"] == campaign_id for row in a["leaderboard"])
+        capture("marketing", "analytics", analytics)
+
+        # 4. Overview now shows the fills.
+        overview = c.get("/api/v1/marketing", headers=wh)
+        assert overview.status_code == 200, overview.text
+        o = overview.json()["data"]
+        assert o["active_campaigns"] == 1
+        assert o["top_channel_by_conversions"] == "email"
+        assert "ai_content_ideas" in o
+        capture("marketing", "overview_with_fills", overview)

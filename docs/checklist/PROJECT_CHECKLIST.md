@@ -16,7 +16,31 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-29 · **Module 10 (Marketing Hub) Slice 4 of 5 (SEO Tools) shipped, on branch
+_Last reconciled: 2026-09-29 · **Module 10 (Marketing Hub) Slice 5 of 5 (Performance Analytics) shipped, on
+branch `feat/module-10-marketing-slice5` (off Slice 4's merge, PR #105; not yet merged, no PR opened
+yet) — MODULE 10 IS NOW FULLY COMPLETE, all 5 slices.** Slice 5 adds a `marketing_metrics` time-series
+store (optional `channel` / `campaign_id` dimensions; new `MarketingMetricName` enum — `visits`,
+`impressions`, `clicks`, `conversions`, `spend`; `spend`/`cac` in cents), **`POST /marketing/metrics`**
+bulk ingestion (validated: enum/negative/int32-bounded `value`/foreign `campaign_id` -> 422, batch
+capped at 1000), **`GET /marketing/analytics?range=7d|30d|90d`** (four widgets: `traffic_by_week`,
+`cac_by_channel`, `funnel`, conversions-desc `leaderboard`; range-filtered SQL, UTC cutoff inclusive of
+today, empty/zero-safe 1-dp percentage rates, tenant-scoped leaderboard join), and the **Overview
+fills** — `top_channel_by_conversions`, `ai_content_ideas` and `active_campaigns` are now real values
+instead of `null` — migration `0038_marketing_metrics` (1 new table), 2 new routes behind the existing
+`require_role(founder, team_member)`. **FE cross-check:** the analytics read + Overview fills are
+**FE-aligned**; ingestion has **no FE screen yet (API-first, provisional)**. Live e2e **58/58 passed**
+(`e2e/test_marketing.py::test_marketing_analytics_journey`, 3 new captures). **Semantics called out in
+the FE guide:** metrics are additive and the funnel sums all rows regardless of scope (ingesting the
+same events at two scopes double-counts it — visible in the sample capture, `conversion_rate` 8.1);
+`traffic_by_week` omits empty weeks (FE must gap-fill); ranges are the last N days inclusive of today
+in UTC; the FE leaderboard reads `analytics.leaderboard`, not `campaign.metrics` (which stays `{}`).
+SOP: `docs/sop/2026-09-29-marketing-slice5.md`. FE guide:
+`docs/fe-integration-guide-marketing-analytics.md` (new; every success body pasted from the captures,
+uncaptured shapes labelled). **Module 10 moves from open to fully complete: 13 modules fully complete,
+0 open, 13 not started** (26 total; 09 Validation Hub is still with the junior, in review as PR #103).
+Slice 4 (SEO Tools) has since merged (PR #105).
+
+_Previously: 2026-09-29 · **Module 10 (Marketing Hub) Slice 4 of 5 (SEO Tools) shipped, on branch
 `feat/module-10-marketing-slice4` (off Slice 3b's merge point, PR #104; not yet merged, no PR opened
 yet):** four sub-features under `/marketing` — a **keyword tracker** (manual metrics; `volume` is a
 string to match the FE `SEOKeyword` type), an **on-page checklist** (tracked pages carrying a fixed
@@ -329,12 +353,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 (Content Calendar + Channels + Overview CRUD spine, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, `feat/module-10-marketing-slice3a`) + Slice 3b (AI channel-plan recommender + fit notes, `feat/module-10-marketing-slice3b`) of 5 **merged to `develop`** (PRs #100/#101/#102/#104); Slice 4 (SEO Tools, `feat/module-10-marketing-slice4`) built + reviewed, PR pending; Slice 5 (Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
+**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **0 open** (Module 10 was the last open module; it completed with Slice 5 and moved to the fully-complete count). **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 (Content Calendar + Channels + Overview CRUD spine, migration `0033_marketing_calendar_channels`, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, migration `0034_campaigns_segments`, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, migration `0035_marketing_ai_generations`, `feat/module-10-marketing-slice3a`) + Slice 3b (AI channel-plan recommender + fit notes, migration `0036_channel_fit_notes`, `feat/module-10-marketing-slice3b`) of 5 **merged to `develop`** (PRs #100/#101/#102/#104); Slice 4 (SEO Tools, migration `0037_seo_tools`, `feat/module-10-marketing-slice4`) built + whole-branch-reviewed, PR pending; Slice 5 (Performance Analytics) planned, not started. SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice4.md`. FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo}.md`. See the Module 10 section below. |
+| ✅ Fully complete | 13 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37) · **Marketing Hub (10, all 5 slices — MODULE 10 COMPLETE)** — Slice 1 Content Calendar + Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`, PR #100) + Slice 2 Campaigns + Audience Segments (`0034_campaigns_segments`, PR #101) + Slice 3a AI copy generation + plan-week (`0035_marketing_ai_generations`, PR #102) + Slice 3b AI channel-plan recommender + fit notes (`0036_channel_fit_notes`, PR #104) + Slice 4 SEO Tools (`0037_seo_tools`, PR #105) merged to `develop`; Slice 5 Performance Analytics (`0038_marketing_metrics`, `feat/module-10-marketing-slice5`) built, PR pending — SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`. Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 0 modules | _None — Module 10 (Marketing Hub), the only open module, completed with Slice 5 and moved to the fully-complete row above._ |
 | ⬜ Not started | 13 modules | Validation Hub (09) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -1713,7 +1737,7 @@ _The "prove it before you build it" workspace: assumptions on a four-column boar
 testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
 and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
 founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
-and submit an answer set. Migration `0038_validation` (renumbered three times as 03/08/10 merged ahead).
+and submit an answer set. Migration `0039_validation` (renumbered four times as 03/08/10 merged ahead).
 Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
 plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
 `docs/sop/2026-09-24-validation-hub.md`._
@@ -1725,7 +1749,7 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       jobs · JSONB question schema with caps · free assumption transitions, events only on a real
       change · derived evidence counts · JSONB assumption links)
 - [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
-      `survey_responses`) + migration `0038_validation` (chains off `0037_seo_tools`, sole
+      `survey_responses`) + migration `0039_validation` (chains off `0038_marketing_metrics`, sole
       alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
       `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
 - [x] Question/answer validation (`app/services/validation/questions.py`) — types
@@ -1760,7 +1784,7 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       captures) — **not yet run**; the e2e runner needs Poetry on the host, so CI runs it first
 - [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
 - [x] **Review round 1 (2026-09-29, PR #103)** — rebased onto `develop` and renumbered
-      `0035_validation` → `0038_validation` off `0037_seo_tools` (single head restored) · PR
+      `0035_validation` → `0039_validation` off `0038_marketing_metrics` (single head restored) · PR
       retargeted `main` → `develop` · blank answers rejected for required open questions and
       excluded from the completion rate · `link_ids` dedupes · `/scripts/generate` validates its
       assumption links · explicit `20/minute` on the public read · conversion capped at 100%.
@@ -2210,14 +2234,17 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
-## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a–3b + 4 of 5 shipped (Slices 1–3b merged via PR #104; Slice 4 not yet merged, no PR opened)*
+## ✅ Module 10 — Marketing Hub — *ALL 5 SLICES SHIPPED — MODULE 10 COMPLETE (Slices 1–4 merged via PRs #100/#101/#102/#104/#105; Slice 5 built on `feat/module-10-marketing-slice5`, PR pending)*
 
 Content Calendar + Channels + Overview CRUD spine (Slice 1), then Campaigns + Audience Segments
 (Slice 2), then the full AI Content Assistant — AI copy generation + AI plan-week (Slice 3a),
-then the AI channel-plan recommender + per-channel fit notes (Slice 3b). Follows the same slice
+then the AI channel-plan recommender + per-channel fit notes (Slice 3b), then SEO Tools (Slice 4),
+then Performance Analytics (Slice 5). Follows the same slice
 discipline as Modules 03/08/18/20: CRUD spine first, AI layer seamed-and-deferred, analytics last.
 Migrations `0033_marketing_calendar_channels` → `0034_campaigns_segments` →
-`0035_marketing_ai_generations` → `0036_channel_fit_notes`. SOPs:
+`0035_marketing_ai_generations` → `0036_channel_fit_notes` → `0037_seo_tools` →
+`0038_marketing_metrics`. SOPs (Slice 4/5: `docs/sop/2026-09-29-marketing-slice4.md`,
+`docs/sop/2026-09-29-marketing-slice5.md`; FE guides `-seo.md` / `-analytics.md`):
 `docs/sop/2026-09-24-marketing-slice1.md`, `docs/sop/2026-09-24-marketing-slice2.md`,
 `docs/sop/2026-09-24-marketing-slice3a.md`, `docs/sop/2026-09-28-marketing-slice3b.md`. FE guides:
 `docs/fe-integration-guide-marketing-calendar.md`,
@@ -2394,8 +2421,36 @@ Migrations `0033_marketing_calendar_channels` → `0034_campaigns_segments` →
   - [x] Docs: SOP `docs/sop/2026-09-29-marketing-slice4.md`; FE guide
         `docs/fe-integration-guide-marketing-seo.md` (checklist + content-gap sections flagged
         build-ahead/provisional)
-- [ ] **Slice 5 — Performance Analytics** (+ Module 22 export) — *planned, not started.* Fills
-      `top_channel_by_conversions` and campaign `metrics` (currently always `{}`).
+- [x] **Slice 5 — Performance Analytics** — *shipped on `feat/module-10-marketing-slice5`
+      (commits `05bc501`→`6a63054`, 2026-09-29), migration `0038_marketing_metrics`, e2e **58/58
+      passed*** — **completes Module 10**
+  - [x] `MarketingMetricName` enum (`visits`, `impressions`, `clicks`, `conversions`, `spend`) +
+        `MarketingMetric` model / `marketing_metrics` table (optional `channel` + `campaign_id`
+        dimensions, `Date` `ts`, int `value`; `spend`/`cac` in cents), migration
+        `0038_marketing_metrics`
+  - [x] `POST /marketing/metrics` — validated bulk ingest, returns `{"created": n}`; enum /
+        negative / `value` over int32 / foreign `campaign_id` → 422; batch capped at 1000 (fix
+        `d42df91`: 422 not 500). **API-first / provisional — no FE ingestion screen yet**
+  - [x] `GET /marketing/analytics?range=7d|30d|90d` (default `30d`) — `traffic_by_week`
+        (`date_trunc` week, empty weeks omitted), `cac_by_channel` (`cac` null at 0 conversions),
+        `funnel` (1-dp percentage rates, zero-safe), `leaderboard` (conversions-desc); UTC cutoff
+        inclusive of today; tenant-scoped leaderboard join (`7adec5b`); bad `range` → 422
+  - [x] Overview fills — `top_channel_by_conversions` (all-time, channel-scoped, else `null`),
+        `ai_content_ideas` (gaps in ready content-gap generations), `active_campaigns` (function-local
+        `analytics` import in `service.py` to avoid the service↔analytics cycle)
+  - [x] Documented data-model semantics: metrics additive + funnel sums all scopes (double-counts if
+        the same events are ingested at two scopes); `traffic_by_week` needs FE gap-fill; FE
+        leaderboard reads `analytics.leaderboard`, not `campaign.metrics` (stays `{}`)
+  - [x] All routes behind the existing `require_role(founder, team_member)` (403 otherwise)
+  - [x] Tests: `tests/db/test_marketing_metric_model.py` + `tests/test_marketing_metrics_migration.py`
+        + `tests/api/test_marketing_analytics.py` (17) +
+        `e2e/test_marketing.py::test_marketing_analytics_journey` (3 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] Docs: SOP `docs/sop/2026-09-29-marketing-slice5.md`; FE guide
+        `docs/fe-integration-guide-marketing-analytics.md` (ingestion flagged API-first /
+        provisional)
+- [x] **✅ MODULE 10 COMPLETE — all 5 slices shipped** (Slices 1–4 merged to `develop`; Slice 5 PR
+      pending). Analytics export is not part of this module — it belongs to Module 22.
 
 **Deferred within the Slice 1 CRUD spine itself** (tracked in the Deferred follow-ups section
 below): auto-publish at `scheduled_at` (manual `PATCH` only today); multi-channel entries (single
@@ -2419,6 +2474,12 @@ differentiated recommendation (real-provider behavior unaffected — see the SOP
 SEO-provider sync (keyword metrics are manual); on-page checklist + content-gap have no FE screen
 yet (build-ahead, shapes provisional until the FE is built); partially-filled positioning `PUT`
 composes the template with blank gaps (untested edge).
+
+**Deferred within Slice 5 itself** (tracked in the Deferred follow-ups section below): analytics
+export (Module 22); ad-platform auto-ingestion; an FE ingestion screen (ingestion is API-first /
+provisional); funnel additive-scope guidance (double-counts when the same events are ingested at two
+scopes); metric dedupe/correction (ingestion is append-only); the `campaign.metrics` JSONB is now
+dead weight.
 
 **Deferred within the Slice 2 CRUD spine itself** (tracked in the Deferred follow-ups section
 below): segment rule execution against real data (`definition` is an opaque, unevaluated JSON
@@ -2451,20 +2512,18 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
-- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slices 1–2 + 3a–3b + 4 of 5 shipped (Slice 4 SEO Tools, 2026-09-29, `feat/module-10-marketing-slice4`, migration `0037_seo_tools`, SOP `docs/sop/2026-09-29-marketing-slice4.md`, FE guide `docs/fe-integration-guide-marketing-seo.md`; keyword tracker + positioning FE-aligned, on-page checklist + content-gap build-ahead); Slice 5 Performance Analytics planned. Original entry, Slices 1–2 + 3a as of 2026-09-24:* —
-      Slice 1 on `feat/module-10-marketing-slice1` (Content Calendar + Channels + Overview CRUD
-      spine, migration `0033_marketing_calendar_channels`) + Slice 2 on
-      `feat/module-10-marketing-slice2` (Campaigns + Audience Segments, migration
-      `0034_campaigns_segments`) + Slice 3a on `feat/module-10-marketing-slice3a` (AI copy
-      generation + plan-week, migration `0035_marketing_ai_generations`); none yet merged, no PR
-      opened yet — see its own section above. Slice 3b (AI channel-plan recommender), Slice 4
-      (SEO Tools), and Slice 5 (Performance Analytics) planned, not started. SOPs
-      `docs/sop/2026-09-24-marketing-slice1.md` + `docs/sop/2026-09-24-marketing-slice2.md` +
-      `docs/sop/2026-09-24-marketing-slice3a.md`, FE guides
-      `docs/fe-integration-guide-marketing-calendar.md` +
-      `docs/fe-integration-guide-marketing-campaigns.md` +
-      `docs/fe-integration-guide-marketing-copy.md`.
-- [ ] **Module 09 — Validation Hub** — *🟢 shipped on branch `feat/validation-hub`, not yet merged; see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
+- [x] **Module 10 — Marketing Hub** — *✅ ALL 5 SLICES BUILT — MODULE 10 COMPLETE (2026-09-29)*: Slice 1
+      (Content Calendar + Channels + Overview CRUD spine, migration
+      `0033_marketing_calendar_channels`), Slice 2 (Campaigns + Audience Segments,
+      `0034_campaigns_segments`), Slice 3a (AI copy generation + plan-week,
+      `0035_marketing_ai_generations`), Slice 3b (AI channel-plan recommender + fit notes,
+      `0036_channel_fit_notes`), Slice 4 (SEO Tools, `0037_seo_tools`) and Slice 5 (Performance
+      Analytics, `0038_marketing_metrics`) all merged to `develop`
+      (PRs #100/#101/#102/#104/#105/#106); see its own section above. SOPs
+      `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` +
+      `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
+      `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
+- [ ] **Module 09 — Validation Hub** — *🟢 shipped on branch `feat/validation-hub`, not yet merged (PR #103, in review); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -2535,9 +2594,10 @@ Deferred by the Slice 2 design spec, not gaps introduced by accident — tracked
       split summing to 100 + rationale). `channel_mix` on the campaign itself is still 100%
       manually entered — the recommendation is applied to the wizard's sliders client-side, no
       server-side write to the campaign row. See `docs/sop/2026-09-28-marketing-slice3b.md`.
-- [ ] Campaign `metrics` stays `{}` and `top_channel_by_conversions` stays `null` until Slice 5
-      (Performance Analytics) — same "ship the shape now, fill it in later" pattern as every
-      other deferred Overview field in this API.
+- [x] `top_channel_by_conversions` filled — *shipped in Slice 5* (Overview fills; see
+      `docs/sop/2026-09-29-marketing-slice5.md`). Campaign `metrics` deliberately **stays `{}`**:
+      per-campaign numbers live in `GET /marketing/analytics` → `leaderboard` instead (see the
+      Slice 5 follow-ups for the `campaign.metrics` JSONB cleanup).
 - [ ] Segment rule execution — `AudienceSegment.definition` is stored/returned as an opaque JSON
       blob with no engine evaluating it against real user/customer data; `est_size` is a
       manually-entered number, not computed from the definition.
@@ -2609,6 +2669,26 @@ Deferred by the Slice 4 design spec, not gaps introduced by accident. SOP:
       `statement` is `null` only when all five parts are blank — untested edge, decide whether to
       require all five parts.
 - [ ] `DELETE /marketing/seo/pages/{id}` has no dedicated test or e2e capture.
+
+### Module 10 (Marketing Hub) Slice 5 follow-ups
+
+Deferred by the Slice 5 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-marketing-slice5.md`. None block Module 10 being complete.
+
+- [ ] Analytics export — belongs with Module 22 (Analytics & Reports).
+- [ ] Ad-platform auto-ingestion (Google/Meta/etc. sync + refresh job) — metrics only enter via
+      `POST /marketing/metrics` today.
+- [ ] FE ingestion screen — none exists; `POST /marketing/metrics` is API-first / provisional and may
+      change when one (or auto-ingestion) lands.
+- [ ] Funnel additive-scope guidance — the funnel sums every row regardless of scope, so ingesting the
+      same events at two scopes double-counts it (e.g. `conversion_rate` 8.1 in the sample capture);
+      decide whether to enforce one scope per event, derive the funnel from a single scope, or add a
+      dedupe/idempotency key.
+- [ ] Metric dedupe / correction — ingestion is append-only; no update/delete endpoint.
+- [ ] Missing tests: analytics-route 403 and the 1000-point ingest cap (both enforced, neither has a
+      dedicated test).
+- [ ] `campaign.metrics` JSONB — stays `{}` and is now dead weight; remove or populate once the FE
+      confirms it reads `analytics.leaderboard`.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)

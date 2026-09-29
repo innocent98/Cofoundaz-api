@@ -330,3 +330,11 @@ class SurveyStatus(enum.StrEnum):
     draft = "draft"
     open = "open"
     closed = "closed"
+
+
+class MarketingMetricName(enum.StrEnum):
+    visits = "visits"
+    impressions = "impressions"
+    clicks = "clicks"
+    conversions = "conversions"
+    spend = "spend"

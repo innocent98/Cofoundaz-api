@@ -62,6 +62,8 @@ def test_overview_counts(db):
     ov = svc.overview(db, startup_id=s.id)
     assert ov["active_channels"] == 1
     assert ov["scheduled_this_week"] >= 1
-    assert ov["active_campaigns"] is None
+    # Slice 5 filled these: counts (0 here — no campaigns / no ready content-gap ideas),
+    # and top_channel stays None with no conversion metrics ingested.
+    assert ov["active_campaigns"] == 0
     assert ov["top_channel_by_conversions"] is None
-    assert ov["ai_content_ideas"] is None
+    assert ov["ai_content_ideas"] == 0
