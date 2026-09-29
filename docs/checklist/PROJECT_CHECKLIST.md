@@ -16,7 +16,25 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-28 · **Module 10 (Marketing Hub) Slice 3b of 5 shipped, on branch
+_Last reconciled: 2026-09-29 · **Module 10 (Marketing Hub) Slice 4 of 5 (SEO Tools) shipped, on branch
+`feat/module-10-marketing-slice4` (off Slice 3b's merge point, PR #104; not yet merged, no PR opened
+yet):** four sub-features under `/marketing` — a **keyword tracker** (manual metrics; `volume` is a
+string to match the FE `SEOKeyword` type), an **on-page checklist** (tracked pages carrying a fixed
+8-item boolean checklist, merge-toggled, duplicate url per workspace -> 422 via SAVEPOINT), **brand
+positioning** (1 record per workspace, server-composed `statement`, `null` when all parts blank), and
+**AI content-gap suggestions** (new `content_gap` kind on `marketing_ai_generations`, worker
+`ai.marketing.content_gap` grounded in tracked keywords, same `POST -> 202 -> poll` seam) — migration
+`0037_seo_tools` (3 new tables), 13 new routes behind the existing `require_role(founder,
+team_member)`. **FE cross-check:** keyword tracker + positioning are **FE-aligned** to the current
+UI; the on-page checklist + content-gap have **no FE screen yet (build-ahead, shapes provisional)**
+and are flagged as such in the FE guide. Live e2e **57/57 passed**
+(`e2e/test_marketing.py::test_marketing_seo_journey`, 8 new captures). SOP:
+`docs/sop/2026-09-29-marketing-slice4.md`. FE guide: `docs/fe-integration-guide-marketing-seo.md`
+(new; every success body pasted from the captures, uncaptured shapes labelled). Slice 5
+(Performance Analytics) remains planned. **Module 10 remains open (Slice 4 of 5 done): 12 modules
+fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-28 · **Module 10 (Marketing Hub) Slice 3b of 5 shipped, on branch
 `feat/module-10-marketing-slice3b` (off Slice 3a; not yet merged, no PR opened yet):** the second
 half of the AI layer — an **AI channel-plan recommender** (standalone `objective` + `budget?` →
 an 8-channel percentage split always summing to 100 + rationale, for the campaign wizard) and
@@ -311,12 +329,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 (Content Calendar + Channels + Overview CRUD spine, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, `feat/module-10-marketing-slice3a`) of 5 shipped 2026-09-24 (none yet merged); Slice 3b (AI channel-plan recommender), Slice 4 (SEO Tools), and Slice 5 (Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+**PRD module tally: 26 total** — **12 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** — **10 Marketing Hub**, Slice 1 (Content Calendar + Channels + Overview CRUD spine, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, `feat/module-10-marketing-slice3a`) + Slice 3b (AI channel-plan recommender + fit notes, `feat/module-10-marketing-slice3b`) of 5 **merged to `develop`** (PRs #100/#101/#102/#104); Slice 4 (SEO Tools, `feat/module-10-marketing-slice4`) built + reviewed, PR pending; Slice 5 (Performance Analytics) planned but not started — see the Module 10 section below. **13 not started** (09 · 11–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 12 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 (Content Calendar + Channels + Overview CRUD spine, migration `0033_marketing_calendar_channels`, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, migration `0034_campaigns_segments`, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, migration `0035_marketing_ai_generations`, `feat/module-10-marketing-slice3a`) of 5 shipped 2026-09-24 (none yet merged, no PR opened yet); Slice 3b (AI channel-plan recommender), Slice 4 (SEO Tools), and Slice 5 (Performance Analytics) planned, not started. SOP `docs/sop/2026-09-24-marketing-slice1.md` + `docs/sop/2026-09-24-marketing-slice2.md` + `docs/sop/2026-09-24-marketing-slice3a.md`. FE guide `docs/fe-integration-guide-marketing-calendar.md` + `docs/fe-integration-guide-marketing-campaigns.md` + `docs/fe-integration-guide-marketing-copy.md`. See the Module 10 section below. |
+| 🟡 Open (started, not finished) | 1 module | **Marketing Hub (10)** — Slice 1 (Content Calendar + Channels + Overview CRUD spine, migration `0033_marketing_calendar_channels`, `feat/module-10-marketing-slice1`) + Slice 2 (Campaigns + Audience Segments, migration `0034_campaigns_segments`, `feat/module-10-marketing-slice2`) + Slice 3a (AI copy generation + plan-week, migration `0035_marketing_ai_generations`, `feat/module-10-marketing-slice3a`) + Slice 3b (AI channel-plan recommender + fit notes, migration `0036_channel_fit_notes`, `feat/module-10-marketing-slice3b`) of 5 **merged to `develop`** (PRs #100/#101/#102/#104); Slice 4 (SEO Tools, migration `0037_seo_tools`, `feat/module-10-marketing-slice4`) built + whole-branch-reviewed, PR pending; Slice 5 (Performance Analytics) planned, not started. SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice4.md`. FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo}.md`. See the Module 10 section below. |
 | ⬜ Not started | 13 modules | Validation Hub (09) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -2123,7 +2141,7 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
-## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a–3b of 5 shipped (none yet merged, no PR opened)*
+## 🟡 Module 10 — Marketing Hub — *Slices 1–2 + 3a–3b + 4 of 5 shipped (Slices 1–3b merged via PR #104; Slice 4 not yet merged, no PR opened)*
 
 Content Calendar + Channels + Overview CRUD spine (Slice 1), then Campaigns + Audience Segments
 (Slice 2), then the full AI Content Assistant — AI copy generation + AI plan-week (Slice 3a),
@@ -2271,7 +2289,42 @@ Migrations `0033_marketing_calendar_channels` → `0034_campaigns_segments` →
         deferred, not this slice's job); the pre-existing `Overview.active_campaigns: null` gap
         (never wired up despite Slice 2 shipping campaigns) noted as out-of-scope-for-3b, tracked
         in the follow-ups below
-- [ ] **Slice 4 — SEO Tools** — *planned, not started.*
+- [x] **Slice 4 — SEO Tools** — *shipped on `feat/module-10-marketing-slice4` (commits
+      `050824d`→`00b5373`), e2e **57/57 passed*** (PRD 10.6). FE cross-check: **keyword tracker +
+      brand positioning are FE-aligned to the current UI; on-page checklist + AI content-gap are
+      build-ahead — no FE screen consumes them yet, shapes provisional.**
+  - [x] Enum `MarketingGenerationKind.content_gap` (11 chars, fits the 12-char column) + models
+        `SeoKeyword`/`TrackedPage`/`BrandPositioning`, migration `0037_seo_tools` (`seo_keywords`,
+        `tracked_pages` `UNIQUE(startup_id,url)`, `brand_positioning` `UNIQUE(startup_id)`)
+  - [x] **Keyword tracker** *(FE-aligned)* — `GET/POST /marketing/keywords`, `PATCH/DELETE
+        /marketing/keywords/{id}`; manual metrics; `volume` is a **string** (`"2.4K"`, matches FE
+        `SEOKeyword.volume`); `difficulty` 0–100 (out-of-range → 422); snake_case fields
+        (`current_rank`/`target_page`) mapped to FE camelCase; `PATCH {"keyword": null}` → 422
+        (fix `215b583`)
+  - [x] **On-page checklist** *(build-ahead, provisional)* — `GET/POST /marketing/seo/pages`,
+        `PATCH/DELETE /marketing/seo/pages/{id}`; fixed 8 items (`title_tag`, `meta_description`,
+        `h1`, `keyword_in_intro`, `image_alt`, `internal_links`, `url_slug`, `mobile_friendly`)
+        seeded all-false; `PATCH` merge-toggles a partial `{item: bool}` (unknown key → 422);
+        `completed`/`total` server-computed; duplicate url per workspace → 422 via SAVEPOINT
+        (fix `f7c1051`)
+  - [x] **Brand positioning** *(FE-aligned)* — `GET/PUT /marketing/positioning`; 1 row per
+        workspace; 5 fields + server-composed `statement`; `GET` before any `PUT` → 200 all-null
+        (never 404); all-blank `PUT` keeps `statement: null` (fix `6be03a6`); `PUT` is full-replace
+  - [x] **AI content-gap** *(build-ahead, provisional)* — `POST /marketing/seo/content-gaps/generate`
+        (202) → poll `GET /marketing/seo/content-gaps/{id}`, history `GET
+        /marketing/seo/content-gaps`; `ai.marketing.content_gap` worker grounded in the 10 most
+        recent tracked keywords; output `{gaps: [{title, target_keyword, angle}]}` (max 7);
+        `over_budget` failure via the shared helper; kind-mismatch → 404; "Write it" = FE
+        composition into `POST /marketing/copy/generate` (no new endpoint)
+  - [x] All routes behind the existing `require_role(founder, team_member)` (403 otherwise)
+  - [x] Tests: `tests/db/test_seo_models.py` + `tests/test_seo_tools_migration.py` +
+        `tests/services/marketing/test_ai_prompts.py` (+2) +
+        `tests/worker/test_marketing_ai_handlers.py` (+2) + `tests/api/test_marketing_seo.py` +
+        `e2e/test_marketing.py::test_marketing_seo_journey` (8 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] Docs: SOP `docs/sop/2026-09-29-marketing-slice4.md`; FE guide
+        `docs/fe-integration-guide-marketing-seo.md` (checklist + content-gap sections flagged
+        build-ahead/provisional)
 - [ ] **Slice 5 — Performance Analytics** (+ Module 22 export) — *planned, not started.* Fills
       `top_channel_by_conversions` and campaign `metrics` (currently always `{}`).
 
@@ -2292,6 +2345,11 @@ history-list endpoint for `channel_plan`/`channel_fit` (same YAGNI reasoning as 
 server-side link between a channel-plan recommendation and the campaign it informs; inline
 "Refine" still unbuilt; stub-provider `channel_mix` is always the even-split fallback, never a
 differentiated recommendation (real-provider behavior unaffected — see the SOP).
+
+**Deferred within Slice 4 itself** (tracked in the Deferred follow-ups section below): no external
+SEO-provider sync (keyword metrics are manual); on-page checklist + content-gap have no FE screen
+yet (build-ahead, shapes provisional until the FE is built); partially-filled positioning `PUT`
+composes the template with blank gaps (untested edge).
 
 **Deferred within the Slice 2 CRUD spine itself** (tracked in the Deferred follow-ups section
 below): segment rule execution against real data (`definition` is an opaque, unevaluated JSON
@@ -2324,7 +2382,7 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
-- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slices 1–2 + 3a of 5 shipped 2026-09-24* —
+- [ ] **Module 10 — Marketing Hub** — *🟡 IN PROGRESS: Slices 1–2 + 3a–3b + 4 of 5 shipped (Slice 4 SEO Tools, 2026-09-29, `feat/module-10-marketing-slice4`, migration `0037_seo_tools`, SOP `docs/sop/2026-09-29-marketing-slice4.md`, FE guide `docs/fe-integration-guide-marketing-seo.md`; keyword tracker + positioning FE-aligned, on-page checklist + content-gap build-ahead); Slice 5 Performance Analytics planned. Original entry, Slices 1–2 + 3a as of 2026-09-24:* —
       Slice 1 on `feat/module-10-marketing-slice1` (Content Calendar + Channels + Overview CRUD
       spine, migration `0033_marketing_calendar_channels`) + Slice 2 on
       `feat/module-10-marketing-slice2` (Campaigns + Audience Segments, migration
@@ -2467,6 +2525,20 @@ Deferred by the Slice 3b design spec, not gaps introduced by accident — tracke
       `StubLLMClient` change (e.g. a per-property stub-value override), not attempted here as it's
       out of this slice's scope; real-provider behavior is unaffected. See the FE guide's boxed
       note and the SOP's Follow-ups.
+
+### Module 10 (Marketing Hub) Slice 4 follow-ups
+
+Deferred by the Slice 4 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-marketing-slice4.md`.
+
+- [ ] External SEO-provider sync — keyword `volume`/`difficulty`/`current_rank` are founder-entered
+      today; a provider integration + refresh job is a separate future slice.
+- [ ] FE screens for the **on-page checklist** and **AI content-gap** — both are build-ahead (no
+      screen consumes them yet); reconcile the FE guide and API shapes when the FE is built.
+- [ ] Partially-filled brand-positioning `PUT` composes the statement template with blank gaps;
+      `statement` is `null` only when all five parts are blank — untested edge, decide whether to
+      require all five parts.
+- [ ] `DELETE /marketing/seo/pages/{id}` has no dedicated test or e2e capture.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)

@@ -1,11 +1,12 @@
 from app.core.config import settings
 from app.db.models.enums import ChannelKey, MarketingGenerationKind, MarketingGenerationStatus
 from app.db.models.job import Job, JobStatus
-from app.db.models.marketing import MarketingAiGeneration, MarketingChannel
+from app.db.models.marketing import MarketingAiGeneration, MarketingChannel, SeoKeyword
 from app.platform import llm_budget
 from app.worker.handlers.marketing_ai import (
     handle_marketing_channel_fit,
     handle_marketing_channel_plan,
+    handle_marketing_content_gap,
     handle_marketing_copy,
     handle_marketing_plan_week,
     normalize_channel_mix,
@@ -264,3 +265,44 @@ def test_channel_fit_over_budget_fails(db, monkeypatch):
     assert row.status == MarketingGenerationStatus.failed
     assert row.error == "over_budget"
     assert row.output == {}
+
+
+def test_content_gap_over_budget_fails(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 1)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    g = _gen(db, s.id, MarketingGenerationKind.content_gap, u.id, inputs={})
+    llm_budget.debit(db, s.id, 5)
+    monkeypatch.setattr(
+        llm_budget, "get_llm_client", lambda: (_ for _ in ()).throw(AssertionError())
+    )
+    handle_marketing_content_gap(db, _job(MarketingGenerationKind.content_gap, g.id, s.id))
+    row = db.query(MarketingAiGeneration).filter_by(id=g.id).one()
+    assert row.status == MarketingGenerationStatus.failed
+    assert row.error == "over_budget"
+    assert row.output == {}
+
+
+def test_content_gap_grounds_on_keywords_and_fills_gaps(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    db.add(SeoKeyword(startup_id=s.id, keyword="daily savings"))
+    db.flush()
+    g = _gen(db, s.id, MarketingGenerationKind.content_gap, u.id, inputs={})
+    captured = {}
+
+    class _CapturingLLM(_FakeLLM):
+        def complete_json(self, messages, *, schema, max_tokens):
+            captured["text"] = " ".join(m.content for m in messages)
+            return self.payload
+
+    gap = {"title": "T", "target_keyword": "daily savings", "angle": "A"}
+    payload = {"gaps": [gap, "junk", gap]}
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _CapturingLLM(payload))
+    handle_marketing_content_gap(db, _job(MarketingGenerationKind.content_gap, g.id, s.id))
+    row = db.query(MarketingAiGeneration).filter_by(id=g.id).one()
+    assert row.status == MarketingGenerationStatus.ready
+    assert isinstance(row.output["gaps"], list)
+    assert row.output["gaps"] == [gap, gap]
+    assert "daily savings" in captured["text"]

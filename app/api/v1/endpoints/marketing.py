@@ -21,13 +21,19 @@ from app.schemas.marketing import (
     ChannelResponse,
     ChannelUpdate,
     CopyGenerateRequest,
+    KeywordCreate,
+    KeywordUpdate,
     OverviewResponse,
+    PositioningUpsert,
     SegmentCreate,
     SegmentUpdate,
+    TrackedPageCreate,
+    TrackedPageUpdate,
 )
 from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import segments as segments_svc
+from app.services.marketing import seo as seo_svc
 from app.services.marketing import service as svc
 
 router = APIRouter()
@@ -435,3 +441,168 @@ def get_fit_notes(
         kind=MarketingGenerationKind.channel_fit,
     )
     return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post(
+    "/seo/content-gaps/generate",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dict[str, Any],
+)
+def generate_content_gaps(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.create_content_gap_generation(
+        db, startup_id=membership.startup_id, created_by=user.id
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/seo/content-gaps", response_model=dict[str, Any])
+def list_content_gaps(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = ai_content_svc.list_content_gap_generations(db, startup_id=membership.startup_id)
+    return success_response(
+        {"generations": [ai_content_svc.serialize_generation(g).model_dump() for g in rows]}
+    )
+
+
+@router.get("/seo/content-gaps/{generation_id}", response_model=dict[str, Any])
+def get_content_gap(
+    generation_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.get_generation(
+        db,
+        startup_id=membership.startup_id,
+        generation_id=generation_id,
+        kind=MarketingGenerationKind.content_gap,
+    )
+    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post("/keywords", response_model=dict[str, Any])
+def create_keyword(
+    payload: KeywordCreate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.create_keyword(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_keyword(row).model_dump())
+
+
+@router.get("/keywords", response_model=dict[str, Any])
+def list_keywords(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = seo_svc.list_keywords(db, startup_id=membership.startup_id)
+    return success_response({"keywords": [seo_svc.serialize_keyword(r).model_dump() for r in rows]})
+
+
+@router.patch("/keywords/{keyword_id}", response_model=dict[str, Any])
+def update_keyword(
+    keyword_id: uuid.UUID,
+    payload: KeywordUpdate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.update_keyword(
+        db, startup_id=membership.startup_id, keyword_id=keyword_id, data=payload
+    )
+    db.commit()
+    return success_response(seo_svc.serialize_keyword(row).model_dump())
+
+
+@router.delete("/keywords/{keyword_id}", response_model=dict[str, Any])
+def delete_keyword(
+    keyword_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    seo_svc.delete_keyword(db, startup_id=membership.startup_id, keyword_id=keyword_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/seo/pages", response_model=dict[str, Any])
+def create_tracked_page(
+    payload: TrackedPageCreate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.create_page(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_page(row).model_dump())
+
+
+@router.get("/seo/pages", response_model=dict[str, Any])
+def list_tracked_pages(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = seo_svc.list_pages(db, startup_id=membership.startup_id)
+    return success_response({"pages": [seo_svc.serialize_page(r).model_dump() for r in rows]})
+
+
+@router.patch("/seo/pages/{page_id}", response_model=dict[str, Any])
+def update_tracked_page(
+    page_id: uuid.UUID,
+    payload: TrackedPageUpdate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.update_page_checklist(
+        db, startup_id=membership.startup_id, page_id=page_id, data=payload
+    )
+    db.commit()
+    return success_response(seo_svc.serialize_page(row).model_dump())
+
+
+@router.delete("/seo/pages/{page_id}", response_model=dict[str, Any])
+def delete_tracked_page(
+    page_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    seo_svc.delete_page(db, startup_id=membership.startup_id, page_id=page_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.get("/positioning", response_model=dict[str, Any])
+def get_positioning(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.get_positioning(db, startup_id=membership.startup_id)
+    return success_response(seo_svc.serialize_positioning(row).model_dump())
+
+
+@router.put("/positioning", response_model=dict[str, Any])
+def put_positioning(
+    payload: PositioningUpsert,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.upsert_positioning(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_positioning(row).model_dump())

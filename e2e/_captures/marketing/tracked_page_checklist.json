@@ -1,0 +1,21 @@
+{
+  "data": {
+    "id": "df203323-b495-4bc1-a348-d60c97a97984",
+    "url": "/pricing",
+    "checklist": {
+      "title_tag": false,
+      "meta_description": false,
+      "h1": true,
+      "keyword_in_intro": false,
+      "image_alt": false,
+      "internal_links": false,
+      "url_slug": false,
+      "mobile_friendly": false
+    },
+    "completed": 1,
+    "total": 8,
+    "created_at": "2026-09-29T08:52:12.538609Z",
+    "updated_at": "2026-09-29T08:52:12.548611Z"
+  },
+  "meta": null
+}

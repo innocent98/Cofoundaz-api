@@ -214,3 +214,72 @@ class GenerationResponse(BaseModel):
     error: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class KeywordCreate(BaseModel):
+    keyword: str = Field(min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+
+class KeywordUpdate(BaseModel):
+    keyword: str | None = Field(default=None, min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+    @field_validator("keyword")
+    @classmethod
+    def _keyword_not_explicit_null(cls, v: str | None) -> str | None:
+        if v is None:
+            raise ValueError("keyword may not be null")
+        return v
+
+
+class KeywordResponse(BaseModel):
+    id: uuid.UUID
+    keyword: str
+    volume: str | None
+    difficulty: int | None
+    current_rank: int | None
+    target_page: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TrackedPageCreate(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+
+
+class TrackedPageUpdate(BaseModel):
+    checklist: dict[str, bool] = Field(default_factory=dict)
+
+
+class TrackedPageResponse(BaseModel):
+    id: uuid.UUID
+    url: str
+    checklist: dict[str, bool]
+    completed: int
+    total: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PositioningUpsert(BaseModel):
+    audience: str | None = Field(default=None, max_length=300)
+    need: str | None = Field(default=None, max_length=300)
+    product: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=300)
+    differentiator: str | None = Field(default=None, max_length=300)
+
+
+class PositioningResponse(BaseModel):
+    audience: str | None
+    need: str | None
+    product: str | None
+    category: str | None
+    differentiator: str | None
+    statement: str | None

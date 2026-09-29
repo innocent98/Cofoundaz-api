@@ -6,16 +6,18 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.models.enums import ChannelKey, MarketingGenerationStatus
 from app.db.models.job import Job
-from app.db.models.marketing import AudienceSegment, MarketingAiGeneration
+from app.db.models.marketing import AudienceSegment, MarketingAiGeneration, SeoKeyword
 from app.db.models.startup import Startup
 from app.platform.llm_budget import metered_complete_json
 from app.services.marketing.ai_prompts import (
     build_channel_fit_messages,
     build_channel_plan_messages,
+    build_content_gap_messages,
     build_copy_messages,
     build_plan_week_messages,
     channel_fit_schema,
     channel_plan_schema,
+    content_gap_schema,
     copy_schema,
     plan_week_schema,
 )
@@ -209,3 +211,42 @@ def handle_marketing_channel_fit(db: Session, job: Job) -> None:
 
 
 register_handler("ai.marketing.channel_fit", handle_marketing_channel_fit)
+
+
+def handle_marketing_content_gap(db: Session, job: Job) -> None:
+    """Propose up to 7 SEO content-gap ideas grounded in tracked keywords. No commit."""
+    g = _load(db, job)
+    if g is None:
+        return
+    startup = db.get(Startup, g.startup_id)
+    if startup is None:
+        return
+    keywords = [
+        k.keyword
+        for k in db.query(SeoKeyword)
+        .filter_by(startup_id=g.startup_id)
+        .order_by(SeoKeyword.created_at.desc())
+        .limit(10)
+        .all()
+    ]
+    result = metered_complete_json(
+        db,
+        g.startup_id,
+        build_content_gap_messages(
+            keywords=keywords,
+            stage=(startup.stage.value if startup.stage else None),
+            industry=startup.industry,
+        ),
+        schema=content_gap_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        _fail_over_budget(db, g)
+        return
+    gaps = [x for x in (result.get("gaps") or []) if isinstance(x, dict)][:7]
+    g.output = {"gaps": gaps}
+    g.status = MarketingGenerationStatus.ready
+    db.flush()
+
+
+register_handler("ai.marketing.content_gap", handle_marketing_content_gap)

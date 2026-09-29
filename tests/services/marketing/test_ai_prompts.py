@@ -2,10 +2,12 @@ from app.db.models.enums import ChannelKey
 from app.services.marketing.ai_prompts import (
     build_channel_fit_messages,
     build_channel_plan_messages,
+    build_content_gap_messages,
     build_copy_messages,
     build_plan_week_messages,
     channel_fit_schema,
     channel_plan_schema,
+    content_gap_schema,
     copy_schema,
     plan_week_schema,
 )
@@ -90,3 +92,16 @@ def test_channel_fit_messages_carry_statuses():
     )
     joined = " ".join(m.content for m in msgs)
     assert "search" in joined and "active" in joined
+
+
+def test_content_gap_schema_shape():
+    schema = content_gap_schema()
+    item = schema["properties"]["gaps"]["items"]
+    assert set(item["properties"]) == {"title", "target_keyword", "angle"}
+    assert schema["properties"]["gaps"]["maxItems"] == 7
+
+
+def test_content_gap_messages_carry_keywords_and_stage():
+    msgs = build_content_gap_messages(keywords=["daily savings"], stage="mvp", industry="fintech")
+    joined = " ".join(m.content for m in msgs)
+    assert "daily savings" in joined and "mvp" in joined

@@ -1,0 +1,22 @@
+{
+  "data": {
+    "id": "2cc6558c-401d-406b-8aaa-cb37096d23be",
+    "startup_id": "b59654ba-d369-4508-9efe-efbcd937c8bd",
+    "kind": "content_gap",
+    "status": "ready",
+    "inputs": {},
+    "output": {
+      "gaps": [
+        {
+          "angle": "[stub-llm] angle",
+          "title": "[stub-llm] title",
+          "target_keyword": "[stub-llm] target_keyword"
+        }
+      ]
+    },
+    "error": null,
+    "created_at": "2026-09-29T08:52:12.571265Z",
+    "updated_at": "2026-09-29T08:52:12.591703Z"
+  },
+  "meta": null
+}

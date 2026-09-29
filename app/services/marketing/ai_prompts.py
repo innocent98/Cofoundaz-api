@@ -145,3 +145,43 @@ def build_channel_fit_messages(
         f"Current channel statuses: {status_line}."
     )
     return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
+
+
+def content_gap_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "gaps": {
+                "type": "array",
+                "maxItems": 7,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "target_keyword": {"type": "string"},
+                        "angle": {"type": "string"},
+                    },
+                    "required": ["title", "target_keyword", "angle"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["gaps"],
+        "additionalProperties": False,
+    }
+
+
+def build_content_gap_messages(
+    *, keywords: list[str], stage: str | None, industry: str | None
+) -> list[LLMMessage]:
+    system = (
+        "You are an SEO content strategist. Propose up to 7 content ideas (articles/pages) this "
+        "startup has NOT covered yet but should, to rank for its target keywords. Each idea has a "
+        "short title, a target_keyword, and a one-line angle."
+    )
+    kw = ", ".join(keywords) if keywords else "none tracked yet"
+    user = (
+        f"Stage: {stage or 'early'}. Industry: {industry or 'unspecified'}. "
+        f"Tracked keywords: {kw}."
+    )
+    return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]

@@ -106,6 +106,27 @@ def create_channel_fit_generation(
     return g
 
 
+def create_content_gap_generation(
+    db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID
+) -> MarketingAiGeneration:
+    g = MarketingAiGeneration(
+        startup_id=startup_id,
+        created_by=created_by,
+        kind=MarketingGenerationKind.content_gap,
+        inputs={},
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(g)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "ai.marketing.content_gap",
+        {"generation_id": str(g.id), "startup_id": str(startup_id)},
+        startup_id,
+    )
+    return g
+
+
 def get_generation(
     db: Session, *, startup_id: uuid.UUID, generation_id: uuid.UUID, kind: MarketingGenerationKind
 ) -> MarketingAiGeneration:
@@ -123,6 +144,17 @@ def list_copy_generations(db: Session, *, startup_id: uuid.UUID) -> list[Marketi
     return (
         db.query(MarketingAiGeneration)
         .filter_by(startup_id=startup_id, kind=MarketingGenerationKind.copy)
+        .order_by(MarketingAiGeneration.created_at.desc())
+        .all()
+    )
+
+
+def list_content_gap_generations(
+    db: Session, *, startup_id: uuid.UUID
+) -> list[MarketingAiGeneration]:
+    return (
+        db.query(MarketingAiGeneration)
+        .filter_by(startup_id=startup_id, kind=MarketingGenerationKind.content_gap)
         .order_by(MarketingAiGeneration.created_at.desc())
         .all()
     )

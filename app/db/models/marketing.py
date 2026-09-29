@@ -170,3 +170,52 @@ class MarketingAiGeneration(UUIDMixin, TimestampMixin, Base):
     )
     output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class SeoKeyword(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "seo_keywords"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    keyword: Mapped[str] = mapped_column(String(200), nullable=False)
+    volume: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    difficulty: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_page: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class TrackedPage(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "tracked_pages"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    checklist: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+    __table_args__ = (UniqueConstraint("startup_id", "url", name="uq_tracked_page_startup_url"),)
+
+
+class BrandPositioning(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "brand_positioning"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    audience: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    need: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    product: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    differentiator: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    statement: Mapped[str | None] = mapped_column(Text, nullable=True)
