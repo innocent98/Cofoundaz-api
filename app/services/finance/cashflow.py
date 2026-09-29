@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.enums import TransactionDirection
 from app.db.models.finance import Transaction
+from app.services.finance.runway_math import _runway_is_low
 
 _IN = TransactionDirection.inflow
 _OUT = TransactionDirection.outflow
@@ -58,7 +59,7 @@ def cash_flow_summary(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
     # Danger flag: fire when burning AND either under 6 months OR already out of cash
     # (runway_months is None in the burn>0 branch exactly when cash_on_hand <= 0 — the worst case,
     # which must still show the banner).
-    runway_low = monthly_burn > 0 and (runway_months is None or runway_months < 6)
+    runway_low = _runway_is_low(monthly_burn, runway_months)
 
     # by_month: last 6 calendar months, ascending, zero-filled
     since_6mo = _months_back(today, 5)
