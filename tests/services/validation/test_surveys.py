@@ -105,6 +105,22 @@ def test_analytics_counts_every_option_and_the_completion_rate(db):
     assert "counts" not in by_id[open_q]  # open answers are counted, never listed
 
 
+def test_a_blank_required_answer_does_not_count_towards_the_completion_rate(db):
+    _u, s = _ctx(db)
+    survey = create_survey(
+        db,
+        s.id,
+        title="Pricing",
+        questions=[{"type": "open", "prompt": "What would you change?", "required": True}],
+    )
+    open_q = survey.questions[0]["id"]
+    _answer(db, survey, {open_q: "the pricing"})
+    _answer(db, survey, {open_q: "   "})  # collected before the blank check existed
+    out = survey_analytics(db, s.id, survey.id)
+    assert out["responses"] == 2
+    assert out["completion_rate"] == 50
+
+
 def test_analytics_on_an_empty_survey(db):
     _u, s = _ctx(db)
     survey = create_survey(db, s.id, title="Pricing", questions=_questions())

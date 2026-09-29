@@ -42,6 +42,7 @@ from app.services.validation.service import (
     get_experiment,
     get_interview,
     get_survey,
+    link_ids,
     list_assumptions,
     list_experiments,
     list_interviews,
@@ -314,7 +315,9 @@ def survey_analytics_endpoint(
 
 
 @router.get("/surveys/{token}")
+@limiter.limit("20/minute")
 def public_survey_endpoint(
+    request: Request,
     token: str,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -362,10 +365,13 @@ def generate_scripts_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    # Same workspace check the write endpoints apply, so the job never carries an
+    # assumption id from another workspace (or a repeat) into its prompt.
+    assumption_ids = link_ids(db, membership.startup_id, body.assumption_ids)
     job = job_dispatcher.enqueue(
         db,
         "validation.scripts.generate",
-        {"startup_id": str(membership.startup_id), "assumption_ids": body.assumption_ids},
+        {"startup_id": str(membership.startup_id), "assumption_ids": assumption_ids},
         membership.startup_id,
     )
     db.commit()

@@ -34,12 +34,16 @@ _EVENT_BY_STATUS = {
 
 
 def link_ids(db: Session, startup_id: uuid.UUID, assumption_ids: Any) -> list[str]:
-    """Clean a list of assumption links, rejecting anything outside this workspace (spec D9)."""
+    """Clean a list of assumption links, rejecting anything outside this workspace (spec D9).
+
+    Repeats are dropped, keeping the first position of each id: a link is a set of
+    references, and a duplicate would otherwise double-count in ``evidence_counts``.
+    """
     if assumption_ids is None:
         return []
     if not isinstance(assumption_ids, list):
         raise AppError("VALIDATION_ERROR", "Assumption links must be a list.", 422)
-    wanted = [str(value) for value in assumption_ids]
+    wanted = list(dict.fromkeys(str(value) for value in assumption_ids))
     if not wanted:
         return []
     known = {str(row.id) for row in db.query(Assumption.id).filter_by(startup_id=startup_id).all()}
@@ -282,7 +286,8 @@ def smoke_test_stats(db: Session, startup_id: uuid.UUID, experiment_id: Any) -> 
         "status": experiment.status.value,
         "visits": visits,
         "signups": signups,
-        "conversion": round(100 * signups / visits, 1) if visits else 0.0,
+        # Both numbers are member-entered, so signups may exceed visits; cap the rate.
+        "conversion": min(100.0, round(100 * signups / visits, 1)) if visits else 0.0,
     }
 
 
@@ -486,6 +491,14 @@ def serialize_survey(survey: Survey, response_count: int = 0) -> dict[str, Any]:
     }
 
 
+def _answered(answers: dict[str, Any], key: str) -> bool:
+    """A key that is present but blank does not count as an answer."""
+    value = answers.get(key)
+    if value is None:
+        return False
+    return not isinstance(value, str) or bool(value.strip())
+
+
 def survey_analytics(db: Session, startup_id: uuid.UUID, survey_id: Any) -> dict[str, Any]:
     """Per-question counts and the completion rate (spec section 5).
 
@@ -496,7 +509,7 @@ def survey_analytics(db: Session, startup_id: uuid.UUID, survey_id: Any) -> dict
     total = len(rows)
     questions = survey.questions or []
     required = [question["id"] for question in questions if question.get("required")]
-    complete = sum(1 for row in rows if all(key in (row.answers or {}) for key in required))
+    complete = sum(1 for row in rows if all(_answered(row.answers or {}, key) for key in required))
     out: list[dict[str, Any]] = []
     for question in questions:
         given = [

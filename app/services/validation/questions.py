@@ -102,6 +102,8 @@ def _validate_answer(question: dict[str, Any], value: Any) -> Any:
     if not isinstance(value, str):
         raise _invalid("This answer must be text.", field)
     text = value.strip()
+    if question["required"] and not text:
+        raise _invalid("This question is required.", field)
     if len(text) > MAX_OPEN_ANSWER:
         raise _invalid(f"Keep this answer under {MAX_OPEN_ANSWER} characters.", field)
     return text

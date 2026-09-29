@@ -50,6 +50,14 @@ def test_links_must_belong_to_this_workspace(db):
         _new(db, s, assumption_ids=[str(uuid.uuid4())])
 
 
+def test_repeated_links_are_deduped_keeping_the_first_position(db):
+    _u, s = _ctx(db)
+    first = create_assumption(db, s.id, statement="First", risk=RiskLevel.low)
+    second = create_assumption(db, s.id, statement="Second", risk=RiskLevel.low)
+    row = _new(db, s, assumption_ids=[str(second.id), str(first.id), str(second.id)])
+    assert row.assumption_ids == [str(second.id), str(first.id)]
+
+
 def test_list_filters_and_cross_workspace_404(db):
     _u, s = _ctx(db)
     _other_u, other = _ctx(db)
@@ -78,6 +86,12 @@ def test_smoke_stats_derive_conversion(db):
     stats = smoke_test_stats(db, s.id, row.id)
     assert stats["visits"] == 200 and stats["signups"] == 13
     assert stats["conversion"] == 6.5
+
+
+def test_smoke_stats_cap_conversion_at_one_hundred(db):
+    _u, s = _ctx(db)
+    row = _new(db, s, metrics={"visits": 10, "signups": 25})  # member typed them the wrong way up
+    assert smoke_test_stats(db, s.id, row.id)["conversion"] == 100.0
 
 
 def test_smoke_stats_never_divide_by_zero(db):

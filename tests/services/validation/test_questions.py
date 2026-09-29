@@ -78,6 +78,18 @@ def test_a_required_question_must_be_answered():
     assert exc.value.http_status == 422
 
 
+def test_a_required_open_question_rejects_a_blank_answer():
+    questions = validate_questions(
+        [{"type": "open", "prompt": "What would you change?", "required": True}]
+    )
+    open_q = questions[0]["id"]
+    for blank in ("", "   ", "\n\t"):
+        with pytest.raises(AppError) as exc:
+            validate_answers(questions, {open_q: blank})
+        assert exc.value.http_status == 422
+    assert validate_answers(questions, {open_q: "  the pricing  "}) == {open_q: "the pricing"}
+
+
 def test_an_unknown_question_id_is_rejected():
     questions = _questions()
     with pytest.raises(AppError):
