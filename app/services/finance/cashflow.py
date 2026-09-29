@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import case, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from app.db.models.enums import TransactionDirection
 from app.db.models.finance import Transaction
@@ -22,31 +22,62 @@ def _months_back(today: date, n: int) -> date:
     return date(y, m, 1)
 
 
-def cash_flow_summary(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
-    today = datetime.now(UTC).date()
-    # `date <= today` on the base query so future-dated transactions never count toward
-    # cash-on-hand / burn / the monthly series (keeps the totals and by_month consistent).
-    base = db.query(Transaction).filter(
+def _base_query(db: Session, *, startup_id: uuid.UUID, today: date) -> Query[Transaction]:
+    # `date <= today` so future-dated transactions never count toward cash-on-hand / burn /
+    # the monthly series (keeps the totals and by_month consistent).
+    return db.query(Transaction).filter(
         Transaction.startup_id == startup_id, Transaction.date <= today
     )
 
+
+def _inflow_outflow_sums() -> tuple[Any, Any]:
     inflow = func.coalesce(
         func.sum(case((Transaction.direction == _IN, Transaction.amount_minor), else_=0)), 0
     )
     outflow = func.coalesce(
         func.sum(case((Transaction.direction == _OUT, Transaction.amount_minor), else_=0)), 0
     )
+    return inflow, outflow
+
+
+def _trailing_3mo_totals(base: Query[Transaction], today: date) -> tuple[int, int]:
+    """(inflow, outflow) over the trailing window: first day of the month 2 months ago .. today.
+
+    Single source for the 3-month window so cash_flow_summary and trailing_monthly_flows
+    can never diverge.
+    """
+    inflow, outflow = _inflow_outflow_sums()
+    since_3mo = _months_back(today, 2)
+    win_in, win_out = (
+        base.filter(Transaction.date >= since_3mo).with_entities(inflow, outflow).one()
+    )
+    return int(win_in), int(win_out)
+
+
+def trailing_monthly_flows(db: Session, *, startup_id: uuid.UUID) -> tuple[int, int]:
+    """(monthly_revenue, monthly_costs): trailing-3-month totals / 3, UNCLAMPED.
+
+    Unlike cash_flow_summary's monthly_burn (clamped at 0), this keeps the true cost figure
+    for profitable startups so scenario projections don't invent burn from revenue.
+    """
+    today = datetime.now(UTC).date()
+    win_in, win_out = _trailing_3mo_totals(
+        _base_query(db, startup_id=startup_id, today=today), today
+    )
+    return round(win_in / 3), round(win_out / 3)
+
+
+def cash_flow_summary(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
+    today = datetime.now(UTC).date()
+    base = _base_query(db, startup_id=startup_id, today=today)
+    inflow, outflow = _inflow_outflow_sums()
 
     # cash on hand: all-time
     all_in, all_out = base.with_entities(inflow, outflow).one()
     cash_on_hand = int(all_in) - int(all_out)
 
     # trailing 3 months (from the first day of the month 2 months ago through today)
-    since_3mo = _months_back(today, 2)
-    win_in, win_out = (
-        base.filter(Transaction.date >= since_3mo).with_entities(inflow, outflow).one()
-    )
-    win_in, win_out = int(win_in), int(win_out)
+    win_in, win_out = _trailing_3mo_totals(base, today)
     net_out = win_out - win_in
     monthly_burn = max(0, round(net_out / 3))
     monthly_revenue = round(win_in / 3)

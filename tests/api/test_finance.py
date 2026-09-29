@@ -268,3 +268,16 @@ def test_future_dated_excluded_from_cash_flow(client, db):
     # the future-dated outflow must not reduce cash-on-hand or appear in the 6-month series
     assert d["cash_on_hand"] == 500_000
     assert all(m["outflow"] == 0 for m in d["by_month"])
+
+
+def test_trailing_monthly_flows_unclamped_for_profitable_startup(client, db):
+    from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
+
+    _u, s, h = _member(db)
+    today = _today_utc()
+    _seed(client, h, [_txn(today, 9_000_000, "in", "sales"), _txn(today, 3_000_000, "out")])
+    revenue, costs = trailing_monthly_flows(db, startup_id=s.id)
+    assert (revenue, costs) == (3_000_000, 1_000_000)
+    # The summary clamps burn at 0 for a profitable startup; the helper keeps the true costs.
+    summary = cash_flow_summary(db, startup_id=s.id)
+    assert summary["monthly_burn"] == 0 and summary["monthly_revenue"] == revenue

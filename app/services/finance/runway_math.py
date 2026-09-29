@@ -4,6 +4,7 @@ Deliberately free of DB/ORM imports and of any import of cashflow.py so the impo
 stays acyclic (cashflow -> runway_math; runway -> cashflow, runway_math).
 """
 
+import math
 from datetime import date
 
 from app.services.finance.scenario_config import RUNWAY_HORIZON_MONTHS, SCENARIOS
@@ -34,11 +35,12 @@ def _project_one(
     cost_mult: float,
     horizon: int,
 ) -> tuple[list[dict], float | None, int]:
+    """Returns (balances, UNROUNDED fractional runway or None, avg net burn)."""
     balances: list[dict] = []
     prev = cash0
     runway: float | None = None
     net_sum = 0
-    if cash0 <= 0 and monthly_costs > monthly_rev:  # already out while burning
+    if cash0 <= 0:  # no starting cash (after one-offs): out of cash now, in every scenario
         runway = 0.0
     for i in range(1, horizon + 1):
         rev_i = round(monthly_rev * ((1 + growth_pct / 100) ** i))
@@ -49,15 +51,24 @@ def _project_one(
         balances.append({"month": None, "cash_balance": cur, "net": net_i})  # month set by caller
         if runway is None and prev > 0 >= cur:  # crossed zero this month
             frac = prev / (prev - cur) if prev != cur else 0.0
-            runway = round((i - 1) + frac, 1)
+            runway = (i - 1) + frac  # unrounded; callers round for display only
         prev = cur
     avg_net_burn = max(0, round(net_sum / horizon))
     return balances, runway, avg_net_burn
 
 
 def project_scenarios(baseline: dict, assumptions: dict, *, today: date) -> dict[str, dict]:
+    """Project base/best/worst cash over RUNWAY_HORIZON_MONTHS.
+
+    `baseline` keys: cash_on_hand, monthly_revenue, monthly_costs (actual, unclamped), currency.
+
+    `by_month[i]` is the projected END-of-month-i cash balance, labelled i months after `today`.
+    `cash_out_date` is the interpolated month the balance reaches zero, so it can differ from the
+    first non-positive `by_month` label by up to one month. `runway_months` is rounded to 1
+    decimal for display; `cash_out_date` is derived from the unrounded value.
+    """
     monthly_rev = int(baseline["monthly_revenue"])
-    monthly_costs = int(baseline["monthly_burn"]) + monthly_rev  # exact reconstruction
+    monthly_costs = int(baseline["monthly_costs"])
     cash0 = int(baseline["cash_on_hand"]) - int(assumptions["one_off_costs_minor"])
     g = int(assumptions["mom_growth_percent"])
     hire = int(assumptions["hiring_spend_minor"])
@@ -69,9 +80,9 @@ def project_scenarios(baseline: dict, assumptions: dict, *, today: date) -> dict
         )
         for idx, b in enumerate(balances, start=1):
             b["month"] = _add_months(today, idx)
-        cash_out = _add_months(today, int(runway)) if runway is not None else None
+        cash_out = _add_months(today, math.floor(runway)) if runway is not None else None
         out[name] = {
-            "runway_months": runway,
+            "runway_months": round(runway, 1) if runway is not None else None,
             "cash_out_date": cash_out,
             "avg_net_burn_minor": avg_burn,
             "by_month": balances,
