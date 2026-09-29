@@ -124,3 +124,32 @@ def test_tracked_page_unknown_checklist_key_422(client, db):
         f"{BASE}/seo/pages/{pid}", json={"checklist": {"not_a_real_item": True}}, headers=h
     )
     assert bad.status_code == 422, bad.text
+
+
+def test_positioning_get_before_put_is_empty(client, db):
+    _u, _s, h = _member(db)
+    got = client.get(f"{BASE}/positioning", headers=h)
+    assert got.status_code == 200, got.text
+    assert got.json()["data"]["statement"] is None
+    assert got.json()["data"]["audience"] is None
+
+
+def test_positioning_upsert_composes_statement_and_is_single_row(client, db):
+    _u, _s, h = _member(db)
+    body = {
+        "audience": "gig workers",
+        "need": "save on irregular income",
+        "product": "Kolo",
+        "category": "savings app",
+        "differentiator": "saves automatically",
+    }
+    put1 = client.put(f"{BASE}/positioning", json=body, headers=h)
+    assert put1.status_code == 200, put1.text
+    assert put1.json()["data"]["statement"] == (
+        "For gig workers who save on irregular income, Kolo is the savings app that saves automatically."
+    )
+    put2 = client.put(f"{BASE}/positioning", json={**body, "product": "KoloPay"}, headers=h)
+    assert put2.status_code == 200, put2.text
+    assert "KoloPay" in put2.json()["data"]["statement"]
+    got = client.get(f"{BASE}/positioning", headers=h)
+    assert got.json()["data"]["product"] == "KoloPay"

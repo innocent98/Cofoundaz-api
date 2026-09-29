@@ -24,6 +24,7 @@ from app.schemas.marketing import (
     KeywordCreate,
     KeywordUpdate,
     OverviewResponse,
+    PositioningUpsert,
     SegmentCreate,
     SegmentUpdate,
     TrackedPageCreate,
@@ -538,3 +539,25 @@ def delete_tracked_page(
     seo_svc.delete_page(db, startup_id=membership.startup_id, page_id=page_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.get("/positioning", response_model=dict[str, Any])
+def get_positioning(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.get_positioning(db, startup_id=membership.startup_id)
+    return success_response(seo_svc.serialize_positioning(row).model_dump())
+
+
+@router.put("/positioning", response_model=dict[str, Any])
+def put_positioning(
+    payload: PositioningUpsert,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.upsert_positioning(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_positioning(row).model_dump())

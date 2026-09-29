@@ -4,11 +4,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
-from app.db.models.marketing import SeoKeyword, TrackedPage
+from app.db.models.marketing import BrandPositioning, SeoKeyword, TrackedPage
 from app.schemas.marketing import (
     KeywordCreate,
     KeywordResponse,
     KeywordUpdate,
+    PositioningResponse,
+    PositioningUpsert,
     TrackedPageCreate,
     TrackedPageResponse,
     TrackedPageUpdate,
@@ -137,3 +139,47 @@ def delete_page(db: Session, *, startup_id: uuid.UUID, page_id: uuid.UUID) -> No
     row = get_page(db, startup_id=startup_id, page_id=page_id)
     db.delete(row)
     db.flush()
+
+
+def compose_statement(
+    *,
+    audience: str | None,
+    need: str | None,
+    product: str | None,
+    category: str | None,
+    differentiator: str | None,
+) -> str:
+    a, n, p, c, d = (v or "" for v in (audience, need, product, category, differentiator))
+    return f"For {a} who {n}, {p} is the {c} that {d}."
+
+
+def get_positioning(db: Session, *, startup_id: uuid.UUID) -> BrandPositioning | None:
+    return db.query(BrandPositioning).filter_by(startup_id=startup_id).one_or_none()
+
+
+def upsert_positioning(
+    db: Session, *, startup_id: uuid.UUID, data: PositioningUpsert
+) -> BrandPositioning:
+    row = get_positioning(db, startup_id=startup_id)
+    if row is None:
+        row = BrandPositioning(startup_id=startup_id)
+        db.add(row)
+    fields = data.model_dump()
+    for name, value in fields.items():
+        setattr(row, name, value)
+    row.statement = compose_statement(**fields)
+    db.flush()
+    return row
+
+
+def serialize_positioning(row: BrandPositioning | None) -> PositioningResponse:
+    if row is None:
+        return PositioningResponse(
+            audience=None,
+            need=None,
+            product=None,
+            category=None,
+            differentiator=None,
+            statement=None,
+        )
+    return PositioningResponse.model_validate(row, from_attributes=True)

@@ -266,3 +266,20 @@ class TrackedPageResponse(BaseModel):
     total: int
     created_at: datetime
     updated_at: datetime
+
+
+class PositioningUpsert(BaseModel):
+    audience: str | None = Field(default=None, max_length=300)
+    need: str | None = Field(default=None, max_length=300)
+    product: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=300)
+    differentiator: str | None = Field(default=None, max_length=300)
+
+
+class PositioningResponse(BaseModel):
+    audience: str | None
+    need: str | None
+    product: str | None
+    category: str | None
+    differentiator: str | None
+    statement: str | None
