@@ -180,3 +180,42 @@ def test_cross_tenant_assumptions_isolated(client, db):
     assert got_b.json()["data"]["assumptions"]["mom_growth_percent"] == 0
     got_a = client.get(f"{BASE}/runway", headers=ha)
     assert got_a.json()["data"]["assumptions"]["mom_growth_percent"] == 50
+
+
+def test_profitable_startup_projection_uses_true_costs_not_clamped_burn(client, db):
+    # Profitable: 9,000,000 in / 3,000,000 out inside the trailing window, so
+    # cash_flow_summary clamps monthly_burn to 0 while the true monthly costs are 1,000,000 and
+    # monthly revenue is 3,000,000. If runway_payload fed the clamped monthly_burn (0) into the
+    # projection as "costs", a profitable company would look like it has zero costs (and the
+    # per-month net would be overstated) for the wrong reason. This pins the real wiring.
+    _u, _s, h = _member(db)
+    today = datetime.now(UTC).date().isoformat()
+    for direction, amount in (("in", 9_000_000), ("out", 3_000_000)):
+        seeded = client.post(
+            f"{BASE}/transactions",
+            json={
+                "date": today,
+                "description": "seed",
+                "amount_minor": amount,
+                "currency": "NGN",
+                "direction": direction,
+            },
+            headers=h,
+        )
+        assert seeded.status_code == 200, seeded.text
+
+    resp = client.get(f"{BASE}/runway", headers=h)
+    assert resp.status_code == 200, resp.text
+    d = resp.json()["data"]
+
+    assert d["baseline"]["monthly_burn"] == 0
+    assert d["baseline"]["monthly_revenue"] == 3_000_000
+    base = d["scenarios"]["base"]
+    assert base["runway_months"] is None
+    assert base["avg_net_burn_minor"] == 0
+    # Month 1 net = revenue 3,000,000 - true costs 1,000,000 (NOT - clamped burn 0).
+    first = base["by_month"][0]
+    assert first["net"] == 2_000_000
+    assert first["cash_balance"] == d["baseline"]["cash_on_hand"] + 2_000_000
+    # Worst scenario inflates true costs by 15%: net = 3,000,000 - 1,150,000.
+    assert d["scenarios"]["worst"]["by_month"][0]["net"] == 1_850_000
