@@ -12,7 +12,7 @@ class TransactionCreate(BaseModel):
     date: dt.date
     description: str = Field(min_length=1, max_length=300)
     category: str | None = Field(default=None, max_length=120)
-    amount_minor: int = Field(ge=0)
+    amount_minor: int = Field(ge=0, le=2_147_483_647)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     direction: TransactionDirection
 
@@ -21,7 +21,7 @@ class TransactionUpdate(BaseModel):
     date: dt.date | None = None
     description: str | None = Field(default=None, min_length=1, max_length=300)
     category: str | None = Field(default=None, max_length=120)
-    amount_minor: int | None = Field(default=None, ge=0)
+    amount_minor: int | None = Field(default=None, ge=0, le=2_147_483_647)
     currency: str | None = Field(default=None, min_length=1, max_length=3)
     direction: TransactionDirection | None = None
 

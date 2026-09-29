@@ -23,7 +23,11 @@ def _months_back(today: date, n: int) -> date:
 
 def cash_flow_summary(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
     today = datetime.now(UTC).date()
-    base = db.query(Transaction).filter(Transaction.startup_id == startup_id)
+    # `date <= today` on the base query so future-dated transactions never count toward
+    # cash-on-hand / burn / the monthly series (keeps the totals and by_month consistent).
+    base = db.query(Transaction).filter(
+        Transaction.startup_id == startup_id, Transaction.date <= today
+    )
 
     inflow = func.coalesce(
         func.sum(case((Transaction.direction == _IN, Transaction.amount_minor), else_=0)), 0
@@ -51,7 +55,10 @@ def cash_flow_summary(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
     runway_months = (
         round(cash_on_hand / monthly_burn, 1) if monthly_burn > 0 and cash_on_hand > 0 else None
     )
-    runway_low = runway_months is not None and runway_months < 6
+    # Danger flag: fire when burning AND either under 6 months OR already out of cash
+    # (runway_months is None in the burn>0 branch exactly when cash_on_hand <= 0 — the worst case,
+    # which must still show the banner).
+    runway_low = monthly_burn > 0 and (runway_months is None or runway_months < 6)
 
     # by_month: last 6 calendar months, ascending, zero-filled
     since_6mo = _months_back(today, 5)

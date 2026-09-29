@@ -203,12 +203,12 @@ def test_cash_flow_runway_not_low_and_null_when_cash_not_positive(client, db):
     assert d["runway_months"] == 97.0
     assert d["runway_low"] is False
 
-    # Overspent: cash on hand <= 0 -> no runway (never a negative/zero-divide value).
+    # Overspent: cash on hand <= 0 while burning -> no runway number, but the danger flag MUST fire.
     _u2, _s2, h2 = _member(db)
     _seed(client, h2, [_txn(today.isoformat(), 300_000, "out")])
     d2 = client.get(f"{BASE}/cash-flow", headers=h2).json()["data"]
     assert d2["cash_on_hand"] == -300_000 and d2["monthly_burn"] == 100_000
-    assert d2["runway_months"] is None and d2["runway_low"] is False
+    assert d2["runway_months"] is None and d2["runway_low"] is True
 
 
 def test_cash_flow_runway_null_when_net_positive(client, db):
@@ -239,3 +239,32 @@ def test_cash_flow_runway_null_when_net_positive(client, db):
     assert d["cash_on_hand"] == 4_900_000
     assert d["monthly_revenue"] == round(5_000_000 / 3)
     assert d["by_month"][-1]["inflow"] == 5_000_000 and d["by_month"][-1]["net"] == 4_900_000
+
+
+def test_amount_over_int32_422(client, db):
+    # A value above Postgres int32 max must 422 at validation, not 500 at flush.
+    _u, _s, h = _member(db)
+    resp = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": "2026-03-10",
+            "description": "big raise",
+            "amount_minor": 3_000_000_000,
+            "direction": "in",
+        },
+        headers=h,
+    )
+    assert resp.status_code == 422, resp.text
+
+
+def test_future_dated_excluded_from_cash_flow(client, db):
+    from datetime import UTC, datetime, timedelta
+
+    _u, _s, h = _member(db)
+    today = datetime.now(UTC).date()
+    future = (today.replace(day=1) + timedelta(days=40)).isoformat()  # next month-ish
+    _seed(client, h, [_txn(today.isoformat(), 500_000, "in"), _txn(future, 900_000, "out")])
+    d = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    # the future-dated outflow must not reduce cash-on-hand or appear in the 6-month series
+    assert d["cash_on_hand"] == 500_000
+    assert all(m["outflow"] == 0 for m in d["by_month"])
