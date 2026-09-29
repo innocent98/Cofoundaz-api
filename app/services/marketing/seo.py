@@ -91,9 +91,12 @@ def serialize_page(row: TrackedPage) -> TrackedPageResponse:
 
 def create_page(db: Session, *, startup_id: uuid.UUID, data: TrackedPageCreate) -> TrackedPage:
     row = TrackedPage(startup_id=startup_id, url=data.url, checklist=_seed_checklist())
-    db.add(row)
     try:
+        # add() must be INSIDE the SAVEPOINT so a dup-url rollback discards the pending
+        # row; otherwise it lingers in session.new and re-flushes (poisoning the session)
+        # on the next query. Mirrors list_channels' seeding.
         with db.begin_nested():
+            db.add(row)
             db.flush()
     except IntegrityError as exc:
         raise _validation("url", "A tracked page with this url already exists.") from exc
