@@ -6,11 +6,16 @@ def _alembic(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
-def test_single_head_is_0036():
-    result = _alembic("heads")
-    assert result.returncode == 0, result.stderr
-    assert "0036_channel_fit_notes" in result.stdout
-    assert result.stdout.count("(head)") == 1
+def test_migration_chain_single_head_includes_0036():
+    # Invariant: exactly one head (no divergent branches). Do NOT assert 0036 is *the*
+    # head — later slices (e.g. 0037) legitimately chain off it and become the head.
+    heads = _alembic("heads")
+    assert heads.returncode == 0, heads.stderr
+    assert heads.stdout.count("(head)") == 1
+    # 0036 must still be reachable in the linear history.
+    history = _alembic("history")
+    assert history.returncode == 0, history.stderr
+    assert "0036_channel_fit_notes" in history.stdout
 
 
 def test_upgrade_then_downgrade_round_trips():
