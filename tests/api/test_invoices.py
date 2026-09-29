@@ -274,3 +274,125 @@ def test_cross_tenant_list_exclusion(client, db):
     assert listed.status_code == 200, listed.text
     ids = [i["id"] for i in listed.json()["data"]["invoices"]]
     assert iid not in ids
+
+
+def _create(client, h, **overrides):
+    resp = client.post(f"{BASE}/invoices", json=_payload(**overrides), headers=h)
+    assert resp.status_code == 200, resp.text
+    return resp.json()["data"]["id"]
+
+
+def test_patch_draft_recomputes_totals(client, db):
+    _u, _s, h = _member(db)
+    iid = _create(client, h)
+    resp = client.patch(
+        f"{BASE}/invoices/{iid}",
+        json={"line_items": [_item(unit_price_minor=1000, quantity=3)], "tax_percent": 10},
+        headers=h,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["subtotal_minor"] == 3000
+    assert data["tax_minor"] == 300
+    assert data["total_minor"] == 3300
+
+
+def test_patch_sent_invoice_rejected_but_auto_remind_allowed(client, db):
+    _u, _s, h = _member(db)
+    iid = _create(client, h)
+    sent = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert sent.status_code == 200, sent.text
+
+    blocked = client.patch(f"{BASE}/invoices/{iid}", json={"client_name": "Nope"}, headers=h)
+    assert blocked.status_code == 422, blocked.text
+    assert blocked.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    toggled = client.patch(f"{BASE}/invoices/{iid}", json={"auto_remind": False}, headers=h)
+    assert toggled.status_code == 200, toggled.text
+    assert toggled.json()["data"]["auto_remind"] is False
+    assert toggled.json()["data"]["status"] == "sent"
+
+
+@pytest.mark.parametrize(
+    "field", ["client_name", "client_email", "line_items", "tax_percent", "currency", "terms"]
+)
+def test_patch_explicit_null_rejected(client, db, field):
+    _u, _s, h = _member(db)
+    iid = _create(client, h)
+    resp = client.patch(f"{BASE}/invoices/{iid}", json={field: None}, headers=h)
+    assert resp.status_code == 422, resp.text
+
+
+def test_patch_invalid_terms_and_empty_items_422(client, db):
+    _u, _s, h = _member(db)
+    iid = _create(client, h)
+    bad_terms = client.patch(f"{BASE}/invoices/{iid}", json={"terms": "net_90"}, headers=h)
+    empty = client.patch(f"{BASE}/invoices/{iid}", json={"line_items": []}, headers=h)
+    assert bad_terms.status_code == 422, bad_terms.text
+    assert empty.status_code == 422, empty.text
+
+
+def test_delete_draft_ok_and_sent_rejected(client, db):
+    _u, _s, h = _member(db)
+    draft_id = _create(client, h)
+    sent_id = _create(client, h)
+    client.post(f"{BASE}/invoices/{sent_id}/send", headers=h)
+
+    deleted = client.delete(f"{BASE}/invoices/{draft_id}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["data"] == {"deleted": True}
+    gone = client.get(f"{BASE}/invoices/{draft_id}", headers=h)
+    assert gone.status_code == 404, gone.text
+
+    blocked = client.delete(f"{BASE}/invoices/{sent_id}", headers=h)
+    assert blocked.status_code == 422, blocked.text
+    assert blocked.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_send_sets_sent_and_enqueues_once(client, db):
+    from app.db.models.job import Job
+
+    _u, startup, h = _member(db)
+    iid = _create(client, h, terms="net_15")
+    resp = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    today = datetime.now(UTC).date()
+    assert data["status"] == "sent"
+    assert data["issued_on"] == today.isoformat()
+    assert data["due_on"] == (today + timedelta(days=15)).isoformat()
+    jobs = db.query(Job).filter_by(type="email.invoice_sent", startup_id=startup.id).all()
+    assert len(jobs) == 1
+    assert jobs[0].payload == {"invoice_id": iid}
+
+    again = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert again.status_code == 422, again.text
+    assert db.query(Job).filter_by(type="email.invoice_sent", startup_id=startup.id).count() == 1
+
+
+def test_cross_tenant_patch_delete_send_404(client, db):
+    _a, _sa, ha = _member(db)
+    iid = _create(client, ha)
+    _b, _sb, hb = _member(db)
+    patched = client.patch(f"{BASE}/invoices/{iid}", json={"client_name": "X"}, headers=hb)
+    deleted = client.delete(f"{BASE}/invoices/{iid}", headers=hb)
+    sent = client.post(f"{BASE}/invoices/{iid}/send", headers=hb)
+    assert patched.status_code == 404, patched.text
+    assert deleted.status_code == 404, deleted.text
+    assert sent.status_code == 404, sent.text
+    intact = client.get(f"{BASE}/invoices/{iid}", headers=ha)
+    assert intact.json()["data"]["status"] == "draft"
+    assert intact.json()["data"]["client_name"] == "Acme Ltd"
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_lifecycle_rbac_forbidden(client, db, role):
+    _f, startup, fh = _member(db)
+    iid = _create(client, fh)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    patched = client.patch(f"{BASE}/invoices/{iid}", json={"auto_remind": False}, headers=h)
+    deleted = client.delete(f"{BASE}/invoices/{iid}", headers=h)
+    sent = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert patched.status_code == 403, patched.text
+    assert deleted.status_code == 403, deleted.text
+    assert sent.status_code == 403, sent.text

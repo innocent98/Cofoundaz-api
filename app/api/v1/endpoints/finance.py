@@ -14,7 +14,7 @@ from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
-from app.schemas.invoice import InvoiceCreate
+from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import invoices as invoice_svc
 from app.services.finance import runway as runway_svc
@@ -174,4 +174,47 @@ def get_invoice(
 ) -> dict[str, Any]:
     inv = invoice_svc.get_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
     today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.patch("/invoices/{invoice_id}", response_model=dict[str, Any])
+def update_invoice(
+    invoice_id: uuid.UUID,
+    payload: InvoiceUpdate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    inv = invoice_svc.update_invoice(
+        db, startup_id=membership.startup_id, invoice_id=invoice_id, data=payload
+    )
+    db.commit()
+    today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.delete("/invoices/{invoice_id}", response_model=dict[str, Any])
+def delete_invoice(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    invoice_svc.delete_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/invoices/{invoice_id}/send", response_model=dict[str, Any])
+def send_invoice(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    today = datetime.now(UTC).date()
+    inv = invoice_svc.send_invoice(
+        db, startup_id=membership.startup_id, invoice_id=invoice_id, today=today
+    )
+    db.commit()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))

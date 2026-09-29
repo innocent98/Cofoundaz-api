@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.db.models.enums import InvoiceTerms
 
@@ -31,6 +31,40 @@ class InvoiceCreate(BaseModel):
         if v not in {t.value for t in InvoiceTerms}:
             raise ValueError("invalid terms")
         return v
+
+
+class InvoiceUpdate(BaseModel):
+    client_name: str | None = Field(default=None, min_length=1, max_length=200)
+    client_email: EmailStr | None = None
+    line_items: list[LineItem] | None = Field(default=None, min_length=1, max_length=50)
+    tax_percent: float | None = Field(default=None, ge=0, le=100)
+    currency: str | None = Field(default=None, min_length=1, max_length=3)
+    terms: str | None = None
+    auto_remind: bool | None = None
+
+    @field_validator("terms")
+    @classmethod
+    def _terms(cls, v: str | None) -> str | None:
+        if v is not None and v not in {t.value for t in InvoiceTerms}:
+            raise ValueError("invalid terms")
+        return v
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> "InvoiceUpdate":
+        # Every column is NOT NULL: an explicit null (as opposed to an omitted field) would hit a
+        # NOT NULL violation at flush (500), so reject it here as a 422.
+        for name in (
+            "client_name",
+            "client_email",
+            "line_items",
+            "tax_percent",
+            "currency",
+            "terms",
+            "auto_remind",
+        ):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} may not be null")
+        return self
 
 
 class MoneyLine(BaseModel):

@@ -9,11 +9,17 @@ from sqlalchemy.orm import Session
 from app.core.errors import NotFound
 from app.db.models.enums import InvoiceStatus, InvoiceTerms
 from app.db.models.invoice import Invoice
-from app.schemas.invoice import InvoiceCreate, InvoiceResponse, MoneyLine
+from app.platform.jobs import job_dispatcher
+from app.schemas.invoice import InvoiceCreate, InvoiceResponse, InvoiceUpdate, MoneyLine
 from app.services.finance.errors import _validation
 
 _INT32 = 2_147_483_647
 _NUMBER_RETRIES = 5
+_TERM_DAYS = {
+    InvoiceTerms.net_15: 15,
+    InvoiceTerms.net_30: 30,
+    InvoiceTerms.due_on_receipt: 0,
+}
 
 
 def _compute_totals(line_items: list[dict[str, Any]], tax_percent: float) -> tuple[int, int, int]:
@@ -96,6 +102,75 @@ def get_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) ->
     inv = db.query(Invoice).filter_by(id=invoice_id, startup_id=startup_id).one_or_none()
     if inv is None:
         raise NotFound()
+    return inv
+
+
+def update_invoice(
+    db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, data: InvoiceUpdate
+) -> Invoice:
+    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    fields = data.model_dump(exclude_unset=True)
+    if inv.status != InvoiceStatus.draft:
+        # Once issued the commercial terms are frozen; only the reminder toggle stays editable.
+        if set(fields) - {"auto_remind"}:
+            raise _validation("status", "Only a draft invoice can be edited.")
+        if "auto_remind" in fields:
+            inv.auto_remind = fields["auto_remind"]
+            db.flush()
+        return inv
+
+    if "client_name" in fields:
+        inv.client_name = fields["client_name"]
+    if "client_email" in fields:
+        inv.client_email = str(fields["client_email"])
+    if "currency" in fields:
+        inv.currency = fields["currency"]
+    if "terms" in fields:
+        inv.terms = InvoiceTerms(fields["terms"])
+    if "auto_remind" in fields:
+        inv.auto_remind = fields["auto_remind"]
+
+    if "line_items" in fields or "tax_percent" in fields:
+        line_items = (
+            [li.model_dump() for li in data.line_items]
+            if "line_items" in fields and data.line_items is not None
+            else inv.line_items
+        )
+        tax_percent = (
+            Decimal(str(fields["tax_percent"])).quantize(Decimal("0.01"))
+            if "tax_percent" in fields
+            else inv.tax_percent
+        )
+        subtotal, tax, total = _compute_totals(line_items, float(tax_percent))
+        inv.line_items = line_items
+        inv.tax_percent = tax_percent
+        inv.subtotal_minor = subtotal
+        inv.tax_minor = tax
+        inv.total_minor = total
+    db.flush()
+    return inv
+
+
+def delete_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> None:
+    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.draft:
+        raise _validation("status", "Only a draft invoice can be deleted.")
+    db.delete(inv)
+    db.flush()
+
+
+def send_invoice(
+    db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, today: dt.date | None = None
+) -> Invoice:
+    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.draft:
+        raise _validation("status", "Only a draft invoice can be sent.")
+    issued_on = today or dt.datetime.now(dt.UTC).date()
+    inv.issued_on = issued_on
+    inv.due_on = issued_on + dt.timedelta(days=_TERM_DAYS[inv.terms])
+    inv.status = InvoiceStatus.sent
+    db.flush()
+    job_dispatcher.enqueue(db, "email.invoice_sent", {"invoice_id": str(inv.id)}, inv.startup_id)
     return inv
 
 
