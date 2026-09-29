@@ -214,3 +214,30 @@ class GenerationResponse(BaseModel):
     error: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class KeywordCreate(BaseModel):
+    keyword: str = Field(min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+
+class KeywordUpdate(BaseModel):
+    keyword: str | None = Field(default=None, min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+
+class KeywordResponse(BaseModel):
+    id: uuid.UUID
+    keyword: str
+    volume: str | None
+    difficulty: int | None
+    current_rank: int | None
+    target_page: str | None
+    created_at: datetime
+    updated_at: datetime

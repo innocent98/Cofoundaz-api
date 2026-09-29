@@ -21,6 +21,8 @@ from app.schemas.marketing import (
     ChannelResponse,
     ChannelUpdate,
     CopyGenerateRequest,
+    KeywordCreate,
+    KeywordUpdate,
     OverviewResponse,
     SegmentCreate,
     SegmentUpdate,
@@ -28,6 +30,7 @@ from app.schemas.marketing import (
 from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import segments as segments_svc
+from app.services.marketing import seo as seo_svc
 from app.services.marketing import service as svc
 
 router = APIRouter()
@@ -435,3 +438,52 @@ def get_fit_notes(
         kind=MarketingGenerationKind.channel_fit,
     )
     return success_response(ai_content_svc.serialize_generation(g).model_dump())
+
+
+@router.post("/keywords", response_model=dict[str, Any])
+def create_keyword(
+    payload: KeywordCreate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.create_keyword(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    return success_response(seo_svc.serialize_keyword(row).model_dump())
+
+
+@router.get("/keywords", response_model=dict[str, Any])
+def list_keywords(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = seo_svc.list_keywords(db, startup_id=membership.startup_id)
+    return success_response({"keywords": [seo_svc.serialize_keyword(r).model_dump() for r in rows]})
+
+
+@router.patch("/keywords/{keyword_id}", response_model=dict[str, Any])
+def update_keyword(
+    keyword_id: uuid.UUID,
+    payload: KeywordUpdate,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = seo_svc.update_keyword(
+        db, startup_id=membership.startup_id, keyword_id=keyword_id, data=payload
+    )
+    db.commit()
+    return success_response(seo_svc.serialize_keyword(row).model_dump())
+
+
+@router.delete("/keywords/{keyword_id}", response_model=dict[str, Any])
+def delete_keyword(
+    keyword_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    seo_svc.delete_keyword(db, startup_id=membership.startup_id, keyword_id=keyword_id)
+    db.commit()
+    return success_response({"deleted": True})
