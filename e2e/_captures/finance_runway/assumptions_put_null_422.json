@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "Value error, mom_growth_percent may not be null"
+      }
+    ]
+  }
+}
