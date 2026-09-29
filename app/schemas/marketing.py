@@ -231,6 +231,13 @@ class KeywordUpdate(BaseModel):
     current_rank: int | None = Field(default=None, ge=0)
     target_page: str | None = Field(default=None, max_length=500)
 
+    @field_validator("keyword")
+    @classmethod
+    def _keyword_not_explicit_null(cls, v: str | None) -> str | None:
+        if v is None:
+            raise ValueError("keyword may not be null")
+        return v
+
 
 class KeywordResponse(BaseModel):
     id: uuid.UUID

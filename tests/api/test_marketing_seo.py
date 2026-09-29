@@ -61,6 +61,21 @@ def test_keyword_difficulty_out_of_range_422(client, db):
     assert resp.status_code == 422, resp.text
 
 
+def test_keyword_patch_explicit_null_422_and_partial_update_ok(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(f"{BASE}/keywords", json={"keyword": "seed kw"}, headers=h)
+    assert created.status_code == 200, created.text
+    kid = created.json()["data"]["id"]
+
+    nulled = client.patch(f"{BASE}/keywords/{kid}", json={"keyword": None}, headers=h)
+    assert nulled.status_code == 422, nulled.text
+
+    partial = client.patch(f"{BASE}/keywords/{kid}", json={"current_rank": 3}, headers=h)
+    assert partial.status_code == 200, partial.text
+    assert partial.json()["data"]["current_rank"] == 3
+    assert partial.json()["data"]["keyword"] == "seed kw"
+
+
 @pytest.mark.parametrize("role", NON_MARKETING_ROLES)
 def test_keyword_rbac_forbidden(client, db, role):
     _f, startup, _fh = _member(db)
