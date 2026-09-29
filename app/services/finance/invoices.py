@@ -1,6 +1,6 @@
 import datetime as dt
 import uuid
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
@@ -20,7 +20,13 @@ def _compute_totals(line_items: list[dict[str, Any]], tax_percent: float) -> tup
     subtotal = sum(int(li["quantity"]) * int(li["unit_price_minor"]) for li in line_items)
     if subtotal > _INT32:
         raise _validation("line_items", "Invoice subtotal exceeds the maximum allowed amount.")
-    tax = round(subtotal * float(tax_percent) / 100)
+    # Decimal + ROUND_HALF_UP (not float round(), which is banker's rounding): a half-kobo of tax
+    # rounds up, as expected for money.
+    tax = int(
+        (Decimal(subtotal) * Decimal(str(tax_percent)) / Decimal(100)).quantize(
+            Decimal("1"), rounding=ROUND_HALF_UP
+        )
+    )
     total = subtotal + tax
     if total > _INT32:
         raise _validation("line_items", "Invoice total exceeds the maximum allowed amount.")

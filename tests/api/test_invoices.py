@@ -1,8 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.db.models.enums import MembershipRole
+from app.db.models.enums import InvoiceStatus, InvoiceTerms, MembershipRole
+from app.db.models.invoice import Invoice
 from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
 
 YEAR = datetime.now(UTC).year
@@ -196,3 +197,80 @@ def test_number_retry_recovers_from_stale_number(client, db, monkeypatch):
     # The failed savepoint must not have poisoned the session: a follow-up read works.
     listed = client.get(f"{BASE}/invoices", headers=h)
     assert len(listed.json()["data"]["invoices"]) == 2
+
+
+@pytest.mark.parametrize(
+    ("subtotal", "pct", "expected_tax"),
+    [
+        (10, 5, 1),  # 0.5 -> 1 (banker's rounding would give 0)
+        (30, 5, 2),  # 1.5 -> 2
+        (50, 5, 3),  # 2.5 -> 3 (banker's rounding would give 2)
+        (225000, 7.5, 16875),  # exact, no rounding
+    ],
+)
+def test_tax_rounds_half_up(client, db, subtotal, pct, expected_tax):
+    _u, _s, h = _member(db)
+    body = _payload(
+        line_items=[_item(unit_price_minor=subtotal)],
+        tax_percent=pct,
+    )
+    resp = client.post(f"{BASE}/invoices", json=body, headers=h)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["subtotal_minor"] == subtotal
+    assert data["tax_minor"] == expected_tax
+    assert data["total_minor"] == subtotal + expected_tax
+
+
+def test_overdue_derivation_and_filter(client, db):
+    _u, startup, h = _member(db)
+    today = datetime.now(UTC).date()
+    overdue = Invoice(
+        startup_id=startup.id,
+        number=f"INV-{YEAR}-901",
+        client_name="Late Payer",
+        client_email="late@acme-client.com",
+        line_items=[{"description": "x", "quantity": 1, "unit_price_minor": 100}],
+        subtotal_minor=100,
+        tax_percent=0,
+        tax_minor=0,
+        total_minor=100,
+        currency="NGN",
+        terms=InvoiceTerms.net_30,
+        status=InvoiceStatus.sent,
+        issued_on=today - timedelta(days=35),
+        due_on=today - timedelta(days=5),
+    )
+    db.add(overdue)
+    db.flush()
+    draft = client.post(f"{BASE}/invoices", json=_payload(), headers=h)
+    draft_id = draft.json()["data"]["id"]
+    overdue_id = str(overdue.id)
+
+    listed = client.get(f"{BASE}/invoices", headers=h)
+    by_id = {i["id"]: i for i in listed.json()["data"]["invoices"]}
+    assert by_id[overdue_id]["status"] == "overdue"
+    assert by_id[draft_id]["status"] == "draft"
+
+    only_overdue = client.get(f"{BASE}/invoices?status=overdue", headers=h)
+    overdue_ids = [i["id"] for i in only_overdue.json()["data"]["invoices"]]
+    assert overdue_ids == [overdue_id]
+
+    only_sent = client.get(f"{BASE}/invoices?status=sent", headers=h)
+    sent_ids = [i["id"] for i in only_sent.json()["data"]["invoices"]]
+    assert overdue_id not in sent_ids
+
+    one = client.get(f"{BASE}/invoices/{overdue_id}", headers=h)
+    assert one.status_code == 200, one.text
+    assert one.json()["data"]["status"] == "overdue"
+
+
+def test_cross_tenant_list_exclusion(client, db):
+    _a, _sa, ha = _member(db)
+    created = client.post(f"{BASE}/invoices", json=_payload(), headers=ha)
+    iid = created.json()["data"]["id"]
+    _b, _sb, hb = _member(db)
+    listed = client.get(f"{BASE}/invoices", headers=hb)
+    assert listed.status_code == 200, listed.text
+    ids = [i["id"] for i in listed.json()["data"]["invoices"]]
+    assert iid not in ids
