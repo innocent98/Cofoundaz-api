@@ -13,7 +13,9 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
+from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
 from app.services.finance import cashflow as cashflow_svc
+from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
 
 router = APIRouter()
@@ -97,3 +99,26 @@ def cash_flow(
 ) -> dict[str, Any]:
     data = cashflow_svc.cash_flow_summary(db, startup_id=membership.startup_id)
     return success_response(CashFlowResponse(**data).model_dump(mode="json"))
+
+
+@router.get("/runway", response_model=dict[str, Any])
+def get_runway(
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    data = runway_svc.runway_payload(db, startup_id=membership.startup_id)
+    return success_response(RunwayResponse(**data).model_dump(mode="json"))
+
+
+@router.put("/runway/assumptions", response_model=dict[str, Any])
+def put_runway_assumptions(
+    payload: AssumptionsUpdate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    runway_svc.upsert_assumptions(db, startup_id=membership.startup_id, data=payload)
+    db.commit()
+    data = runway_svc.runway_payload(db, startup_id=membership.startup_id)
+    return success_response(RunwayResponse(**data).model_dump(mode="json"))
