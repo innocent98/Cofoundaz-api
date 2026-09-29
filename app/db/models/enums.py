@@ -270,6 +270,7 @@ class MarketingGenerationKind(enum.StrEnum):
     plan_week = "plan_week"
     channel_plan = "channel_plan"
     channel_fit = "channel_fit"
+    content_gap = "content_gap"
 
 
 class MarketingGenerationStatus(enum.StrEnum):
