@@ -34,6 +34,7 @@ def create_transaction(
 ) -> dict[str, Any]:
     row = finance_svc.create_transaction(db, startup_id=membership.startup_id, data=payload)
     runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     return success_response(finance_svc.serialize_transaction(row).model_dump())
 
@@ -75,6 +76,7 @@ def update_transaction(
         db, startup_id=membership.startup_id, transaction_id=transaction_id, data=payload
     )
     runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     return success_response(finance_svc.serialize_transaction(row).model_dump())
 
@@ -90,6 +92,7 @@ def delete_transaction(
         db, startup_id=membership.startup_id, transaction_id=transaction_id
     )
     runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     return success_response({"deleted": True})
 
