@@ -11,7 +11,7 @@ from app.db.models.enums import (
 )
 from app.db.models.marketing import Campaign, MarketingAiGeneration, MarketingMetric
 from app.schemas.marketing import MetricsIngest
-from app.services.marketing.service import _validation
+from app.services.marketing.errors import _validation
 
 
 def ingest_metrics(db: Session, *, startup_id: uuid.UUID, data: MetricsIngest) -> int:
