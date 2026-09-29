@@ -5,6 +5,7 @@ from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccou
 from app.db.models.business import BusinessCanvas, BusinessRecord  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
 from app.db.models.document import Document  # noqa: F401
+from app.db.models.finance import Transaction  # noqa: F401
 from app.db.models.health_score import (  # noqa: F401
     HealthRecommendation,
     HealthScore,
