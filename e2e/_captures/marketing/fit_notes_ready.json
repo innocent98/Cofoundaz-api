@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "70dc29df-c857-4d08-b90c-a8f63cfe7e89",
-    "startup_id": "fba8ff9f-6b69-46aa-941b-74342b68ef6a",
+    "id": "f55117eb-2910-4cd0-a8b6-934a44492aa4",
+    "startup_id": "04a47a77-ef84-4c90-af5c-9501d007ee13",
     "kind": "channel_fit",
     "status": "ready",
     "inputs": {},
@@ -18,8 +18,8 @@
       }
     },
     "error": null,
-    "created_at": "2026-09-28T18:10:33.965476Z",
-    "updated_at": "2026-09-28T18:10:33.976849Z"
+    "created_at": "2026-09-30T08:33:06.285655Z",
+    "updated_at": "2026-09-30T08:33:06.296663Z"
   },
   "meta": null
 }

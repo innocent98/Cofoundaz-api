@@ -8,7 +8,13 @@ from tests.factories import create_startup, create_user
 def test_direction_source_values():
     assert TransactionDirection.inflow.value == "in"
     assert TransactionDirection.outflow.value == "out"
-    assert {s.value for s in TransactionSource} == {"manual", "bank", "accounting", "stripe"}
+    assert {s.value for s in TransactionSource} == {
+        "manual",
+        "bank",
+        "accounting",
+        "stripe",
+        "invoice",
+    }
 
 
 def test_transaction_persists(db):

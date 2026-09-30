@@ -1,0 +1,69 @@
+{
+  "data": {
+    "invoices": [
+      {
+        "id": "f1f7f149-47f7-4d5f-8c03-d15adbbe944f",
+        "number": "INV-2026-002",
+        "client_name": "Beta Foods",
+        "client_email": "delivered+inv-3d8de01d7cc1@resend.dev",
+        "line_items": [
+          {
+            "description": "Consulting",
+            "quantity": 2,
+            "unit_price_minor": 7000,
+            "amount_minor": 14000
+          }
+        ],
+        "subtotal_minor": 14000,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 14000,
+        "currency": "NGN",
+        "terms": "due_on_receipt",
+        "status": "draft",
+        "issued_on": null,
+        "due_on": null,
+        "paid_at": null,
+        "auto_remind": false,
+        "transaction_id": null,
+        "created_at": "2026-09-30T08:32:55.611065Z",
+        "updated_at": "2026-09-30T08:32:55.611065Z"
+      },
+      {
+        "id": "efbcbabc-6735-4dce-aaf7-acea2384b0c8",
+        "number": "INV-2026-001",
+        "client_name": "Acme Traders Ltd",
+        "client_email": "delivered+inv-6636f79d668d@resend.dev",
+        "line_items": [
+          {
+            "description": "Design retainer",
+            "quantity": 1,
+            "unit_price_minor": 100000,
+            "amount_minor": 100000
+          },
+          {
+            "description": "Hosting setup",
+            "quantity": 10,
+            "unit_price_minor": 5000,
+            "amount_minor": 50000
+          }
+        ],
+        "subtotal_minor": 150000,
+        "tax_percent": 7.5,
+        "tax_minor": 11250,
+        "total_minor": 161250,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "paid",
+        "issued_on": "2026-09-30",
+        "due_on": "2026-10-30",
+        "paid_at": "2026-09-30T08:32:55.704271Z",
+        "auto_remind": true,
+        "transaction_id": "37220419-300c-4eb8-ae3b-0317af2ba13d",
+        "created_at": "2026-09-30T08:32:55.588896Z",
+        "updated_at": "2026-09-30T08:32:55.701521Z"
+      }
+    ]
+  },
+  "meta": null
+}
