@@ -14,6 +14,7 @@ def test_direction_source_values():
         "accounting",
         "stripe",
         "invoice",
+        "expense",
     }
 
 

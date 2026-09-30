@@ -351,6 +351,7 @@ class TransactionSource(enum.StrEnum):
     accounting = "accounting"
     stripe = "stripe"
     invoice = "invoice"
+    expense = "expense"
 
 
 class InvoiceStatus(enum.StrEnum):
