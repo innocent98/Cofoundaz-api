@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -352,3 +352,39 @@ def delete_expense(
     runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.post("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
+async def upload_expense_receipt(
+    expense_id: uuid.UUID,
+    file: UploadFile = File(...),  # noqa: B008
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    # Bounded read: one byte past the cap is enough for the service to reject, without
+    # buffering an arbitrarily large upload in memory.
+    content = await file.read(expense_svc.MAX_RECEIPT_BYTES + 1)
+    exp = expense_svc.attach_receipt(
+        db,
+        startup_id=membership.startup_id,
+        expense_id=expense_id,
+        filename=file.filename,
+        content_type=file.content_type,
+        size_bytes=len(content),
+        content=content,
+    )
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.delete("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
+def delete_expense_receipt(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.remove_receipt(db, startup_id=membership.startup_id, expense_id=expense_id)
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))

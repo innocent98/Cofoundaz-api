@@ -11,6 +11,7 @@ from app.core.errors import NotFound
 from app.db.models.enums import TransactionDirection, TransactionSource
 from app.db.models.expense import Expense
 from app.db.models.finance import Transaction
+from app.platform.storage import get_storage
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from app.services.finance.errors import _validation
 
@@ -92,9 +93,50 @@ def delete_expense(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID)
         txn = db.get(Transaction, exp.transaction_id)
         if txn is not None:
             db.delete(txn)
-    # TODO(Task 4): also delete the stored receipt file (exp.receipt_key) via the storage backend.
+    if exp.receipt_key:
+        get_storage().delete(exp.receipt_key)
     db.delete(exp)
     db.flush()
+
+
+_RECEIPT_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "application/pdf": ".pdf"}
+MAX_RECEIPT_BYTES = 10 * 1024 * 1024
+
+
+def attach_receipt(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    expense_id: uuid.UUID,
+    filename: str | None,
+    content_type: str | None,
+    size_bytes: int,
+    content: bytes,
+) -> Expense:
+    exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
+    ext = _RECEIPT_EXT.get(content_type or "")
+    if ext is None:
+        raise _validation("receipt", "Receipt must be a PNG, JPEG, or PDF.")
+    if size_bytes > MAX_RECEIPT_BYTES:
+        raise _validation("receipt", "Receipt exceeds the 10 MB limit.")
+    old_key = exp.receipt_key
+    key = f"receipts/{startup_id}/{uuid.uuid4().hex}{ext}"
+    # Save the new asset before dropping the old one so a failed upload never orphans the row.
+    url = get_storage().save(key, content, content_type or "")
+    exp.receipt_url, exp.receipt_key = url, key
+    if old_key:
+        get_storage().delete(old_key)
+    db.flush()
+    return exp
+
+
+def remove_receipt(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID) -> Expense:
+    exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
+    if exp.receipt_key:
+        get_storage().delete(exp.receipt_key)
+    exp.receipt_url = exp.receipt_key = None
+    db.flush()
+    return exp
 
 
 def list_expenses(
