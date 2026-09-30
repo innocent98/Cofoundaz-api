@@ -7,7 +7,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
-from app.db.models.enums import InvoiceStatus, InvoiceTerms
+from app.db.models.enums import (
+    InvoiceStatus,
+    InvoiceTerms,
+    TransactionDirection,
+    TransactionSource,
+)
+from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from app.platform.jobs import job_dispatcher
 from app.schemas.invoice import InvoiceCreate, InvoiceResponse, InvoiceUpdate, MoneyLine
@@ -105,6 +111,21 @@ def get_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) ->
     return inv
 
 
+def _get_invoice_locked(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+    # Row lock (+ populate_existing to bypass the identity-map cache) so two concurrent
+    # mark-paid / mark-unpaid calls serialise on the invoice and cannot both move money.
+    inv = (
+        db.query(Invoice)
+        .filter_by(id=invoice_id, startup_id=startup_id)
+        .with_for_update()
+        .populate_existing()
+        .first()
+    )
+    if inv is None:
+        raise NotFound()
+    return inv
+
+
 def update_invoice(
     db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, data: InvoiceUpdate
 ) -> Invoice:
@@ -171,6 +192,55 @@ def send_invoice(
     inv.status = InvoiceStatus.sent
     db.flush()
     job_dispatcher.enqueue(db, "email.invoice_sent", {"invoice_id": str(inv.id)}, inv.startup_id)
+    return inv
+
+
+def mark_paid(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    now: dt.datetime | None = None,
+) -> Invoice:
+    inv = _get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
+        return inv  # idempotent no-op: never create a second inflow
+    if inv.status != InvoiceStatus.sent:
+        raise _validation("status", "Only a sent invoice can be marked paid.")
+    paid_at = now or dt.datetime.now(dt.UTC)
+    txn = Transaction(
+        startup_id=startup_id,
+        date=paid_at.date(),
+        description=f"Invoice {inv.number} \u2014 {inv.client_name}"[:300],
+        category="Revenue",
+        amount_minor=inv.total_minor,
+        currency=inv.currency,
+        direction=TransactionDirection.inflow,
+        source=TransactionSource.invoice,
+    )
+    db.add(txn)
+    db.flush()  # assign txn.id
+    inv.status = InvoiceStatus.paid
+    inv.paid_at = paid_at
+    inv.transaction_id = txn.id
+    db.flush()
+    return inv
+
+
+def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+    inv = _get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.paid:
+        raise _validation("status", "Only a paid invoice can be marked unpaid.")
+    txn_id = inv.transaction_id
+    inv.transaction_id = None
+    inv.paid_at = None
+    inv.status = InvoiceStatus.sent
+    db.flush()
+    if txn_id is not None:
+        txn = db.get(Transaction, txn_id)
+        if txn is not None:
+            db.delete(txn)
+            db.flush()
     return inv
 
 

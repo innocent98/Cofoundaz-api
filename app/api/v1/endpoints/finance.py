@@ -218,3 +218,29 @@ def send_invoice(
     )
     db.commit()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.post("/invoices/{invoice_id}/mark-paid", response_model=dict[str, Any])
+def mark_invoice_paid(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    inv = invoice_svc.mark_paid(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    db.commit()
+    today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.post("/invoices/{invoice_id}/mark-unpaid", response_model=dict[str, Any])
+def mark_invoice_unpaid(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    inv = invoice_svc.mark_unpaid(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    db.commit()
+    today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))

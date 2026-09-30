@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.db.models.enums import InvoiceStatus, InvoiceTerms, MembershipRole
+from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
 
@@ -396,3 +397,104 @@ def test_lifecycle_rbac_forbidden(client, db, role):
     assert patched.status_code == 403, patched.text
     assert deleted.status_code == 403, deleted.text
     assert sent.status_code == 403, sent.text
+
+
+def _create_sent(client, h) -> str:
+    iid = _create(client, h)
+    sent = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert sent.status_code == 200, sent.text
+    return iid
+
+
+def test_mark_paid_then_unpaid_roundtrip_and_cash_flow(client, db):
+    _u, startup, h = _member(db)
+    iid = _create_sent(client, h)
+    before = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert before["cash_on_hand"] == 0
+
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert paid.status_code == 200, paid.text
+    pdata = paid.json()["data"]
+    assert pdata["status"] == "paid"
+    assert pdata["paid_at"] is not None
+    assert pdata["transaction_id"] is not None
+    total = pdata["total_minor"]
+
+    txns = db.query(Transaction).filter_by(startup_id=startup.id).all()
+    assert len(txns) == 1
+    assert str(txns[0].id) == pdata["transaction_id"]
+
+    listed = client.get(f"{BASE}/transactions", headers=h).json()["data"]["transactions"]
+    assert [t["source"] for t in listed] == ["invoice"]
+    assert listed[0]["direction"] == "in"
+
+    after = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert after["cash_on_hand"] >= total
+    assert after["cash_on_hand"] - before["cash_on_hand"] == total
+    current_month = after["by_month"][-1]
+    assert current_month["inflow"] == total
+    assert current_month["net"] == total
+
+    again = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert again.status_code == 200, again.text
+    assert again.json()["data"]["transaction_id"] == pdata["transaction_id"]
+    still = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert still["cash_on_hand"] == after["cash_on_hand"]
+
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=h)
+    assert unpaid.status_code == 200, unpaid.text
+    udata = unpaid.json()["data"]
+    assert udata["status"] == "sent"
+    assert udata["paid_at"] is None
+    assert udata["transaction_id"] is None
+    reverted = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert reverted["cash_on_hand"] == before["cash_on_hand"]
+    assert reverted["by_month"][-1]["inflow"] == 0
+    assert db.query(Transaction).filter_by(startup_id=startup.id).count() == 0
+
+
+def test_mark_paid_draft_and_mark_unpaid_non_paid_422(client, db):
+    _u, _s, h = _member(db)
+    draft_id = _create(client, h)
+    sent_id = _create_sent(client, h)
+    paid_draft = client.post(f"{BASE}/invoices/{draft_id}/mark-paid", headers=h)
+    unpaid_sent = client.post(f"{BASE}/invoices/{sent_id}/mark-unpaid", headers=h)
+    assert paid_draft.status_code == 422, paid_draft.text
+    assert unpaid_sent.status_code == 422, unpaid_sent.text
+    assert paid_draft.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert unpaid_sent.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_mark_paid_accountant_allowed(client, db):
+    _f, startup, fh = _member(db)
+    iid = _create_sent(client, fh)
+    _u, _s, h = _member(db, role=MembershipRole.accountant, startup=startup)
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert paid.status_code == 200, paid.text
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=h)
+    assert unpaid.status_code == 200, unpaid.text
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_mark_paid_unpaid_rbac_forbidden(client, db, role):
+    _f, startup, fh = _member(db)
+    iid = _create_sent(client, fh)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=h)
+    assert paid.status_code == 403, paid.text
+    assert unpaid.status_code == 403, unpaid.text
+    assert db.query(Transaction).filter_by(startup_id=startup.id).count() == 0
+
+
+def test_cross_tenant_mark_paid_unpaid_404(client, db):
+    _a, sa, ha = _member(db)
+    iid = _create_sent(client, ha)
+    _b, _sb, hb = _member(db)
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=hb)
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=hb)
+    assert paid.status_code == 404, paid.text
+    assert unpaid.status_code == 404, unpaid.text
+    assert db.query(Transaction).filter_by(startup_id=sa.id).count() == 0
+    intact = client.get(f"{BASE}/invoices/{iid}", headers=ha)
+    assert intact.json()["data"]["status"] == "sent"
