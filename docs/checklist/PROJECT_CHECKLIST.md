@@ -1776,6 +1776,76 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
       and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
 
+## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, in review (PR #103)*
+
+_The "prove it before you build it" workspace: assumptions on a four-column board (untested →
+testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
+and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
+founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
+and submit an answer set. Migration `0041_validation` (renumbered five times as 03/08/10/Finance-12 merged ahead).
+Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
+plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
+`docs/sop/2026-09-24-validation-hub.md`._
+
+**Build (Tasks 1–7):**
+- [x] Scope + locked decisions D1–D10 agreed with the lead (token-addressed public endpoint with a
+      public read alongside it · 20/minute per-route rate limit · anonymous responses, repeats
+      allowed · MVP feedback cut from v1 · AI synthesizer and script generation stubbed as enqueued
+      jobs · JSONB question schema with caps · free assumption transitions, events only on a real
+      change · derived evidence counts · JSONB assumption links)
+- [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
+      `survey_responses`) + migration `0041_validation` (chains off `0040_finance_runway`, sole
+      alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
+      `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
+- [x] Question/answer validation (`app/services/validation/questions.py`) — types
+      `choice|scale|nps|open`, server-assigned stable ids kept across edits, caps of 50 questions,
+      20 options and 4 000 characters per open answer, a blank answer rejected for a required
+      question; every message safe to show the public
+- [x] Assumptions + experiments service — free status transitions publishing
+      `validation.assumption.validated|invalidated` only on an actual change into those states ·
+      `evidence_counts` derived on read from linked experiments and interviews · `link_ids`
+      rejecting assumptions outside the workspace (422) and dropping repeats · smoke-test
+      conversion returning 0.0 rather than dividing by zero, and capped at 100%
+- [x] Interviews + surveys service — filters by segment, verdict and assumption; survey token
+      minted on first open, only its SHA-256 hash stored, raw value returned **once**; analytics
+      with per-option counts (including unpicked options), scale/NPS counts + averages, answered
+      counts for open questions, and a completion rate that counts only non-blank answers
+- [x] Public surface (`app/services/validation/public.py`) copying Module 18's share/sign pattern —
+      uniform 404 for unknown/draft/closed, acknowledgement-only reply, nothing about the
+      respondent stored beyond `submitted_at`
+- [x] **`Limiter` moved from `app/main.py` to `app/core/rate_limit.py`** (behaviour unchanged) so
+      endpoint modules can carry per-route limits without a circular import; the public submit
+      routes each take one at `20/minute` — the project's first. `tests/api/test_rate_limit_key.py`
+      had its import updated to the new home
+- [x] 16 member routes + 2 public routes + schemas + router registration at `prefix="/validation"`;
+      write handlers commit
+- [x] Tests — 148 validation tests (models 6 · migration 2 · questions 9 · assumptions 8 ·
+      experiments 10 · interviews 6 · surveys 8 · public 7 · API 92) · full project suite **1,695
+      passed**, coverage **97.12%** (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the fourteen validation route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_validation.py`, written: onboard → assumption → survey built and
+      opened → **public form read and answered with no authentication** → wrong token 404 →
+      analytics → experiment + interview linked → assumption validated with evidence count 2; 12
+      captures) — **not yet run**; the e2e runner needs Poetry on the host, so CI runs it first
+- [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
+- [x] **Review round 1 (2026-09-29, PR #103)** — rebased onto `develop` and renumbered
+      `0035_validation` → `0039_validation` off `0038_marketing_metrics` (single head restored) · PR
+      retargeted `main` → `develop` · later renumbered `0039_validation` → `0041_validation` off
+      `0040_finance_runway` after Finance Slices 1–2 merged · blank answers rejected for required open questions and
+      excluded from the completion rate · `link_ids` dedupes · `/scripts/generate` validates its
+      assumption links · explicit `20/minute` on the public read · conversion capped at 100%.
+      _Deferred with reasons:_ a live 429 test, and a size cap on an experiment's `config`/`metrics`
+      JSONB. _Noted:_ the public routes key their limit on source IP, so `X-Forwarded-For` must be
+      set and trusted behind nginx — see SOP Operate
+- [ ] FE integration guide (`docs/fe-integration-guide-validation.md`) — written from the response
+      builders with a provenance note; **regenerate from the real captures after the first e2e run**
+- [ ] _Deferred:_ AI Insight Synthesizer + interview-script generation (stubs enqueue
+      `validation.synthesize` / `validation.scripts.generate`, nothing drains them until Module 03)
+      · hosted smoke-test pages · MVP feedback + theme clustering (PRD 09.7) · a members-only route
+      to read raw open answers · delete routes · survey token rotation/expiry and response
+      de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
+      the validation events — see SOP Follow-ups
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -2566,12 +2636,13 @@ fan-out are unit-verified only (no live capture).
       `0033_marketing_calendar_channels`), Slice 2 (Campaigns + Audience Segments,
       `0034_campaigns_segments`), Slice 3a (AI copy generation + plan-week,
       `0035_marketing_ai_generations`), Slice 3b (AI channel-plan recommender + fit notes,
-      `0036_channel_fit_notes`) and Slice 4 (SEO Tools, `0037_seo_tools`, PR #105) merged to
-      `develop` (PRs #100/#101/#102/#104/#105); Slice 5 (Performance Analytics, `0038_marketing_metrics`,
-      `feat/module-10-marketing-slice5`) built, PR pending; see its own section above. SOPs
+      `0036_channel_fit_notes`), Slice 4 (SEO Tools, `0037_seo_tools`) and Slice 5 (Performance
+      Analytics, `0038_marketing_metrics`) all merged to `develop`
+      (PRs #100/#101/#102/#104/#105/#106); see its own section above. SOPs
       `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` +
       `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
       `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
+- [ ] **Module 09 — Validation Hub** — *🟢 shipped on branch `feat/validation-hub`, not yet merged (PR #103, in review); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
 - [ ] **Module 12 — Finance Hub** — *🟡 OPEN, Slices 1–2 of 6 built (2026-09-29)*: Slice 1 transactions
       ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
       `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
