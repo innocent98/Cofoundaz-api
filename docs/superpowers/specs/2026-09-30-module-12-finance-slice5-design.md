@@ -9,7 +9,7 @@
 
 ## 1. Goal
 
-Back the Finance → **Financial Model** screen: generate an **AI-assisted, investor-grade 3-statement model** — a 12-month **P&L**, **Cash Flow**, and **Balance Sheet** — built from the startup's real actuals plus AI-generated assumptions, retrievable as JSON and exportable as **XLSX**. "Investor-grade structure, your numbers."
+Back the Finance → **Financial Model** screen: generate an **AI-assisted, investor-grade 3-statement model** — a 12-month **P&L**, **Cash Flow**, and **Balance Sheet** — built from the startup's real actuals plus AI-generated assumptions, retrievable as **JSON** (the FE renders the tables; XLSX export is deferred — §6). "Investor-grade structure, your numbers."
 
 ## 2. FE cross-check (`../cofoundaz/app/(dashboard)/finance/model/page.tsx`)
 
@@ -61,10 +61,12 @@ Output shape: `{ months: ["YYYY-MM", …12], pnl: {rows:[{label, values:[…12]}
 - `monthly_revenue_growth_pct` (−50…100), `cogs_pct_of_revenue` (0…100), `monthly_opex_growth_pct` (−50…100), `ar_days` (0…120), `ap_days` (0…120), plus a short `narrative` string (≤ 600 chars) shown as the model's rationale.
 - Starting values (`revenue_0`, `cogs_0`/`opex_0`, `cash_on_hand`) come from **actuals**, NOT the LLM (the LLM only sets growth/ratios/timing). Prompt builder in `app/services/finance/model_prompt.py`; the LLM is told the actuals and asked for forward assumptions only.
 
-## 6. XLSX export (`app/services/finance/model_export.py`) — NEW dependency
+## 6. XLSX export — DEFERRED (see §11)
 
-Add **`openpyxl`** to `pyproject.toml` (main group) — no xlsx library exists yet (confirmed). `build_xlsx(model) -> bytes`: a workbook with 3 sheets (P&L, Cash Flow, Balance Sheet), header row = months, each statement's rows below, money shown in **major units** (÷100) with a number format. Endpoint returns `Response(content=bytes, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="financial-model-{id}.xlsx"'})`. Only for `status=complete` (else 404/409).
-**pip-audit:** adding openpyxl adds it to the prod deps CI audits — run `pip-audit` parity locally before push; pin a non-vulnerable version.
+**Decision (user):** XLSX export is **deferred**; v1 is **JSON-only** (the FE renders the P&L/CF/BS
+tables from the stored JSON; the Export button is FE-only for now). **No `openpyxl` dependency is
+added this slice.** There is no `model_export.py` and no `/export` endpoint. When export lands later,
+it adds openpyxl + a `build_xlsx(model) -> bytes` + a `GET /finance/model/{id}/export` route.
 
 ## 7. Data model
 
@@ -93,22 +95,22 @@ Migration **`0045_finance_model`**, `down_revision` = develop head after 4b (exp
 | `POST /finance/model/generate` | create generating row + enqueue `ai.finance.model` → **202** `{id, status}` |
 | `GET /finance/model` | latest model: status + statements (complete) or status/error |
 | `GET /finance/model/{id}` | a specific model (for polling a known id) |
-| `GET /finance/model/{id}/export` | XLSX download (complete only) |
 
 ## 9. Files (indicative)
 
-**Create:** `app/db/models/financial_model.py`; `app/schemas/financial_model.py`; `app/services/finance/model_engine.py` (deterministic projection), `model_prompt.py` (LLM messages + ASSUMPTIONS_SCHEMA + validation), `model_service.py` (create/get/latest); `app/worker/handlers/finance_model.py`; `app/services/finance/model_export.py` (openpyxl); `alembic/versions/0045_finance_model.py`; tests (model, migration, engine incl. **balance-sheet-balances**, prompt/assumptions validation, worker handler incl. over-budget→failed, API 202/poll/get, export xlsx, RBAC/tenancy, e2e + captures); `docs/fe-integration-guide-finance-model.md`, `docs/sop/2026-09-30-finance-slice5.md`.
-**Modify:** `app/db/models/enums.py` (`FinancialModelStatus`); `app/api/v1/endpoints/finance.py` (4 routes); `app/worker/__main__.py` (register handler); `pyproject.toml` + `poetry.lock` (openpyxl); `docs/checklist/PROJECT_CHECKLIST.md`.
+**Create:** `app/db/models/financial_model.py`; `app/schemas/financial_model.py`; `app/services/finance/model_engine.py` (deterministic projection), `model_prompt.py` (LLM messages + ASSUMPTIONS_SCHEMA + validation), `model_service.py` (create/get/latest); `app/worker/handlers/finance_model.py`; `alembic/versions/0045_finance_model.py`; tests (model, migration, engine incl. **balance-sheet-balances**, prompt/assumptions validation, worker handler incl. over-budget→failed, API 202/poll/get, RBAC/tenancy, e2e + captures); `docs/fe-integration-guide-finance-model.md`, `docs/sop/2026-09-30-finance-slice5.md`.
+**Modify:** `app/db/models/enums.py` (`FinancialModelStatus`); `app/api/v1/endpoints/finance.py` (3 routes); `app/worker/__main__.py` (register handler); `docs/checklist/PROJECT_CHECKLIST.md`. (No `openpyxl`/`model_export.py` — XLSX deferred, §6/§11.)
 
 ## 10. Senior checkpoints (settle in brainstorming)
 
 1. **Balance-sheet correctness** — the 3-statement linkage (cash from CF, AR/AP from timing, retained earnings, paid-in plug) MUST balance every month. This is the engine's crux and a required invariant test. Confirm the simplified linkage in §4 before building.
 2. **LLM output safety** — the LLM sets only bounded assumptions (growth/ratios/timing), never the starting actuals or the computed statements; every field range-validated/clamped after return so a hallucinated value can't break or absurd-ify the model. Confirm the schema + clamps.
-3. **openpyxl dependency** — a new prod dep; confirm it's acceptable (pinned, pip-audit clean). If undesired, XLSX export defers and this becomes JSON-only.
-4. **History vs single model** — v1 keeps a row per generate, `GET /finance/model` returns the latest (mirrors marketing-AI). Confirm (vs overwrite one row).
+3. **History vs single model** — v1 keeps a row per generate, `GET /finance/model` returns the latest (mirrors marketing-AI). Confirm (vs overwrite one row).
+   *(The openpyxl-dependency checkpoint is resolved: XLSX export is DEFERRED — §6/§11.)*
 
 ## 11. Deferred (later, tracked in checklist)
 
+- **XLSX export** (deferred per user, §6) — adds `openpyxl` + `build_xlsx` + `GET /finance/model/{id}/export`; v1 is JSON-only.
 - **36-month horizon** (v1 = 12); **server-side sensitivity scenarios** (v1 sensitivity is client-side); **itemized opex / multi-line assumptions**; **connected bank-account actuals** (the FE mentions them — Slice 6 Integrations); **scheduled auto-refresh**.
 
 ## 12. Cross-cutting rules (carried)
@@ -120,6 +122,6 @@ Async AI job pattern (202 → generating → worker → complete/failed; `metere
 - **Engine (most important):** the balance sheet BALANCES every month for varied assumptions (growth, high/low AR/AP, zero growth, negative growth); P&L identities (gross=rev−cogs, net=gross−opex); cash-flow closing chains from `cash_on_hand`; 12 months; no crash on extreme growth.
 - **Assumptions validation:** out-of-range LLM values clamped/rejected; a malformed LLM response → failed (not a 500/garbage model).
 - **Worker:** generating→complete stores all 3 statements; over-budget → failed with reason, no partial model; stub LLM → deterministic.
-- **API:** POST → 202 `{id, generating}`; GET latest reflects status transitions; GET one; export xlsx only when complete (openpyxl produces a valid workbook — assert content-type + non-empty + parseable sheets); RBAC (accountant 200, mentor/investor 403); cross-tenant 404.
-- **e2e:** generate → poll to complete (stub LLM) → GET the 3 statements → export xlsx (assert the file downloads + parses). Captures.
-- Local CI parity green before push (pytest ≥95%, alembic single-head + check, e2e, static, **pip-audit** for the new dep).
+- **API:** POST → 202 `{id, generating}`; GET latest reflects status transitions; GET one; RBAC (accountant 200, mentor/investor 403); cross-tenant 404.
+- **e2e:** generate → poll to complete (stub LLM) → GET the 3 statements (assert the balance sheet balances in the captured output). Captures.
+- Local CI parity green before push (pytest ≥95%, alembic single-head + check, e2e, static). (No new dependency this slice — XLSX/openpyxl deferred.)
