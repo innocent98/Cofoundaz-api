@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -21,6 +21,7 @@ from app.services.finance import budgets as budget_svc
 from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import expenses as expense_svc
 from app.services.finance import invoices as invoice_svc
+from app.services.finance import model_service as model_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
 
@@ -520,3 +521,37 @@ def delete_budget(
     budget_svc.delete_budget(db, startup_id=membership.startup_id, budget_id=budget_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.post("/model/generate", status_code=status.HTTP_202_ACCEPTED, response_model=dict[str, Any])
+def generate_model(
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = model_svc.create_model(db, startup_id=membership.startup_id, created_by=user.id)
+    db.commit()
+    return success_response({"id": str(row.id), "status": row.status.value})
+
+
+@router.get("/model", response_model=dict[str, Any])
+def get_latest_model(
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = model_svc.latest_model(db, startup_id=membership.startup_id)
+    if row is None:
+        return success_response({"status": "none"})
+    return success_response(model_svc.serialize_model(row))
+
+
+@router.get("/model/{model_id}", response_model=dict[str, Any])
+def get_model(
+    model_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = model_svc.get_model(db, startup_id=membership.startup_id, model_id=model_id)
+    return success_response(model_svc.serialize_model(row))

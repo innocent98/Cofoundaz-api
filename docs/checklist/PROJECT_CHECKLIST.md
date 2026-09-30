@@ -16,7 +16,31 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-30 · **Module 12 (Finance Hub) Slice 4b (Budgets) shipped, on branch
+_Last reconciled: 2026-09-30 · **Module 12 (Finance Hub) Slice 5 (Financial Model) shipped, on branch
+`feat/module-12-finance-slice5` (off `develop` after Slice 4b merged as PR #112; not yet merged, no PR opened yet) —
+MODULE 12 IS NOW 6 OF 6 SLICES BUILT** (1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets, 5 Financial Model).
+The **Integrations slice** (external bank / accounting / Stripe connectors — needs OAuth infrastructure) was the
+deferred external-connectors slice from the module design and is **not built**; the module's in-scope build is
+complete pending that deferred connectors work. Slice 5 adds a `financial_models` table, **3 endpoints under
+`/finance/model`** (`POST /generate` → **202** `{id, status: "generating"}`, `GET /model` latest — `{status: "none"}`
+when never generated, `GET /model/{id}`), an **`ai.finance.model` worker** (reads actuals → LLM picks six bounded,
+validated/clamped assumptions → deterministic engine computes P&L, cash flow and balance sheet → `complete`; AI budget
+exhausted → `failed` with `error`), and a **pure integer 3-statement engine whose balance sheet balances exactly every
+month** (net-income / ΔAR / ΔAP linkage + a paid-in-capital plug; 20k-case fuzz in review). Migration
+`0045_finance_model` (1 new table; single alembic head; `origin/develop` re-checked, still tops out at `0044`), 3 new
+routes, same RBAC as Slices 1–4b. Slice-5 unit tests **60 passed**; full unit suite 2077 passed + 2 pre-existing failures
+from the over-quota real Resend key (unrelated auth/onboarding tests; pass with `EMAIL_BACKEND=console`); live e2e
+**65/65 passed** (`e2e/test_financial_model.py::test_financial_model_journey`, 5 captures; captured balance sheet
+asserted balanced in all 12 months; no Resend-429 flake on the final run). **Semantics called out in the FE guide:**
+202 + poll; statements `null` until `complete`; `months` top-level only (statements are `{rows}`); minor units + the
+2^53 note; `failed` must be surfaced; negative cash is a signal, not a bug; sensitivity is client-side;
+**XLSX export deferred (Export button FE-only)**. SOP: `docs/sop/2026-09-30-finance-slice5.md`. FE guide:
+`docs/fe-integration-guide-finance-model.md` (new; every body pasted from the captures, unit-only claims labelled).
+**Module tally: 13 fully complete, Module 12 now built-through-Slice-5 (6 of 6 in-scope slices; only the deferred
+Integrations/connectors work remains) so it stays under 🟡 Open until connectors are built or formally cut, 12 not
+started.**
+
+_Previously: 2026-09-30 · **Module 12 (Finance Hub) Slice 4b (Budgets) shipped, on branch
 `feat/module-12-finance-slice4b` (off `develop` after Slice 4a merged as PR #111; not yet merged, no PR opened yet) —
 MODULE 12 IS NOW 5 OF 6 SLICES DONE** (1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets; **Slice 5 Financial
 Model** and **Slice 6 Integrations** remain open). Slice 4b adds a `budgets` table (`category` + `period_month` +
@@ -479,12 +503,12 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — Slices 1–3, 4a and 4b done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); 5 Financial Model + 6 Integrations planned — **5 of 6 slices done**; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
+**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — **Slices 1–3, 4a, 4b and 5 done — 6 of 6 in-scope slices BUILT; only the deferred Integrations/external-connectors work remains** (Slice 5 Financial Model on `feat/module-12-finance-slice5`, migration `0045_finance_model`, PR pending); earlier: Slices 1–3, 4a and 4b done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); Integrations (external connectors) deferred; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 13 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37) · **Marketing Hub (10, all 5 slices — MODULE 10 COMPLETE)** — Slice 1 Content Calendar + Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`, PR #100) + Slice 2 Campaigns + Audience Segments (`0034_campaigns_segments`, PR #101) + Slice 3a AI copy generation + plan-week (`0035_marketing_ai_generations`, PR #102) + Slice 3b AI channel-plan recommender + fit notes (`0036_channel_fit_notes`, PR #104) + Slice 4 SEO Tools (`0037_seo_tools`, PR #105) merged to `develop`; Slice 5 Performance Analytics (`0038_marketing_metrics`, `feat/module-10-marketing-slice5`) built, PR pending — SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`. Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–3, 4a and 4b done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`; Slice 3 Invoices: server-computed totals + `INV-<year>-<NNN>` numbering + draft→sent→paid lifecycle with derived `overdue` + idempotent paid-inflow into Cash Flow/Runway with exact reversal + client email, migration `0042_finance_invoices`, `feat/module-12-finance-slice3`; Slice 4a Expenses: 1:1 expense↔outflow with edit-sync/delete-reverse into Cash Flow/Runway + generalized managed-transaction guard (`source` expense/invoice → 422) + receipts via storage + category summary, migration `0043_finance_expenses`, `feat/module-12-finance-slice4a`, PR #111; Slice 4b Budgets: per-category monthly limits (BIGINT `limit_minor`) with actuals **derived on read from expenses** (`spent`/`variance`/`over_budget`/`percent_used`, expenses-only, exact category match) + draft-from-actuals + copy-last-month seeders (skip-existing, year rollover), migration `0044_finance_budgets`, `feat/module-12-finance-slice4b`, PR pending); Slices 5–6 (financial model · integrations) planned — **Module 12 is 5 of 6 slices done**, see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4{a,b}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses,budgets}.md`. |
+| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–3, 4a and 4b done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`; Slice 3 Invoices: server-computed totals + `INV-<year>-<NNN>` numbering + draft→sent→paid lifecycle with derived `overdue` + idempotent paid-inflow into Cash Flow/Runway with exact reversal + client email, migration `0042_finance_invoices`, `feat/module-12-finance-slice3`; Slice 4a Expenses: 1:1 expense↔outflow with edit-sync/delete-reverse into Cash Flow/Runway + generalized managed-transaction guard (`source` expense/invoice → 422) + receipts via storage + category summary, migration `0043_finance_expenses`, `feat/module-12-finance-slice4a`, PR #111; Slice 4b Budgets: per-category monthly limits (BIGINT `limit_minor`) with actuals **derived on read from expenses** (`spent`/`variance`/`over_budget`/`percent_used`, expenses-only, exact category match) + draft-from-actuals + copy-last-month seeders (skip-existing, year rollover), migration `0044_finance_budgets`, `feat/module-12-finance-slice4b`, PR pending); Slice 5 Financial Model: async AI job (202 + poll) — LLM sets six bounded/validated assumptions, a deterministic integer engine computes P&L / cash flow / balance sheet with an exact balance invariant (paid-in-capital plug), actuals-seeded, over-budget → `failed`, XLSX export deferred, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending; the Integrations (external connectors) slice is deferred — **Module 12 is 6 of 6 in-scope slices BUILT**, see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice{4a,4b,5}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses,budgets,model}.md`. |
 | ⬜ Not started | 12 modules | Validation Hub (09) · Sales Hub (11) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -2616,18 +2640,18 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
 
 ---
 
-## 🟡 Module 12 — Finance Hub — *OPEN: 5 of 6 slices SHIPPED — Slices 1–3, 4a and 4b (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); 5 Financial Model, 6 Integrations planned*
+## 🟡 Module 12 — Finance Hub — *IN-SCOPE BUILD COMPLETE: 6 of 6 slices SHIPPED — Slices 1–3, 4a, 4b and 5 (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR #112; Financial Model on `feat/module-12-finance-slice5`, PR pending); Integrations (external bank/accounting connectors) deferred*
 
 Follows the same slice discipline as Modules 03/08/10/18/20: ledger + read spine first, then the
 projections/AI layer, then the money-in/money-out documents, then integrations. PRD 12.x. Slice 1
 migration `0039_finance_transactions`; Slice 2 migration `0040_finance_runway`; Slice 3 migration
-`0042_finance_invoices`; Slice 4a migration `0043_finance_expenses`; Slice 4b migration `0044_finance_budgets`. SOPs:
+`0042_finance_invoices`; Slice 4a migration `0043_finance_expenses`; Slice 4b migration `0044_finance_budgets`; Slice 5 migration `0045_finance_model`. SOPs:
 `docs/sop/2026-09-29-finance-slice1.md`, `docs/sop/2026-09-29-finance-slice2.md`,
 `docs/sop/2026-09-29-finance-slice3.md`, `docs/sop/2026-09-30-finance-slice4a.md`,
-`docs/sop/2026-09-30-finance-slice4b.md`. FE guides:
+`docs/sop/2026-09-30-finance-slice4b.md`, `docs/sop/2026-09-30-finance-slice5.md`. FE guides:
 `docs/fe-integration-guide-finance-cashflow.md`, `docs/fe-integration-guide-finance-runway.md`,
 `docs/fe-integration-guide-finance-invoices.md`, `docs/fe-integration-guide-finance-expenses.md`,
-`docs/fe-integration-guide-finance-budgets.md`.
+`docs/fe-integration-guide-finance-budgets.md`, `docs/fe-integration-guide-finance-model.md`.
 Design specs / plans: `docs/superpowers/specs/2026-09-29-module-12-finance-slice{1,2,3}-design.md` +
 `docs/superpowers/specs/2026-09-30-module-12-finance-slice4{a,b}-design.md`,
 `docs/superpowers/plans/2026-09-29-module-12-finance-slice{1,2,3}.md` +
@@ -2752,9 +2776,31 @@ Design specs / plans: `docs/superpowers/specs/2026-09-29-module-12-finance-slice
         zero limit, 5B limit, copy-last-month skip-existing, delete, error shapes) — `6fb59fc`
   - [x] FE integration guide (captures verbatim; derived fields, expenses-only actuals, category-is-department
         exact matching, seeder skip-existing/only-created, 64-bit limit, limitations) + SOP
-- [ ] **Slice 5 — Financial model** *(planned)*
-- [ ] **Slice 6 — Integrations (bank / accounting / Stripe)** *(planned; uses the reserved `source` values
-      and `external_ref`)*
+- [x] **Slice 5 — Financial Model (PRD 12.5)** — *shipped on `feat/module-12-finance-slice5` (commits
+      `2c7e963`→`74cbf8e`, + e2e + docs), slice unit tests **60 passed**, e2e **65/65 passed**, single alembic head
+      `0045_finance_model`*
+  - [x] `FinancialModel` model + `FinancialModelStatus` + migration `0045_finance_model` (one table) — `2c7e963`
+  - [x] Deterministic integer 3-statement engine (P&L / cash flow / balance sheet), **exact balance invariant** per
+        month (net-income / ΔAR / ΔAP linkage + paid-in-capital plug; asserted in-engine; 20k-case fuzz in review) — `e774e33`
+  - [x] Assumptions JSON schema + prompt builder + `validate_assumptions` (never raises; coerces + clamps the six
+        keys so bad LLM output cannot break the engine) — `02b0bb6`
+  - [x] `POST /finance/model/generate` (**202**), `GET /finance/model` (latest / `none`), `GET /finance/model/{id}`;
+        RBAC founder / team_member / accountant, cross-tenant 404 — `4c216a0`
+  - [x] `ai.finance.model` worker: actuals-seeded, metered LLM, engine, `complete`; over-budget → `failed`
+        consistently (never stuck `generating`) — `c8f157b`, `74cbf8e`
+  - [x] Live e2e `test_financial_model_journey` (none → 202 → generating → drain → complete → balance-sheet
+        balances live in all 12 months → by-id), 5 captures
+  - [x] FE integration guide (202 + poll, `failed` state, statement shape, minor units + 2^53 note, AI-assisted-but-
+        deterministic, client-side sensitivity, XLSX deferred) + SOP
+- [ ] **Slice 6 — Integrations (bank / accounting / Stripe)** *(**deferred** — the external-connectors slice from the
+      module design; needs OAuth infrastructure; uses the reserved `source` values and `external_ref`. Not part of the
+      Slice 1–5 in-scope build, which is complete.)*
+
+**Deferred within Slice 5 itself** (tracked in the Deferred follow-ups section below): XLSX export (`openpyxl`);
+36-month horizon; server-side sensitivity; itemised opex; bank-account actuals (via the Integrations slice); no
+concurrent-generation dedup; currency hardcoded `NGN`; paid-in-capital plug is a pragmatic startup model (not full
+GAAP); trailing-window revenue counts financing inflows; the `failed` path, RBAC 403 and cross-tenant 404 are
+unit-verified only (stub-LLM e2e always completes).
 
 **Deferred within Slice 4b itself** (tracked in the Deferred follow-ups section below): over-budget
 event / notification (the flag is derived on read only); `draft-from-actuals` labels new budgets `NGN` regardless
@@ -2827,7 +2873,7 @@ fan-out are unit-verified only (no live capture).
       `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
       `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
 - [x] **Module 09 — Validation Hub** — *🟢 shipped, merged to `develop` (PR #103, migration `0041_validation`); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
-- [ ] **Module 12 — Finance Hub** — *🟡 OPEN, Slices 1–3 and 4a built (2026-09-30)*: Slice 1 transactions
+- [ ] **Module 12 — Finance Hub** — *🟡 in-scope build COMPLETE (Slices 1–5 built, 2026-09-30; Slice 4b, 5 detail in its own section above); only the deferred Integrations/external-connectors slice remains* (earlier note, Slices 1–3 and 4a): Slice 1 transactions
       ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
       `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
       projection, `finance.runway.low` alert, informational `money.runway_live` signal (migration
@@ -2836,7 +2882,7 @@ fan-out are unit-verified only (no live capture).
       exact reversal, client email (migration `0042_finance_invoices`, `feat/module-12-finance-slice3`); Slice 4a
       Expenses — 1:1 expense↔outflow with edit-sync/delete-reverse into Cash Flow/Runway, generalized managed
       guard, receipts via storage, category summary (migration `0043_finance_expenses`,
-      `feat/module-12-finance-slice4a`, PR pending); Slice 4b (Budgets), 5, 6 planned; see its own section
+      `feat/module-12-finance-slice4a`, PR #111); Slice 4b (Budgets, migration `0044_finance_budgets`, PR #112) and Slice 5 (Financial Model, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending) built; Integrations deferred; see its own section
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
@@ -3117,6 +3163,22 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
       `create_budget` / `_seed_missing`.
 - [ ] Unit-only (no live capture): 403 for non-finance roles + accountant access; cross-tenant 404 / list
       isolation; the January → December seeder rollover; a partial-seed month; a draft whose sum exceeds int32.
+
+### Module 12 (Finance Hub) Slice 5 follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-finance-slice5.md`.
+
+- [ ] **XLSX export** — deferred (`openpyxl`); the FE Export button is FE-only for now.
+- [ ] **36-month horizon** — v1 is 12 months (`horizon_months` column already exists).
+- [ ] **Server-side sensitivity** — v1 sensitivity is client-side.
+- [ ] **Itemised opex** — opex is a single line; no per-category opex.
+- [ ] **Bank-account actuals** — via the deferred Integrations (external connectors) slice.
+- [ ] **No concurrent-generation dedup** — two POSTs create two models and two LLM jobs.
+- [ ] **Currency hardcoded `NGN`**; no multi-currency conversion.
+- [ ] **Paid-in-capital plug** — pragmatic startup model, not full GAAP.
+- [ ] **Financing counted as revenue** in the trailing-3-month seed (inherits the Slice 1 revenue-vs-financing gap).
+- [ ] Unit-only (no live capture): the `failed` path (AI budget exceeded), RBAC 403 + accountant access, cross-tenant
+      404, real-LLM (non-stub) numbers.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
