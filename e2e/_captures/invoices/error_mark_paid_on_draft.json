@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a sent invoice can be marked paid.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Only a sent invoice can be marked paid."
+      }
+    ]
+  }
+}

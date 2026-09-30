@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "a5db1568-ade5-4bf8-afac-db46861cd8d6",
+    "id": "fb6a8dd5-a9c6-405a-a865-f5cc47e73b80",
     "op": "canvas_update",
     "target": {
       "canvas_type": "business_model"
@@ -33,16 +33,16 @@
     "note": "Add customer support as a key activity",
     "status": "rejected",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "7df57d07-cb36-4740-a376-437dfed1f7ff",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": "delivered+consultant-2b3055f76b5c@resend.dev"
     },
     "resolved_by": {
-      "id": "b3a9fb75-ce6e-468f-b081-ff420eec3eeb",
+      "id": "02ad1d73-daf1-4bb6-9c82-8bff5bec8627",
       "name": "Ada Founder"
     },
-    "resolved_at": "2026-09-08T14:03:13.849518+00:00",
-    "created_at": "2026-09-08T14:03:13.812876+00:00"
+    "resolved_at": "2026-09-30T08:32:44.272708+00:00",
+    "created_at": "2026-09-30T08:32:44.228242+00:00"
   },
   "meta": null
 }

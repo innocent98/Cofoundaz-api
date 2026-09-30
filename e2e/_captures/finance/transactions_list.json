@@ -2,31 +2,31 @@
   "data": {
     "transactions": [
       {
-        "id": "880cf9b3-cc08-4e3f-8d0a-d4bc9ebbd347",
-        "date": "2026-09-29",
+        "id": "2c55513f-b139-4a7b-991b-d4b0e536718a",
+        "date": "2026-09-30",
         "description": "Bank transfer - unknown vendor",
         "category": null,
         "amount_minor": 4000000,
         "currency": "NGN",
         "direction": "out",
         "source": "manual",
-        "created_at": "2026-09-29T12:46:38.798398Z",
-        "updated_at": "2026-09-29T12:46:38.798398Z"
+        "created_at": "2026-09-30T08:32:51.647619Z",
+        "updated_at": "2026-09-30T08:32:51.647619Z"
       },
       {
-        "id": "1f9a96e2-995f-4b8e-9fa1-eb7fde0f86a2",
-        "date": "2026-09-29",
+        "id": "079345e8-eb97-4eb3-893b-30b8187a6b24",
+        "date": "2026-09-30",
         "description": "Cloud hosting",
         "category": "Infrastructure",
         "amount_minor": 12000000,
         "currency": "NGN",
         "direction": "out",
         "source": "manual",
-        "created_at": "2026-09-29T12:46:38.790441Z",
-        "updated_at": "2026-09-29T12:46:38.790441Z"
+        "created_at": "2026-09-30T08:32:51.630685Z",
+        "updated_at": "2026-09-30T08:32:51.630685Z"
       },
       {
-        "id": "e0dc0310-c0ec-45c5-a64a-ba72159ec288",
+        "id": "39cc7fce-ab84-4b20-9194-ba6ad9a41739",
         "date": "2026-08-15",
         "description": "Team salaries",
         "category": "Payroll",
@@ -34,11 +34,11 @@
         "currency": "NGN",
         "direction": "out",
         "source": "manual",
-        "created_at": "2026-09-29T12:46:38.781039Z",
-        "updated_at": "2026-09-29T12:46:38.781039Z"
+        "created_at": "2026-09-30T08:32:51.611593Z",
+        "updated_at": "2026-09-30T08:32:51.611593Z"
       },
       {
-        "id": "a510a9f5-25ab-4129-95e8-f4e9a7aaae46",
+        "id": "ca7cc1a9-0347-4ec1-a729-e01bed89abac",
         "date": "2026-08-15",
         "description": "First customer invoice",
         "category": "Revenue",
@@ -46,11 +46,11 @@
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-09-29T12:46:38.772705Z",
-        "updated_at": "2026-09-29T12:46:38.772705Z"
+        "created_at": "2026-09-30T08:32:51.591339Z",
+        "updated_at": "2026-09-30T08:32:51.591339Z"
       },
       {
-        "id": "1f368374-4881-43d9-9d52-ac82792d708f",
+        "id": "715aa74a-9c03-43de-b338-45cca2e49434",
         "date": "2026-05-15",
         "description": "Pre-seed round",
         "category": "Fundraising",
@@ -58,8 +58,8 @@
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-09-29T12:46:38.759726Z",
-        "updated_at": "2026-09-29T12:46:38.759726Z"
+        "created_at": "2026-09-30T08:32:51.556665Z",
+        "updated_at": "2026-09-30T08:32:51.556665Z"
       }
     ]
   },

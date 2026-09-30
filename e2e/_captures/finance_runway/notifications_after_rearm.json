@@ -2,32 +2,32 @@
   "data": {
     "notifications": [
       {
-        "id": "20843922-7038-4168-9818-62f84116d274",
+        "id": "d6679a77-07e5-4dc1-91da-328a93cca2ad",
         "type": "finance.runway.low",
         "title": "Your runway is running low",
         "body": "",
         "data": {
           "currency": "NGN",
-          "startup_id": "924e3cba-2f8b-4714-8f52-f65301801e19",
+          "startup_id": "eb5020f3-676e-4607-b303-00ecd3f784fb",
           "monthly_burn": 57333333,
           "runway_months": null
         },
         "read": false,
-        "created_at": "2026-09-29T14:22:26.587336+00:00"
+        "created_at": "2026-09-30T08:32:52.656120+00:00"
       },
       {
-        "id": "35006915-7106-484b-9095-0a5e71301bbb",
+        "id": "3ffa2361-0df9-4566-b343-f9b59eb0c73f",
         "type": "finance.runway.low",
         "title": "Your runway is running low",
         "body": "",
         "data": {
           "currency": "NGN",
-          "startup_id": "924e3cba-2f8b-4714-8f52-f65301801e19",
+          "startup_id": "eb5020f3-676e-4607-b303-00ecd3f784fb",
           "monthly_burn": 23666667,
           "runway_months": 1.2
         },
         "read": false,
-        "created_at": "2026-09-29T14:22:26.410227+00:00"
+        "created_at": "2026-09-30T08:32:52.469089+00:00"
       }
     ],
     "next_cursor": null

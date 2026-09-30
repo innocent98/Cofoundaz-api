@@ -3,11 +3,11 @@
     "range": "30d",
     "traffic_by_week": [
       {
-        "week_start": "2026-09-14",
+        "week_start": "2026-09-21",
         "visits": 310
       },
       {
-        "week_start": "2026-09-21",
+        "week_start": "2026-09-28",
         "visits": 420
       }
     ],
@@ -34,7 +34,7 @@
     },
     "leaderboard": [
       {
-        "campaign_id": "2e91564d-1265-4d3f-a06b-1ffbd6697702",
+        "campaign_id": "55d6b3ac-9e29-4d41-a0b5-a661c6126351",
         "name": "Q4 launch push",
         "clicks": 640,
         "conversions": 21,

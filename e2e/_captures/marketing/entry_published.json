@@ -1,17 +1,17 @@
 {
   "data": {
-    "id": "e160cb67-bf41-49ee-81eb-3be6692a7b72",
-    "startup_id": "c100e5c7-2b92-4d2f-b681-b362a31266e1",
-    "created_by": "ad26ed53-1d8b-4133-bdb2-99202725cece",
+    "id": "ee4844c5-de84-441b-ac94-a86436fbdf5c",
+    "startup_id": "0e86cc20-186b-40f6-a774-9fb25ec1f854",
+    "created_by": "0aaa196b-955f-415e-94bd-d9ed2d7ff950",
     "title": "Launch week kickoff",
     "channel": "email",
     "status": "published",
     "body": "Ship it",
     "media_ref": null,
     "scheduled_at": "2026-10-01T09:00:00Z",
-    "published_at": "2026-09-28T18:10:31.849127Z",
-    "created_at": "2026-09-28T18:10:31.825189Z",
-    "updated_at": "2026-09-28T18:10:31.844384Z"
+    "published_at": "2026-09-30T08:33:04.327150Z",
+    "created_at": "2026-09-30T08:33:04.302252Z",
+    "updated_at": "2026-09-30T08:33:04.322914Z"
   },
   "meta": null
 }
