@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "0c60c699-bf25-4d85-89b6-7f7a94ed146e",
-    "startup_id": "fba8ff9f-6b69-46aa-941b-74342b68ef6a",
+    "id": "48564cef-5422-4bac-8cb8-73f823ebafa5",
+    "startup_id": "04a47a77-ef84-4c90-af5c-9501d007ee13",
     "kind": "channel_plan",
     "status": "ready",
     "inputs": {
@@ -22,8 +22,8 @@
       }
     },
     "error": null,
-    "created_at": "2026-09-28T18:10:33.923923Z",
-    "updated_at": "2026-09-28T18:10:33.948056Z"
+    "created_at": "2026-09-30T08:33:06.243081Z",
+    "updated_at": "2026-09-30T08:33:06.268116Z"
   },
   "meta": null
 }

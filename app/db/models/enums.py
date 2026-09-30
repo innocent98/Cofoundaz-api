@@ -294,6 +294,44 @@ class CopyTone(enum.StrEnum):
     playful = "playful"
 
 
+class RiskLevel(enum.StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class AssumptionStatus(enum.StrEnum):
+    untested = "untested"
+    testing = "testing"
+    validated = "validated"
+    invalidated = "invalidated"
+
+
+class ExperimentType(enum.StrEnum):
+    smoke_test = "smoke_test"
+    landing_page = "landing_page"
+    ad_test = "ad_test"
+    other = "other"
+
+
+class ExperimentStatus(enum.StrEnum):
+    draft = "draft"
+    live = "live"
+    ended = "ended"
+
+
+class InterviewVerdict(enum.StrEnum):
+    supports = "supports"
+    contradicts = "contradicts"
+    neutral = "neutral"
+
+
+class SurveyStatus(enum.StrEnum):
+    draft = "draft"
+    open = "open"
+    closed = "closed"
+
+
 class MarketingMetricName(enum.StrEnum):
     visits = "visits"
     impressions = "impressions"

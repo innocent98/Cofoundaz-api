@@ -17,7 +17,7 @@
 5. **`email.invoice_sent` worker job** — `send` queues an email to the client via the project's
    `EmailSender` (Resend in prod, file backend in e2e), with amounts rendered in **major** currency units.
 
-Migration **`0041_finance_invoices`** (one new table), `app/services/finance/invoices.py`,
+Migration **`0042_finance_invoices`** (one new table), `app/services/finance/invoices.py`,
 `app/schemas/invoice.py`, `app/worker/handlers/invoice_email.py`, 8 new routes (**191 operations** in
 the OpenAPI schema now, up from 183) behind the same
 `require_role(founder, team_member, accountant)` as Slices 1–2.
@@ -127,8 +127,8 @@ Every invoice query is scoped to `membership.startup_id`; a foreign id is 404.
 
 ## What's involved
 
-**Migration `0041_finance_invoices`** (`alembic/versions/0041_finance_invoices.py`, chains off
-`0040_finance_runway`, single alembic head) — one additive `create_table("invoices")`: FK
+**Migration `0042_finance_invoices`** (`alembic/versions/0042_finance_invoices.py`, chains off
+`0041_validation`, single alembic head) — one additive `create_table("invoices")`: FK
 `startup_id → startups` `CASCADE`, FK `transaction_id → transactions` `SET NULL`, unique
 `(startup_id, number)` (`uq_invoices_startup_number`), unique `transaction_id`, index on `startup_id`;
 `terms`/`status` are varchar-backed enums (`native_enum=False`, stored by value). The new
@@ -191,7 +191,7 @@ project's own toolchain: `poetry run black --check app tests` (467 files unchang
 
 **Live e2e (`bash scripts/e2e_run.sh`, full suite): 61 passed**, including the new
 `test_finance_invoices_journey` (**no Resend-429 flake this run**; the invoice test uses the file email
-backend, not real Resend). The runner applied `0041_finance_invoices` from zero. The journey onboards a
+backend, not real Resend). The runner applied `0042_finance_invoices` from zero. The journey onboards a
 founder and seeds a ₦1,000,000 raise + ₦120,000 hosting (cash 88 000 000; burn 4 000 000; runway 22.0),
 then: create a draft (subtotal 125 000 / tax 9 375 at 7.5 % / total 134 375, `INV-<year>-001`, the
 request's bogus `total_minor: 1` ignored) → `PATCH` a line (150 000 / 11 250 / 161 250) → second draft
@@ -209,8 +209,9 @@ then 404) → 401 / 404 / create-validation 422 shapes → **overdue**: `due_on`
 DB, GET + `?status=overdue` show `overdue`, `?status=sent` empty, `PATCH {"status": …}` ignored, the
 overdue invoice marked paid. All numbers reconcile by hand. 40 captures under
 `e2e/_captures/invoices/` are the verbatim source of the FE guide. Single alembic head after this
-slice: `0041_finance_invoices`; develop still tops out at `0040_finance_runway` (checked against
-`origin/develop` before this commit), so no renumbering was needed.
+slice: `0042_finance_invoices`, `down_revision = 0041_validation`. Renumbered from
+`0041_finance_invoices` after Module 09 Validation Hub (PR #103, `0041_validation`) merged to
+`develop` ahead of this slice — re-verified single head on a throwaway DB before this commit.
 
 **Honest gap disclosure (unit-only, not e2e-captured).** 403 for non-finance roles and accountant
 access; cross-workspace 404 on the invoice routes; half-up rounding; the SAVEPOINT number-retry; the
@@ -222,7 +223,7 @@ because a live run cannot advance time.
 
 ## Operate / roll back
 
-**Deploy-time requirements.** Run `alembic upgrade head` to apply `0041_finance_invoices`. The invoice
+**Deploy-time requirements.** Run `alembic upgrade head` to apply `0042_finance_invoices`. The invoice
 **email is an async worker job** (`email.invoice_sent`): it is only sent while the worker process
 (`python -m app.worker`) is running, and needs the same email config as every other transactional email
 (`EMAIL_BACKEND=resend`, `RESEND_API_KEY`, a Resend-verified `EMAILS_FROM_EMAIL`). Existing workspaces

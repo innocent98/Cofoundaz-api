@@ -55,7 +55,7 @@ FE `Invoice` shape: `{ number, clientName, totalMinor, status: draft|sent|paid|o
 
 `InvoiceStatus` (stored) = `draft|sent|paid`. **`overdue` is derived on read**: `status==sent AND due_on < today`. `InvoiceTerms` = `net_15|net_30|due_on_receipt` (due-days 15/30/0). Both `Enum(native_enum=False, values_callable=...)` per house style.
 
-Migration **`0041_finance_invoices`**, `down_revision=0040_finance_runway`. **Migration-number watch:** Victoria's validation PR #103 now uses `0041_validation` (pushed, not merged). Whichever merges to develop first bumps the other to `0042`. Re-check develop head before the final push; robust single-head test.
+Migration **`0042_finance_invoices`**, `down_revision=0041_validation` (renumbered from `0041_finance_invoices` after Validation Hub PR #103 / `0041_validation` merged to develop ahead of this slice). Single alembic head verified.
 
 **Enum reuse (no migration):** add `invoice` to `TransactionSource` (varchar-backed `Enum(native_enum=False, length=12)`; `"invoice"` is 7 chars — no DDL). The paid-invoice inflow uses `source=invoice` for provenance.
 
@@ -118,7 +118,7 @@ Response `InvoiceResponse` includes the derived `status` (`overdue` when applica
 
 ## 10. Files (indicative)
 
-**Create:** `app/db/models/invoice.py`; `app/schemas/invoice.py`; `app/services/finance/invoices.py` (CRUD, number-gen, transitions, mark-paid inflow, mark-unpaid); `app/worker/handlers/invoice_email.py`; `alembic/versions/0041_finance_invoices.py`; tests (`tests/api/test_invoices.py`, `tests/db/test_invoice_model.py`, `tests/test_invoice_migration.py`, `tests/services/test_invoice_transitions.py`, `e2e/test_invoices.py` + captures); `docs/fe-integration-guide-finance-invoices.md`, `docs/sop/2026-09-29-finance-slice3.md`.
+**Create:** `app/db/models/invoice.py`; `app/schemas/invoice.py`; `app/services/finance/invoices.py` (CRUD, number-gen, transitions, mark-paid inflow, mark-unpaid); `app/worker/handlers/invoice_email.py`; `alembic/versions/0042_finance_invoices.py`; tests (`tests/api/test_invoices.py`, `tests/db/test_invoice_model.py`, `tests/test_invoice_migration.py`, `tests/services/test_invoice_transitions.py`, `e2e/test_invoices.py` + captures); `docs/fe-integration-guide-finance-invoices.md`, `docs/sop/2026-09-29-finance-slice3.md`.
 **Modify:** `app/db/models/enums.py` (`InvoiceStatus`, `InvoiceTerms`, `TransactionSource.invoice`); `app/api/v1/endpoints/finance.py` (8 routes); `app/worker/__main__.py` (register handler); `docs/checklist/PROJECT_CHECKLIST.md`.
 
 ## 11. Cross-cutting rules (carried)

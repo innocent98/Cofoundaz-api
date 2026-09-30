@@ -1,7 +1,7 @@
 """finance invoices
 
-Revision ID: 0041_finance_invoices
-Revises: 0040_finance_runway
+Revision ID: 0042_finance_invoices
+Revises: 0041_validation
 Create Date: 2026-09-29
 
 Module 12 Slice 3 (Invoices): the invoices table — one new table, additive, no lock on existing
@@ -16,8 +16,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "0041_finance_invoices"
-down_revision = "0040_finance_runway"
+revision = "0042_finance_invoices"
+down_revision = "0041_validation"
 branch_labels = None
 depends_on = None
 

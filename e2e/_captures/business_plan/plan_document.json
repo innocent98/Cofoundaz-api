@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "02009be9-1d4d-4d76-ad7c-1d2779da4d79",
+    "id": "d98a3a6d-583b-49f4-89d9-3d91739fce6e",
     "kind": "business_plan",
     "title": "Cofoundaz \u2014 Business Plan",
     "status": "draft",
@@ -8,55 +8,55 @@
     "folder": null,
     "template_key": null,
     "version": 1,
-    "updated_at": "2026-09-19T15:44:15.908335+00:00",
+    "updated_at": "2026-09-30T08:32:45.819963+00:00",
     "sections": [
       {
-        "id": "c0e214a5-9317-47ba-9389-e4b144a6202f",
+        "id": "4ddbff45-dc2b-4707-8a8f-f170905765c6",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Executive Summary"
       },
       {
-        "id": "f9a150b4-3e85-491f-aed6-0b2671d8cea3",
+        "id": "daf372c8-0270-4f53-9ae5-5587ef21b85f",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Problem & Opportunity"
       },
       {
-        "id": "b3b280fa-f7c4-45d3-9a52-65eb9d298f69",
+        "id": "da294fb7-ef88-45c8-856d-f4a57c20f69b",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Solution & Product"
       },
       {
-        "id": "a4bfa242-42dc-4543-ae86-c5ab01efcff2",
+        "id": "468772db-0013-4b79-a934-a5d84f9dddb4",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Market & Customers"
       },
       {
-        "id": "f00569b8-f29f-4c0e-bcbb-471b9cceeaa0",
+        "id": "448051d9-434a-476e-80d5-82d884dfc1ae",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Business Model"
       },
       {
-        "id": "29bd0f31-9002-483d-808a-3c22dcb952ff",
+        "id": "31204807-271a-4d43-a0f9-8304137c1be3",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Go-to-Market"
       },
       {
-        "id": "2adc71f5-7ba6-40c5-a0e9-26fa57a324df",
+        "id": "dfd6f0a8-08c0-4d63-bc06-ac7d17a2046c",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Competition"
       },
       {
-        "id": "234ae1cc-ad35-4ad1-b822-47d888d207ba",
+        "id": "6aacf875-751c-4f52-becb-26634d1e0041",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Team"
       },
       {
-        "id": "1b824d4e-c635-43de-a792-b1d3214e7a49",
+        "id": "d41e247c-463a-41c4-9e49-61f3d3120fe1",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Financials & Projections"
       },
       {
-        "id": "c85326d2-65da-4c65-9897-3bec49761825",
+        "id": "2fd47d4d-1acf-481d-b931-da6601650faf",
         "body": "[stub-llm] AI-generated assessment narrative.",
         "heading": "Roadmap & Milestones"
       }

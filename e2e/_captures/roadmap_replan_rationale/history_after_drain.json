@@ -1,22 +1,22 @@
 {
   "data": [
     {
-      "id": "afa98998-50a2-43dc-8281-ab6030f51240",
+      "id": "476b7730-4bdd-4b98-9bd8-3ba8b6056a39",
       "change_count": 1,
       "summary": "Re-planned 1 milestone",
       "rationale": "[stub-llm] AI-generated assessment narrative.",
       "applied_by": {
-        "id": "f628140b-897c-46ec-b5e7-496fd6907c95",
+        "id": "73978af9-f2f9-4885-b155-fa62fd0fd721",
         "name": "Ada Founder"
       },
-      "created_at": "2026-09-21T09:15:19.788190+00:00",
+      "created_at": "2026-09-30T08:33:21.457875+00:00",
       "changes": [
         {
           "title": "Validate demand",
           "reason": "10 days overdue and not yet done.",
-          "new_due": "2026-09-28",
-          "old_due": "2026-09-11",
-          "milestone_id": "b15906ac-b14b-46e6-af62-3f6fb5105795"
+          "new_due": "2026-10-07",
+          "old_due": "2026-09-20",
+          "milestone_id": "6f67904b-4265-4ac2-9f7b-d86be3ba194c"
         }
       ]
     }

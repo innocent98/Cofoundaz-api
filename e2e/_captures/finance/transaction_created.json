@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "1f368374-4881-43d9-9d52-ac82792d708f",
+    "id": "715aa74a-9c03-43de-b338-45cca2e49434",
     "date": "2026-05-15",
     "description": "Pre-seed round",
     "category": "Fundraising",
@@ -8,8 +8,8 @@
     "currency": "NGN",
     "direction": "in",
     "source": "manual",
-    "created_at": "2026-09-29T12:46:38.759726Z",
-    "updated_at": "2026-09-29T12:46:38.759726Z"
+    "created_at": "2026-09-30T08:32:51.556665Z",
+    "updated_at": "2026-09-30T08:32:51.556665Z"
   },
   "meta": null
 }

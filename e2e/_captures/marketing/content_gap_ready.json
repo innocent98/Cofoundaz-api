@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "2cc6558c-401d-406b-8aaa-cb37096d23be",
-    "startup_id": "b59654ba-d369-4508-9efe-efbcd937c8bd",
+    "id": "32ec3b61-99a4-40da-8f76-f5a4a0d485db",
+    "startup_id": "c7f1defe-39fc-462b-ad80-5783dc59a448",
     "kind": "content_gap",
     "status": "ready",
     "inputs": {},
@@ -15,8 +15,8 @@
       ]
     },
     "error": null,
-    "created_at": "2026-09-29T08:52:12.571265Z",
-    "updated_at": "2026-09-29T08:52:12.591703Z"
+    "created_at": "2026-09-30T08:33:07.001643Z",
+    "updated_at": "2026-09-30T08:33:07.023366Z"
   },
   "meta": null
 }

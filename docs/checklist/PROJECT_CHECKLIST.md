@@ -27,7 +27,7 @@ client-supplied total is ignored; `INV-<year>-<NNN>` numbering with SAVEPOINT re
 runway alert + `money.runway_live` signal — so **paying an invoice moves Cash Flow and Runway** (the
 composition of Slices 1–3) — an **invoice-managed-transaction guard** (`PATCH`/`DELETE` on a
 `source="invoice"` ledger row is a 422 "unpay the invoice instead"), and the **`email.invoice_sent` worker
-job** that emails the client via Resend (amounts in **major** units). Migration `0041_finance_invoices`
+job** that emails the client via Resend (amounts in **major** units). Migration `0042_finance_invoices`
 (1 new table; single alembic head), 8 new routes (**191 operations** in the OpenAPI schema now), same RBAC as
 Slices 1–2. Full unit suite **1725 passed** (+93); live e2e **61/61 passed**
 (`e2e/test_invoices.py::test_finance_invoices_journey`, 40 new captures; no Resend-429 flake this run; the
@@ -428,7 +428,7 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 | State | Count | Modules |
 |---|---|---|
 | ✅ Fully complete | 13 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37) · **Marketing Hub (10, all 5 slices — MODULE 10 COMPLETE)** — Slice 1 Content Calendar + Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`, PR #100) + Slice 2 Campaigns + Audience Segments (`0034_campaigns_segments`, PR #101) + Slice 3a AI copy generation + plan-week (`0035_marketing_ai_generations`, PR #102) + Slice 3b AI channel-plan recommender + fit notes (`0036_channel_fit_notes`, PR #104) + Slice 4 SEO Tools (`0037_seo_tools`, PR #105) merged to `develop`; Slice 5 Performance Analytics (`0038_marketing_metrics`, `feat/module-10-marketing-slice5`) built, PR pending — SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`. Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–3 of 6 done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`; Slice 3 Invoices: server-computed totals + `INV-<year>-<NNN>` numbering + draft→sent→paid lifecycle with derived `overdue` + idempotent paid-inflow into Cash Flow/Runway with exact reversal + client email, migration `0041_finance_invoices`, `feat/module-12-finance-slice3`, PR pending); Slices 4–6 (expenses/budgets · financial model · integrations) planned — see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices}.md`. |
+| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–3 of 6 done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`; Slice 3 Invoices: server-computed totals + `INV-<year>-<NNN>` numbering + draft→sent→paid lifecycle with derived `overdue` + idempotent paid-inflow into Cash Flow/Runway with exact reversal + client email, migration `0042_finance_invoices`, `feat/module-12-finance-slice3`, PR pending); Slices 4–6 (expenses/budgets · financial model · integrations) planned — see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices}.md`. |
 | ⬜ Not started | 12 modules | Validation Hub (09) · Sales Hub (11) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
@@ -1801,6 +1801,76 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
       and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
 
+## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, in review (PR #103)*
+
+_The "prove it before you build it" workspace: assumptions on a four-column board (untested →
+testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
+and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
+founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
+and submit an answer set. Migration `0041_validation` (renumbered five times as 03/08/10/Finance-12 merged ahead).
+Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
+plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
+`docs/sop/2026-09-24-validation-hub.md`._
+
+**Build (Tasks 1–7):**
+- [x] Scope + locked decisions D1–D10 agreed with the lead (token-addressed public endpoint with a
+      public read alongside it · 20/minute per-route rate limit · anonymous responses, repeats
+      allowed · MVP feedback cut from v1 · AI synthesizer and script generation stubbed as enqueued
+      jobs · JSONB question schema with caps · free assumption transitions, events only on a real
+      change · derived evidence counts · JSONB assumption links)
+- [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
+      `survey_responses`) + migration `0041_validation` (chains off `0040_finance_runway`, sole
+      alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
+      `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
+- [x] Question/answer validation (`app/services/validation/questions.py`) — types
+      `choice|scale|nps|open`, server-assigned stable ids kept across edits, caps of 50 questions,
+      20 options and 4 000 characters per open answer, a blank answer rejected for a required
+      question; every message safe to show the public
+- [x] Assumptions + experiments service — free status transitions publishing
+      `validation.assumption.validated|invalidated` only on an actual change into those states ·
+      `evidence_counts` derived on read from linked experiments and interviews · `link_ids`
+      rejecting assumptions outside the workspace (422) and dropping repeats · smoke-test
+      conversion returning 0.0 rather than dividing by zero, and capped at 100%
+- [x] Interviews + surveys service — filters by segment, verdict and assumption; survey token
+      minted on first open, only its SHA-256 hash stored, raw value returned **once**; analytics
+      with per-option counts (including unpicked options), scale/NPS counts + averages, answered
+      counts for open questions, and a completion rate that counts only non-blank answers
+- [x] Public surface (`app/services/validation/public.py`) copying Module 18's share/sign pattern —
+      uniform 404 for unknown/draft/closed, acknowledgement-only reply, nothing about the
+      respondent stored beyond `submitted_at`
+- [x] **`Limiter` moved from `app/main.py` to `app/core/rate_limit.py`** (behaviour unchanged) so
+      endpoint modules can carry per-route limits without a circular import; the public submit
+      routes each take one at `20/minute` — the project's first. `tests/api/test_rate_limit_key.py`
+      had its import updated to the new home
+- [x] 16 member routes + 2 public routes + schemas + router registration at `prefix="/validation"`;
+      write handlers commit
+- [x] Tests — 148 validation tests (models 6 · migration 2 · questions 9 · assumptions 8 ·
+      experiments 10 · interviews 6 · surveys 8 · public 7 · API 92) · full project suite **1,695
+      passed**, coverage **97.12%** (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the fourteen validation route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_validation.py`, written: onboard → assumption → survey built and
+      opened → **public form read and answered with no authentication** → wrong token 404 →
+      analytics → experiment + interview linked → assumption validated with evidence count 2; 12
+      captures) — **not yet run**; the e2e runner needs Poetry on the host, so CI runs it first
+- [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
+- [x] **Review round 1 (2026-09-29, PR #103)** — rebased onto `develop` and renumbered
+      `0035_validation` → `0039_validation` off `0038_marketing_metrics` (single head restored) · PR
+      retargeted `main` → `develop` · later renumbered `0039_validation` → `0041_validation` off
+      `0040_finance_runway` after Finance Slices 1–2 merged · blank answers rejected for required open questions and
+      excluded from the completion rate · `link_ids` dedupes · `/scripts/generate` validates its
+      assumption links · explicit `20/minute` on the public read · conversion capped at 100%.
+      _Deferred with reasons:_ a live 429 test, and a size cap on an experiment's `config`/`metrics`
+      JSONB. _Noted:_ the public routes key their limit on source IP, so `X-Forwarded-For` must be
+      set and trusted behind nginx — see SOP Operate
+- [ ] FE integration guide (`docs/fe-integration-guide-validation.md`) — written from the response
+      builders with a provenance note; **regenerate from the real captures after the first e2e run**
+- [ ] _Deferred:_ AI Insight Synthesizer + interview-script generation (stubs enqueue
+      `validation.synthesize` / `validation.scripts.generate`, nothing drains them until Module 03)
+      · hosted smoke-test pages · MVP feedback + theme clustering (PRD 09.7) · a members-only route
+      to read raw open answers · delete routes · survey token rotation/expiry and response
+      de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
+      the validation events — see SOP Follow-ups
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -2495,7 +2565,7 @@ assets, link calendar entries); no `cancelled` terminal status (only `draft`/`ac
 Follows the same slice discipline as Modules 03/08/10/18/20: ledger + read spine first, then the
 projections/AI layer, then the money-in/money-out documents, then integrations. PRD 12.x. Slice 1
 migration `0039_finance_transactions`; Slice 2 migration `0040_finance_runway`; Slice 3 migration
-`0041_finance_invoices`. SOPs: `docs/sop/2026-09-29-finance-slice1.md`,
+`0042_finance_invoices`. SOPs: `docs/sop/2026-09-29-finance-slice1.md`,
 `docs/sop/2026-09-29-finance-slice2.md`, `docs/sop/2026-09-29-finance-slice3.md`. FE guides:
 `docs/fe-integration-guide-finance-cashflow.md`, `docs/fe-integration-guide-finance-runway.md`,
 `docs/fe-integration-guide-finance-invoices.md`.
@@ -2546,8 +2616,8 @@ Design specs / plans: `docs/superpowers/specs/2026-09-29-module-12-finance-slice
         ambiguity, notification rules) + SOP
 - [x] **Slice 3 — Invoices (PRD 12.3)** — *shipped on `feat/module-12-finance-slice3` (commits
       `ddc8f38`→`df88409` + docs), unit **1725 passed**, e2e **61/61 passed**, single alembic head
-      `0041_finance_invoices`*
-  - [x] `Invoice` model + migration `0041_finance_invoices` (one table: FK `startup_id` CASCADE, FK
+      `0042_finance_invoices`*
+  - [x] `Invoice` model + migration `0042_finance_invoices` (one table: FK `startup_id` CASCADE, FK
         `transaction_id` SET NULL + unique, unique `(startup_id, number)`; `InvoiceStatus` `draft`/`sent`/`paid`,
         `InvoiceTerms` `net_15`/`net_30`/`due_on_receipt`; `TransactionSource.invoice` needs no DDL) — `99348de`
   - [x] Create/list/get with **server-computed totals** (client total ignored; subtotal = Σ qty×unit, tax
@@ -2626,19 +2696,20 @@ fan-out are unit-verified only (no live capture).
       `0033_marketing_calendar_channels`), Slice 2 (Campaigns + Audience Segments,
       `0034_campaigns_segments`), Slice 3a (AI copy generation + plan-week,
       `0035_marketing_ai_generations`), Slice 3b (AI channel-plan recommender + fit notes,
-      `0036_channel_fit_notes`) and Slice 4 (SEO Tools, `0037_seo_tools`, PR #105) merged to
-      `develop` (PRs #100/#101/#102/#104/#105); Slice 5 (Performance Analytics, `0038_marketing_metrics`,
-      `feat/module-10-marketing-slice5`) built, PR pending; see its own section above. SOPs
+      `0036_channel_fit_notes`), Slice 4 (SEO Tools, `0037_seo_tools`) and Slice 5 (Performance
+      Analytics, `0038_marketing_metrics`) all merged to `develop`
+      (PRs #100/#101/#102/#104/#105/#106); see its own section above. SOPs
       `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` +
       `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
       `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
+- [x] **Module 09 — Validation Hub** — *🟢 shipped, merged to `develop` (PR #103, migration `0041_validation`); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
 - [ ] **Module 12 — Finance Hub** — *🟡 OPEN, Slices 1–3 of 6 built (2026-09-30)*: Slice 1 transactions
       ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
       `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
       projection, `finance.runway.low` alert, informational `money.runway_live` signal (migration
       `0040_finance_runway`, `feat/module-12-finance-slice2`); Slice 3 Invoices — server-computed totals, INV
       numbering, draft→sent→paid lifecycle + derived overdue, idempotent paid-inflow into Cash Flow/Runway with
-      exact reversal, client email (migration `0041_finance_invoices`, `feat/module-12-finance-slice3`, PR
+      exact reversal, client email (migration `0042_finance_invoices`, `feat/module-12-finance-slice3`, PR
       pending); Slices 4–6 planned; see its own section above. SOPs
       `docs/sop/2026-09-29-finance-slice{1,2,3}.md`, FE guides
       `docs/fe-integration-guide-finance-{cashflow,runway,invoices}.md`.

@@ -1,10 +1,10 @@
 {
   "data": {
-    "id": "f69a26c8-4d94-4f8a-a192-409da4475c87",
+    "id": "a011e526-f628-43be-a76d-a72ab6fe3aa4",
     "op": "record_update",
     "target": {
       "kind": "persona",
-      "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998"
+      "record_id": "419fb169-b536-4ee1-ad19-9aba58b06e7f"
     },
     "payload": {
       "data": {
@@ -26,13 +26,13 @@
     "note": "Flesh out the persona quote",
     "status": "pending",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "7df57d07-cb36-4740-a376-437dfed1f7ff",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": "delivered+consultant-2b3055f76b5c@resend.dev"
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-08T14:03:13.889225+00:00"
+    "created_at": "2026-09-30T08:32:44.332527+00:00"
   },
   "meta": null
 }

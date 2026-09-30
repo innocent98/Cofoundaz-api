@@ -12,4 +12,4 @@ def test_migration_chain_single_head_includes_0041():
     assert heads.stdout.count("(head)") == 1
     history = _alembic("history")
     assert history.returncode == 0, history.stderr
-    assert "0041_finance_invoices" in history.stdout
+    assert "0042_finance_invoices" in history.stdout

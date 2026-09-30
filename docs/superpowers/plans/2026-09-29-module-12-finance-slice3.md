@@ -18,7 +18,7 @@
 - RBAC on every invoice route via the Slice-1 `_finance = require_role(founder, team_member, accountant)` dep.
 - Enum storage: `Enum(native_enum=False, values_callable=lambda e:[m.value for m in e], length=N)`.
 - `overdue` is NEVER a stored status — derived on read (`status==sent AND due_on < today`).
-- **Migration:** `0041_finance_invoices`, `down_revision="0040_finance_runway"`. Re-verify develop head before final push; if `0041_validation` (Victoria #103) merged first, bump to `0042_finance_invoices` (down_revision that head). Robust single-head test.
+- **Migration:** `0042_finance_invoices`, `down_revision="0040_finance_runway"`. Re-verify develop head before final push; if `0041_validation` (Victoria #103) merged first, bump to `0042_finance_invoices` (down_revision that head). Robust single-head test.
 - **`TransactionSource.invoice`** added to the existing varchar-backed enum (len 12; "invoice"=7 chars) — NO migration/DDL needed.
 - SAVEPOINT (`begin_nested`) for the unique-number insert. Async email is best-effort (never fails the transition); subject CR/LF-stripped.
 - CodeQL test hygiene (no mutating call in assert; no implicit str-concat in list literal). No AI attribution in commits/PR.
@@ -36,7 +36,7 @@
 
 ### Task 1: Enums + model + migration
 
-**Files:** Create `app/db/models/invoice.py`, `alembic/versions/0041_finance_invoices.py`; Modify `app/db/models/enums.py`, `app/db/models/__init__.py`; Test `tests/db/test_invoice_model.py`, `tests/test_invoice_migration.py`
+**Files:** Create `app/db/models/invoice.py`, `alembic/versions/0042_finance_invoices.py`; Modify `app/db/models/enums.py`, `app/db/models/__init__.py`; Test `tests/db/test_invoice_model.py`, `tests/test_invoice_migration.py`
 
 **Interfaces — Produces:** `Invoice` model; `InvoiceStatus` (`draft|sent|paid`), `InvoiceTerms` (`net_15|net_30|due_on_receipt`); `TransactionSource.invoice`.
 
@@ -114,11 +114,11 @@ class Invoice(UUIDMixin, TimestampMixin, Base):
 ```
 Register in `app/db/models/__init__.py` beside `Transaction`.
 
-- [ ] **Step 3: Migration** `0041_finance_invoices.py` (`revision="0041_finance_invoices"`, `down_revision="0040_finance_runway"`) — one `create_table` mirroring the model exactly (match Slice-1/2 server_default style for `created_at/updated_at`, `sa.false()`/`"0"` defaults, `sa.JSON`/`postgresql.JSONB`, the composite `uq_invoices_startup_number`, `startup_id` index, both FKs incl. `transactions` SET NULL). `downgrade()` drops the table. Read `0040_finance_runway.py` first and match its house style so `alembic check` shows no drift.
+- [ ] **Step 3: Migration** `0042_finance_invoices.py` (`revision="0042_finance_invoices"`, `down_revision="0040_finance_runway"`) — one `create_table` mirroring the model exactly (match Slice-1/2 server_default style for `created_at/updated_at`, `sa.false()`/`"0"` defaults, `sa.JSON`/`postgresql.JSONB`, the composite `uq_invoices_startup_number`, `startup_id` index, both FKs incl. `transactions` SET NULL). `downgrade()` drops the table. Read `0040_finance_runway.py` first and match its house style so `alembic check` shows no drift.
 
 - [ ] **Step 4: Model test** — persist a draft, assert defaults (`status draft`, `auto_remind False`, `line_items []`); dup `(startup_id, number)` raises IntegrityError (insert the 2nd inside `with db.begin_nested():`); assert enum stored as VALUE (query raw `status`/`terms` == "draft"/"net_30").
 
-- [ ] **Step 5: Migration test** — single-head count + `"0041_finance_invoices"` in `alembic history` (NOT "is THE head").
+- [ ] **Step 5: Migration test** — single-head count + `"0042_finance_invoices"` in `alembic history` (NOT "is THE head").
 
 - [ ] **Step 6: Verify + commit** — `poetry run pytest tests/db/test_invoice_model.py tests/test_invoice_migration.py -v`; `poetry run alembic upgrade head && alembic check` (single head, no drift). Commit `feat(finance): invoices model + migration 0041 + InvoiceStatus/Terms enums`.
 
