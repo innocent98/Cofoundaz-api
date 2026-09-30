@@ -183,3 +183,16 @@ def test_money_paths_take_a_row_lock(db, op):
         event.remove(engine, "before_cursor_execute", _capture)
     locked = [q for q in statements if "FROM invoices" in q and "FOR UPDATE" in q]
     assert locked, statements
+
+
+def test_mark_unpaid_tolerates_missing_linked_transaction(db):
+    s = _startup(db)
+    inv = _sent(db, s)
+    paid = svc.mark_paid(db, startup_id=s.id, invoice_id=inv.id)
+    txn = db.get(Transaction, paid.transaction_id)
+    db.delete(txn)
+    db.flush()
+    unpaid = svc.mark_unpaid(db, startup_id=s.id, invoice_id=inv.id)
+    assert unpaid.status == InvoiceStatus.sent
+    assert unpaid.transaction_id is None
+    assert unpaid.paid_at is None

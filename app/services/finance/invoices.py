@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
+from app.core.logger import log
 from app.db.models.enums import (
     InvoiceStatus,
     InvoiceTerms,
@@ -236,11 +237,15 @@ def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) ->
     inv.paid_at = None
     inv.status = InvoiceStatus.sent
     db.flush()
-    if txn_id is not None:
-        txn = db.get(Transaction, txn_id)
-        if txn is not None:
-            db.delete(txn)
-            db.flush()
+    txn = db.get(Transaction, txn_id) if txn_id is not None else None
+    if txn is None:
+        log.warning(
+            f"[invoice] mark_unpaid: linked inflow missing for paid invoice {inv.id} "
+            f"(transaction {txn_id}); clearing the link only"
+        )
+    else:
+        db.delete(txn)
+        db.flush()
     return inv
 
 

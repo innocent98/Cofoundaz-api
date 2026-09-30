@@ -590,3 +590,70 @@ def test_mark_paid_and_unpaid_refresh_runway_alert_and_signal(client, db, monkey
     assert low is True
     assert value == before_value
     assert len([e for e, _p in bus.published if e == RUNWAY_EVENT]) == 2
+
+
+def _paid_invoice_with_txn(client, h) -> tuple[str, str]:
+    iid = _create_sent(client, h)
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert paid.status_code == 200, paid.text
+    return iid, paid.json()["data"]["transaction_id"]
+
+
+def test_invoice_managed_transaction_cannot_be_deleted(client, db):
+    _u, startup, h = _member(db)
+    iid, tid = _paid_invoice_with_txn(client, h)
+    resp = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+    db.expire_all()
+    still = db.query(Transaction).filter_by(id=tid, startup_id=startup.id).one_or_none()
+    assert still is not None
+    inv = client.get(f"{BASE}/invoices/{iid}", headers=h).json()["data"]
+    assert inv["status"] == "paid"
+    assert inv["transaction_id"] == tid
+
+
+def test_invoice_managed_transaction_cannot_be_edited(client, db):
+    _u, startup, h = _member(db)
+    iid, tid = _paid_invoice_with_txn(client, h)
+    original = db.query(Transaction).filter_by(id=tid).one().amount_minor
+    resp = client.patch(f"{BASE}/transactions/{tid}", json={"amount_minor": 1}, headers=h)
+    assert resp.status_code == 422, resp.text
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+    db.expire_all()
+    row = db.query(Transaction).filter_by(id=tid, startup_id=startup.id).one()
+    assert row.amount_minor == original
+    inv = client.get(f"{BASE}/invoices/{iid}", headers=h).json()["data"]
+    assert inv["total_minor"] == original
+    assert inv["transaction_id"] == tid
+
+
+def test_manual_transactions_still_editable_and_deletable(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": "2026-03-10",
+            "description": "AWS",
+            "amount_minor": 1000,
+            "currency": "NGN",
+            "direction": "out",
+        },
+        headers=h,
+    )
+    assert created.status_code == 200, created.text
+    tid = created.json()["data"]["id"]
+    patched = client.patch(f"{BASE}/transactions/{tid}", json={"amount_minor": 2000}, headers=h)
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["data"]["amount_minor"] == 2000
+    deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+
+
+def test_unpay_after_guard_still_removes_the_inflow(client, db):
+    _u, startup, h = _member(db)
+    iid, tid = _paid_invoice_with_txn(client, h)
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=h)
+    assert unpaid.status_code == 200, unpaid.text
+    db.expire_all()
+    assert db.query(Transaction).filter_by(id=tid).one_or_none() is None
