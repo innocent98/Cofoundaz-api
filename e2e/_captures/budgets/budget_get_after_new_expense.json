@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "78e67809-cbd3-43d2-b3ee-e4b7f61a5111",
+    "category": "Marketing",
+    "period_month": "2026-09",
+    "limit_minor": 5000000,
+    "currency": "NGN",
+    "notes": null,
+    "spent_minor": 3000000,
+    "variance_minor": -2000000,
+    "over_budget": false,
+    "percent_used": 60.0,
+    "created_at": "2026-09-30T13:53:42.094190Z",
+    "updated_at": "2026-09-30T13:53:42.094190Z"
+  },
+  "meta": null
+}

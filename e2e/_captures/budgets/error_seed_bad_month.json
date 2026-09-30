@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "period_month",
+        "message": "String should match pattern '^\\d{4}-(0[1-9]|1[0-2])$'"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "48ef7679-6317-4672-ba79-673081b97038",
+    "category": "Legal",
+    "period_month": "2026-09",
+    "limit_minor": 0,
+    "currency": "NGN",
+    "notes": null,
+    "spent_minor": 0,
+    "variance_minor": 0,
+    "over_budget": false,
+    "percent_used": null,
+    "created_at": "2026-09-30T13:53:42.281378Z",
+    "updated_at": "2026-09-30T13:53:42.281378Z"
+  },
+  "meta": null
+}
