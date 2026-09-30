@@ -12,7 +12,7 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.budget import BudgetCreate, BudgetUpdate
+from app.schemas.budget import BudgetCreate, BudgetUpdate, SeedRequest
 from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
@@ -425,6 +425,55 @@ def list_budgets(
                 for b, spent in rows
             ],
         }
+    )
+
+
+def _seeded_response(
+    db: Session, *, startup_id: uuid.UUID, month: str, created: list[Any]
+) -> dict[str, Any]:
+    created_ids = {b.id for b in created}
+    rows = budget_svc.list_budgets(db, startup_id=startup_id, month=month)
+    return success_response(
+        {
+            "month": month,
+            "budgets": [
+                budget_svc.serialize_budget(b, spent_minor=spent).model_dump(mode="json")
+                for b, spent in rows
+                if b.id in created_ids
+            ],
+        }
+    )
+
+
+@router.post("/budgets/draft-from-actuals", response_model=dict[str, Any])
+def draft_budgets_from_actuals(
+    payload: SeedRequest,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    created = budget_svc.draft_from_actuals(
+        db, startup_id=membership.startup_id, created_by=user.id, period_month=payload.period_month
+    )
+    db.commit()
+    return _seeded_response(
+        db, startup_id=membership.startup_id, month=payload.period_month, created=created
+    )
+
+
+@router.post("/budgets/copy-last-month", response_model=dict[str, Any])
+def copy_budgets_from_last_month(
+    payload: SeedRequest,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    created = budget_svc.copy_last_month(
+        db, startup_id=membership.startup_id, created_by=user.id, period_month=payload.period_month
+    )
+    db.commit()
+    return _seeded_response(
+        db, startup_id=membership.startup_id, month=payload.period_month, created=created
     )
 
 

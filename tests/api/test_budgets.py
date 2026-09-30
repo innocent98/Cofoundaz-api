@@ -265,3 +265,138 @@ def test_cross_tenant_get_patch_delete_404_and_list_isolated(client, db):
 def test_unauthenticated_rejected(client):
     resp = client.get(f"{BASE}/budgets", params={"month": "2026-03"})
     assert resp.status_code in (401, 403, 422)
+
+
+def _seed_post(client, h, action, month="2026-03"):
+    return client.post(f"{BASE}/budgets/{action}", json={"period_month": month}, headers=h)
+
+
+def test_draft_endpoint_returns_target_month_cards_with_actuals(client, db):
+    _u, _s, h = _member(db)
+    _expense(client, h, amount=200_000, category="Infra", date="2026-02-10")
+    _expense(client, h, amount=70_000, category="Ops", date="2026-02-11")
+    _expense(client, h, amount=250_000, category="Infra", date="2026-03-05")  # target month spend
+    resp = _seed_post(client, h, "draft-from-actuals")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["month"] == "2026-03"
+    by_cat = {b["category"]: b for b in data["budgets"]}
+    assert set(by_cat) == {"Infra", "Ops"}
+    assert by_cat["Infra"]["limit_minor"] == 200_000
+    assert by_cat["Infra"]["spent_minor"] == 250_000
+    assert by_cat["Infra"]["over_budget"] is True
+    assert by_cat["Ops"]["limit_minor"] == 70_000
+    assert by_cat["Ops"]["spent_minor"] == 0
+    assert by_cat["Ops"]["over_budget"] is False
+    listed = _list(client, h)
+    assert len(listed["budgets"]) == 2
+
+
+def test_draft_endpoint_returns_only_created_and_skips_existing(client, db):
+    _u, _s, h = _member(db)
+    _expense(client, h, amount=200_000, category="Infra", date="2026-02-10")
+    _expense(client, h, amount=70_000, category="Ops", date="2026-02-11")
+    _post(client, h, category="Infra", limit_minor=1)
+    resp = _seed_post(client, h, "draft-from-actuals")
+    assert resp.status_code == 200, resp.text
+    assert [b["category"] for b in resp.json()["data"]["budgets"]] == ["Ops"]
+    infra = [b for b in _list(client, h)["budgets"] if b["category"] == "Infra"]
+    assert infra[0]["limit_minor"] == 1
+
+
+def test_draft_endpoint_empty_source_returns_empty_list(client, db):
+    _u, _s, h = _member(db)
+    resp = _seed_post(client, h, "draft-from-actuals")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["budgets"] == []
+
+
+def test_copy_endpoint_returns_target_month_cards_with_actuals(client, db):
+    _u, _s, h = _member(db)
+    _post(client, h, category="Infra", period_month="2026-02", limit_minor=100_000)
+    _post(client, h, category="Ops", period_month="2026-02", limit_minor=40_000)
+    _expense(client, h, amount=120_000, category="Infra", date="2026-03-05")
+    resp = _seed_post(client, h, "copy-last-month")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["month"] == "2026-03"
+    by_cat = {b["category"]: b for b in data["budgets"]}
+    assert by_cat["Infra"]["limit_minor"] == 100_000
+    assert by_cat["Infra"]["period_month"] == "2026-03"
+    assert by_cat["Infra"]["spent_minor"] == 120_000
+    assert by_cat["Infra"]["over_budget"] is True
+    assert by_cat["Ops"]["limit_minor"] == 40_000
+    assert by_cat["Ops"]["spent_minor"] == 0
+
+
+def test_copy_endpoint_skips_existing_and_empty_source(client, db):
+    _u, _s, h = _member(db)
+    empty = _seed_post(client, h, "copy-last-month")
+    assert empty.status_code == 200, empty.text
+    assert empty.json()["data"]["budgets"] == []
+    _post(client, h, category="Infra", period_month="2026-02", limit_minor=100_000)
+    _post(client, h, category="Ops", period_month="2026-02", limit_minor=40_000)
+    _post(client, h, category="Infra", period_month="2026-03", limit_minor=1)
+    resp = _seed_post(client, h, "copy-last-month")
+    assert resp.status_code == 200, resp.text
+    assert [b["category"] for b in resp.json()["data"]["budgets"]] == ["Ops"]
+    infra = [b for b in _list(client, h)["budgets"] if b["category"] == "Infra"]
+    assert infra[0]["limit_minor"] == 1
+
+
+def test_copy_endpoint_january_rolls_back_to_december(client, db):
+    _u, _s, h = _member(db)
+    _post(client, h, category="Infra", period_month="2025-12", limit_minor=55)
+    resp = _seed_post(client, h, "copy-last-month", month="2026-01")
+    assert resp.status_code == 200, resp.text
+    cards = resp.json()["data"]["budgets"]
+    assert [(b["category"], b["period_month"], b["limit_minor"]) for b in cards] == [
+        ("Infra", "2026-01", 55)
+    ]
+
+
+@pytest.mark.parametrize("action", ["draft-from-actuals", "copy-last-month"])
+def test_seed_endpoints_accountant_allowed(client, db, action):
+    _f, startup, fh = _member(db)
+    _post(client, fh, period_month="2026-02")
+    _expense(client, fh, amount=10, date="2026-02-10")
+    _u, _s, h = _member(db, role=MembershipRole.accountant, startup=startup)
+    resp = _seed_post(client, h, action)
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()["data"]["budgets"]) == 1
+
+
+@pytest.mark.parametrize("action", ["draft-from-actuals", "copy-last-month"])
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_seed_endpoints_forbidden_roles_403(client, db, role, action):
+    _f, startup, _fh = _member(db)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    resp = _seed_post(client, h, action)
+    assert resp.status_code == 403, resp.text
+
+
+@pytest.mark.parametrize("action", ["draft-from-actuals", "copy-last-month"])
+@pytest.mark.parametrize("month", ["2026-13", "2026-3", "", "abc"])
+def test_seed_endpoints_bad_month_422(client, db, month, action):
+    _u, _s, h = _member(db)
+    resp = _seed_post(client, h, action, month=month)
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.parametrize("action", ["draft-from-actuals", "copy-last-month"])
+def test_seed_endpoints_missing_body_422(client, db, action):
+    _u, _s, h = _member(db)
+    resp = client.post(f"{BASE}/budgets/{action}", json={}, headers=h)
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.parametrize("action", ["draft-from-actuals", "copy-last-month"])
+def test_seed_endpoints_cross_tenant_isolated(client, db, action):
+    _a, _sa, ha = _member(db)
+    _expense(client, ha, amount=500, date="2026-02-10")
+    _post(client, ha, period_month="2026-02")
+    _b, sb, hb = _member(db)
+    resp = _seed_post(client, hb, action)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["budgets"] == []
+    assert db.query(Budget).filter_by(startup_id=sb.id).count() == 0

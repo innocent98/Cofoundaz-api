@@ -29,6 +29,10 @@ class BudgetUpdate(BaseModel):
         return self
 
 
+class SeedRequest(BaseModel):
+    period_month: str = Field(pattern=MONTH_PATTERN)
+
+
 class BudgetResponse(BaseModel):
     id: uuid.UUID
     category: str

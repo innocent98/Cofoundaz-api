@@ -83,3 +83,85 @@ def serialize_budget(budget: Budget, *, spent_minor: int) -> BudgetResponse:
         created_at=budget.created_at,
         updated_at=budget.updated_at,
     )
+
+
+def _prev_month(period_month: str) -> str:
+    """The calendar month before "YYYY-MM", rolling the year back across January."""
+    year, month = int(period_month[:4]), int(period_month[5:7])
+    if month == 1:
+        return f"{year - 1:04d}-12"
+    return f"{year:04d}-{month - 1:02d}"
+
+
+def _existing_categories(db: Session, *, startup_id: uuid.UUID, period_month: str) -> set[str]:
+    rows = db.query(Budget.category).filter_by(startup_id=startup_id, period_month=period_month)
+    return {category for (category,) in rows}
+
+
+def _seed_missing(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    created_by: uuid.UUID | None,
+    period_month: str,
+    candidates: list[tuple[str, int, str]],
+) -> list[Budget]:
+    """Insert (category, limit, currency) candidates for the month, skipping categories that
+    already have a budget. Never overwrites."""
+    existing = _existing_categories(db, startup_id=startup_id, period_month=period_month)
+    created: list[Budget] = []
+    for category, limit_minor, currency in sorted(candidates):
+        if category in existing:
+            continue
+        # add() INSIDE begin_nested: if a concurrent request inserted the same (category, month)
+        # after our read, only the savepoint rolls back and we skip it instead of a 500.
+        try:
+            with db.begin_nested():
+                budget = Budget(
+                    startup_id=startup_id,
+                    created_by=created_by,
+                    category=category,
+                    period_month=period_month,
+                    limit_minor=limit_minor,
+                    currency=currency,
+                )
+                db.add(budget)
+        except IntegrityError:
+            continue
+        created.append(budget)
+    db.flush()
+    return created
+
+
+def draft_from_actuals(
+    db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID | None, period_month: str
+) -> list[Budget]:
+    """Seed the month with one budget per category that had spend last month (limit = that spend)."""
+    totals = expense_category_totals(db, startup_id=startup_id, month=_prev_month(period_month))
+    candidates = [(cat, total, "NGN") for cat, total in totals.items() if total > 0]
+    return _seed_missing(
+        db,
+        startup_id=startup_id,
+        created_by=created_by,
+        period_month=period_month,
+        candidates=candidates,
+    )
+
+
+def copy_last_month(
+    db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID | None, period_month: str
+) -> list[Budget]:
+    """Copy last month's budgets (category, limit, currency) into the month."""
+    prev_rows = (
+        db.query(Budget)
+        .filter_by(startup_id=startup_id, period_month=_prev_month(period_month))
+        .all()
+    )
+    candidates = [(b.category, b.limit_minor, b.currency) for b in prev_rows]
+    return _seed_missing(
+        db,
+        startup_id=startup_id,
+        created_by=created_by,
+        period_month=period_month,
+        candidates=candidates,
+    )
