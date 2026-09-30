@@ -228,6 +228,8 @@ def mark_invoice_paid(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     inv = invoice_svc.mark_paid(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
@@ -241,6 +243,8 @@ def mark_invoice_unpaid(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     inv = invoice_svc.mark_unpaid(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
     db.commit()
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))

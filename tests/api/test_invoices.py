@@ -4,7 +4,15 @@ import pytest
 
 from app.db.models.enums import InvoiceStatus, InvoiceTerms, MembershipRole
 from app.db.models.finance import Transaction
+from app.db.models.health_score import HealthSignal
 from app.db.models.invoice import Invoice
+from app.platform.events import DispatchingEventBus
+from app.schemas.finance import TransactionCreate
+from app.services.finance import runway as runway_svc
+from app.services.finance import service as finance_svc
+from app.services.finance.cashflow import cash_flow_summary
+from app.services.finance.runway_math import _runway_is_low
+from app.services.notifications import registry
 from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
 
 YEAR = datetime.now(UTC).year
@@ -498,3 +506,87 @@ def test_cross_tenant_mark_paid_unpaid_404(client, db):
     assert db.query(Transaction).filter_by(startup_id=sa.id).count() == 0
     intact = client.get(f"{BASE}/invoices/{iid}", headers=ha)
     assert intact.json()["data"]["status"] == "sent"
+
+
+RUNWAY_EVENT = "finance.runway.low"
+
+
+def _signal_rows(db, startup):
+    return db.query(HealthSignal).filter_by(startup_id=startup.id, key="money.runway_live").all()
+
+
+def _assert_runway_state_matches_cash_flow(db, startup):
+    """Stored alert + signal equal what a direct transaction mutation would have produced."""
+    db.expire_all()
+    summary = cash_flow_summary(db, startup_id=startup.id)
+    expected_low = _runway_is_low(int(summary["monthly_burn"]), summary["runway_months"])
+    settings = runway_svc.get_or_default_settings(db, startup_id=startup.id)
+    assert settings is not None
+    assert settings.alert_is_low is expected_low
+    rows = _signal_rows(db, startup)
+    assert len(rows) == 1
+    expected_fields = runway_svc.build_runway_signal(db, startup_id=startup.id)
+    assert expected_fields is not None
+    assert float(rows[0].value) == float(expected_fields["value"])
+    return expected_low, float(rows[0].value)
+
+
+def test_mark_paid_and_unpaid_refresh_runway_alert_and_signal(client, db, monkeypatch):
+    bus = DispatchingEventBus()
+    registry.register(bus)
+    monkeypatch.setattr(runway_svc, "event_bus", bus)
+    _u, startup, h = _member(db)
+
+    def seed(amount, direction, days_ago):
+        finance_svc.create_transaction(
+            db,
+            startup_id=startup.id,
+            data=TransactionCreate(
+                date=datetime.now(UTC).date() - timedelta(days=days_ago),
+                description="seed",
+                amount_minor=amount,
+                currency="NGN",
+                direction=direction,
+            ),
+        )
+
+    # Cash 100k, burn 300k/month -> ~0.3 months runway -> low; the alert fires once.
+    seed(1_000_000, "in", 200)
+    seed(900_000, "out", 0)
+    runway_svc.evaluate_runway_alert(db, startup_id=startup.id)
+    runway_svc.upsert_runway_signal(db, startup_id=startup.id)
+    low, before_value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is True
+    assert before_value < 1
+    assert len([e for e, _p in bus.published if e == RUNWAY_EVENT]) == 1
+
+    line = {"description": "Retainer", "quantity": 1, "unit_price_minor": 600_000}
+    created = client.post(
+        f"{BASE}/invoices", json=_payload(line_items=[line], tax_percent=0), headers=h
+    )
+    iid = created.json()["data"]["id"]
+    sent = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert sent.status_code == 200, sent.text
+
+    # mark-paid: cash 700k, burn 100k/month -> 7.0 months -> alert re-armed, signal updated.
+    paid = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert paid.status_code == 200, paid.text
+    low, value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is False
+    assert value == 7.0
+
+    # A retried mark-paid is a no-op: no duplicate signal row, no extra alert event.
+    again = client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h)
+    assert again.status_code == 200, again.text
+    low, value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is False
+    assert value == 7.0
+    assert len([e for e, _p in bus.published if e == RUNWAY_EVENT]) == 1
+
+    # mark-unpaid removes the inflow -> back into low runway -> alert fires again.
+    unpaid = client.post(f"{BASE}/invoices/{iid}/mark-unpaid", headers=h)
+    assert unpaid.status_code == 200, unpaid.text
+    low, value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is True
+    assert value == before_value
+    assert len([e for e, _p in bus.published if e == RUNWAY_EVENT]) == 2
