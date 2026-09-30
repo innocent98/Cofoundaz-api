@@ -102,7 +102,9 @@ Slice 2 put on the transaction routes — because an inflow can lift a startup o
 reversal push it in). Same transaction, so the alert state and the ledger cannot diverge. The hooks
 also run on the idempotent no-op path (harmless self-healing; see follow-ups).
 
-**Invoice-managed-transaction guard** (`service.py::_reject_invoice_managed`). `update_transaction`
+**Invoice-managed-transaction guard** (`service.py::_reject_managed`; renamed from
+`_reject_invoice_managed` in Slice 4a when the guard was generalized to also cover `source=expense`).
+`update_transaction`
 and `delete_transaction` raise a 422 (`field: "source"`, "This transaction is managed by an invoice;
 unpay the invoice to change or remove it.") for `source == invoice` rows. Without it a user could
 delete the inflow and leave the invoice claiming `paid` against a ledger that no longer has the money,
@@ -144,7 +146,7 @@ table touched; downgrade drops the index and the table.
 **Services** — `app/services/finance/invoices.py` (`_compute_totals`, `_next_number`,
 `_derived_status`, `create_invoice`, `get_invoice`, `_get_invoice_locked`, `update_invoice`,
 `delete_invoice`, `send_invoice`, `mark_paid`, `mark_unpaid`, `list_invoices`, `serialize_invoice`);
-`app/services/finance/service.py` (`_reject_invoice_managed` on transaction update/delete).
+`app/services/finance/service.py` (`_reject_managed` on transaction update/delete).
 
 **Worker** — `app/worker/handlers/invoice_email.py` (`handle_invoice_email`, `render_invoice_email`);
 registered in `app/worker/__main__.py`.

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "month": "2026-09",
+    "currency": "NGN",
+    "total_minor": 18000000,
+    "rows": [
+      {
+        "category": "Cloud",
+        "total_minor": 10000000,
+        "percent": 55.6
+      },
+      {
+        "category": "Marketing",
+        "total_minor": 8000000,
+        "percent": 44.4
+      }
+    ]
+  },
+  "meta": null
+}

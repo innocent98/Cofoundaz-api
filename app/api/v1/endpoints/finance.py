@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -12,10 +12,12 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 from app.services.finance import cashflow as cashflow_svc
+from app.services.finance import expenses as expense_svc
 from app.services.finance import invoices as invoice_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
@@ -248,3 +250,141 @@ def mark_invoice_unpaid(
     db.commit()
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+_MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+
+
+@router.post("/expenses", response_model=dict[str, Any])
+def create_expense(
+    payload: ExpenseCreate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.create_expense(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    # The expense posted an outflow, so burn / runway changed: re-evaluate in the same transaction.
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.get("/expenses", response_model=dict[str, Any])
+def list_expenses(
+    category: str | None = None,
+    month: str | None = Query(default=None, pattern=_MONTH_PATTERN),  # noqa: B008
+    date_from: date | None = None,
+    date_to: date | None = None,
+    recurring: bool | None = None,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = expense_svc.list_expenses(
+        db,
+        startup_id=membership.startup_id,
+        category=category,
+        month=month,
+        date_from=date_from,
+        date_to=date_to,
+        recurring=recurring,
+    )
+    return success_response(
+        {"expenses": [expense_svc.serialize_expense(r).model_dump(mode="json") for r in rows]}
+    )
+
+
+# Declared before /expenses/{expense_id} so "summary" is never captured as an id.
+@router.get("/expenses/summary", response_model=dict[str, Any])
+def expense_summary(
+    month: str | None = Query(default=None, pattern=_MONTH_PATTERN),  # noqa: B008
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    target = month or datetime.now(UTC).strftime("%Y-%m")
+    data = expense_svc.category_summary(db, startup_id=membership.startup_id, month=target)
+    return success_response(CategorySummary(**data).model_dump(mode="json"))
+
+
+@router.get("/expenses/{expense_id}", response_model=dict[str, Any])
+def get_expense(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.get_expense(db, startup_id=membership.startup_id, expense_id=expense_id)
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.patch("/expenses/{expense_id}", response_model=dict[str, Any])
+def update_expense(
+    expense_id: uuid.UUID,
+    payload: ExpenseUpdate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.update_expense(
+        db, startup_id=membership.startup_id, expense_id=expense_id, data=payload
+    )
+    # The linked outflow may have changed, so burn / runway changed: re-evaluate in the same txn.
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.delete("/expenses/{expense_id}", response_model=dict[str, Any])
+def delete_expense(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    expense_svc.delete_expense(db, startup_id=membership.startup_id, expense_id=expense_id)
+    # The outflow is gone, so burn / runway changed: re-evaluate in the same transaction.
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
+async def upload_expense_receipt(
+    expense_id: uuid.UUID,
+    file: UploadFile = File(...),  # noqa: B008
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    # Bounded read: one byte past the cap is enough for the service to reject, without
+    # buffering an arbitrarily large upload in memory.
+    content = await file.read(expense_svc.MAX_RECEIPT_BYTES + 1)
+    exp = expense_svc.attach_receipt(
+        db,
+        startup_id=membership.startup_id,
+        expense_id=expense_id,
+        filename=file.filename,
+        content_type=file.content_type,
+        size_bytes=len(content),
+        content=content,
+    )
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.delete("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
+def delete_expense_receipt(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.remove_receipt(db, startup_id=membership.startup_id, expense_id=expense_id)
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))

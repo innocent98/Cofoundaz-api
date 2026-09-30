@@ -1,0 +1,71 @@
+{
+  "data": {
+    "expenses": [
+      {
+        "id": "8a6bb79b-f826-49a3-90cb-768d002209cb",
+        "vendor": "Google Ads",
+        "category": "Marketing",
+        "expense_date": "2026-09-30",
+        "amount_minor": 8000000,
+        "currency": "NGN",
+        "recurring": false,
+        "notes": null,
+        "has_receipt": false,
+        "receipt_url": null,
+        "transaction_id": "9ca46658-6d4c-4f3e-a07d-9debb28fc18b",
+        "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
+        "created_at": "2026-09-30T11:03:57.313714Z",
+        "updated_at": "2026-09-30T11:03:57.313714Z"
+      },
+      {
+        "id": "bc3afe6d-8500-4648-8181-1d76dadea436",
+        "vendor": "Team salaries",
+        "category": "Payroll",
+        "expense_date": "2026-09-30",
+        "amount_minor": 20000000,
+        "currency": "NGN",
+        "recurring": false,
+        "notes": null,
+        "has_receipt": false,
+        "receipt_url": null,
+        "transaction_id": "7a4bfb66-86ef-41d3-9575-d852f55b91f2",
+        "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
+        "created_at": "2026-09-30T11:03:57.297775Z",
+        "updated_at": "2026-09-30T11:03:57.297775Z"
+      },
+      {
+        "id": "c270b9f6-6098-439d-aec0-d44fae9ed408",
+        "vendor": "AWS",
+        "category": "Infrastructure",
+        "expense_date": "2026-09-30",
+        "amount_minor": 12000000,
+        "currency": "NGN",
+        "recurring": false,
+        "notes": "Production cluster, monthly bill",
+        "has_receipt": false,
+        "receipt_url": null,
+        "transaction_id": "51b93d14-f7d5-4b34-a07f-a18264401721",
+        "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
+        "created_at": "2026-09-30T11:03:57.279615Z",
+        "updated_at": "2026-09-30T11:03:57.279615Z"
+      },
+      {
+        "id": "5fd40716-619a-48a6-a910-6688212c424f",
+        "vendor": "Notion",
+        "category": "Software",
+        "expense_date": "2026-08-15",
+        "amount_minor": 4000000,
+        "currency": "NGN",
+        "recurring": true,
+        "notes": null,
+        "has_receipt": false,
+        "receipt_url": null,
+        "transaction_id": "7934d017-dda6-4dee-b0cc-a293d0bbf52e",
+        "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
+        "created_at": "2026-09-30T11:03:57.332374Z",
+        "updated_at": "2026-09-30T11:03:57.332374Z"
+      }
+    ]
+  },
+  "meta": null
+}

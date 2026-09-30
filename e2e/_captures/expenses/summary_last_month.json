@@ -1,0 +1,15 @@
+{
+  "data": {
+    "month": "2026-08",
+    "currency": "NGN",
+    "total_minor": 4000000,
+    "rows": [
+      {
+        "category": "Software",
+        "total_minor": 4000000,
+        "percent": 100.0
+      }
+    ]
+  },
+  "meta": null
+}
