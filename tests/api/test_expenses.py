@@ -1,11 +1,22 @@
 import datetime as dt
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.db.models.enums import MembershipRole, TransactionDirection, TransactionSource
 from app.db.models.expense import Expense
 from app.db.models.finance import Transaction
+from app.platform.events import DispatchingEventBus
+from app.schemas.finance import TransactionCreate
+from app.services.finance import runway as runway_svc
+from app.services.finance import service as finance_svc
+from app.services.notifications import registry
 from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
+from tests.api.test_invoices import (
+    RUNWAY_EVENT,
+    _assert_runway_state_matches_cash_flow,
+    _signal_rows,
+)
 
 
 def _body(**over):
@@ -204,3 +215,41 @@ def test_summary_is_tenant_scoped(client, db):
     _u2, _s2, h2 = _member(db)
     d = client.get(f"{BASE}/expenses/summary?month=2026-02", headers=h2).json()["data"]
     assert d["rows"] == [] and d["total_minor"] == 0
+
+
+def test_create_refreshes_runway_alert_and_signal(client, db, monkeypatch):
+    bus = DispatchingEventBus()
+    registry.register(bus)
+    monkeypatch.setattr(runway_svc, "event_bus", bus)
+    _u, startup, h = _member(db)
+    finance_svc.create_transaction(
+        db,
+        startup_id=startup.id,
+        data=TransactionCreate(
+            date=datetime.now(UTC).date() - timedelta(days=200),
+            description="raise",
+            amount_minor=1_000_000,
+            currency="NGN",
+            direction=TransactionDirection.inflow,
+        ),
+    )
+    assert _signal_rows(db, startup) == []  # nothing has run the runway hooks yet
+
+    # Cash 1_000_000 -> 100_000 and burn 300_000/month: ~0.3 months of runway, i.e. low.
+    today = datetime.now(UTC).date().isoformat()
+    resp = client.post(
+        f"{BASE}/expenses", json=_body(expense_date=today, amount_minor=900_000), headers=h
+    )
+    assert resp.status_code == 200, resp.text
+
+    low, value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is True
+    assert value < 1
+    published = [e for e, _p in bus.published if e == RUNWAY_EVENT]
+    assert len(published) == 1
+
+
+def test_summary_invalid_month_422(client, db):
+    _u, _s, h = _member(db)
+    resp = client.get(f"{BASE}/expenses/summary?month=2026-13", headers=h)
+    assert resp.status_code == 422, resp.text
