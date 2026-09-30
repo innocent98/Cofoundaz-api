@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "5b3d4f6e-feeb-4966-9925-04cb166ddf81",
+    "category": "Infrastructure",
+    "period_month": "2026-09",
+    "limit_minor": 8000000,
+    "currency": "NGN",
+    "notes": null,
+    "spent_minor": 9000000,
+    "variance_minor": 1000000,
+    "over_budget": true,
+    "percent_used": 112.5,
+    "created_at": "2026-09-30T13:53:42.094190Z",
+    "updated_at": "2026-09-30T13:53:42.094190Z"
+  },
+  "meta": null
+}

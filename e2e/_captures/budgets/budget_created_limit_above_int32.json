@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "47977ff5-37e2-4975-8b79-93e23fa9f1c9",
+    "category": "Equipment",
+    "period_month": "2026-09",
+    "limit_minor": 5000000000,
+    "currency": "NGN",
+    "notes": null,
+    "spent_minor": 0,
+    "variance_minor": -5000000000,
+    "over_budget": false,
+    "percent_used": 0.0,
+    "created_at": "2026-09-30T13:53:42.290253Z",
+    "updated_at": "2026-09-30T13:53:42.290253Z"
+  },
+  "meta": null
+}

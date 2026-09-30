@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "45f35c4b-55f9-4549-a9ea-934d6a956cc2",
+    "category": "Payroll",
+    "period_month": "2026-09",
+    "limit_minor": 2000000,
+    "currency": "NGN",
+    "notes": null,
+    "spent_minor": 3000000,
+    "variance_minor": 1000000,
+    "over_budget": true,
+    "percent_used": 150.0,
+    "created_at": "2026-09-30T13:53:42.246073Z",
+    "updated_at": "2026-09-30T13:53:42.272182Z"
+  },
+  "meta": null
+}

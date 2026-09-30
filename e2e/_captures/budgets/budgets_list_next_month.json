@@ -1,0 +1,92 @@
+{
+  "data": {
+    "month": "2026-10",
+    "budgets": [
+      {
+        "id": "8c968072-edaa-4f6c-a2f1-0acbe46761f2",
+        "category": "Equipment",
+        "period_month": "2026-10",
+        "limit_minor": 5000000000,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": -5000000000,
+        "over_budget": false,
+        "percent_used": 0.0,
+        "created_at": "2026-09-30T13:53:42.336756Z",
+        "updated_at": "2026-09-30T13:53:42.336756Z"
+      },
+      {
+        "id": "e8466b65-1cf6-4ccf-9631-760a7878dcd4",
+        "category": "Infrastructure",
+        "period_month": "2026-10",
+        "limit_minor": 8000000,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": -8000000,
+        "over_budget": false,
+        "percent_used": 0.0,
+        "created_at": "2026-09-30T13:53:42.336756Z",
+        "updated_at": "2026-09-30T13:53:42.336756Z"
+      },
+      {
+        "id": "30016d5b-c0bc-4b4d-8328-3305de82055b",
+        "category": "Legal",
+        "period_month": "2026-10",
+        "limit_minor": 0,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": 0,
+        "over_budget": false,
+        "percent_used": null,
+        "created_at": "2026-09-30T13:53:42.336756Z",
+        "updated_at": "2026-09-30T13:53:42.336756Z"
+      },
+      {
+        "id": "49cede3b-7b5c-4428-8f79-d9b7c87c5935",
+        "category": "Marketing",
+        "period_month": "2026-10",
+        "limit_minor": 999000,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": -999000,
+        "over_budget": false,
+        "percent_used": 0.0,
+        "created_at": "2026-09-30T13:53:42.327834Z",
+        "updated_at": "2026-09-30T13:53:42.327834Z"
+      },
+      {
+        "id": "3ae78eb6-0406-4e0c-a639-094323489895",
+        "category": "Payroll",
+        "period_month": "2026-10",
+        "limit_minor": 2000000,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": -2000000,
+        "over_budget": false,
+        "percent_used": 0.0,
+        "created_at": "2026-09-30T13:53:42.336756Z",
+        "updated_at": "2026-09-30T13:53:42.336756Z"
+      },
+      {
+        "id": "fd4a7ddc-9289-4cae-9b12-99795497385c",
+        "category": "Software",
+        "period_month": "2026-10",
+        "limit_minor": 1500000,
+        "currency": "NGN",
+        "notes": null,
+        "spent_minor": 0,
+        "variance_minor": -1500000,
+        "over_budget": false,
+        "percent_used": 0.0,
+        "created_at": "2026-09-30T13:53:42.336756Z",
+        "updated_at": "2026-09-30T13:53:42.336756Z"
+      }
+    ]
+  },
+  "meta": null
+}
