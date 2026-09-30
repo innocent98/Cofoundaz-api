@@ -12,7 +12,7 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.expense import CategorySummary, ExpenseCreate
+from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
@@ -319,3 +319,36 @@ def get_expense(
 ) -> dict[str, Any]:
     exp = expense_svc.get_expense(db, startup_id=membership.startup_id, expense_id=expense_id)
     return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.patch("/expenses/{expense_id}", response_model=dict[str, Any])
+def update_expense(
+    expense_id: uuid.UUID,
+    payload: ExpenseUpdate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    exp = expense_svc.update_expense(
+        db, startup_id=membership.startup_id, expense_id=expense_id, data=payload
+    )
+    # The linked outflow may have changed, so burn / runway changed: re-evaluate in the same txn.
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
+    db.commit()
+    return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.delete("/expenses/{expense_id}", response_model=dict[str, Any])
+def delete_expense(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    expense_svc.delete_expense(db, startup_id=membership.startup_id, expense_id=expense_id)
+    # The outflow is gone, so burn / runway changed: re-evaluate in the same transaction.
+    runway_svc.evaluate_runway_alert(db, startup_id=membership.startup_id)
+    runway_svc.upsert_runway_signal(db, startup_id=membership.startup_id)
+    db.commit()
+    return success_response({"deleted": True})

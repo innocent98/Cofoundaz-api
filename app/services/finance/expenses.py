@@ -11,7 +11,7 @@ from app.core.errors import NotFound
 from app.db.models.enums import TransactionDirection, TransactionSource
 from app.db.models.expense import Expense
 from app.db.models.finance import Transaction
-from app.schemas.expense import ExpenseCreate, ExpenseResponse
+from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from app.services.finance.errors import _validation
 
 
@@ -60,6 +60,41 @@ def get_expense(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID) ->
     if exp is None:
         raise NotFound()
     return exp
+
+
+# Fields mirrored onto the linked outflow so the ledger keeps reconciling with the expense.
+_LEDGER_FIELDS = frozenset({"amount_minor", "expense_date", "category", "vendor", "currency"})
+
+
+def update_expense(
+    db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID, data: ExpenseUpdate
+) -> Expense:
+    exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
+    fields = data.model_dump(exclude_unset=True)
+    for name, value in fields.items():
+        setattr(exp, name, value)
+    if _LEDGER_FIELDS & fields.keys() and exp.transaction_id is not None:
+        # Same transaction row is updated in place so `transaction_id` stays stable.
+        txn = db.get(Transaction, exp.transaction_id)
+        if txn is not None:
+            txn.amount_minor = exp.amount_minor
+            txn.date = exp.expense_date
+            txn.category = exp.category
+            txn.currency = exp.currency
+            txn.description = f"Expense: {exp.vendor}"
+    db.flush()
+    return exp
+
+
+def delete_expense(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID) -> None:
+    exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
+    if exp.transaction_id is not None:
+        txn = db.get(Transaction, exp.transaction_id)
+        if txn is not None:
+            db.delete(txn)
+    # TODO(Task 4): also delete the stored receipt file (exp.receipt_key) via the storage backend.
+    db.delete(exp)
+    db.flush()
 
 
 def list_expenses(

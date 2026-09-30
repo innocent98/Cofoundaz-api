@@ -57,13 +57,19 @@ def list_transactions(
     return q.order_by(Transaction.date.desc(), Transaction.created_at.desc()).all()
 
 
-def _reject_invoice_managed(row: Transaction) -> None:
-    # The inflow created by invoice mark-paid is owned by the invoice; editing or deleting it
-    # directly would leave the invoice claiming a ledger entry that no longer matches.
+def _reject_managed(row: Transaction) -> None:
+    # Inflows created by invoice mark-paid and outflows created by expenses are owned by their
+    # parent record; editing or deleting them directly would leave the parent claiming a ledger
+    # entry that no longer matches.
     if row.source == TransactionSource.invoice:
         raise _validation(
             "source",
             "This transaction is managed by an invoice; unpay the invoice to change or remove it.",
+        )
+    if row.source == TransactionSource.expense:
+        raise _validation(
+            "source",
+            "This transaction is managed by an expense; edit or delete the expense instead.",
         )
 
 
@@ -71,7 +77,7 @@ def update_transaction(
     db: Session, *, startup_id: uuid.UUID, transaction_id: uuid.UUID, data: TransactionUpdate
 ) -> Transaction:
     row = get_transaction(db, startup_id=startup_id, transaction_id=transaction_id)
-    _reject_invoice_managed(row)
+    _reject_managed(row)
     for name, value in data.model_dump(exclude_unset=True).items():
         setattr(row, name, value)
     db.flush()
@@ -80,6 +86,6 @@ def update_transaction(
 
 def delete_transaction(db: Session, *, startup_id: uuid.UUID, transaction_id: uuid.UUID) -> None:
     row = get_transaction(db, startup_id=startup_id, transaction_id=transaction_id)
-    _reject_invoice_managed(row)
+    _reject_managed(row)
     db.delete(row)
     db.flush()

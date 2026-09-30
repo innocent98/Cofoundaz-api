@@ -253,3 +253,216 @@ def test_summary_invalid_month_422(client, db):
     _u, _s, h = _member(db)
     resp = client.get(f"{BASE}/expenses/summary?month=2026-13", headers=h)
     assert resp.status_code == 422, resp.text
+
+
+def _cash_flow(client, h) -> dict:
+    resp = client.get(f"{BASE}/cash-flow", headers=h)
+    assert resp.status_code == 200, resp.text
+    return resp.json()["data"]
+
+
+def test_patch_syncs_linked_transaction_and_cash_flow(client, db):
+    _u, s, h = _member(db)
+    created = _post(client, h, amount_minor=250_000)
+    assert _cash_flow(client, h)["cash_on_hand"] == -250_000
+
+    patched = client.patch(
+        f"{BASE}/expenses/{created['id']}",
+        json={
+            "amount_minor": 400_000,
+            "expense_date": "2026-04-02",
+            "category": "Ops",
+            "vendor": "GCP",
+        },
+        headers=h,
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()["data"]
+    assert body["amount_minor"] == 400_000
+    assert body["vendor"] == "GCP"
+    assert body["transaction_id"] == created["transaction_id"]
+
+    db.expire_all()
+    txns = db.query(Transaction).filter_by(startup_id=s.id).all()
+    assert len(txns) == 1
+    txn = txns[0]
+    assert str(txn.id) == created["transaction_id"]
+    assert txn.amount_minor == 400_000
+    assert txn.date == dt.date(2026, 4, 2)
+    assert txn.category == "Ops"
+    assert txn.description == "Expense: GCP"
+    assert _cash_flow(client, h)["cash_on_hand"] == -400_000
+
+
+def test_patch_partial_and_null_notes_allowed(client, db):
+    _u, _s, h = _member(db)
+    created = _post(client, h, notes="keep")
+    cleared = client.patch(f"{BASE}/expenses/{created['id']}", json={"notes": None}, headers=h)
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["data"]["notes"] is None
+    assert cleared.json()["data"]["vendor"] == "AWS"
+
+
+@pytest.mark.parametrize(
+    "field", ["vendor", "category", "expense_date", "amount_minor", "currency", "recurring"]
+)
+def test_patch_explicit_null_on_required_field_422(client, db, field):
+    _u, s, h = _member(db)
+    created = _post(client, h)
+    resp = client.patch(f"{BASE}/expenses/{created['id']}", json={field: None}, headers=h)
+    assert resp.status_code == 422, resp.text
+    exp = db.query(Expense).filter_by(startup_id=s.id).one()
+    assert exp.vendor == "AWS"
+
+
+def test_patch_out_of_range_amount_422(client, db):
+    _u, _s, h = _member(db)
+    created = _post(client, h)
+    resp = client.patch(
+        f"{BASE}/expenses/{created['id']}", json={"amount_minor": 3_000_000_000}, headers=h
+    )
+    assert resp.status_code == 422, resp.text
+
+
+def test_delete_removes_expense_and_reverses_cash(client, db):
+    _u, s, h = _member(db)
+    before = _cash_flow(client, h)["cash_on_hand"]
+    created = _post(client, h, amount_minor=250_000)
+    assert _cash_flow(client, h)["cash_on_hand"] == before - 250_000
+
+    deleted = client.delete(f"{BASE}/expenses/{created['id']}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["data"] == {"deleted": True}
+
+    db.expire_all()
+    assert db.query(Expense).filter_by(startup_id=s.id).count() == 0
+    assert db.query(Transaction).filter_by(startup_id=s.id).count() == 0
+    assert _cash_flow(client, h)["cash_on_hand"] == before
+    gone = client.get(f"{BASE}/expenses/{created['id']}", headers=h)
+    assert gone.status_code == 404, gone.text
+
+
+def test_patch_delete_cross_tenant_404(client, db):
+    _u, s, h = _member(db)
+    created = _post(client, h)
+    _u2, _s2, h2 = _member(db)
+    patched = client.patch(f"{BASE}/expenses/{created['id']}", json={"amount_minor": 1}, headers=h2)
+    deleted = client.delete(f"{BASE}/expenses/{created['id']}", headers=h2)
+    assert (patched.status_code, deleted.status_code) == (404, 404)
+    db.expire_all()
+    assert db.query(Expense).filter_by(startup_id=s.id).one().amount_minor == 250_000
+    assert db.query(Transaction).filter_by(startup_id=s.id).count() == 1
+
+
+def test_patch_delete_accountant_allowed(client, db):
+    _f, startup, fh = _member(db)
+    created = _post(client, fh)
+    _u, _s, h = _member(db, role=MembershipRole.accountant, startup=startup)
+    patched = client.patch(f"{BASE}/expenses/{created['id']}", json={"amount_minor": 5}, headers=h)
+    assert patched.status_code == 200, patched.text
+    deleted = client.delete(f"{BASE}/expenses/{created['id']}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_patch_delete_forbidden_roles_403(client, db, role):
+    _f, startup, fh = _member(db)
+    created = _post(client, fh)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    calls = [
+        client.patch(f"{BASE}/expenses/{created['id']}", json={"amount_minor": 5}, headers=h),
+        client.delete(f"{BASE}/expenses/{created['id']}", headers=h),
+    ]
+    assert [c.status_code for c in calls] == [403, 403]
+    db.expire_all()
+    assert db.query(Expense).filter_by(id=created["id"]).one().amount_minor == 250_000
+
+
+def test_expense_managed_transaction_cannot_be_edited_or_deleted(client, db):
+    _u, s, h = _member(db)
+    created = _post(client, h)
+    tid = created["transaction_id"]
+
+    patched = client.patch(f"{BASE}/transactions/{tid}", json={"amount_minor": 1}, headers=h)
+    assert patched.status_code == 422, patched.text
+    assert patched.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert "managed by an expense" in patched.json()["error"]["message"]
+
+    deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert deleted.status_code == 422, deleted.text
+    assert "managed by an expense" in deleted.json()["error"]["message"]
+
+    db.expire_all()
+    row = db.query(Transaction).filter_by(id=tid, startup_id=s.id).one()
+    assert row.amount_minor == 250_000
+    assert db.query(Expense).filter_by(startup_id=s.id).one().transaction_id == row.id
+
+
+def test_manual_transaction_still_editable_after_guard_generalized(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(
+        f"{BASE}/transactions",
+        json={
+            "date": "2026-03-10",
+            "description": "manual",
+            "amount_minor": 1000,
+            "currency": "NGN",
+            "direction": "out",
+        },
+        headers=h,
+    )
+    assert created.status_code == 200, created.text
+    tid = created.json()["data"]["id"]
+    patched = client.patch(f"{BASE}/transactions/{tid}", json={"amount_minor": 2000}, headers=h)
+    assert patched.status_code == 200, patched.text
+    deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+
+
+def test_patch_and_delete_refresh_runway_alert_and_signal(client, db, monkeypatch):
+    bus = DispatchingEventBus()
+    registry.register(bus)
+    monkeypatch.setattr(runway_svc, "event_bus", bus)
+    _u, startup, h = _member(db)
+    finance_svc.create_transaction(
+        db,
+        startup_id=startup.id,
+        data=TransactionCreate(
+            date=datetime.now(UTC).date() - timedelta(days=200),
+            description="raise",
+            amount_minor=1_000_000,
+            currency="NGN",
+            direction=TransactionDirection.inflow,
+        ),
+    )
+    today = datetime.now(UTC).date().isoformat()
+    created = _post(client, h, expense_date=today, amount_minor=900_000)
+    low, before_value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is True
+    published_after_create = len([e for e, _p in bus.published if e == RUNWAY_EVENT])
+    assert published_after_create == 1
+
+    # Shrinking the expense lifts runway: alert re-armed, stored signal follows the new cash flow.
+    patched = client.patch(
+        f"{BASE}/expenses/{created['id']}", json={"amount_minor": 100_000}, headers=h
+    )
+    assert patched.status_code == 200, patched.text
+    low, patched_value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is False
+    assert patched_value > before_value
+
+    # Growing it again drops back into low runway: the alert fires a second time.
+    patched = client.patch(
+        f"{BASE}/expenses/{created['id']}", json={"amount_minor": 900_000}, headers=h
+    )
+    assert patched.status_code == 200, patched.text
+    low, value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is True
+    assert value == before_value
+    assert len([e for e, _p in bus.published if e == RUNWAY_EVENT]) == 2
+
+    # Deleting the expense removes the burn entirely; stored state still equals a fresh recompute.
+    deleted = client.delete(f"{BASE}/expenses/{created['id']}", headers=h)
+    assert deleted.status_code == 200, deleted.text
+    low, _value = _assert_runway_state_matches_cash_flow(db, startup)
+    assert low is False
