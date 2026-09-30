@@ -61,10 +61,15 @@ def test_sends_one_email_with_invoice_details(db, monkeypatch):
     assert msg.to == "billing@globex.test"
     assert "INV-0042" in msg.subject
     assert "Initech" in msg.subject
-    assert "134375" in msg.html
+    assert "Total: 1,343.75 NGN" in msg.html
+    assert "Subtotal: 1,250.00 NGN" in msg.html
+    assert "Tax: 93.75 NGN" in msg.html
+    assert "134375" not in msg.html
     assert "Design sprint" in msg.html
     assert "Hosting setup" in msg.html
-    assert "100000" in msg.html  # 2 x 50_000 line amount
+    assert "1,000.00 NGN" in msg.html  # 2 x 50_000 minor line amount
+    assert "250.00 NGN" in msg.html  # 1 x 25_000 minor line amount
+    assert "100000" not in msg.html
     assert "2026-11-01" in msg.html
 
 
