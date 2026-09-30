@@ -120,15 +120,17 @@ def test_mid_call_none_marks_failed_without_partial_model(db, monkeypatch):
     assert row.generated_at is None
 
 
-def test_over_budget_guard_leaves_generating_for_retry(db, monkeypatch):
+def test_over_budget_marks_failed(db, monkeypatch):
     _u, s, m = _setup(db, monkeypatch)
     monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 1)
     llm_budget.debit(db, s.id, 5)
     handle_finance_model(db, _job(m.id))
     row = db.get(FinancialModel, m.id)
-    assert row.status == FinancialModelStatus.generating
+    assert row.status == FinancialModelStatus.failed
+    assert row.error == "AI budget exceeded"
     assert row.pnl is None
-    assert row.error is None
+    assert row.assumptions is None
+    assert row.generated_at is None
 
 
 def test_resolved_models_are_noop(db, monkeypatch):

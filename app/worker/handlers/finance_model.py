@@ -7,7 +7,7 @@ from app.db.models.enums import FinancialModelStatus
 from app.db.models.financial_model import FinancialModel
 from app.db.models.job import Job
 from app.db.models.startup import Startup
-from app.platform.llm_budget import metered_complete_json, over_budget
+from app.platform.llm_budget import metered_complete_json
 from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
 from app.services.finance.model_engine import project_three_statements
 from app.services.finance.model_prompt import (
@@ -28,8 +28,6 @@ def handle_finance_model(db: Session, job: Job) -> None:
     startup = db.get(Startup, model.startup_id)
     if startup is None:
         return
-    if over_budget(db, startup.id):
-        return  # keep the model `generating` for a later retry; no partial model
     summary = cash_flow_summary(db, startup_id=startup.id)
     revenue, costs = trailing_monthly_flows(db, startup_id=startup.id)
     starting = {
@@ -45,7 +43,7 @@ def handle_finance_model(db: Session, job: Job) -> None:
         schema=ASSUMPTIONS_SCHEMA,
         max_tokens=MODEL_MAX_TOKENS,
     )
-    if raw is None:  # budget exhausted between the guard and the call
+    if raw is None:  # over budget: metered_complete_json skips the LLM call and returns None
         model.status = FinancialModelStatus.failed
         model.error = "AI budget exceeded"
         db.flush()
