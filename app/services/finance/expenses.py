@@ -183,20 +183,40 @@ def serialize_expense(exp: Expense) -> ExpenseResponse:
     )
 
 
-def category_summary(db: Session, *, startup_id: uuid.UUID, month: str) -> dict[str, Any]:
+def expense_category_totals(db: Session, *, startup_id: uuid.UUID, month: str) -> dict[str, int]:
+    """category -> summed amount_minor of that category's expenses in `month` ("YYYY-MM").
+
+    Single source of truth for per-category month spend: the expenses summary and budget
+    actuals both build on it so they can never diverge.
+    """
     first, last = _month_range(month)
-    base = db.query(Expense).filter(
-        Expense.startup_id == startup_id,
-        Expense.expense_date >= first,
-        Expense.expense_date <= last,
-    )
-    totals = (
-        base.with_entities(Expense.category, func.sum(Expense.amount_minor))
+    rows = (
+        db.query(Expense.category, func.sum(Expense.amount_minor))
+        .filter(
+            Expense.startup_id == startup_id,
+            Expense.expense_date >= first,
+            Expense.expense_date <= last,
+        )
         .group_by(Expense.category)
         .all()
     )
-    grand_total = sum(int(t) for _, t in totals)
-    currencies = Counter(c for (c,) in base.with_entities(Expense.currency).all())
+    return {cat: int(total) for cat, total in rows}
+
+
+def category_summary(db: Session, *, startup_id: uuid.UUID, month: str) -> dict[str, Any]:
+    first, last = _month_range(month)
+    totals = expense_category_totals(db, startup_id=startup_id, month=month)
+    grand_total = sum(totals.values())
+    currencies = Counter(
+        c
+        for (c,) in db.query(Expense.currency)
+        .filter(
+            Expense.startup_id == startup_id,
+            Expense.expense_date >= first,
+            Expense.expense_date <= last,
+        )
+        .all()
+    )
     currency = currencies.most_common(1)[0][0] if currencies else "NGN"
 
     rows: list[dict[str, Any]] = []
@@ -204,9 +224,9 @@ def category_summary(db: Session, *, startup_id: uuid.UUID, month: str) -> dict[
         rows = [
             {
                 "category": cat,
-                "total_minor": int(total),
-                "percent": round(100 * int(total) / grand_total, 1),
+                "total_minor": total,
+                "percent": round(100 * total / grand_total, 1),
             }
-            for cat, total in sorted(totals, key=lambda r: (-int(r[1]), r[0]))
+            for cat, total in sorted(totals.items(), key=lambda r: (-r[1], r[0]))
         ]
     return {"month": month, "currency": currency, "total_minor": grand_total, "rows": rows}

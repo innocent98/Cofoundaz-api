@@ -12,10 +12,12 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.schemas.budget import BudgetCreate, BudgetUpdate
 from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
+from app.services.finance import budgets as budget_svc
 from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import expenses as expense_svc
 from app.services.finance import invoices as invoice_svc
@@ -388,3 +390,83 @@ def delete_expense_receipt(
     exp = expense_svc.remove_receipt(db, startup_id=membership.startup_id, expense_id=expense_id)
     db.commit()
     return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
+
+
+@router.post("/budgets", response_model=dict[str, Any])
+def create_budget(
+    payload: BudgetCreate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    budget = budget_svc.create_budget(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    spent = budget_svc.spent_for(db, startup_id=membership.startup_id, budget=budget)
+    db.commit()
+    return success_response(
+        budget_svc.serialize_budget(budget, spent_minor=spent).model_dump(mode="json")
+    )
+
+
+@router.get("/budgets", response_model=dict[str, Any])
+def list_budgets(
+    month: str = Query(..., pattern=_MONTH_PATTERN),  # noqa: B008
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = budget_svc.list_budgets(db, startup_id=membership.startup_id, month=month)
+    return success_response(
+        {
+            "month": month,
+            "budgets": [
+                budget_svc.serialize_budget(b, spent_minor=spent).model_dump(mode="json")
+                for b, spent in rows
+            ],
+        }
+    )
+
+
+@router.get("/budgets/{budget_id}", response_model=dict[str, Any])
+def get_budget(
+    budget_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    budget = budget_svc.get_budget(db, startup_id=membership.startup_id, budget_id=budget_id)
+    spent = budget_svc.spent_for(db, startup_id=membership.startup_id, budget=budget)
+    return success_response(
+        budget_svc.serialize_budget(budget, spent_minor=spent).model_dump(mode="json")
+    )
+
+
+@router.patch("/budgets/{budget_id}", response_model=dict[str, Any])
+def update_budget(
+    budget_id: uuid.UUID,
+    payload: BudgetUpdate,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    budget = budget_svc.update_budget(
+        db, startup_id=membership.startup_id, budget_id=budget_id, data=payload
+    )
+    spent = budget_svc.spent_for(db, startup_id=membership.startup_id, budget=budget)
+    db.commit()
+    return success_response(
+        budget_svc.serialize_budget(budget, spent_minor=spent).model_dump(mode="json")
+    )
+
+
+@router.delete("/budgets/{budget_id}", response_model=dict[str, Any])
+def delete_budget(
+    budget_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    budget_svc.delete_budget(db, startup_id=membership.startup_id, budget_id=budget_id)
+    db.commit()
+    return success_response({"deleted": True})
