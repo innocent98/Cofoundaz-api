@@ -364,3 +364,9 @@ class InvoiceTerms(enum.StrEnum):
     net_15 = "net_15"
     net_30 = "net_30"
     due_on_receipt = "due_on_receipt"
+
+
+class FinancialModelStatus(enum.StrEnum):
+    generating = "generating"
+    complete = "complete"
+    failed = "failed"
