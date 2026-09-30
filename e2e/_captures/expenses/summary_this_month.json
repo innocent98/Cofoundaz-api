@@ -1,0 +1,25 @@
+{
+  "data": {
+    "month": "2026-09",
+    "currency": "NGN",
+    "total_minor": 40000000,
+    "rows": [
+      {
+        "category": "Payroll",
+        "total_minor": 20000000,
+        "percent": 50.0
+      },
+      {
+        "category": "Infrastructure",
+        "total_minor": 12000000,
+        "percent": 30.0
+      },
+      {
+        "category": "Marketing",
+        "total_minor": 8000000,
+        "percent": 20.0
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "c270b9f6-6098-439d-aec0-d44fae9ed408",
+    "vendor": "AWS",
+    "category": "Infrastructure",
+    "expense_date": "2026-09-30",
+    "amount_minor": 12000000,
+    "currency": "NGN",
+    "recurring": false,
+    "notes": "Production cluster, monthly bill",
+    "has_receipt": true,
+    "receipt_url": "var/storage/receipts/01548b1f-9005-4f0d-b0e0-814d62457d81/be495782e8224e9d88a87ac57967b636.png",
+    "transaction_id": "51b93d14-f7d5-4b34-a07f-a18264401721",
+    "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
+    "created_at": "2026-09-30T11:03:57.279615Z",
+    "updated_at": "2026-09-30T11:03:57.452713Z"
+  },
+  "meta": null
+}

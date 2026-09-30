@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "vendor",
+        "message": "String should have at least 1 character"
+      },
+      {
+        "field": "amount_minor",
+        "message": "Input should be greater than or equal to 0"
+      }
+    ]
+  }
+}

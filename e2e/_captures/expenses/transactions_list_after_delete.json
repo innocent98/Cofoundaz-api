@@ -1,0 +1,43 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "9ca46658-6d4c-4f3e-a07d-9debb28fc18b",
+        "date": "2026-09-30",
+        "description": "Expense: Google Ads",
+        "category": "Marketing",
+        "amount_minor": 8000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "expense",
+        "created_at": "2026-09-30T11:03:57.313714Z",
+        "updated_at": "2026-09-30T11:03:57.313714Z"
+      },
+      {
+        "id": "51b93d14-f7d5-4b34-a07f-a18264401721",
+        "date": "2026-09-30",
+        "description": "Expense: Amazon Web Services",
+        "category": "Cloud",
+        "amount_minor": 10000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "expense",
+        "created_at": "2026-09-30T11:03:57.279615Z",
+        "updated_at": "2026-09-30T11:03:57.527692Z"
+      },
+      {
+        "id": "7934d017-dda6-4dee-b0cc-a293d0bbf52e",
+        "date": "2026-08-15",
+        "description": "Expense: Notion",
+        "category": "Software",
+        "amount_minor": 4000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "expense",
+        "created_at": "2026-09-30T11:03:57.332374Z",
+        "updated_at": "2026-09-30T11:03:57.332374Z"
+      }
+    ]
+  },
+  "meta": null
+}

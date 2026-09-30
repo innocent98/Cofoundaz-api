@@ -1,0 +1,220 @@
+{
+  "data": {
+    "assumptions": {
+      "mom_growth_percent": 0,
+      "hiring_spend_minor": 0,
+      "one_off_costs_minor": 0
+    },
+    "baseline": {
+      "cash_on_hand": 100000000,
+      "monthly_burn": 0,
+      "monthly_revenue": 0,
+      "currency": "NGN"
+    },
+    "horizon_months": 12,
+    "scenarios": {
+      "base": {
+        "runway_months": null,
+        "cash_out_date": null,
+        "avg_net_burn_minor": 0,
+        "by_month": [
+          {
+            "month": "2026-10",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-11",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          }
+        ]
+      },
+      "best": {
+        "runway_months": null,
+        "cash_out_date": null,
+        "avg_net_burn_minor": 0,
+        "by_month": [
+          {
+            "month": "2026-10",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-11",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          }
+        ]
+      },
+      "worst": {
+        "runway_months": null,
+        "cash_out_date": null,
+        "avg_net_burn_minor": 0,
+        "by_month": [
+          {
+            "month": "2026-10",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-11",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          }
+        ]
+      }
+    }
+  },
+  "meta": null
+}
