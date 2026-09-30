@@ -1,0 +1,31 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "37220419-300c-4eb8-ae3b-0317af2ba13d",
+        "date": "2026-09-30",
+        "description": "Invoice INV-2026-001 \u2014 Acme Traders Ltd",
+        "category": "Revenue",
+        "amount_minor": 161250,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "invoice",
+        "created_at": "2026-09-30T08:32:55.701521Z",
+        "updated_at": "2026-09-30T08:32:55.701521Z"
+      },
+      {
+        "id": "4c37d85f-57ed-4dbf-a15f-24e263c1cdc4",
+        "date": "2026-05-15",
+        "description": "Pre-seed round",
+        "category": "Fundraising",
+        "amount_minor": 100000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-09-30T08:32:55.535412Z",
+        "updated_at": "2026-09-30T08:32:55.535412Z"
+      }
+    ]
+  },
+  "meta": null
+}

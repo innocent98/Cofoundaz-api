@@ -1,0 +1,6 @@
+{
+  "to": "delivered+inv-6636f79d668d@resend.dev",
+  "subject": "Invoice INV-2026-001 from Cofoundaz Invoices",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Invoice INV-2026-001</h2><p>From Cofoundaz Invoices</p><p>Bill to Acme Traders Ltd</p><table style='width:100%'><tr><td>Design retainer (x1)</td><td style='text-align:right'>1,000.00 NGN</td></tr><tr><td>Hosting setup (x10)</td><td style='text-align:right'>500.00 NGN</td></tr></table><p>Subtotal: 1,500.00 NGN<br>Tax: 112.50 NGN<br><strong>Total: 1,612.50 NGN</strong></p><p>Due: 2026-10-30</p></div>",
+  "sent_at": "2026-09-30T08:32:55.667029+00:00"
+}

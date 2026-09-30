@@ -1,0 +1,37 @@
+{
+  "data": {
+    "id": "efbcbabc-6735-4dce-aaf7-acea2384b0c8",
+    "number": "INV-2026-001",
+    "client_name": "Acme Traders Ltd",
+    "client_email": "delivered+inv-6636f79d668d@resend.dev",
+    "line_items": [
+      {
+        "description": "Design retainer",
+        "quantity": 1,
+        "unit_price_minor": 100000,
+        "amount_minor": 100000
+      },
+      {
+        "description": "Hosting setup",
+        "quantity": 10,
+        "unit_price_minor": 5000,
+        "amount_minor": 50000
+      }
+    ],
+    "subtotal_minor": 150000,
+    "tax_percent": 7.5,
+    "tax_minor": 11250,
+    "total_minor": 161250,
+    "currency": "NGN",
+    "terms": "net_30",
+    "status": "draft",
+    "issued_on": null,
+    "due_on": null,
+    "paid_at": null,
+    "auto_remind": false,
+    "transaction_id": null,
+    "created_at": "2026-09-30T08:32:55.588896Z",
+    "updated_at": "2026-09-30T08:32:55.601637Z"
+  },
+  "meta": null
+}
