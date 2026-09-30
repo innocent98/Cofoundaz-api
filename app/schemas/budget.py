@@ -3,7 +3,7 @@ import uuid
 
 from pydantic import BaseModel, Field, model_validator
 
-INT32 = 2_147_483_647
+INT64 = 9_223_372_036_854_775_807
 MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 
 
@@ -11,13 +11,13 @@ MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 class BudgetCreate(BaseModel):
     category: str = Field(min_length=1, max_length=120)
     period_month: str = Field(pattern=MONTH_PATTERN)
-    limit_minor: int = Field(ge=0, le=INT32)
+    limit_minor: int = Field(ge=0, le=INT64)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     notes: str | None = None
 
 
 class BudgetUpdate(BaseModel):
-    limit_minor: int | None = Field(default=None, ge=0, le=INT32)
+    limit_minor: int | None = Field(default=None, ge=0, le=INT64)
     notes: str | None = None
 
     @model_validator(mode="after")

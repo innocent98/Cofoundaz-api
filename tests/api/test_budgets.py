@@ -202,7 +202,7 @@ def test_delete_removes_budget(client, db):
     [
         {"period_month": "2026-13"},
         {"period_month": "2026-3"},
-        {"limit_minor": 2_147_483_648},
+        {"limit_minor": 9_223_372_036_854_775_808},
         {"limit_minor": -1},
         {"category": ""},
     ],
@@ -400,3 +400,24 @@ def test_seed_endpoints_cross_tenant_isolated(client, db, action):
     assert resp.status_code == 200, resp.text
     assert resp.json()["data"]["budgets"] == []
     assert db.query(Budget).filter_by(startup_id=sb.id).count() == 0
+
+
+def test_limit_above_int32_accepted(client, db):
+    _u, _s, h = _member(db)
+    data = _post(client, h, limit_minor=3_000_000_000)
+    assert data["limit_minor"] == 3_000_000_000
+    patched = client.patch(
+        f"{BASE}/budgets/{data['id']}", json={"limit_minor": 4_000_000_000}, headers=h
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["data"]["limit_minor"] == 4_000_000_000
+
+
+def test_draft_sum_exceeding_int32_does_not_500(client, db):
+    _u, _s, h = _member(db)
+    _expense(client, h, amount=1_500_000_000, date="2026-02-10")
+    _expense(client, h, amount=1_500_000_000, date="2026-02-20")
+    resp = _seed_post(client, h, "draft-from-actuals")
+    assert resp.status_code == 200, resp.text
+    cards = resp.json()["data"]["budgets"]
+    assert [(b["category"], b["limit_minor"]) for b in cards] == [("Infrastructure", 3_000_000_000)]

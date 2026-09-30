@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,7 +24,7 @@ class Budget(UUIDMixin, TimestampMixin, Base):
     )
     category: Mapped[str] = mapped_column(String(120), nullable=False)
     period_month: Mapped[str] = mapped_column(String(7), nullable=False)  # "YYYY-MM"
-    limit_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    limit_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="NGN")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 

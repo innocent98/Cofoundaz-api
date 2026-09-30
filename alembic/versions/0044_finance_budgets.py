@@ -6,9 +6,10 @@ Create Date: 2026-09-30
 
 Module 12 Slice 4b (Budgets): the budgets table — one new table, additive, no lock on existing
 tables. A budget is a per-startup, per-category monthly spending limit. period_month is a
-"YYYY-MM" string; limit_minor is integer minor units + currency. The unique constraint
-(startup_id, category, period_month) allows one budget per category per month; the composite
-(startup_id, period_month) index serves the per-month listing.
+"YYYY-MM" string; limit_minor is BIGINT minor units (a limit can equal an aggregate of expenses,
+which may exceed int32) + currency. The unique constraint (startup_id, category, period_month)
+allows one budget per category per month; the composite (startup_id, period_month) index serves
+the per-month listing.
 """
 
 from alembic import op
@@ -27,7 +28,7 @@ def upgrade() -> None:
         sa.Column("created_by", sa.UUID(), nullable=True),
         sa.Column("category", sa.String(length=120), nullable=False),
         sa.Column("period_month", sa.String(length=7), nullable=False),
-        sa.Column("limit_minor", sa.Integer(), nullable=False),
+        sa.Column("limit_minor", sa.BigInteger(), nullable=False),
         sa.Column("currency", sa.String(length=3), server_default="NGN", nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("id", sa.UUID(), nullable=False),

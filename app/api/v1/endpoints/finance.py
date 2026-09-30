@@ -429,9 +429,8 @@ def list_budgets(
 
 
 def _seeded_response(
-    db: Session, *, startup_id: uuid.UUID, month: str, created: list[Any]
+    db: Session, *, startup_id: uuid.UUID, month: str, created_ids: set[uuid.UUID]
 ) -> dict[str, Any]:
-    created_ids = {b.id for b in created}
     rows = budget_svc.list_budgets(db, startup_id=startup_id, month=month)
     return success_response(
         {
@@ -455,9 +454,10 @@ def draft_budgets_from_actuals(
     created = budget_svc.draft_from_actuals(
         db, startup_id=membership.startup_id, created_by=user.id, period_month=payload.period_month
     )
+    created_ids = {b.id for b in created}  # read before commit: expire_on_commit would re-SELECT
     db.commit()
     return _seeded_response(
-        db, startup_id=membership.startup_id, month=payload.period_month, created=created
+        db, startup_id=membership.startup_id, month=payload.period_month, created_ids=created_ids
     )
 
 
@@ -471,9 +471,10 @@ def copy_budgets_from_last_month(
     created = budget_svc.copy_last_month(
         db, startup_id=membership.startup_id, created_by=user.id, period_month=payload.period_month
     )
+    created_ids = {b.id for b in created}  # read before commit: expire_on_commit would re-SELECT
     db.commit()
     return _seeded_response(
-        db, startup_id=membership.startup_id, month=payload.period_month, created=created
+        db, startup_id=membership.startup_id, month=payload.period_month, created_ids=created_ids
     )
 
 
