@@ -16,12 +16,14 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-30 · **Module 12 (Finance Hub) Slice 5 (Financial Model) shipped, on branch
-`feat/module-12-finance-slice5` (off `develop` after Slice 4b merged as PR #112; not yet merged, no PR opened yet) —
-MODULE 12 IS NOW 6 OF 6 SLICES BUILT** (1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets, 5 Financial Model).
-The **Integrations slice** (external bank / accounting / Stripe connectors — needs OAuth infrastructure) was the
-deferred external-connectors slice from the module design and is **not built**; the module's in-scope build is
-complete pending that deferred connectors work. Slice 5 adds a `financial_models` table, **3 endpoints under
+_Last reconciled: 2026-10-02 · **Module 12 (Finance Hub) Slice 5 (Financial Model) SHIPPED & MERGED to `develop`
+via PR #113** (merge commit `3c2ac4d`; a `urllib3 2.7.0 → 2.8.0` CVE bump — `CVE-2026-97687/88/89`, commit `9845f3b`
+— landed during PR CI to clear the Security check). **MODULE 12 IS NOW 6 OF 6 IN-SCOPE SLICES BUILT & MERGED**
+(1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets, 5 Financial Model).
+The **Integrations slice (Slice 6)** (external bank / accounting / Stripe connectors — needs OAuth infrastructure) is
+the deferred external-connectors slice from the module design and is **formally deferred for now** (lead decision
+2026-10-02) — deferred, **not cut**: it stays tracked and the module remains 🟡 Open until Slice 6 is built or
+formally cut. Slice 5 adds a `financial_models` table, **3 endpoints under
 `/finance/model`** (`POST /generate` → **202** `{id, status: "generating"}`, `GET /model` latest — `{status: "none"}`
 when never generated, `GET /model/{id}`), an **`ai.finance.model` worker** (reads actuals → LLM picks six bounded,
 validated/clamped assumptions → deterministic engine computes P&L, cash flow and balance sheet → `complete`; AI budget
@@ -36,9 +38,9 @@ asserted balanced in all 12 months; no Resend-429 flake on the final run). **Sem
 2^53 note; `failed` must be surfaced; negative cash is a signal, not a bug; sensitivity is client-side;
 **XLSX export deferred (Export button FE-only)**. SOP: `docs/sop/2026-09-30-finance-slice5.md`. FE guide:
 `docs/fe-integration-guide-finance-model.md` (new; every body pasted from the captures, unit-only claims labelled).
-**Module tally: 13 fully complete, Module 12 now built-through-Slice-5 (6 of 6 in-scope slices; only the deferred
-Integrations/connectors work remains) so it stays under 🟡 Open until connectors are built or formally cut, 12 not
-started.**
+**Module tally: 13 fully complete, Module 12 now built-and-merged through Slice 5 (6 of 6 in-scope slices; only the
+deferred Slice 6 Integrations/connectors work remains, deferred-for-now per the 2026-10-02 lead decision) so it stays
+under 🟡 Open until Slice 6 is built or formally cut, 12 not started.**
 
 _Previously: 2026-09-30 · **Module 12 (Finance Hub) Slice 4b (Budgets) shipped, on branch
 `feat/module-12-finance-slice4b` (off `develop` after Slice 4a merged as PR #111; not yet merged, no PR opened yet) —
