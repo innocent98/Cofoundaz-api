@@ -265,7 +265,7 @@ per-workspace conversion is therefore impossible in v1, so none is attempted:
   in_progress-and-overdue, `due_on is None`.
 - A workspace with no roadmap at all → empty list, not a 500.
 
-## Decisions (settled with the lead unless marked open)
+## Decisions (all settled with the lead)
 
 | # | Decision |
 |---|---|
