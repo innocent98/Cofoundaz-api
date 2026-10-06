@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     ai,
     assessments,
     business,
+    calendar,
     dashboard,
     documents,
     finance,
@@ -46,3 +47,4 @@ api_router.include_router(marketing.router, prefix="/marketing", tags=["marketin
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(validation.router, prefix="/validation", tags=["validation"])
+api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
