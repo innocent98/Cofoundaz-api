@@ -294,5 +294,6 @@ per-workspace conversion is therefore impossible in v1, so none is attempted:
 | Recurring events | No recurrence UI anywhere in the prototype (D10). |
 | `tasksInfo`, `AgendaItemData.subtitle`, "N of M complete this quarter" | No backend source. Omitted rather than faked, and labelled not-backed in the FE guide. |
 | Pagination / a span cap on the events list | Consistent with the shipped Finance list; revisit if a workspace's calendar grows large. |
+| Multi-day events | A single `event_date` with no `end_date` means an all-day event cannot span days. No multi-day event appears anywhere in the prototype, so v1 does not model one — recorded explicitly because it is the kind of limitation a frontend assumes away. |
 | Unioning roadmap milestones and milestone-typed calendar events into one Milestones list | v2 enhancement (D13). v1 keeps the two stores visibly separate. |
 | Regenerating the FE repo's `openapi.json` | Not this module's work. Raised with the lead, who is tracking it as a follow-up. |
