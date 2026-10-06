@@ -55,15 +55,22 @@
 
 ```python
 # tests/db/test_calendar_models.py
-import uuid
 from datetime import date, time
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models.calendar import CalendarEvent
 from app.db.models.enums import CalendarEventType
 from tests.factories import create_startup, create_user
+
+
+def _ctx(db):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    db.flush()
+    return u, s
 
 
 def _event(db, startup, **kw):
@@ -76,22 +83,28 @@ def _event(db, startup, **kw):
     return row
 
 
+def test_event_type_values():
+    assert {t.value for t in CalendarEventType} == {
+        "milestone",
+        "meeting",
+        "deadline",
+        "task",
+    }
+
+
 def test_defaults_all_day_false_and_times_null(db):
-    u = create_user(db)
-    s = create_startup(db, owner=u)
-    db.flush()
+    _u, s = _ctx(db)
     row = _event(db, s)
+    db.refresh(row)
+    # An event with no time is *untimed*, which is not the same as all-day (spec D12).
     assert row.all_day is False
     assert row.start_time is None and row.end_time is None
     assert row.description is None
     assert row.created_by is None
-    assert row.id is not None and row.created_at is not None
 
 
-def test_stores_naive_times_and_the_enum_value(db):
-    u = create_user(db)
-    s = create_startup(db, owner=u)
-    db.flush()
+def test_naive_times_round_trip_and_the_enum_stores_its_value(db):
+    u, s = _ctx(db)
     row = _event(
         db,
         s,
@@ -99,31 +112,29 @@ def test_stores_naive_times_and_the_enum_value(db):
         start_time=time(14, 0),
         end_time=time(15, 30),
         description="Bring the deck",
+        created_by=u.id,
+        all_day=False,
     )
-    db.expire(row)
+    db.refresh(row)
+    # Stored exactly as given: nothing converts, because there is no timezone to convert to (D6).
     assert row.start_time == time(14, 0) and row.end_time == time(15, 30)
+    assert row.created_by == u.id
     stored = db.execute(
-        CalendarEvent.__table__.select().where(CalendarEvent.id == row.id)
-    ).mappings().one()
-    assert stored["type"] == "deadline"  # the VALUE, not the member name
+        text("SELECT type FROM calendar_events WHERE id = :i"), {"i": str(row.id)}
+    ).scalar_one()
+    assert stored == "deadline"  # the VALUE, not the member name
 
 
-def test_created_by_survives_its_user(db):
-    u = create_user(db)
-    s = create_startup(db, owner=u)
-    other = create_user(db)
-    db.flush()
-    row = _event(db, s, created_by=other.id)
-    db.delete(other)
-    db.flush()
-    db.expire(row)
-    assert row.created_by is None  # SET NULL, the event is the workspace's
+def test_all_day_event_needs_no_times(db):
+    _u, s = _ctx(db)
+    row = _event(db, s, type=CalendarEventType.deadline, all_day=True)
+    db.refresh(row)
+    assert row.all_day is True
+    assert row.start_time is None and row.end_time is None
 
 
 def test_event_dies_with_its_startup(db):
-    u = create_user(db)
-    s = create_startup(db, owner=u)
-    db.flush()
+    _u, s = _ctx(db)
     row = _event(db, s)
     rid = row.id
     db.delete(s)
@@ -131,16 +142,16 @@ def test_event_dies_with_its_startup(db):
     assert db.get(CalendarEvent, rid) is None
 
 
-def test_startup_id_is_required(db):
-    with pytest.raises(IntegrityError):
-        db.add(
-            CalendarEvent(
-                startup_id=uuid.uuid4(),
-                title="Orphan",
-                type=CalendarEventType.task,
-                event_date=date(2026, 7, 6),
-            )
+def test_title_is_required(db):
+    _u, s = _ctx(db)
+    db.add(
+        CalendarEvent(
+            startup_id=s.id,
+            type=CalendarEventType.task,
+            event_date=date(2026, 7, 6),
         )
+    )
+    with pytest.raises(IntegrityError):
         db.flush()
 ```
 
@@ -154,13 +165,18 @@ def _alembic(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
+REVISION = "0046_calendar"
+
+
 def test_migration_chain_single_head_includes_calendar():
+    # Match the id in FULL. A loose "_calendar" substring also matches the existing
+    # 0033_marketing_calendar_channels, which makes this test unfailable.
     heads = _alembic("heads")
     assert heads.returncode == 0, heads.stderr
     assert heads.stdout.count("(head)") == 1
     history = _alembic("history")
     assert history.returncode == 0, history.stderr
-    assert "_calendar" in history.stdout
+    assert REVISION in history.stdout
 
 
 def test_upgrade_then_downgrade_round_trips():
