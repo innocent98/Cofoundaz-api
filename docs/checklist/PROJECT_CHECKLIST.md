@@ -2001,8 +2001,13 @@ plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
       → move the time → clear it with an explicit null → all-day-plus-a-time 422 → merged-row PATCH
       422 → delete → milestones projection → cross-tenant 404; 17 captures) — **not yet run**; the
       e2e runner needs Poetry on the host, so CI runs it first
-- [ ] Full project suite — **to be run before the PR**; numbers to be recorded from that run, not
-      carried over
+- [x] Full project suite — **2,140 passed, 0 failed** (api 942 · services 600 ·
+      db/core/platform/worker 557 · Alembic round-trips 41), run in four parts because one
+      invocation now exceeds the driving tool's 30-minute limit; a single combined run also reached
+      93% with 2,011 passed and 0 failed before being stopped on time
+- [ ] Coverage figure — **not captured locally** (only printed at the end of a complete run, which
+      never finished inside the time limit); CI enforces the 95% floor on the PR and the number
+      goes into the SOP from there
 - [x] SOP — `docs/sop/2026-10-06-calendar.md`
 - [ ] FE integration guide (`docs/fe-integration-guide-calendar.md`) — written from the response
       builders with a provenance note; **regenerate from the real captures after the first e2e run**
