@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "3ebc7cec-be36-4dc7-8188-353cb4df4ee9",
+    "title": "Close validation milestone",
+    "type": "milestone",
+    "event_date": "2026-10-28",
+    "start_time": null,
+    "end_time": null,
+    "all_day": true,
+    "description": null,
+    "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+    "created_at": "2026-10-12T10:41:51.860598Z",
+    "updated_at": "2026-10-12T10:41:51.860598Z"
+  },
+  "meta": null
+}

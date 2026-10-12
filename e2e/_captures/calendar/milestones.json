@@ -1,0 +1,31 @@
+{
+  "data": {
+    "milestones": [
+      {
+        "id": "d74baf60-adf5-43e3-ba3b-4486e3cb25a6",
+        "title": "Validate demand",
+        "due_on": "2026-10-26",
+        "status": "todo",
+        "calendar_status": "not_started",
+        "progress": 0
+      },
+      {
+        "id": "18be6486-7eb1-48bc-b8d9-b31c067ef47d",
+        "title": "Pricing test",
+        "due_on": "2026-11-16",
+        "status": "todo",
+        "calendar_status": "not_started",
+        "progress": 0
+      },
+      {
+        "id": "37cdfef1-d0fb-4943-b6b5-f16b9bc890ac",
+        "title": "Core flow",
+        "due_on": "2026-12-21",
+        "status": "todo",
+        "calendar_status": "not_started",
+        "progress": 0
+      }
+    ]
+  },
+  "meta": null
+}

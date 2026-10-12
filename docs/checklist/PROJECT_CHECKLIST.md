@@ -2009,8 +2009,11 @@ plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
       never finished inside the time limit); CI enforces the 95% floor on the PR and the number
       goes into the SOP from there
 - [x] SOP — `docs/sop/2026-10-06-calendar.md`
-- [ ] FE integration guide (`docs/fe-integration-guide-calendar.md`) — written from the response
-      builders with a provenance note; **regenerate from the real captures after the first e2e run**
+- [x] FE integration guide (`docs/fe-integration-guide-calendar.md`) — **regenerated from 17 live
+      captures** (`e2e/_captures/calendar/`, e2e 66/66, 2026-10-12); unit-only claims labelled, §5
+      verification table
+- [ ] _Follow-up:_ POST cross-field time-rule 422 returns `field: ""` + `"Value error, "` prefix
+      (PATCH names `start_time`); make create name the field so the modal can highlight it
 - [ ] _Deferred:_ multi-day events (one `event_date`, no `end_date`) · external Google/Outlook/Apple
       sync, and with it the whole Sync tab · cross-module aggregation into the Agenda · the reminder
       scheduler and its domain events · sync preferences · recurring events · unioning roadmap

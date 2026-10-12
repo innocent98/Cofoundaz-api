@@ -1,12 +1,10 @@
 # FE Integration Guide — Calendar (Module 19)
 
-> ⚠️ **Provenance — read this first.** The bodies below are **derived from the response builders**
-> in `app/services/calendar/` (`serialize_event`, `serialize_milestone`), **not** yet pasted from
-> live captures. `e2e/test_calendar.py` exists and captures every body to
-> `e2e/_captures/calendar/`, but the e2e suite has not been run on this machine (its runner needs
-> Poetry on the Windows host). The **shapes and field names are exact**; the **values are
-> illustrative**. Regenerate this guide from the real captures after the first
-> `scripts/e2e_run.sh` (or CI) run and delete this note.
+> **Provenance.** Every response body in this guide is pasted verbatim from a live capture
+> (`scripts/e2e_run.sh` → `e2e/test_calendar.py` → `e2e/_captures/calendar/`, run 2026-10-12, 66/66
+> e2e passing). IDs, dates and timestamps in the bodies are **placeholders from that test run**.
+> Behaviour that the live run did **not** exercise is labelled inline and listed in the
+> verification table at the end (§5); those rules are covered by unit tests only.
 
 Base path: `/api/v1/calendar`. Every route requires a Bearer access token and an
 `X-Workspace-Id` header naming the active workspace (`GET /auth/me` →
@@ -97,48 +95,66 @@ There is no pagination in v1.
 events first** within a day, then creation order. So a day renders as: all-day items, then
 untimed items, then timed items in clock order — which is what the Agenda expects.
 
+> ⚠️ *Not exercised live:* the live run never put two events on the same day, so the **within-day**
+> ordering (all-day → untimed → timed) is covered by unit tests only. Cross-day ordering is live.
+
+Captured: `e2e/_captures/calendar/events_month.json`
+
 ```json
 {
   "data": {
     "events": [
       {
-        "id": "7c1f0a52-8b3e-4a41-9d20-6e2f5a0b1c33",
+        "id": "168cd4b3-6b31-4aa7-8ab0-9173412d8c33",
         "title": "Interview 3 gig workers",
         "type": "task",
-        "event_date": "2026-07-01",
+        "event_date": "2026-10-01",
         "start_time": null,
         "end_time": null,
         "all_day": false,
         "description": null,
-        "created_by": "2b9d4e71-55a0-4cc8-9f12-7d3a1e8b6042",
-        "created_at": "2026-07-01T09:14:02.118374Z",
-        "updated_at": "2026-07-01T09:14:02.118374Z"
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.852391Z",
+        "updated_at": "2026-10-12T10:41:51.852391Z"
       },
       {
-        "id": "a4e8b2d1-3f67-4c90-8a15-9b0c7d2e4f58",
+        "id": "932c1784-512a-47e0-94a3-e1078572fadb",
         "title": "Partner call, Sahel Fund",
         "type": "meeting",
-        "event_date": "2026-07-15",
+        "event_date": "2026-10-15",
         "start_time": "11:00",
         "end_time": "11:45",
         "all_day": false,
         "description": "Bring the latest traction deck.",
-        "created_by": "2b9d4e71-55a0-4cc8-9f12-7d3a1e8b6042",
-        "created_at": "2026-07-01T09:14:03.402915Z",
-        "updated_at": "2026-07-01T09:14:03.402915Z"
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.831723Z",
+        "updated_at": "2026-10-12T10:41:51.831723Z"
       },
       {
-        "id": "c9d3f6a8-1b25-4e73-ba40-5f8e1c0d9372",
+        "id": "65e7bd31-f035-4d3a-9ced-cd471f0993a7",
         "title": "Grant deadline, GIZ Digital Inclusion Fund",
         "type": "deadline",
-        "event_date": "2026-07-20",
+        "event_date": "2026-10-20",
         "start_time": null,
         "end_time": null,
         "all_day": true,
         "description": null,
-        "created_by": "2b9d4e71-55a0-4cc8-9f12-7d3a1e8b6042",
-        "created_at": "2026-07-01T09:14:04.771208Z",
-        "updated_at": "2026-07-01T09:14:04.771208Z"
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.843692Z",
+        "updated_at": "2026-10-12T10:41:51.843692Z"
+      },
+      {
+        "id": "3ebc7cec-be36-4dc7-8188-353cb4df4ee9",
+        "title": "Close validation milestone",
+        "type": "milestone",
+        "event_date": "2026-10-28",
+        "start_time": null,
+        "end_time": null,
+        "all_day": true,
+        "description": null,
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.860598Z",
+        "updated_at": "2026-10-12T10:41:51.860598Z"
       }
     ]
   },
@@ -146,7 +162,20 @@ untimed items, then timed items in clock order — which is what the Agenda expe
 }
 ```
 
-Empty calendar → `{"data": {"events": []}, "meta": null}`.
+That capture is a Month range (`date_from=2026-10-01&date_to=2026-10-31`) over four events: untimed,
+timed, all-day and milestone-typed. `events_week.json` and `events_filtered_by_type.json` have the same
+row shape.
+
+Empty calendar (captured, `events_other_workspace_empty.json`):
+
+```json
+{
+  "data": {
+    "events": []
+  },
+  "meta": null
+}
+```
 
 ### `POST /api/v1/calendar/events` → **200**
 
@@ -172,12 +201,50 @@ event, send `all_day: true` explicitly. The "+ Milestone" button on the Mileston
 send `{"title": …, "type": "milestone", "event_date": …, "all_day": true}`, since its modal
 collects no time.
 
-The response is the created event, same shape as a list row.
+The response is the created event, with the same shape as a list row:
+
+Captured: `e2e/_captures/calendar/event_created_timed.json`
+
+```json
+{
+  "data": {
+    "id": "932c1784-512a-47e0-94a3-e1078572fadb",
+    "title": "Partner call, Sahel Fund",
+    "type": "meeting",
+    "event_date": "2026-10-15",
+    "start_time": "11:00",
+    "end_time": "11:45",
+    "all_day": false,
+    "description": "Bring the latest traction deck.",
+    "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+    "created_at": "2026-10-12T10:41:51.831723Z",
+    "updated_at": "2026-10-12T10:41:51.831723Z"
+  },
+  "meta": null
+}
+```
+
+An all-day create (`event_created_all_day.json`) returns `all_day: true` with both times `null`. An untimed
+create (`event_created_untimed.json`) returns `all_day: false` with both times `null`. The "+ Milestone"
+body above is captured as `event_created_milestone_type.json`.
 
 ### `GET /api/v1/calendar/events/{event_id}` → **200**
 
-The single event. **404** for an id belonging to another workspace — never 403, so you cannot use
-this to discover whether someone else's event exists.
+The single event, with the same body as the create response (`event_detail.json`). **404** for an id that
+belongs to another workspace, never 403, so you can't use this to discover whether someone else's
+event exists. Captured:
+
+Captured: `e2e/_captures/calendar/event_cross_tenant_404.json`
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Not found.",
+    "field_errors": []
+  }
+}
+```
 
 ### `PATCH /api/v1/calendar/events/{event_id}` → **200**
 
@@ -189,21 +256,61 @@ Send only what changed. Three rules worth knowing:
 - **An explicit `null` on a required field is a 422.** `title`, `type`, `event_date` and `all_day`
   cannot be nulled.
 
+Moving a meeting by an hour (`{"start_time": "12:00", "end_time": "12:45"}`):
+
+Captured: `e2e/_captures/calendar/event_patched.json`
+
+```json
+{
+  "data": {
+    "id": "932c1784-512a-47e0-94a3-e1078572fadb",
+    "title": "Partner call, Sahel Fund",
+    "type": "meeting",
+    "event_date": "2026-10-15",
+    "start_time": "12:00",
+    "end_time": "12:45",
+    "all_day": false,
+    "description": "Bring the latest traction deck.",
+    "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+    "created_at": "2026-10-12T10:41:51.831723Z",
+    "updated_at": "2026-10-12T10:41:51.953694Z"
+  },
+  "meta": null
+}
+```
+
+Clearing both times (`{"start_time": null, "end_time": null}`) gives `event_time_cleared.json`: the
+same body with `"start_time": null, "end_time": null` and a new `updated_at`. `all_day` stays `false`,
+so the event becomes **untimed**, not all-day.
+
 The time rules are checked against the **merged result**, not just your payload. Sending
 `{"start_time": "11:00"}` against an event whose stored `end_time` is `"10:00"` is a **422**, even
 though the payload looks fine on its own.
 
 ### `DELETE /api/v1/calendar/events/{event_id}` → **200**
 
+Captured: `e2e/_captures/calendar/event_deleted.json`
+
 ```json
-{ "data": { "deleted": true }, "meta": null }
+{
+  "data": {
+    "deleted": true
+  },
+  "meta": null
+}
 ```
 
 **404** for another workspace's id. There is no soft delete and no undo.
 
 ### Validation errors
 
-All of these are **422** with the standard envelope:
+All of these are **422** with `code: "VALIDATION_ERROR"`. ⚠️ **The two live captures below
+break the same rule but have different shapes**, depending on whether the rule failed on the request
+body alone (POST) or on the merged result (PATCH).
+
+**POST, rule broken in the payload itself** (`all_day: true` with a `start_time`):
+
+Captured: `e2e/_captures/calendar/event_all_day_with_time_422.json`
 
 ```json
 {
@@ -211,11 +318,43 @@ All of these are **422** with the standard envelope:
     "code": "VALIDATION_ERROR",
     "message": "Please check the highlighted fields.",
     "field_errors": [
-      { "field": "start_time", "message": "an all-day event may not carry a start or end time" }
+      {
+        "field": "",
+        "message": "Value error, an all-day event may not carry a start or end time"
+      }
     ]
   }
 }
 ```
+
+**PATCH, rule broken only after merging with the stored row**:
+
+Captured: `e2e/_captures/calendar/event_patch_merged_conflict_422.json`
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "an all-day event may not carry a start or end time",
+    "field_errors": [
+      {
+        "field": "start_time",
+        "message": "an all-day event may not carry a start or end time"
+      }
+    ]
+  }
+}
+```
+
+> 🪤 **Field-nesting trap. Handle both:**
+> - On **POST** (and on any PATCH whose payload is self-contradictory), the cross-field time rules come
+>   back with **`field: ""`**, a **`"Value error, "` prefix** on the message, and the **generic**
+>   top-level `message`. There's no field to highlight, so show the rule at form level, not on an
+>   input. Strip the `"Value error, "` prefix if you show the text.
+> - On **PATCH merged-result** conflicts you get a real `field` (`"start_time"`), no prefix, and the
+>   top-level `message` **is** the rule text.
+> - Single-field errors (`title`, `type`, `description`) come from standard request validation and
+>   should name their field. *Not exercised live*: no capture exists for them.
 
 | What you sent | Why it is refused |
 |---|---|
@@ -226,6 +365,10 @@ All of these are **422** with the standard envelope:
 | `type: "birthday"` | Not one of the four. |
 | `description` over 2 000 characters | Cap. |
 | `null` for `title`, `type`, `event_date` or `all_day` on PATCH | Those columns cannot be null. |
+
+Only the **all-day-with-a-time** row (POST) and the merged-result conflict (PATCH) were exercised live.
+The other rows are covered by unit tests only, and their exact `field` / `message` strings weren't
+captured.
 
 ---
 
@@ -239,30 +382,32 @@ milestone happens in Roadmap, not here. There is no POST, PATCH or DELETE on thi
 Ordered by `due_on` ascending with **undated milestones last**. Completed milestones are
 included.
 
+Captured: `e2e/_captures/calendar/milestones.json`
+
 ```json
 {
   "data": {
     "milestones": [
       {
-        "id": "f2a7c4e9-6d13-48b5-9c07-3e8b1a5d2f60",
-        "title": "Validate demand with 20 interviews",
-        "due_on": "2026-07-31",
-        "status": "in_progress",
-        "calendar_status": "on_track",
-        "progress": 85
+        "id": "d74baf60-adf5-43e3-ba3b-4486e3cb25a6",
+        "title": "Validate demand",
+        "due_on": "2026-10-26",
+        "status": "todo",
+        "calendar_status": "not_started",
+        "progress": 0
       },
       {
-        "id": "b8d1f3a6-2c59-4e07-8f41-7a0b6e9c3d25",
-        "title": "Pricing test concluded",
-        "due_on": "2026-07-08",
-        "status": "in_progress",
-        "calendar_status": "at_risk",
-        "progress": 35
+        "id": "18be6486-7eb1-48bc-b8d9-b31c067ef47d",
+        "title": "Pricing test",
+        "due_on": "2026-11-16",
+        "status": "todo",
+        "calendar_status": "not_started",
+        "progress": 0
       },
       {
-        "id": "d5c9e2b7-8a34-4610-bf93-1e7d0a4c8b56",
-        "title": "First 100 paying savers",
-        "due_on": null,
+        "id": "37cdfef1-d0fb-4943-b6b5-f16b9bc890ac",
+        "title": "Core flow",
+        "due_on": "2026-12-21",
         "status": "todo",
         "calendar_status": "not_started",
         "progress": 0
@@ -272,6 +417,10 @@ included.
   "meta": null
 }
 ```
+
+> ⚠️ *Not exercised live:* the e2e roadmap only had untouched, future-dated milestones, so this
+> capture shows **`not_started` only**. The `at_risk`, `on_track` and `complete` derivations below,
+> `due_on: null` sorting last, and a non-zero `progress` are covered by unit tests only.
 
 ### The two status fields
 
@@ -292,7 +441,8 @@ never be `at_risk`. "Today" is the current UTC date, so a milestone due today is
 Both fields are returned so you can badge from `calendar_status` without having to reverse the
 derivation, and still show or filter on the raw Roadmap status if a screen needs it.
 
-A workspace with no roadmap returns `{"data": {"milestones": []}, "meta": null}`.
+A workspace with no roadmap returns `{"data": {"milestones": []}, "meta": null}` (*not captured live*;
+unit-tested).
 
 ---
 
@@ -319,8 +469,8 @@ timestamps with a `Z`.
 
 ## 4. Capture map
 
-Each row names the capture that will replace its illustrative values after the first live e2e
-run (`e2e/_captures/calendar/`).
+Every body in this guide comes from one of these files in `e2e/_captures/calendar/` (captured
+2026-10-12). Re-run `scripts/e2e_run.sh` to regenerate them.
 
 | Section | Capture |
 |---|---|
@@ -341,3 +491,27 @@ run (`e2e/_captures/calendar/`).
 | `GET /milestones` | `milestones.json` |
 | `GET /events/{id}` cross-tenant 404 | `event_cross_tenant_404.json` |
 | `GET /events` from another workspace | `events_other_workspace_empty.json` |
+
+---
+
+## 5. Verification
+
+| Behaviour | Status |
+|---|---|
+| Create timed / all-day / untimed / milestone-typed event: body and 200 | ✅ verified live |
+| List by Month range, Week range and `type=` filter; cross-day ordering | ✅ verified live |
+| Within-day ordering (all-day → untimed → timed) | ⚠️ unit tests only |
+| Get one event; cross-workspace **404** shape | ✅ verified live |
+| PATCH partial update; explicit `null` clears times | ✅ verified live |
+| 422 all-day-with-time on POST (`field: ""`, `"Value error, "` prefix) | ✅ verified live |
+| 422 merged-result conflict on PATCH (`field: "start_time"`) | ✅ verified live |
+| Other validation rows (`end_time` without start, end < start, empty title, bad type, description cap, null required field) | ⚠️ unit tests only, strings not captured |
+| DELETE `{"deleted": true}`; event gone from the following list | ✅ verified live |
+| Other workspace sees an empty list | ✅ verified live |
+| Milestones projection: shape, `not_started`, `due_on` ascending | ✅ verified live |
+| `at_risk` / `on_track` / `complete`, undated-last, empty roadmap | ⚠️ unit tests only |
+| RBAC: 403 for mentor/accountant/legal/consultant/investor | ⚠️ API tests only (`tests/api/test_calendar.py`), not in the calendar e2e |
+| Unauthenticated → 401 | ⚠️ the API test accepts **401 or 403**, so the exact code isn't pinned; handle both |
+| `EMAIL_NOT_VERIFIED` 403 | ⚠️ shared auth dependency, not exercised for calendar routes |
+| Routes registered in OpenAPI | ✅ verified live (`e2e/test_smoke.py`) |
+
