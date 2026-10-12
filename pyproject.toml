@@ -61,7 +61,11 @@ pydantic = "^2.11.0"
 pydantic-settings = "^2.9.0"
 python-multipart = ">=0.0.32,<0.1.0"
 python-dotenv = "^1.1.0"
-python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+# JWT: PyJWT, not python-jose. python-jose 3.5.0 (its last release) carries
+# CVE-2026-85394 (HS256 forgery, no fix) and pulls in ecdsa (PYSEC-2026-1325,
+# Minerva, no fix). PyJWT was already in the tree via redis. HS256 only - see
+# ALGORITHM in app/core/config.py and tests/core/test_jwt_contract.py.
+pyjwt = "^2.15.1"
 # passlib was REMOVED here, not upgraded -- 1.7.4 (October 2020) is its last
 # release and it is unmaintained, so this is terminal rather than a wait.
 # passlib's bcrypt backend runs a one-time self-test that hashes a 255-byte

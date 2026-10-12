@@ -12,83 +12,14 @@
 # To suppress nothing, leave this file with comments only - that is the goal state.
 #
 # ---------------------------------------------------------------------------
-# CURRENT STATUS: two entries, BOTH cleared by the same fix (the python-jose ->
-# PyJWT migration). 9 of the original 10 advisories were FIXED, not
-# suppressed, by upgrading fastapi 0.115.14 -> 0.136.3 and starlette
-# 0.46.2 -> 1.6.0 (and earlier, python-multipart 0.0.20 -> 0.0.32).
+# CURRENT STATUS: EMPTY - the goal state. Nothing is suppressed.
+#
+# History: 9 of the original 10 advisories were FIXED by upgrading fastapi
+# 0.115.14 -> 0.136.3 and starlette 0.46.2 -> 1.6.0 (and python-multipart
+# 0.0.20 -> 0.0.32). The last two - PYSEC-2026-1325 (ecdsa, Minerva; decided
+# 2026-08-27 on PR #18) and CVE-2026-85394 (python-jose HS256 forgery; decided
+# 2026-10-10, suppressed in PR #120) - were both cleared on 2026-10-12 by
+# migrating python-jose -> PyJWT, which removed python-jose, ecdsa, rsa and
+# pyasn1 from the dependency tree. See
+# docs/sop/2026-10-12-python-jose-to-pyjwt-migration.md.
 # ---------------------------------------------------------------------------
-#
-# PYSEC-2026-1325 - ecdsa 0.19.2
-# ---------------------------------------------------------------------------
-# WHAT: the Minerva attack. ecdsa is written in pure Python and cannot execute
-# in constant time, so an attacker able to measure signing/verification timing
-# precisely may be able to recover the private key.
-#
-# WHY IT IS SUPPRESSED RATHER THAN FIXED: there is no fixed version. The
-# `Fix Versions` column in the pip-audit report is empty - upstream's position
-# is that constant-time operation is out of scope for a pure-Python
-# implementation. No version bump can clear this. Blocking every deploy on an
-# advisory that cannot be actioned by upgrading does not make the system safer;
-# it teaches people to bypass the gate, which does make it less safe.
-#
-# EXPOSURE: ecdsa arrives transitively via python-jose, which this codebase uses
-# only for HS256 (see ALGORITHM in app/core/config.py). HS256 is HMAC-SHA256 -
-# symmetric, no elliptic curve involved - so the vulnerable code path is not
-# reached on the current configuration. This is the reason the risk is
-# acceptable, and it is also the thing that would stop being true: switching
-# ALGORITHM to any ES* curve algorithm makes this advisory live and immediate.
-#
-# THE REAL FIX: migrate python-jose -> PyJWT, which drops ecdsa from the tree
-# entirely. Sized at 3 files / 5 call sites - app/core/security.py (encode),
-# app/api/deps.py (decode), app/core/rate_limit.py (decode in the rate-limit
-# key function),
-# plus JWTError -> PyJWTError. Two gotchas: PyJWT >= 2.10 requires `sub` to be a
-# string and this codebase passes a UUID, and PyJWT validates exp/nbf by
-# default. It touches authentication, so it wants the full auth e2e suite behind
-# it and its own PR - not a bundled drive-by.
-#
-# REVIEW DATE: 2026-11-27 (3 months). At review, check whether ecdsa has shipped
-# a fix, and whether the python-jose -> PyJWT migration has landed. If neither,
-# re-justify or do the migration - do not silently extend the date.
-#
-# DECIDED: 2026-08-27, Adebayo, on PR #18.
-PYSEC-2026-1325
-#
-# CVE-2026-85394 - python-jose 3.5.0
-# ---------------------------------------------------------------------------
-# WHAT: Critical (CVSS ~9.1) HS256 token forgery. python-jose accepts a
-# DER-encoded public key as an HMAC secret, so a verifier that does not pin its
-# algorithm can be tricked into checking an HS256 signature made with a key the
-# attacker knows. An incomplete-fix follow-up to CVE-2024-33663.
-#
-# NOTE THE INVERSION: the ecdsa entry above is accepted *because* we only use
-# HS256. This advisory makes the HS256 path itself the vulnerable one. That
-# argument alone no longer covers python-jose - the exposure analysis below does.
-#
-# WHY IT IS SUPPRESSED RATHER THAN FIXED: there is no fixed version. 3.5.0 is
-# the latest release and the pip-audit `Fix Versions` column is empty. It is
-# repo-wide dependency drift, not caused by any feature PR, and it blocks every
-# merge until the migration below lands.
-#
-# EXPOSURE: not reachable on the current configuration. The forgery needs (a) a
-# verifier that does not restrict the algorithm and (b) a public key the service
-# trusts. Neither exists here:
-#   - both decode sites pin the algorithm: app/api/deps.py:28-29 and
-#     app/core/rate_limit.py:256 pass algorithms=[settings.ALGORITHM];
-#   - ALGORITHM is "HS256" (app/core/config.py:18) and the key is the symmetric
-#     SECRET_KEY;
-#   - there is no asymmetric public key anywhere in the app.
-# What would make it live: a new decode site without `algorithms=`, or any
-# RS*/ES*/PS* key material entering the verify path. Either change must land
-# the migration first.
-#
-# THE REAL FIX: the same python-jose -> PyJWT migration described above (it
-# clears this entry and PYSEC-2026-1325 together). Auth-critical: own PR, full
-# auth e2e suite, security review.
-#
-# REVIEW DATE: 2026-11-10 (1 month - shorter than usual because the severity is
-# Critical). At review, the migration should have landed and both entries be
-# deleted. If not, re-justify in writing - do not silently extend the date.
-#
-# DECIDED: 2026-10-10, Adebayo (surfaced on PR #119).
-CVE-2026-85394

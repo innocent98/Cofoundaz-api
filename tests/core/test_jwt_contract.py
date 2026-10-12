@@ -165,6 +165,20 @@ def test_other_hmac_algorithm_with_correct_secret_401(db):
     assert _status_for(db, token) == 401
 
 
+def test_rs256_header_with_hmac_signature_401(db):
+    """Algorithm confusion: an asymmetric alg header must not be verified as HMAC."""
+    user = create_user(db, email="rs256@jwt.test")
+    db.commit()
+    token = _hand_built_token({"sub": str(user.id), "exp": _future_exp()}, alg="RS256")
+    assert _status_for(db, token) == 401
+
+
+def test_non_string_sub_401(db):
+    """A validly signed token whose `sub` is not a string is refused, not a 500.
+    (Under python-jose this reached uuid.UUID(123) and raised AttributeError.)"""
+    assert _status_for(db, _hand_built_token({"sub": 123, "exp": _future_exp()})) == 401
+
+
 def test_missing_sub_401(db):
     assert _status_for(db, _hand_built_token({"exp": _future_exp()})) == 401
 
