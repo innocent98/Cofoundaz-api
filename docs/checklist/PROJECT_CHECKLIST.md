@@ -1953,6 +1953,79 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
       the validation events — see SOP Follow-ups
 
+## 🟢 Module 19 — Calendar — *shipped on branch `feat/calendar`, not yet merged*
+
+_The planning layer: **events** of four types (milestone / meeting / deadline / task) on a
+per-workspace calendar, plus a **read-only projection of Roadmap's existing milestones**. Six
+routes under `/api/v1/calendar` for founders and team members only — **accountant is deliberately
+excluded**, unlike Finance. The single list endpoint (`date_from` + `date_to` + optional `type`)
+powers Month, Week **and** Agenda; grouping and formatting stay on the front end. Migration
+`0046_calendar` (one new table). Spec
+`docs/superpowers/specs/2026-10-05-module-19-calendar-design.md` (D1–D13 agreed with the lead),
+plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
+`docs/sop/2026-10-06-calendar.md`._
+
+**Build (Tasks 1–5):**
+- [x] Scope + locked decisions D1–D13 agreed with the lead (milestones are a read-only Roadmap
+      projection, never a second table · no cross-module aggregation · external sync deferred ·
+      founder + team_member writes and reads · naive wall-clock dates and times · no domain events ·
+      `description` capped at 2 000 · `all_day` + a time → 422 · single events only · the
+      "+ Milestone" button creates a calendar **event**, not a roadmap milestone · `all_day`
+      declared, never inferred · the Milestones tab reads one store and writes to another)
+- [x] FE cross-check against the real prototype (`../cofoundaz`, cloned 2026-10-06) — the mock
+      contradicts the API in five places (time shown three different ways, a literal `'All day'`
+      string, `type` capitalized in Agenda but lowercase elsewhere, `dueDate` as pre-formatted
+      prose, and the Milestones tab mixing two stores); all five written into the FE guide
+- [x] One enum + one model (`calendar_events`) + migration `0046_calendar` (chains off
+      `0045_finance_model`, sole alembic head, `alembic check` clean) — `startup_id` and
+      `created_by` indexes plus a composite `(startup_id, event_date)` for the range query,
+      `created_by` **SET NULL** so a departing user does not take the team's calendar, naive
+      `Time` columns, `all_day` server-default `false`
+- [x] Events service (`app/services/calendar/service.py`) — range + type filtered list ordered
+      `event_date ASC, start_time ASC **NULLS FIRST**, created_at ASC` (untimed and all-day events
+      sort to the top of their day); `_check_times` shared between create and update, with update
+      validating the **merged** row so a partial PATCH cannot leave a state a create would refuse
+- [x] Milestones projection (`app/services/calendar/milestones.py`) — the three-table join
+      `RoadmapMilestone → RoadmapPhase → Roadmap` filtered on `Roadmap.startup_id`, which **is**
+      the tenancy boundary since `RoadmapMilestone` has no `startup_id`; `calendar_status` derived
+      from `status` + `due_on` in a deliberate order (done beats overdue beats in-progress).
+      Mirrors `_due_overdue_milestones` but deliberately drops its `Startup.deleted_at` join (that
+      function scans every workspace) and its config-dependent `_local(now)` clock
+- [x] 6 routes + schemas + router registration at `prefix="/calendar"`; write handlers commit;
+      `HH:MM` guaranteed by a `field_serializer` rather than by convention at each call site
+- [x] Tests — 61 calendar tests (models 6 · migration 2 · events service 20 · milestones service
+      16 · API 17) · ruff / black / mypy clean · single head `0046_calendar`
+- [x] Smoke openapi surface — the three calendar route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_calendar.py`, written: onboard → four events across a month
+      (timed, all-day, untimed, milestone-typed) → Month range → Week range → type filter → read
+      → move the time → clear it with an explicit null → all-day-plus-a-time 422 → merged-row PATCH
+      422 → delete → milestones projection → cross-tenant 404; 17 captures) — **not yet run**; the
+      e2e runner needs Poetry on the host, so CI runs it first
+- [x] Full project suite — **2,140 passed, 0 failed** (api 942 · services 600 ·
+      db/core/platform/worker 557 · Alembic round-trips 41), run in four parts because one
+      invocation now exceeds the driving tool's 30-minute limit; a single combined run also reached
+      93% with 2,011 passed and 0 failed before being stopped on time
+- [ ] Coverage figure — **not captured locally** (only printed at the end of a complete run, which
+      never finished inside the time limit); CI enforces the 95% floor on the PR and the number
+      goes into the SOP from there
+- [x] SOP — `docs/sop/2026-10-06-calendar.md`
+- [x] FE integration guide (`docs/fe-integration-guide-calendar.md`) — **regenerated from 17 live
+      captures** (`e2e/_captures/calendar/`, e2e 66/66, 2026-10-12); unit-only claims labelled, §5
+      verification table
+- [ ] _Follow-up:_ POST cross-field time-rule 422 returns `field: ""` + `"Value error, "` prefix
+      (PATCH names `start_time`); make create name the field so the modal can highlight it
+- [ ] _Deferred:_ multi-day events (one `event_date`, no `end_date`) · external Google/Outlook/Apple
+      sync, and with it the whole Sync tab · cross-module aggregation into the Agenda · the reminder
+      scheduler and its domain events · sync preferences · recurring events · unioning roadmap
+      milestones with milestone-typed events into one Milestones list (v2) · pagination or a span
+      cap on the events list · `tasksInfo`, `AgendaItemData.subtitle` and the quarter-count header
+      (no backend source) — see SOP Follow-ups
+
+**Dev-environment note (2026-10-06):** the local dev database was still stamped `0038_validation`,
+the number Module 09 carried on its branch before being renumbered to `0041_validation` at merge,
+so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
+zero. The test suite builds its own schema from the models, so nothing was lost.
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -2887,6 +2960,7 @@ fan-out are unit-verified only (no live capture).
       `feat/module-12-finance-slice4a`, PR #111); Slice 4b (Budgets, migration `0044_finance_budgets`, PR #112) and Slice 5 (Financial Model, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending) built; Integrations deferred; see its own section
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
+- [ ] **Module 19 — Calendar** — *🟢 shipped on branch `feat/calendar`, not yet merged; see its own section above* · brief `docs/handoff/module-19-calendar.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.

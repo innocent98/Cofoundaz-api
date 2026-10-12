@@ -1,0 +1,33 @@
+{
+  "data": {
+    "events": [
+      {
+        "id": "932c1784-512a-47e0-94a3-e1078572fadb",
+        "title": "Partner call, Sahel Fund",
+        "type": "meeting",
+        "event_date": "2026-10-15",
+        "start_time": "11:00",
+        "end_time": "11:45",
+        "all_day": false,
+        "description": "Bring the latest traction deck.",
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.831723Z",
+        "updated_at": "2026-10-12T10:41:51.831723Z"
+      },
+      {
+        "id": "65e7bd31-f035-4d3a-9ced-cd471f0993a7",
+        "title": "Grant deadline, GIZ Digital Inclusion Fund",
+        "type": "deadline",
+        "event_date": "2026-10-20",
+        "start_time": null,
+        "end_time": null,
+        "all_day": true,
+        "description": null,
+        "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
+        "created_at": "2026-10-12T10:41:51.843692Z",
+        "updated_at": "2026-10-12T10:41:51.843692Z"
+      }
+    ]
+  },
+  "meta": null
+}

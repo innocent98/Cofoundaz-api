@@ -115,6 +115,10 @@ def test_openapi_served(http: httpx.Client):
         "/api/v1/validation/surveys/{token}/responses",
         "/api/v1/validation/synthesize",
         "/api/v1/validation/scripts/generate",
+        # calendar surface
+        "/api/v1/calendar/events",
+        "/api/v1/calendar/events/{event_id}",
+        "/api/v1/calendar/milestones",
     ]:
         assert p in paths, f"missing route {p}"
 

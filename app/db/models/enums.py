@@ -370,3 +370,10 @@ class FinancialModelStatus(enum.StrEnum):
     generating = "generating"
     complete = "complete"
     failed = "failed"
+
+
+class CalendarEventType(enum.StrEnum):
+    milestone = "milestone"
+    meeting = "meeting"
+    deadline = "deadline"
+    task = "task"
