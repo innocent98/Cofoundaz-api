@@ -16,7 +16,15 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-10-02 · **Module 12 (Finance Hub) Slice 5 (Financial Model) SHIPPED & MERGED to `develop`
+_Last reconciled: 2026-10-12 · **Module 19 (Calendar) MERGED to `develop` via PR #119** (merge commit `6a5ab90`;
+migration `0046_calendar`, single head; built by Victoria). Its FE guide was regenerated from 17 live e2e captures before
+merge (e2e 66/66). The repo-wide red Security gate (`python-jose` **CVE-2026-85394**, Critical, no fix) was cleared by a
+documented suppression in PR #120 (`9b6f8b9`, review date 2026-11-10); the real fix, the python-jose → PyJWT migration,
+is the top backlog item. **Current module tally (supersedes the older counts below): 15 fully complete** (01–10, 17, 18,
+19, 20, 21), **1 open** (12 Finance — 6/6 in-scope slices merged, Slice 6 Integrations deferred), **10 not started**
+(11 · 13–16 · 22–26)._
+
+_Previous reconcile: 2026-10-02 · **Module 12 (Finance Hub) Slice 5 (Financial Model) SHIPPED & MERGED to `develop`
 via PR #113** (merge commit `3c2ac4d`; a `urllib3 2.7.0 → 2.8.0` CVE bump — `CVE-2026-97687/88/89`, commit `9845f3b`
 — landed during PR CI to clear the Security check). **MODULE 12 IS NOW 6 OF 6 IN-SCOPE SLICES BUILT & MERGED**
 (1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets, 5 Financial Model).
@@ -504,6 +512,9 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 ---
 
 ## Snapshot
+
+> ⚠️ The tally prose below predates 2026-10-12 and undercounts (it still lists 09 and 19 as not
+> started). The **current tally is in the _Last reconciled_ note at the top**: 15 complete · 1 open · 10 not started.
 
 **PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — **Slices 1–3, 4a, 4b and 5 done — 6 of 6 in-scope slices BUILT; only the deferred Integrations/external-connectors work remains** (Slice 5 Financial Model on `feat/module-12-finance-slice5`, migration `0045_finance_model`, PR pending); earlier: Slices 1–3, 4a and 4b done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); Integrations (external connectors) deferred; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
@@ -1953,7 +1964,7 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
       the validation events — see SOP Follow-ups
 
-## 🟢 Module 19 — Calendar — *shipped on branch `feat/calendar`, not yet merged*
+## ✅ Module 19 — Calendar — *MERGED to `develop` (PR #119, `6a5ab90`, 2026-10-12; migration `0046_calendar`)*
 
 _The planning layer: **events** of four types (milestone / meeting / deadline / task) on a
 per-workspace calendar, plus a **read-only projection of Roadmap's existing milestones**. Six
@@ -2960,7 +2971,7 @@ fan-out are unit-verified only (no live capture).
       `feat/module-12-finance-slice4a`, PR #111); Slice 4b (Budgets, migration `0044_finance_budgets`, PR #112) and Slice 5 (Financial Model, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending) built; Integrations deferred; see its own section
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
-- [ ] **Module 19 — Calendar** — *🟢 shipped on branch `feat/calendar`, not yet merged; see its own section above* · brief `docs/handoff/module-19-calendar.md`
+- [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
