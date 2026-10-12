@@ -3272,9 +3272,13 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
 - [ ] `pip-audit`: **10 advisories** remaining — `starlette` (9) + `ecdsa` 0.19.2
       (`PYSEC-2026-1325`, no fix, via `python-jose`); was 16. Nothing suppressed
       in `.github/security/pip-audit-ignores.txt`
-- [ ] Migrate `python-jose` → `PyJWT` to drop the unfixable `ecdsa` advisory
-      (`CVE-2024-23342` / `PYSEC-2026-1325`, the Minerva attack — surfaced by
-      `trivy fs`, hidden from the image scan by `--ignore-unfixed`)
+- [ ] **Migrate `python-jose` → `PyJWT` — now PRIORITY (review date 2026-11-10).** Drops the unfixable
+      `ecdsa` advisory (`CVE-2024-23342` / `PYSEC-2026-1325`, the Minerva attack) **and** the Critical
+      `python-jose` HS256-forgery advisory `CVE-2026-85394` (no fix; suppressed 2026-10-10 with an
+      exposure analysis — both decode sites pin `algorithms=`, no asymmetric key; SOP
+      `docs/sop/2026-10-12-python-jose-cve-suppression.md`). 3 files / 5 call sites; PyJWT ≥2.10 needs
+      string `sub` + validates exp/nbf. Own PR, full auth e2e, Opus review. Delete **both** entries in
+      `.github/security/pip-audit-ignores.txt` in the same PR
 - [ ] Refactor `validate_answer` (`app/services/assessment/engine.py`) so ruff's
       `max-complexity` can drop 12 → the common default of 10. It is the only
       function above 10
