@@ -26,7 +26,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import bcrypt
-from jose import jwt
+import jwt
 from loguru import logger
 
 from app.core.config import settings

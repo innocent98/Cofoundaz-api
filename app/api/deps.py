@@ -1,8 +1,8 @@
 import uuid
 
+import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -32,7 +32,7 @@ def get_current_user(
         if not user_id:
             raise Unauthorized()
         subject = uuid.UUID(user_id)
-    except (JWTError, ValueError) as exc:
+    except (jwt.PyJWTError, ValueError) as exc:
         raise Unauthorized() from exc
     # Exclude soft-deleted users so a still-valid token for a deleted account can't
     # authenticate.
