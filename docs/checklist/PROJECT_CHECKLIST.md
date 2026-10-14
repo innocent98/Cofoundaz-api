@@ -2972,6 +2972,11 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
+- [ ] **Module 13 — Legal & Compliance** — *⬜ assigned to Victoria 2026-10-14, not started* · brief `docs/handoff/module-13-legal-compliance.md`
+  - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
+        Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
+  - [ ] Slice 2 — Legal Advisor Requests (13.6: external `legal_advisor` role, scoped access, document versions)
+  - [ ] Slice 3 — Contract Templates + AI Contract Review (13.2/13.3: LLM jobs, PDF/DOCX parsing)
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
