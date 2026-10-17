@@ -16,6 +16,7 @@ from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
+from app.platform.activity import serialize_activity
 from app.platform.jobs import job_dispatcher
 from app.services.health_score.service import get_overview, latest_completed_result
 from app.services.mission.service import get_or_generate_today, serialize_mission, streak
@@ -295,25 +296,7 @@ def get_activity(
     has_more = len(rows) > limit
     rows = rows[:limit]
 
-    items = []
-    for row, full_name in rows:
-        actor = (
-            {"id": str(row.actor_user_id), "name": full_name}
-            if row.actor_user_id is not None
-            else None
-        )
-        items.append(
-            {
-                "id": str(row.id),
-                "action": row.action,
-                "entity_type": row.entity_type,
-                "entity_id": str(row.entity_id) if row.entity_id else None,
-                "summary": row.summary,
-                "meta": row.meta,
-                "actor": actor,
-                "created_at": row.created_at.isoformat(),
-            }
-        )
+    items = [serialize_activity(row, full_name) for row, full_name in rows]
     next_cursor = None
     if has_more and rows:
         last, _ = rows[-1]

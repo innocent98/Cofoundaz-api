@@ -26,6 +26,10 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
                     "type": "message",
                     "data": '{"event":"notification.created","notification":{"id":"n1","type":"x.test"}}',
                 },
+                {
+                    "type": "message",
+                    "data": '{"event":"activity.created","item":{"id":"a1","summary":"Ada did X"}}',
+                },
                 None,  # timeout -> heartbeat
             ]
 
@@ -34,8 +38,11 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
 
     from contextlib import asynccontextmanager
 
+    subscribed = []
+
     @asynccontextmanager
-    async def fake_sub(channel):
+    async def fake_sub(*channels):
+        subscribed.extend(channels)
         yield FakePubSub()
 
     monkeypatch.setattr(notif_ep.realtime, "subscription", fake_sub)
@@ -46,7 +53,7 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
 
         async def is_disconnected(self):
             self.n += 1
-            return self.n > 2  # allow two loop iterations then disconnect
+            return self.n > 3  # allow three loop iterations then disconnect
 
     async def collect():
         out = []
@@ -59,3 +66,6 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
     assert "event: unread" in joined and '"unread": 3' in joined
     assert "event: notification.created" in joined and '"id": "n1"' in joined
     assert ": heartbeat" in joined
+    # The same stream also carries the workspace's live activity (PRD workspace.{id}.activity).
+    assert subscribed == ["notif:s1:u1", "activity:s1"]
+    assert "event: activity.created" in joined and '"summary": "Ada did X"' in joined

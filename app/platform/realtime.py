@@ -25,6 +25,19 @@ def publish_notification(startup_id: str, user_id: str, payload: dict) -> None:
         log.warning(f"[realtime] publish failed (startup={startup_id} user={user_id}): {exc}")
 
 
+def activity_channel(startup_id: str) -> str:
+    return f"activity:{startup_id}"
+
+
+def publish_activity(startup_id: str, payload: dict) -> None:
+    """Best-effort live fan-out of a new activity item to every open stream in the workspace.
+    Runs after commit; never raises (the activity row is the durable path)."""
+    try:
+        get_redis().publish(activity_channel(startup_id), json.dumps(payload))
+    except Exception as exc:  # noqa: BLE001 - live delivery is best-effort
+        log.warning(f"[realtime] activity publish failed (startup={startup_id}): {exc}")
+
+
 def mint_stream_ticket(user_id: str, startup_id: str) -> str:
     tok = secrets.token_urlsafe(32)
     get_redis().set(
@@ -43,18 +56,19 @@ def consume_stream_ticket(tok: str) -> tuple[str, str] | None:
 
 
 @asynccontextmanager
-async def subscription(channel: str) -> AsyncIterator["PubSub"]:
-    """Async context manager yielding a subscribed redis.asyncio pubsub; cleans up on exit."""
+async def subscription(*channels: str) -> AsyncIterator["PubSub"]:
+    """Async context manager yielding a redis.asyncio pubsub subscribed to `channels`;
+    cleans up on exit."""
     import redis.asyncio as aioredis  # lazy: keep asyncio client out of module import
 
     client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     pubsub = client.pubsub()
     try:
-        await pubsub.subscribe(channel)
+        await pubsub.subscribe(*channels)
         yield pubsub
     finally:
         with suppress(Exception):
-            await pubsub.unsubscribe(channel)
+            await pubsub.unsubscribe(*channels)
         with suppress(Exception):
             await pubsub.aclose()
         with suppress(Exception):
