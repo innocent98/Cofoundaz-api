@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -18,7 +19,12 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import SessionLocal, get_db
 from app.db.tenancy import require_workspace
-from app.platform.realtime import channel_for, consume_stream_ticket, mint_stream_ticket
+from app.platform.realtime import (
+    activity_channel,
+    channel_for,
+    consume_stream_ticket,
+    mint_stream_ticket,
+)
 from app.schemas.notification import PreferencesUpdate
 from app.services.notifications.preferences import effective_preferences, set_preferences
 from app.services.notifications.service import (
@@ -161,8 +167,18 @@ def _unread(user_id: str, startup_id: str) -> int:
 async def _event_stream(request: Request, startup_id: str, user_id: str) -> AsyncIterator[str]:
     n = await run_in_threadpool(_unread, user_id, startup_id)
     yield _sse("unread", {"unread": n})
-    async with realtime.subscription(channel_for(startup_id, user_id)) as pubsub:
+    channels = (channel_for(startup_id, user_id), activity_channel(startup_id))
+    last_check = time.monotonic()
+    async with realtime.subscription(*channels) as pubsub:
         while not await request.is_disconnected():
+            # The stream carries workspace-wide activity, so a member removed while connected
+            # must stop receiving it. Re-check on a timer (not just on idle heartbeats, which a
+            # busy stream could skip) and close the stream once the membership is gone.
+            if time.monotonic() - last_check >= settings.SSE_HEARTBEAT_INTERVAL:
+                if not await run_in_threadpool(_active_membership, user_id, startup_id):
+                    yield _sse("revoked", {"reason": "membership_inactive"})
+                    return
+                last_check = time.monotonic()
             msg = await pubsub.get_message(
                 ignore_subscribe_messages=True, timeout=settings.SSE_HEARTBEAT_INTERVAL
             )
@@ -170,7 +186,8 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
                 yield ": heartbeat\n\n"
                 continue
             payload = json.loads(msg["data"])
-            yield _sse(payload["event"], payload["notification"])
+            # notification.created carries `notification`; activity.created carries `item`.
+            yield _sse(payload["event"], payload.get("notification") or payload.get("item"))
 
 
 @router.post("/notifications/stream-ticket")
