@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import MembershipRole, TransactionDirection
+from app.db.models.enums import FINANCE_ROLES, TransactionDirection
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
@@ -27,9 +27,7 @@ from app.services.finance import service as finance_svc
 
 router = APIRouter()
 
-_finance = require_role(
-    MembershipRole.founder, MembershipRole.team_member, MembershipRole.accountant
-)
+_finance = require_role(*FINANCE_ROLES)
 
 
 @router.post("/transactions", response_model=dict[str, Any])

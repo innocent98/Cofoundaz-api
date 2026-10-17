@@ -30,7 +30,7 @@ def dashboard_summary(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    data = get_summary(db, startup, user)
+    data = get_summary(db, startup, user, role=membership.role)
     db.commit()  # get_or_generate_today may have lazily created today's mission
     return success_response(data)
 

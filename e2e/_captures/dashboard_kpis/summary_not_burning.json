@@ -1,0 +1,82 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good evening",
+      "first_name": "Ada",
+      "startup_name": "NovaPay"
+    },
+    "health": {
+      "status": "pending_assessment",
+      "score": null,
+      "band": null,
+      "message": "Complete your kickoff assessment to generate your Health Score.",
+      "dimensions": [],
+      "top_recommendations": []
+    },
+    "mission": {
+      "mission_date": "2026-10-17",
+      "status": "pending",
+      "streak": 0,
+      "tasks": []
+    },
+    "upcoming": [
+      {
+        "id": "21776b79-531d-4580-9202-45827a0c8d9b",
+        "title": "Write your problem statement",
+        "due_on": "2026-10-24",
+        "milestone_id": "21776b79-531d-4580-9202-45827a0c8d9b"
+      }
+    ],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "metrics": {
+        "revenue": {
+          "status": "ok",
+          "value_minor": 67666667,
+          "currency": "NGN",
+          "basis": "trailing_3mo_avg"
+        },
+        "runway": {
+          "status": "not_burning",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": 0,
+          "cash_on_hand_minor": 154000000,
+          "currency": "NGN"
+        },
+        "pipeline": {
+          "status": "not_built",
+          "value_minor": null,
+          "currency": null
+        },
+        "campaign_ctr": {
+          "status": "ok",
+          "ctr_percent": 2.5,
+          "impressions": 2000,
+          "clicks": 50,
+          "range": "30d"
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": false
+    },
+    "briefing": {
+      "status": "empty",
+      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace."
+    },
+    "risks": {
+      "status": "empty",
+      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you."
+    },
+    "opportunities": {
+      "status": "empty",
+      "message": "Opportunities I spot \u2014 grants, quick wins, market signals \u2014 will show up here."
+    }
+  },
+  "meta": null
+}

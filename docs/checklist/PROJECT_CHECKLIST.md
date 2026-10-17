@@ -16,7 +16,10 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-10-17 · **python-jose → PyJWT migration MERGED** (PR #122, `bbd21f2`): pip-audit is clean with an
+_Last reconciled: 2026-10-17 (late) · **Dashboard KPIs BE** shipped on `feat/dashboard-kpis` (Module 02: real
+revenue/runway/CTR tiles, see the Module 02 section). PR to `develop` pending._
+
+_Previous reconcile: 2026-10-17 · **python-jose → PyJWT migration MERGED** (PR #122, `bbd21f2`): pip-audit is clean with an
 **empty** ignore file. **Module 13 Legal & Compliance assigned to Victoria** (issue #124, brief PR #123 `25f71da`); its
 six brainstorming checkpoints were settled on #125 (2026-10-15) and she's now writing the spec. **Infra blockers:**
 GitHub Actions jobs aren't starting (account billing/spending limit; every job fails in ~2s with 0 steps, still true
@@ -770,8 +773,17 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       briefing** (new `daily_briefings` table, lazy-on-read generation gated on assessment-
       complete, `ai.dashboard.briefing` worker) — see Module 03, below, and
       `docs/sop/2026-09-19-dashboard-ai-briefing.md`
-- [ ] _Deferred:_ financial KPIs (`revenue`/`runway`/`pipeline_value`/`campaign_performance`) →
-      Modules 09–11 · realtime activity delivery (websocket/push) → Module 20 · widget-level
+- [x] **Financial/marketing KPIs, shipped 2026-10-17** (branch `feat/dashboard-kpis`, SOP
+      `docs/sop/2026-10-17-dashboard-kpis.md`, guide `docs/fe-integration-guide-dashboard-kpis.md`):
+      `kpis.metrics.{revenue,runway,pipeline,campaign_ctr}`, each with a `status`, read from
+      Finance `cash_flow_summary` and Marketing metrics (30d CTR). Role-gated via shared
+      `FINANCE_ROLES`/`MARKETING_ROLES` (also adopted by those routes), with per-tile SAVEPOINT
+      isolation. Legacy scalars kept `null`. 2189 unit (97.43%) + 67 e2e green, 6 live captures.
+  - [ ] Pipeline real once Sales (Module 11) has a backend (shape already final)
+  - [ ] Revenue = all inflows (incl. raises), matching Finance. Needs a revenue category split
+  - [ ] Drop legacy `kpis.revenue/runway/pipeline_value/campaign_performance` after FE reads `metrics`
+  - [ ] KPI deltas/sparklines not provided
+- [ ] _Deferred:_ realtime activity delivery (websocket/push) → Module 20 · widget-level
       role/grant filtering · `kpi_snapshots` table deliberately not built (nothing to persist
       yet — `daily_briefings` now exists, see above) · `_section`'s swallowed exceptions have no
       Sentry capture · no dedicated `app/schemas/dashboard.py` (plain-dict responses) ·
