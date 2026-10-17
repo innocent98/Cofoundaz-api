@@ -17,14 +17,15 @@
       "mission_date": "2026-10-17",
       "status": "pending",
       "streak": 0,
-      "tasks": []
+      "tasks": [],
+      "empty_reason": "weekend_off"
     },
     "upcoming": [
       {
-        "id": "21776b79-531d-4580-9202-45827a0c8d9b",
+        "id": "4c98b345-5532-49d8-9e0c-0143f50cc567",
         "title": "Write your problem statement",
         "due_on": "2026-10-24",
-        "milestone_id": "21776b79-531d-4580-9202-45827a0c8d9b"
+        "milestone_id": "4c98b345-5532-49d8-9e0c-0143f50cc567"
       }
     ],
     "kpis": {
@@ -66,16 +67,20 @@
       "assessment_complete": false
     },
     "briefing": {
-      "status": "empty",
-      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace."
+      "status": "restricted",
+      "message": null,
+      "id": null,
+      "actions": []
     },
     "risks": {
-      "status": "empty",
-      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you."
+      "status": "restricted",
+      "message": null,
+      "items": []
     },
     "opportunities": {
-      "status": "empty",
-      "message": "Opportunities I spot \u2014 grants, quick wins, market signals \u2014 will show up here."
+      "status": "restricted",
+      "message": null,
+      "items": []
     }
   },
   "meta": null

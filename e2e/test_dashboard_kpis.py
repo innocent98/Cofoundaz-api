@@ -16,6 +16,7 @@ Every response body is captured to `e2e/_captures/dashboard_kpis/*.json`, the ve
 for `docs/fe-integration-guide-dashboard-kpis.md`. All money is in minor units (kobo).
 """
 
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -148,6 +149,16 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
             "campaign_ctr": "restricted",
         }
         assert mi["runway"]["cash_on_hand_minor"] is None
+        inv = c.get("/api/v1/dashboard/summary", headers=_wh(c, role_auth["investor"]))
+        inv_data = inv.json()["data"]
+        assert inv_data["briefing"]["status"] == "restricted"
+        assert inv_data["risks"] == {"status": "restricted", "message": None, "items": []}
+        denied = c.post(
+            f"/api/v1/dashboard/briefing/{uuid.uuid4()}/actions/0/accept",
+            headers=_wh(c, role_auth["investor"]),
+        )
+        assert denied.status_code == 403
+        capture("dashboard_kpis", "investor_accept_forbidden", denied)
         ma = _metrics(c, _wh(c, role_auth["accountant"]), "summary_accountant", capture)
         assert ma["revenue"]["status"] == "ok"
         assert ma["runway"]["status"] == "ok"

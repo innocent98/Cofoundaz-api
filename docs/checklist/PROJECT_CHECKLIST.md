@@ -783,6 +783,14 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
   - [ ] Revenue = all inflows (incl. raises), matching Finance. Needs a revenue category split
   - [ ] Drop legacy `kpis.revenue/runway/pipeline_value/campaign_performance` after FE reads `metrics`
   - [ ] KPI deltas/sparklines not provided
+- [x] **Briefing v2, shipped 2026-10-17** (branch `feat/dashboard-briefing-v2`, stacked on #129; SOP
+      `docs/sop/2026-10-17-dashboard-briefing-v2.md`; guide `docs/fe-integration-guide-dashboard-briefing-v2.md`):
+      structured risks/opportunities rows + 1 to 3 actions (server-mapped hrefs), `POST /dashboard/briefing/{id}/actions/{n}/accept`
+      ("Do it" → today's mission, idempotent, row-locked), `mission.empty_reason`, briefing-ready notification,
+      blocks restricted to founder/TM. Migration `0048_briefing_structured`. **Fixed:** the worker never registered
+      notification subscribers (job-published events were silently dropped). 2210 unit (97.47%) + 67 e2e.
+- [ ] Dashboard PRD gaps still open (see `cofoundaz/docs/checklist/dashboard-prd-gaps.md`): workspace invite,
+      global search, realtime activity, KPI snapshots/deltas/threshold alerts
 - [ ] _Deferred:_ realtime activity delivery (websocket/push) → Module 20 · widget-level
       role/grant filtering · `kpi_snapshots` table deliberately not built (nothing to persist
       yet — `daily_briefings` now exists, see above) · `_section`'s swallowed exceptions have no

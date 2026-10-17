@@ -1,0 +1,19 @@
+{
+  "data": {
+    "action_index": 0,
+    "kind": "task",
+    "href": "/mission",
+    "mission_task": {
+      "id": "d7327ccd-2a0a-4d0a-913b-dc99e1df69fc",
+      "roadmap_task_id": null,
+      "title": "[stub-llm] label",
+      "reason": null,
+      "effort": "medium",
+      "status": "todo",
+      "order": 3,
+      "completed_at": null,
+      "reject_reason": null
+    }
+  },
+  "meta": null
+}

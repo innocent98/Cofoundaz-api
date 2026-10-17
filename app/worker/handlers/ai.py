@@ -26,6 +26,7 @@ from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
 from app.db.models.user import User
+from app.platform.events import event_bus
 from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.ai_cofounder.prompts import build_cofounder_messages
 from app.services.assessment.narrative import build_narrative_messages
@@ -37,6 +38,12 @@ from app.services.business.service import get_or_create_canvas, validate_blocks
 from app.services.dashboard.ai_briefing import (
     build_dashboard_briefing_messages,
     dashboard_briefing_schema,
+)
+from app.services.dashboard.briefing import (
+    normalize_actions,
+    normalize_opportunities,
+    normalize_risks,
+    prose,
 )
 from app.services.dashboard.service import gather_briefing_context
 from app.services.health_score.ai_recommendations import (
@@ -292,11 +299,22 @@ def handle_dashboard_briefing(db: Session, job: Job) -> None:
     )
     if result is None:
         return  # over budget — skip enrichment, keep the "generating" placeholder
-    row.briefing = result["briefing"]
-    row.risks = result["risks"]
-    row.opportunities = result["opportunities"]
+    risks = normalize_risks(result.get("risks"))
+    opportunities = normalize_opportunities(result.get("opportunities"))
+    row.briefing = str(result.get("briefing") or "").strip() or row.briefing
+    row.risk_items = risks
+    row.opportunity_items = opportunities
+    row.actions = normalize_actions(result.get("actions"))
+    # Legacy prose columns, for readers that predate the structured items.
+    row.risks = prose(risks)
+    row.opportunities = prose(opportunities)
     row.status = BriefingStatus.ready
     db.flush()
+    event_bus.publish(
+        db,
+        "dashboard.briefing.ready",
+        {"startup_id": str(startup.id), "briefing_id": str(row.id)},
+    )
 
 
 register_handler("ai.dashboard.briefing", handle_dashboard_briefing)

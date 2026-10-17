@@ -1,0 +1,181 @@
+{
+    "data": {
+        "greeting": {
+            "salutation": "Good evening",
+            "first_name": "Victor",
+            "startup_name": "NovaPay"
+        },
+        "health": {
+            "status": "ok",
+            "score": 93,
+            "band": "thriving",
+            "delta_7d": 3,
+            "computed_at": "2026-10-17T17:20:49.697849+00:00",
+            "config_version": 1,
+            "dimensions": [
+                {
+                    "key": "team",
+                    "label": "Team",
+                    "score": 100,
+                    "band": "thriving"
+                },
+                {
+                    "key": "legal",
+                    "label": "Legal",
+                    "score": 75,
+                    "band": "healthy"
+                },
+                {
+                    "key": "money",
+                    "label": "Financial",
+                    "score": 100,
+                    "band": "thriving"
+                },
+                {
+                    "key": "market",
+                    "label": "Market",
+                    "score": 88,
+                    "band": "thriving"
+                },
+                {
+                    "key": "product",
+                    "label": "Product",
+                    "score": 100,
+                    "band": "thriving"
+                }
+            ],
+            "top_recommendations": [],
+            "summary": "Your Health Score is 93 (thriving). Your weakest area is Legal."
+        },
+        "mission": {
+            "mission_date": "2026-10-17",
+            "status": "pending",
+            "streak": 0,
+            "tasks": [],
+            "empty_reason": "weekend_off"
+        },
+        "upcoming": [
+            {
+                "id": "9797de96-3ac8-47b1-918d-15f7fe9fd2b9",
+                "title": "Write your problem statement",
+                "due_on": "2026-10-24",
+                "milestone_id": "9797de96-3ac8-47b1-918d-15f7fe9fd2b9"
+            }
+        ],
+        "kpis": {
+            "tasks_done_this_week": 0,
+            "metrics": {
+                "revenue": {
+                    "status": "no_data",
+                    "value_minor": null,
+                    "currency": null,
+                    "basis": "trailing_3mo_avg"
+                },
+                "runway": {
+                    "status": "no_data",
+                    "months": null,
+                    "is_low": false,
+                    "monthly_burn_minor": null,
+                    "cash_on_hand_minor": null,
+                    "currency": null
+                },
+                "pipeline": {
+                    "status": "not_built",
+                    "value_minor": null,
+                    "currency": null
+                },
+                "campaign_ctr": {
+                    "status": "no_data",
+                    "ctr_percent": null,
+                    "impressions": null,
+                    "clicks": null,
+                    "range": "30d"
+                }
+            },
+            "revenue": null,
+            "runway": null,
+            "pipeline_value": null,
+            "campaign_performance": null
+        },
+        "calibration": {
+            "assessment_complete": true
+        },
+        "briefing": {
+            "status": "ready",
+            "message": "NovaPay is an idea-stage fintech startup with a thriving health score of 93. Execution and financial visibility are not yet established: no tasks are scheduled or completed today, no tasks were completed this week, and runway and monthly money-in are untracked.",
+            "id": "b803f642-fd4c-48a0-87a1-da5acd48eeac",
+            "actions": [
+                {
+                    "index": 0,
+                    "label": "Add one validation task for today",
+                    "kind": "task",
+                    "href": "/validation",
+                    "accepted": false,
+                    "mission_task_id": null
+                },
+                {
+                    "index": 1,
+                    "label": "Go review the upcoming deadline",
+                    "kind": "navigate",
+                    "href": "/roadmap",
+                    "accepted": false,
+                    "mission_task_id": null
+                },
+                {
+                    "index": 2,
+                    "label": "Start tracking runway and monthly money-in",
+                    "kind": "task",
+                    "href": "/finance",
+                    "accepted": false,
+                    "mission_task_id": null
+                }
+            ]
+        },
+        "risks": {
+            "status": "ready",
+            "message": "One deadline is due within seven days, but no associated work is visible. Runway and monthly money-in are not tracked, limiting financial visibility. No tasks are scheduled or completed, so momentum is not yet measurable.",
+            "items": [
+                {
+                    "index": 0,
+                    "severity": "medium",
+                    "text": "One deadline is due within seven days, but no associated work is visible.",
+                    "href": "/roadmap"
+                },
+                {
+                    "index": 1,
+                    "severity": "low",
+                    "text": "Runway and monthly money-in are not tracked, limiting financial visibility.",
+                    "href": "/finance"
+                },
+                {
+                    "index": 2,
+                    "severity": "low",
+                    "text": "No tasks are scheduled or completed, so momentum is not yet measurable.",
+                    "href": "/mission"
+                }
+            ]
+        },
+        "opportunities": {
+            "status": "ready",
+            "message": "Add a first validation task to turn the idea into measurable progress. Set a near-term milestone around the upcoming deadline. Start recording runway and monthly money-in for a financial baseline.",
+            "items": [
+                {
+                    "index": 0,
+                    "text": "Add a first validation task to turn the idea into measurable progress.",
+                    "href": "/validation"
+                },
+                {
+                    "index": 1,
+                    "text": "Set a near-term milestone around the upcoming deadline.",
+                    "href": "/roadmap"
+                },
+                {
+                    "index": 2,
+                    "text": "Start recording runway and monthly money-in for a financial baseline.",
+                    "href": "/finance"
+                }
+            ]
+        }
+    },
+    "meta": null
+}

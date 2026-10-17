@@ -1,7 +1,9 @@
 import uuid
 from datetime import date
+from typing import Any
 
-from sqlalchemy import Date, Enum, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Date, Enum, ForeignKey, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,6 +30,17 @@ class DailyBriefing(UUIDMixin, TimestampMixin, Base):
     briefing: Mapped[str] = mapped_column(Text, nullable=False)
     risks: Mapped[str] = mapped_column(Text, nullable=False)
     opportunities: Mapped[str] = mapped_column(Text, nullable=False)
+    # Structured v2 rows (PRD 02.1). Each list item is a plain dict, serialised by
+    # app/services/dashboard/briefing.py; `actions[n]` also records the accept outcome.
+    risk_items: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    opportunity_items: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    actions: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
 
     __table_args__ = (
         UniqueConstraint("startup_id", "briefing_date", name="uq_briefing_startup_date"),

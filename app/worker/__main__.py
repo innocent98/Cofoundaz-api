@@ -20,6 +20,12 @@ def register() -> None:
     import app.worker.handlers.marketing_ai  # noqa: F401
     import app.worker.handlers.plan  # noqa: F401
     import app.worker.handlers.scheduled  # noqa: F401
+    from app.services.notifications.registry import register as register_notifications
+
+    # Events published inside jobs (business.plan.generated, dashboard.briefing.ready, and
+    # the scheduler's mission.ready / milestone.overdue / quarterly.due) only become
+    # notifications if this process's bus has the subscribers too, not just the API's.
+    register_notifications()
 
 
 def main_loop(stop: Callable[[], bool]) -> None:

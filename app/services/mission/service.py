@@ -13,6 +13,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import exists, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import MissionStatus, MissionTaskStatus, RoadmapStatus, TaskEffort
@@ -169,6 +170,53 @@ def get_or_generate_today(db: Session, startup: Startup) -> Mission | None:
     db.flush()
     _enqueue_mission_reason(db, mission, startup, order)
     return mission
+
+
+def ensure_today_mission(db: Session, startup: Startup) -> Mission:
+    """Today's mission, creating it if needed -- never None, race-safe.
+
+    `get_or_generate_today` does an unguarded check-then-INSERT against
+    `uq_mission_startup_date`, and returns None when there is no roadmap yet. For callers
+    that must add a task (a custom task, a briefing "Do it"), run it in a SAVEPOINT so a
+    losing concurrent racer re-selects the winner's row, and start an empty user mission
+    when there's no roadmap rather than blocking on roadmap generation.
+    """
+    today = _today()
+    try:
+        with db.begin_nested():
+            mission = get_or_generate_today(db, startup)
+            if mission is None:
+                mission = Mission(
+                    startup_id=startup.id,
+                    mission_date=today,
+                    generated_by="user",
+                    status=MissionStatus.pending,
+                )
+                db.add(mission)
+                db.flush()
+            return mission
+    except IntegrityError:
+        winner = db.query(Mission).filter_by(startup_id=startup.id, mission_date=today).first()
+        if winner is None:  # pragma: no cover - the conflicting row vanished mid-request
+            raise
+        return winner
+
+
+def mission_empty_reason(db: Session, startup: Startup, mission: Mission | None) -> str | None:
+    """Why today's mission has no tasks, so the UI can say the right thing (PRD 04.5).
+
+    `no_roadmap` (nothing to draw from yet) · `weekend_off` (weekends-off setting) ·
+    `all_caught_up` (no open roadmap tasks left). None when there are tasks.
+    """
+    if mission is None:
+        return "no_roadmap"
+    if db.query(MissionTask.id).filter_by(mission_id=mission.id).first() is not None:
+        return None
+    settings = _settings(db, startup)
+    weekend_missions = settings.weekend_missions if settings is not None else False
+    if mission.mission_date.weekday() in _WEEKEND_ISO_WEEKDAYS and not weekend_missions:
+        return "weekend_off"
+    return "all_caught_up"
 
 
 def streak(db: Session, startup: Startup) -> int:
