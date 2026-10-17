@@ -10,8 +10,9 @@ from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
-from app.platform.email import EmailMessage, get_email_sender
+from app.platform.email import get_email_sender
 from app.platform.events import event_bus
+from app.services.auth.emails import invitation_email
 from app.services.auth.sessions import hash_token
 
 _TTL = timedelta(days=14)
@@ -40,6 +41,7 @@ def create_invitations(
     # emails already handled in this call so repeats within one request are caught
     # even without a flush.
     handled_this_call: set[str] = set()
+    inviter_name = inviter.profile.full_name if inviter.profile else None
     for item in items:
         email, role = item["email"], MembershipRole(item["role"])
         email_key = email.lower()
@@ -72,10 +74,12 @@ def create_invitations(
             )
         )
         get_email_sender().send(
-            EmailMessage(
-                to=email,
-                subject=f"You're invited to join {startup.name or 'a startup'} on Cofoundaz",
-                html=f"<p>Accept your invitation — token: <code>{raw}</code></p>",
+            invitation_email(
+                email,
+                raw,
+                startup_name=startup.name,
+                inviter_name=inviter_name,
+                role=role.value,
             )
         )
         event_bus.publish(
