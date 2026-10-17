@@ -27,6 +27,7 @@ from app.db.models.enums import (
 from app.db.models.finance import Transaction
 from app.db.models.marketing import MarketingMetric
 from app.db.models.startup import Startup
+from app.services.dashboard.kpi_history import trend
 from app.services.finance.cashflow import cash_flow_summary
 from app.services.marketing.analytics import _rate
 
@@ -134,13 +135,29 @@ def _pipeline() -> dict[str, Any]:
     return {"status": "not_built", "value_minor": None, "currency": None}
 
 
+# Which field of each tile holds its number (for the snapshot trend).
+_TREND_FIELD = {"revenue": "value_minor", "runway": "months", "campaign_ctr": "ctr_percent"}
+
+
+def _with_trend(db: Session, startup: Startup, metric: str, tile: dict[str, Any]) -> dict[str, Any]:
+    """Attach `trend` (7-day delta + 14-day series) to tiles the caller may see. Restricted,
+    errored and not-built tiles get none: history must not leak what the value would."""
+    if tile.get("error") or tile.get("status") in ("restricted", "not_built"):
+        return tile
+    current = tile.get(_TREND_FIELD[metric])
+    return {**tile, "trend": trend(db, startup.id, metric, current)}
+
+
 def kpi_metrics(db: Session, startup: Startup, role: MembershipRole) -> dict[str, Any]:
     run = _savepoint(db)
+    revenue = run(lambda: _revenue(db, startup, role))
+    runway = run(lambda: _runway(db, startup, role))
+    ctr = run(lambda: _campaign_ctr(db, startup, role))
     return {
-        "revenue": run(lambda: _revenue(db, startup, role)),
-        "runway": run(lambda: _runway(db, startup, role)),
+        "revenue": run(lambda: _with_trend(db, startup, "revenue", revenue)),
+        "runway": run(lambda: _with_trend(db, startup, "runway", runway)),
         "pipeline": _pipeline(),
-        "campaign_ctr": run(lambda: _campaign_ctr(db, startup, role)),
+        "campaign_ctr": run(lambda: _with_trend(db, startup, "campaign_ctr", ctr)),
     }
 
 

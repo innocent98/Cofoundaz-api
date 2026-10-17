@@ -19,6 +19,7 @@ from app.platform.jobs import job_dispatcher
 SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
 SCHED_QUARTERLY = "scheduled.assessment.quarterly"
+SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 
 
 class Due(NamedTuple):
@@ -77,6 +78,25 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
     }
     return [
         Due("mission.generate", str(sid), period, SCHED_MISSION, sid, {"startup_id": str(sid)})
+        for sid in _active_startup_ids(db)
+        if str(sid) not in claimed
+    ]
+
+
+def _due_kpi_snapshots(db: Session, now: datetime) -> list[Due]:
+    """Once per workspace per local day, from KPI_SNAPSHOT_HOUR on (PRD 02.1 nightly 02:00)."""
+    local = _local(now)
+    if local.hour < settings.KPI_SNAPSHOT_HOUR:
+        return []
+    period = local.date().isoformat()
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key)
+        .filter(ScheduledRun.task_key == "kpi.snapshot", ScheduledRun.period_key == period)
+        .all()
+    }
+    return [
+        Due("kpi.snapshot", str(sid), period, SCHED_KPI_SNAPSHOT, sid, {"startup_id": str(sid)})
         for sid in _active_startup_ids(db)
         if str(sid) not in claimed
     ]
@@ -158,7 +178,12 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
     Each (task, scope) is isolated: a lost claim (already fired this period) is a normal skip;
     any other per-item error is logged and the rest proceed. Commits once at the end.
     """
-    due = [*_due_missions(db, now), *_due_overdue_milestones(db, now), *_due_quarterly(db, now)]
+    due = [
+        *_due_missions(db, now),
+        *_due_overdue_milestones(db, now),
+        *_due_quarterly(db, now),
+        *_due_kpi_snapshots(db, now),
+    ]
     enqueued = 0
     for item in due:
         try:

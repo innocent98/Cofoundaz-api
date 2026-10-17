@@ -782,7 +782,8 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
   - [ ] Pipeline real once Sales (Module 11) has a backend (shape already final)
   - [ ] Revenue = all inflows (incl. raises), matching Finance. Needs a revenue category split
   - [ ] Drop legacy `kpis.revenue/runway/pipeline_value/campaign_performance` after FE reads `metrics`
-  - [ ] KPI deltas/sparklines not provided
+  - [x] KPI deltas/sparklines + nightly `kpi_snapshots` + threshold alerts (2026-10-17, branch `feat/kpi-snapshots`,
+        migration `0049_kpi_snapshots`, SOP `docs/sop/2026-10-17-kpi-snapshots.md`)
 - [x] **Briefing v2, shipped 2026-10-17** (branch `feat/dashboard-briefing-v2`, stacked on #129; SOP
       `docs/sop/2026-10-17-dashboard-briefing-v2.md`; guide `docs/fe-integration-guide-dashboard-briefing-v2.md`):
       structured risks/opportunities rows + 1 to 3 actions (server-mapped hrefs), `POST /dashboard/briefing/{id}/actions/{n}/accept`
