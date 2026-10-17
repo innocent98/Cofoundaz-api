@@ -31,7 +31,9 @@ def serialize_question(q: Question | None) -> dict | None:
         "dimension": q.dimension.value,
         "section": q.section,
         "qtype": q.qtype,
+        "prompt": q.prompt,
         "options": q.options,
+        "helper": q.helper,
     }
 
 
