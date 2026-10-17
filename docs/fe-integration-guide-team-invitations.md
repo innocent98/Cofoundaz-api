@@ -47,6 +47,8 @@ per-email lists. Don't show a generic success when everything was skipped.
 |---|---|---|
 | 422 | see below (`invite_validation_error.json`) | bad email, disallowed role, 0 or >20 rows. `field_errors[].field` is `invites.{row}.{email\|role}`, so highlight that row |
 | 403 | `{"error": {"code": "FORBIDDEN", "message": "You don't have permission to do that.", "field_errors": []}}` | caller isn't a founder (`invite_by_mentor_forbidden.json`). Hide **+ Invite** for non-founders |
+| 429 | `code: "INVITE_LIMIT_REACHED"`, `message: "You've sent a lot of invitations today. Try again tomorrow."` | more than **50 invitations per workspace per rolling 24h** (onboarding + "+ Invite" combined). Show the message and keep the form. ❌ unit test only (`test_daily_invite_cap_per_workspace`) |
+| 429 | the app's standard rate-limit response | more than **10 requests/minute** from one user on this route. ❌ unit test only (`test_route_is_rate_limited_per_user`) |
 
 ```json
 {

@@ -131,3 +131,42 @@ def test_invitation_email_escapes_user_supplied_names():
     assert "<script>" not in msg.html and "<b>Evil</b>" not in msg.html
     assert "&lt;script&gt;" in msg.html
     assert msg.html.count("/invite/tok123") == 3  # button href + fallback href + its text
+
+
+def test_daily_invite_cap_per_workspace(client, db, sent, monkeypatch):
+    monkeypatch.setattr("app.services.onboarding.invites.DAILY_INVITE_CAP", 2)
+    _u, _s, h = _member(db)
+    db.commit()
+    ok = client.post(
+        URL,
+        json={"invites": [{"email": f"c{i}@example.com", "role": "mentor"} for i in range(2)]},
+        headers=h,
+    )
+    assert ok.status_code == 200, ok.text
+    over = client.post(
+        URL, json={"invites": [{"email": "c9@example.com", "role": "mentor"}]}, headers=h
+    )
+    assert over.status_code == 429
+    assert over.json()["error"]["code"] == "INVITE_LIMIT_REACHED"
+    assert len(sent) == 2
+
+
+def test_route_is_rate_limited_per_user(client, db, sent):
+    from app.main import app
+
+    _u, _s, h = _member(db)
+    db.commit()
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        codes = [
+            client.post(
+                URL, json={"invites": [{"email": f"r{i}@example.com", "role": "mentor"}]}, headers=h
+            ).status_code
+            for i in range(11)
+        ]
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
+    assert codes[:10] == [200] * 10
+    assert codes[10] == 429

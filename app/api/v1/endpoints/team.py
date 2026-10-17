@@ -1,11 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import NotFound
+from app.core.rate_limit import limiter
 from app.db.models.enums import MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -19,7 +20,9 @@ router = APIRouter()
 
 
 @router.post("/invitations")
+@limiter.limit("10/minute")
 def invite_members(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
     payload: TeamInvitesRequest,
     membership: Membership = Depends(require_role(MembershipRole.founder)),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008

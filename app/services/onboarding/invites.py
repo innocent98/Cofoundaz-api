@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import InviteEmailMismatch, NotFound, TokenInvalid
+from app.core.errors import AppError, InviteEmailMismatch, NotFound, TokenInvalid
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
@@ -16,6 +16,9 @@ from app.services.auth.emails import invitation_email
 from app.services.auth.sessions import hash_token
 
 _TTL = timedelta(days=14)
+# Outbound-email abuse guard: at most this many invitations per workspace per rolling 24h,
+# across both onboarding and "+ Invite" (each one sends an email we sign as Cofoundaz).
+DAILY_INVITE_CAP = 50
 
 
 def _is_active_member_email(db: Session, startup: Startup, email: str) -> bool:
@@ -36,6 +39,20 @@ def create_invitations(
     db: Session, startup: Startup, inviter: User, items: list[dict]
 ) -> dict[str, Any]:
     created, skipped = [], []
+    sent_today = (
+        db.query(Invitation)
+        .filter(
+            Invitation.startup_id == startup.id,
+            Invitation.created_at >= datetime.now(UTC) - timedelta(days=1),
+        )
+        .count()
+    )
+    if sent_today + len(items) > DAILY_INVITE_CAP:
+        raise AppError(
+            "INVITE_LIMIT_REACHED",
+            "You've sent a lot of invitations today. Try again tomorrow.",
+            429,
+        )
     # Prod runs with autoflush=False (app/db/session.py), so a per-item DB query
     # below would not see an Invitation added earlier in this same loop. Track
     # emails already handled in this call so repeats within one request are caught
