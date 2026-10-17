@@ -20,6 +20,11 @@ and the most visible "coming soon," so it's the highest-impact gap to close.
 - **One co-founder voice** in v1. **Over budget → assistant `failed`** (a chat turn has no
   templated fallback). Message order made deterministic (explicit `created_at` gap; both turns
   otherwise share the transaction's `now()`).
+- **Security hardening** (from the commit security review): chat routes are gated to
+  founder/team_member (`require_role`); conversations are **private to their creator**
+  (`created_by`), not workspace-shared; a new message is refused with **409 `REPLY_IN_PROGRESS`**
+  while an assistant turn is still `generating`; and the worker caps history to the last 20 turns
+  to bound per-reply LLM input cost.
 - **Deferred to later slices** (kept out on purpose): SSE token streaming, per-specialist routing
   badges, action chips/tool-results, proactive suggestions, long-term memory, AI settings.
 

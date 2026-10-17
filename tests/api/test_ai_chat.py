@@ -16,6 +16,16 @@ def _founder(db):
     return u, s, h
 
 
+def _team_member(db, startup):
+    u = create_user(db, email_verified_at=datetime.now(UTC))
+    create_membership(db, u, startup, role=MembershipRole.team_member)
+    db.flush()
+    return {
+        "Authorization": f"Bearer {create_access_token(str(u.id))}",
+        "X-Workspace-Id": str(startup.id),
+    }
+
+
 def test_create_conversation_with_message(client, db):
     u, s, h = _founder(db)
     db.commit()
@@ -98,3 +108,32 @@ def test_requires_auth(client, db):
     db.commit()
     r = client.get("/api/v1/ai/conversations")  # no auth headers
     assert r.status_code in (401, 403)
+
+
+def test_conversation_private_to_creator(client, db):
+    # A chat is private to the member who created it, not shared across the workspace.
+    u, s, h = _founder(db)
+    db.commit()
+    conv = client.post(
+        "/api/v1/ai/conversations", headers=h, json={"message": "my private chat"}
+    ).json()["data"]
+    member_h = _team_member(db, s)
+    db.commit()
+
+    assert client.get(f"/api/v1/ai/conversations/{conv['id']}", headers=member_h).status_code == 404
+    assert client.get("/api/v1/ai/conversations", headers=member_h).json()["data"] == []
+
+
+def test_second_message_while_generating_409(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={"message": "first"}).json()[
+        "data"
+    ]
+    # the first assistant turn is still `generating` (no worker ran in-request), so a second
+    # message must be refused to avoid stacking LLM jobs
+    r = client.post(
+        f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": "second"}
+    )
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "REPLY_IN_PROGRESS"

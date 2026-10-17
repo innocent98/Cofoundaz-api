@@ -9,8 +9,11 @@ with a real founder session. IDs/text are from that ephemeral run (shapes are ex
 > router exposes only `GET /ai/status`." As of this change there is a **two-way conversation
 > backend**. Update that index's §3 when this lands.
 
-Base path `/api/v1/ai`. Every route needs a Bearer token **and** `X-Workspace-Id` (any active
-member — founder or team member). Success envelope `{"data": …, "meta": null}`.
+Base path `/api/v1/ai`. Every route needs a Bearer token **and** `X-Workspace-Id`. Access is
+**founder or team_member only** (mentors/accountants/legal advisors get `403`). Conversations are
+**private to the member who created them** — another member in the same workspace gets `404` for a
+chat they didn't start, and `GET /ai/conversations` returns only the caller's own. Success
+envelope `{"data": …, "meta": null}`.
 
 ---
 
@@ -91,8 +94,9 @@ Content is freeform text (the model may use light markdown). Render opaquely; do
 | Code / status | When |
 |---|---|
 | `422` | empty/too-long `content`; malformed body |
-| `404` NOT_FOUND | unknown conversation id, or one in another workspace |
-| `401` / `403` | unauthenticated / missing `X-Workspace-Id` |
+| `404` NOT_FOUND | unknown conversation id, one in another workspace, or one created by a different member |
+| `409` REPLY_IN_PROGRESS | a new message was posted while this conversation's previous assistant turn is still `generating` — wait for it (keep polling), then allow the next send |
+| `401` / `403` | unauthenticated / missing `X-Workspace-Id` / role other than founder or team_member |
 
 ## 4. Verification table
 | Behaviour | Live? | Source |

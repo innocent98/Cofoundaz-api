@@ -10,14 +10,14 @@ from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import NotFound
-from app.db.models.enums import JobStatus
+from app.db.models.enums import JobStatus, MembershipRole
 from app.db.models.job import Job
 from app.db.models.llm_usage import LlmUsageDaily
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_workspace
+from app.db.tenancy import require_role, require_workspace
 from app.platform.llm_budget import is_ai_enrichment_job, over_budget, today_utc
 from app.schemas.ai_chat import CreateConversationRequest, PostMessageRequest
 from app.services.ai_cofounder.service import (
@@ -33,6 +33,11 @@ from app.services.ai_cofounder.service import (
 router = APIRouter()
 
 _MAX_RECENT_FAILURES = 20
+
+# The AI Co-Founder chat is for the founder and team members (the PRD's F/TM access for
+# Module 03); mentors, accountants, and legal advisors do not get the founder's
+# context-rich chat. Conversations are further scoped to their creator in the service.
+_chat_access = require_role(MembershipRole.founder, MembershipRole.team_member)
 
 
 @router.get("/status")
@@ -89,7 +94,7 @@ def _startup(db: Session, membership: Membership) -> Startup:
 @router.post("/conversations", status_code=201)
 def create_conversation_endpoint(
     payload: CreateConversationRequest,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_chat_access),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -101,23 +106,25 @@ def create_conversation_endpoint(
 
 @router.get("/conversations")
 def list_conversations_endpoint(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_chat_access),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    return success_response([serialize_conversation(c) for c in list_conversations(db, startup)])
+    return success_response(
+        [serialize_conversation(c) for c in list_conversations(db, startup, user)]
+    )
 
 
 @router.get("/conversations/{conversation_id}")
 def get_conversation_endpoint(
     conversation_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_chat_access),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    conv = get_conversation(db, startup, conversation_id)
+    conv = get_conversation(db, startup, user, conversation_id)
     return success_response(serialize_conversation(conv, messages_for(db, conv)))
 
 
@@ -125,12 +132,12 @@ def get_conversation_endpoint(
 def post_message_endpoint(
     conversation_id: uuid.UUID,
     payload: PostMessageRequest,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_chat_access),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    conv = get_conversation(db, startup, conversation_id)
+    conv = get_conversation(db, startup, user, conversation_id)
     assistant = post_message(db, conv, payload.content)
     db.commit()
     return success_response(serialize_message(assistant))

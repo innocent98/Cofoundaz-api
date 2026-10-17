@@ -450,15 +450,20 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
     startup = db.get(Startup, conversation.startup_id)
     if startup is None:
         return
-    prior = (
-        db.query(AiMessage)
-        .filter(
-            AiMessage.conversation_id == conversation.id,
-            AiMessage.id != msg.id,
-            AiMessage.status == ChatMessageStatus.ready,
+    # Cap history to the most recent turns so one long conversation can't amplify the
+    # LLM input cost of every subsequent reply.
+    prior = list(
+        reversed(
+            db.query(AiMessage)
+            .filter(
+                AiMessage.conversation_id == conversation.id,
+                AiMessage.id != msg.id,
+                AiMessage.status == ChatMessageStatus.ready,
+            )
+            .order_by(AiMessage.created_at.desc(), AiMessage.id.desc())
+            .limit(20)
+            .all()
         )
-        .order_by(AiMessage.created_at.asc(), AiMessage.id.asc())
-        .all()
     )
     profile = startup.profile
     messages = build_cofounder_messages(

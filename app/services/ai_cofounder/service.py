@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.enums import ChatMessageRole, ChatMessageStatus
 from app.db.models.startup import Startup
@@ -33,19 +33,30 @@ def create_conversation(
     return conv
 
 
-def list_conversations(db: Session, startup: Startup) -> list[AiConversation]:
+def list_conversations(db: Session, startup: Startup, user: User) -> list[AiConversation]:
+    # Conversations are private to their creator (a founder's AI chat is personal and
+    # context-rich), not shared across the whole workspace.
     return (
         db.query(AiConversation)
-        .filter(AiConversation.startup_id == startup.id)
+        .filter(
+            AiConversation.startup_id == startup.id,
+            AiConversation.created_by == user.id,
+        )
         .order_by(AiConversation.updated_at.desc())
         .all()
     )
 
 
-def get_conversation(db: Session, startup: Startup, conversation_id: uuid.UUID) -> AiConversation:
+def get_conversation(
+    db: Session, startup: Startup, user: User, conversation_id: uuid.UUID
+) -> AiConversation:
     conv = (
         db.query(AiConversation)
-        .filter(AiConversation.id == conversation_id, AiConversation.startup_id == startup.id)
+        .filter(
+            AiConversation.id == conversation_id,
+            AiConversation.startup_id == startup.id,
+            AiConversation.created_by == user.id,
+        )
         .first()
     )
     if conv is None:
@@ -65,6 +76,23 @@ def messages_for(db: Session, conversation: AiConversation) -> list[AiMessage]:
 def post_message(db: Session, conversation: AiConversation, content: str) -> AiMessage:
     """Store the founder's turn + an empty `generating` assistant turn, and enqueue the
     `ai.cofounder.reply` job that fills it. Returns the assistant turn to poll for."""
+    # Guard against spam / LLM-cost amplification: refuse a new turn while one is still
+    # being generated in this conversation (the FE should be polling the existing one).
+    in_flight = (
+        db.query(AiMessage)
+        .filter(
+            AiMessage.conversation_id == conversation.id,
+            AiMessage.role == ChatMessageRole.assistant,
+            AiMessage.status == ChatMessageStatus.generating,
+        )
+        .first()
+    )
+    if in_flight is not None:
+        raise AppError(
+            "REPLY_IN_PROGRESS",
+            "A reply is still being generated in this conversation. Please wait.",
+            409,
+        )
     # Both rows are inserted in one transaction, so Postgres `now()` would give them an
     # identical created_at and the user/assistant order would be nondeterministic. Set it
     # explicitly with a 1ms gap so the turn order is stable.
