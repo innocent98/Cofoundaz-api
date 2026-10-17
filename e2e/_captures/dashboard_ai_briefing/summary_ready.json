@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-10-17T20:37:54.301761+00:00",
+      "computed_at": "2026-10-17T22:00:40.025504+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -46,7 +46,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "6734b761-aa03-417b-8ac4-f824c8deb036",
+          "id": "73d59523-833c-4088-9fe6-2d55fe1c5ade",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -57,7 +57,7 @@
           "priority": 1
         },
         {
-          "id": "58a542d6-ea4e-42e2-8448-e39514e28a61",
+          "id": "d6531e2a-0c91-43bd-a1f2-4fde3b92541f",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
@@ -68,7 +68,7 @@
           "priority": 2
         },
         {
-          "id": "6d5c80b2-86c5-4bd4-8d3a-82637a4598d8",
+          "id": "23b23157-1d5d-4ba5-9425-5c711dbb0e2c",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -87,8 +87,8 @@
       "streak": 0,
       "tasks": [
         {
-          "id": "e4253a4b-00f1-4042-81cf-805e0438e439",
-          "roadmap_task_id": "dc9bcca6-0905-4578-ab76-abeefa196ea9",
+          "id": "9dc49555-affa-4ae2-8952-2b92b57a5e31",
+          "roadmap_task_id": "9877b70d-04b7-46c5-a872-f43877a78b1b",
           "title": "Run 10 customer interviews",
           "reason": "[stub-llm] reason",
           "effort": "medium",
@@ -98,8 +98,8 @@
           "reject_reason": null
         },
         {
-          "id": "ce1b51e6-c7b9-42f0-a5a5-2d06fc557224",
-          "roadmap_task_id": "a3b77c83-6f19-48d6-ad64-9e5171cdc8d6",
+          "id": "d66eb9ab-263e-4d91-b94f-1c1bac77be19",
+          "roadmap_task_id": "6e8609d3-17f0-4c3f-bbd8-c06498adde41",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -109,8 +109,8 @@
           "reject_reason": null
         },
         {
-          "id": "083657ad-98a1-42a8-b3d2-1963228bd867",
-          "roadmap_task_id": "82b1797e-5ec7-43a4-b78c-46521402305c",
+          "id": "e651368b-cee9-4f98-9748-74b478eb67ce",
+          "roadmap_task_id": "e926910c-7443-4e79-a0c6-627a79270fbd",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -119,7 +119,8 @@
           "completed_at": null,
           "reject_reason": null
         }
-      ]
+      ],
+      "empty_reason": null
     },
     "upcoming": [],
     "kpis": {
@@ -162,15 +163,41 @@
     },
     "briefing": {
       "status": "ready",
-      "message": "[stub-llm] briefing"
+      "message": "[stub-llm] briefing",
+      "id": "69c6e02a-5729-4426-872f-6b3bf6af22fb",
+      "actions": [
+        {
+          "index": 0,
+          "label": "[stub-llm] label",
+          "kind": "task",
+          "href": "/mission",
+          "accepted": false,
+          "mission_task_id": null
+        }
+      ]
     },
     "risks": {
       "status": "ready",
-      "message": "[stub-llm] risks"
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "severity": "high",
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
     },
     "opportunities": {
       "status": "ready",
-      "message": "[stub-llm] opportunities"
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
     }
   },
   "meta": null

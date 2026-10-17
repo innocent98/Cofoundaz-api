@@ -1,0 +1,19 @@
+{
+    "data": {
+        "action_index": 0,
+        "kind": "task",
+        "href": "/validation",
+        "mission_task": {
+            "id": "fd8195a3-f71f-4ca3-af96-3136105d7523",
+            "roadmap_task_id": null,
+            "title": "Add one validation task for today",
+            "reason": null,
+            "effort": "medium",
+            "status": "todo",
+            "order": 0,
+            "completed_at": null,
+            "reject_reason": null
+        }
+    },
+    "meta": null
+}

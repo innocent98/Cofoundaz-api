@@ -1,0 +1,215 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good evening",
+      "first_name": "Ada",
+      "startup_name": "Cofoundaz"
+    },
+    "health": {
+      "status": "ok",
+      "score": 31,
+      "band": "at_risk",
+      "delta_7d": 0,
+      "computed_at": "2026-10-17T22:00:40.025504+00:00",
+      "config_version": 1,
+      "dimensions": [
+        {
+          "key": "team",
+          "label": "Team",
+          "score": 50,
+          "band": "needs_work"
+        },
+        {
+          "key": "legal",
+          "label": "Legal",
+          "score": 0,
+          "band": "at_risk"
+        },
+        {
+          "key": "money",
+          "label": "Financial",
+          "score": 43,
+          "band": "needs_work"
+        },
+        {
+          "key": "market",
+          "label": "Market",
+          "score": 38,
+          "band": "at_risk"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "score": 25,
+          "band": "at_risk"
+        }
+      ],
+      "top_recommendations": [
+        {
+          "id": "73d59523-833c-4088-9fe6-2d55fe1c5ade",
+          "dimension": "legal",
+          "key": "legal.incorporate",
+          "title": "Complete incorporation",
+          "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
+          "estimated_lift": 9,
+          "effort": "high",
+          "status": "pending",
+          "priority": 1
+        },
+        {
+          "id": "d6531e2a-0c91-43bd-a1f2-4fde3b92541f",
+          "dimension": "legal",
+          "key": "legal.founder_agreement",
+          "title": "Sign a founders' agreement",
+          "body": "[stub-llm] body",
+          "estimated_lift": 7,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 2
+        },
+        {
+          "id": "23b23157-1d5d-4ba5-9425-5c711dbb0e2c",
+          "dimension": "product",
+          "key": "product.define_mvp",
+          "title": "Define your MVP scope",
+          "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
+          "estimated_lift": 8,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 3
+        }
+      ],
+      "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
+    },
+    "mission": {
+      "mission_date": "2026-10-17",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [
+        {
+          "id": "9dc49555-affa-4ae2-8952-2b92b57a5e31",
+          "roadmap_task_id": "9877b70d-04b7-46c5-a872-f43877a78b1b",
+          "title": "Run 10 customer interviews",
+          "reason": "[stub-llm] reason",
+          "effort": "medium",
+          "status": "todo",
+          "order": 0,
+          "completed_at": null,
+          "reject_reason": null
+        },
+        {
+          "id": "d66eb9ab-263e-4d91-b94f-1c1bac77be19",
+          "roadmap_task_id": "6e8609d3-17f0-4c3f-bbd8-c06498adde41",
+          "title": "Synthesize problem hypotheses",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 1,
+          "completed_at": null,
+          "reject_reason": null
+        },
+        {
+          "id": "e651368b-cee9-4f98-9748-74b478eb67ce",
+          "roadmap_task_id": "e926910c-7443-4e79-a0c6-627a79270fbd",
+          "title": "Draft 3 pricing options",
+          "reason": "From your 'Pricing test' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 2,
+          "completed_at": null,
+          "reject_reason": null
+        },
+        {
+          "id": "d7327ccd-2a0a-4d0a-913b-dc99e1df69fc",
+          "roadmap_task_id": null,
+          "title": "[stub-llm] label",
+          "reason": null,
+          "effort": "medium",
+          "status": "todo",
+          "order": 3,
+          "completed_at": null,
+          "reject_reason": null
+        }
+      ],
+      "empty_reason": null
+    },
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "metrics": {
+        "revenue": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg"
+        },
+        "runway": {
+          "status": "no_data",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null
+        },
+        "pipeline": {
+          "status": "not_built",
+          "value_minor": null,
+          "currency": null
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d"
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": true
+    },
+    "briefing": {
+      "status": "ready",
+      "message": "[stub-llm] briefing",
+      "id": "69c6e02a-5729-4426-872f-6b3bf6af22fb",
+      "actions": [
+        {
+          "index": 0,
+          "label": "[stub-llm] label",
+          "kind": "task",
+          "href": "/mission",
+          "accepted": true,
+          "mission_task_id": "d7327ccd-2a0a-4d0a-913b-dc99e1df69fc"
+        }
+      ]
+    },
+    "risks": {
+      "status": "ready",
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "severity": "high",
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
+    },
+    "opportunities": {
+      "status": "ready",
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
+    }
+  },
+  "meta": null
+}

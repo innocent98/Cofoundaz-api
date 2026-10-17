@@ -1,0 +1,12 @@
+{
+    "id": "e92e73ff-6e2a-4f7d-948d-f7370b0d2899",
+    "type": "dashboard.briefing.ready",
+    "title": "Your daily AI briefing is ready",
+    "body": "",
+    "data": {
+        "startup_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44",
+        "briefing_id": "15615fdd-0e58-4587-b4b3-215d9fe65e1c"
+    },
+    "read": false,
+    "created_at": "2026-10-17T22:02:19.293707+00:00"
+}

@@ -45,3 +45,21 @@ def test_main_loop_throttles_scheduler(db, monkeypatch):
     stops = iter([False, False, False, True])
     entry.main_loop(stop=lambda: next(stops))
     assert ticks["n"] == 1
+
+
+def test_register_wires_notification_subscribers_into_the_worker(monkeypatch):
+    """Events published inside jobs must become notifications in the worker process too.
+
+    Regression: only the API process registered the notification subscribers, so job-published
+    events (business.plan.generated, dashboard.briefing.ready, the scheduler's mission.ready /
+    roadmap.milestone.overdue / assessment.quarterly.due) silently produced no notification.
+    Spies on the registrar, because the test process has already imported the API (which
+    registers on the shared bus), so checking the bus alone could never fail.
+    """
+    from app.services.notifications import registry
+    from app.worker.__main__ import register
+
+    calls = []
+    monkeypatch.setattr(registry, "register", lambda *a, **k: calls.append(1))
+    register()
+    assert calls == [1]

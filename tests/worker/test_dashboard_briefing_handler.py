@@ -62,17 +62,55 @@ def _job(startup_id):
 def test_fills_generating_row(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     s, row = _seed(db)
-    fake = _FakeLLM({"briefing": "B", "risks": "R", "opportunities": "O"})
+    fake = _FakeLLM(
+        {
+            "briefing": "B",
+            "risks": [
+                {"severity": "high", "text": "R1", "module": "finance"},
+                {"severity": "bogus", "text": "R2", "module": "nowhere"},
+                {"severity": "low", "text": "   ", "module": "roadmap"},
+                {"severity": "low", "text": "R3", "module": "roadmap"},
+                {"severity": "low", "text": "R4", "module": "roadmap"},
+            ],
+            "opportunities": [{"text": "O", "module": "marketing"}],
+            "actions": [
+                {"label": "Talk to 3 customers", "kind": "task", "module": "validation"},
+                {"label": "Review runway", "kind": "navigate", "module": "finance"},
+                {"label": "Go somewhere", "kind": "navigate", "module": "nope"},
+            ],
+        }
+    )
     monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_dashboard_briefing(db, _job(s.id))
     db.refresh(row)
-    assert (row.status, row.briefing, row.risks, row.opportunities) == (
-        BriefingStatus.ready,
-        "B",
-        "R",
-        "O",
-    )
+    assert (row.status, row.briefing) == (BriefingStatus.ready, "B")
+    # Clamped to 3, blank rows dropped, bad enum values coerced, unknown module -> None.
+    assert row.risk_items == [
+        {"severity": "high", "text": "R1", "module": "finance"},
+        {"severity": "medium", "text": "R2", "module": None},
+        {"severity": "low", "text": "R3", "module": "roadmap"},
+    ]
+    assert row.risks == "R1 R2 R3"  # legacy prose column
+    assert row.opportunities == "O"
+    assert [(a["kind"], a["module"]) for a in row.actions] == [
+        ("task", "validation"),
+        ("navigate", "finance"),
+        ("task", None),  # a navigate with nowhere to go becomes a task
+    ]
     assert fake.calls == 1
+
+
+def test_publishes_briefing_ready(db, monkeypatch):
+    from app.platform.events import event_bus
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    s, row = _seed(db)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _FakeLLM({"briefing": "B"}))
+    before = len(event_bus.published)
+    handle_dashboard_briefing(db, _job(s.id))
+    assert ("dashboard.briefing.ready", {"startup_id": str(s.id), "briefing_id": str(row.id)}) in (
+        event_bus.published[before:]
+    )
 
 
 def test_noop_when_already_ready(db, monkeypatch):

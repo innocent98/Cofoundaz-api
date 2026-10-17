@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -10,8 +11,9 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_workspace
-from app.services.dashboard.service import get_activity, get_summary
+from app.db.tenancy import require_role, require_workspace
+from app.services.dashboard.briefing import accept_action
+from app.services.dashboard.service import BRIEFING_ROLES, get_activity, get_summary
 
 router = APIRouter()
 
@@ -45,3 +47,19 @@ def dashboard_activity(
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
     return success_response(get_activity(db, startup, cursor=cursor, limit=limit))
+
+
+@router.post("/briefing/{briefing_id}/actions/{index}/accept")
+def accept_briefing_action(
+    briefing_id: uuid.UUID,
+    index: int,
+    membership: Membership = Depends(require_role(*BRIEFING_ROLES)),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """ "Do it" on an AI briefing action (PRD 02.1). A `task` action is added to today's
+    mission; a `navigate` action returns its route. Idempotent per action."""
+    startup = _startup(db, membership)
+    data = accept_action(db, startup, user, briefing_id, index)
+    db.commit()
+    return success_response(data)

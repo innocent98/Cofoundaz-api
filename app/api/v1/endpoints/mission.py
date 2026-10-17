@@ -1,5 +1,4 @@
 import uuid
-from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -8,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import MembershipRole, MissionStatus, MissionTaskStatus
+from app.db.models.enums import MembershipRole, MissionTaskStatus
 from app.db.models.membership import Membership
 from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.startup import Startup
@@ -21,6 +20,7 @@ from app.services.mission.service import (
     VALID_REJECT_REASONS,
     add_custom_task,
     complete_task,
+    ensure_today_mission,
     get_or_generate_today,
     mission_history,
     reject_task,
@@ -146,18 +146,8 @@ def create_task(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    mission = get_or_generate_today(db, startup)
-    if mission is None:
-        # No roadmap yet -- a custom task doesn't need one, so start today's
-        # mission ourselves rather than blocking the user on roadmap generation.
-        mission = Mission(
-            startup_id=startup.id,
-            mission_date=date.today(),
-            generated_by="user",
-            status=MissionStatus.pending,
-        )
-        db.add(mission)
-        db.flush()
+    # No roadmap yet is fine: a custom task doesn't need one (see ensure_today_mission).
+    mission = ensure_today_mission(db, startup)
     task = add_custom_task(db, mission, payload.title, payload.effort)
     write_activity(
         db,

@@ -95,6 +95,8 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "business.plan.generated": _s(_all_active_members, "Your AI business plan is ready"),
     "finance.runway.low": _s(_all_active_members, "Your runway is running low"),
+    # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
+    "dashboard.briefing.ready": _s(_all_active_members, "Your daily AI briefing is ready"),
     "marketing.post.published": NotifSpec(
         _members_minus_actor,
         lambda p: f"Scheduled post published: {p.get('title', 'a post')}",
