@@ -20,9 +20,9 @@
 
 "AI Co-Founder" in the product today is **not a chatbot you send messages to.** It is a brand
 applied to ~8 places where the backend quietly upgrades otherwise-templated content into
-AI-personalized content, plus one status endpoint. There is **no two-way conversation endpoint**
-(see §3). If your design calls for the `/app/ai` chat drawer from the PRD, that backend does not
-exist yet — do not wire a chat UI to a live endpoint expecting it to answer.
+AI-personalized content, plus one status endpoint. **Update (2026-10-17): a two-way conversation
+backend now exists in v1** — see §3 and [ai-cofounder-chat](fe-integration-guide-ai-cofounder-chat.md).
+The ~8 enrichment features below are unchanged; the interactive chat is the new piece.
 
 Everything that *is* built follows one of two async shapes, described in §1.
 
@@ -80,12 +80,18 @@ same seam). Read the linked guide/section for the real bodies, status codes, and
 
 ---
 
-## 3. ⚠️ NOT built — the interactive chat (`/app/ai` drawer)
+## 3. Interactive chat (`/ai` drawer) — v1 now built
 
-The PRD's headline for Module 03 is a conversational assistant: the floating "Ask your AI
-Co-Founder" dock, two-way chat, specialist routing ("Finance Advisor via Co-Founder"), the
-"Why I said this" expander, and action chips ("Draft the document", "Add as task"). **None of
-that has a backend.**
+**Update (2026-10-17):** the two-way conversation backend now exists — see
+[ai-cofounder-chat](fe-integration-guide-ai-cofounder-chat.md). v1 covers conversations + messages
+with real LLM answers using workspace context (Pattern B, 202 → poll). The PRD's fuller vision is
+still **deferred to later slices**: SSE token streaming, specialist routing ("Finance Advisor via
+Co-Founder"), the "Why I said this" expander, and action chips ("Draft the document", "Add as
+task"). Wire the dock / `/ai` / dashboard "Tell me more" to the v1 endpoints now.
+
+The original scope note, for history: the PRD's headline for Module 03 is a conversational
+assistant, and at Module 03's first ship **none of it had a backend** (the `/ai` router exposed
+only `GET /ai/status`). That is what the v1 chat above changes.
 
 - The `/ai` router exposes **only `GET /ai/status`** — there is no `POST` to send a message, no
   conversation/thread resource, no streaming endpoint.

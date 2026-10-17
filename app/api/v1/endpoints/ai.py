@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
@@ -8,14 +9,26 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
+from app.core.errors import NotFound
 from app.db.models.enums import JobStatus
 from app.db.models.job import Job
 from app.db.models.llm_usage import LlmUsageDaily
 from app.db.models.membership import Membership
+from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_workspace
 from app.platform.llm_budget import is_ai_enrichment_job, over_budget, today_utc
+from app.schemas.ai_chat import CreateConversationRequest, PostMessageRequest
+from app.services.ai_cofounder.service import (
+    create_conversation,
+    get_conversation,
+    list_conversations,
+    messages_for,
+    post_message,
+    serialize_conversation,
+    serialize_message,
+)
 
 router = APIRouter()
 
@@ -64,3 +77,60 @@ def ai_status(
             "recent_enrichment_failures": failures,
         }
     )
+
+
+def _startup(db: Session, membership: Membership) -> Startup:
+    s = db.query(Startup).filter(Startup.id == membership.startup_id).first()
+    if s is None:
+        raise NotFound()
+    return s
+
+
+@router.post("/conversations", status_code=201)
+def create_conversation_endpoint(
+    payload: CreateConversationRequest,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    conv = create_conversation(db, startup, user, payload.message)
+    db.commit()
+    return success_response(serialize_conversation(conv, messages_for(db, conv)))
+
+
+@router.get("/conversations")
+def list_conversations_endpoint(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    return success_response([serialize_conversation(c) for c in list_conversations(db, startup)])
+
+
+@router.get("/conversations/{conversation_id}")
+def get_conversation_endpoint(
+    conversation_id: uuid.UUID,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    conv = get_conversation(db, startup, conversation_id)
+    return success_response(serialize_conversation(conv, messages_for(db, conv)))
+
+
+@router.post("/conversations/{conversation_id}/messages", status_code=202)
+def post_message_endpoint(
+    conversation_id: uuid.UUID,
+    payload: PostMessageRequest,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    conv = get_conversation(db, startup, conversation_id)
+    assistant = post_message(db, conv, payload.content)
+    db.commit()
+    return success_response(serialize_message(assistant))

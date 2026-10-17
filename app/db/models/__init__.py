@@ -1,4 +1,5 @@
 from app.db.models.activity import ActivityLog  # noqa: F401
+from app.db.models.ai_chat import AiConversation, AiMessage  # noqa: F401
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401

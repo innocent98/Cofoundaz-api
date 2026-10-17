@@ -1,0 +1,100 @@
+from datetime import UTC, datetime
+
+from app.core.security import create_access_token
+from app.db.models.enums import MembershipRole, StartupStage
+from app.db.models.job import Job
+from tests.factories import create_membership, create_startup, create_user
+
+
+def _founder(db):
+    u = create_user(db, email_verified_at=datetime.now(UTC))
+    s = create_startup(db, owner=u, industry="Fintech", stage=StartupStage.idea)
+    s.profile.goals = ["Get first customers"]
+    create_membership(db, u, s, role=MembershipRole.founder)
+    db.flush()
+    h = {"Authorization": f"Bearer {create_access_token(str(u.id))}", "X-Workspace-Id": str(s.id)}
+    return u, s, h
+
+
+def test_create_conversation_with_message(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+
+    r = client.post(
+        "/api/v1/ai/conversations", headers=h, json={"message": "How long is my runway?"}
+    )
+
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    assert data["title"] == "How long is my runway?"
+    assert [m["role"] for m in data["messages"]] == ["user", "assistant"]
+    assert data["messages"][0]["status"] == "ready"
+    assert data["messages"][0]["content"] == "How long is my runway?"
+    # the assistant turn is empty + generating until the worker fills it (Pattern B)
+    assert data["messages"][1]["status"] == "generating"
+    assert data["messages"][1]["content"] == ""
+    # exactly one reply job enqueued
+    assert db.query(Job).filter_by(type="ai.cofounder.reply").count() == 1
+
+
+def test_create_empty_then_post_message(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={}).json()["data"]
+    assert conv["messages"] == []
+    assert conv["title"] is None
+
+    r = client.post(
+        f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": "Hi there"}
+    )
+    assert r.status_code == 202, r.text
+    assert r.json()["data"]["role"] == "assistant"
+    assert r.json()["data"]["status"] == "generating"
+
+    got = client.get(f"/api/v1/ai/conversations/{conv['id']}", headers=h).json()["data"]
+    assert [m["role"] for m in got["messages"]] == ["user", "assistant"]
+    assert got["title"] == "Hi there"
+
+
+def test_list_conversations(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    client.post("/api/v1/ai/conversations", headers=h, json={"message": "one"})
+    client.post("/api/v1/ai/conversations", headers=h, json={"message": "two"})
+
+    r = client.get("/api/v1/ai/conversations", headers=h)
+
+    assert r.status_code == 200, r.text
+    assert {c["title"] for c in r.json()["data"]} == {"one", "two"}
+
+
+def test_post_message_empty_content_422(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={}).json()["data"]
+
+    r = client.post(
+        f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": ""}
+    )
+    assert r.status_code == 422
+
+
+def test_cross_tenant_conversation_404(client, db):
+    _ub, _sb, hb = _founder(db)
+    conv_b = client.post("/api/v1/ai/conversations", headers=hb, json={"message": "b"}).json()[
+        "data"
+    ]
+    db.commit()
+    _ua, _sa, ha = _founder(db)
+    db.commit()
+
+    r = client.get(f"/api/v1/ai/conversations/{conv_b['id']}", headers=ha)
+    assert r.status_code == 404
+
+
+def test_requires_auth(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    r = client.get("/api/v1/ai/conversations")  # no auth headers
+    assert r.status_code in (401, 403)
