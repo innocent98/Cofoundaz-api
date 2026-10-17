@@ -43,7 +43,11 @@ def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email
             },
         )
         assert r.status_code == 200, r.text
-        assert r.json()["data"] == {"created": [mentor_email], "skipped": [u["email"]]}
+        assert r.json()["data"] == {
+            "created": [mentor_email],
+            "skipped": [u["email"]],
+            "undelivered": [],
+        }
         capture("team_invitations", "invite_created_and_skipped", r)
 
         bad = c.post(

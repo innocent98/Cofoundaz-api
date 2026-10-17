@@ -48,7 +48,7 @@ def test_founder_invites_after_onboarding_and_email_links_to_invite_page(client,
         headers=h,
     )
     assert r.status_code == 200, r.text
-    assert r.json()["data"] == {"created": ["mate@example.com"], "skipped": []}
+    assert r.json()["data"] == {"created": ["mate@example.com"], "skipped": [], "undelivered": []}
     inv = db.query(Invitation).filter_by(startup_id=s.id).one()
     assert (inv.role, inv.status) == (MembershipRole.team_member, InvitationStatus.pending)
     (msg,) = sent
@@ -83,9 +83,14 @@ def test_existing_member_and_pending_invite_are_skipped(client, db, sent):
     assert r.json()["data"] == {
         "created": ["new@example.com"],
         "skipped": ["already@example.com", "new@example.com"],
+        "undelivered": [],
     }
     again = client.post(URL, json={"invites": [body["invites"][1]]}, headers=h)
-    assert again.json()["data"] == {"created": [], "skipped": ["new@example.com"]}
+    assert again.json()["data"] == {
+        "created": [],
+        "skipped": ["new@example.com"],
+        "undelivered": [],
+    }
     assert len(sent) == 1
 
 
@@ -170,3 +175,32 @@ def test_route_is_rate_limited_per_user(client, db, sent):
         app.state.limiter.reset()
     assert codes[:10] == [200] * 10
     assert codes[10] == 429
+
+
+def test_one_failed_send_is_reported_and_does_not_roll_back_the_batch(client, db, monkeypatch):
+    attempted = []
+
+    class _Flaky:
+        def send(self, msg):
+            attempted.append(msg.to)
+            if msg.to == "bad@example.com":
+                raise RuntimeError("provider rejected")
+
+    monkeypatch.setattr("app.services.onboarding.invites.get_email_sender", lambda: _Flaky())
+    _u, s, h = _member(db)
+    db.commit()
+    r = client.post(
+        URL,
+        json={
+            "invites": [
+                {"email": "bad@example.com", "role": "mentor"},
+                {"email": "good@example.com", "role": "mentor"},
+            ]
+        },
+        headers=h,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["undelivered"] == ["bad@example.com"]
+    assert attempted == ["bad@example.com", "good@example.com"]
+    # Both invitations were committed before any send, so the cap counts them.
+    assert db.query(Invitation).filter_by(startup_id=s.id).count() == 2

@@ -1,16 +1,18 @@
 import secrets
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, InviteEmailMismatch, NotFound, TokenInvalid
+from app.core.logger import log
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
-from app.platform.email import get_email_sender
+from app.platform.email import EmailMessage, get_email_sender
 from app.platform.events import event_bus
 from app.services.auth.emails import invitation_email
 from app.services.auth.sessions import hash_token
@@ -35,10 +37,41 @@ def _is_active_member_email(db: Session, startup: Startup, email: str) -> bool:
     )
 
 
+@dataclass
+class InviteBatch:
+    """Result of `create_invitations`. The emails sit in `outbox` until the caller commits:
+    an email must never go out for an invitation that then rolls back (that would also let a
+    failing batch slip past the daily cap, which counts committed rows)."""
+
+    created: list[str] = field(default_factory=list)
+    skipped: list[str] = field(default_factory=list)
+    outbox: list[EmailMessage] = field(default_factory=list)
+
+    def response(self, undelivered: list[str]) -> dict[str, Any]:
+        return {"created": self.created, "skipped": self.skipped, "undelivered": undelivered}
+
+
+def deliver_invitations(batch: InviteBatch) -> list[str]:
+    """Send the batch's emails. Call only AFTER the invitations are committed. A failure for one
+    recipient is logged and reported, never raised: the invitation exists and can be re-sent."""
+    undelivered = []
+    sender = get_email_sender()
+    for msg in batch.outbox:
+        try:
+            sender.send(msg)
+        except Exception as exc:  # noqa: BLE001 - one bad address must not fail the rest
+            log.warning(f"[invites] email to {msg.to} failed: {exc}")
+            undelivered.append(msg.to)
+    return undelivered
+
+
 def create_invitations(
     db: Session, startup: Startup, inviter: User, items: list[dict]
-) -> dict[str, Any]:
-    created, skipped = [], []
+) -> InviteBatch:
+    batch = InviteBatch()
+    # Serialize invitation batches per workspace so concurrent requests can't each pass the
+    # daily-cap check below (row lock held until the caller's commit).
+    db.query(Startup.id).filter(Startup.id == startup.id).with_for_update().one()
     sent_today = (
         db.query(Invitation)
         .filter(
@@ -76,7 +109,7 @@ def create_invitations(
             or pending is not None
             or _is_active_member_email(db, startup, email)
         ):
-            skipped.append(email)
+            batch.skipped.append(email)
             continue
         handled_this_call.add(email_key)
         raw = secrets.token_urlsafe(32)
@@ -90,7 +123,7 @@ def create_invitations(
                 expires_at=datetime.now(UTC) + _TTL,
             )
         )
-        get_email_sender().send(
+        batch.outbox.append(
             invitation_email(
                 email,
                 raw,
@@ -104,9 +137,9 @@ def create_invitations(
             "workspace.member.invited",
             {"startup_id": str(startup.id), "email": email, "role": role.value},
         )
-        created.append(email)
+        batch.created.append(email)
     db.flush()
-    return {"created": created, "skipped": skipped}
+    return batch
 
 
 def preview_invitation(db: Session, token: str) -> dict[str, Any]:

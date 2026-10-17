@@ -30,7 +30,8 @@ class InviteItem(BaseModel):
 
 
 class InvitesRequest(BaseModel):
-    invites: list[InviteItem]
+    # Bounded like POST /team/invitations: one request can't fan out unbounded email.
+    invites: list[InviteItem] = Field(max_length=20)
 
 
 class AcceptRequest(BaseModel):

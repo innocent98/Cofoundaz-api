@@ -14,7 +14,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.team import TeamInvitesRequest
-from app.services.onboarding.invites import create_invitations
+from app.services.onboarding.invites import create_invitations, deliver_invitations
 
 router = APIRouter()
 
@@ -36,5 +36,5 @@ def invite_members(
         raise NotFound()
     items = [{"email": str(i.email), "role": i.role.value} for i in payload.invites]
     result = create_invitations(db, startup, user, items)
-    db.commit()
-    return success_response(result)
+    db.commit()  # commit BEFORE sending: never email for an invitation that rolled back
+    return success_response(result.response(deliver_invitations(result)))

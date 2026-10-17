@@ -38,8 +38,15 @@ modal currently sends the **label** ("Co-Founder"), which would 422, so map it.
     "meta": null
 }
 ```
+> The live capture above predates the `undelivered` field. The current shape (e2e
+> `e2e/_captures/team_invitations/invite_created_and_skipped.json`) is
+> `{"created": [...], "skipped": [...], "undelivered": []}`.
+
 `skipped` = already an active member, already has a pending invite, or repeated within the same request. It is
-**not an error**. Tell the user, e.g. "Invited 1. Skipped 1 (already a member or already invited)." Show the
+**not an error**. `undelivered` = the invitation **was created**, but its email failed to send. Emails go out only
+after the invitations are committed, and one failed address never fails the batch. Show it, e.g. "We couldn't email
+x@y.com. Check the address." (A re-send action arrives with the Team page.) Usually `[]`. Non-empty
+is ❌ unit-test only (`test_one_failed_send_is_reported_and_does_not_roll_back_the_batch`). Tell the user, e.g. "Invited 1. Skipped 1 (already a member or already invited)." Show the
 per-email lists. Don't show a generic success when everything was skipped.
 
 ## 4. Errors
@@ -48,7 +55,7 @@ per-email lists. Don't show a generic success when everything was skipped.
 | 422 | see below (`invite_validation_error.json`) | bad email, disallowed role, 0 or >20 rows. `field_errors[].field` is `invites.{row}.{email\|role}`, so highlight that row |
 | 403 | `{"error": {"code": "FORBIDDEN", "message": "You don't have permission to do that.", "field_errors": []}}` | caller isn't a founder (`invite_by_mentor_forbidden.json`). Hide **+ Invite** for non-founders |
 | 429 | `code: "INVITE_LIMIT_REACHED"`, `message: "You've sent a lot of invitations today. Try again tomorrow."` | more than **50 invitations per workspace per rolling 24h** (onboarding + "+ Invite" combined). Show the message and keep the form. ❌ unit test only (`test_daily_invite_cap_per_workspace`) |
-| 429 | the app's standard rate-limit response | more than **10 requests/minute** from one user on this route. ❌ unit test only (`test_route_is_rate_limited_per_user`) |
+| 429 | the app's standard rate-limit response | more than **10 requests/minute** from one user on this route (also applied to `POST /onboarding/invites`, which is now capped at 20 rows too). ❌ unit test only (`test_route_is_rate_limited_per_user`) |
 
 ```json
 {

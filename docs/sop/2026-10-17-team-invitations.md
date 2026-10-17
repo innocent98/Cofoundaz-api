@@ -16,7 +16,9 @@ contained **only a raw token and no link**, so no invitee could actually accept 
 | Roles per the PRD modal; "Co-Founder" → `founder`; `investor` not invitable (422) | Matches PRD 01.6 step 5. Investors arrive via Funding | Free-form roles |
 | Email via the shared rendered-email helper, linking to the FE `/invite/{token}`; workspace/inviter names HTML-escaped | Same look as verify/reset. Names are user-entered | Raw `<code>` token |
 | **Abuse guards** (from the commit security review): `@limiter.limit("10/minute")` per user + **50 invitations / workspace / 24h** in `create_invitations` (429 `INVITE_LIMIT_REACHED`) | A founder account must not become a phishing relay signed as Cofoundaz. The cap covers onboarding too | Relying on the global 120/min limit |
-| Batch of 1 to 20 rows | Bounded fan-out per request | — |
+| Batch of 1 to 20 rows (onboarding too) + `10/minute` on `/onboarding/invites` | Bounded fan-out per request | — |
+| Cap check serialized per workspace (`SELECT … FOR UPDATE` on the startup row) | Concurrent requests could each pass the count (TOCTOU, flagged by the security review) | Redis counter (extra moving part) |
+| **Send after commit**: `create_invitations` returns an `InviteBatch` outbox, the endpoint commits, then `deliver_invitations` sends; a failed recipient goes in `undelivered` | Before this, an email could go out for an invitation that then rolled back, letting a failing batch slip past the cap (security review). Raw tokens stay out of the jobs table | Email jobs carrying raw tokens at rest |
 
 ## What's involved
 `app/api/v1/endpoints/team.py` (new), `app/schemas/team.py` (new), `app/api/v1/api.py` (mount `/team`),
@@ -26,7 +28,7 @@ contained **only a raw token and no link**, so no invitee could actually accept 
 guide `docs/fe-integration-guide-team-invitations.md`. No migration.
 
 ## Verification
-- pytest **2183 passed on a fresh DB, 97.42%** (the CI-equivalent run). black/isort/ruff/mypy clean, pylint 9.88.
+- pytest **2184 passed on a fresh DB, 97.42%** (the CI-equivalent run). black/isort/ruff/mypy clean, pylint 9.88.
 - `scripts/e2e_run.sh` **67 passed** (new invite journey; onboarding/roadmap invite journeys now use the link).
 - Live on local docker: invite → email with a working link → preview → signup → accept → mentor sees the dashboard
   restricted, mentor's own invite 403, founder notified "A new member joined your workspace".
