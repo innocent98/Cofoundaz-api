@@ -1,10 +1,12 @@
 import secrets
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import InviteEmailMismatch, NotFound, TokenInvalid
+from app.core.errors import AppError, InviteEmailMismatch, NotFound, TokenInvalid
+from app.core.logger import log
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
@@ -12,9 +14,13 @@ from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.events import event_bus
+from app.services.auth.emails import invitation_email
 from app.services.auth.sessions import hash_token
 
 _TTL = timedelta(days=14)
+# Outbound-email abuse guard: at most this many invitations per workspace per rolling 24h,
+# across both onboarding and "+ Invite" (each one sends an email we sign as Cofoundaz).
+DAILY_INVITE_CAP = 50
 
 
 def _is_active_member_email(db: Session, startup: Startup, email: str) -> bool:
@@ -31,15 +37,61 @@ def _is_active_member_email(db: Session, startup: Startup, email: str) -> bool:
     )
 
 
+@dataclass
+class InviteBatch:
+    """Result of `create_invitations`. The emails sit in `outbox` until the caller commits:
+    an email must never go out for an invitation that then rolls back (that would also let a
+    failing batch slip past the daily cap, which counts committed rows)."""
+
+    created: list[str] = field(default_factory=list)
+    skipped: list[str] = field(default_factory=list)
+    outbox: list[EmailMessage] = field(default_factory=list)
+
+    def response(self, undelivered: list[str]) -> dict[str, Any]:
+        return {"created": self.created, "skipped": self.skipped, "undelivered": undelivered}
+
+
+def deliver_invitations(batch: InviteBatch) -> list[str]:
+    """Send the batch's emails. Call only AFTER the invitations are committed. A failure for one
+    recipient is logged and reported, never raised: the invitation exists and can be re-sent."""
+    undelivered = []
+    sender = get_email_sender()
+    for msg in batch.outbox:
+        try:
+            sender.send(msg)
+        except Exception as exc:  # noqa: BLE001 - one bad address must not fail the rest
+            log.warning(f"[invites] email to {msg.to} failed: {exc}")
+            undelivered.append(msg.to)
+    return undelivered
+
+
 def create_invitations(
     db: Session, startup: Startup, inviter: User, items: list[dict]
-) -> dict[str, Any]:
-    created, skipped = [], []
+) -> InviteBatch:
+    batch = InviteBatch()
+    # Serialize invitation batches per workspace so concurrent requests can't each pass the
+    # daily-cap check below (row lock held until the caller's commit).
+    db.query(Startup.id).filter(Startup.id == startup.id).with_for_update().one()
+    sent_today = (
+        db.query(Invitation)
+        .filter(
+            Invitation.startup_id == startup.id,
+            Invitation.created_at >= datetime.now(UTC) - timedelta(days=1),
+        )
+        .count()
+    )
+    if sent_today + len(items) > DAILY_INVITE_CAP:
+        raise AppError(
+            "INVITE_LIMIT_REACHED",
+            "You've sent a lot of invitations today. Try again tomorrow.",
+            429,
+        )
     # Prod runs with autoflush=False (app/db/session.py), so a per-item DB query
     # below would not see an Invitation added earlier in this same loop. Track
     # emails already handled in this call so repeats within one request are caught
     # even without a flush.
     handled_this_call: set[str] = set()
+    inviter_name = inviter.profile.full_name if inviter.profile else None
     for item in items:
         email, role = item["email"], MembershipRole(item["role"])
         email_key = email.lower()
@@ -57,7 +109,7 @@ def create_invitations(
             or pending is not None
             or _is_active_member_email(db, startup, email)
         ):
-            skipped.append(email)
+            batch.skipped.append(email)
             continue
         handled_this_call.add(email_key)
         raw = secrets.token_urlsafe(32)
@@ -71,11 +123,13 @@ def create_invitations(
                 expires_at=datetime.now(UTC) + _TTL,
             )
         )
-        get_email_sender().send(
-            EmailMessage(
-                to=email,
-                subject=f"You're invited to join {startup.name or 'a startup'} on Cofoundaz",
-                html=f"<p>Accept your invitation — token: <code>{raw}</code></p>",
+        batch.outbox.append(
+            invitation_email(
+                email,
+                raw,
+                startup_name=startup.name,
+                inviter_name=inviter_name,
+                role=role.value,
             )
         )
         event_bus.publish(
@@ -83,9 +137,9 @@ def create_invitations(
             "workspace.member.invited",
             {"startup_id": str(startup.id), "email": email, "role": role.value},
         )
-        created.append(email)
+        batch.created.append(email)
     db.flush()
-    return {"created": created, "skipped": skipped}
+    return batch
 
 
 def preview_invitation(db: Session, token: str) -> dict[str, Any]:

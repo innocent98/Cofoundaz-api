@@ -1,0 +1,11 @@
+{
+    "data": {
+        "created": [
+            "throwaway-mentor+1792274931@example.com"
+        ],
+        "skipped": [
+            "throwaway-founder@example.com"
+        ]
+    },
+    "meta": null
+}

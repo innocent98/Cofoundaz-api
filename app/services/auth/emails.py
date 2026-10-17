@@ -1,12 +1,14 @@
-"""Rendered auth emails (verification, password reset).
+"""Rendered account emails (verification, password reset, workspace invitation).
 
 One place for the copy, branding, and link-building shared by the verification and
 password-reset flows, so neither endpoint hand-builds HTML. The clickable link points
 at the FRONTEND app (`APP_BASE_URL`, falling back to `SERVER_HOST`) at the routes the
-FE serves (`/verify-email/{token}`, `/reset-password/{token}`); the FE page reads the
+FE serves (`/verify-email/{token}`, `/reset-password/{token}`, `/invite/{token}`); the FE page reads the
 token from the URL and calls the API. The token also appears inside the link, so the
 e2e `mailbox` fixture extracts it from the URL path (see `e2e/conftest.py::_TOKEN_RE`).
 """
+
+from html import escape
 
 from app.core.config import settings
 from app.platform.email import EmailMessage
@@ -68,5 +70,40 @@ def password_reset_email(to: str, raw: str) -> EmailMessage:
             cta_label="Reset password",
             action_url=action_url,
             expiry_note="This link expires in 1 hour.",
+        ),
+    )
+
+
+_ROLE_LABELS = {
+    "founder": "Co-Founder",
+    "team_member": "Team Member",
+    "mentor": "Mentor",
+    "accountant": "Accountant",
+    "legal_advisor": "Legal Advisor",
+    "business_consultant": "Business Consultant",
+    "investor": "Investor",
+}
+
+
+def invitation_email(
+    to: str, raw: str, *, startup_name: str | None, inviter_name: str | None, role: str
+) -> EmailMessage:
+    """The workspace invitation (14-day token). Links to the FE `/invite/{token}` landing,
+    which previews the invite and lets the (signed-in, matching-email) invitee accept it."""
+    workspace = escape(startup_name or "a startup")
+    who = escape(inviter_name) if inviter_name else "A founder"
+    action_url = f"{_base_url()}/invite/{raw}"
+    return EmailMessage(
+        to=to,
+        subject=f"You're invited to join {startup_name or 'a startup'} on Cofoundaz",
+        html=_render(
+            title=f"Join {workspace} on Cofoundaz",
+            intro=(
+                f"{who} invited you to join {workspace} as "
+                f"{escape(_ROLE_LABELS.get(role, role))}."
+            ),
+            cta_label="Accept invitation",
+            action_url=action_url,
+            expiry_note="This invitation expires in 14 days.",
         ),
     )
