@@ -1,15 +1,19 @@
+import uuid
 from datetime import date
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessRecord
 from app.db.models.dashboard import DailyBriefing
 from app.db.models.enums import (
     BriefingStatus,
     CanvasType,
+    ChatMessageRole,
+    ChatMessageStatus,
     EnrichmentStatus,
     RecommendationStatus,
     RecordKind,
@@ -23,6 +27,7 @@ from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.llm_budget import metered_complete, metered_complete_json
+from app.services.ai_cofounder.prompts import build_cofounder_messages
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
@@ -424,3 +429,59 @@ def handle_journal_prompt(db: Session, job: Job) -> None:
 
 
 register_handler("ai.journal.prompt", handle_journal_prompt)
+
+
+def handle_cofounder_reply(db: Session, job: Job) -> None:
+    """Fill the assistant turn of an AI Co-Founder chat via the LLM (prose). No commit.
+
+    Idempotent: no-ops unless the assistant row is still `generating`. A chat turn has no
+    templated fallback, so over budget -> status `failed` (the FE polls and surfaces it).
+    """
+    msg = db.get(AiMessage, uuid.UUID(job.payload["message_id"]))
+    if (
+        msg is None
+        or msg.role != ChatMessageRole.assistant
+        or msg.status != ChatMessageStatus.generating
+    ):
+        return
+    conversation = db.get(AiConversation, msg.conversation_id)
+    if conversation is None:
+        return
+    startup = db.get(Startup, conversation.startup_id)
+    if startup is None:
+        return
+    # Cap history to the most recent turns so one long conversation can't amplify the
+    # LLM input cost of every subsequent reply.
+    prior = list(
+        reversed(
+            db.query(AiMessage)
+            .filter(
+                AiMessage.conversation_id == conversation.id,
+                AiMessage.id != msg.id,
+                AiMessage.status == ChatMessageStatus.ready,
+            )
+            .order_by(AiMessage.created_at.desc(), AiMessage.id.desc())
+            .limit(20)
+            .all()
+        )
+    )
+    profile = startup.profile
+    messages = build_cofounder_messages(
+        name=startup.name,
+        industry=startup.industry,
+        stage=(startup.stage.value if startup.stage else None),
+        description=startup.description,
+        goals=(list(profile.goals) if profile and profile.goals else []),
+        history=[(m.role.value, m.content) for m in prior if m.content],
+    )
+    text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        msg.status = ChatMessageStatus.failed  # over budget — no templated fallback for a chat turn
+        db.flush()
+        return
+    msg.content = text.strip()
+    msg.status = ChatMessageStatus.ready
+    db.flush()
+
+
+register_handler("ai.cofounder.reply", handle_cofounder_reply)

@@ -222,6 +222,20 @@ class BriefingStatus(enum.StrEnum):
     failed = "failed"
 
 
+class ChatMessageRole(enum.StrEnum):
+    user = "user"
+    assistant = "assistant"
+
+
+class ChatMessageStatus(enum.StrEnum):
+    # user turns are `ready` immediately; an assistant turn starts `generating`
+    # (Pattern B: the POST enqueues ai.cofounder.reply; the FE polls) and ends
+    # `ready` or `failed` (LLM error / over budget).
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
 class EnrichmentStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
