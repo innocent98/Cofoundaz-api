@@ -16,7 +16,15 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-10-12 · **Module 19 (Calendar) MERGED to `develop` via PR #119** (merge commit `6a5ab90`;
+_Last reconciled: 2026-10-17 · **python-jose → PyJWT migration MERGED** (PR #122, `bbd21f2`): pip-audit is clean with an
+**empty** ignore file. **Module 13 Legal & Compliance assigned to Victoria** (issue #124, brief PR #123 `25f71da`); its
+six brainstorming checkpoints were settled on #125 (2026-10-15) and she's now writing the spec. **Infra blockers:**
+GitHub Actions jobs aren't starting (account billing/spending limit; every job fails in ~2s with 0 steps, still true
+2026-10-17), so nothing merged since 10-12 has passed CI post-merge or been staging-verified (last green staging CD
+`2ad0698`, 2026-10-02). DNS is fixed: the stale `ns1.cloudoon.com` was dropped from the `.com` delegation, though it
+still appears in the zone's own NS records. Tally unchanged: 15 complete · 1 open (12) · 10 not started._
+
+_Previous reconcile: 2026-10-12 · **Module 19 (Calendar) MERGED to `develop` via PR #119** (merge commit `6a5ab90`;
 migration `0046_calendar`, single head; built by Victoria). Its FE guide was regenerated from 17 live e2e captures before
 merge (e2e 66/66). The repo-wide red Security gate (`python-jose` **CVE-2026-85394**, Critical, no fix) was cleared by a
 documented suppression in PR #120 (`9b6f8b9`, review date 2026-11-10); the real fix, the python-jose → PyJWT migration,
@@ -2972,9 +2980,13 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
-- [ ] **Module 13 — Legal & Compliance** — *⬜ assigned to Victoria 2026-10-14, not started* · brief `docs/handoff/module-13-legal-compliance.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 assigned to Victoria 2026-10-14 (#124); checkpoints settled 2026-10-15 (#125); spec in progress* · brief `docs/handoff/module-13-legal-compliance.md`
   - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
         Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
+        · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day
+        `relativedelta`, idempotent spawn via unique `previous_item_id`) · IP renewals = scheduler scans `renewal_on` (no
+        linked row) · today = UTC date, no re-arm on date move · NG + US-DE only, figures transcribed then **verified by
+        Adebayo before prod** · IP status stored drafting/filed/registered, expired derived · FE must send stable step keys
   - [ ] Slice 2 — Legal Advisor Requests (13.6: external `legal_advisor` role, scoped access, document versions)
   - [ ] Slice 3 — Contract Templates + AI Contract Review (13.2/13.3: LLM jobs, PDF/DOCX parsing)
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
@@ -3288,7 +3300,7 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
 - [x] ~~`pip-audit`: **10 advisories** remaining~~ — **0 as of 2026-10-12**, nothing suppressed (PyJWT migration). Historical: — `starlette` (9) + `ecdsa` 0.19.2
       (`PYSEC-2026-1325`, no fix, via `python-jose`); was 16. Nothing suppressed
       in `.github/security/pip-audit-ignores.txt`
-- [x] **Migrated `python-jose` → `PyJWT`** (2026-10-12, branch `chore/python-jose-to-pyjwt`). Removed python-jose,
+- [x] **Migrated `python-jose` → `PyJWT`** (2026-10-12, **merged PR #122 `bbd21f2`**). Removed python-jose,
       ecdsa, rsa and pyasn1; cleared **both** `CVE-2026-85394` and `PYSEC-2026-1325`, so
       `.github/security/pip-audit-ignores.txt` is empty and pip-audit is clean with no suppressions. Contract suite
       `tests/core/test_jwt_contract.py` (13 tests, committed red-first) proves pre-deploy tokens still authenticate.
@@ -3313,6 +3325,12 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
       on starlette **1.6.0** (pin `>=1.3.1,<2.0.0`), and `make scan` is clean: the only HIGH
       left in `trivy fs` is `ecdsa` CVE-2024-23342 (transitive via `python-jose`, no fixed
       version published, report-only). Verified 2026-08-29 alongside the fastapi bump
+- [ ] **GitHub Actions billing block (2026-10-14 →, still on 2026-10-17):** no job starts. Fix in GitHub Billing & plans,
+      then re-run the `develop` CI (`38643446554`) and the `CD (staging)` run for `25f71da`
+- [ ] **Staging not verified since `2ad0698` (2026-10-02):** Calendar (#119) and PyJWT (#122) have never passed the live
+      staging gate; `develop` is 261 commits / 38 merges ahead of `main`. Re-verify on staging before any prod promotion
+- [ ] DNS residual: remove `ns1.cloudoon.com` from the zone's own apex NS records (it's already out of the `.com`
+      delegation; it still serves a stale serial-`2026101001` zone)
 - [ ] **Rate limits are per-worker, not global.** slowapi uses in-memory `MemoryStorage`, so
       the real ceiling in production is `WEB_CONCURRENCY × RATE_LIMIT_PER_MINUTE`
       (measured: 4 workers × 120 = **480**, not 120). Pre-existing, not a regression, but now
