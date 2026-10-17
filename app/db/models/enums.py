@@ -42,6 +42,17 @@ class MembershipRole(enum.StrEnum):
     investor = "investor"
 
 
+# Module access sets, single-sourced so the dashboard KPI tiles can't drift from the module
+# routes they summarise (an investor must not read revenue off the dashboard when the Finance
+# route itself would 403 them).
+FINANCE_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member, MembershipRole.accountant}
+)
+MARKETING_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+
+
 class MembershipStatus(enum.StrEnum):
     active = "active"
     suspended = "suspended"

@@ -10,13 +10,14 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.db.models.activity import ActivityLog
 from app.db.models.dashboard import DailyBriefing
-from app.db.models.enums import BriefingStatus, MissionTaskStatus, RoadmapStatus
+from app.db.models.enums import BriefingStatus, MembershipRole, MissionTaskStatus, RoadmapStatus
 from app.db.models.health_score import HealthScore
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
 from app.platform.jobs import job_dispatcher
+from app.services.dashboard.kpis import kpi_metrics
 from app.services.health_score.service import get_overview, latest_completed_result
 from app.services.mission.service import get_or_generate_today, serialize_mission, streak
 
@@ -230,7 +231,9 @@ def _briefing_blocks(db: Session, startup: Startup) -> dict[str, Any]:
     }
 
 
-def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
+def get_summary(
+    db: Session, startup: Startup, user: User, *, role: MembershipRole
+) -> dict[str, Any]:
     return {
         "greeting": {
             "salutation": _salutation(datetime.now()),
@@ -244,6 +247,9 @@ def get_summary(db: Session, startup: Startup, user: User) -> dict[str, Any]:
             db,
             lambda: {
                 "tasks_done_this_week": _tasks_done_this_week(db, startup),
+                "metrics": kpi_metrics(db, startup, role),
+                # Legacy scalars, kept null: the pre-`metrics` FE renders these as an honest
+                # placeholder, so it keeps working until it moves onto `metrics`.
                 "revenue": None,
                 "runway": None,
                 "pipeline_value": None,

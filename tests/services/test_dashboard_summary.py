@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 
-from app.db.models.enums import MissionTaskStatus, RoadmapStatus, TaskEffort
+from app.db.models.enums import MembershipRole, MissionTaskStatus, RoadmapStatus, TaskEffort
 from app.db.models.mission import MissionTask
 from app.services.dashboard.service import UPCOMING_WINDOW_DAYS, get_summary
 from tests.factories import (
@@ -20,7 +20,7 @@ from tests.factories import (
 def test_summary_has_all_sections_and_greeting(db):
     owner = create_user(db)
     startup = create_startup(db, owner=owner)
-    out = get_summary(db, startup, owner)
+    out = get_summary(db, startup, owner, role=MembershipRole.founder)
     assert set(out) == {
         "greeting",
         "health",
@@ -53,7 +53,9 @@ def test_upcoming_window_and_done_exclusion(db):
         due_on=today + timedelta(days=2),
         status=RoadmapStatus.done,
     )
-    titles = [u["title"] for u in get_summary(db, startup, owner)["upcoming"]]
+    titles = [
+        u["title"] for u in get_summary(db, startup, owner, role=MembershipRole.founder)["upcoming"]
+    ]
     assert titles == ["Inside"]
     assert UPCOMING_WINDOW_DAYS == 7
 
@@ -88,7 +90,10 @@ def test_tasks_done_this_week_counts_only_recent_done(db):
         db, mission=stale_mission, status="done", completed_at=now - timedelta(days=8)
     )
 
-    assert get_summary(db, startup, owner)["kpis"]["tasks_done_this_week"] == 2
+    assert (
+        get_summary(db, startup, owner, role=MembershipRole.founder)["kpis"]["tasks_done_this_week"]
+        == 2
+    )
 
 
 def test_a_failing_section_becomes_error_marker_not_a_raise(db, monkeypatch):
@@ -99,7 +104,7 @@ def test_a_failing_section_becomes_error_marker_not_a_raise(db, monkeypatch):
         raise RuntimeError("health exploded")
 
     monkeypatch.setattr("app.services.dashboard.service.get_overview", boom)
-    out = get_summary(db, startup, owner)
+    out = get_summary(db, startup, owner, role=MembershipRole.founder)
     assert out["health"] == {"error": True}
     assert out["greeting"]["startup_name"] == startup.name  # rest still populated
 
@@ -126,7 +131,7 @@ def test_a_db_error_in_one_section_is_isolated_not_a_cascade(db, monkeypatch):
         return None  # pragma: no cover - flush always raises before this line
 
     monkeypatch.setattr("app.services.dashboard.service.latest_completed_result", bad_flush)
-    out = get_summary(db, startup, owner)
+    out = get_summary(db, startup, owner, role=MembershipRole.founder)
 
     assert out["calibration"] == {"error": True}
     # Every other section still populated -- the DB error didn't cascade.

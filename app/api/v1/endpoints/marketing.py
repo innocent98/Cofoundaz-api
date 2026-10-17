@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import ChannelKey, ContentStatus, MarketingGenerationKind, MembershipRole
+from app.db.models.enums import (
+    MARKETING_ROLES,
+    ChannelKey,
+    ContentStatus,
+    MarketingGenerationKind,
+)
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
@@ -40,7 +45,7 @@ from app.services.marketing import seo as seo_svc
 from app.services.marketing import service as svc
 
 router = APIRouter()
-_marketing = require_role(MembershipRole.founder, MembershipRole.team_member)
+_marketing = require_role(*MARKETING_ROLES)
 
 
 @router.get("", response_model=dict[str, Any])

@@ -1,7 +1,7 @@
 {
   "data": {
     "greeting": {
-      "salutation": "Good morning",
+      "salutation": "Good evening",
       "first_name": "Ada",
       "startup_name": "Cofoundaz"
     },
@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-09-30T08:32:47.220170+00:00",
+      "computed_at": "2026-10-17T20:37:53.477319+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -46,7 +46,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "e2b5bad7-2134-4954-b073-efe97d465dae",
+          "id": "ec86fcdb-ef82-4659-b5a6-7c33b761da10",
           "dimension": "legal",
           "key": "legal.incorporate",
           "title": "Complete incorporation",
@@ -57,7 +57,7 @@
           "priority": 1
         },
         {
-          "id": "2e7112fd-f52a-47f8-988e-bb9cfa3688f6",
+          "id": "e010cc67-87b5-4283-b6be-708c1bfd027a",
           "dimension": "legal",
           "key": "legal.founder_agreement",
           "title": "Sign a founders' agreement",
@@ -68,7 +68,7 @@
           "priority": 2
         },
         {
-          "id": "8f15e4ec-f5aa-446a-8469-a6e478754ba4",
+          "id": "eacdbd34-53d1-49c6-b811-dbab49ad926f",
           "dimension": "product",
           "key": "product.define_mvp",
           "title": "Define your MVP scope",
@@ -82,13 +82,13 @@
       "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
     },
     "mission": {
-      "mission_date": "2026-09-30",
+      "mission_date": "2026-10-17",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "b488cf29-93f1-4bf5-8f8b-bdfa1ae9706a",
-          "roadmap_task_id": "035ce3cb-811b-49d5-bfe7-10f5b9d737d5",
+          "id": "b98a2e62-d2c3-46a0-b4ed-11ec841eff08",
+          "roadmap_task_id": "58119cb9-49fe-448b-9483-fe5ac8a6cb4b",
           "title": "Run 10 customer interviews",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "medium",
@@ -98,8 +98,8 @@
           "reject_reason": null
         },
         {
-          "id": "0a22d112-0e9b-42c0-b798-be357a93eba7",
-          "roadmap_task_id": "1804808d-b55b-4428-9cba-ea76f0388b2c",
+          "id": "74864128-dfc6-43b1-95cd-462833770fbf",
+          "roadmap_task_id": "20a9c958-7c68-45c8-b862-085026ca0e6b",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -109,8 +109,8 @@
           "reject_reason": null
         },
         {
-          "id": "1e25e8d9-e661-4d62-9fdd-f7d9ee88aca7",
-          "roadmap_task_id": "eefedf43-21a1-4dc6-9ff8-bd715aecc842",
+          "id": "a2237c6e-a617-4ca6-b6a8-05ceb828dcc4",
+          "roadmap_task_id": "5e73da3d-dc3d-40db-b307-ab7ce3bc4127",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -124,6 +124,34 @@
     "upcoming": [],
     "kpis": {
       "tasks_done_this_week": 0,
+      "metrics": {
+        "revenue": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg"
+        },
+        "runway": {
+          "status": "no_data",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null
+        },
+        "pipeline": {
+          "status": "not_built",
+          "value_minor": null,
+          "currency": null
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d"
+        }
+      },
       "revenue": null,
       "runway": null,
       "pipeline_value": null,
