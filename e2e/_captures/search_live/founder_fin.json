@@ -1,0 +1,48 @@
+{
+    "data": {
+        "query": "fin",
+        "results": [
+            {
+                "type": "page",
+                "group": "Pages",
+                "id": "/finance",
+                "title": "Finance Hub",
+                "subtitle": null,
+                "href": "/finance"
+            },
+            {
+                "type": "page",
+                "group": "Pages",
+                "id": "/finance/runway",
+                "title": "Runway",
+                "subtitle": null,
+                "href": "/finance/runway"
+            },
+            {
+                "type": "page",
+                "group": "Pages",
+                "id": "/finance/invoices",
+                "title": "Invoices",
+                "subtitle": null,
+                "href": "/finance/invoices"
+            },
+            {
+                "type": "page",
+                "group": "Pages",
+                "id": "/finance/expenses",
+                "title": "Expenses",
+                "subtitle": null,
+                "href": "/finance/expenses"
+            },
+            {
+                "type": "page",
+                "group": "Pages",
+                "id": "/finance/budgets",
+                "title": "Budgets",
+                "subtitle": null,
+                "href": "/finance/budgets"
+            }
+        ]
+    },
+    "meta": null
+}

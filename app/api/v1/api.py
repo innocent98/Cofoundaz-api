@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     mission,
     notifications,
     roadmap,
+    search,
     team,
     validation,
 )
@@ -49,4 +50,5 @@ api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(validation.router, prefix="/validation", tags=["validation"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
+api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])

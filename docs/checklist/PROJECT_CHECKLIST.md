@@ -789,8 +789,11 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       ("Do it" → today's mission, idempotent, row-locked), `mission.empty_reason`, briefing-ready notification,
       blocks restricted to founder/TM. Migration `0048_briefing_structured`. **Fixed:** the worker never registered
       notification subscribers (job-published events were silently dropped). 2210 unit (97.47%) + 67 e2e.
-- [ ] Dashboard PRD gaps still open (see `cofoundaz/docs/checklist/dashboard-prd-gaps.md`): workspace invite,
-      global search, realtime activity, KPI snapshots/deltas/threshold alerts
+- [x] **Global ⌘K search, shipped 2026-10-17** (`GET /search`, branch `feat/global-search`; SOP
+      `docs/sop/2026-10-17-global-search.md`; guide `docs/fe-integration-guide-search.md`): pages + 15 data sources,
+      each gated by its module's roles, private chats, literal LIKE, 5/source, 60/min.
+- [ ] Dashboard PRD gaps still open (see `cofoundaz/docs/checklist/dashboard-prd-gaps.md`): realtime activity,
+      KPI snapshots/deltas/threshold alerts
 - [ ] _Deferred:_ realtime activity delivery (websocket/push) → Module 20 · widget-level
       role/grant filtering · `kpi_snapshots` table deliberately not built (nothing to persist
       yet — `daily_briefings` now exists, see above) · `_section`'s swallowed exceptions have no
