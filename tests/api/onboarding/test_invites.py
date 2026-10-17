@@ -62,7 +62,7 @@ def test_invites_create_rows_and_email(client, db, monkeypatch):
     assert msg.to == "teammate@x.com"
     # The accept flow needs the raw token in-hand — it's only ever surfaced via
     # this email, never persisted in the clear.
-    match = re.search(r"<code>(.+?)</code>", msg.html)
+    match = re.search(r"/invite/([A-Za-z0-9_\-]+)", msg.html)
     assert match is not None
     raw_token = match.group(1)
     assert raw_token and raw_token != rows[0].token_hash  # only the hash is stored

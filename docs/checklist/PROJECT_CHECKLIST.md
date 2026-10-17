@@ -1992,6 +1992,12 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
       the validation events — see SOP Follow-ups
 
+## 🟡 Module 23 — Team — *started 2026-10-17: invitations only*
+- [x] `POST /team/invitations` (founder, any time, 1 to 20 rows, PRD roles; 10/min per user + 50/workspace/day) and a real
+      `/invite/{token}` link in the invitation email (previously token-only). Branch `feat/workspace-invites`; SOP
+      `docs/sop/2026-10-17-team-invitations.md`; guide `docs/fe-integration-guide-team-invitations.md`.
+- [ ] Members list / role change / remove / resend-revoke invite, grants matrix, team tasks, comments, directory (PRD 23.1 to 23.5)
+
 ## ✅ Module 19 — Calendar — *MERGED to `develop` (PR #119, `6a5ab90`, 2026-10-12; migration `0046_calendar`)*
 
 _The planning layer: **events** of four types (milestone / meeting / deadline / task) on a
