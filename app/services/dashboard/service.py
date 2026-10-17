@@ -18,6 +18,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
 from app.platform.jobs import job_dispatcher
 from app.services.dashboard.briefing import serialize_blocks
+from app.services.dashboard.kpi_history import trend
 from app.services.dashboard.kpis import kpi_metrics
 from app.services.health_score.service import get_overview, latest_completed_result
 from app.services.mission.service import (
@@ -117,7 +118,7 @@ def _upcoming(db: Session, startup: Startup) -> list[dict[str, Any]]:
     return result
 
 
-def _tasks_done_this_week(db: Session, startup: Startup) -> int:
+def tasks_done_this_week(db: Session, startup: Startup) -> int:
     # Keyed on `MissionTask.completed_at`, not the owning Mission's `mission_date`:
     # `complete_task` (app/services/mission/service.py) is the only production path that
     # sets `status=done`, and it always sets `completed_at` atomically in the same call —
@@ -186,7 +187,7 @@ def gather_briefing_context(db: Session, startup: Startup) -> dict[str, Any]:
         "mission_total": mission_total,
         "mission_done": mission_done,
         "upcoming_count": len(_upcoming(db, startup)),
-        "tasks_done_week": _tasks_done_this_week(db, startup),
+        "tasks_done_week": tasks_done_this_week(db, startup),
         **_finance_context(db, startup),
     }
 
@@ -284,7 +285,10 @@ def get_summary(
         "kpis": _section_isolated(
             db,
             lambda: {
-                "tasks_done_this_week": _tasks_done_this_week(db, startup),
+                "tasks_done_this_week": tasks_done_this_week(db, startup),
+                "tasks_trend": trend(
+                    db, startup.id, "tasks_done_week", tasks_done_this_week(db, startup)
+                ),
                 "metrics": kpi_metrics(db, startup, role),
                 # Legacy scalars, kept null: the pre-`metrics` FE renders these as an honest
                 # placeholder, so it keeps working until it moves onto `metrics`.

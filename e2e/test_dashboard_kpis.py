@@ -133,6 +133,7 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
             "value_minor": 1_000_000,
             "currency": "NGN",
             "basis": "trailing_3mo_avg",
+            "trend": {"delta": None, "series": []},  # no nightly snapshot yet
         }
         assert m["runway"]["status"] == "ok"
         assert m["runway"]["months"] == 27.0

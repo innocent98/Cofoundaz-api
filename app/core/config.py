@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # Scheduler (Module 20 Slice 3)
     SCHEDULER_TIMEZONE: str = "UTC"  # IANA name for the 06:00 check
     MISSION_GEN_HOUR: int = 6  # local hour to pre-generate today's mission
+    KPI_SNAPSHOT_HOUR: int = 2  # local hour for the nightly kpi_snapshots capture (PRD 02.1)
     SCHEDULER_INTERVAL: int = 60  # seconds; throttle the scheduler within the worker poll
     QUARTERLY_REASSESS_DAYS: int = 90
 

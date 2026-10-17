@@ -247,6 +247,68 @@ and Marketing routes use the same constants, so the tiles can't drift from what 
   the CTA (it will be right once the hubs are wired) but don't promise "add a transaction to see
   this" in a way that a mock page contradicts.
 
+## 7a. Trend: week-over-week delta and sparkline (added with `kpi_snapshots`)
+
+Each **visible** tile (`ok`, `no_data`, `not_burning`, `out_of_cash`) now carries `trend`. `restricted`, `not_built`
+and `{"error": true}` tiles have **no** `trend` key (history would leak the value). The Tasks tile's trend is
+`kpis.tasks_trend`, next to the unchanged `kpis.tasks_done_this_week` scalar.
+
+```
+"trend": {"delta": <current minus the snapshot exactly 7 days earlier, or null>,
+          "series": [{"period": "YYYY-MM-DD", "value": n}, ...]}   // last 14 days, ascending
+```
+Live capture (`e2e/_captures/kpi_snapshots_live/summary_kpis_trend.json`, local stack). The 2026-10-16 point is
+a **synthetic** row inserted for this test; 2026-10-17 was captured by the real worker job:
+```json
+"runway": {
+    "status": "ok",
+    "months": 1.5,
+    "is_low": true,
+    "monthly_burn_minor": 2000000,
+    "cash_on_hand_minor": 3000000,
+    "currency": "NGN",
+    "trend": {
+      "delta": null,
+      "series": [
+        {"period": "2026-10-16", "value": 4.0},
+        {"period": "2026-10-17", "value": 1.5}
+      ]
+    }
+}
+```
+- Units follow the tile: revenue `value` is **minor units** (int), runway months and CTR percent are floats, tasks an int.
+- `delta` is `null` until a snapshot from exactly 7 days ago exists (a workspace's first week). Hide the delta chip
+  then, and don't show "+0".
+- Snapshots are taken nightly (02:00 scheduler time), so `series` lags today's live value by up to a day. Draw the
+  sparkline from `series`. The big number is the live value.
+- Delta chip copy: e.g. "+₦10K vs last week" / "-1.2 mo vs last week". For runway and CTR a drop is bad, for revenue
+  and tasks a rise is good. Colour it accordingly.
+
+## 7b. Threshold alerts (notification `kpi.threshold.crossed`)
+The nightly job compares each metric with its previous snapshot and sends an in-app notification **only to the
+roles that can see that metric** (finance metrics: founder/team_member/accountant; CTR: founder/team_member).
+Defaults: runway drops below **3 months**, revenue rises past **₦100K / ₦1M / ₦10M**, CTR drops below **1%**.
+Live (`notification_threshold.json`; the mentor in the same workspace received none):
+```json
+{
+  "id": "5eb58a08-e443-4269-9236-5719c5900597",
+  "type": "kpi.threshold.crossed",
+  "title": "Runway crossed 3 months: now 1.5 months",
+  "body": "",
+  "data": {
+    "title": "Runway crossed 3 months: now 1.5 months",
+    "value": 1.5,
+    "metric": "runway",
+    "audience": "finance",
+    "threshold": 3,
+    "startup_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44"
+  },
+  "read": false,
+  "created_at": "2026-10-17T22:52:37.901268+00:00"
+}
+```
+Deep-link by `data.metric`: `runway`/`revenue` → `/finance` (`/finance/runway` for runway), `campaign_ctr` → `/marketing/analytics`.
+
 ## 8. Verification
 
 | Behaviour | Verified live? | Source |
@@ -261,3 +323,8 @@ and Marketing routes use the same constants, so the tiles can't drift from what 
 | `ok` revenue with `value_minor: 0` | ❌ not live | Unit test `test_real_zero_revenue_is_ok_not_no_data` |
 | Future-dated-only transactions → `no_data` | ❌ not live | Unit test `test_future_dated_transactions_alone_are_no_data` |
 | `team_member`, `mentor`, `legal_advisor`, `business_consultant` roles | ❌ not live (investor + accountant were) | Unit tests `test_non_finance_roles_never_see_money` (parametrized) |
+| Nightly capture through the real worker scheduler | ✅ | local: `kpi_snapshots` rows after a worker restart |
+| `trend.series` on a tile | ✅ (with one synthetic prior point) | `summary_kpis_trend.json` |
+| `trend.delta` numeric | ❌ unit test only (needs a 7-day-old snapshot) | `test_trend_delta_and_series` |
+| Threshold alert to the finance audience only | ✅ | `notification_threshold.json`; mentor got 0 |
+| No `trend` on restricted tiles | ❌ unit test | `test_tiles_carry_trend_only_when_visible` |

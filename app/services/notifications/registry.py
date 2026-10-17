@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import MembershipStatus
+from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipStatus
 from app.db.models.membership import Membership
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
@@ -44,6 +44,21 @@ def _existing_members(db: Session, payload: dict) -> list[uuid.UUID]:
     # workspace.member.joined: notify everyone active EXCEPT the new joiner (payload["user_id"])
     joiner = _actor({"user_id": payload.get("user_id")})
     return _active_member_ids(db, payload["startup_id"], exclude=joiner)
+
+
+def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
+    roles = FINANCE_ROLES if payload.get("audience") == "finance" else MARKETING_ROLES
+    rows = (
+        db.query(Membership.user_id)
+        .filter(
+            Membership.startup_id == payload["startup_id"],
+            Membership.status == MembershipStatus.active,
+            Membership.role.in_(list(roles)),
+        )
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
@@ -97,6 +112,12 @@ SPECS: dict[str, NotifSpec] = {
     "finance.runway.low": _s(_all_active_members, "Your runway is running low"),
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     "dashboard.briefing.ready": _s(_all_active_members, "Your daily AI briefing is ready"),
+    # PRD 02.1 "{Metric} crossed {threshold}: now {value}"; title is composed by the job.
+    "kpi.threshold.crossed": NotifSpec(
+        _kpi_audience,
+        lambda p: p.get("title") or "A key metric crossed a threshold",
+        lambda _p: "",
+    ),
     "marketing.post.published": NotifSpec(
         _members_minus_actor,
         lambda p: f"Scheduled post published: {p.get('title', 'a post')}",

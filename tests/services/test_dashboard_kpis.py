@@ -55,6 +55,7 @@ def test_empty_workspace_reports_no_data_not_zero(db, startup):
         "value_minor": None,
         "currency": None,
         "basis": "trailing_3mo_avg",
+        "trend": {"delta": None, "series": []},  # no snapshots yet
     }
     assert m["runway"]["status"] == "no_data"
     assert m["runway"]["months"] is None
@@ -80,6 +81,7 @@ def test_burning_startup_gets_revenue_and_runway(db, startup):
         "monthly_burn_minor": 2_000_000,
         "cash_on_hand_minor": 54_000_000,
         "currency": "NGN",
+        "trend": {"delta": None, "series": []},
     }
 
 
@@ -134,6 +136,7 @@ def test_campaign_ctr_over_last_30_days(db, startup):
         "impressions": 2_000,
         "clicks": 50,
         "range": "30d",
+        "trend": {"delta": None, "series": []},
     }
 
 

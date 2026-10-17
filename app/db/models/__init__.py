@@ -22,6 +22,7 @@ from app.db.models.invitation import Invitation  # noqa: F401
 from app.db.models.invoice import Invoice  # noqa: F401
 from app.db.models.job import Job  # noqa: F401
 from app.db.models.journal import JournalEntry, JournalPrompt, MoodLog  # noqa: F401
+from app.db.models.kpi_snapshot import KpiSnapshot  # noqa: F401
 from app.db.models.learning import (  # noqa: F401
     Certificate,
     Enrollment,
