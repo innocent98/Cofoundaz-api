@@ -69,3 +69,39 @@ def test_event_stream_emits_unread_then_notification(monkeypatch):
     # The same stream also carries the workspace's live activity (PRD workspace.{id}.activity).
     assert subscribed == ["notif:s1:u1", "activity:s1"]
     assert "event: activity.created" in joined and '"summary": "Ada did X"' in joined
+
+
+def test_event_stream_closes_when_membership_is_revoked(monkeypatch):
+    """A member removed mid-stream stops receiving workspace activity (security review)."""
+    from contextlib import asynccontextmanager
+
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 0)
+    checks = []
+
+    def still_member(uid, sid):
+        checks.append(1)
+        return len(checks) < 2  # active on the first re-check, revoked on the second
+
+    monkeypatch.setattr(notif_ep, "_active_membership", still_member)
+    monkeypatch.setattr(notif_ep.settings, "SSE_HEARTBEAT_INTERVAL", 0)
+
+    class FakePubSub:
+        async def get_message(self, ignore_subscribe_messages=True, timeout=None):
+            return {"type": "message", "data": '{"event":"activity.created","item":{"id":"a"}}'}
+
+    @asynccontextmanager
+    async def fake_sub(*channels):
+        yield FakePubSub()
+
+    monkeypatch.setattr(notif_ep.realtime, "subscription", fake_sub)
+
+    class NeverDisconnects:
+        async def is_disconnected(self):
+            return False
+
+    async def collect():
+        return [f async for f in notif_ep._event_stream(NeverDisconnects(), "s1", "u1")]
+
+    frames = asyncio.run(collect())
+    assert frames[-1].startswith("event: revoked")
+    assert sum("activity.created" in f for f in frames) == 1  # nothing after revocation

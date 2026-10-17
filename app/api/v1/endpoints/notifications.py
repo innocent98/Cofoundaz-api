@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -167,8 +168,17 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
     n = await run_in_threadpool(_unread, user_id, startup_id)
     yield _sse("unread", {"unread": n})
     channels = (channel_for(startup_id, user_id), activity_channel(startup_id))
+    last_check = time.monotonic()
     async with realtime.subscription(*channels) as pubsub:
         while not await request.is_disconnected():
+            # The stream carries workspace-wide activity, so a member removed while connected
+            # must stop receiving it. Re-check on a timer (not just on idle heartbeats, which a
+            # busy stream could skip) and close the stream once the membership is gone.
+            if time.monotonic() - last_check >= settings.SSE_HEARTBEAT_INTERVAL:
+                if not await run_in_threadpool(_active_membership, user_id, startup_id):
+                    yield _sse("revoked", {"reason": "membership_inactive"})
+                    return
+                last_check = time.monotonic()
             msg = await pubsub.get_message(
                 ignore_subscribe_messages=True, timeout=settings.SSE_HEARTBEAT_INTERVAL
             )
