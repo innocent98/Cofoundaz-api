@@ -2,18 +2,89 @@
   "data": {
     "key": "money",
     "label": "Financial",
-    "score": null,
-    "band": null,
+    "score": 43,
+    "band": "needs_work",
     "signals": [
       {
+        "key": "assessment.money",
+        "label": "Kickoff assessment",
+        "value": 43.0,
+        "unit": "score",
+        "target": 100,
+        "contribution": 8.6,
+        "source": "assessment",
+        "href": "/assessment",
+        "source_ref": "assessment:bbfb4c47-8ac5-4244-9576-28c93a448e23"
+      },
+      {
         "key": "money.runway_live",
+        "label": "Runway",
         "value": 1.2,
+        "unit": "months",
+        "target": 12,
         "contribution": 0.0,
-        "source_ref": "finance:cash-flow"
+        "source": "live",
+        "status": "ok",
+        "href": "/finance/runway",
+        "source_ref": "/finance/runway"
+      },
+      {
+        "key": "money.transactions_30d",
+        "label": "Transactions tracked (30 days)",
+        "value": 2.0,
+        "unit": "count",
+        "target": 5,
+        "contribution": 0.0,
+        "source": "live",
+        "status": "ok",
+        "href": "/finance",
+        "source_ref": "/finance"
       }
     ],
-    "trend": [],
-    "recommendations": []
+    "trend": [
+      {
+        "score": 43,
+        "computed_at": "2026-10-18T01:03:38.780991+00:00"
+      }
+    ],
+    "recommendations": [
+      {
+        "id": "5ac26da3-5298-4c89-9924-370dadae4d12",
+        "dimension": "money",
+        "key": "live.money.runway_live",
+        "title": "Extend your runway",
+        "body": "Cut a cost line or bring in revenue. Twelve months of runway keeps you out of panic mode.",
+        "estimated_lift": 4,
+        "effort": "high",
+        "status": "pending",
+        "priority": 6,
+        "href": "/finance/runway"
+      },
+      {
+        "id": "efade508-06e6-44c2-9ed5-1d7ed164eb53",
+        "dimension": "money",
+        "key": "money.runway_model",
+        "title": "Build a 12-month runway model",
+        "body": "Model monthly cash in/out for 12 months so you know your runway and the month you must raise or break even.",
+        "estimated_lift": 8,
+        "effort": "medium",
+        "status": "pending",
+        "priority": 12,
+        "href": "/finance"
+      },
+      {
+        "id": "00280792-42fa-498b-aeb1-c18866122e49",
+        "dimension": "money",
+        "key": "money.pricing_experiment",
+        "title": "Run a pricing experiment",
+        "body": "Test one concrete price point with real prospects. Willingness-to-pay evidence de-risks your whole model.",
+        "estimated_lift": 6,
+        "effort": "medium",
+        "status": "pending",
+        "priority": 15,
+        "href": "/finance"
+      }
+    ]
   },
   "meta": null
 }

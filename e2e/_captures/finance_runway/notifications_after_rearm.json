@@ -2,32 +2,51 @@
   "data": {
     "notifications": [
       {
-        "id": "d6679a77-07e5-4dc1-91da-328a93cca2ad",
+        "id": "1cac1f28-e174-46c7-a6eb-af2ca296c776",
         "type": "finance.runway.low",
         "title": "Your runway is running low",
         "body": "",
         "data": {
           "currency": "NGN",
-          "startup_id": "eb5020f3-676e-4607-b303-00ecd3f784fb",
+          "startup_id": "e5f7c756-bf35-4a59-a13b-d49a0cd4b1cf",
           "monthly_burn": 57333333,
           "runway_months": null
         },
         "read": false,
-        "created_at": "2026-09-30T08:32:52.656120+00:00"
+        "created_at": "2026-10-18T01:03:39.501994+00:00"
       },
       {
-        "id": "3ffa2361-0df9-4566-b343-f9b59eb0c73f",
+        "id": "bc7bba48-e3dd-433c-b0cc-a796bb2989de",
         "type": "finance.runway.low",
         "title": "Your runway is running low",
         "body": "",
         "data": {
           "currency": "NGN",
-          "startup_id": "eb5020f3-676e-4607-b303-00ecd3f784fb",
+          "startup_id": "e5f7c756-bf35-4a59-a13b-d49a0cd4b1cf",
           "monthly_burn": 23666667,
           "runway_months": 1.2
         },
         "read": false,
-        "created_at": "2026-09-30T08:32:52.469089+00:00"
+        "created_at": "2026-10-18T01:03:39.233284+00:00"
+      },
+      {
+        "id": "2cdc43af-e14a-446c-9087-e9c6c6b8ae7b",
+        "type": "assessment.completed",
+        "title": "A startup assessment was completed",
+        "body": "",
+        "data": {
+          "startup_id": "e5f7c756-bf35-4a59-a13b-d49a0cd4b1cf",
+          "assessment_id": "bbfb4c47-8ac5-4244-9576-28c93a448e23",
+          "dimension_scores": {
+            "team": 50,
+            "legal": 0,
+            "money": 43,
+            "market": 38,
+            "product": 25
+          }
+        },
+        "read": false,
+        "created_at": "2026-10-18T01:03:38.780991+00:00"
       }
     ],
     "next_cursor": null

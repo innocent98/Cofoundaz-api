@@ -10,7 +10,7 @@ expenses, then:
   3. exercises the validation error shapes (negative, explicit null) and the auth boundary;
   4. drives the startup INTO low runway with a large outflow and asserts a `finance.runway.low`
      in-app notification appears (fire-once: a further outflow while still low does NOT add a
-     second one), then that the informational `money.runway_live` health signal tracks it;
+     second one), then that the live `money.runway_live` health signal tracks it;
   5. recovers (large inflow -> cash-positive: runway null, alert re-armed), then goes out of cash
      (runway 0.0) and asserts the alert fires AGAIN (re-arm proven live).
 
@@ -81,6 +81,37 @@ def _runway_low_notifications(c, wh) -> list[dict]:
     return [n for n in feed.json()["data"]["notifications"] if n["type"] == "finance.runway.low"]
 
 
+_LOW_ANSWERS = {
+    "product_stage": "idea",
+    "market_clarity": 3,
+    "market_research": "none",
+    "has_revenue": "no",
+    "runway_confidence": 3,
+    "incorporated": "no",
+    "team_size": "solo",
+    "team_confidence": 3,
+}
+
+
+def _complete_assessment(c: httpx.Client, wh: dict) -> None:
+    """Same low-answer walk as e2e/test_dashboard.py."""
+    aid = c.post("/api/v1/assessments", headers=wh).json()["data"]["assessment_id"]
+    while True:
+        nq = c.get(f"/api/v1/assessments/{aid}/next-question", headers=wh).json()["data"][
+            "next_question"
+        ]
+        if nq is None:
+            break
+        ans = c.post(
+            f"/api/v1/assessments/{aid}/answers",
+            headers=wh,
+            json={"question_key": nq["key"], "value": _LOW_ANSWERS[nq["key"]]},
+        )
+        assert ans.status_code == 200, ans.text
+    done = c.post(f"/api/v1/assessments/{aid}/complete", headers=wh)
+    assert done.status_code == 200, done.text
+
+
 def _runway_signals(c, wh) -> list[dict]:
     dim = c.get("/api/v1/health-score/dimensions/money", headers=wh)
     assert dim.status_code == 200, dim.text
@@ -100,6 +131,9 @@ def test_finance_runway_journey(base_url, make_verified_user, capture):
 
         me = c.get("/api/v1/auth/me", headers=auth).json()["data"]
         wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
+        # The Health Score (and so its live runway signal) exists only after the kickoff
+        # assessment.
+        _complete_assessment(c, wh)
 
         today = datetime.now(UTC).date()
         raise_date = _mid_month(today, 4)  # before the 3-month burn window, counts to cash only
@@ -290,8 +324,10 @@ def test_finance_runway_journey(base_url, make_verified_user, capture):
         sig = _runway_signals(c, wh)
         assert len(sig) == 1, sig
         assert sig[0]["value"] == 1.2
+        # A scoring live signal now; on assessment day its weight is still 0 (D-HEA-1b ramp).
         assert sig[0]["contribution"] == 0.0
-        assert sig[0]["source_ref"] == "finance:cash-flow"
+        assert sig[0]["source_ref"] == "/finance/runway"
+        assert sig[0]["target"] == 12 and sig[0]["href"] == "/finance/runway"
 
         # 5c. FIRE-ONCE: another outflow while still low must NOT add a second notification.
         _post_txn(
@@ -331,7 +367,9 @@ def test_finance_runway_journey(base_url, make_verified_user, capture):
         assert dim_pos.status_code == 200, dim_pos.text
         capture("finance_runway", "health_dimension_money_cash_positive", dim_pos)
         sig = _runway_signals(c, wh)
-        assert len(sig) == 1 and sig[0]["value"] == 0.0, sig
+        # Not burning = full marks (999), shown as status "not_burning".
+        assert len(sig) == 1 and sig[0]["value"] == 999.0, sig
+        assert sig[0]["status"] == "not_burning"
 
         # 7. Out of cash: a NGN 4,000,000 outflow -> cash below zero, burning -> low again.
         #    The alert was re-armed by the recovery, so it fires a SECOND time.

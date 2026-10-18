@@ -1,0 +1,90 @@
+{
+    "data": {
+        "key": "market",
+        "label": "Market",
+        "score": 87,
+        "band": "thriving",
+        "signals": [
+            {
+                "key": "assessment.market",
+                "label": "Kickoff assessment",
+                "value": 88.0,
+                "unit": "score",
+                "target": 100,
+                "contribution": 17.35,
+                "source": "assessment",
+                "href": "/assessment",
+                "source_ref": "assessment:2166532a-172a-48ae-8da8-28f8cd3bf5c5"
+            },
+            {
+                "key": "market.assumptions_tested",
+                "label": "Assumptions tested",
+                "value": 0.0,
+                "unit": "count",
+                "target": 2,
+                "contribution": 0.0,
+                "source": "live",
+                "status": "ok",
+                "href": "/validation/assumptions",
+                "source_ref": "/validation/assumptions"
+            },
+            {
+                "key": "market.interviews_30d",
+                "label": "Customer interviews (30 days)",
+                "value": 0.0,
+                "unit": "count",
+                "target": 3,
+                "contribution": 0.0,
+                "source": "live",
+                "status": "ok",
+                "href": "/validation/interviews",
+                "source_ref": "/validation/interviews"
+            }
+        ],
+        "trend": [
+            {
+                "score": 88,
+                "computed_at": "2026-10-17T17:20:49.697849+00:00"
+            },
+            {
+                "score": 88,
+                "computed_at": "2026-10-17T17:43:00.723622+00:00"
+            },
+            {
+                "score": 88,
+                "computed_at": "2026-10-17T17:43:51.520941+00:00"
+            },
+            {
+                "score": 87,
+                "computed_at": "2026-10-18T03:00:07.189632+00:00"
+            }
+        ],
+        "recommendations": [
+            {
+                "id": "62f06dba-1163-4e6d-90c3-4597b8acf912",
+                "dimension": "market",
+                "key": "live.market.assumptions_tested",
+                "title": "Test your riskiest assumption",
+                "body": "Pick the assumption that would sink you if wrong and run a quick experiment to validate or kill it.",
+                "estimated_lift": 5,
+                "effort": "medium",
+                "status": "pending",
+                "priority": 4,
+                "href": "/validation/assumptions"
+            },
+            {
+                "id": "742aa191-c1cf-435e-8083-65777ee9a7bf",
+                "dimension": "market",
+                "key": "live.market.interviews_30d",
+                "title": "Talk to customers this month",
+                "body": "Log a few customer interviews. Real conversations beat assumptions every time.",
+                "estimated_lift": 5,
+                "effort": "medium",
+                "status": "pending",
+                "priority": 5,
+                "href": "/validation/interviews"
+            }
+        ]
+    },
+    "meta": null
+}

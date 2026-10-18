@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "dbc8746b-1787-427a-8fec-e89cf33a7e7d",
-    "dimension": "legal",
-    "key": "legal.incorporate",
-    "title": "Complete incorporation",
-    "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
-    "estimated_lift": 9,
-    "effort": "high",
+    "id": "568da4cc-e127-40df-afce-5c2e9cf4ab01",
+    "dimension": "money",
+    "key": "live.money.transactions_30d",
+    "title": "Track your money in and out",
+    "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+    "estimated_lift": 10,
+    "effort": "low",
     "status": "accepted",
-    "priority": 1
+    "priority": 1,
+    "href": "/finance"
   },
   "meta": null
 }

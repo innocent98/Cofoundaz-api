@@ -1,0 +1,112 @@
+{
+    "data": {
+        "status": "ok",
+        "score": 92,
+        "band": "thriving",
+        "delta_7d": 2,
+        "computed_at": "2026-10-18T03:02:30.544765+00:00",
+        "config_version": 1,
+        "dimensions": [
+            {
+                "key": "team",
+                "label": "Team",
+                "score": 100,
+                "band": "thriving",
+                "trend": [
+                    88,
+                    88,
+                    100,
+                    100
+                ]
+            },
+            {
+                "key": "legal",
+                "label": "Legal",
+                "score": 74,
+                "band": "healthy",
+                "trend": [
+                    100,
+                    0,
+                    75,
+                    74
+                ]
+            },
+            {
+                "key": "money",
+                "label": "Financial",
+                "score": 99,
+                "band": "thriving",
+                "trend": [
+                    86,
+                    57,
+                    100,
+                    99
+                ]
+            },
+            {
+                "key": "market",
+                "label": "Market",
+                "score": 87,
+                "band": "thriving",
+                "trend": [
+                    88,
+                    88,
+                    88,
+                    87
+                ]
+            },
+            {
+                "key": "product",
+                "label": "Product",
+                "score": 99,
+                "band": "thriving",
+                "trend": [
+                    89,
+                    78,
+                    100,
+                    99
+                ]
+            }
+        ],
+        "top_recommendations": [
+            {
+                "id": "6a5a74c1-3b58-4de9-bb07-31c84360800f",
+                "dimension": "money",
+                "key": "live.money.transactions_30d",
+                "title": "Track your money in and out",
+                "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+                "estimated_lift": 10,
+                "effort": "low",
+                "status": "pending",
+                "priority": 1,
+                "href": "/finance"
+            },
+            {
+                "id": "50033d07-cd13-4108-a1bd-cd57f74ddfbb",
+                "dimension": "legal",
+                "key": "live.legal.signatures_complete",
+                "title": "Get your key agreements signed",
+                "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+                "estimated_lift": 10,
+                "effort": "medium",
+                "status": "pending",
+                "priority": 2,
+                "href": "/documents/signatures"
+            },
+            {
+                "id": "329b5c56-63a9-4348-8f71-24dd2f949fd5",
+                "dimension": "product",
+                "key": "live.product.roadmap_progress",
+                "title": "Close out your next roadmap tasks",
+                "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+                "estimated_lift": 5,
+                "effort": "medium",
+                "status": "pending",
+                "priority": 3,
+                "href": "/roadmap"
+            }
+        ],
+        "summary": "You're thriving for idea stage. Team is carrying you; Legal is holding you back."
+    },
+    "meta": null
+}

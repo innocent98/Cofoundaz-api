@@ -109,7 +109,25 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "",
     ),
-    "healthscore.dropped": _s(_members_minus_actor, "Your Startup Health Score dropped"),
+    # PRD 06 notifications copy (rendered copy avoids dashes).
+    "healthscore.dropped": NotifSpec(
+        _all_active_members,
+        lambda p: (
+            f"Your Health Score dropped {abs(int(p['delta_7d']))} points, worth a look"
+            if p.get("delta_7d")
+            else "Your Health Score dropped, worth a look"
+        ),
+        lambda _p: "See why",
+    ),
+    "healthscore.record": NotifSpec(
+        _all_active_members,
+        lambda p: (
+            f"New personal best: {p['score']}. Keep going."
+            if p.get("score") is not None
+            else "New personal best. Keep going."
+        ),
+        lambda _p: "",
+    ),
     "assessment.completed": _s(_members_minus_actor, "A startup assessment was completed"),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
     "mission.ready": NotifSpec(

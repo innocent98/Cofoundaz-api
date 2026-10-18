@@ -4,76 +4,94 @@
     "score": 31,
     "band": "at_risk",
     "delta_7d": 0,
-    "computed_at": "2026-09-30T08:32:54.338981+00:00",
+    "computed_at": "2026-10-18T01:03:42.138134+00:00",
     "config_version": 1,
     "dimensions": [
       {
         "key": "team",
         "label": "Team",
         "score": 50,
-        "band": "needs_work"
+        "band": "needs_work",
+        "trend": [
+          50
+        ]
       },
       {
         "key": "legal",
         "label": "Legal",
         "score": 0,
-        "band": "at_risk"
+        "band": "at_risk",
+        "trend": [
+          0
+        ]
       },
       {
         "key": "money",
         "label": "Financial",
         "score": 43,
-        "band": "needs_work"
+        "band": "needs_work",
+        "trend": [
+          43
+        ]
       },
       {
         "key": "market",
         "label": "Market",
         "score": 38,
-        "band": "at_risk"
+        "band": "at_risk",
+        "trend": [
+          38
+        ]
       },
       {
         "key": "product",
         "label": "Product",
         "score": 25,
-        "band": "at_risk"
+        "band": "at_risk",
+        "trend": [
+          25
+        ]
       }
     ],
     "top_recommendations": [
       {
-        "id": "dbc8746b-1787-427a-8fec-e89cf33a7e7d",
-        "dimension": "legal",
-        "key": "legal.incorporate",
-        "title": "Complete incorporation",
-        "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
-        "estimated_lift": 9,
-        "effort": "high",
+        "id": "568da4cc-e127-40df-afce-5c2e9cf4ab01",
+        "dimension": "money",
+        "key": "live.money.transactions_30d",
+        "title": "Track your money in and out",
+        "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+        "estimated_lift": 10,
+        "effort": "low",
         "status": "pending",
-        "priority": 1
+        "priority": 1,
+        "href": "/finance"
       },
       {
-        "id": "65ce1502-eb36-4322-b478-ee872177e2cb",
+        "id": "c5c40177-6acf-4755-835f-dee4fccf7101",
         "dimension": "legal",
-        "key": "legal.founder_agreement",
-        "title": "Sign a founders' agreement",
-        "body": "Put equity splits, vesting, and roles in writing before it is contentious. This prevents the most common founder disputes.",
-        "estimated_lift": 7,
+        "key": "live.legal.signatures_complete",
+        "title": "Get your key agreements signed",
+        "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+        "estimated_lift": 10,
         "effort": "medium",
         "status": "pending",
-        "priority": 2
+        "priority": 2,
+        "href": "/documents/signatures"
       },
       {
-        "id": "0a695edf-daa9-463a-9ddc-f554b0aeb8bf",
+        "id": "07b7d8fd-5dad-410c-ab3e-eaacb90e6daa",
         "dimension": "product",
-        "key": "product.define_mvp",
-        "title": "Define your MVP scope",
-        "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
-        "estimated_lift": 8,
+        "key": "live.product.roadmap_progress",
+        "title": "Close out your next roadmap tasks",
+        "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+        "estimated_lift": 5,
         "effort": "medium",
         "status": "pending",
-        "priority": 3
+        "priority": 3,
+        "href": "/roadmap"
       }
     ],
-    "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
+    "summary": "You're at risk for idea stage. Team is carrying you; Legal is holding you back."
   },
   "meta": null
 }

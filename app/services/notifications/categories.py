@@ -27,6 +27,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "mission.completed": "roadmap_missions",
     "mission.streak.milestone": "roadmap_missions",
     "healthscore.dropped": "health_assessment",
+    "healthscore.record": "health_assessment",
     "assessment.completed": "health_assessment",
     "workspace.member.joined": "team",
     "mission.ready": "roadmap_missions",
