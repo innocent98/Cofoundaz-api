@@ -734,6 +734,13 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
+## ✅ Module 04 — Today's Mission: PRD completion (2026-10-18, branch `feat/mission-prd`)
+- [x] Delivery time drives per-workspace generation + `mission.ready` (PRD copy, first-task body, not on rest days)
+- [x] `GET /missions/upcoming` (7-day projection) + `PUT /missions/upcoming/order` (`mission_rank`, migration 0050)
+- [x] `GET /missions/completed` (cursor log); history `current_streak`/`best_streak`; rest days don't break streaks
+- [x] Task `milestone` chip; today `empty_reason` + `assigned_to_me`; streak-milestone PRD copy
+- SOP `docs/sop/2026-10-18-mission-prd.md` · guide `docs/fe-integration-guide-mission-prd.md`
+
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
 _The founder's home screen: `GET /dashboard/summary` (9-section aggregation of Modules 04/05/06/07)

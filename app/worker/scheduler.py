@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
@@ -11,6 +11,7 @@ from app.core.logger import log
 from app.db.models.assessment import Assessment
 from app.db.models.enums import AssessmentStatus, MembershipStatus, RoadmapStatus
 from app.db.models.membership import Membership
+from app.db.models.mission import MissionSettings
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
@@ -66,9 +67,9 @@ def _active_startup_ids(db: Session) -> list[Any]:
 
 
 def _due_missions(db: Session, now: datetime) -> list[Due]:
+    """Once per workspace per local day, at that workspace's own `delivery_time` (PRD 04.5;
+    `MISSION_GEN_HOUR`:00 when it has no settings row)."""
     local = _local(now)
-    if local.hour < settings.MISSION_GEN_HOUR:
-        return []
     period = local.date().isoformat()
     claimed = {
         r[0]
@@ -76,10 +77,15 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
         .filter(ScheduledRun.task_key == "mission.generate", ScheduledRun.period_key == period)
         .all()
     }
+    delivery = dict(
+        db.query(MissionSettings.startup_id, MissionSettings.delivery_time).tuples().all()
+    )
+    default = time(settings.MISSION_GEN_HOUR, 0)
+    now_t = local.time()
     return [
         Due("mission.generate", str(sid), period, SCHED_MISSION, sid, {"startup_id": str(sid)})
         for sid in _active_startup_ids(db)
-        if str(sid) not in claimed
+        if str(sid) not in claimed and now_t >= delivery.get(sid, default)
     ]
 
 

@@ -56,7 +56,8 @@ def test_overview_counts(db):
             title="This week",
             channel=ChannelKey.email,
             status=ContentStatus.scheduled,
-            scheduled_at=datetime.now(UTC) + timedelta(days=1),
+            # Minutes ahead, not a day: "+1 day" lands in NEXT week when run on a Sunday.
+            scheduled_at=datetime.now(UTC) + timedelta(minutes=5),
         ),
     )
     ov = svc.overview(db, startup_id=s.id)

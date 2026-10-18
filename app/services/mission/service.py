@@ -56,6 +56,9 @@ def _candidate_tasks(db: Session, roadmap: Roadmap) -> list[RoadmapTask]:
             RoadmapTask.status != RoadmapStatus.done,
         )
         .order_by(
+            # The founder's own order (PRD 04.2 "editable order") wins; unranked tasks keep
+            # the default milestone/due-date order after the ranked ones.
+            RoadmapTask.mission_rank.asc().nullslast(),
             RoadmapMilestone.due_on.asc().nullslast(),
             RoadmapPhase.order,
             RoadmapMilestone.order,
@@ -219,29 +222,94 @@ def mission_empty_reason(db: Session, startup: Startup, mission: Mission | None)
     return "all_caught_up"
 
 
-def streak(db: Session, startup: Startup) -> int:
-    """Consecutive days ending today (or yesterday, if today isn't complete yet)
-    whose mission status is `complete`. Derived on read, not stored."""
-    today = _today()
-    todays_mission = db.query(Mission).filter_by(startup_id=startup.id, mission_date=today).first()
+def _rest_day(db: Session, startup: Startup, mission: Mission | None, day: date) -> bool:
+    """A weekends-off day with no tasks. It neither extends nor breaks a streak
+    ("Rest is a strategy too.", PRD 04.5)."""
+    if day.weekday() not in _WEEKEND_ISO_WEEKDAYS:
+        return False
+    settings = _settings(db, startup)
+    if settings is not None and settings.weekend_missions:
+        return False
+    if mission is None:
+        return True
+    return db.query(MissionTask.id).filter_by(mission_id=mission.id).first() is None
 
+
+def streak(db: Session, startup: Startup) -> int:
+    """Consecutive completed missions ending today (or yesterday, if today isn't complete
+    yet). Weekends-off rest days are skipped, not counted as breaks. Derived on read."""
+    today = _today()
+    by_date = {
+        m.mission_date: m
+        for m in db.query(Mission).filter(
+            Mission.startup_id == startup.id, Mission.mission_date <= today
+        )
+    }
+    if not by_date:
+        return 0
+    earliest = min(by_date)
+    todays = by_date.get(today)
     cursor = (
         today
-        if todays_mission is not None and todays_mission.status == MissionStatus.complete
+        if todays is not None and todays.status == MissionStatus.complete
         else today - timedelta(days=1)
     )
-
     count = 0
     while True:
-        mission = db.query(Mission).filter_by(startup_id=startup.id, mission_date=cursor).first()
-        if mission is None or mission.status != MissionStatus.complete:
+        mission = by_date.get(cursor)
+        if mission is not None and mission.status == MissionStatus.complete:
+            count += 1
+        elif not _rest_day(db, startup, mission, cursor):
             break
-        count += 1
         cursor -= timedelta(days=1)
+        if cursor < earliest:
+            break
     return count
 
 
-def serialize_task(t: MissionTask) -> dict:
+def best_streak(db: Session, startup: Startup) -> int:
+    """Longest run of completed missions ever, under the same rules as `streak`."""
+    missions = (
+        db.query(Mission)
+        .filter(Mission.startup_id == startup.id)
+        .order_by(Mission.mission_date.asc())
+        .all()
+    )
+    if not missions:
+        return 0
+    by_date = {m.mission_date: m for m in missions}
+    best = run = 0
+    day, last = missions[0].mission_date, missions[-1].mission_date
+    while day <= last:
+        mission = by_date.get(day)
+        if mission is not None and mission.status == MissionStatus.complete:
+            run += 1
+            best = max(best, run)
+        elif not _rest_day(db, startup, mission, day):
+            run = 0
+        day += timedelta(days=1)
+    return best
+
+
+def milestones_for(db: Session, roadmap_task_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict]:
+    """`{roadmap_task_id: {"id", "title", "due_on"}}` for the milestone chip on task cards."""
+    if not roadmap_task_ids:
+        return {}
+    rows = (
+        db.query(
+            RoadmapTask.id, RoadmapMilestone.id, RoadmapMilestone.title, RoadmapMilestone.due_on
+        )
+        .join(RoadmapMilestone, RoadmapTask.milestone_id == RoadmapMilestone.id)
+        .filter(RoadmapTask.id.in_(roadmap_task_ids))
+        .all()
+    )
+    return {
+        tid: {"id": str(mid), "title": title, "due_on": due.isoformat() if due else None}
+        for tid, mid, title, due in rows
+    }
+
+
+def serialize_task(t: MissionTask, milestone: dict | None = None) -> dict:
     return {
         "id": str(t.id),
         "roadmap_task_id": str(t.roadmap_task_id) if t.roadmap_task_id else None,
@@ -252,16 +320,22 @@ def serialize_task(t: MissionTask) -> dict:
         "order": t.order,
         "completed_at": t.completed_at.isoformat() if t.completed_at else None,
         "reject_reason": t.reject_reason,
+        # The roadmap milestone this task advances (null for custom tasks): PRD 04.1 chip.
+        "milestone": milestone,
     }
 
 
 def serialize_mission(db: Session, mission: Mission, streak: int) -> dict:
     tasks = db.query(MissionTask).filter_by(mission_id=mission.id).order_by(MissionTask.order).all()
+    chips = milestones_for(db, [t.roadmap_task_id for t in tasks if t.roadmap_task_id])
     return {
         "mission_date": mission.mission_date.isoformat(),
         "status": mission.status.value,
         "streak": streak,
-        "tasks": [serialize_task(t) for t in tasks],
+        "tasks": [
+            serialize_task(t, chips.get(t.roadmap_task_id) if t.roadmap_task_id else None)
+            for t in tasks
+        ],
     }
 
 
@@ -351,6 +425,8 @@ def mission_history(db: Session, startup: Startup) -> dict:
             for m in missions
         ],
         "weekly_completion_pct": _weekly_completion_pct(db, startup),
+        "current_streak": streak(db, startup),
+        "best_streak": best_streak(db, startup),
     }
 
 

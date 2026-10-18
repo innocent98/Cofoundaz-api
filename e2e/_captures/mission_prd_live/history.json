@@ -1,0 +1,22 @@
+{
+    "data": {
+        "missions": [
+            {
+                "mission_date": "2026-10-18",
+                "completed": 1,
+                "total": 1,
+                "status": "complete"
+            },
+            {
+                "mission_date": "2026-10-17",
+                "completed": 1,
+                "total": 5,
+                "status": "pending"
+            }
+        ],
+        "weekly_completion_pct": 50,
+        "current_streak": 1,
+        "best_streak": 1
+    },
+    "meta": null
+}

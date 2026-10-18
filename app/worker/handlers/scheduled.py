@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.enums import RoadmapStatus
 from app.db.models.job import Job
+from app.db.models.mission import MissionTask
 from app.db.models.roadmap import RoadmapMilestone
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
@@ -24,10 +25,22 @@ def handle_mission_generate(db: Session, job: Job) -> None:
     if startup is None:
         return
     mission = get_or_generate_today(db, startup)
-    if mission is not None:
-        event_bus.publish(
-            db, "mission.ready", {"startup_id": str(startup.id), "mission_id": str(mission.id)}
-        )
+    if mission is None:
+        return
+    first = (
+        db.query(MissionTask).filter_by(mission_id=mission.id).order_by(MissionTask.order).first()
+    )
+    if first is None:
+        return  # a weekends-off rest day (or nothing left to do): no "ready" ping
+    event_bus.publish(
+        db,
+        "mission.ready",
+        {
+            "startup_id": str(startup.id),
+            "mission_id": str(mission.id),
+            "first_task_title": first.title,
+        },
+    )
 
 
 def handle_roadmap_overdue(db: Session, job: Job) -> None:

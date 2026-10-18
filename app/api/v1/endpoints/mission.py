@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -15,13 +15,26 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.activity import write_activity
-from app.schemas.mission import MissionSettingsUpdate, MissionTaskAction, MissionTaskCreate
+from app.schemas.mission import (
+    MissionSettingsUpdate,
+    MissionTaskAction,
+    MissionTaskCreate,
+    UpcomingOrder,
+)
+from app.services.mission.planning import (
+    assigned_to,
+    completed_log,
+    set_upcoming_order,
+    upcoming,
+)
 from app.services.mission.service import (
     VALID_REJECT_REASONS,
     add_custom_task,
     complete_task,
     ensure_today_mission,
     get_or_generate_today,
+    milestones_for,
+    mission_empty_reason,
     mission_history,
     reject_task,
     reorder_task,
@@ -86,9 +99,17 @@ def get_today(
     startup = _startup(db, membership)
     m = get_or_generate_today(db, startup)
     db.commit()
+    mine = assigned_to(db, startup, user.id)
     if m is None:
-        return success_response({"status": "no_roadmap"})
-    return success_response(serialize_mission(db, m, streak(db, startup)))
+        return success_response({"status": "no_roadmap", "assigned_to_me": mine})
+    return success_response(
+        {
+            **serialize_mission(db, m, streak(db, startup)),
+            # Why the list is empty (weekend_off / all_caught_up), null with tasks (PRD 04.5).
+            "empty_reason": mission_empty_reason(db, startup, m),
+            "assigned_to_me": mine,
+        }
+    )
 
 
 @router.get("/history")
@@ -100,6 +121,42 @@ def get_history(
     # Read-only: reports existing missions newest-first; does not generate today's.
     startup = _startup(db, membership)
     return success_response(mission_history(db, startup))
+
+
+@router.get("/upcoming")
+def get_upcoming(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 04.2: the next 7 days projected from the roadmap queue (nothing is created)."""
+    return success_response(upcoming(db, _startup(db, membership)))
+
+
+@router.put("/upcoming/order")
+def put_upcoming_order(
+    payload: UpcomingOrder,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 04.2 "editable order": rank the queue; later missions draw in this order."""
+    startup = _startup(db, membership)
+    set_upcoming_order(db, startup, payload.roadmap_task_ids)
+    db.commit()
+    return success_response(upcoming(db, startup))
+
+
+@router.get("/completed")
+def get_completed(
+    cursor: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=50),
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 04.3: completed tasks, newest first."""
+    return success_response(completed_log(db, _startup(db, membership), cursor, limit))
 
 
 @router.get("/settings")
@@ -236,4 +293,9 @@ def patch_task(
             )
 
     db.commit()
-    return success_response(serialize_task(task))
+    milestone = (
+        milestones_for(db, [task.roadmap_task_id]).get(task.roadmap_task_id)
+        if task.roadmap_task_id
+        else None
+    )
+    return success_response(serialize_task(task, milestone))

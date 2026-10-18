@@ -6,6 +6,7 @@ from app.db.models.job import (  # JobStatus from app.db.models.enums if not re-
     Job,
     JobStatus,
 )
+from app.db.models.mission import MissionSettings
 from app.platform import events as events_mod
 from app.worker.handlers import scheduled
 from tests.factories import (
@@ -14,6 +15,7 @@ from tests.factories import (
     create_phase,
     create_roadmap,
     create_startup,
+    create_task,
     create_user,
 )
 
@@ -30,11 +32,30 @@ def test_mission_generate_publishes_when_a_mission_results(db, monkeypatch):
     create_membership(db, u, s)
     r = create_roadmap(db, startup=s)
     p = create_phase(db, roadmap=r)
-    create_milestone(db, phase=p)  # gives the roadmap content so a mission can generate
+    m = create_milestone(db, phase=p)
+    create_task(db, milestone=m, title="Call three customers")
+    db.add(MissionSettings(startup_id=s.id, weekend_missions=True))  # date-proof: any weekday
+    db.flush()
     scheduled.handle_mission_generate(
         db, _job("scheduled.mission.generate", {"startup_id": str(s.id)})
     )
-    assert any(e == "mission.ready" for e, _ in published)
+    ready = [p for e, p in published if e == "mission.ready"]
+    assert ready and ready[0]["first_task_title"] == "Call three customers"
+
+
+def test_mission_generate_does_not_announce_an_empty_mission(db, monkeypatch):
+    """A weekends-off rest day (or nothing left to do) produces an empty mission: no ping."""
+    published = []
+    monkeypatch.setattr(events_mod.event_bus, "publish", lambda d, e, p: published.append((e, p)))
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    create_membership(db, u, s)
+    r = create_roadmap(db, startup=s)
+    create_milestone(db, phase=create_phase(db, roadmap=r))  # no tasks at all
+    scheduled.handle_mission_generate(
+        db, _job("scheduled.mission.generate", {"startup_id": str(s.id)})
+    )
+    assert not any(e == "mission.ready" for e, _ in published)
 
 
 def test_overdue_publishes_only_if_still_overdue(db, monkeypatch):
