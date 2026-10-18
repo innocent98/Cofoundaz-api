@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "499b1f9c-d406-48b3-ae98-7b3adb652329",
+    "id": "0b28eb3d-6809-474c-9f26-a2188ce52eea",
     "date": "2026-10-18",
     "description": "Office build-out",
     "category": "Capex",
@@ -8,8 +8,8 @@
     "currency": "NGN",
     "direction": "out",
     "source": "manual",
-    "created_at": "2026-10-18T01:03:39.233284Z",
-    "updated_at": "2026-10-18T01:03:39.233284Z"
+    "created_at": "2026-10-18T03:09:30.839216Z",
+    "updated_at": "2026-10-18T03:09:30.839216Z"
   },
   "meta": null
 }

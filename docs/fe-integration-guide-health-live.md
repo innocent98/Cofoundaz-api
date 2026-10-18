@@ -122,10 +122,13 @@ Below the minimum cohort it's unchanged (e2e and live: `insufficient_data`, beca
   "percentiles": null
 }
 ```
-With ≥ 5 peers (same stage + industry) it returns `status: "ok"`, `cohort.size`, and `percentiles` for `overall` and each
-dimension: `{p25, p50, p75, you, your_percentile}`. Render a bar per row with your score against the p25 to p75 band, and
-the copy "Better than {your_percentile}% of similar startups". ❌ **Not verified live** (the local cohort is under 5);
-the shape comes from unit test `test_benchmarks_compute_real_percentiles`.
+With **at least 10 other** eligible startups (same stage, same industry case-insensitively, a verified creator, workspace at least 7
+days old) it returns `status: "ok"`, `cohort.size_at_least` (rounded down to a multiple of 5), and `percentiles` for
+`overall` and each dimension: `{p25, p50, p75, you, your_percentile}`. p25/p50/p75 are **bucketed to 5 points** for
+privacy. Render a bar per row with your score against the p25 to p75 band, and the copy "Better than {your_percentile}%
+of similar startups". ❌ **Not verified live** (the local cohort is too small); the shape comes from unit tests
+`test_benchmarks_bucketed_percentiles_from_eligible_peers` and `test_benchmarks_ignore_self_new_and_unverified_peers`.
+`min_cohort_size` is now **10**: use it in the empty-state copy.
 
 ## 5. Recommendations (PRD 06.5)
 Every recommendation now has `href`. **"Start"** = `POST /health-score/recommendations/{id}/accept` and then navigate to

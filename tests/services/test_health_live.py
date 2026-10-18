@@ -235,18 +235,46 @@ def test_history_markers_and_365_range(db):
     assert "365d" in hs.HISTORY_RANGES
 
 
-def test_benchmarks_compute_real_percentiles(db):
-    cohort = []
-    for score in (40, 50, 60, 70, 80):
-        _u, s = _assessed(db, scores=dict.fromkeys(BASE, score), days_ago=0)
-        hs.recompute_health_score(db, s, trigger="assessment_complete")
-        cohort.append(s)
-    data = hs.get_benchmarks(db, cohort[2])
-    assert data["status"] == "ok" and data["cohort"]["size"] >= 5
+def _peer(db, score, *, days_old=30, verified=True, industry="Fintech"):
+    u = create_user(db, email_verified_at=datetime.now(UTC) if verified else None)
+    s = create_startup(db, owner=u, stage=StartupStage.validation, industry=industry)
+    s.created_at = datetime.now(UTC) - timedelta(days=days_old)
+    db.add(
+        HealthScore(
+            startup_id=s.id,
+            score=score,
+            band="healthy",
+            dimension_scores=dict.fromkeys(BASE, score),
+            source="live",
+            config_version=1,
+        )
+    )
+    db.flush()
+    return s
+
+
+def test_benchmarks_bucketed_percentiles_from_eligible_peers(db):
+    _u, me = _assessed(db, industry="fintech ")  # case/whitespace-insensitive match
+    hs.recompute_health_score(db, me, trigger="assessment_complete")
+    for score in (41, 52, 58, 63, 67, 71, 74, 79, 83, 88):
+        _peer(db, score)
+    data = hs.get_benchmarks(db, me)
+    assert data["status"] == "ok"
+    assert data["cohort"]["size_at_least"] == 10
     overall = data["percentiles"]["overall"]
+    assert all(v % 5 == 0 for v in (overall["p25"], overall["p50"], overall["p75"]))
     assert overall["p25"] <= overall["p50"] <= overall["p75"]
-    assert overall["you"] == db.query(HealthScore).filter_by(startup_id=cohort[2].id).one().score
     assert set(data["percentiles"]) == {"overall", "product", "market", "money", "legal", "team"}
+
+
+def test_benchmarks_ignore_self_new_and_unverified_peers(db):
+    _u, me = _assessed(db)
+    hs.recompute_health_score(db, me, trigger="assessment_complete")
+    for score in range(9):
+        _peer(db, 50 + score)  # 9 eligible peers: one short
+    _peer(db, 60, days_old=1)  # too new
+    _peer(db, 60, verified=False)  # unverified creator
+    assert hs.get_benchmarks(db, me)["status"] == "insufficient_data"
 
 
 def test_prd_health_notification_copy():

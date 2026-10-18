@@ -17,9 +17,12 @@ from app.db.models.health_score import (
     HealthSignal,
 )
 from app.db.models.startup import Startup
+from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.health_score.config import (
+    BENCHMARK_BUCKET,
+    COHORT_MIN_AGE_DAYS,
     DIMENSION_LABELS,
     DIMENSION_WEIGHTS,
     HEALTH_CONFIG_VERSION,
@@ -524,23 +527,37 @@ def get_dimension(db: Session, startup: Startup, dim: str) -> dict:
 
 
 def _percentile(sorted_vals: list[int], p: float) -> int:
-    """Nearest-rank percentile of an ascending list."""
+    """Nearest-rank percentile, bucketed so no exact peer value is ever returned."""
     idx = max(0, min(len(sorted_vals) - 1, round(p * (len(sorted_vals) - 1))))
-    return sorted_vals[idx]
+    return _bucket(sorted_vals[idx])
+
+
+def _bucket(value: int) -> int:
+    return int(round(value / BENCHMARK_BUCKET) * BENCHMARK_BUCKET)
 
 
 def get_benchmarks(db: Session, startup: Startup) -> dict:
-    """Anonymised cohort comparison (PRD 06.4): peers sharing stage + industry with a score.
-    Below MIN_COHORT_SIZE nothing is shown, so no single startup can be reverse-identified;
-    only aggregates (p25/p50/p75) and the caller's own percentile rank are returned."""
-    cohort = {
-        "stage": startup.stage.value if startup.stage else None,
-        "industry": startup.industry,
-    }
+    """Anonymised cohort comparison (PRD 06.4). Privacy rules (security review):
+    - the cohort is OTHER startups with the same stage and (case-insensitive) industry whose
+      creator is verified and that are at least COHORT_MIN_AGE_DAYS old (so fakes can't be
+      spun up to box in one target), and it must have at least MIN_COHORT_SIZE of them;
+    - p25/p50/p75 are bucketed to BENCHMARK_BUCKET points; the size is reported rounded down
+      to a multiple of 5; the caller only learns their own percentile rank.
+    """
+    industry = (startup.industry or "").strip().lower()
+    cohort = {"stage": startup.stage.value if startup.stage else None, "industry": startup.industry}
+    cutoff = datetime.now(UTC) - timedelta(days=COHORT_MIN_AGE_DAYS)
     peers = (
         db.query(HealthScore)
         .join(Startup, Startup.id == HealthScore.startup_id)
-        .filter(Startup.stage == startup.stage, Startup.industry == startup.industry)
+        .join(User, User.id == Startup.created_by)
+        .filter(
+            Startup.id != startup.id,
+            Startup.stage == startup.stage,
+            func.lower(func.trim(Startup.industry)) == industry,
+            Startup.created_at <= cutoff,
+            User.email_verified_at.isnot(None),
+        )
         .all()
     )
     if len(peers) < MIN_COHORT_SIZE:
@@ -550,7 +567,7 @@ def get_benchmarks(db: Session, startup: Startup) -> dict:
             "min_cohort_size": MIN_COHORT_SIZE,
             "percentiles": None,
         }
-    mine = next((p for p in peers if p.startup_id == startup.id), None)
+    mine = db.query(HealthScore).filter_by(startup_id=startup.id).first()
 
     def stats(values: list[int], own: int | None) -> dict:
         vals = sorted(values)
@@ -573,7 +590,7 @@ def get_benchmarks(db: Session, startup: Startup) -> dict:
         )
     return {
         "status": "ok",
-        "cohort": {**cohort, "size": len(peers)},
+        "cohort": {**cohort, "size_at_least": len(peers) // 5 * 5},
         "min_cohort_size": MIN_COHORT_SIZE,
         "percentiles": percentiles,
     }

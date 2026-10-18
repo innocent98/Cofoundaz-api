@@ -14,7 +14,7 @@
         "contribution": 8.6,
         "source": "assessment",
         "href": "/assessment",
-        "source_ref": "assessment:bbfb4c47-8ac5-4244-9576-28c93a448e23"
+        "source_ref": "assessment:b6ea7f1e-b3d7-4aee-a77f-0e6e053b8ab4"
       },
       {
         "key": "money.runway_live",
@@ -44,12 +44,12 @@
     "trend": [
       {
         "score": 43,
-        "computed_at": "2026-10-18T01:03:38.780991+00:00"
+        "computed_at": "2026-10-18T03:09:30.461787+00:00"
       }
     ],
     "recommendations": [
       {
-        "id": "5ac26da3-5298-4c89-9924-370dadae4d12",
+        "id": "6a70f2b9-c863-45b3-a340-7cc3ecf0c248",
         "dimension": "money",
         "key": "live.money.runway_live",
         "title": "Extend your runway",
@@ -61,7 +61,7 @@
         "href": "/finance/runway"
       },
       {
-        "id": "efade508-06e6-44c2-9ed5-1d7ed164eb53",
+        "id": "4ef7130a-dbd3-459d-851b-01c6697faac0",
         "dimension": "money",
         "key": "money.runway_model",
         "title": "Build a 12-month runway model",
@@ -73,7 +73,7 @@
         "href": "/finance"
       },
       {
-        "id": "00280792-42fa-498b-aeb1-c18866122e49",
+        "id": "28546eab-8ac3-4e1c-98b8-fa82bd8a39f5",
         "dimension": "money",
         "key": "money.pricing_experiment",
         "title": "Run a pricing experiment",

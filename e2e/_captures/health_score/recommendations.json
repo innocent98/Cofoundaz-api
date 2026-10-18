@@ -1,7 +1,7 @@
 {
   "data": [
     {
-      "id": "568da4cc-e127-40df-afce-5c2e9cf4ab01",
+      "id": "4dd058c7-91a4-4a72-8abc-da832d4272a8",
       "dimension": "money",
       "key": "live.money.transactions_30d",
       "title": "Track your money in and out",
@@ -13,7 +13,7 @@
       "href": "/finance"
     },
     {
-      "id": "c5c40177-6acf-4755-835f-dee4fccf7101",
+      "id": "e7004699-1cd2-48c4-9f34-8a356051764d",
       "dimension": "legal",
       "key": "live.legal.signatures_complete",
       "title": "Get your key agreements signed",
@@ -25,7 +25,7 @@
       "href": "/documents/signatures"
     },
     {
-      "id": "07b7d8fd-5dad-410c-ab3e-eaacb90e6daa",
+      "id": "13ac1f89-88d6-4af1-a5a4-101788dfb0de",
       "dimension": "product",
       "key": "live.product.roadmap_progress",
       "title": "Close out your next roadmap tasks",
@@ -37,7 +37,7 @@
       "href": "/roadmap"
     },
     {
-      "id": "daad38e6-f6e9-4e5c-abe0-7e225fce7ce9",
+      "id": "fd5536c7-17cd-43f2-812a-fbe44491b18c",
       "dimension": "product",
       "key": "live.product.mission_completion",
       "title": "Complete your daily missions",
@@ -49,7 +49,7 @@
       "href": "/mission"
     },
     {
-      "id": "8c1be088-c22e-42d0-9664-73f903e7cf4c",
+      "id": "0ff90063-47a2-4898-b61f-e71280354085",
       "dimension": "market",
       "key": "live.market.assumptions_tested",
       "title": "Test your riskiest assumption",
@@ -61,7 +61,7 @@
       "href": "/validation/assumptions"
     },
     {
-      "id": "b38762ed-1517-484c-8c0c-cdeba126e2a7",
+      "id": "7e9f8403-7356-44ae-9c29-e3c9237ed882",
       "dimension": "market",
       "key": "live.market.interviews_30d",
       "title": "Talk to customers this month",
@@ -73,7 +73,7 @@
       "href": "/validation/interviews"
     },
     {
-      "id": "df946453-41c9-4104-a4df-1a2803b1e04a",
+      "id": "b0e6c3ba-0465-466a-9b69-c7040e793a6e",
       "dimension": "legal",
       "key": "legal.incorporate",
       "title": "Complete incorporation",
@@ -85,7 +85,7 @@
       "href": "/documents"
     },
     {
-      "id": "0fa877b4-1609-4908-be8e-2809beaf6382",
+      "id": "1a98427f-56b4-44d2-aec1-9c4f8259eeed",
       "dimension": "legal",
       "key": "legal.founder_agreement",
       "title": "Sign a founders' agreement",
@@ -97,7 +97,7 @@
       "href": "/documents"
     },
     {
-      "id": "3ccecb67-ecc9-4e9b-95c3-e9e5f8b3412a",
+      "id": "d1c73aa1-3a4a-404e-bc24-ebed021caf1b",
       "dimension": "product",
       "key": "product.define_mvp",
       "title": "Define your MVP scope",
@@ -109,7 +109,7 @@
       "href": "/roadmap"
     },
     {
-      "id": "7408566b-bd75-49be-bbc1-9af29c4fc7fb",
+      "id": "afe17a68-8655-43c3-843b-843a06fca00c",
       "dimension": "product",
       "key": "product.user_feedback_loop",
       "title": "Set up a user feedback loop",
@@ -121,7 +121,7 @@
       "href": "/roadmap"
     },
     {
-      "id": "5a2b60cb-3753-47a5-9e18-6237d7eddde6",
+      "id": "d8608909-b79a-4072-b4e3-f0c9cacf8af0",
       "dimension": "market",
       "key": "market.icp_definition",
       "title": "Write a one-page ICP",
@@ -133,7 +133,7 @@
       "href": "/validation"
     },
     {
-      "id": "75cd0443-ae8d-4513-ad03-eb746f99c6be",
+      "id": "2990ed9f-49f3-4b21-945f-363cee549402",
       "dimension": "money",
       "key": "money.runway_model",
       "title": "Build a 12-month runway model",
@@ -145,7 +145,7 @@
       "href": "/finance"
     },
     {
-      "id": "2e192ce5-81cb-40aa-9cba-78c125f96f32",
+      "id": "d09080dc-f76f-417d-b63d-9c3294bc1bd3",
       "dimension": "market",
       "key": "market.competitor_map",
       "title": "Map your top 5 competitors",
@@ -157,7 +157,7 @@
       "href": "/validation"
     },
     {
-      "id": "7b9be697-6b6d-4ffb-88cc-91938ea911e1",
+      "id": "09145485-1cbe-4c7a-b6d7-562620dc5f50",
       "dimension": "team",
       "key": "team.roles_clarity",
       "title": "Clarify founder roles & equity",
@@ -169,7 +169,7 @@
       "href": "/team"
     },
     {
-      "id": "e782fb7e-3615-4650-bd7f-f580c58f6330",
+      "id": "2bdb847d-9369-4a77-8b85-b6d9a6abfc36",
       "dimension": "money",
       "key": "money.pricing_experiment",
       "title": "Run a pricing experiment",

@@ -22,7 +22,7 @@ and benchmarks were a stub that never computed percentiles.
 | AI rec rewrite enqueued only when new recs appear or on assessment | Live recomputes would otherwise spend LLM tokens on every change | Enqueue every recompute |
 | Triggers: events (throttled 15 min) · finance writes (forced, immediate) · stale-on-read (>15 min) · nightly | PRD cadence; money writes must show instantly | Polling |
 | History point only when the score/dimensions change (assessment always) | No flat-line spam from frequent recomputes | — |
-| Benchmarks: p25/p50/p75 + own percentile, only with ≥5 peers | Real comparison, no reverse identification | The old always-`insufficient_data` stub |
+| Benchmarks: bucketed p25/p50/p75 + own percentile, only with ≥10 OTHER verified, ≥7-day-old peers; case-insensitive industry; size rounded | Real comparison without reverse identification (hardened after the commit security review: fake-cohort attack) | The old always-`insufficient_data` stub; exact values from 5 peers |
 
 ## Bugs fixed along the way
 - Stale-on-read refresh was **rolled back** (identity-check commit). Now always commits. Regression-tested.

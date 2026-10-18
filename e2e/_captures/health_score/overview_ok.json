@@ -4,7 +4,7 @@
     "score": 31,
     "band": "at_risk",
     "delta_7d": 0,
-    "computed_at": "2026-10-18T01:03:42.138134+00:00",
+    "computed_at": "2026-10-18T03:09:33.678649+00:00",
     "config_version": 1,
     "dimensions": [
       {
@@ -55,7 +55,7 @@
     ],
     "top_recommendations": [
       {
-        "id": "568da4cc-e127-40df-afce-5c2e9cf4ab01",
+        "id": "4dd058c7-91a4-4a72-8abc-da832d4272a8",
         "dimension": "money",
         "key": "live.money.transactions_30d",
         "title": "Track your money in and out",
@@ -67,7 +67,7 @@
         "href": "/finance"
       },
       {
-        "id": "c5c40177-6acf-4755-835f-dee4fccf7101",
+        "id": "e7004699-1cd2-48c4-9f34-8a356051764d",
         "dimension": "legal",
         "key": "live.legal.signatures_complete",
         "title": "Get your key agreements signed",
@@ -79,7 +79,7 @@
         "href": "/documents/signatures"
       },
       {
-        "id": "07b7d8fd-5dad-410c-ab3e-eaacb90e6daa",
+        "id": "13ac1f89-88d6-4af1-a5a4-101788dfb0de",
         "dimension": "product",
         "key": "live.product.roadmap_progress",
         "title": "Close out your next roadmap tasks",
