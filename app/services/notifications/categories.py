@@ -30,8 +30,10 @@ EVENT_CATEGORY: dict[str, str] = {
     "healthscore.record": "health_assessment",
     "assessment.completed": "health_assessment",
     "workspace.member.joined": "team",
+    "team.comment.mentioned": "team",
     "mission.ready": "roadmap_missions",
     "roadmap.milestone.overdue": "roadmap_missions",
+    "roadmap.milestone.due_soon": "roadmap_missions",
     "assessment.quarterly.due": "health_assessment",
 }
 

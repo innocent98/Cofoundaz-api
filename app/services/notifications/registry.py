@@ -135,7 +135,21 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "Your mission for today is ready",
         lambda p: p.get("first_task_title") or "",
     ),
-    "roadmap.milestone.overdue": _s(_all_active_members, "A roadmap milestone is overdue"),
+    # PRD 05 notifications copy (no dashes in rendered copy).
+    "roadmap.milestone.overdue": NotifSpec(
+        _all_active_members,
+        lambda _p: "Milestone overdue, I've drafted a re-plan for your review",
+        lambda _p: "Review re-plan",
+    ),
+    "roadmap.milestone.due_soon": NotifSpec(
+        _all_active_members,
+        lambda p: (
+            f"Milestone due soon: {p['title']}, {p.get('relative', 'soon')}"
+            if p.get("title")
+            else "A milestone is due soon"
+        ),
+        lambda _p: "",
+    ),
     "assessment.quarterly.due": _s(
         _all_active_members, "Time for your quarterly startup assessment"
     ),
@@ -144,6 +158,12 @@ SPECS: dict[str, NotifSpec] = {
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     "dashboard.briefing.ready": _s(_all_active_members, "Your daily AI briefing is ready"),
     # PRD 02.1 "{Metric} crossed {threshold}: now {value}"; title is composed by the job.
+    # PRD 23 notifications copy: only the mentioned member is notified.
+    "team.comment.mentioned": NotifSpec(
+        lambda _db, p: [uuid.UUID(str(p["user_id"]))] if p.get("user_id") else [],
+        lambda p: f'You were mentioned by {p.get("author_name") or "a teammate"}: "{p.get("snippet", "")}"',
+        lambda p: p.get("entity_title") or "",
+    ),
     "kpi.threshold.crossed": NotifSpec(
         _kpi_audience,
         lambda p: p.get("title") or "A key metric crossed a threshold",

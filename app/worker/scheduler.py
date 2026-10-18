@@ -19,6 +19,8 @@ from app.platform.jobs import job_dispatcher
 
 SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
+SCHED_DUE_SOON = "scheduled.roadmap.due_soon"
+DUE_SOON_DAYS = 2
 SCHED_QUARTERLY = "scheduled.assessment.quarterly"
 SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
@@ -162,6 +164,41 @@ def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_milestones_soon(db: Session, now: datetime) -> list[Due]:
+    """PRD 05 "Milestone due soon": once per milestone, when it is due within DUE_SOON_DAYS."""
+    today = _local(now).date()
+    already_claimed = exists().where(
+        ScheduledRun.task_key == "roadmap.due_soon",
+        ScheduledRun.period_key == "once",
+        ScheduledRun.scope_key == cast(RoadmapMilestone.id, String),
+    )
+    rows = (
+        db.query(RoadmapMilestone.id, Roadmap.startup_id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .join(Roadmap, RoadmapPhase.roadmap_id == Roadmap.id)
+        .join(Startup, Roadmap.startup_id == Startup.id)
+        .filter(
+            RoadmapMilestone.due_on >= today,
+            RoadmapMilestone.due_on <= today + timedelta(days=DUE_SOON_DAYS),
+            RoadmapMilestone.status != RoadmapStatus.done,
+            Startup.deleted_at.is_(None),
+            ~already_claimed,
+        )
+        .all()
+    )
+    return [
+        Due(
+            "roadmap.due_soon",
+            str(mid),
+            "once",
+            SCHED_DUE_SOON,
+            sid,
+            {"startup_id": str(sid), "milestone_id": str(mid)},
+        )
+        for mid, sid in rows
+    ]
+
+
 def _due_quarterly(db: Session, now: datetime) -> list[Due]:
     period = _quarter_key(_local(now))
     cutoff = now - timedelta(days=settings.QUARTERLY_REASSESS_DAYS)
@@ -208,6 +245,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
     due = [
         *_due_missions(db, now),
         *_due_overdue_milestones(db, now),
+        *_due_milestones_soon(db, now),
         *_due_quarterly(db, now),
         *_due_kpi_snapshots(db, now),
         *_due_health_nightly(db, now),

@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,7 @@ from app.services.dashboard.service import tasks_done_this_week
 from app.services.mission.service import get_or_generate_today
 from app.worker.runner import register_handler
 from app.worker.scheduler import (
+    SCHED_DUE_SOON,
     SCHED_HEALTH_NIGHTLY,
     SCHED_KPI_SNAPSHOT,
     SCHED_MISSION,
@@ -56,6 +58,28 @@ def handle_roadmap_overdue(db: Session, job: Job) -> None:
     )
 
 
+def _relative(due: date, today: date) -> str:
+    days = (due - today).days
+    return "today" if days <= 0 else "tomorrow" if days == 1 else f"in {days} days"
+
+
+def handle_roadmap_due_soon(db: Session, job: Job) -> None:
+    milestone = db.get(RoadmapMilestone, uuid.UUID(str(job.payload["milestone_id"])))
+    # re-check: completed or rescheduled between enqueue and run
+    if milestone is None or milestone.status == RoadmapStatus.done or milestone.due_on is None:
+        return
+    event_bus.publish(
+        db,
+        "roadmap.milestone.due_soon",
+        {
+            "startup_id": str(job.payload["startup_id"]),
+            "milestone_id": str(milestone.id),
+            "title": milestone.title,
+            "relative": _relative(milestone.due_on, date.today()),
+        },
+    )
+
+
 def handle_assessment_quarterly(db: Session, job: Job) -> None:
     event_bus.publish(
         db, "assessment.quarterly.due", {"startup_id": str(job.payload["startup_id"])}
@@ -79,6 +103,7 @@ def handle_health_nightly(db: Session, job: Job) -> None:
 
 register_handler(SCHED_MISSION, handle_mission_generate)
 register_handler(SCHED_OVERDUE, handle_roadmap_overdue)
+register_handler(SCHED_DUE_SOON, handle_roadmap_due_soon)
 register_handler(SCHED_QUARTERLY, handle_assessment_quarterly)
 register_handler(SCHED_KPI_SNAPSHOT, handle_kpi_snapshot)
 register_handler(SCHED_HEALTH_NIGHTLY, handle_health_nightly)
