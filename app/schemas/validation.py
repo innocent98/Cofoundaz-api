@@ -88,9 +88,10 @@ class PageEvent(BaseModel):
     """A visitor action on a hosted smoke-test page (public, no auth)."""
 
     kind: Literal["visit", "cta_click", "preorder_click"]
-    visitor_id: str | None = Field(default=None, max_length=64)
+    # The anonymous id the page generates once per browser; visits are counted per id.
+    visitor_id: str = Field(min_length=8, max_length=64)
 
 
 class PageSignup(BaseModel):
     email: EmailStr = Field(max_length=254)
-    visitor_id: str | None = Field(default=None, max_length=64)
+    visitor_id: str | None = Field(default=None, min_length=8, max_length=64)

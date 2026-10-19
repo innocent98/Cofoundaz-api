@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, Text, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -104,6 +104,25 @@ class SmokeTestEvent(UUIDMixin, TimestampMixin, Base):
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
     visitor_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+
+
+class SmokeTestSlug(Base):
+    """Every slug a workspace has ever claimed stays reserved to that workspace, so deleting or
+    renaming a test never lets another workspace take over its public URL (and the waitlist
+    emails of anyone still following an old link)."""
+
+    __tablename__ = "smoke_test_slugs"
+
+    slug: Mapped[str] = mapped_column(String(60), primary_key=True)
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class Interview(UUIDMixin, TimestampMixin, Base):

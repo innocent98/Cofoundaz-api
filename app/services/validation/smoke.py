@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
 from app.db.models.enums import ExperimentStatus, ExperimentType
-from app.db.models.validation import Experiment, SmokeTestEvent
+from app.db.models.validation import Experiment, SmokeTestEvent, SmokeTestSlug
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
 
@@ -62,25 +62,44 @@ def normalize_slug(raw: Any) -> str | None:
     return slug
 
 
+def _taken() -> AppError:
+    return AppError("SLUG_TAKEN", "That page address is taken. Try another.", 409)
+
+
+def _reserve(db: Session, slug: str, startup_id: uuid.UUID) -> None:
+    """Claim `slug` for this workspace for good (see SmokeTestSlug); 409 if another has it."""
+    owner = db.query(SmokeTestSlug.startup_id).filter_by(slug=slug).scalar()
+    if owner is not None:
+        if owner != startup_id:
+            raise _taken()
+        return
+    try:
+        with db.begin_nested():
+            db.add(SmokeTestSlug(slug=slug, startup_id=startup_id))
+            db.flush()
+    except IntegrityError as exc:
+        raise _taken() from exc  # another workspace claimed it a moment ago
+
+
 def apply_slug(db: Session, experiment: Experiment) -> None:
-    """Copy `config.slug` onto the unique column; 409 when another test already uses it."""
+    """Copy `config.slug` onto the unique column. 409 when another test uses it now, or another
+    workspace ever claimed it. A test can go live without a slug (numbers typed in by hand for a
+    page hosted elsewhere); it only gets a /p/{slug} page once it has one."""
     if experiment.type != ExperimentType.smoke_test:
         return
     slug = normalize_slug((experiment.config or {}).get("slug"))
-    if slug is not None:
-        taken = (
+    if slug is not None and slug != experiment.slug:
+        clash = (
             db.query(Experiment.id)
             .filter(Experiment.slug == slug, Experiment.id != experiment.id)
             .first()
         )
-        if taken is not None:
-            raise AppError("SLUG_TAKEN", "That page address is taken. Try another.", 409)
+        if clash is not None:
+            raise _taken()
+        _reserve(db, slug, experiment.startup_id)
     experiment.slug = slug
-    if experiment.status == ExperimentStatus.live:
-        if slug is None:
-            raise _slug_error("Add a page address before publishing.")
-        if experiment.published_at is None:
-            experiment.published_at = datetime.now(UTC)
+    if experiment.status == ExperimentStatus.live and experiment.published_at is None:
+        experiment.published_at = datetime.now(UTC)
 
 
 # --- public surface ---------------------------------------------------------------------------
@@ -201,18 +220,17 @@ def _counter(value: Any) -> int:
 
 
 def _distinct(db: Session, experiment_id: uuid.UUID, kind: str) -> int:
-    """People, not page loads: distinct visitor hashes plus events without one."""
-    base = db.query(SmokeTestEvent).filter(
-        SmokeTestEvent.experiment_id == experiment_id, SmokeTestEvent.kind == kind
-    )
-    hashed = (
-        base.filter(SmokeTestEvent.visitor_hash.is_not(None))
-        .with_entities(func.count(func.distinct(SmokeTestEvent.visitor_hash)))
+    """People, not page loads: distinct visitor hashes (events always carry one)."""
+    return int(
+        db.query(func.count(func.distinct(SmokeTestEvent.visitor_hash)))
+        .filter(
+            SmokeTestEvent.experiment_id == experiment_id,
+            SmokeTestEvent.kind == kind,
+            SmokeTestEvent.visitor_hash.is_not(None),
+        )
         .scalar()
         or 0
     )
-    anonymous = base.filter(SmokeTestEvent.visitor_hash.is_(None)).count()
-    return int(hashed) + anonymous
 
 
 def stats(db: Session, experiment: Experiment) -> dict[str, Any]:

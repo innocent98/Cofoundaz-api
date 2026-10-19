@@ -5,7 +5,8 @@ Revises: 0055_mission_roadmap_backfill
 Create Date: 2026-10-19
 
 Validation Hub slice (a), D-VAL-1: a smoke test is served at /p/{slug} on the app domain and
-records real visits, CTA/preorder clicks and email signups.
+records real visits, CTA/preorder clicks and email signups. smoke_test_slugs keeps every claimed
+slug reserved to its workspace so a released URL can't be taken over by another workspace.
 """
 
 import sqlalchemy as sa
@@ -61,8 +62,25 @@ def upgrade() -> None:
         postgresql_where=sa.text("kind = 'signup'"),
     )
 
+    op.create_table(
+        "smoke_test_slugs",
+        sa.Column("slug", sa.String(length=60), nullable=False),
+        sa.Column("startup_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["startup_id"], ["startups.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("slug"),
+    )
+    op.create_index("ix_smoke_test_slugs_startup_id", "smoke_test_slugs", ["startup_id"])
+
 
 def downgrade() -> None:
+    op.drop_index("ix_smoke_test_slugs_startup_id", table_name="smoke_test_slugs")
+    op.drop_table("smoke_test_slugs")
     op.drop_index("uq_smoke_signup_email", table_name="smoke_test_events")
     op.drop_index("ix_smoke_events_experiment_kind", table_name="smoke_test_events")
     op.drop_index("ix_smoke_test_events_startup_id", table_name="smoke_test_events")

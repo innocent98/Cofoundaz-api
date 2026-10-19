@@ -162,6 +162,35 @@ def test_slug_is_unique_across_workspaces_and_validated(client, db):
         assert r.status_code == 422, (bad, r.text)
 
 
+def test_a_released_slug_stays_with_its_workspace(client, db):
+    """Security review: a deleted or renamed test must not let another workspace take over its
+    public URL (and the emails of anyone still following an old link)."""
+    _u, _s, h = _member(db)
+    exp = _smoke(client, h, slug="keep-mine")
+    assert client.delete(f"{BASE}/experiments/{exp['id']}", headers=h).status_code == 200
+    _u2, _s2, h2 = _member(db)
+    r = client.post(
+        f"{BASE}/experiments",
+        json={"name": "Grab", "type": "smoke_test", "config": {"slug": "keep-mine"}},
+        headers=h2,
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "SLUG_TAKEN"
+    again = _smoke(client, h, slug="keep-mine")  # the owner can reuse it
+    assert again["slug"] == "keep-mine"
+
+
+def test_events_need_a_visitor_id(client, db):
+    _u, _s, h = _member(db)
+    _smoke(client, h, slug="needs-id")
+    assert client.post(f"{BASE}/pages/needs-id/events", json={"kind": "visit"}).status_code == 422
+    assert (
+        client.post(
+            f"{BASE}/pages/needs-id/events", json={"kind": "visit", "visitor_id": "short"}
+        ).status_code
+        == 422
+    )
+
+
 def test_public_page_shows_only_the_page_and_only_when_live(client, db):
     _u, _s, h = _member(db)
     exp = _smoke(client, h, slug="trader-pay", status="draft")
@@ -188,14 +217,14 @@ def test_public_page_shows_only_the_page_and_only_when_live(client, db):
 def test_visits_clicks_and_signups_are_captured(client, db):
     _u, s, h = _member(db)
     exp = _smoke(client, h, slug="trader-pay")
-    for visitor in ("v1", "v1", "v2", "v3"):
+    for visitor in ("visitor-1", "visitor-1", "visitor-2", "visitor-3"):
         r = client.post(
             f"{BASE}/pages/trader-pay/events", json={"kind": "visit", "visitor_id": visitor}
         )
         assert r.status_code == 201, r.text
-    client.post(f"{BASE}/pages/trader-pay/events", json={"kind": "cta_click", "visitor_id": "v2"})
+    client.post(f"{BASE}/pages/trader-pay/events", json={"kind": "cta_click", "visitor_id": "visitor-2"})
     r = client.post(
-        f"{BASE}/pages/trader-pay/signups", json={"email": "Ada@Example.com", "visitor_id": "v2"}
+        f"{BASE}/pages/trader-pay/signups", json={"email": "Ada@Example.com", "visitor_id": "visitor-2"}
     )
     assert r.status_code == 201, r.text
     assert r.json()["data"] == {"message": "You're on the list, we'll be in touch soon."}
@@ -240,13 +269,17 @@ def test_verdict_only_once_the_sample_is_big_enough(client, db, monkeypatch):
     monkeypatch.setattr(smoke, "VERDICT_MIN_VISITS", 4)
     _u, _s, h = _member(db)
     exp = _smoke(client, h, slug="verdict", target_conversion=30)
-    for v in ("a", "b", "c"):
+    for v in ("visitor-a", "visitor-b", "visitor-c"):
         client.post(f"{BASE}/pages/verdict/events", json={"kind": "visit", "visitor_id": v})
-    client.post(f"{BASE}/pages/verdict/signups", json={"email": "a@example.com", "visitor_id": "a"})
+    client.post(
+        f"{BASE}/pages/verdict/signups", json={"email": "a@example.com", "visitor_id": "visitor-a"}
+    )
     stats = client.get(f"{BASE}/smoke-tests/{exp['id']}/stats", headers=h).json()["data"]
     assert stats["verdict"] is None and stats["sample_needed"] == 4
-    client.post(f"{BASE}/pages/verdict/events", json={"kind": "visit", "visitor_id": "d"})
-    client.post(f"{BASE}/pages/verdict/signups", json={"email": "d@example.com", "visitor_id": "d"})
+    client.post(f"{BASE}/pages/verdict/events", json={"kind": "visit", "visitor_id": "visitor-d"})
+    client.post(
+        f"{BASE}/pages/verdict/signups", json={"email": "d@example.com", "visitor_id": "visitor-d"}
+    )
     stats = client.get(f"{BASE}/smoke-tests/{exp['id']}/stats", headers=h).json()["data"]
     assert stats["conversion"] == 50.0 and stats["target_conversion"] == 30
     assert stats["verdict"] == "validated"
@@ -256,9 +289,11 @@ def test_cta_click_metric_drives_conversion(client, db, monkeypatch):
     monkeypatch.setattr(smoke, "VERDICT_MIN_VISITS", 2)
     _u, _s, h = _member(db)
     exp = _smoke(client, h, slug="clicky", metric_type="cta_click", target_conversion=80)
-    for v in ("a", "b"):
+    for v in ("visitor-a", "visitor-b"):
         client.post(f"{BASE}/pages/clicky/events", json={"kind": "visit", "visitor_id": v})
-    client.post(f"{BASE}/pages/clicky/events", json={"kind": "cta_click", "visitor_id": "a"})
+    client.post(
+        f"{BASE}/pages/clicky/events", json={"kind": "cta_click", "visitor_id": "visitor-a"}
+    )
     stats = client.get(f"{BASE}/smoke-tests/{exp['id']}/stats", headers=h).json()["data"]
     assert stats["conversion"] == 50.0 and stats["verdict"] == "weak"
 

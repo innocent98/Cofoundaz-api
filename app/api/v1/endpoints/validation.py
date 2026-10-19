@@ -1,10 +1,12 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
+from app.core.errors import AppError
 from app.core.rate_limit import limiter
 from app.db.models.enums import (
     AssumptionStatus,
@@ -144,6 +146,15 @@ def update_assumption_endpoint(
 # --- experiments ---------------------------------------------------------------------------
 
 
+def _commit_slug(db: Session) -> None:
+    """Commit; two saves racing for the same slug land on the unique constraint: 409, not 500."""
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise AppError("SLUG_TAKEN", "That page address is taken. Try another.", 409) from exc
+
+
 @router.get("/experiments")
 def list_experiments_endpoint(
     type: ExperimentType | None = None,
@@ -173,7 +184,7 @@ def create_experiment_endpoint(
         metrics=body.metrics,
         assumption_ids=body.assumption_ids,
     )
-    db.commit()
+    _commit_slug(db)
     return success_response(serialize_experiment(row))
 
 
@@ -196,7 +207,7 @@ def update_experiment_endpoint(
         metrics=body.metrics,
         assumption_ids=body.assumption_ids,
     )
-    db.commit()
+    _commit_slug(db)
     return success_response(serialize_experiment(row))
 
 
