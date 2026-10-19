@@ -182,7 +182,7 @@ def patch_settings(
         if not 1 <= payload.mission_size <= 3:
             raise AppError(
                 "VALIDATION_ERROR",
-                "Mission size must be 1–3.",
+                "Mission size must be 1, 2 or 3.",
                 422,
                 field_errors=[{"field": "mission_size", "message": "Must be 1, 2, or 3."}],
             )

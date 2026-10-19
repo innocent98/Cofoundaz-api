@@ -78,7 +78,7 @@ def handle_plan_generate(db: Session, job: Job) -> None:
         startup,
         created_by_id=plan.created_by_id,
         kind=DocumentKind.business_plan,
-        title=f"{startup.name or 'Business'} — Business Plan",
+        title=f"{startup.name or 'Business'}: Business Plan",
         sections=sections,
         folder=None,
         template_key=None,

@@ -36,7 +36,7 @@ _BRIEFING_EMPTY = (
     "of your workspace."
 )
 _RISKS_EMPTY = "No open risks. I'm watching runway, deadlines, and pipeline for you."
-_OPPS_EMPTY = "Opportunities I spot — grants, quick wins, market signals — will show up here."
+_OPPS_EMPTY = "Opportunities I spot (grants, quick wins, market signals) will show up here."
 _BRIEFING_GENERATING = "Putting together your briefing…"
 
 
