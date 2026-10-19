@@ -35,7 +35,11 @@ from app.services.business.ai_fill import build_canvas_fill_messages, build_reco
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
 from app.services.business.record_defs import record_json_schema
 from app.services.business.records import create_record
-from app.services.business.service import get_or_create_canvas, validate_blocks
+from app.services.business.service import (
+    get_or_create_canvas,
+    snapshot_canvas,
+    validate_blocks,
+)
 from app.services.dashboard.ai_briefing import (
     build_dashboard_briefing_messages,
     dashboard_briefing_schema,
@@ -142,6 +146,7 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     canvas.blocks = merged
     canvas.version += 1
     db.flush()
+    snapshot_canvas(db, canvas, user_id=None, source="ai")
 
 
 register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)

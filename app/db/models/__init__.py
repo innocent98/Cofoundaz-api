@@ -4,7 +4,11 @@ from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentRes
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401
 from app.db.models.budget import Budget  # noqa: F401
-from app.db.models.business import BusinessCanvas, BusinessRecord  # noqa: F401
+from app.db.models.business import (  # noqa: F401
+    BusinessCanvas,
+    BusinessCanvasVersion,
+    BusinessRecord,
+)
 from app.db.models.calendar import CalendarEvent  # noqa: F401
 from app.db.models.comment import Comment  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401

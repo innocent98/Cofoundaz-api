@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "925ba924-ff7d-4e64-95d5-a371b8fec828",
+    "kind": "competitor",
+    "data": {
+      "name": "Paystack",
+      "map_x": null,
+      "map_y": null,
+      "price": "",
+      "strengths": [],
+      "weaknesses": [],
+      "positioning": "Payments for Africa",
+      "threat_level": "medium"
+    },
+    "position": 0,
+    "updated_at": "2026-10-19T11:08:26.421556+00:00",
+    "updated_by": {
+      "id": "e0973405-eb76-49f0-8a12-0f750fbd4e36",
+      "name": "Ada Founder"
+    }
+  },
+  "meta": null
+}

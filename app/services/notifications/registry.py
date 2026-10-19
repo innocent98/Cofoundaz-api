@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipStatus
+from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
@@ -61,6 +61,20 @@ def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Active founders only (PRD 08: the founder approves a consultant's suggestions)."""
+    rows = (
+        db.query(Membership.user_id)
+        .filter(
+            Membership.startup_id == payload["startup_id"],
+            Membership.status == MembershipStatus.active,
+            Membership.role == MembershipRole.founder,
+        )
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
@@ -90,7 +104,15 @@ SPECS: dict[str, NotifSpec] = {
     "document.signature.requested": _s(_members_minus_actor, "A document needs a signature"),
     "document.signature.signed": _s(_members_minus_actor, "A signer signed a document"),
     "document.signature.completed": _s(_members_minus_actor, "A document is fully signed"),
-    "business.suggestion.created": _s(_members_minus_actor, "A consultant suggested a change"),
+    # PRD 08 notifications copy: to the founder, CTA "Review suggestions".
+    "business.suggestion.created": NotifSpec(
+        _founders,
+        lambda p: (
+            f"{p.get('author_name') or 'Your consultant'} suggested changes to "
+            f"{p.get('artifact') or 'your Business Builder'}"
+        ),
+        lambda _p: "Review suggestions",
+    ),
     "business.suggestion.approved": _s(_members_minus_actor, "A suggestion was approved"),
     "business.suggestion.rejected": _s(_members_minus_actor, "A suggestion was rejected"),
     "business.artifact.completed": _s(
@@ -153,7 +175,10 @@ SPECS: dict[str, NotifSpec] = {
     "assessment.quarterly.due": _s(
         _all_active_members, "Time for your quarterly startup assessment"
     ),
-    "business.plan.generated": _s(_all_active_members, "Your AI business plan is ready"),
+    # PRD 08 notifications copy, CTA "Open it".
+    "business.plan.generated": _s(
+        _all_active_members, "Your AI-generated business plan is ready", "Open it"
+    ),
     "finance.runway.low": _s(_all_active_members, "Your runway is running low"),
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     "dashboard.briefing.ready": _s(_all_active_members, "Your daily AI briefing is ready"),

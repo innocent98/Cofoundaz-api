@@ -21,7 +21,14 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
-from app.schemas.business import CanvasSave, PositioningMapSave, RecordCreate, SuggestionCreate
+from app.schemas.business import (
+    CanvasRestore,
+    CanvasSave,
+    PositioningMapSave,
+    RecordCreate,
+    SuggestionCreate,
+)
+from app.services.business.export import export_canvas, export_records
 from app.services.business.positioning import (
     assemble_map,
     get_or_create_map,
@@ -39,9 +46,13 @@ from app.services.business.records import (
 )
 from app.services.business.service import (
     get_or_create_canvas,
+    get_version,
+    list_versions,
     overview,
+    restore_version,
     save_canvas,
     serialize_canvas,
+    serialize_version,
 )
 from app.services.business.suggestions import (
     approve_suggestion,
@@ -53,6 +64,8 @@ from app.services.business.suggestions import (
 
 router = APIRouter()
 _editor = require_role(MembershipRole.founder, MembershipRole.team_member)
+# D-BB-3 / PRD 08 access line: only a business consultant works in suggest mode.
+_suggester = require_role(MembershipRole.business_consultant)
 
 
 def _startup(db: Session, membership: Membership) -> Startup:
@@ -98,9 +111,62 @@ def put_canvas(
 ) -> dict[str, Any]:
     canvas_type = _parse_type(type)
     canvas = get_or_create_canvas(db, _startup(db, membership), canvas_type)
-    saved = save_canvas(db, canvas, body.blocks, body.version)
+    saved = save_canvas(db, canvas, body.blocks, body.version, user_id=user.id)
     db.commit()
     return success_response(serialize_canvas(saved))
+
+
+@router.get("/canvases/{type}/versions")
+def get_canvas_versions(
+    type: str,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    canvas = get_or_create_canvas(db, _startup(db, membership), _parse_type(type))
+    db.commit()
+    return success_response({"versions": [serialize_version(v) for v in list_versions(db, canvas)]})
+
+
+@router.get("/canvases/{type}/versions/{version}")
+def get_canvas_version(
+    type: str,
+    version: int,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    canvas = get_or_create_canvas(db, _startup(db, membership), _parse_type(type))
+    db.commit()
+    return success_response(serialize_version(get_version(db, canvas, version), with_blocks=True))
+
+
+@router.post("/canvases/{type}/versions/{version}/restore")
+def restore_canvas_version(
+    type: str,
+    version: int,
+    body: CanvasRestore,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    canvas = get_or_create_canvas(db, _startup(db, membership), _parse_type(type))
+    saved = restore_version(db, canvas, version, body.version, user.id)
+    db.commit()
+    return success_response(serialize_canvas(saved))
+
+
+@router.post("/canvases/{type}/export", status_code=status.HTTP_201_CREATED)
+def export_canvas_endpoint(
+    type: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    canvas_type = _parse_type(type)
+    doc = export_canvas(db, _startup(db, membership), canvas_type, user.id)
+    db.commit()
+    return success_response({"document_id": str(doc.id), "title": doc.title})
 
 
 @router.post("/canvases/{type}/ai-fill", status_code=status.HTTP_202_ACCEPTED)
@@ -140,7 +206,7 @@ def _parse_kind(kind: str) -> RecordKind:
 @router.post("/suggestions", status_code=status.HTTP_201_CREATED)
 def create_suggestion_endpoint(
     body: SuggestionCreate,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_suggester),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -287,7 +353,7 @@ def create_kind(
 ) -> dict[str, Any]:
     rk = _parse_kind(kind)
     startup = _startup(db, membership)
-    record = create_record(db, startup, rk, payload.data)
+    record = create_record(db, startup, rk, payload.data, user_id=user.id)
     db.commit()
     return success_response(serialize_record(record))
 
@@ -311,6 +377,19 @@ def ai_fill_kind(
     return success_response({"job_id": str(job.id), "status": job.status.value})
 
 
+@router.post("/{kind}/export", status_code=status.HTTP_201_CREATED)
+def export_kind(
+    kind: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rk = _parse_kind(kind)
+    doc = export_records(db, _startup(db, membership), rk, user.id)
+    db.commit()
+    return success_response({"document_id": str(doc.id), "title": doc.title})
+
+
 @router.put("/{kind}/{record_id}")
 def update_kind(
     kind: str,
@@ -322,7 +401,7 @@ def update_kind(
 ) -> dict[str, Any]:
     rk = _parse_kind(kind)
     record = _record(db, membership, rk, record_id)
-    update_record(db, record, payload.data)
+    update_record(db, record, payload.data, user_id=user.id)
     db.commit()
     return success_response(serialize_record(record))
 

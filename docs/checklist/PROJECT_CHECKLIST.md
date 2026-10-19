@@ -734,6 +734,17 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
+## 🔄 Module 08 — Business Builder: PRD completion (2026-10-19; gap list `cofoundaz/docs/checklist/business-builder-prd-gaps.md`, 21 rows)
+Slice (a), branch `feat/business-builder-prd-a`:
+- [x] Canvas `updated_by`/`updated_at`; version snapshots per save (cap 50, sources manual/ai/suggestion/restore), list/detail/restore (D-BB-1), migration 0052
+- [x] Export canvas/record list → Module 18 Document, 422 `NOTHING_TO_EXPORT` (D-BB-2)
+- [x] Suggestions consultant-only (D-BB-3); founder-only notification "{name} suggested changes to {artifact}" + "Review suggestions"; plan notification PRD copy
+- [x] Overview `updated_at` + Business Plan row; record `updated_by`; record `fields[].type` repr leak fixed
+- [x] Fixed the Monday-only `test_streak_broken_by_gap` (pinned "today")
+- SOP `docs/sop/2026-10-19-business-builder-prd-a.md` · guide `docs/fe-integration-guide-business-builder-prd.md`
+Slice (b) (planned): comments on canvas sections/records, per-section AI (append-only, D-BB-4), Mission & Vision "3 options", personas from validation notes, pricing AI advisor.
+Slice (c) (planned): plan options/readiness/stage progress/section regenerate/failed state; revenue → Finance runway (D-BB-5).
+
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
 - [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)
 - [x] `GET /team/members`; `/team/comments` thread (create/list/edit/delete/resolve, mentions → notification), migration 0051

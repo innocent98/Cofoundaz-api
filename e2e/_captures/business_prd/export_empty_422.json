@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOTHING_TO_EXPORT",
+    "message": "There's nothing to export yet. Add something first.",
+    "field_errors": []
+  }
+}

@@ -8,6 +8,10 @@ class CanvasSave(BaseModel):
     version: int
 
 
+class CanvasRestore(BaseModel):
+    version: int  # the canvas's CURRENT version (optimistic concurrency, as on PUT)
+
+
 class RecordCreate(BaseModel):
     data: dict = Field(default_factory=dict)
 
