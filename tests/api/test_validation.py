@@ -89,7 +89,15 @@ def test_unverified_member_is_forbidden(client, db, method, path, body):
 @pytest.mark.parametrize(("method", "path", "body"), ROUTES)
 def test_founders_and_team_members_are_allowed(client, db, role, method, path, body):
     _u, _s, h = _member(db, role=role)
-    assert _call(client, method, path, body, h).status_code in (200, 201, 202)
+    r = _call(client, method, path, body, h)
+    if path in _NEEDS_DATA:
+        # Past the role gate, an empty workspace fails the routes' own input check.
+        assert r.json()["error"]["code"] == _NEEDS_DATA[path]
+    else:
+        assert r.status_code in (200, 201, 202)
+
+
+_NEEDS_DATA = {"/synthesize": "NOTHING_TO_SYNTHESIZE", "/scripts/generate": "ASSUMPTIONS_REQUIRED"}
 
 
 def test_assumption_crud_and_evidence_count(client, db):
@@ -207,13 +215,24 @@ def test_analytics_are_members_only_and_count_responses(client, db):
     assert out["questions"][0]["counts"] == {"A": 1, "B": 0}
 
 
-def test_job_stubs_enqueue_and_return_metadata(client, db):
+def test_ai_jobs_enqueue_and_return_metadata(client, db):
     _u, _s, h = _member(db)
-    for path in ("/synthesize", "/scripts/generate"):
-        r = client.post(BASE + path, json={}, headers=h)
+    assumption = client.post(
+        f"{BASE}/assumptions", json={"statement": "They will pay", "risk": "high"}, headers=h
+    ).json()["data"]
+    client.post(
+        f"{BASE}/interviews",
+        json={"interviewee": "Funke", "held_on": "2026-10-15", "verdict": "supports"},
+        headers=h,
+    )
+    for path, body in (
+        ("/synthesize", {}),
+        ("/scripts/generate", {"assumption_ids": [assumption["id"]]}),
+    ):
+        r = client.post(BASE + path, json=body, headers=h)
         assert r.status_code == 202
-        body = r.json()["data"]
-        assert body["job_id"] and body["status"] == "queued"
+        data = r.json()["data"]
+        assert data["job_id"] and data["status"] == "queued"
 
 
 def test_the_public_response_route_carries_its_own_rate_limit():

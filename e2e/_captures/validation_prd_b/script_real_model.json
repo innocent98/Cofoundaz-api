@@ -1,0 +1,55 @@
+{
+  "data": {
+    "id": "0eb2a1c4-9eb9-4e8e-b8ed-b570977f825a",
+    "title": "How Market Payments and Recommendations Work Today",
+    "assumption_ids": [
+      "64673910-c2be-4cf4-a28a-1893ab2f5a0a",
+      "ea4eef56-8e8c-4d6e-8246-375c427446d1"
+    ],
+    "questions": [
+      {
+        "id": "bdf8ee684ac6",
+        "tip": "Let them describe their work in their own words before asking about settlement.",
+        "question": "Tell me about your role in market trading or supporting market members, and how you handle payments after a trade."
+      },
+      {
+        "id": "dd89b8b0f08e",
+        "tip": "Ask for the most recent example and clarify each step and timing.",
+        "question": "Walk me through the last trade where payment was completed, from the trade being agreed to the money being received."
+      },
+      {
+        "id": "23c7193cc7e0",
+        "tip": "Ask what caused the delay, what they did next, and what it cost them.",
+        "question": "Tell me about the last time payment took longer than you expected."
+      },
+      {
+        "id": "47e1c4809e06",
+        "tip": "Look for actions they took, including services used and money spent.",
+        "question": "What have you done in the past to receive or make payment faster?"
+      },
+      {
+        "id": "54476c715409",
+        "tip": "Ask how much they paid, why they paid it, and whether they would do it again.",
+        "question": "Tell me about the last time you paid a fee to speed up, secure, or simplify a payment."
+      },
+      {
+        "id": "38a470cb64a5",
+        "tip": "Ask them to describe a recent decision rather than their general opinion.",
+        "question": "How do you decide whether a new payment or settlement service is worth using?"
+      },
+      {
+        "id": "e159e5970cd2",
+        "tip": "Ask what led to the recommendation, how it was shared, and what happened afterward.",
+        "question": "For association leaders, tell me about the last time your association recommended a service to its members."
+      },
+      {
+        "id": "a59a62510374",
+        "tip": "Ask for a specific example and listen for concerns about trust, liability, effort, or member response.",
+        "question": "What has made it difficult for your association to recommend a payment or settlement service in the past?"
+      }
+    ],
+    "created_at": "2026-10-19T20:33:15.674752+00:00",
+    "updated_at": "2026-10-19T20:33:15.674752+00:00"
+  },
+  "meta": null
+}

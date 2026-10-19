@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ASSUMPTIONS_REQUIRED",
+    "message": "Pick at least one assumption to write a script for.",
+    "field_errors": []
+  }
+}

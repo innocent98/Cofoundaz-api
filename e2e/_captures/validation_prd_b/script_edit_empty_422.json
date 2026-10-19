@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A script needs at least one question.",
+    "field_errors": []
+  }
+}

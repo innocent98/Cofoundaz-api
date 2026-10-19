@@ -84,6 +84,17 @@ class ScriptsGenerate(BaseModel):
     assumption_ids: list[str] = Field(default_factory=list)
 
 
+class ScriptUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    # [{id?, question, tip?}]: checked in services/validation/insights.clean_questions.
+    questions: list[Any] | None = None
+    assumption_ids: list[str] | None = None
+
+
+class SynthesizeRequest(BaseModel):
+    source: Literal["interviews", "surveys", "all"] = "all"
+
+
 class PageEvent(BaseModel):
     """A visitor action on a hosted smoke-test page (public, no auth)."""
 

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_APPLIED",
+    "message": "This suggestion was already applied.",
+    "field_errors": []
+  }
+}

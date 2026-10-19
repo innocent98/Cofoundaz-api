@@ -6,11 +6,14 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.db.models.enums import AssumptionStatus
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.db.models.validation import Assumption
-from app.platform.llm import LLMMessage
+from app.platform.events import event_bus
+from app.platform.llm import LLMMessage, strip_dashes
 from app.platform.llm_budget import metered_complete_json
+from app.services.validation import insights
 from app.services.validation.smoke import METRIC_TYPES
 from app.worker.runner import register_handler
 
@@ -107,3 +110,319 @@ def handle_experiment_draft(db: Session, job: Job) -> None:
 
 
 register_handler("validation.experiment.draft", handle_experiment_draft)
+
+
+def _context_line(startup: Startup) -> str:
+    return (
+        f"Startup: {startup.name or 'an early-stage startup'}"
+        f" ({startup.industry or 'industry not set'},"
+        f" {startup.stage.value if startup.stage else 'idea'} stage)."
+    )
+
+
+# --- interview scripts (PRD 09.4) ----------------------------------------------------------------
+
+SCRIPT_MAX_QUESTIONS = 10
+PRD_TIP = "Ask about the last time it happened, not hypotheticals."
+
+_SCRIPT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"question": {"type": "string"}, "tip": {"type": "string"}},
+                "required": ["question", "tip"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["title", "questions"],
+    "additionalProperties": False,
+}
+
+
+def build_script_messages(startup: Startup, assumptions: list[Assumption]) -> list[LLMMessage]:
+    system = (
+        "You write customer discovery interview scripts in the style of The Mom Test: questions "
+        "about the customer's real past behaviour, never about the founder's idea, never leading, "
+        "never hypothetical. Each question gets a one-sentence tip for the interviewer, for "
+        f'example: "{PRD_TIP}" Plain words, no jargon, no em or en dashes.'
+    )
+    listed = "\n".join(f"- {a.statement} (risk {a.risk.value})" for a in assumptions)
+    user = (
+        f"{_context_line(startup)}\n"
+        f"Assumptions this interview should test:\n{listed}\n"
+        "Write a short title for the script and 6 to 10 open questions, in the order an "
+        "interviewer would ask them, each with its tip."
+    )
+    return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
+
+
+def handle_scripts_generate(db: Session, job: Job) -> None:
+    """Draft and save an interview script. Result statuses: ready (with script_id), gone (the
+    assumptions were deleted meanwhile), empty (the model wrote no usable question), over_budget."""
+    startup_id = job.payload["startup_id"]
+    startup = db.get(Startup, startup_id)
+    wanted = [str(x) for x in job.payload.get("assumption_ids") or []]
+    found = {
+        str(a.id): a
+        for a in db.query(Assumption).filter(
+            Assumption.startup_id == startup_id, Assumption.id.in_(wanted)
+        )
+    }
+    assumptions = [found[x] for x in wanted if x in found]
+    if startup is None or not assumptions:
+        job.result = {"status": "gone"}
+        return
+    out = metered_complete_json(
+        db,
+        startup.id,
+        build_script_messages(startup, assumptions),
+        schema=_SCRIPT_SCHEMA,
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if out is None:
+        job.result = {"status": "over_budget"}
+        return
+    drafted = [
+        {"question": str(q.get("question") or "").strip(), "tip": str(q.get("tip") or "").strip()}
+        for q in (out.get("questions") or [])
+        if isinstance(q, dict)
+    ]
+    drafted = [q for q in drafted if q["question"]][:SCRIPT_MAX_QUESTIONS]
+    if not drafted:
+        job.result = {"status": "empty"}
+        return
+    script = insights.create_script(
+        db,
+        startup.id,
+        title=str(out.get("title") or "").strip() or "Interview script",
+        assumption_ids=[str(a.id) for a in assumptions],
+        questions=insights.clean_questions(drafted),
+    )
+    job.result = {"status": "ready", "script_id": str(script.id)}
+
+
+register_handler("validation.scripts.generate", handle_scripts_generate)
+
+
+# --- Insight Synthesizer ------------------------------------------------------------------------
+
+MAX_PATTERNS = 6
+MAX_QUOTES = 4
+MAX_CONTRADICTIONS = 5
+MAX_PROMPT_ASSUMPTIONS = 30
+_STATUSES = [s.value for s in AssumptionStatus]
+
+
+def _synth_schema(refs: list[str]) -> dict[str, Any]:
+    ref = {"type": "string", "enum": refs} if refs else {"type": "string"}
+    return {
+        "type": "object",
+        "properties": {
+            "patterns": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "theme": {"type": "string"},
+                        "summary": {"type": "string"},
+                        "quotes": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["theme", "summary", "quotes"],
+                    "additionalProperties": False,
+                },
+            },
+            "contradictions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"summary": {"type": "string"}},
+                    "required": ["summary"],
+                    "additionalProperties": False,
+                },
+            },
+            "suggestions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "assumption_ref": ref,
+                        "to_status": {"type": "string", "enum": _STATUSES},
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["assumption_ref", "to_status", "reason"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["patterns", "contradictions", "suggestions"],
+        "additionalProperties": False,
+    }
+
+
+def build_synthesis_messages(
+    startup: Startup, data: dict[str, Any], refs: dict[str, Assumption]
+) -> list[LLMMessage]:
+    system = (
+        "You are a customer researcher synthesizing discovery evidence for a founder. Find the "
+        "recurring patterns (each with a short theme of 2 to 5 words, a one-sentence summary and "
+        "up to 4 supporting quotes copied word for word from the evidence), the contradictions "
+        "between sources, and which assumptions the evidence now supports or refutes. Suggest a "
+        "status change only when the evidence clearly justifies it, and only for the listed "
+        "assumptions by their ref. Never invent quotes or people. No em or en dashes."
+    )
+    parts = [_context_line(startup)]
+    if refs:
+        parts.append(
+            "Assumptions (ref: statement [current status]):\n"
+            + "\n".join(f"{ref}: {a.statement} [{a.status.value}]" for ref, a in refs.items())
+        )
+    for n, iv in enumerate(data["interviews"], 1):
+        lines = [f"Interview {n} (segment: {iv['segment']}, verdict: {iv['verdict']})"]
+        if iv["assumptions"]:
+            lines.append("Tested: " + "; ".join(iv["assumptions"]))
+        if iv["notes"]:
+            lines.append("Notes: " + iv["notes"])
+        lines.extend(f'Quote: "{q}"' for q in iv["quotes"])
+        parts.append("\n".join(lines))
+    if data["open_answers"]:
+        parts.append(
+            "Open survey answers:\n"
+            + "\n".join(f'- [{a["question"]}] "{a["answer"]}"' for a in data["open_answers"])
+        )
+    return [
+        LLMMessage(role="system", content=system),
+        LLMMessage(role="user", content="\n\n".join(parts)),
+    ]
+
+
+_QUOTE_EDGES = " \t\n\"'\u201c\u201d\u2018\u2019.,;:!?"
+
+
+def _norm(text: str) -> str:
+    text = strip_dashes(text).casefold()
+    text = text.replace("\u201c", '"').replace("\u201d", '"').replace("\u2019", "'")
+    return " ".join(text.split()).strip(_QUOTE_EDGES)
+
+
+def _evidence_corpus(data: dict[str, Any]) -> str:
+    chunks: list[str] = []
+    for iv in data["interviews"]:
+        chunks.append(iv["notes"])
+        chunks.extend(iv["quotes"])
+    chunks.extend(a["answer"] for a in data["open_answers"])
+    return "\n".join(_norm(c) for c in chunks)
+
+
+def _clean_report(
+    out: dict[str, Any], data: dict[str, Any], refs: dict[str, Assumption]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    corpus = _evidence_corpus(data)
+    patterns: list[dict[str, Any]] = []
+    for p in out.get("patterns") or []:
+        if not isinstance(p, dict):
+            continue
+        theme = str(p.get("theme") or "").strip()[:80]
+        if not theme:
+            continue
+        # Only quotes that really appear in the evidence: the model may not put words in a
+        # customer's mouth.
+        quotes = [
+            str(q).strip()
+            for q in (p.get("quotes") or [])
+            if str(q).strip() and _norm(str(q)) and _norm(str(q)) in corpus
+        ]
+        patterns.append(
+            {
+                "theme": theme,
+                "summary": str(p.get("summary") or "").strip(),
+                "quotes": list(dict.fromkeys(quotes))[:MAX_QUOTES],
+            }
+        )
+    contradictions = [
+        {"summary": str(c.get("summary") or "").strip()}
+        for c in (out.get("contradictions") or [])
+        if isinstance(c, dict) and str(c.get("summary") or "").strip()
+    ]
+    suggestions: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for s in out.get("suggestions") or []:
+        if not isinstance(s, dict):
+            continue
+        assumption = refs.get(str(s.get("assumption_ref") or ""))
+        to_status = s.get("to_status")
+        if assumption is None or to_status not in _STATUSES:
+            continue
+        if to_status == assumption.status.value or str(assumption.id) in seen:
+            continue
+        seen.add(str(assumption.id))
+        suggestions.append(
+            {
+                "assumption_id": str(assumption.id),
+                "assumption_statement": assumption.statement,
+                "from_status": assumption.status.value,
+                "to_status": to_status,
+                "reason": str(s.get("reason") or "").strip(),
+            }
+        )
+    return patterns[:MAX_PATTERNS], contradictions[:MAX_CONTRADICTIONS], suggestions
+
+
+def handle_synthesize(db: Session, job: Job) -> None:
+    """Read the evidence, store an insight report, and tell the team about its top theme.
+    Result statuses: ready (with insight_id), empty (nothing left to read), over_budget."""
+    startup = db.get(Startup, job.payload["startup_id"])
+    source = job.payload.get("source") or "all"
+    if startup is None:
+        job.result = {"status": "empty"}
+        return
+    data = insights.gather_inputs(db, startup.id, source)
+    if not insights.has_inputs(data):
+        job.result = {"status": "empty"}
+        return
+    assumptions = (
+        db.query(Assumption)
+        .filter_by(startup_id=startup.id)
+        .order_by(Assumption.created_at, Assumption.id)
+        .limit(MAX_PROMPT_ASSUMPTIONS)
+        .all()
+    )
+    refs = {f"A{n}": a for n, a in enumerate(assumptions, 1)}
+    out = metered_complete_json(
+        db,
+        startup.id,
+        build_synthesis_messages(startup, data, refs),
+        schema=_synth_schema(list(refs)),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if out is None:
+        job.result = {"status": "over_budget"}
+        return
+    patterns, contradictions, suggestions = _clean_report(out, data, refs)
+    report = insights.create_report(
+        db,
+        startup.id,
+        source=source,
+        inputs={"interviews": len(data["interviews"]), "open_answers": len(data["open_answers"])},
+        patterns=patterns,
+        contradictions=contradictions,
+        suggestions=suggestions,
+    )
+    if patterns:
+        event_bus.publish(
+            db,
+            "validation.insight.detected",
+            {
+                "startup_id": str(startup.id),
+                "insight_id": str(report.id),
+                "theme": patterns[0]["theme"],
+            },
+        )
+    job.result = {"status": "ready", "insight_id": str(report.id)}
+
+
+register_handler("validation.synthesize", handle_synthesize)

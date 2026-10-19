@@ -193,3 +193,52 @@ class SurveyResponse(UUIDMixin, TimestampMixin, Base):
         JSONB, nullable=False, default=dict, server_default="{}"
     )
     submitted_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class InterviewScript(UUIDMixin, TimestampMixin, Base):
+    """An interview guide drafted by AI for one or more assumptions, then edited by the founder
+    (PRD 09.4). `questions` is `[{id, question, tip}]`; ids are stable across edits."""
+
+    __tablename__ = "interview_scripts"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    assumption_ids: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    questions: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+
+
+class InsightReport(UUIDMixin, TimestampMixin, Base):
+    """One Insight Synthesizer run (PRD 09 "Insight Synthesizer"): patterns with verbatim quotes,
+    contradictions, and suggested assumption status changes the founder can Apply one by one.
+    `inputs` records how many interviews and open survey answers it read."""
+
+    __tablename__ = "insight_reports"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    inputs: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default="{}"
+    )
+    patterns: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    contradictions: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    suggestions: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )

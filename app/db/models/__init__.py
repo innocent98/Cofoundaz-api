@@ -61,7 +61,9 @@ from app.db.models.user import User, UserProfile  # noqa: F401
 from app.db.models.validation import (  # noqa: F401
     Assumption,
     Experiment,
+    InsightReport,
     Interview,
+    InterviewScript,
     SmokeTestEvent,
     SmokeTestSlug,
     Survey,

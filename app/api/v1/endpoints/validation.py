@@ -32,10 +32,12 @@ from app.schemas.validation import (
     PageSignup,
     ResponseSubmit,
     ScriptsGenerate,
+    ScriptUpdate,
     SurveyCreate,
     SurveyUpdate,
+    SynthesizeRequest,
 )
-from app.services.validation import smoke
+from app.services.validation import insights, smoke
 from app.services.validation.public import open_survey, public_view, submit_response
 from app.services.validation.service import (
     create_assumption,
@@ -51,7 +53,6 @@ from app.services.validation.service import (
     get_experiment,
     get_interview,
     get_survey,
-    link_ids,
     list_assumptions,
     list_experiments,
     list_interviews,
@@ -500,23 +501,7 @@ def experiment_draft_endpoint(
     return success_response({"job_id": str(job.id), "status": job.status.value})
 
 
-# --- job stubs -----------------------------------------------------------------------------
-
-
-@router.post("/synthesize", status_code=status.HTTP_202_ACCEPTED)
-def synthesize_endpoint(
-    membership: Membership = Depends(_member),  # noqa: B008
-    user: User = Depends(get_verified_user),  # noqa: B008
-    db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, Any]:
-    job = job_dispatcher.enqueue(
-        db,
-        "validation.synthesize",
-        {"startup_id": str(membership.startup_id)},
-        membership.startup_id,
-    )
-    db.commit()
-    return success_response({"job_id": str(job.id), "status": job.status.value})
+# --- interview scripts (PRD 09.4, gap row 7) --------------------------------------------------
 
 
 @router.post("/scripts/generate", status_code=status.HTTP_202_ACCEPTED)
@@ -526,9 +511,11 @@ def generate_scripts_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    """Queue an AI interview script for the chosen assumptions. The worker saves it; the job's
+    `result.script_id` points at the new script."""
     # Same workspace check the write endpoints apply, so the job never carries an
     # assumption id from another workspace (or a repeat) into its prompt.
-    assumption_ids = link_ids(db, membership.startup_id, body.assumption_ids)
+    assumption_ids = insights.script_assumption_ids(db, membership.startup_id, body.assumption_ids)
     job = job_dispatcher.enqueue(
         db,
         "validation.scripts.generate",
@@ -537,3 +524,127 @@ def generate_scripts_endpoint(
     )
     db.commit()
     return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/scripts")
+def list_scripts_endpoint(
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = insights.list_scripts(db, membership.startup_id)
+    return success_response({"scripts": [insights.serialize_script(row) for row in rows]})
+
+
+@router.get("/scripts/{script_id}")
+def get_script_endpoint(
+    script_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        insights.serialize_script(insights.get_script(db, membership.startup_id, script_id))
+    )
+
+
+@router.patch("/scripts/{script_id}")
+def update_script_endpoint(
+    script_id: str,
+    body: ScriptUpdate,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = insights.get_script(db, membership.startup_id, script_id)
+    insights.update_script(
+        db, row, title=body.title, questions=body.questions, assumption_ids=body.assumption_ids
+    )
+    db.commit()
+    return success_response(insights.serialize_script(row))
+
+
+@router.delete("/scripts/{script_id}")
+def delete_script_endpoint(
+    script_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    insights.delete_script(db, membership.startup_id, script_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+# --- Insight Synthesizer (gap rows 12, 13) -----------------------------------------------------
+
+
+@router.post("/synthesize", status_code=status.HTTP_202_ACCEPTED)
+def synthesize_endpoint(
+    body: SynthesizeRequest | None = None,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Queue a synthesis over interviews, open survey answers, or both (no body = both). The
+    job's `result.insight_id` points at the stored report."""
+    source = body.source if body else "all"
+    insights.require_inputs(db, membership.startup_id, source)
+    job = job_dispatcher.enqueue(
+        db,
+        "validation.synthesize",
+        {"startup_id": str(membership.startup_id), "source": source},
+        membership.startup_id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/insights")
+def list_insights_endpoint(
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = insights.list_reports(db, membership.startup_id)
+    return success_response({"insights": [insights.serialize_report(row) for row in rows]})
+
+
+@router.get("/insights/{insight_id}")
+def get_insight_endpoint(
+    insight_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        insights.serialize_report(insights.get_report(db, membership.startup_id, insight_id))
+    )
+
+
+@router.post("/insights/{insight_id}/suggestions/{suggestion_id}/apply")
+def apply_insight_suggestion_endpoint(
+    insight_id: str,
+    suggestion_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Move the assumption to the suggested status. 409 ALREADY_APPLIED on a second click."""
+    out = insights.apply_suggestion(
+        db, membership.startup_id, insight_id, suggestion_id, actor_id=membership.user_id
+    )
+    db.commit()
+    return success_response(out)
+
+
+@router.delete("/insights/{insight_id}")
+def delete_insight_endpoint(
+    insight_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    insights.delete_report(db, membership.startup_id, insight_id)
+    db.commit()
+    return success_response({"deleted": True})

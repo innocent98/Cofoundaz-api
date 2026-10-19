@@ -1,0 +1,21 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "c00504c5-9228-4041-9d6d-e1f4f3a3afbb",
+        "type": "validation.insight.detected",
+        "title": "New pattern detected in customer feedback: Same-day cash matters",
+        "body": "See insight",
+        "data": {
+          "theme": "Same-day cash matters",
+          "insight_id": "0b6ff21d-6478-416f-bd4c-ce33225fcd12",
+          "startup_id": "de30875d-66f9-4d7e-89f7-e7b90e09f573"
+        },
+        "read": false,
+        "created_at": "2026-10-19T20:33:37.401779+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}
