@@ -1,15 +1,15 @@
 {
   "data": {
-    "id": "d80b60e6-658a-4c86-9d3c-9b7ccb49bc94",
-    "date": "2026-09-30",
+    "id": "bf6031f2-bd19-482f-ad9c-075da1d9a52b",
+    "date": "2026-10-18",
     "description": "Data-centre migration",
     "category": "Infrastructure",
     "amount_minor": 400000000,
     "currency": "NGN",
     "direction": "out",
     "source": "manual",
-    "created_at": "2026-09-30T08:32:52.656120Z",
-    "updated_at": "2026-09-30T08:32:52.656120Z"
+    "created_at": "2026-10-18T03:09:31.086191Z",
+    "updated_at": "2026-10-18T03:09:31.086191Z"
   },
   "meta": null
 }

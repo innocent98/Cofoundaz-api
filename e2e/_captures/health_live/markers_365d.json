@@ -1,0 +1,20 @@
+{
+    "data": [
+        {
+            "at": "2026-10-17T17:20:49.697849+00:00",
+            "label": "Assessment completed",
+            "action": "assessment.completed"
+        },
+        {
+            "at": "2026-10-17T17:43:00.723622+00:00",
+            "label": "Assessment completed",
+            "action": "assessment.completed"
+        },
+        {
+            "at": "2026-10-17T17:43:51.520941+00:00",
+            "label": "Assessment completed",
+            "action": "assessment.completed"
+        }
+    ],
+    "meta": null
+}

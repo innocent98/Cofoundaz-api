@@ -2,18 +2,21 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.db.models.enums import InvoiceStatus, InvoiceTerms, MembershipRole
+from app.db.models.assessment import AssessmentResult
+from app.db.models.enums import AssessmentStatus, InvoiceStatus, InvoiceTerms, MembershipRole
 from app.db.models.finance import Transaction
 from app.db.models.health_score import HealthSignal
 from app.db.models.invoice import Invoice
 from app.platform.events import DispatchingEventBus
 from app.schemas.finance import TransactionCreate
+from app.services.dashboard.kpis import kpi_metrics
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
 from app.services.finance.cashflow import cash_flow_summary
 from app.services.finance.runway_math import _runway_is_low
 from app.services.notifications import registry
 from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
+from tests.factories import create_assessment
 
 YEAR = datetime.now(UTC).year
 
@@ -525,10 +528,26 @@ def _assert_runway_state_matches_cash_flow(db, startup):
     assert settings.alert_is_low is expected_low
     rows = _signal_rows(db, startup)
     assert len(rows) == 1
-    expected_fields = runway_svc.build_runway_signal(db, startup_id=startup.id)
-    assert expected_fields is not None
-    assert float(rows[0].value) == float(expected_fields["value"])
+    # The live runway signal mirrors the KPI runway: months, 0 when out of cash, 999 when
+    # not burning (full marks).
+    runway = kpi_metrics(db, startup, MembershipRole.founder)["runway"]
+    expected = {"ok": runway["months"], "out_of_cash": 0.0, "not_burning": 999.0}[runway["status"]]
+    assert float(rows[0].value) == float(expected)
     return expected_low, float(rows[0].value)
+
+
+def _assess(db, startup):
+    """Health (and so its runway signal) exists only after the kickoff assessment."""
+    a = create_assessment(db, startup, status=AssessmentStatus.completed)
+    db.add(
+        AssessmentResult(
+            assessment_id=a.id,
+            dimension_scores={"product": 50, "market": 50, "money": 50, "legal": 50, "team": 50},
+            overall_provisional=50,
+            narrative="n",
+        )
+    )
+    db.flush()
 
 
 def test_mark_paid_and_unpaid_refresh_runway_alert_and_signal(client, db, monkeypatch):
@@ -536,6 +555,7 @@ def test_mark_paid_and_unpaid_refresh_runway_alert_and_signal(client, db, monkey
     registry.register(bus)
     monkeypatch.setattr(runway_svc, "event_bus", bus)
     _u, startup, h = _member(db)
+    _assess(db, startup)
 
     def seed(amount, direction, days_ago):
         finance_svc.create_transaction(

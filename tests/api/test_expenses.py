@@ -15,6 +15,7 @@ from tests.api.test_finance import BASE, FORBIDDEN_ROLES, _member
 from tests.api.test_invoices import (
     RUNWAY_EVENT,
     _assert_runway_state_matches_cash_flow,
+    _assess,
     _signal_rows,
 )
 
@@ -222,6 +223,7 @@ def test_create_refreshes_runway_alert_and_signal(client, db, monkeypatch):
     registry.register(bus)
     monkeypatch.setattr(runway_svc, "event_bus", bus)
     _u, startup, h = _member(db)
+    _assess(db, startup)
     finance_svc.create_transaction(
         db,
         startup_id=startup.id,
@@ -424,6 +426,7 @@ def test_patch_and_delete_refresh_runway_alert_and_signal(client, db, monkeypatc
     registry.register(bus)
     monkeypatch.setattr(runway_svc, "event_bus", bus)
     _u, startup, h = _member(db)
+    _assess(db, startup)
     finance_svc.create_transaction(
         db,
         startup_id=startup.id,

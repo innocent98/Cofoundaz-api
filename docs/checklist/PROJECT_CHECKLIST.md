@@ -734,6 +734,14 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
+## ✅ Module 06 — Health Score: live signals, PRD completion (2026-10-18, branch `feat/health-live-signals`)
+- [x] Live-signal engine (10 signals, stage targets, blend with assessment, 14-day ramp), contributions in points
+- [x] Triggers: events (15-min throttle), finance writes (immediate), stale-on-read, nightly pass
+- [x] Live recommendations with `href`; AI rewrite only on new recs; real sparklines; PRD summary; drill-down target + link
+- [x] History `365d` + `/history/markers`; real benchmark percentiles; PRD drop/record notifications
+- [x] Fixed: refresh-on-read was rolled back; `updated_at` never advanced on upsert
+- SOP `docs/sop/2026-10-18-health-live-signals.md` · guide `docs/fe-integration-guide-health-live.md`
+
 ## ✅ Module 04 — Today's Mission: PRD completion (2026-10-18, branch `feat/mission-prd`)
 - [x] Delivery time drives per-workspace generation + `mission.ready` (PRD copy, first-task body, not on rest days)
 - [x] `GET /missions/upcoming` (7-day projection) + `PUT /missions/upcoming/order` (`mission_rank`, migration 0050)

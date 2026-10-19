@@ -21,6 +21,7 @@ SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
 SCHED_QUARTERLY = "scheduled.assessment.quarterly"
 SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
+SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
 
 
 class Due(NamedTuple):
@@ -108,6 +109,26 @@ def _due_kpi_snapshots(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_health_nightly(db: Session, now: datetime) -> list[Due]:
+    """Once per workspace per local day from HEALTH_NIGHTLY_HOUR: the PRD's nightly full pass,
+    so live signals with no event (validation notes, interviews, finance drift) stay current."""
+    local = _local(now)
+    if local.hour < settings.HEALTH_NIGHTLY_HOUR:
+        return []
+    period = local.date().isoformat()
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key)
+        .filter(ScheduledRun.task_key == "health.nightly", ScheduledRun.period_key == period)
+        .all()
+    }
+    return [
+        Due("health.nightly", str(sid), period, SCHED_HEALTH_NIGHTLY, sid, {"startup_id": str(sid)})
+        for sid in _active_startup_ids(db)
+        if str(sid) not in claimed
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -189,6 +210,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_overdue_milestones(db, now),
         *_due_quarterly(db, now),
         *_due_kpi_snapshots(db, now),
+        *_due_health_nightly(db, now),
     ]
     enqueued = 0
     for item in due:

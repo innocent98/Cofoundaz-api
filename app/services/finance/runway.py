@@ -8,13 +8,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models.finance import Transaction
 from app.db.models.finance_runway import FinanceRunwaySettings
-from app.db.models.health_score import HealthSignal
+from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.schemas.finance_runway import AssumptionsUpdate
 from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
@@ -118,42 +117,13 @@ def evaluate_runway_alert(db: Session, *, startup_id: uuid.UUID) -> None:
         db.flush()
 
 
-RUNWAY_SIGNAL_KEY = "money.runway_live"
-
-
-def build_runway_signal(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any] | None:
-    """HealthSignal fields for the informational live-runway signal, or None with no finance data.
-
-    Display-only: `contribution` is always 0 and Health Score scoring never reads signals, so this
-    cannot move the overall score. A cash-positive startup (runway_months None) stores value 0; the
-    key/source_ref distinguish it from a real assessment signal.
-    """
-    has_transactions = db.scalars(
-        select(Transaction.id).where(Transaction.startup_id == startup_id).limit(1)
-    ).first()
-    if has_transactions is None:
-        return None
-    summary = cash_flow_summary(db, startup_id=startup_id)
-    runway_months = summary["runway_months"]
-    value = min(999.99, round(runway_months, 2)) if runway_months is not None else 0
-    return {
-        "startup_id": startup_id,
-        "dimension": "money",
-        "key": RUNWAY_SIGNAL_KEY,
-        "value": value,
-        "contribution": 0.00,
-        "source_ref": "finance:cash-flow",
-    }
-
-
 def upsert_runway_signal(db: Session, *, startup_id: uuid.UUID) -> None:
-    """Refresh the startup's `money.runway_live` signal only; assessment signals are untouched."""
-    db.execute(
-        delete(HealthSignal).where(
-            HealthSignal.startup_id == startup_id, HealthSignal.key == RUNWAY_SIGNAL_KEY
-        )
-    )
-    fields = build_runway_signal(db, startup_id=startup_id)
-    if fields is not None:
-        db.add(HealthSignal(**fields))
-    db.flush()
+    """Called after every money write: recompute the Health Score now (live signals include
+    runway and transactions tracked), bypassing the 15-minute event throttle because this is a
+    direct founder action on a health input."""
+    from app.services.health_score.service import refresh_health_score  # import cycle
+
+    startup = db.get(Startup, startup_id)
+    if startup is not None:
+        refresh_health_score(db, startup, trigger="finance", force=True)
+        db.flush()

@@ -7,20 +7,49 @@
     "signals": [
       {
         "key": "assessment.money",
+        "label": "Kickoff assessment",
         "value": 43.0,
+        "unit": "score",
+        "target": 100,
         "contribution": 8.6,
-        "source_ref": "assessment:c53b3b8f-c9d4-4659-a9b4-f4c43ea44cdd"
+        "source": "assessment",
+        "href": "/assessment",
+        "source_ref": "assessment:bf41dd5e-1fe1-4aed-b36e-3722453e426e"
+      },
+      {
+        "key": "money.transactions_30d",
+        "label": "Transactions tracked (30 days)",
+        "value": 0.0,
+        "unit": "count",
+        "target": 3,
+        "contribution": 0.0,
+        "source": "live",
+        "status": "ok",
+        "href": "/finance",
+        "source_ref": "/finance"
       }
     ],
     "trend": [
       {
         "score": 43,
-        "computed_at": "2026-09-30T08:32:54.338981+00:00"
+        "computed_at": "2026-10-18T03:09:33.678649+00:00"
       }
     ],
     "recommendations": [
       {
-        "id": "60fb920a-9add-4a1c-a64a-4ede202832b5",
+        "id": "4dd058c7-91a4-4a72-8abc-da832d4272a8",
+        "dimension": "money",
+        "key": "live.money.transactions_30d",
+        "title": "Track your money in and out",
+        "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+        "estimated_lift": 10,
+        "effort": "low",
+        "status": "pending",
+        "priority": 1,
+        "href": "/finance"
+      },
+      {
+        "id": "2990ed9f-49f3-4b21-945f-363cee549402",
         "dimension": "money",
         "key": "money.runway_model",
         "title": "Build a 12-month runway model",
@@ -28,10 +57,11 @@
         "estimated_lift": 8,
         "effort": "medium",
         "status": "pending",
-        "priority": 6
+        "priority": 12,
+        "href": "/finance"
       },
       {
-        "id": "c18c193a-d8f5-474c-a9e9-49c7a5b22553",
+        "id": "2bdb847d-9369-4a77-8b85-b6d9a6abfc36",
         "dimension": "money",
         "key": "money.pricing_experiment",
         "title": "Run a pricing experiment",
@@ -39,7 +69,8 @@
         "estimated_lift": 6,
         "effort": "medium",
         "status": "pending",
-        "priority": 9
+        "priority": 15,
+        "href": "/finance"
       }
     ]
   },
