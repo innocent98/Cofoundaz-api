@@ -13,10 +13,10 @@ The "AI reason line" section (§1, below) is pasted verbatim from a separate liv
 Base path: `/api/v1/missions`. Every route requires a Bearer access token
 (`Authorization: Bearer <token>`) and an `X-Workspace-Id` header identifying the active workspace
 (`GET /auth/me` → `data.active_workspace_id` is the source for that header), same as every other
-tenant-scoped endpoint in this API. **Reads** (`GET /today`, `GET /history`, `GET /settings`) are
-open to any active member — founder, team_member, **or mentor**. **Writes** (`PATCH /settings`,
-`POST /tasks`, `PATCH /tasks/{id}`) require the caller's membership role to be `founder` or
-`team_member` — a `mentor` gets a `403`.
+tenant-scoped endpoint in this API. **Every** Mission endpoint, reads
+and writes, requires the caller's membership role to be `founder` or `team_member` (PRD Module 04
+access; reads were open to mentors until the 2026-10-19 re-walk, D-MIS-8). Any other role gets a
+`403 FORBIDDEN` (live capture `e2e/_captures/mission_rewalk/today_mentor_403.json`).
 
 **Every success response is the standard envelope `{"data": …, "meta": null}`** — `meta` is
 literally `null` on every mission endpoint (no pagination cursor is used). Errors drop `data`/

@@ -178,6 +178,7 @@ Found by the click-through re-walk on `develop`. Every response shape above is u
 | `reject` "Already done" | Task came back tomorrow | Roadmap task becomes `done` (the mission task itself stays `rejected`, so it doesn't count toward the streak) | none |
 | `reject` "Wrong priority" | Task came back tomorrow | Not offered by missions (today, Upcoming, generation) for 7 days, then back in the queue (D-MIS-7) | Upcoming won't list it this week |
 | `reject` "Doesn't apply" | Task came back tomorrow | Never offered by missions again; it stays on the roadmap | none |
+| Every `GET /missions/*` as mentor / consultant / other roles | `200` (reads were open to any member) | `403 FORBIDDEN` `{"error":{"code":"FORBIDDEN","message":"You don't have permission to do that.","field_errors":[]}}` (D-MIS-8, PRD Module 04 access F + TM) | Don't call Mission endpoints for other roles (the sidebar count already checks `canSee`); a direct URL shows the no-access state |
 | `GET /missions/history` totals | `total` counted snoozed tasks | `total` leaves out snoozed (moved to tomorrow) as well as rejected | Day rows read e.g. `1/1` instead of `1/2` |
 
 Live capture: `e2e/_captures/mission_rewalk/today_done_rejected_snoozed_complete.json` (done + rejected + snoozed +
@@ -187,4 +188,5 @@ done custom task → `status: "complete"`, `streak: 2`).
 |---|---|---|
 | done + rejected + snoozed → mission `complete`, streak counts | ✅ | capture above |
 | Roadmap task done on mission `complete` / "Already done" | ❌ unit | `tests/services/mission/test_mission_rewalk.py` (no open roadmap-linked task left in the local mission after the walk) |
-| "Wrong priority" rests 7 days; "Doesn't apply" never returns | ❌ unit | same file (needs future days) |
+| "Wrong priority" rests 7 days; "Doesn't apply" never returns | ❌ unit (projection ✅) | same file; live: the "Wrong priority" task was absent from Upcoming |
+| Mentor gets 403 on Mission reads | ✅ | `e2e/_captures/mission_rewalk/today_mentor_403.json` |
