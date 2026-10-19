@@ -513,7 +513,7 @@ expected outcome for a client that retries.
 {
   "error": {
     "code": "DEPENDENCY_CYCLE",
-    "message": "That would create a loop — Task A already depends on Task B.",
+    "message": "That would create a loop: Task A already depends on Task B.",
     "field_errors": []
   }
 }

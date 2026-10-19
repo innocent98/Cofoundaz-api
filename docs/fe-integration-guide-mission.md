@@ -519,7 +519,7 @@ range (source: `patch_settings`):
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Mission size must be 1–3.",
+    "message": "Mission size must be 1, 2 or 3.",
     "field_errors": [
       { "field": "mission_size", "message": "Must be 1, 2, or 3." }
     ]

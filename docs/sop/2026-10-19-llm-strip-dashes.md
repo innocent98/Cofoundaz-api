@@ -9,3 +9,11 @@
 | **Verification** | `pytest tests/platform` 69 passed; full suite 2372 passed at 97.39%; black/isort/ruff/mypy/bandit/pylint clean. |
 | **Operate / roll back** | No config or migration. Revert the commit to roll back. Text already stored before this change keeps its dashes (new output only). |
 | **Follow-ups** | None. Prompt-level "don't use dashes" instructions are now optional. |
+
+## Update: static API copy (same PR)
+The re-walk found em/en dashes in API-authored copy too (not just model output): the plan document title "NovaPay — Business
+Plan", the dependency-loop error, the email-taken error, the dashboard opportunities empty state, the mission-size error,
+the onboarding panel line, a health recommendation and the invoice-paid transaction description. All eight are rewritten
+(colon, comma, parentheses or "1, 2 or 3"), the four live FE guides quote the new copy, and
+`tests/platform/test_llm.py::test_no_em_or_en_dashes_in_api_copy` fails on any new non-docstring string literal in `app/`
+with an em/en dash. Existing stored rows (old plan titles, old transactions) keep their text.

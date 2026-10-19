@@ -28,7 +28,7 @@ class AppError(Exception):
 
 class EmailTaken(AppError):  # noqa: N818
     code, http_status = "EMAIL_TAKEN", 409
-    message = "That email already has an account — log in instead?"
+    message = "That email already has an account. Log in instead?"
 
 
 class WeakPassword(AppError):  # noqa: N818

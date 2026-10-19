@@ -116,7 +116,7 @@ RECOMMENDATION_CATALOG: dict[str, list[dict]] = {
         {
             "key": "team.hiring_plan",
             "title": "Draft a 6-month hiring plan",
-            "body": "List the next 2–3 critical hires, when, and why. A plan turns hiring from reactive to intentional.",
+            "body": "List the next 2-3 critical hires, when, and why. A plan turns hiring from reactive to intentional.",
             "estimated_lift": 5,
             "effort": "low",
             "triggers_below": 50,

@@ -3,7 +3,7 @@ from app.services.onboarding.ai_panel import _templated_panel, build_onboarding_
 
 def test_templated_panel_wording():
     assert _templated_panel("fintech", "idea") == (
-        "Got it — a fintech startup at the idea stage. Let's calibrate your workspace."
+        "Got it: a fintech startup at the idea stage. Let's calibrate your workspace."
     )
 
 

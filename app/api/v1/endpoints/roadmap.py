@@ -614,7 +614,7 @@ def create_dependency_ep(
     if would_create_cycle(db, roadmap.id, dependent.id, dependency.id):
         raise DependencyCycle(
             message=(
-                f"That would create a loop — {dependency.title} already depends on "
+                f"That would create a loop: {dependency.title} already depends on "
                 f"{dependent.title}."
             )
         )

@@ -94,7 +94,7 @@ body. One shape, no divergence to guard against.
     "goals": [
       "Get first customers"
     ],
-    "ai_panel": "Got it — a Fintech startup at the idea stage. Let's calibrate your workspace.",
+    "ai_panel": "Got it: a Fintech startup at the idea stage. Let's calibrate your workspace.",
     "notes": null,
     "invites": []
   },
@@ -102,7 +102,7 @@ body. One shape, no divergence to guard against.
 }
 ```
 
-Note: `"Got it — a Fintech startup at the idea stage. Let's calibrate your workspace."` is the
+Note: `"Got it: a Fintech startup at the idea stage. Let's calibrate your workspace."` is the
 deterministic templated fallback (`_templated_panel(industry, stage)` —
 `app/services/onboarding/ai_panel.py`) — it is **not** a stub/placeholder marker, it's real,
 readable copy the founder is meant to see immediately. It is *not* an AI output at this point in

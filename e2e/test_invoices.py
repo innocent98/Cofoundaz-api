@@ -315,7 +315,7 @@ def test_finance_invoices_journey(base_url, make_verified_user, capture, capture
         assert inflow["amount_minor"] == total
         assert inflow["direction"] == "in"
         assert inflow["category"] == "Revenue"
-        assert inflow["description"] == f"Invoice INV-{year}-001 — Acme Traders Ltd"
+        assert inflow["description"] == f"Invoice INV-{year}-001: Acme Traders Ltd"
         capture("invoices", "transactions_list_inflow", ledger)
 
         # ... and is protected from direct edit / delete (must unpay the invoice instead).

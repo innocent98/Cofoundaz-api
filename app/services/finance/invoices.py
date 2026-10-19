@@ -212,7 +212,7 @@ def mark_paid(
     txn = Transaction(
         startup_id=startup_id,
         date=paid_at.date(),
-        description=f"Invoice {inv.number} \u2014 {inv.client_name}"[:300],
+        description=f"Invoice {inv.number}: {inv.client_name}"[:300],
         category="Revenue",
         amount_minor=inv.total_minor,
         currency=inv.currency,

@@ -282,3 +282,38 @@ def test_openai_complete_json_strips_dashes_in_nested_strings(monkeypatch):
         [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
     )
     assert out == {"title": "Plan, v1", "items": [{"why": "fast, cheap"}, 3], "n": 2}
+
+
+def test_no_em_or_en_dashes_in_api_copy():
+    """Rendered copy has no em/en dashes (product rule). Every string literal in `app/` that
+    isn't a docstring is copy, an error message, a prompt or a title: keep them dash-free so a
+    new one can't slip into the UI (the 2026-10-19 re-walk found eight)."""
+    import ast
+    import pathlib
+
+    def docstrings(tree: ast.AST) -> set[int]:
+        found = set()
+        for node in ast.walk(tree):
+            body = getattr(node, "body", None)
+            if (
+                isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+                and body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+            ):
+                found.add(id(body[0].value))
+        return found
+
+    offenders = []
+    for path in sorted(pathlib.Path("app").rglob("*.py")):
+        tree = ast.parse(path.read_text())
+        skip = docstrings(tree)
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and id(node) not in skip
+                and ("—" in node.value or "–" in node.value)
+            ):
+                offenders.append(f"{path}:{node.lineno}")
+    assert offenders == []
