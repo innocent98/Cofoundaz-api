@@ -74,7 +74,7 @@ existing auth/tenancy contract — this endpoint introduces no new error shape o
 | Field | Type | Meaning |
 |---|---|---|
 | `tokens_used_today` | `int` | Total LLM tokens this workspace's `startup_id` has consumed since UTC midnight today, summed across every AI job type (assessment narrative, ai-fill, mission reason, health recommendations, dashboard briefing, roadmap rationale, onboarding panel, business-plan generation). Read from the `llm_usage_daily` ledger (`(startup_id, usage_date)` unique row); `0` if no row exists yet for today (fresh workspace, or a workspace that simply hasn't triggered any AI job today). |
-| `daily_budget` | `int \| null` | **Server config**, not a per-workspace setting — the same `LLM_DAILY_TOKEN_BUDGET` value applies to every workspace. `15000` by default. **`null` means unlimited** (the operator has set `LLM_DAILY_TOKEN_BUDGET <= 0`, the documented kill-switch) — treat `null` as "no cap to render," not as "budget unknown." |
+| `daily_budget` | `int \| null` | **Server config**, not a per-workspace setting — the same `LLM_DAILY_TOKEN_BUDGET` value applies to every workspace. `100000` by default (raised from `15000` on 2026-10-19; one business plan uses about 24k). **`null` means unlimited** (the operator has set `LLM_DAILY_TOKEN_BUDGET <= 0`, the documented kill-switch) — treat `null` as "no cap to render," not as "budget unknown." |
 | `over_budget` | `bool` | `true` when `tokens_used_today >= daily_budget` (only ever `true` if `daily_budget` is non-null — an unlimited budget is never "over"). This is a **live re-check on every request**, computed the same way the worker checks it before each LLM call — not a cached flag, so it can flip from `true` back to `false` before `resets_at` if the operator raises the budget or clears the ledger, though in normal operation it only flips at UTC midnight. |
 | `resets_at` | `string` (ISO 8601, UTC) | The next UTC midnight — when the daily usage window (and therefore `over_budget`, if currently `true`) resets. Always present, even when not over budget (useful for "budget resets in N hours" copy regardless of current state). **Not workspace-timezone-aware** — this is a fixed UTC-midnight boundary; a founder in a non-UTC timezone will see the reset happen at a local time that shifts with DST, not at their local midnight. |
 | `recent_enrichment_failures` | `array<{type, failed_at}>` | **Observability, not an action queue.** Up to 20 of the startup's most recent *failed* AI-enrichment job rows (job `status == failed`, job `type` matching an AI-enrichment pattern — `ai.*`, `*.ai_fill`, or `business.plan.generate`), newest first. `type` is the raw job type string (e.g. `"ai.assessment.narrative"`, `"business.canvas.ai_fill"`); `failed_at` is the job's `updated_at` timestamp (ISO 8601, UTC), or `null` if somehow unset. An empty array (`[]`) is the common case — it means "no known failures," not "nothing has ever run." |
@@ -141,3 +141,9 @@ real token debit past budget, or forcing a job to fail are not reachable from a 
 onboard → `GET /ai/status` HTTP walk without either running a second server process with different
 config or fabricating job/ledger rows directly — both are covered by passing unit tests at the
 cited paths instead of an invented live example.
+
+## Update 2026-10-19: default budget raised to 100,000
+Adebayo raised the default `LLM_DAILY_TOKEN_BUDGET` from 15,000 to 100,000 tokens per startup per UTC day, because one
+business plan generation used about 24,000 tokens live. Shape unchanged. Live capture
+`e2e/_captures/ai_status_budget/status_100k.json` (`200`): `"daily_budget": 100000, "over_budget": false` with
+`"tokens_used_today": 29065`. The older captures above that show `15000` predate the change.

@@ -1,0 +1,2 @@
+{"captured": "2026-10-19 local stack after raising the default, GET /api/v1/ai/status as the NovaPay founder", "status_code": 200,
+ "body": {"data":{"tokens_used_today":29065,"daily_budget":100000,"over_budget":false,"resets_at":"2026-10-20T00:00:00+00:00","recent_enrichment_failures":[{"type":"ai.cofounder.reply","failed_at":"2026-10-17T19:46:51.656841+00:00"}]},"meta":null}}
