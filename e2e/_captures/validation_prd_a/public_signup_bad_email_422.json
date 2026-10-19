@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "email",
+        "message": "value is not a valid email address: An email address must have an @-sign."
+      }
+    ]
+  }
+}

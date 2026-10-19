@@ -1,0 +1,18 @@
+{
+  "data": {
+    "assumptions": {
+      "untested": 2,
+      "testing": 0,
+      "validated": 0,
+      "invalidated": 0
+    },
+    "live_experiments": 0,
+    "responses_collected": 0,
+    "riskiest_untested": {
+      "id": "44e0592d-8931-4bd6-9c69-f14aa9a8bc11",
+      "statement": "Market associations will promote us to members",
+      "risk": "high"
+    }
+  },
+  "meta": null
+}
