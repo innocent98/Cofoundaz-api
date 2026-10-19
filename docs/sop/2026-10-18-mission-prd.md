@@ -46,7 +46,9 @@ test founder (`e2e/_captures/mission_prd_live/`).
 | D-MIS-7: "Wrong priority" rests 7 days, "Doesn't apply" never returns to missions | "Thanks, I'll calibrate." promised calibration but rejected tasks came straight back | `_mission_candidates` (query-only, no migration) used by generation and the Upcoming projection; "Assigned to you" still lists every open task |
 | A snoozed task no longer blocks "Mission complete." | Snooze + finish the rest left the day `pending` forever, so no completion state and a broken streak | `_RESOLVED_TODAY` in `_maybe_complete_mission`; `snooze_task` re-checks completion; history/weekly totals leave snoozed out |
 
-Verified: `tests/services/mission/test_mission_rewalk.py` (9), full suite 2373 passed @97.39%; live on the local stack the
+| Migration `0055_mission_roadmap_backfill` (data-only) marks roadmap tasks done that were already finished through a mission (or rejected "Already done") and recomputes milestone progress | Existing workspaces carry the stale state (the local stack had 3 such tasks, still projected in Upcoming) | Idempotent SQL; downgrade is a documented no-op (pre-backfill state isn't recorded and re-opening finished work would be wrong) |
+
+Operate: `alembic upgrade head` (CD runs it on staging). Verified: `tests/services/mission/test_mission_rewalk.py` (9), full suite 2373 passed @97.39%; live on the local stack the
 day flipped to `complete` with streak 2 after done + rejected + snoozed (capture in the guide §8). Rejected alternative:
 storing a per-task "excluded" flag (a migration) when the reject history already says it.
 
