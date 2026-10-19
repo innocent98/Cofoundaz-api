@@ -1,0 +1,26 @@
+{
+  "data": {
+    "id": "8d22d3b0-ec1e-4ffb-8100-6ee451e5a629",
+    "type": "validation.experiment.draft",
+    "status": "succeeded",
+    "result": {
+      "draft": {
+        "name": "[stub-llm] name",
+        "cta_text": "[stub-llm] cta_text",
+        "headline": "[stub-llm] headline",
+        "rationale": "[stub-llm] rationale",
+        "metric_type": "email_signup",
+        "subheadline": "[stub-llm] subheadline",
+        "assumption_ids": [
+          "44e0592d-8931-4bd6-9c69-f14aa9a8bc11"
+        ],
+        "slug_suggestion": "novapay-stub-llm-name",
+        "target_conversion": 8
+      },
+      "status": "ready",
+      "assumption_id": "44e0592d-8931-4bd6-9c69-f14aa9a8bc11"
+    },
+    "error": null
+  },
+  "meta": null
+}

@@ -163,6 +163,12 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "Milestone overdue, I've drafted a re-plan for your review",
         lambda _p: "Review re-plan",
     ),
+    # PRD 09 notifications: smoke-test signup milestone (D-VAL-5 thresholds in validation/smoke.py).
+    "validation.smoke_test.milestone": NotifSpec(
+        _all_active_members,
+        lambda p: f"{p.get('name') or 'Your smoke test'} just passed {p.get('signups')} signups",
+        lambda _p: "",
+    ),
     "roadmap.milestone.due_soon": NotifSpec(
         _all_active_members,
         lambda p: (

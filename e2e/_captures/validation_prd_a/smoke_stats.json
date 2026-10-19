@@ -1,0 +1,18 @@
+{
+  "data": {
+    "experiment_id": "ea12c7db-0942-4801-8907-1b019d19ab2c",
+    "name": "Same-day settlement",
+    "status": "live",
+    "slug": "novapay-same-day",
+    "visits": 3,
+    "signups": 1,
+    "cta_clicks": 1,
+    "preorder_clicks": 0,
+    "metric_type": "email_signup",
+    "conversion": 33.3,
+    "target_conversion": 10,
+    "sample_needed": 100,
+    "verdict": null
+  },
+  "meta": null
+}

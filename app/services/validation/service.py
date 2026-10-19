@@ -24,6 +24,7 @@ from app.db.models.enums import (
 from app.db.models.validation import Assumption, Experiment, Interview, Survey, SurveyResponse
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
+from app.services.validation import smoke
 from app.services.validation.questions import validate_questions
 
 # Only these two transitions are worth telling the rest of the system about (spec D8).
@@ -215,6 +216,7 @@ def create_experiment(
         metrics=metrics or {},
         assumption_ids=link_ids(db, startup_id, assumption_ids),
     )
+    smoke.apply_slug(db, row)
     db.add(row)
     db.flush()
     return row
@@ -243,6 +245,7 @@ def update_experiment(
         experiment.metrics = metrics
     if assumption_ids is not None:
         experiment.assumption_ids = link_ids(db, experiment.startup_id, assumption_ids)
+    smoke.apply_slug(db, experiment)
     db.flush()
     return experiment
 
@@ -256,20 +259,15 @@ def serialize_experiment(experiment: Experiment) -> dict[str, Any]:
         "config": experiment.config,
         "metrics": experiment.metrics,
         "assumption_ids": experiment.assumption_ids,
+        "slug": experiment.slug,
+        "published_at": experiment.published_at.isoformat() if experiment.published_at else None,
         "created_at": experiment.created_at.isoformat(),
         "updated_at": experiment.updated_at.isoformat(),
     }
 
 
-def _counter(value: Any) -> int:
-    """Read one metric as a count; anything odd (missing, text, negative) reads as 0."""
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        return 0
-    return value
-
-
 def smoke_test_stats(db: Session, startup_id: uuid.UUID, experiment_id: Any) -> dict[str, Any]:
-    """Funnel read for a smoke test.
+    """Funnel read for a smoke test (real page events + hand-entered numbers, server verdict).
 
     404 for anything that is not one, so the route cannot be used to discover other experiment
     types.
@@ -277,18 +275,16 @@ def smoke_test_stats(db: Session, startup_id: uuid.UUID, experiment_id: Any) -> 
     experiment = get_experiment(db, startup_id, experiment_id)
     if experiment.type != ExperimentType.smoke_test:
         raise NotFound()
-    metrics = experiment.metrics or {}
-    visits = _counter(metrics.get("visits"))
-    signups = _counter(metrics.get("signups"))
-    return {
-        "experiment_id": str(experiment.id),
-        "name": experiment.name,
-        "status": experiment.status.value,
-        "visits": visits,
-        "signups": signups,
-        # Both numbers are member-entered, so signups may exceed visits; cap the rate.
-        "conversion": min(100.0, round(100 * signups / visits, 1)) if visits else 0.0,
-    }
+    return smoke.stats(db, experiment)
+
+
+def smoke_test_waitlist(
+    db: Session, startup_id: uuid.UUID, experiment_id: Any
+) -> list[dict[str, Any]]:
+    experiment = get_experiment(db, startup_id, experiment_id)
+    if experiment.type != ExperimentType.smoke_test:
+        raise NotFound()
+    return smoke.waitlist(db, experiment)
 
 
 # --- interviews ----------------------------------------------------------------------------
@@ -543,3 +539,92 @@ def survey_analytics(db: Session, startup_id: uuid.UUID, survey_id: Any) -> dict
         "completion_rate": round(100 * complete / total) if total else 0,
         "questions": out,
     }
+
+
+# --- overview (PRD 09.1) + riskiest nudge (09.6) ------------------------------------------------
+
+_RISK_ORDER = {RiskLevel.high: 0, RiskLevel.medium: 1, RiskLevel.low: 2}
+
+
+def overview(db: Session, startup_id: uuid.UUID) -> dict[str, Any]:
+    counts: dict[AssumptionStatus, int] = {
+        status_: int(n)
+        for status_, n in db.query(Assumption.status, func.count(Assumption.id))
+        .filter(Assumption.startup_id == startup_id)
+        .group_by(Assumption.status)
+        .all()
+    }
+    live = (
+        db.query(func.count(Experiment.id))
+        .filter(Experiment.startup_id == startup_id, Experiment.status == ExperimentStatus.live)
+        .scalar()
+        or 0
+    )
+    responses = (
+        db.query(func.count(SurveyResponse.id))
+        .filter(SurveyResponse.startup_id == startup_id)
+        .scalar()
+        or 0
+    )
+    signups = (
+        db.query(func.count(smoke.SmokeTestEvent.id))
+        .filter(
+            smoke.SmokeTestEvent.startup_id == startup_id, smoke.SmokeTestEvent.kind == "signup"
+        )
+        .scalar()
+        or 0
+    )
+    untested = (
+        db.query(Assumption)
+        .filter(Assumption.startup_id == startup_id, Assumption.status == AssumptionStatus.untested)
+        .order_by(Assumption.created_at.asc(), Assumption.id.asc())
+        .all()
+    )
+    riskiest = min(untested, key=lambda a: _RISK_ORDER[a.risk], default=None)
+    return {
+        "assumptions": {s.value: int(counts.get(s, 0)) for s in AssumptionStatus},
+        "live_experiments": int(live),
+        # Survey answers plus smoke-test waitlist signups: everything a real person sent in.
+        "responses_collected": int(responses) + int(signups),
+        "riskiest_untested": (
+            {"id": str(riskiest.id), "statement": riskiest.statement, "risk": riskiest.risk.value}
+            if riskiest is not None
+            else None
+        ),
+    }
+
+
+# --- deletes (gap row 14) --------------------------------------------------------------------
+
+
+def _unlink(rows: list[Any], assumption_id: str) -> None:
+    for row in rows:
+        if assumption_id in (row.assumption_ids or []):
+            row.assumption_ids = [x for x in row.assumption_ids if x != assumption_id]
+
+
+def delete_assumption(db: Session, startup_id: uuid.UUID, assumption_id: Any) -> None:
+    """Delete an assumption and drop it from every interview and experiment that cited it."""
+    row = get_assumption(db, startup_id, assumption_id)
+    key = str(row.id)
+    _unlink(db.query(Interview).filter_by(startup_id=startup_id).all(), key)
+    _unlink(db.query(Experiment).filter_by(startup_id=startup_id).all(), key)
+    db.delete(row)
+    db.flush()
+
+
+def delete_experiment(db: Session, startup_id: uuid.UUID, experiment_id: Any) -> None:
+    """Its page goes offline and its events (including waitlist emails) go with it."""
+    db.delete(get_experiment(db, startup_id, experiment_id))
+    db.flush()
+
+
+def delete_interview(db: Session, startup_id: uuid.UUID, interview_id: Any) -> None:
+    db.delete(get_interview(db, startup_id, interview_id))
+    db.flush()
+
+
+def delete_survey(db: Session, startup_id: uuid.UUID, survey_id: Any) -> None:
+    """Responses go with it (FK cascade)."""
+    db.delete(get_survey(db, startup_id, survey_id))
+    db.flush()

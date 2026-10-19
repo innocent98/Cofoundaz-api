@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Use 3 to 60 lowercase letters, numbers and dashes, not starting or ending with a dash.",
+    "field_errors": [
+      {
+        "field": "config.slug",
+        "message": "Use 3 to 60 lowercase letters, numbers and dashes, not starting or ending with a dash."
+      }
+    ]
+  }
+}

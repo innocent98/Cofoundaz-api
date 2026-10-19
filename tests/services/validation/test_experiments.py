@@ -98,7 +98,9 @@ def test_smoke_stats_never_divide_by_zero(db):
     _u, s = _ctx(db)
     row = _new(db, s)
     stats = smoke_test_stats(db, s.id, row.id)
-    assert stats == {
+    assert {
+        k: stats[k] for k in ("experiment_id", "name", "status", "visits", "signups", "conversion")
+    } == {
         "experiment_id": str(row.id),
         "name": "Fake door",
         "status": "draft",
@@ -106,6 +108,7 @@ def test_smoke_stats_never_divide_by_zero(db):
         "signups": 0,
         "conversion": 0.0,
     }
+    assert stats["verdict"] is None
 
 
 def test_stats_are_404_for_an_experiment_that_is_not_a_smoke_test(db):

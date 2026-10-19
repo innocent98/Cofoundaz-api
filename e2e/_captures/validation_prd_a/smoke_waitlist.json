@@ -1,0 +1,11 @@
+{
+  "data": {
+    "signups": [
+      {
+        "email": "funke@example.com",
+        "signed_up_at": "2026-10-19T19:59:32.447688+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

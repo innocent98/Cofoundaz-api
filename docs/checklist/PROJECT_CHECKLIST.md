@@ -3452,3 +3452,12 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
       or a DNS change
 - [ ] `deploy/nginx/` has no CI coverage. A job running just `nginx -t` inside the nginx
       container would be cheap and is not done
+
+
+## Validation Hub PRD completion (2026-10-19)
+- [x] Slice (a) BE: overview + riskiest nudge, Design experiment (AI draft), hosted smoke-test pages at `/p/{slug}`
+      (slug reservation, visit/click/signup capture, waitlist), server verdict, milestone notification, deletes
+      (branch `feat/validation-prd-a`, migration 0056, guide `docs/fe-integration-guide-validation-prd-a.md`)
+- [ ] Slice (a) FE (sub-session) + live re-walk
+- [ ] Slice (b) BE: interview scripts + Insight Synthesizer
+- [ ] Slice (c) BE: MVP feedback (D-VAL-2/3)
