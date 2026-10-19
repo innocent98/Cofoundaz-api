@@ -245,10 +245,8 @@ def test_edit_script_keeps_question_ids_and_validates(client, db, monkeypatch):
         headers=h,
     )
     assert too_many.status_code == 422
-    assert (
-        client.patch(f"{BASE}/scripts/{script['id']}", json={"title": ""}, headers=h).status_code
-        == 422
-    )
+    resp = client.patch(f"{BASE}/scripts/{script['id']}", json={"title": ""}, headers=h)
+    assert resp.status_code == 422
 
 
 def test_scripts_are_tenant_scoped_member_only_and_deletable(client, db, monkeypatch):
@@ -257,7 +255,8 @@ def test_scripts_are_tenant_scoped_member_only_and_deletable(client, db, monkeyp
     script = _script(client, db, h, monkeypatch, a)
     _u2, _s2, h2 = _member(db)
     assert client.get(f"{BASE}/scripts/{script['id']}", headers=h2).status_code == 404
-    assert client.delete(f"{BASE}/scripts/{script['id']}", headers=h2).status_code == 404
+    resp = client.delete(f"{BASE}/scripts/{script['id']}", headers=h2)
+    assert resp.status_code == 404
     _m, _sm, mh = _member(db, role=MembershipRole.mentor, startup=s)
     assert client.get(f"{BASE}/scripts", headers=mh).status_code == 403
 
@@ -268,7 +267,8 @@ def test_scripts_are_tenant_scoped_member_only_and_deletable(client, db, monkeyp
         == []
     )
 
-    assert client.delete(f"{BASE}/scripts/{script['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/scripts/{script['id']}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"{BASE}/scripts/{script['id']}", headers=h).status_code == 404
 
 
@@ -283,12 +283,11 @@ def test_synthesize_with_nothing_to_read_is_422(client, db):
     _interview(client, h, quotes=["I wait three days"])
     r = client.post(f"{BASE}/synthesize", json={"source": "surveys"}, headers=h)
     assert r.json()["error"]["code"] == "NOTHING_TO_SYNTHESIZE"
-    assert (
-        client.post(f"{BASE}/synthesize", json={"source": "tea leaves"}, headers=h).status_code
-        == 422
-    )
+    resp = client.post(f"{BASE}/synthesize", json={"source": "tea leaves"}, headers=h)
+    assert resp.status_code == 422
     # No body at all means every source.
-    assert client.post(f"{BASE}/synthesize", headers=h).status_code == 202
+    resp = client.post(f"{BASE}/synthesize", headers=h)
+    assert resp.status_code == 202
 
 
 def _report_output(prompt, *, pay, banks):
@@ -478,10 +477,8 @@ def test_apply_a_suggestion_moves_the_assumption_once(client, db, monkeypatch):
     again = client.post(url, headers=h)
     assert again.status_code == 409
     assert again.json()["error"]["code"] == "ALREADY_APPLIED"
-    assert (
-        client.post(f"{BASE}/insights/{report['id']}/suggestions/nope/apply", headers=h).status_code
-        == 404
-    )
+    resp = client.post(f"{BASE}/insights/{report['id']}/suggestions/nope/apply", headers=h)
+    assert resp.status_code == 404
 
 
 def test_apply_when_the_assumption_is_gone(client, db, monkeypatch):
@@ -499,16 +496,14 @@ def test_insights_are_tenant_scoped_member_only_and_deletable(client, db, monkey
     _u2, _s2, h2 = _member(db)
     assert client.get(f"{BASE}/insights/{report['id']}", headers=h2).status_code == 404
     sid = report["suggestions"][0]["id"]
-    assert (
-        client.post(
-            f"{BASE}/insights/{report['id']}/suggestions/{sid}/apply", headers=h2
-        ).status_code
-        == 404
-    )
+    resp = client.post(f"{BASE}/insights/{report['id']}/suggestions/{sid}/apply", headers=h2)
+    assert resp.status_code == 404
     _m, _sm, mh = _member(db, role=MembershipRole.mentor, startup=s)
     assert client.get(f"{BASE}/insights", headers=mh).status_code == 403
-    assert client.post(f"{BASE}/synthesize", headers=mh).status_code == 403
-    assert client.delete(f"{BASE}/insights/{report['id']}", headers=h).status_code == 200
+    resp = client.post(f"{BASE}/synthesize", headers=mh)
+    assert resp.status_code == 403
+    resp = client.delete(f"{BASE}/insights/{report['id']}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"{BASE}/insights/{report['id']}", headers=h).status_code == 404
 
 
