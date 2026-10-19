@@ -9,6 +9,7 @@ from app.db.models.membership import Membership, MembershipStatus
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
+from app.services.onboarding.workspace import is_untouched_draft
 
 router = APIRouter()
 
@@ -29,7 +30,14 @@ def me(
         .order_by(Membership.created_at, Membership.id)
         .all()
     )
-    memberships = [{"startup_id": str(s.id), "name": s.name, "role": m.role.value} for m, s in rows]
+    # Hide an untouched onboarding draft when the user belongs to another workspace: it was
+    # created for an invited member by mistake (before the 2026-10-19 fix) or abandoned.
+    pairs = [(m, s) for m, s in rows]
+    if len(pairs) > 1:
+        pairs = [(m, s) for m, s in pairs if not is_untouched_draft(s)] or pairs
+    memberships = [
+        {"startup_id": str(s.id), "name": s.name, "role": m.role.value} for m, s in pairs
+    ]
     profile = user.profile
     return success_response(
         {
