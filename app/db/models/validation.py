@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -66,6 +66,44 @@ class Experiment(UUIDMixin, TimestampMixin, Base):
     assumption_ids: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
     )
+    # D-VAL-1: a smoke test's public page lives at /p/{slug}. Globally unique (it is a URL),
+    # copied from config["slug"] on save. Null until the founder picks one.
+    slug: Mapped[str | None] = mapped_column(String(60), nullable=True, unique=True)
+    published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class SmokeTestEvent(UUIDMixin, TimestampMixin, Base):
+    """One thing a visitor did on a hosted smoke-test page: a visit, a CTA or preorder click, or
+    an email signup. Nothing about the visitor is stored except the email they typed (signups
+    only) and a SHA-256 of the anonymous visitor id the page generates, used to count people
+    rather than page loads."""
+
+    __tablename__ = "smoke_test_events"
+    __table_args__ = (
+        Index(
+            "uq_smoke_signup_email",
+            "experiment_id",
+            "email",
+            unique=True,
+            postgresql_where=text("kind = 'signup'"),
+        ),
+        Index("ix_smoke_events_experiment_kind", "experiment_id", "kind"),
+    )
+
+    experiment_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("experiments.id", ondelete="CASCADE"), nullable=False
+    )
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    visitor_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
 
 
 class Interview(UUIDMixin, TimestampMixin, Base):

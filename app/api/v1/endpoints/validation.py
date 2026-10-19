@@ -26,17 +26,24 @@ from app.schemas.validation import (
     ExperimentUpdate,
     InterviewCreate,
     InterviewUpdate,
+    PageEvent,
+    PageSignup,
     ResponseSubmit,
     ScriptsGenerate,
     SurveyCreate,
     SurveyUpdate,
 )
+from app.services.validation import smoke
 from app.services.validation.public import open_survey, public_view, submit_response
 from app.services.validation.service import (
     create_assumption,
     create_experiment,
     create_interview,
     create_survey,
+    delete_assumption,
+    delete_experiment,
+    delete_interview,
+    delete_survey,
     evidence_counts,
     get_assumption,
     get_experiment,
@@ -47,12 +54,14 @@ from app.services.validation.service import (
     list_experiments,
     list_interviews,
     list_surveys,
+    overview,
     response_counts,
     serialize_assumption,
     serialize_experiment,
     serialize_interview,
     serialize_survey,
     smoke_test_stats,
+    smoke_test_waitlist,
     survey_analytics,
     update_assumption,
     update_experiment,
@@ -63,6 +72,19 @@ from app.services.validation.service import (
 router = APIRouter()
 # Founders and team members only (spec D6, PRD line 457).
 _member = require_role(MembershipRole.founder, MembershipRole.team_member)
+
+
+# --- overview (PRD 09.1) ---------------------------------------------------------------------
+
+
+@router.get("/overview")
+def overview_endpoint(
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Stat strip + the riskiest untested assumption for the header nudge."""
+    return success_response(overview(db, membership.startup_id))
 
 
 # --- assumptions ---------------------------------------------------------------------------
@@ -176,6 +198,19 @@ def update_experiment_endpoint(
     )
     db.commit()
     return success_response(serialize_experiment(row))
+
+
+@router.get("/smoke-tests/{experiment_id}/signups")
+def smoke_test_signups_endpoint(
+    experiment_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The waitlist: emails visitors typed on the hosted page, oldest first."""
+    return success_response(
+        {"signups": smoke_test_waitlist(db, membership.startup_id, experiment_id)}
+    )
 
 
 @router.get("/smoke-tests/{experiment_id}/stats")
@@ -337,6 +372,121 @@ def submit_survey_response_endpoint(
     submit_response(db, token, body.answers)
     db.commit()
     return success_response({"received": True})
+
+
+# --- smoke-test pages (public, no authentication; D-VAL-1, served at /p/{slug}) ----------------
+
+
+@router.get("/pages/{slug}")
+@limiter.limit("60/minute")
+def public_page_endpoint(
+    request: Request,
+    slug: str,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """What the visitor sees. 404 unless the test is live."""
+    return success_response(smoke.page_view(smoke.open_page(db, slug)))
+
+
+@router.post("/pages/{slug}/events", status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
+def page_event_endpoint(
+    request: Request,
+    slug: str,
+    body: PageEvent,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    smoke.record_event(db, slug, body.kind, body.visitor_id)
+    db.commit()
+    return success_response({"received": True})
+
+
+@router.post("/pages/{slug}/signups", status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
+def page_signup_endpoint(
+    request: Request,
+    slug: str,
+    body: PageSignup,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Join the waitlist. Same reply whether or not the email was already on it."""
+    out = smoke.record_signup(db, slug, str(body.email), body.visitor_id)
+    db.commit()
+    return success_response(out)
+
+
+# --- deletes (gap row 14) ----------------------------------------------------------------------
+
+
+@router.delete("/assumptions/{assumption_id}")
+def delete_assumption_endpoint(
+    assumption_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_assumption(db, membership.startup_id, assumption_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.delete("/experiments/{experiment_id}")
+def delete_experiment_endpoint(
+    experiment_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_experiment(db, membership.startup_id, experiment_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.delete("/interviews/{interview_id}")
+def delete_interview_endpoint(
+    interview_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_interview(db, membership.startup_id, interview_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.delete("/surveys/{survey_id}")
+def delete_survey_endpoint(
+    survey_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_survey(db, membership.startup_id, survey_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+# --- AI: "Design experiment" for an assumption (PRD 09.6 nudge), never auto-saved ------------
+
+
+@router.post("/assumptions/{assumption_id}/experiment-draft", status_code=status.HTTP_202_ACCEPTED)
+def experiment_draft_endpoint(
+    assumption_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Queue an AI smoke-test draft for this assumption. The draft comes back in the job's
+    `result`; nothing is created until the founder saves it through the normal builder."""
+    row = get_assumption(db, membership.startup_id, assumption_id)
+    job = job_dispatcher.enqueue(
+        db,
+        "validation.experiment.draft",
+        {"startup_id": str(membership.startup_id), "assumption_id": str(row.id)},
+        membership.startup_id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
 
 
 # --- job stubs -----------------------------------------------------------------------------

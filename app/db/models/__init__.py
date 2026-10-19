@@ -62,6 +62,7 @@ from app.db.models.validation import (  # noqa: F401
     Assumption,
     Experiment,
     Interview,
+    SmokeTestEvent,
     Survey,
     SurveyResponse,
 )
