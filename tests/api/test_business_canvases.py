@@ -37,10 +37,11 @@ def test_overview_lists_all_types_as_start(client, db):
     # pricing) appended after the canvas rows -- see
     # app/services/business/service.py::overview. Exact-set assertion re-catches
     # duplicate/stray/misspelled rows.
+    # ...plus the Business Plan row (PRD 08.1 grid), whose status is `none` until generated.
     assert {row["type"] for row in rows} == {t.value for t in CanvasType} | {
         k.value for k in RecordKind
-    }
-    assert all(row["status"] == "start" for row in rows)
+    } | {"plan"}
+    assert all(row["status"] == "start" for row in rows if row["type"] != "plan")
 
 
 def test_get_canvas_lazy_creates_and_returns_defs(client, db):

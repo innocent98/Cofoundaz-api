@@ -106,8 +106,9 @@ def test_business_builder_journey(base_url, make_verified_user, capture):
         overview_empty = c.get("/api/v1/business-builder/overview", headers=wh)
         assert overview_empty.status_code == 200, overview_empty.text
         rows = overview_empty.json()["data"]
-        assert {r["type"] for r in rows} == _CANVAS_TYPES | _RECORD_KINDS
-        assert all(r["status"] == "start" for r in rows), rows
+        # ...plus the Business Plan row (PRD 08.1), `status: "none"` until a plan is generated.
+        assert {r["type"] for r in rows} == _CANVAS_TYPES | _RECORD_KINDS | {"plan"}
+        assert all(r["status"] == "start" for r in rows if r["type"] != "plan"), rows
         capture("business", "overview_empty", overview_empty)
 
         # 2. GET /business-builder/canvases/business_model -- lazy-creates the
@@ -751,3 +752,172 @@ def test_business_positioning_map_journey(base_url, make_verified_user, capture)
         assert fixed_comp["x"] == 0.85
         assert fixed_comp["y"] == 0.15
         capture("business", "positioning_get_after_coord_fix", map_after_fix)
+
+
+def test_business_builder_prd_a_journey(
+    base_url, make_verified_user, mailbox, unique_email, capture
+):
+    """PRD completion slice (a): editor "last edited" + version history and restore
+    (D-BB-1), Export to a Document (D-BB-2), consultant-only suggest mode with the founder's
+    PRD notification (D-BB-3), and the overview's last-edited + Business Plan row. A founder,
+    a `business_consultant` and a `mentor` share one workspace. Captures land in
+    e2e/_captures/business_prd/ and are the source of docs/fe-integration-guide-business-builder-prd.md.
+    """
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD A")
+
+        people = {}
+        for role in ("business_consultant", "mentor"):
+            email = unique_email(role.split("_")[0])
+            inv = c.post(
+                "/api/v1/onboarding/invites",
+                headers=auth,
+                json={"invites": [{"email": email, "role": role}]},
+            )
+            assert inv.status_code == 200, inv.text
+            token = mailbox.latest_token_for(email, subject_contains="invited")
+            member_auth = _signup_verify_login(
+                c, mailbox, email, "Member-" + email.split("@")[0] + "-9"
+            )
+            acc = c.post("/api/v1/invitations/accept", json={"token": token}, headers=member_auth)
+            assert acc.status_code == 200, acc.text
+            people[role] = member_auth
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+
+        wh = _wh(c, auth)
+        bc = _wh(c, people["business_consultant"])
+        mentor = _wh(c, people["mentor"])
+
+        # 1. Overview before any edit: no last-edited anywhere, plan row "none".
+        ov = c.get(f"{bb}/overview", headers=wh)
+        assert ov.status_code == 200, ov.text
+        rows = {r["type"]: r for r in ov.json()["data"]}
+        assert rows["plan"]["status"] == "none" and rows["swot"]["updated_at"] is None
+        capture("business_prd", "overview_before", ov)
+
+        # 2. A fresh canvas has no `updated_by`; a save stamps the editor.
+        fresh = c.get(f"{bb}/canvases/swot", headers=wh)
+        assert fresh.json()["data"]["updated_by"] is None
+        capture("business_prd", "canvas_fresh", fresh)
+        s1 = c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={"blocks": {"strengths": ["Founder-market fit"]}, "version": 1},
+        )
+        assert s1.status_code == 200, s1.text
+        assert s1.json()["data"]["updated_by"]["name"] == "Ada Founder"
+        capture("business_prd", "canvas_save_v2", s1)
+        s2 = c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={
+                "blocks": {"strengths": ["Founder-market fit", "Speed"], "threats": ["Incumbent"]},
+                "version": 2,
+            },
+        )
+        assert s2.status_code == 200, s2.text
+
+        # 3. Version history, newest first, and one version's blocks.
+        versions = c.get(f"{bb}/canvases/swot/versions", headers=wh)
+        assert [v["version"] for v in versions.json()["data"]["versions"]] == [3, 2]
+        capture("business_prd", "versions_list", versions)
+        v2 = c.get(f"{bb}/canvases/swot/versions/2", headers=wh)
+        assert v2.json()["data"]["blocks"]["strengths"] == ["Founder-market fit"]
+        capture("business_prd", "version_detail", v2)
+        missing = c.get(f"{bb}/canvases/swot/versions/99", headers=wh)
+        assert missing.status_code == 404
+        capture("business_prd", "version_not_found", missing)
+
+        # 4. Restore: stale `version` is a 409; the current one writes v4 from the snapshot.
+        stale = c.post(f"{bb}/canvases/swot/versions/2/restore", headers=wh, json={"version": 2})
+        assert stale.status_code == 409, stale.text
+        capture("business_prd", "restore_stale_409", stale)
+        bc_restore = c.post(
+            f"{bb}/canvases/swot/versions/2/restore", headers=bc, json={"version": 3}
+        )
+        assert bc_restore.status_code == 403
+        capture("business_prd", "restore_consultant_403", bc_restore)
+        restored = c.post(f"{bb}/canvases/swot/versions/2/restore", headers=wh, json={"version": 3})
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["data"]["version"] == 4
+        capture("business_prd", "restore_ok", restored)
+        after = c.get(f"{bb}/canvases/swot/versions", headers=wh)
+        assert after.json()["data"]["versions"][0]["source"] == "restore"
+        capture("business_prd", "versions_after_restore", after)
+
+        # 5. Export: a canvas and a record list become Documents; empty is a 422.
+        empty = c.post(f"{bb}/canvases/lean/export", headers=wh)
+        assert empty.status_code == 422, empty.text
+        capture("business_prd", "export_empty_422", empty)
+        exp = c.post(f"{bb}/canvases/swot/export", headers=wh)
+        assert exp.status_code == 201, exp.text
+        capture("business_prd", "export_canvas", exp)
+        doc = c.get(f"/api/v1/documents/{exp.json()['data']['document_id']}", headers=wh)
+        assert doc.status_code == 200, doc.text
+        capture("business_prd", "export_canvas_document", doc)
+        comp = c.post(
+            f"{bb}/competitors",
+            headers=wh,
+            json={"data": {"name": "Paystack", "positioning": "Payments for Africa"}},
+        )
+        assert comp.status_code == 201, comp.text
+        capture("business_prd", "record_create_with_updated_by", comp)
+        exp_rec = c.post(f"{bb}/competitors/export", headers=wh)
+        assert exp_rec.status_code == 201, exp_rec.text
+        capture("business_prd", "export_records", exp_rec)
+        bc_export = c.post(f"{bb}/canvases/swot/export", headers=bc)
+        assert bc_export.status_code == 403
+        capture("business_prd", "export_consultant_403", bc_export)
+
+        # 6. Suggest mode is consultant-only; the founder is notified with the PRD copy.
+        body = {
+            "op": "canvas_update",
+            "target": {"canvas_type": "business_model"},
+            "payload": {"blocks": {"key_partners": ["Flutterwave"]}},
+            "note": "Add our payments partner",
+        }
+        m403 = c.post(f"{bb}/suggestions", headers=mentor, json=body)
+        assert m403.status_code == 403, m403.text
+        capture("business_prd", "suggest_mentor_403", m403)
+        f403 = c.post(f"{bb}/suggestions", headers=wh, json=body)
+        assert f403.status_code == 403
+        sug = c.post(f"{bb}/suggestions", headers=bc, json=body)
+        assert sug.status_code == 201, sug.text
+        capture("business_prd", "suggest_consultant_201", sug)
+        feed = c.get("/api/v1/notifications", headers=wh)
+        assert feed.status_code == 200, feed.text
+        notes = [
+            n
+            for n in feed.json()["data"]["notifications"]
+            if n["type"] == "business.suggestion.created"
+        ]
+        assert notes and notes[0]["title"].endswith("suggested changes to Business Model Canvas")
+        capture("business_prd", "founder_notifications", feed)
+        mentor_feed = c.get("/api/v1/notifications", headers=mentor)
+        assert not [
+            n
+            for n in mentor_feed.json()["data"]["notifications"]
+            if n["type"] == "business.suggestion.created"
+        ]
+
+        # 7. Approve: the canvas's last editor and the snapshot are the consultant.
+        sid = sug.json()["data"]["id"]
+        appr = c.post(f"{bb}/suggestions/{sid}/approve", headers=wh)
+        assert appr.status_code == 200, appr.text
+        bmc_versions = c.get(f"{bb}/canvases/business_model/versions", headers=wh)
+        assert bmc_versions.json()["data"]["versions"][0]["source"] == "suggestion"
+        capture("business_prd", "versions_after_suggestion", bmc_versions)
+
+        # 8. Overview after: last-edited set on touched artifacts.
+        ov2 = c.get(f"{bb}/overview", headers=wh)
+        rows2 = {r["type"]: r for r in ov2.json()["data"]}
+        assert rows2["swot"]["updated_at"] and rows2["competitor"]["updated_at"]
+        capture("business_prd", "overview_after", ov2)
+
+        # 9. Record field descriptors are readable type names.
+        personas = c.get(f"{bb}/personas", headers=wh)
+        assert {f["type"] for f in personas.json()["data"]["fields"]} <= {"str", "list[str]"}
+        capture("business_prd", "personas_fields", personas)

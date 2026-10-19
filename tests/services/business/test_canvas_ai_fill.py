@@ -3,7 +3,7 @@ from app.db.models.enums import CanvasType
 from app.db.models.job import Job, JobStatus
 from app.services.business.ai_fill import build_canvas_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
-from app.services.business.service import get_or_create_canvas
+from app.services.business.service import get_or_create_canvas, list_versions
 from app.worker.handlers.ai import handle_canvas_ai_fill
 from tests.factories import create_startup, create_user
 
@@ -57,6 +57,10 @@ def test_ai_fill_fills_empty_canvas(db, monkeypatch):
         val = canvas.blocks[b.key]
         assert val and "[stub-llm]" in (val if isinstance(val, str) else val[0])
     assert canvas.version >= 2  # bumped from the create's version 1
+    # D-BB-1: the AI write is in the version history, attributed to nobody (AI).
+    (snap,) = list_versions(db, canvas)
+    assert snap.version == canvas.version and snap.source == "ai" and snap.edited_by_id is None
+    assert canvas.updated_by_id is None
 
 
 def test_ai_fill_preserves_user_filled_blocks(db, monkeypatch):

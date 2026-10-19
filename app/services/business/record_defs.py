@@ -1,4 +1,5 @@
 import enum
+import re
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -120,6 +121,13 @@ def record_json_schema(kind: RecordKind) -> dict[str, Any]:
     }
 
 
+def _type_name(annotation: Any) -> str:
+    """`str`, `list[str]`, `float | None`: never Python's `<class 'str'>` repr."""
+    if isinstance(annotation, type) and not getattr(annotation, "__args__", None):
+        return annotation.__name__
+    return re.sub(r"\b(?:\w+\.)+(\w+)", r"\1", str(annotation))
+
+
 def fields(kind: RecordKind) -> list[dict[str, Any]]:
     """FE field descriptors for a kind: each dict has `key`, `required`, `type`,
     and `choices` (list of enum member values when the field's annotation is a
@@ -134,7 +142,7 @@ def fields(kind: RecordKind) -> list[dict[str, Any]]:
             {
                 "key": key,
                 "required": info.is_required(),
-                "type": str(annotation),
+                "type": _type_name(annotation),
                 "choices": choices,
             }
         )

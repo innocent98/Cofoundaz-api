@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from pydantic import ValidationError
@@ -10,6 +11,7 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.business.record_defs import RECORD_SCHEMAS
+from app.services.business.service import person
 
 
 def validate(kind: RecordKind, data: dict[str, Any]) -> dict[str, Any]:
@@ -37,10 +39,19 @@ def list_records(db: Session, startup: Startup, kind: RecordKind) -> list[Busine
     )
 
 
-def create_record(db: Session, startup: Startup, kind: RecordKind, data: dict) -> BusinessRecord:
+def create_record(
+    db: Session,
+    startup: Startup,
+    kind: RecordKind,
+    data: dict,
+    *,
+    user_id: uuid.UUID | None = None,
+) -> BusinessRecord:
     clean = validate(kind, data)
     count = db.query(BusinessRecord).filter_by(startup_id=startup.id, kind=kind).count()
-    row = BusinessRecord(startup_id=startup.id, kind=kind, data=clean, position=count)
+    row = BusinessRecord(
+        startup_id=startup.id, kind=kind, data=clean, position=count, updated_by_id=user_id
+    )
     db.add(row)
     db.flush()
     if count == 0:
@@ -52,8 +63,11 @@ def create_record(db: Session, startup: Startup, kind: RecordKind, data: dict) -
     return row
 
 
-def update_record(db: Session, record: BusinessRecord, data: dict) -> BusinessRecord:
+def update_record(
+    db: Session, record: BusinessRecord, data: dict, *, user_id: uuid.UUID | None = None
+) -> BusinessRecord:
     record.data = validate(record.kind, data)
+    record.updated_by_id = user_id
     db.flush()
     return record
 
@@ -69,6 +83,8 @@ def serialize_record(record: BusinessRecord) -> dict[str, Any]:
         "kind": record.kind.value,
         "data": record.data,
         "position": record.position,
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+        "updated_by": person(record.updated_by),
     }
 
 

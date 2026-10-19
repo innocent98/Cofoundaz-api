@@ -1,0 +1,43 @@
+{
+  "data": {
+    "type": "swot",
+    "version": 1,
+    "blocks": {
+      "threats": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": []
+    },
+    "block_defs": [
+      {
+        "key": "strengths",
+        "label": "Strengths",
+        "kind": "list"
+      },
+      {
+        "key": "weaknesses",
+        "label": "Weaknesses",
+        "kind": "list"
+      },
+      {
+        "key": "opportunities",
+        "label": "Opportunities",
+        "kind": "list"
+      },
+      {
+        "key": "threats",
+        "label": "Threats",
+        "kind": "list"
+      }
+    ],
+    "completion": {
+      "filled_blocks": 0,
+      "total_blocks": 4,
+      "completion_pct": 0,
+      "status": "start"
+    },
+    "updated_at": "2026-10-19T11:08:26.246321+00:00",
+    "updated_by": null
+  },
+  "meta": null
+}

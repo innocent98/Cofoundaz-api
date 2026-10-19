@@ -2,10 +2,21 @@ import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, Text, UniqueConstraint, text
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
@@ -32,10 +43,41 @@ class BusinessCanvas(UUIDMixin, TimestampMixin, Base):
     )
     blocks: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    # Who made the latest change (PRD 08 editor header "last edited"); None for AI fills.
+    updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    updated_by = relationship("User", foreign_keys=[updated_by_id], lazy="select")
 
     __table_args__ = (
         UniqueConstraint("startup_id", "type", name="uq_business_canvas_startup_type"),
     )
+
+
+class BusinessCanvasVersion(UUIDMixin, Base):
+    """A snapshot of a canvas after one save (D-BB-1). Capped per canvas by the service."""
+
+    __tablename__ = "business_canvas_versions"
+
+    canvas_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("business_canvases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    blocks: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # manual | ai | suggestion | restore
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    edited_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    edited_by = relationship("User", foreign_keys=[edited_by_id], lazy="select")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (UniqueConstraint("canvas_id", "version", name="uq_business_canvas_version"),)
 
 
 class BusinessRecord(UUIDMixin, TimestampMixin, Base):
@@ -52,6 +94,10 @@ class BusinessRecord(UUIDMixin, TimestampMixin, Base):
     )
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    updated_by = relationship("User", foreign_keys=[updated_by_id], lazy="select")
 
     __table_args__ = (Index("ix_business_records_startup_kind", "startup_id", "kind", "position"),)
 

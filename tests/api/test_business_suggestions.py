@@ -70,11 +70,11 @@ def test_consultant_cannot_approve_403(client, db):
 
 
 def test_list_filters_by_status(client, db):
-    _u, _s, h = _member(db)
+    _s, h, h_bc = _two_roles(db, MembershipRole.founder, MembershipRole.business_consultant)
     client.post(
         "/api/v1/business-builder/suggestions",
         json={"op": "canvas_update", "target": {"canvas_type": "swot"}, "payload": {"blocks": {}}},
-        headers=h,
+        headers=h_bc,
     )
     r = client.get("/api/v1/business-builder/suggestions?status=pending", headers=h)
     assert r.status_code == 200 and len(r.json()["data"]["suggestions"]) == 1
@@ -105,11 +105,11 @@ def test_approve_unknown_id_404(client, db):
 
 
 def test_reject_then_approve_409(client, db):
-    _u, _s, h = _member(db)
+    _s, h, h_bc = _two_roles(db, MembershipRole.founder, MembershipRole.business_consultant)
     sid = client.post(
         "/api/v1/business-builder/suggestions",
         json={"op": "canvas_update", "target": {"canvas_type": "lean"}, "payload": {"blocks": {}}},
-        headers=h,
+        headers=h_bc,
     ).json()["data"]["id"]
     assert (
         client.post(f"/api/v1/business-builder/suggestions/{sid}/reject", headers=h).status_code
@@ -129,7 +129,7 @@ def test_list_bad_status_404(client, db):
 
 def test_create_malformed_record_id_404(client, db):
     """A syntactically invalid record_id must 404 cleanly, not 500 with a leaked DB error."""
-    _u, _s, h = _member(db)
+    _u, _s, h = _member(db, role=MembershipRole.business_consultant)
     r = client.post(
         "/api/v1/business-builder/suggestions",
         json={
