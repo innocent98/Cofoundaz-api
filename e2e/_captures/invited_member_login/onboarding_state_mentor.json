@@ -1,0 +1,17 @@
+{
+    "data": {
+        "step": 6,
+        "completed": true,
+        "assessment_pending": false,
+        "founder_profile": null,
+        "startup": {
+            "id": "11ba2aa0-8c8d-4035-adb8-62530988ed44",
+            "name": "NovaPay"
+        },
+        "goals": [],
+        "ai_panel": null,
+        "notes": null,
+        "invites": []
+    },
+    "meta": null
+}

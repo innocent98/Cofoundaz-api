@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -10,6 +11,69 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User
 from app.platform.events import event_bus
+
+
+def joined_workspace(db: Session, user: User, preferred_id: uuid.UUID | None) -> Startup | None:
+    """An onboarded workspace `user` joined by invitation (they did not create it): the one
+    named by `preferred_id` (the X-Workspace-Id the app sends) when they belong to it, else
+    the earliest joined if they own no workspace. None means "use the owner rules"."""
+    rows = (
+        db.query(Startup)
+        .join(Membership, Membership.startup_id == Startup.id)
+        .join(StartupProfile, StartupProfile.startup_id == Startup.id)
+        .filter(
+            Membership.user_id == user.id,
+            Membership.status == MembershipStatus.active,
+            Startup.created_by != user.id,
+            Startup.deleted_at.is_(None),
+            StartupProfile.onboarding_completed_at.is_not(None),
+        )
+        .order_by(Membership.created_at, Membership.id)
+        .all()
+    )
+    for startup in rows:
+        if startup.id == preferred_id:
+            return startup
+    if not rows:
+        return None
+    # No usable header: answer as a member only when they own no workspace of their own.
+    return None if _own_workspace(db, user) is not None else rows[0]
+
+
+def _own_workspace(db: Session, user: User) -> Startup | None:
+    return (
+        db.query(Startup)
+        .filter(Startup.created_by == user.id, Startup.deleted_at.is_(None))
+        .order_by(Startup.created_at.desc())
+        .first()
+    )
+
+
+def is_untouched_draft(startup: Startup) -> bool:
+    """A workspace created for onboarding that nobody started filling in."""
+    profile = startup.profile
+    return (
+        startup.name is None
+        and profile is not None
+        and profile.onboarding_completed_at is None
+        and profile.onboarding_step <= 1
+    )
+
+
+def serialize_member_state(startup: Startup) -> dict[str, Any]:
+    """Onboarding state of a workspace the caller joined: it is complete, and the founder's
+    own onboarding answers and invite list stay private."""
+    return {
+        "step": startup.profile.onboarding_step,
+        "completed": True,
+        "assessment_pending": False,
+        "founder_profile": None,
+        "startup": {"id": str(startup.id), "name": startup.name},
+        "goals": [],
+        "ai_panel": None,
+        "notes": None,
+        "invites": [],
+    }
 
 
 def resolve_or_create_workspace(db: Session, user: User) -> Startup:
