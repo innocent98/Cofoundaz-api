@@ -555,8 +555,9 @@ Done (`regenerate_job_done.json`):
 ```
 - Month 1 is each stream's `est_monthly`, then it compounds monthly at `growth_pct`. Values are in the same **major
   units** as `est_monthly` (not minor), rounded to 2 dp.
-- `months` 1-60 (default 12). `growth_pct` -50 to 100. When omitted, it uses Finance's runway "MoM growth" assumption,
-  or 0. Out of range → 422.
+- `months` 1-60 (default 12). `growth_pct` -50 to 100. When omitted, it uses Finance's runway "MoM growth" assumption
+  **for Finance roles only** (founder, team member, accountant); every other role defaults to 0, so a mentor or investor
+  never sees the Finance assumption. Show the growth input prefilled with the returned `growth_pct`. Out of range → 422.
 - The live capture also contains an AI-drafted stream with `est_monthly: 0` (from draft-missing), which plots flat at 0.
 
 ### 17.2 "Send to financial model": `POST /revenue-streams/send-to-finance` → 200 (`send_to_finance.json`, excerpt)

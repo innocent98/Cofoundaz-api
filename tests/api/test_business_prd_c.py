@@ -425,3 +425,19 @@ def test_fit_links_validation(client, db):
         == 403
     )
     assert "fit_links" not in client.get(f"{BB}/canvases/swot", headers=h).json()["data"]
+
+
+def test_projection_growth_default_is_finance_only(client, db):
+    """The runway MoM growth assumption is Finance data: only Finance roles get it as the
+    projection default; other members see a 0% default (they can still pass growth_pct)."""
+    from app.db.models.finance_runway import FinanceRunwaySettings
+
+    s, [(_f, h), (_inv, h_inv)] = _workspace(db, MembershipRole.investor)
+    db.add(FinanceRunwaySettings(startup_id=s.id, mom_growth_percent=7))
+    db.flush()
+    _streams(client, h)
+    assert (
+        client.get(f"{BB}/revenue-streams/projection", headers=h).json()["data"]["growth_pct"] == 7
+    )
+    inv = client.get(f"{BB}/revenue-streams/projection", headers=h_inv).json()["data"]
+    assert inv["growth_pct"] == 0

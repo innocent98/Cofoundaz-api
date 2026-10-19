@@ -9,6 +9,7 @@ from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
 from app.db.models.business import BusinessPlan
 from app.db.models.enums import (
+    FINANCE_ROLES,
     BusinessPlanStatus,
     CanvasType,
     MembershipRole,
@@ -516,9 +517,15 @@ def revenue_projection(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    """PRD 08.8 projected chart. Growth defaults to Finance's runway MoM growth assumption."""
+    """PRD 08.8 projected chart. Growth defaults to Finance's runway MoM growth assumption,
+    but only for roles that can read Finance; everyone else defaults to 0 (no Finance leak)."""
     startup = _startup(db, membership)
-    g = growth_pct if growth_pct is not None else default_growth_pct(db, startup)
+    if growth_pct is not None:
+        g = growth_pct
+    elif membership.role in FINANCE_ROLES:
+        g = default_growth_pct(db, startup)
+    else:
+        g = 0.0
     return success_response(projection(db, startup, months, g))
 
 
