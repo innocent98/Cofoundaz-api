@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.business import BusinessPlan
 from app.db.models.enums import (
     BusinessPlanStatus,
@@ -22,12 +22,21 @@ from app.db.session import get_db
 from app.db.tenancy import require_role, require_workspace
 from app.platform.jobs import job_dispatcher
 from app.schemas.business import (
+    CanvasAiFill,
     CanvasRestore,
     CanvasSave,
+    MissionVisionOptions,
     PositioningMapSave,
+    PricingAdvisorRequest,
     RecordCreate,
     SuggestionCreate,
 )
+from app.services.business.ai_assist import (
+    competitor_prices,
+    has_validation_data,
+    validation_context,
+)
+from app.services.business.canvas_defs import CANVAS_BLOCKS
 from app.services.business.export import export_canvas, export_records
 from app.services.business.positioning import (
     assemble_map,
@@ -172,16 +181,97 @@ def export_canvas_endpoint(
 @router.post("/canvases/{type}/ai-fill", status_code=status.HTTP_202_ACCEPTED)
 def ai_fill_canvas(
     type: str,
+    body: CanvasAiFill | None = None,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     canvas_type = _parse_type(type)
     startup = _startup(db, membership)
+    payload: dict[str, Any] = {"startup_id": str(startup.id), "canvas_type": canvas_type.value}
+    if body is not None and body.block is not None:
+        if body.block not in {b.key for b in CANVAS_BLOCKS[canvas_type]}:
+            raise AppError(
+                "VALIDATION_ERROR",
+                "That section doesn't exist on this canvas.",
+                422,
+                field_errors=[{"field": "block", "message": "Not a block on this canvas."}],
+            )
+        payload["block"] = body.block  # per-section assist, append-only (D-BB-4)
     job = job_dispatcher.enqueue(
         db,
         type="business.canvas.ai_fill",
-        payload={"startup_id": str(startup.id), "canvas_type": canvas_type.value},
+        payload=payload,
+        startup_id=startup.id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.post("/canvases/mission_vision/options", status_code=status.HTTP_202_ACCEPTED)
+def mission_vision_options(
+    body: MissionVisionOptions,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.4 "Give me 3 options": poll `GET /jobs/{id}`; `result.options` holds the variants."""
+    startup = _startup(db, membership)
+    job = job_dispatcher.enqueue(
+        db,
+        type="ai.business.mission_vision_options",
+        payload={"startup_id": str(startup.id), "field": body.field},
+        startup_id=startup.id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.post("/personas/from-validation", status_code=status.HTTP_202_ACCEPTED)
+def personas_from_validation(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.6 "Generate personas from my validation notes" (Module 09 interviews/assumptions)."""
+    startup = _startup(db, membership)
+    if not has_validation_data(validation_context(db, startup)):
+        raise AppError(
+            "NO_VALIDATION_DATA",
+            "Log a customer interview or an assumption in Validation first.",
+            422,
+        )
+    job = job_dispatcher.enqueue(
+        db,
+        type="ai.business.personas_from_validation",
+        payload={"startup_id": str(startup.id)},
+        startup_id=startup.id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.post("/pricing/advisor", status_code=status.HTTP_202_ACCEPTED)
+def pricing_advisor(
+    body: PricingAdvisorRequest,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.7 AI advisor panel. Competitor prices = the competitor records' prices plus any
+    typed in; advice comes back in `result.advice` and is never written automatically."""
+    startup = _startup(db, membership)
+    prices = competitor_prices(db, startup)
+    known = {p["name"].casefold() for p in prices}
+    prices += [p.model_dump() for p in body.competitor_prices if p.name.casefold() not in known]
+    job = job_dispatcher.enqueue(
+        db,
+        type="ai.business.pricing_advisor",
+        payload={
+            "startup_id": str(startup.id),
+            "competitor_prices": prices[:20],
+            "willingness_to_pay": body.willingness_to_pay,
+        },
         startup_id=startup.id,
     )
     db.commit()

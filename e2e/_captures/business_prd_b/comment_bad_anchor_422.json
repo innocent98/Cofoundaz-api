@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That section doesn't exist on this item.",
+    "field_errors": [
+      {
+        "field": "anchor",
+        "message": "Not a section of this item."
+      }
+    ]
+  }
+}

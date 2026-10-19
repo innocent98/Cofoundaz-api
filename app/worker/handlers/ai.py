@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.assessment import AssessmentResult
-from app.db.models.business import BusinessRecord
+from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.dashboard import DailyBriefing
 from app.db.models.enums import (
     BriefingStatus,
@@ -112,6 +112,9 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         return  # benign no-op
     canvas_type = CanvasType(job.payload["canvas_type"])
     canvas = get_or_create_canvas(db, startup, canvas_type)
+    if job.payload.get("block"):
+        _canvas_section_fill(db, job, startup, canvas)
+        return
     current = dict(canvas.blocks or {})
     empty_keys = [b.key for b in CANVAS_BLOCKS[canvas_type] if not current.get(b.key)]
     if not empty_keys:
@@ -147,6 +150,37 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     canvas.version += 1
     db.flush()
     snapshot_canvas(db, canvas, user_id=None, source="ai")
+
+
+def _canvas_section_fill(db: Session, job: Job, startup: Startup, canvas: BusinessCanvas) -> None:
+    """PRD 08 per-section AI assist (D-BB-4): append-only into ONE block. Result in job.result."""
+    from app.services.business import ai_assist
+
+    key = str(job.payload["block"])
+    block = ai_assist.block_def(canvas, key)
+    if block is None:
+        job.result = {"status": "gone", "block": key, "added": []}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_section_messages(startup, canvas, block),
+        schema=ai_assist.section_schema(block),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "block": key, "added": []}
+        return
+    db.refresh(canvas)  # a concurrent edit during the LLM call wins; we only append to it
+    added = ai_assist.merge_section(canvas, block, result)
+    if not added:
+        job.result = {"status": "nothing_new", "block": key, "added": []}
+        return
+    validate_blocks(canvas.type, canvas.blocks)
+    canvas.version += 1
+    db.flush()
+    snapshot_canvas(db, canvas, user_id=None, source="ai")
+    job.result = {"status": "ready", "block": key, "added": added, "version": canvas.version}
 
 
 register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)
@@ -563,3 +597,97 @@ def milestone_tasks(db: Session, milestone_id: uuid.UUID) -> list:
 
 
 register_handler("ai.roadmap.breakdown", handle_roadmap_breakdown)
+
+
+def handle_mission_vision_options(db: Session, job: Job) -> None:
+    """PRD 08.4 "Give me 3 options": variants in job.result, nothing written. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    field = str(job.payload["field"])
+    if startup is None:
+        job.result = {"status": "gone", "field": field, "options": []}
+        return
+    canvas = get_or_create_canvas(db, startup, CanvasType.mission_vision)
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_options_messages(startup, field, str(canvas.blocks.get(field) or "")),
+        schema=ai_assist.options_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "field": field, "options": []}
+        return
+    job.result = {"status": "ready", "field": field, "options": ai_assist.clean_options(result)}
+
+
+def handle_personas_from_validation(db: Session, job: Job) -> None:
+    """PRD 08.6 "Generate personas from my validation notes": append up to 3 personas. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    if startup is None:
+        job.result = {"status": "gone", "created_record_ids": []}
+        return
+    ctx = ai_assist.validation_context(db, startup)
+    if not ai_assist.has_validation_data(ctx):
+        job.result = {"status": "no_validation_data", "created_record_ids": []}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_persona_messages(startup, ctx),
+        schema=record_json_schema(RecordKind.persona),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "created_record_ids": []}
+        return
+    taken = ai_assist.existing_persona_names(db, startup)
+    created = []
+    for rec in (result.get("records") or [])[:3]:
+        name = str(rec.get("name", "")).strip().casefold()
+        if not name or name in taken:
+            continue  # append-only and de-duplicated by name
+        try:
+            created.append(create_record(db, startup, RecordKind.persona, rec))
+        except AppError:
+            continue
+        taken.add(name)
+    db.flush()
+    job.result = {
+        "status": "ready" if created else "nothing_new",
+        "created_record_ids": [str(r.id) for r in created],
+        "interviews_used": len(ctx["interviews"]),
+    }
+
+
+def handle_pricing_advisor(db: Session, job: Job) -> None:
+    """PRD 08.7 AI advisor panel: WTP prompts + suggested model/tiers in job.result. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    if startup is None:
+        job.result = {"status": "gone"}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_advisor_messages(
+            startup,
+            job.payload.get("competitor_prices") or [],
+            job.payload.get("willingness_to_pay"),
+        ),
+        schema=ai_assist.advisor_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget"}
+        return
+    job.result = {"status": "ready", "advice": result}
+
+
+register_handler("ai.business.mission_vision_options", handle_mission_vision_options)
+register_handler("ai.business.personas_from_validation", handle_personas_from_validation)
+register_handler("ai.business.pricing_advisor", handle_pricing_advisor)

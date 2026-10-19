@@ -1,0 +1,47 @@
+{
+  "data": {
+    "id": "d78e16f7-b1bf-4733-8786-e226da3f0591",
+    "type": "swot",
+    "version": 3,
+    "blocks": {
+      "threats": [],
+      "strengths": [
+        "Founder-market fit",
+        "[stub-llm] items"
+      ],
+      "weaknesses": [],
+      "opportunities": []
+    },
+    "block_defs": [
+      {
+        "key": "strengths",
+        "label": "Strengths",
+        "kind": "list"
+      },
+      {
+        "key": "weaknesses",
+        "label": "Weaknesses",
+        "kind": "list"
+      },
+      {
+        "key": "opportunities",
+        "label": "Opportunities",
+        "kind": "list"
+      },
+      {
+        "key": "threats",
+        "label": "Threats",
+        "kind": "list"
+      }
+    ],
+    "completion": {
+      "filled_blocks": 1,
+      "total_blocks": 4,
+      "completion_pct": 25,
+      "status": "continue"
+    },
+    "updated_at": "2026-10-19T11:37:52.194354+00:00",
+    "updated_by": null
+  },
+  "meta": null
+}

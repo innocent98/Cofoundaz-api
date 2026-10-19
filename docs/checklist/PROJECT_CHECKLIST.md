@@ -742,7 +742,13 @@ Slice (a), branch `feat/business-builder-prd-a`:
 - [x] Overview `updated_at` + Business Plan row; record `updated_by`; record `fields[].type` repr leak fixed
 - [x] Fixed the Monday-only `test_streak_broken_by_gap` (pinned "today")
 - SOP `docs/sop/2026-10-19-business-builder-prd-a.md` · guide `docs/fe-integration-guide-business-builder-prd.md`
-Slice (b) (planned): comments on canvas sections/records, per-section AI (append-only, D-BB-4), Mission & Vision "3 options", personas from validation notes, pricing AI advisor.
+Slice (b), branch `feat/business-builder-prd-b` (stacked on (a)):
+- [x] Comments on canvases (per block via `anchor`) and records on `/team/comments`, migration 0053; canvas body carries `id`
+- [x] Per-section AI assist, append-only + deduped (D-BB-4), result in the job
+- [x] Mission & Vision "Give me 3 options" job (never writes)
+- [x] Personas from validation notes (no interviewee names in prompts; 422 `NO_VALIDATION_DATA`; append + dedupe by name)
+- [x] Pricing AI advisor (WTP questions, model, tiers; merges competitor-record prices; advice only)
+- SOP `docs/sop/2026-10-19-business-builder-prd-b.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §9-15
 Slice (c) (planned): plan options/readiness/stage progress/section regenerate/failed state; revenue → Finance runway (D-BB-5).
 
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)

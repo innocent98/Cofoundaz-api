@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That section doesn't exist on this canvas.",
+    "field_errors": [
+      {
+        "field": "block",
+        "message": "Not a block on this canvas."
+      }
+    ]
+  }
+}

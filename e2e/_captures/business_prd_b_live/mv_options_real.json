@@ -1,0 +1,18 @@
+{
+    "data": {
+        "id": "33dac6aa-dbc4-4b4b-a7e8-e50626e07f71",
+        "type": "ai.business.mission_vision_options",
+        "status": "succeeded",
+        "result": {
+            "field": "mission",
+            "status": "ready",
+            "options": [
+                "NovaPay exists to make everyday payments simple, safe, and accessible for everyone.",
+                "NovaPay helps people and businesses send, receive, and manage money with confidence.",
+                "NovaPay makes moving money easier, faster, and more secure for everyone."
+            ]
+        },
+        "error": null
+    },
+    "meta": null
+}
