@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -13,6 +14,30 @@ Role = Literal["system", "user", "assistant"]
 class LLMMessage:
     role: Role
     content: str
+
+
+# Product copy rule: no em/en dashes in anything we render. Models love them, so every
+# real completion is cleaned here, at the one seam all LLM output passes through.
+_DIGIT_RANGE = re.compile(r"(?<=\d)[ \t]*[\u2013\u2014][ \t]*(?=\d)")
+_LINE_BULLET = re.compile(r"^([ \t]*)[\u2013\u2014][ \t]*", re.MULTILINE)
+_INLINE_DASH = re.compile(r"[ \t]*[\u2013\u2014][ \t]*")
+
+
+def strip_dashes(text: str) -> str:
+    """Replace em/en dashes: digit ranges become '-', line bullets '- ', anything else ', '."""
+    text = _DIGIT_RANGE.sub("-", text)
+    text = _LINE_BULLET.sub(r"\1- ", text)
+    return _INLINE_DASH.sub(", ", text)
+
+
+def _strip_dashes_deep(value: object) -> object:
+    if isinstance(value, str):
+        return strip_dashes(value)
+    if isinstance(value, list):
+        return [_strip_dashes_deep(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_dashes_deep(v) for k, v in value.items()}
+    return value
 
 
 class LLMClient(Protocol):
@@ -129,7 +154,7 @@ class OpenAILLMClient:
         text = self._content(body)
         if not text or not text.strip():
             raise RuntimeError("LLM API returned an empty completion.")
-        return text
+        return strip_dashes(text)
 
     def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
         body = self._post_chat(
@@ -150,7 +175,8 @@ class OpenAILLMClient:
             raise RuntimeError(f"LLM API returned an unparseable JSON body: {exc}") from exc
         if not isinstance(data, dict):
             raise RuntimeError("LLM API returned a non-object JSON result.")
-        return data
+        cleaned: dict = _strip_dashes_deep(data)  # type: ignore[assignment]
+        return cleaned
 
 
 def get_llm_client() -> LLMClient:

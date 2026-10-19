@@ -234,3 +234,51 @@ def test_openai_complete_json_fails_loud_on_non_object(monkeypatch):
         OpenAILLMClient().complete_json(
             [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
         )
+
+
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        ("value—giving founders", "value, giving founders"),
+        ("ship it — then measure", "ship it, then measure"),
+        ("talk to 3–5 users", "talk to 3-5 users"),
+        ("pages 10 – 12", "pages 10-12"),
+        ("— first step\n– second step", "- first step\n- second step"),
+        ("no dashes here - plain hyphen", "no dashes here - plain hyphen"),
+    ],
+)
+def test_strip_dashes(raw, clean):
+    from app.platform.llm import strip_dashes
+
+    assert strip_dashes(raw) == clean
+
+
+def test_openai_complete_strips_em_and_en_dashes(monkeypatch):
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda url, json, headers, timeout: httpx.Response(
+            200, json={"choices": [{"message": {"content": "Why: value—giving 2–3 wins"}}]}
+        ),
+    )
+    out = OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=10)
+    assert out == "Why: value, giving 2-3 wins"
+
+
+def test_openai_complete_json_strips_dashes_in_nested_strings(monkeypatch):
+    import json as _json
+
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    payload = {"title": "Plan — v1", "items": [{"why": "fast—cheap"}, 3], "n": 2}
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda url, json, headers, timeout: httpx.Response(
+            200, json={"choices": [{"message": {"content": _json.dumps(payload)}}]}
+        ),
+    )
+    out = OpenAILLMClient().complete_json(
+        [LLMMessage(role="user", content="u")], schema={"type": "object"}, max_tokens=10
+    )
+    assert out == {"title": "Plan, v1", "items": [{"why": "fast, cheap"}, 3], "n": 2}
