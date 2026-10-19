@@ -616,3 +616,17 @@ Done (`regenerate_job_done.json`):
 | Revenue projection | ✅ live |
 | Send to financial model → Finance model uses drivers | ✅ live (stub model); `actuals` path and 422 no streams: unit |
 | Fit-lines save / bad pair 422 | ✅ live; pruning and consultant 403: unit |
+
+## Re-walk fix (2026-10-19): blank optional choices on a competitor
+`POST/PUT /business-builder/competitors` used to reject `"threat_level": ""` (the form's unselected "Select...") with
+`422 {"error":{"code":"VALIDATION_ERROR","message":"Some fields are invalid.","field_errors":[{"field":"threat_level","message":"Input should be 'low', 'medium' or 'high'"}]}}`,
+and the form showed nothing. Now a blank `threat_level` means the default `"medium"` and a blank `map_x`/`map_y` (`""`)
+means "not placed" (`null`). Live capture `e2e/_captures/business_rewalk/competitor_blank_threat_201.json`: `201`,
+`data.data.threat_level: "medium"`, `map_x`/`map_y` `null`.
+
+**FE must still** surface `field_errors` on every record form (other invalid values still 422).
+
+| Behaviour | Live? | Source |
+|---|---|---|
+| Blank threat level → 201, `medium` | ✅ | capture above |
+| Blank map coordinate → `null` | ❌ unit | `tests/services/business/test_record_defs.py` |

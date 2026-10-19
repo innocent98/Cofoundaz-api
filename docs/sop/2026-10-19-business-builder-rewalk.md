@@ -1,0 +1,11 @@
+# SOP: Business Builder re-walk fixes (API)
+
+| | |
+|---|---|
+| **What shipped** | A competitor saved with an unselected threat level (or blank map inputs) no longer 422s. Branch `fix/bb-rewalk`. |
+| **Why** | Step 1 re-walk: "Add competitor" with Threat level left on "Select..." did nothing visible. The FE sends `""`, `CompetitorData.threat_level` is an enum, so the API returned a field error the form never showed. |
+| **How** | `field_validator(mode="before")` on `CompetitorData`: `""`/`None` threat level → `ThreatLevel.medium` (the existing default), `""` map coordinate → `None`. The FE fix (show `field_errors`, don't send blank selects) goes in the FE re-walk PR. Rejected: making `threat_level` nullable (the positioning map and export assume a level). |
+| **What's involved** | `app/services/business/record_defs.py`, `tests/services/business/test_record_defs.py`, guide `docs/fe-integration-guide-business-builder-prd.md` (last section), capture `e2e/_captures/business_rewalk/`. |
+| **Verification** | Business tests 60 passed; live: the form now saves (201, `threat_level: "medium"`). Full CI parity in the PR. |
+| **Operate / roll back** | No migration. Revert the commit. |
+| **Follow-ups** | Product call pending: the 15,000 token/startup/day AI budget is smaller than one business plan generation (about 24,000 tokens measured live), so a plan fails as `over_budget` whenever AI was used earlier that day. |
