@@ -1,0 +1,42 @@
+{
+  "data": {
+    "theme": {
+      "id": "26706255-0297-4e1d-96e4-c21a64d90ab2",
+      "theme": "[stub-llm] theme",
+      "summary": "[stub-llm] summary",
+      "mention_count": 1,
+      "source_count": 1,
+      "sources": [
+        "survey"
+      ],
+      "label": "[stub-llm] theme mentioned 1\u00d7 across 1 source",
+      "items": [
+        {
+          "id": "343d27f2-5ff8-44c1-8ade-5b3b1337bd6d",
+          "source": "survey",
+          "text": "Payouts take forever",
+          "origin": {
+            "type": "survey",
+            "id": "c2a12dd8-69ff-4c3a-b55f-3e3a7aab0127",
+            "label": "Survey: Payouts"
+          },
+          "imported": true,
+          "dismissed": false,
+          "received_on": "2026-10-19",
+          "created_at": "2026-10-19T21:57:26.034384+00:00"
+        }
+      ],
+      "roadmap_task_id": "94506648-d34b-452b-8731-ba1733b9f6de",
+      "sent_at": "2026-10-19T21:57:26.287845+00:00"
+    },
+    "task": {
+      "id": "94506648-d34b-452b-8731-ba1733b9f6de",
+      "milestone_id": "8ef04360-29a6-49a0-bbbb-fafe888971b1",
+      "milestone_title": "Validate demand",
+      "title": "[stub-llm] theme",
+      "description": "From MVP feedback: [stub-llm] summary\n\nMentioned 1\u00d7 across 1 source, for example:\n- \"Payouts take forever\"",
+      "status": "todo"
+    }
+  },
+  "meta": null
+}

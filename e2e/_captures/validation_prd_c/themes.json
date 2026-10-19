@@ -1,0 +1,41 @@
+{
+  "data": {
+    "run": {
+      "id": "9c316338-3c2f-4e23-983b-04cdc0cd4b7a",
+      "item_count": 4,
+      "created_at": "2026-10-19T21:57:26.207662+00:00"
+    },
+    "themes": [
+      {
+        "id": "26706255-0297-4e1d-96e4-c21a64d90ab2",
+        "theme": "[stub-llm] theme",
+        "summary": "[stub-llm] summary",
+        "mention_count": 1,
+        "source_count": 1,
+        "sources": [
+          "survey"
+        ],
+        "label": "[stub-llm] theme mentioned 1\u00d7 across 1 source",
+        "items": [
+          {
+            "id": "343d27f2-5ff8-44c1-8ade-5b3b1337bd6d",
+            "source": "survey",
+            "text": "Payouts take forever",
+            "origin": {
+              "type": "survey",
+              "id": "c2a12dd8-69ff-4c3a-b55f-3e3a7aab0127",
+              "label": "Survey: Payouts"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:57:26.034384+00:00"
+          }
+        ],
+        "roadmap_task_id": null,
+        "sent_at": null
+      }
+    ]
+  },
+  "meta": null
+}

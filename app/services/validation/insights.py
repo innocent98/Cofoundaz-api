@@ -16,6 +16,7 @@ from app.core.errors import AppError, NotFound
 from app.db.models.enums import AssumptionStatus
 from app.db.models.validation import (
     Assumption,
+    FeedbackItem,
     InsightReport,
     Interview,
     InterviewScript,
@@ -23,17 +24,17 @@ from app.db.models.validation import (
     SurveyResponse,
 )
 from app.services.validation.service import (
-    evidence_counts,
     get_assumption,
     link_ids,
-    serialize_assumption,
+    serialize_assumptions,
     update_assumption,
 )
 
 MAX_SCRIPT_ASSUMPTIONS = 5
 MAX_SCRIPT_QUESTIONS = 30
 MAX_QUESTION_CHARS = 500
-SOURCES = ("interviews", "surveys", "all")
+SOURCES = ("interviews", "surveys", "feedback", "all")
+MAX_FEEDBACK = 200
 MAX_INTERVIEWS = 30
 NOTE_CHARS = 1500
 MAX_OPEN_ANSWERS = 200
@@ -158,9 +159,23 @@ def serialize_script(script: InterviewScript) -> dict[str, Any]:
 
 
 def gather_inputs(db: Session, startup_id: uuid.UUID, source: str) -> dict[str, Any]:
-    """What the synthesizer may read for `source`. No interviewee names, no closed answers."""
+    """What the synthesizer may read for `source`. No interviewee names, no closed answers.
+    `feedback` is the MVP inbox's manual entries (imported ones are the interviews and answers)."""
     interviews: list[dict[str, Any]] = []
     open_answers: list[dict[str, str]] = []
+    feedback: list[dict[str, str]] = []
+    if source in ("feedback", "all"):
+        feedback = [
+            {"source": row.source, "text": row.text[:ANSWER_CHARS]}
+            for row in db.query(FeedbackItem)
+            .filter(
+                FeedbackItem.startup_id == startup_id,
+                FeedbackItem.origin_key.is_(None),
+                FeedbackItem.dismissed.is_(False),
+            )
+            .order_by(FeedbackItem.received_on.desc(), FeedbackItem.created_at.desc())
+            .limit(MAX_FEEDBACK)
+        ]
     if source in ("interviews", "all"):
         statements = {
             str(a.id): a.statement for a in db.query(Assumption).filter_by(startup_id=startup_id)
@@ -205,18 +220,18 @@ def gather_inputs(db: Session, startup_id: uuid.UUID, source: str) -> dict[str, 
                 if len(open_answers) >= MAX_OPEN_ANSWERS:
                     break
             open_answers = open_answers[:MAX_OPEN_ANSWERS]
-    return {"interviews": interviews, "open_answers": open_answers}
+    return {"interviews": interviews, "open_answers": open_answers, "feedback": feedback}
 
 
 def has_inputs(inputs: dict[str, Any]) -> bool:
-    return bool(inputs["interviews"] or inputs["open_answers"])
+    return bool(inputs["interviews"] or inputs["open_answers"] or inputs["feedback"])
 
 
 def require_inputs(db: Session, startup_id: uuid.UUID, source: str) -> None:
     if not has_inputs(gather_inputs(db, startup_id, source)):
         raise AppError(
             "NOTHING_TO_SYNTHESIZE",
-            "Add an interview or collect an open survey answer first.",
+            "Add an interview, collect an open survey answer or log some feedback first.",
             422,
         )
 
@@ -302,8 +317,7 @@ def apply_suggestion(
     target["applied_at"] = datetime.now(UTC).isoformat()
     report.suggestions = suggestions
     db.flush()
-    counts = evidence_counts(db, startup_id, [assumption])
     return {
         "insight": serialize_report(report),
-        "assumption": serialize_assumption(assumption, counts[str(assumption.id)]),
+        "assumption": serialize_assumptions(db, startup_id, [assumption])[0],
     }

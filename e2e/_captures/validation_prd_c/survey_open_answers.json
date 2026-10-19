@@ -1,0 +1,20 @@
+{
+  "data": {
+    "survey_id": "c2a12dd8-69ff-4c3a-b55f-3e3a7aab0127",
+    "title": "Payouts",
+    "questions": [
+      {
+        "id": "b7561000-1cf2-434c-9a44-4ac3a50eb73a",
+        "prompt": "What frustrates you about payouts?",
+        "answer_count": 1,
+        "answers": [
+          {
+            "text": "Payouts take forever",
+            "submitted_at": "2026-10-19T21:57:25.969151+00:00"
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

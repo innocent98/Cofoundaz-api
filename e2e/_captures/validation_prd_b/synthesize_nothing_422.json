@@ -1,7 +1,7 @@
 {
   "error": {
     "code": "NOTHING_TO_SYNTHESIZE",
-    "message": "Add an interview or collect an open survey answer first.",
+    "message": "Add an interview, collect an open survey answer or log some feedback first.",
     "field_errors": []
   }
 }

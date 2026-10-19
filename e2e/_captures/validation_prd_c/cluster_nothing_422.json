@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOTHING_TO_CLUSTER",
+    "message": "Add some feedback first, or record an interview quote.",
+    "field_errors": []
+  }
+}

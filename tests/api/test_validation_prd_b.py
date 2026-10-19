@@ -354,7 +354,7 @@ def test_synthesize_stores_a_report_and_notifies_once(client, db, monkeypatch):
 
     report = client.get(f"{BASE}/insights/{job.result['insight_id']}", headers=h).json()["data"]
     assert report["source"] == "all"
-    assert report["inputs"] == {"interviews": 1, "open_answers": 1}
+    assert report["inputs"] == {"interviews": 1, "open_answers": 1, "feedback": 0}
     assert [p["theme"] for p in report["patterns"]] == ["Slow payouts", "Trust"]
     assert report["patterns"][0]["quotes"] == ["I wait three days for my money"]
     # The prompt's internal refs never reach the founder.
@@ -390,7 +390,7 @@ def test_survey_only_synthesis_reads_only_open_answers(client, db, monkeypatch):
     assert "Fees are too high" in prompts[0]
     assert "interview-only quote" not in prompts[0]
     report = db.get(InsightReport, job.result["insight_id"])
-    assert report.inputs == {"interviews": 0, "open_answers": 1}
+    assert report.inputs == {"interviews": 0, "open_answers": 1, "feedback": 0}
 
 
 def test_public_answers_are_fenced_as_data(client, db, monkeypatch):

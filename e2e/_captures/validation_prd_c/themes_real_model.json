@@ -1,0 +1,216 @@
+{
+  "data": {
+    "run": {
+      "id": "beb93a4e-04e4-4e53-8652-19f2c0e10c3c",
+      "item_count": 10,
+      "created_at": "2026-10-19T21:58:30.058822+00:00"
+    },
+    "themes": [
+      {
+        "id": "8283b774-fa24-4cb7-a637-94aee17ab5eb",
+        "theme": "Slow Payouts",
+        "summary": "Customers need faster access to funds because delayed settlements disrupt restocking and supplier payments.",
+        "mention_count": 4,
+        "source_count": 3,
+        "sources": [
+          "email",
+          "interview",
+          "survey"
+        ],
+        "label": "Slow Payouts mentioned 4\u00d7 across 3 sources",
+        "items": [
+          {
+            "id": "800cdcd4-29cb-49b8-b069-6026547e10d9",
+            "source": "survey",
+            "text": "Settlement takes too long, I need cash to restock",
+            "origin": {
+              "type": "survey",
+              "id": "6a191324-ceb7-4057-ab08-bafe92a6e8e7",
+              "label": "Survey: Payout pain"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:30.027247+00:00"
+          },
+          {
+            "id": "1554f52e-0df2-4db4-8eec-9a75eb9b8706",
+            "source": "interview",
+            "text": "I would pay a little more if money came the same day",
+            "origin": {
+              "type": "manual",
+              "id": null,
+              "label": "Added by hand"
+            },
+            "imported": false,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:29.993072+00:00"
+          },
+          {
+            "id": "5f0b7bee-cf32-4966-8f1d-9db3a7cb0835",
+            "source": "email",
+            "text": "Payout came late again, second time this week",
+            "origin": {
+              "type": "manual",
+              "id": null,
+              "label": "Added by hand"
+            },
+            "imported": false,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:29.966752+00:00"
+          },
+          {
+            "id": "ce8ee4dd-f7d2-410d-8200-9277229a5ed6",
+            "source": "interview",
+            "text": "I wait three days for my money and my supplier wants cash today",
+            "origin": {
+              "type": "interview",
+              "id": "655f6f08-f0b5-4136-91de-e121414e9cf8",
+              "label": "Interview, Fabric sellers"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-14",
+            "created_at": "2026-10-19T21:58:30.027247+00:00"
+          }
+        ],
+        "roadmap_task_id": null,
+        "sent_at": null
+      },
+      {
+        "id": "f99458f3-1a8e-491f-8340-643274660c5a",
+        "theme": "Hidden Fees",
+        "summary": "Customers are surprised by fees that are not clearly disclosed before or during transactions.",
+        "mention_count": 2,
+        "source_count": 2,
+        "sources": [
+          "email",
+          "survey"
+        ],
+        "label": "Hidden Fees mentioned 2\u00d7 across 2 sources",
+        "items": [
+          {
+            "id": "b121f0ac-7a0f-4536-a47b-04f2bad7f18a",
+            "source": "survey",
+            "text": "Charges are hidden until the money lands",
+            "origin": {
+              "type": "survey",
+              "id": "6a191324-ceb7-4057-ab08-bafe92a6e8e7",
+              "label": "Survey: Payout pain"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:30.027247+00:00"
+          },
+          {
+            "id": "39292e6c-cf6b-4a21-bc9d-fac68c202e4c",
+            "source": "email",
+            "text": "Why is there a 1.5% fee nobody told me about?",
+            "origin": {
+              "type": "manual",
+              "id": null,
+              "label": "Added by hand"
+            },
+            "imported": false,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:30.003781+00:00"
+          }
+        ],
+        "roadmap_task_id": null,
+        "sent_at": null
+      },
+      {
+        "id": "206fc50e-d9d1-474e-8ed8-24b12207c84c",
+        "theme": "Unavailable Support",
+        "summary": "Customers cannot reach support promptly when payouts are delayed or stuck, especially on weekends.",
+        "mention_count": 2,
+        "source_count": 2,
+        "sources": [
+          "interview",
+          "survey"
+        ],
+        "label": "Unavailable Support mentioned 2\u00d7 across 2 sources",
+        "items": [
+          {
+            "id": "c5191630-5d34-4660-aff5-5234664dc95c",
+            "source": "survey",
+            "text": "Support never answers on weekends",
+            "origin": {
+              "type": "survey",
+              "id": "6a191324-ceb7-4057-ab08-bafe92a6e8e7",
+              "label": "Survey: Payout pain"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:30.027247+00:00"
+          },
+          {
+            "id": "d04909b6-fb92-40b9-b3f0-0517a325b73d",
+            "source": "interview",
+            "text": "Nobody picks up when a payout is stuck",
+            "origin": {
+              "type": "interview",
+              "id": "655f6f08-f0b5-4136-91de-e121414e9cf8",
+              "label": "Interview, Fabric sellers"
+            },
+            "imported": true,
+            "dismissed": false,
+            "received_on": "2026-10-14",
+            "created_at": "2026-10-19T21:58:30.027247+00:00"
+          }
+        ],
+        "roadmap_task_id": null,
+        "sent_at": null
+      },
+      {
+        "id": "85d6a29e-2c1a-4ea5-b570-080c38cfd9d9",
+        "theme": "Withdrawal Failures",
+        "summary": "Customers report that withdrawals freeze or remain stuck in the app, including on specific devices.",
+        "mention_count": 2,
+        "source_count": 1,
+        "sources": [
+          "in_app"
+        ],
+        "label": "Withdrawal Failures mentioned 2\u00d7 across 1 source",
+        "items": [
+          {
+            "id": "002ea9ed-846e-4341-af62-fd52f4fc91d5",
+            "source": "in_app",
+            "text": "Withdraw button spins forever on my Tecno phone",
+            "origin": {
+              "type": "manual",
+              "id": null,
+              "label": "Added by hand"
+            },
+            "imported": false,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:30.015564+00:00"
+          },
+          {
+            "id": "b553265f-420a-4fa8-879e-eaf83ce0aa96",
+            "source": "in_app",
+            "text": "The app froze when I tried to withdraw",
+            "origin": {
+              "type": "manual",
+              "id": null,
+              "label": "Added by hand"
+            },
+            "imported": false,
+            "dismissed": false,
+            "received_on": "2026-10-19",
+            "created_at": "2026-10-19T21:58:29.979832+00:00"
+          }
+        ],
+        "roadmap_task_id": null,
+        "sent_at": null
+      }
+    ]
+  },
+  "meta": null
+}

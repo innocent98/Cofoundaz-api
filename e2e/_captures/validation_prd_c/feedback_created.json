@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "ca030ce5-1ed6-4f77-bdba-d23138087864",
+    "source": "in_app",
+    "text": "The app froze when I tried to withdraw",
+    "origin": {
+      "type": "manual",
+      "id": null,
+      "label": "Added by hand"
+    },
+    "imported": false,
+    "dismissed": false,
+    "received_on": "2026-10-19",
+    "created_at": "2026-10-19T21:57:25.979444+00:00"
+  },
+  "meta": null
+}

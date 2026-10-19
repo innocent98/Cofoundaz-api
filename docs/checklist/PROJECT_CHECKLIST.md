@@ -3458,7 +3458,7 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
 - [x] Slice (a) BE: overview + riskiest nudge, Design experiment (AI draft), hosted smoke-test pages at `/p/{slug}`
       (slug reservation, visit/click/signup capture, waitlist), server verdict, milestone notification, deletes
       (branch `feat/validation-prd-a`, migration 0056, guide `docs/fe-integration-guide-validation-prd-a.md`)
-- [ ] Slice (a) FE (sub-session) + live re-walk
+- [x] Slice (a) FE (#114) + live re-walk on develop (2026-10-19, `cofoundaz/docs/checklist/validation-rewalk.md`)
 - [x] Slice (b) BE: interview scripts + Insight Synthesizer (branch `feat/validation-prd-b`, migration 0057, guide
       `docs/fe-integration-guide-validation-prd-b.md`, SOP `docs/sop/2026-10-19-validation-prd-b.md`)
   - [x] `interview_scripts`: AI job saves a 6-10 question script with tips; list/get/edit (stable question ids)/delete
@@ -3467,5 +3467,11 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
   - [x] Per-suggestion Apply (row lock, 409 on repeat); `validation.insight.detected` + PRD notification to founders + team members
   - [x] Tests first (20), e2e journey + captures, real-model captures
 - [ ] Slice (b) FE (sub-session) + live re-walk
-- [ ] Slice (c) BE: MVP feedback (D-VAL-2/3), plus the BE bits of gap rows 9 (open survey answers endpoint, re-show/rotate
-      share link) and 10 (linked experiment names on assumption cards)
+- [x] Slice (c) BE: MVP feedback (D-VAL-2/3) + BE bits of rows 9 and 10 (branch `feat/validation-prd-c`, migration 0058,
+      guide `docs/fe-integration-guide-validation-prd-c.md`, SOP `docs/sop/2026-10-19-validation-prd-c.md`)
+  - [x] Inbox: interview quotes + open survey answers mirrored in (read-only, dismiss/restore), manual entries
+        tagged interview / in_app / email
+  - [x] AI theme clustering runs; "{theme} mentioned {n}× across {m} sources" derived on read; Send to roadmap (once)
+  - [x] Synthesizer `source=feedback`; open survey answers endpoint; share-link rotation; `linked_experiments`
+  - [x] Tests first, e2e journey + captures, real-model captures
+- [ ] Slice (c) FE (sub-session) + live re-walk

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +26,8 @@ from app.schemas.validation import (
     AssumptionUpdate,
     ExperimentCreate,
     ExperimentUpdate,
+    FeedbackCreate,
+    FeedbackUpdate,
     InterviewCreate,
     InterviewUpdate,
     PageEvent,
@@ -33,11 +35,12 @@ from app.schemas.validation import (
     ResponseSubmit,
     ScriptsGenerate,
     ScriptUpdate,
+    SendToRoadmap,
     SurveyCreate,
     SurveyUpdate,
     SynthesizeRequest,
 )
-from app.services.validation import insights, smoke
+from app.services.validation import feedback, insights, smoke
 from app.services.validation.public import open_survey, public_view, submit_response
 from app.services.validation.service import (
     create_assumption,
@@ -48,7 +51,6 @@ from app.services.validation.service import (
     delete_experiment,
     delete_interview,
     delete_survey,
-    evidence_counts,
     get_assumption,
     get_experiment,
     get_interview,
@@ -57,9 +59,11 @@ from app.services.validation.service import (
     list_experiments,
     list_interviews,
     list_surveys,
+    open_answers,
     overview,
     response_counts,
-    serialize_assumption,
+    rotate_share_link,
+    serialize_assumptions,
     serialize_experiment,
     serialize_interview,
     serialize_survey,
@@ -102,10 +106,7 @@ def list_assumptions_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     rows = list_assumptions(db, membership.startup_id, status=status, risk=risk)
-    counts = evidence_counts(db, membership.startup_id, rows)
-    return success_response(
-        {"assumptions": [serialize_assumption(row, counts[str(row.id)]) for row in rows]}
-    )
+    return success_response({"assumptions": serialize_assumptions(db, membership.startup_id, rows)})
 
 
 @router.post("/assumptions", status_code=status.HTTP_201_CREATED)
@@ -119,7 +120,7 @@ def create_assumption_endpoint(
         db, membership.startup_id, statement=body.statement, risk=body.risk, status=body.status
     )
     db.commit()
-    return success_response(serialize_assumption(row, 0))
+    return success_response(serialize_assumptions(db, membership.startup_id, [row])[0])
 
 
 @router.patch("/assumptions/{assumption_id}")
@@ -140,8 +141,7 @@ def update_assumption_endpoint(
         status=body.status,
     )
     db.commit()
-    counts = evidence_counts(db, membership.startup_id, [row])
-    return success_response(serialize_assumption(row, counts[str(row.id)]))
+    return success_response(serialize_assumptions(db, membership.startup_id, [row])[0])
 
 
 # --- experiments ---------------------------------------------------------------------------
@@ -356,6 +356,30 @@ def survey_analytics_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     return success_response(survey_analytics(db, membership.startup_id, survey_id))
+
+
+@router.get("/surveys/{survey_id}/answers")
+def survey_open_answers_endpoint(
+    survey_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Every non-blank answer to each open question, newest first (gap row 9)."""
+    return success_response(open_answers(db, membership.startup_id, survey_id))
+
+
+@router.post("/surveys/{survey_id}/share-link")
+def rotate_share_link_endpoint(
+    survey_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """A fresh share link for an open survey; the previous link stops working (gap row 9)."""
+    raw = rotate_share_link(db, get_survey(db, membership.startup_id, survey_id))
+    db.commit()
+    return success_response({"public_token": raw})
 
 
 # --- surveys (public, no authentication at all) ---------------------------------------------
@@ -648,3 +672,135 @@ def delete_insight_endpoint(
     insights.delete_report(db, membership.startup_id, insight_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+# --- MVP feedback (PRD 09.7, gap row 11, D-VAL-2/3) ------------------------------------------
+
+
+@router.get("/feedback")
+def list_feedback_endpoint(
+    source: Literal["interview", "survey", "in_app", "email"] | None = None,
+    include_dismissed: bool = False,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The inbox. Interview quotes and open survey answers are mirrored in on every read."""
+    feedback.sync_imports(db, membership.startup_id)
+    rows = feedback.list_items(
+        db, membership.startup_id, source=source, include_dismissed=include_dismissed
+    )
+    out = {
+        "items": [feedback.serialize_item(row) for row in rows],
+        "counts": feedback.source_counts(db, membership.startup_id),
+    }
+    db.commit()
+    return success_response(out)
+
+
+@router.post("/feedback", status_code=status.HTTP_201_CREATED)
+def create_feedback_endpoint(
+    body: FeedbackCreate,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = feedback.create_item(
+        db,
+        membership.startup_id,
+        text=body.text,
+        source=body.source,
+        received_on=body.received_on,
+        created_by=membership.user_id,
+    )
+    db.commit()
+    return success_response(feedback.serialize_item(row))
+
+
+@router.patch("/feedback/{item_id}")
+def update_feedback_endpoint(
+    item_id: str,
+    body: FeedbackUpdate,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Manual entries only; imported ones are edited at their source (422 IMPORTED_FEEDBACK)."""
+    row = feedback.get_item(db, membership.startup_id, item_id)
+    feedback.update_item(db, row, text=body.text, source=body.source, received_on=body.received_on)
+    db.commit()
+    return success_response(feedback.serialize_item(row))
+
+
+@router.delete("/feedback/{item_id}")
+def delete_feedback_endpoint(
+    item_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """`{"deleted": true}` for a manual entry, `{"dismissed": true}` for an imported one."""
+    out = feedback.delete_item(db, feedback.get_item(db, membership.startup_id, item_id))
+    db.commit()
+    return success_response(out)
+
+
+@router.post("/feedback/{item_id}/restore")
+def restore_feedback_endpoint(
+    item_id: str,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = feedback.restore_item(db, feedback.get_item(db, membership.startup_id, item_id))
+    db.commit()
+    return success_response(feedback.serialize_item(row))
+
+
+@router.post("/feedback/cluster", status_code=status.HTTP_202_ACCEPTED)
+def cluster_feedback_endpoint(
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Queue AI theme clustering over the inbox; `result.run_id` when done."""
+    feedback.sync_imports(db, membership.startup_id)
+    if not feedback.list_items(db, membership.startup_id):
+        db.commit()
+        raise AppError(
+            "NOTHING_TO_CLUSTER", "Add some feedback first, or record an interview quote.", 422
+        )
+    job = job_dispatcher.enqueue(
+        db,
+        "validation.feedback.cluster",
+        {"startup_id": str(membership.startup_id)},
+        membership.startup_id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/feedback/themes")
+def feedback_themes_endpoint(
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The newest clustering run: "{theme} mentioned {n}x across {m} sources" with drill-in items."""
+    return success_response(feedback.themes_view(db, membership.startup_id))
+
+
+@router.post("/feedback/themes/{theme_id}/send-to-roadmap", status_code=status.HTTP_201_CREATED)
+def send_theme_to_roadmap_endpoint(
+    theme_id: str,
+    body: SendToRoadmap | None = None,
+    membership: Membership = Depends(_member),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Add the theme to the roadmap as one task (chosen milestone, else the first open one)."""
+    out = feedback.send_to_roadmap(
+        db, membership.startup_id, theme_id, milestone_id=body.milestone_id if body else None
+    )
+    db.commit()
+    return success_response(out)
