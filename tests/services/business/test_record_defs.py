@@ -50,3 +50,15 @@ def test_fields_descriptor_exposes_enum_choices():
 
     name = next(f for f in fields(RecordKind.persona) if f["key"] == "name")
     assert name["choices"] is None
+
+
+def test_competitor_blank_optional_choices_mean_not_given():
+    """The competitor form sends "" for an unselected threat level and blank map inputs;
+    that 422'd with no visible error (2026-10-19 re-walk). Blank means "use the default"."""
+    from app.services.business.record_defs import CompetitorData
+
+    d = CompetitorData.model_validate(
+        {"name": "Paystack", "threat_level": "", "map_x": "", "map_y": None}
+    )
+    assert d.threat_level.value == "medium"
+    assert d.map_x is None and d.map_y is None
