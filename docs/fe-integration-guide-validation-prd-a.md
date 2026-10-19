@@ -93,7 +93,8 @@ send it on every event. Visits and clicks are counted per distinct id; events wi
 
 ### `POST /validation/pages/{slug}/events` (60/min) `{"kind": "visit"|"cta_click"|"preorder_click", "visitor_id": "<8-64 chars>"}`
 `201` `public_event_visit.json`: `{"data": {"received": true}, "meta": null}`. Send `visit` once on page load; `cta_click`
-when the CTA is pressed; `preorder_click` on a fake-door pricing button (`show_pricing`). Bad body `422`
+when the CTA is pressed; `preorder_click` on a fake-door pricing button (`show_pricing`). **`show_pricing` is always `true` when
+`metric_type` is `preorder_click`** (otherwise nothing could record a preorder; found in the live check, unit-tested). Bad body `422`
 (`public_event_bad_kind_422.json`): `field_errors` `[{"field": "kind", "message": "Input should be 'visit', 'cta_click' or 'preorder_click'"}, {"field": "visitor_id", "message": "Field required"}]`.
 Fire-and-forget: never block the page on these.
 

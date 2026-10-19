@@ -214,6 +214,13 @@ def test_public_page_shows_only_the_page_and_only_when_live(client, db):
     assert client.get(f"{BASE}/pages/nope").status_code == 404
 
 
+def test_a_preorder_metric_always_shows_pricing(client, db):
+    _u, _s, h = _member(db)
+    _smoke(client, h, slug="pay-me", metric_type="preorder_click", show_pricing=False)
+    page = client.get(f"{BASE}/pages/pay-me").json()["data"]
+    assert page["show_pricing"] is True
+
+
 def test_visits_clicks_and_signups_are_captured(client, db):
     _u, s, h = _member(db)
     exp = _smoke(client, h, slug="trader-pay")

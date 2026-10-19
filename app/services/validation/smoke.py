@@ -129,13 +129,16 @@ def _post_signup_message(config: dict[str, Any]) -> str:
 def page_view(experiment: Experiment) -> dict[str, Any]:
     """Exactly what a visitor may see. No ids, status, counts or workspace details."""
     config = experiment.config or {}
+    metric = _metric_type(config)
     return {
         "headline": str(config.get("headline") or experiment.name),
         "subheadline": str(config.get("subheadline") or ""),
         "cta_text": str(config.get("cta_text") or "Join the waitlist"),
         "require_email": config.get("require_email", True) is not False,
-        "show_pricing": config.get("show_pricing") is True,
-        "metric_type": _metric_type(config),
+        # A test measured by preorder clicks needs the pricing block: its "I would pay" button is
+        # the only thing that records one, so without it the test could never convert.
+        "show_pricing": config.get("show_pricing") is True or metric == "preorder_click",
+        "metric_type": metric,
         "post_signup_message": _post_signup_message(config),
         "powered_by": POWERED_BY,
     }
