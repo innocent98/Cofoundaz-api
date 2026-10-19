@@ -222,9 +222,12 @@ def test_visits_clicks_and_signups_are_captured(client, db):
             f"{BASE}/pages/trader-pay/events", json={"kind": "visit", "visitor_id": visitor}
         )
         assert r.status_code == 201, r.text
-    client.post(f"{BASE}/pages/trader-pay/events", json={"kind": "cta_click", "visitor_id": "visitor-2"})
+    client.post(
+        f"{BASE}/pages/trader-pay/events", json={"kind": "cta_click", "visitor_id": "visitor-2"}
+    )
     r = client.post(
-        f"{BASE}/pages/trader-pay/signups", json={"email": "Ada@Example.com", "visitor_id": "visitor-2"}
+        f"{BASE}/pages/trader-pay/signups",
+        json={"email": "Ada@Example.com", "visitor_id": "visitor-2"},
     )
     assert r.status_code == 201, r.text
     assert r.json()["data"] == {"message": "You're on the list, we'll be in touch soon."}
