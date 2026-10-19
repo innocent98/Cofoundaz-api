@@ -81,7 +81,8 @@ def test_plan_skips_when_over_budget(db, monkeypatch):
     llm_budget.debit(db, s.id, 100)  # over budget
     handle_plan_generate(db, _job(p.id, s.id))
     db.refresh(p)
-    assert p.status == BusinessPlanStatus.generating  # untouched — no partial plan
+    # No partial plan, and never stuck `generating` (PRD 08.11 failed state): the FE can retry.
+    assert p.status == BusinessPlanStatus.failed and p.error == "over_budget"
     assert p.document_id is None
 
 

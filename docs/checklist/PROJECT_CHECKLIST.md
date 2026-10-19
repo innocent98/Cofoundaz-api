@@ -734,7 +734,7 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
-## 🔄 Module 08 — Business Builder: PRD completion (2026-10-19; gap list `cofoundaz/docs/checklist/business-builder-prd-gaps.md`, 21 rows)
+## ✅ Module 08 — Business Builder: PRD completion, BE (2026-10-19; FE in session `fe-bb-prd`; gap list `cofoundaz/docs/checklist/business-builder-prd-gaps.md`, 21 rows)
 Slice (a), branch `feat/business-builder-prd-a`:
 - [x] Canvas `updated_by`/`updated_at`; version snapshots per save (cap 50, sources manual/ai/suggestion/restore), list/detail/restore (D-BB-1), migration 0052
 - [x] Export canvas/record list → Module 18 Document, 422 `NOTHING_TO_EXPORT` (D-BB-2)
@@ -749,7 +749,11 @@ Slice (b), branch `feat/business-builder-prd-b` (stacked on (a)):
 - [x] Personas from validation notes (no interviewee names in prompts; 422 `NO_VALIDATION_DATA`; append + dedupe by name)
 - [x] Pricing AI advisor (WTP questions, model, tiers; merges competitor-record prices; advice only)
 - SOP `docs/sop/2026-10-19-business-builder-prd-b.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §9-15
-Slice (c) (planned): plan options/readiness/stage progress/section regenerate/failed state; revenue → Finance runway (D-BB-5).
+Slice (c), branch `feat/business-builder-prd-c` (stacked on (b)):
+- [x] Plan options (audience/length), readiness checklist, draft-missing, live stage progress, failed state (over budget / last-attempt failure), regenerate one section; migration 0054
+- [x] Revenue projection; "Send to financial model" → Finance 3-statement model starting revenue when there are no actuals (D-BB-5 revised), `revenue_source` in model assumptions
+- [x] Value Proposition fit-lines (`meta.fit_links`, text-matched, pruned on read)
+- SOP `docs/sop/2026-10-19-business-builder-prd-c.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §16-19
 
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
 - [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)

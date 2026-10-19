@@ -220,7 +220,7 @@ def serialize_version(v: BusinessCanvasVersion, *, with_blocks: bool = False) ->
 
 
 def serialize_canvas(canvas: BusinessCanvas) -> dict:
-    return {
+    out = {
         "id": str(canvas.id),  # the comment thread's entity_id (entity_type business_canvas)
         "type": canvas.type.value,
         "version": canvas.version,
@@ -232,6 +232,11 @@ def serialize_canvas(canvas: BusinessCanvas) -> dict:
         "updated_at": canvas.updated_at.isoformat() if canvas.updated_at else None,
         "updated_by": person(canvas.updated_by),
     }
+    if canvas.type == CanvasType.value_prop:
+        from app.services.business.plan_tools import live_fit_links
+
+        out["fit_links"] = live_fit_links(canvas)
+    return out
 
 
 def overview(db: Session, startup: Startup) -> list[dict]:

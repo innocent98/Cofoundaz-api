@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -25,7 +25,9 @@ from app.schemas.business import (
     CanvasAiFill,
     CanvasRestore,
     CanvasSave,
+    FitLinksSave,
     MissionVisionOptions,
+    PlanGenerate,
     PositioningMapSave,
     PricingAdvisorRequest,
     RecordCreate,
@@ -38,6 +40,19 @@ from app.services.business.ai_assist import (
 )
 from app.services.business.canvas_defs import CANVAS_BLOCKS
 from app.services.business.export import export_canvas, export_records
+from app.services.business.plan_defs import (
+    DEFAULT_OPTIONS,
+    PLAN_SECTIONS,
+    SECTIONS_BY_KEY,
+    STAGE_CAPTIONS,
+)
+from app.services.business.plan_tools import (
+    default_growth_pct,
+    projection,
+    readiness,
+    send_to_finance,
+    set_fit_links,
+)
 from app.services.business.positioning import (
     assemble_map,
     get_or_create_map,
@@ -372,13 +387,23 @@ def put_positioning_map(
 
 @router.post("/plan/generate", status_code=status.HTTP_202_ACCEPTED)
 def generate_plan(
+    body: PlanGenerate | None = None,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
+    options = (body or PlanGenerate()).model_dump()
     plan = BusinessPlan(
-        startup_id=startup.id, status=BusinessPlanStatus.generating, created_by_id=user.id
+        startup_id=startup.id,
+        status=BusinessPlanStatus.generating,
+        created_by_id=user.id,
+        options=options,
+        progress={
+            "done": 0,
+            "total": len(PLAN_SECTIONS),
+            "stage": STAGE_CAPTIONS[PLAN_SECTIONS[0].key],
+        },
     )
     db.add(plan)
     db.flush()
@@ -392,18 +417,22 @@ def generate_plan(
     return success_response({"plan_id": str(plan.id), "status": plan.status.value})
 
 
+def _latest_plan(db: Session, membership: Membership) -> BusinessPlan | None:
+    return (
+        db.query(BusinessPlan)
+        .filter(BusinessPlan.startup_id == membership.startup_id)
+        .order_by(BusinessPlan.created_at.desc())
+        .first()
+    )
+
+
 @router.get("/plan")
 def get_plan(
     membership: Membership = Depends(require_workspace),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    plan = (
-        db.query(BusinessPlan)
-        .filter(BusinessPlan.startup_id == membership.startup_id)
-        .order_by(BusinessPlan.created_at.desc())
-        .first()
-    )
+    plan = _latest_plan(db, membership)
     if plan is None:
         raise NotFound()
     return success_response(
@@ -411,9 +440,112 @@ def get_plan(
             "id": str(plan.id),
             "status": plan.status.value,
             "document_id": (str(plan.document_id) if plan.document_id else None),
+            "options": plan.options or dict(DEFAULT_OPTIONS),
+            "progress": plan.progress,
+            "error": plan.error,
             "created_at": plan.created_at.isoformat(),
         }
     )
+
+
+@router.get("/plan/readiness")
+def get_plan_readiness(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.11 readiness checklist: every artifact the plan draws on."""
+    return success_response(readiness(db, _startup(db, membership)))
+
+
+@router.post("/plan/draft-missing", status_code=status.HTTP_202_ACCEPTED)
+def draft_missing(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.11 "Draft missing sections with AI": one AI fill per artifact that isn't ready.
+    Canvas fills only write EMPTY blocks; record fills only run for kinds with no records."""
+    startup = _startup(db, membership)
+    jobs = []
+    for item in readiness(db, startup)["items"]:
+        if item["status"] == "ready":
+            continue
+        is_canvas = item["type"] in {t.value for t in CanvasType}
+        job = job_dispatcher.enqueue(
+            db,
+            type=("business.canvas.ai_fill" if is_canvas else f"business.{item['type']}.ai_fill"),
+            payload=(
+                {"startup_id": str(startup.id), "canvas_type": item["type"]}
+                if is_canvas
+                else {"startup_id": str(startup.id), "kind": item["type"]}
+            ),
+            startup_id=startup.id,
+        )
+        jobs.append({"type": item["type"], "job_id": str(job.id)})
+    db.commit()
+    return success_response({"jobs": jobs})
+
+
+@router.post("/plan/sections/{key}/regenerate", status_code=status.HTTP_202_ACCEPTED)
+def regenerate_plan_section(
+    key: str,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.11 "Regenerate a section" of the latest finished plan's Document."""
+    plan = _latest_plan(db, membership)
+    if plan is None or plan.document_id is None or key not in SECTIONS_BY_KEY:
+        raise NotFound()
+    job = job_dispatcher.enqueue(
+        db,
+        type="ai.business.plan_section",
+        payload={"startup_id": str(plan.startup_id), "plan_id": str(plan.id), "section": key},
+        startup_id=plan.startup_id,
+    )
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
+
+
+@router.get("/revenue-streams/projection")
+def revenue_projection(
+    months: int = Query(12, ge=1, le=60),  # noqa: B008
+    growth_pct: float | None = Query(None, ge=-50, le=100),  # noqa: B008
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.8 projected chart. Growth defaults to Finance's runway MoM growth assumption."""
+    startup = _startup(db, membership)
+    g = growth_pct if growth_pct is not None else default_growth_pct(db, startup)
+    return success_response(projection(db, startup, months, g))
+
+
+@router.post("/revenue-streams/send-to-finance")
+def revenue_send_to_finance(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.8 "Send to financial model" (revenue drivers for PRD 12.6)."""
+    drivers = send_to_finance(db, _startup(db, membership), user.id)
+    db.commit()
+    return success_response(drivers)
+
+
+@router.put("/canvases/value_prop/fit")
+def put_fit_links(
+    body: FitLinksSave,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 08.5 fit-lines: replace the Value Proposition's links (reliever↔pain, creator↔gain)."""
+    canvas = get_or_create_canvas(db, _startup(db, membership), CanvasType.value_prop)
+    set_fit_links(db, canvas, [link.model_dump() for link in body.links], user.id)
+    db.commit()
+    return success_response(serialize_canvas(canvas))
 
 
 @router.get("/{kind}")

@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "9218bb57-68d5-4a64-9aaa-419119eca789",
+    "type": "ai.business.plan_section",
+    "status": "succeeded",
+    "result": {
+      "status": "ready",
+      "section": "financials",
+      "document_version": 2
+    },
+    "error": null
+  },
+  "meta": null
+}

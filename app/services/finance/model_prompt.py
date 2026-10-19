@@ -71,8 +71,14 @@ def build_model_messages(starting: dict[str, Any]) -> list[LLMMessage]:
         f"Company actuals (currency: {currency}, shown in major units):\n"
         f"- Current monthly revenue: {_major(starting.get('revenue_0'))}\n"
         f"- Current total monthly costs: {_major(starting.get('monthly_costs_0'))}\n"
-        f"- Cash on hand: {_major(starting.get('cash_on_hand'))}\n\n"
-        "These starting numbers are fixed facts supplied to you. Set only the forward-looking "
+        f"- Cash on hand: {_major(starting.get('cash_on_hand'))}\n"
+        + (
+            "- Note: the company has no revenue yet; the monthly revenue above is the founder's "
+            f"planned revenue from these streams: {', '.join(starting['revenue_plan'])}.\n"
+            if starting.get("revenue_plan")
+            else ""
+        )
+        + "\nThese starting numbers are fixed facts supplied to you. Set only the forward-looking "
         "assumptions: monthly_revenue_growth_pct, cogs_pct_of_revenue, "
         "monthly_opex_growth_pct, ar_days, ap_days, and a short narrative explaining them."
     )

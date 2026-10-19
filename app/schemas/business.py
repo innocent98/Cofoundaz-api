@@ -46,3 +46,20 @@ class CompetitorPrice(BaseModel):
 class PricingAdvisorRequest(BaseModel):
     competitor_prices: list[CompetitorPrice] = Field(default_factory=list, max_length=20)
     willingness_to_pay: str | None = Field(default=None, max_length=2000)
+
+
+class PlanGenerate(BaseModel):
+    # PRD 08.11 options: "Bank / Investors / Internal", "Concise (10-15 pp) / Full (25-40 pp)".
+    audience: Literal["bank", "investors", "internal"] = "investors"
+    length: Literal["concise", "full"] = "concise"
+
+
+class FitLink(BaseModel):
+    from_block: Literal["pain_relievers", "gain_creators"]
+    from_item: str = Field(min_length=1, max_length=500)
+    to_block: Literal["pains", "gains"]
+    to_item: str = Field(min_length=1, max_length=500)
+
+
+class FitLinksSave(BaseModel):
+    links: list[FitLink] = Field(default_factory=list, max_length=100)

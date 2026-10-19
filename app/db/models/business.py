@@ -48,6 +48,8 @@ class BusinessCanvas(UUIDMixin, TimestampMixin, Base):
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     updated_by = relationship("User", foreign_keys=[updated_by_id], lazy="select")
+    # Non-block canvas data; v1: Value Proposition `fit_links` (PRD 08.5 fit-lines).
+    meta: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("startup_id", "type", name="uq_business_canvas_startup_type"),
@@ -183,3 +185,9 @@ class BusinessPlan(UUIDMixin, TimestampMixin, Base):
     created_by_id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
+    # PRD 08.11: {"audience": bank|investors|internal, "length": concise|full}
+    options: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # {"done", "total", "stage"}: written per section from a separate short transaction
+    progress: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Why a plan failed: over_budget | generation_failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
