@@ -30,6 +30,11 @@ services:
       - --port
       - "8000"
       - --reload
+      # Open SSE notification streams never close by themselves, so without a cap every
+      # hot reload hangs at "Waiting for connections to close". Production's gunicorn has
+      # --graceful-timeout 30 for the same reason.
+      - --timeout-graceful-shutdown
+      - "3"
     ports:
       - "8000:8000"
     volumes:

@@ -734,6 +734,12 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
 
+## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
+- [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)
+- [x] `GET /team/members`; `/team/comments` thread (create/list/edit/delete/resolve, mentions → notification), migration 0051
+- [x] "Milestone due soon" scheduler + PRD overdue copy; dev uvicorn graceful-shutdown cap (SSE reload hang)
+- SOP `docs/sop/2026-10-18-roadmap-prd.md` · guide `docs/fe-integration-guide-roadmap-prd.md`
+
 ## ✅ Module 06 — Health Score: live signals, PRD completion (2026-10-18, branch `feat/health-live-signals`)
 - [x] Live-signal engine (10 signals, stage targets, blend with assessment, 14-day ramp), contributions in points
 - [x] Triggers: events (15-min throttle), finance writes (immediate), stale-on-read, nightly pass

@@ -42,6 +42,7 @@ from app.schemas.roadmap import (
     TaskCreate,
     TaskUpdate,
 )
+from app.services.roadmap.breakdown import start_breakdown
 from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
 from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
 from app.services.roadmap.replan import apply_replan, compute_replan, detect_drift
@@ -492,6 +493,20 @@ def update_milestone_ep(
         )
     db.commit()
     return success_response(_milestone_out(db, m))
+
+
+@router.post("/milestones/{milestone_id}/breakdown", status_code=202)
+def breakdown_milestone(
+    milestone_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 05.3 "Ask AI to break this down": queue an AI job that appends 3-5 tasks.
+    Poll `GET /jobs/{job_id}`; 409 BREAKDOWN_IN_PROGRESS while one is running."""
+    job = start_breakdown(db, _startup(db, membership), milestone_id)
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
 
 
 @router.delete("/milestones/{milestone_id}")

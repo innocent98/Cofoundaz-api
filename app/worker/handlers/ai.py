@@ -26,6 +26,7 @@ from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
 from app.db.models.user import User
+from app.platform.activity import write_activity
 from app.platform.events import event_bus
 from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.ai_cofounder.prompts import build_cofounder_messages
@@ -503,3 +504,57 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
 
 
 register_handler("ai.cofounder.reply", handle_cofounder_reply)
+
+
+def handle_roadmap_breakdown(db: Session, job: Job) -> None:
+    """PRD 05.3 "Ask AI to break this down": append 3-5 tasks to a milestone. No commit.
+    The outcome is written to `job.result` for the FE poll."""
+    from app.db.models.roadmap import RoadmapMilestone
+    from app.services.roadmap.breakdown import apply_breakdown, breakdown_schema
+    from app.services.roadmap.breakdown import build_breakdown_messages as _msgs
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    milestone = db.get(RoadmapMilestone, uuid.UUID(str(job.payload["milestone_id"])))
+    if startup is None or milestone is None:
+        job.result = {"status": "gone"}
+        return
+    existing = [t.title for t in milestone_tasks(db, milestone.id)]
+    result = metered_complete_json(
+        db,
+        startup.id,
+        _msgs(
+            milestone=milestone.title,
+            description=milestone.description,
+            existing=existing,
+            stage=startup.stage.value if startup.stage else None,
+            industry=startup.industry,
+        ),
+        schema=breakdown_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "milestone_id": str(milestone.id)}
+        return
+    created = apply_breakdown(db, milestone, result.get("tasks"))
+    write_activity(
+        db,
+        startup_id=startup.id,
+        action="roadmap.milestone.broken_down",
+        entity_type="roadmap_milestone",
+        entity_id=milestone.id,
+        summary=f"AI broke '{milestone.title}' into {len(created)} tasks",
+    )
+    job.result = {
+        "status": "ready",
+        "milestone_id": str(milestone.id),
+        "created_task_ids": [str(t.id) for t in created],
+    }
+
+
+def milestone_tasks(db: Session, milestone_id: uuid.UUID) -> list:
+    from app.db.models.roadmap import RoadmapTask
+
+    return db.query(RoadmapTask).filter(RoadmapTask.milestone_id == milestone_id).all()
+
+
+register_handler("ai.roadmap.breakdown", handle_roadmap_breakdown)
