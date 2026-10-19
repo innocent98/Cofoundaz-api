@@ -221,6 +221,7 @@ def serialize_version(v: BusinessCanvasVersion, *, with_blocks: bool = False) ->
 
 def serialize_canvas(canvas: BusinessCanvas) -> dict:
     return {
+        "id": str(canvas.id),  # the comment thread's entity_id (entity_type business_canvas)
         "type": canvas.type.value,
         "version": canvas.version,
         "blocks": canvas.blocks,

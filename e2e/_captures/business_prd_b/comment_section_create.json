@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "51b8c01a-a6be-498b-bf4d-f727be6e7c9d",
+    "entity_type": "business_canvas",
+    "entity_id": "d78e16f7-b1bf-4733-8786-e226da3f0591",
+    "anchor": "strengths",
+    "author": {
+      "id": "6ed5aaaa-a0ed-49a8-b806-8eb7e853c06f",
+      "name": "Ada Founder"
+    },
+    "body": "Is founder-market fit provable yet?",
+    "mention_user_ids": [],
+    "created_at": "2026-10-19T11:37:49.712731+00:00",
+    "edited_at": null,
+    "resolved_at": null,
+    "is_mine": true
+  },
+  "meta": null
+}

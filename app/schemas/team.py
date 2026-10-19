@@ -29,12 +29,14 @@ class TeamInvitesRequest(BaseModel):
     invites: list[TeamInvite] = Field(min_length=1, max_length=20)
 
 
-CommentEntity = Literal["roadmap_milestone", "roadmap_task"]
+CommentEntity = Literal["roadmap_milestone", "roadmap_task", "business_canvas", "business_record"]
 
 
 class CommentCreate(BaseModel):
     entity_type: CommentEntity
     entity_id: uuid.UUID
+    # Business Builder canvas block key (section thread); only valid on business_canvas.
+    anchor: str | None = Field(default=None, min_length=1, max_length=60)
     body: str = Field(min_length=1, max_length=4000)
     mention_user_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20)
 

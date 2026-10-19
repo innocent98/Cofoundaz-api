@@ -1,4 +1,4 @@
-# FE integration guide: Business Builder PRD completion, slice (a)
+# FE integration guide: Business Builder PRD completion, slices (a) and (b)
 
 Last edited, version history + restore, Export to Documents, consultant-only suggest mode, overview metadata.
 
@@ -279,3 +279,164 @@ generate a plan.
 | Plan notification copy | unit only |
 | Record `updated_by` | ✅ live |
 | Field type names | ✅ live |
+
+
+---
+
+# Slice (b): section comments, per-section AI, Mission & Vision options, personas from validation, pricing advisor
+
+Gap rows 8, 9, 11, 13 (AI part) and 14 (advisor). Captured live from
+`e2e/test_business_builder.py::test_business_builder_prd_b_journey` → `e2e/_captures/business_prd_b/*.json`.
+**The local run uses the stub LLM**, so AI text reads `"[stub-llm] …"` and every array has **one** item. With the real
+model, arrays hold up to 3 items. The **shapes** are real; the **content** is not.
+
+All four AI features are jobs: **202** `{"job_id", "status": "queued"}`. Poll `GET /api/v1/jobs/{job_id}` (every 2s is
+fine) until `status` is `succeeded` or `failed`, then read `result`. Every job `result` has a `status` of its own. Handle
+`over_budget` (daily AI budget used up, nothing written) and `gone` (the workspace or canvas disappeared) on all of them.
+
+## 9. Canvas `id`: **changed** (additive)
+Canvas bodies now carry `"id"`. It is the thread id for comments (`section_ai_canvas_after.json`):
+```json
+{"id": "d78e16f7-b1bf-4733-8786-e226da3f0591", "type": "swot", "version": 3, "blocks": {"threats": [], "strengths": ["Founder-market fit", "[stub-llm] items"], "weaknesses": [], "opportunities": []}}
+```
+
+## 10. Comment threads on sections and records (row 9)
+Same `/api/v1/team/comments` API as the Roadmap drawer (`fe-integration-guide-roadmap-prd.md`), with two new
+`entity_type`s and an optional **`anchor`**:
+| entity_type | entity_id | anchor |
+|---|---|---|
+| `business_canvas` | the canvas `id` (§9) | a block key (e.g. `strengths`) for a section thread, or omitted for the whole canvas |
+| `business_record` | the record `id` | must be omitted |
+
+`POST /api/v1/team/comments` `{"entity_type": "business_canvas", "entity_id": "<canvas id>", "anchor": "strengths", "body": "…"}` → **201** (`comment_section_create.json`):
+```json
+{
+  "data": {
+    "id": "51b8c01a-a6be-498b-bf4d-f727be6e7c9d",
+    "entity_type": "business_canvas",
+    "entity_id": "d78e16f7-b1bf-4733-8786-e226da3f0591",
+    "anchor": "strengths",
+    "author": { "id": "6ed5aaaa-a0ed-49a8-b806-8eb7e853c06f", "name": "Ada Founder" },
+    "body": "Is founder-market fit provable yet?",
+    "mention_user_ids": [],
+    "created_at": "2026-10-19T11:37:49.712731+00:00",
+    "edited_at": null,
+    "resolved_at": null,
+    "is_mine": true
+  },
+  "meta": null
+}
+```
+A record comment returns the same shape with `"entity_type": "business_record"` and `"anchor": null`
+(`comment_record_create.json`).
+
+`GET /api/v1/team/comments?entity_type=business_canvas&entity_id=<id>` returns the **whole canvas** thread, oldest first,
+with each comment's `anchor` (`comment_thread_canvas.json`). Fetch it once per canvas and group by `anchor`, so each
+block can show its count. Add `&anchor=<key>` to fetch one section.
+
+Unknown block, or an anchor on any other entity type → **422** (`comment_bad_anchor_422.json`):
+```json
+{"error": {"code": "VALIDATION_ERROR", "message": "That section doesn't exist on this item.", "field_errors": [{"field": "anchor", "message": "Not a section of this item."}]}}
+```
+Permissions are unchanged: everyone but investors can post (consultants included, so they can explain a suggestion).
+Only the author can edit or delete. Founders, team members or the author can resolve. Mentions notify as on the Roadmap.
+
+## 11. Per-section AI assist (row 8, D-BB-4)
+`POST /canvases/{type}/ai-fill` now takes an optional body `{"block": "<key>"}`. Without a body it is the old
+whole-canvas fill (empty blocks only). With a block:
+- **List block:** appends up to 3 new items, de-duplicated case-insensitively. Existing items are never edited, removed
+  or reordered. Other blocks are untouched, even empty ones.
+- **Text block** (Mission & Vision): written only if empty. Otherwise the result is `nothing_new`. Use "Give me 3 options"
+  (§12) for an existing statement.
+
+Enqueue → **202** (`section_ai_enqueue.json`): `{"data": {"job_id": "4d5324a0-…", "status": "queued"}, "meta": null}`.
+Finished job (`section_ai_job_done.json`):
+```json
+{
+  "data": {
+    "id": "4d5324a0-6ae6-4e4b-b3d4-d9adaa46f4b2",
+    "type": "business.canvas.ai_fill",
+    "status": "succeeded",
+    "result": { "added": ["[stub-llm] items"], "block": "strengths", "status": "ready", "version": 3 },
+    "error": null
+  },
+  "meta": null
+}
+```
+Running it again when the model has nothing new (`section_ai_nothing_new.json`):
+`"result": {"added": [], "block": "strengths", "status": "nothing_new"}`.
+
+`result.status`: `ready` (`added` lists the new items; the canvas is now at `result.version`) · `nothing_new` ·
+`over_budget` · `gone`. **UX:** on `ready`, **refetch the canvas** before the next autosave (its version moved; a stale
+PUT would 409) and briefly highlight the `added` items. The write appears in version history as `source: "ai"`.
+Unknown block → **422** (`section_ai_bad_block_422.json`): `"message": "That section doesn't exist on this canvas."`,
+`field_errors[0].field = "block"`. Founder / team member only; a consultant gets 403.
+
+## 12. Mission & Vision "Give me 3 options" (row 11)
+`POST /canvases/mission_vision/options` `{"field": "mission" | "vision"}` → 202 job `ai.business.mission_vision_options`.
+Done (`mv_options_job_done.json`):
+```json
+"result": { "field": "mission", "status": "ready", "options": ["[stub-llm] options"] }
+```
+Up to 3 strings with the real model (1 with the stub). **Nothing is written.** Show them as variant cards; **"Use this"**
+is a normal `PUT /canvases/mission_vision` with that text and the current `version`. A bad `field` → **422**
+(`mv_options_bad_field_422.json`), a framework validation error:
+`{"field": "field", "message": "Input should be 'mission' or 'vision'"}` with the top-level message
+"Please check the highlighted fields.".
+
+## 13. Personas from validation notes (row 13, AI part)
+`POST /personas/from-validation` (no body). Uses the workspace's Validation interviews (segment, notes, key quotes,
+latest 10) and assumptions. **Interviewee names are never sent to the model.**
+- With no interviews and no assumptions → **422** (`personas_from_validation_422.json`):
+  `{"error": {"code": "NO_VALIDATION_DATA", "message": "Log a customer interview or an assumption in Validation first.", "field_errors": []}}`.
+  Show the message with a link to `/validation`.
+- Otherwise 202 job `ai.business.personas_from_validation`. Done (`personas_from_validation_job_done.json`):
+```json
+"result": { "status": "ready", "interviews_used": 1, "created_record_ids": ["55bee50a-c4f2-489e-84da-234d1f92f663"] }
+```
+New personas are **appended** next to the founder's own, skipping any whose name already exists
+(`personas_after.json` lists 2: the founder's "Amaka" plus the new one). `status: "nothing_new"` means every draft
+duplicated an existing name. Refetch `GET /personas` on `ready`.
+
+## 14. Pricing AI advisor (row 14, advisor part)
+`POST /pricing/advisor`:
+```json
+{ "competitor_prices": [{"name": "Moniepoint", "price": "NGN 0 setup"}], "willingness_to_pay": "Traders said NGN 2,000 a month feels fair" }
+```
+Both fields are optional. `competitor_prices` holds at most 20 entries (name and price 1 to 120 chars each); more than 20 →
+422. `willingness_to_pay` is at most 2000 chars. The server **adds the competitor records' own prices** (from Competitive
+Analysis) to the ones you send, so prefill the panel from those records rather than asking twice.
+
+Done (`pricing_advisor_job_done.json`):
+```json
+"result": {
+  "advice": {
+    "tiers": [ { "name": "[stub-llm] name", "price": "[stub-llm] price", "features": ["[stub-llm] features"] } ],
+    "rationale": "[stub-llm] rationale",
+    "wtp_questions": ["[stub-llm] wtp_questions"],
+    "recommended_model": "subscription"
+  },
+  "status": "ready"
+}
+```
+- `recommended_model` is one of `subscription | one_time | usage | freemium | tiered`, the same values as the pricing
+  record's `model_type`.
+- Real model: up to 5 `wtp_questions` and up to 3 `tiers`. `price` is free text (it may include a currency).
+- **Advice only:** nothing is saved (verified live: `GET /pricing` stays empty). **"Apply"** = `POST /pricing` (or `PUT`
+  the existing pricing record) with `model_type` and `tiers` mapped from the advice. Show the rationale and call the
+  prices starting points.
+
+## 15. Verification (slice b)
+| Behaviour | Verified |
+|---|---|
+| Canvas `id` | ✅ live |
+| Section comment create / thread grouped by anchor / record comment | ✅ live |
+| Bad anchor 422 | ✅ live; anchor on a roadmap entity 422 and cross-tenant record 404: unit |
+| Section AI append-only, other blocks untouched, `nothing_new` on rerun | ✅ live (stub LLM) |
+| Section AI on a filled text block does not overwrite | unit only |
+| Section AI bad block 422 | ✅ live; consultant 403: unit |
+| M&V options job, nothing written, bad field 422 | ✅ live (stub); mentor 403: unit |
+| Personas from validation 422 / append + dedupe | ✅ live (stub) |
+| Interviewee names never in the prompt | unit (`test_validation_prompt_has_no_interviewee_names`) |
+| Pricing advisor merges competitor-record prices, advice only | ✅ live (stub) + unit; >20 prices 422: unit |
+| Real-model content | ✅ live against the real model on the local stack (`e2e/_captures/business_prd_b_live/`): section AI added 3 strengths, M&V returned 3 mission options, the advisor returned 3 tiers (NGN 0 / 2,000 / 5,000 a month) anchored on the typed willingness to pay. Personas-from-validation with the real model: **not run** (the local workspace has no interviews) |

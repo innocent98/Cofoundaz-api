@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, Forbidden, NotFound
+from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.comment import Comment
 from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
@@ -23,7 +24,7 @@ from app.platform.events import event_bus
 # Who may post: everyone but investors (PRD 05 access: BC suggest, M read shared). All may read.
 COMMENTER_ROLES = frozenset(MembershipRole) - {MembershipRole.investor}
 RESOLVER_ROLES = frozenset({MembershipRole.founder, MembershipRole.team_member})
-ENTITY_TYPES = ("roadmap_milestone", "roadmap_task")
+ENTITY_TYPES = ("roadmap_milestone", "roadmap_task", "business_canvas", "business_record")
 SNIPPET = 80
 
 
@@ -43,8 +44,50 @@ def list_members(db: Session, startup: Startup) -> list[dict[str, Any]]:
     ]
 
 
+def _business_entity(
+    db: Session, startup: Startup, entity_type: str, entity_id: uuid.UUID
+) -> str | None:
+    from app.services.business.export import CANVAS_TITLES, RECORD_TITLES
+
+    if entity_type == "business_canvas":
+        c = db.query(BusinessCanvas).filter_by(id=entity_id, startup_id=startup.id).first()
+        return CANVAS_TITLES[c.type] if c is not None else None
+    r = db.query(BusinessRecord).filter_by(id=entity_id, startup_id=startup.id).first()
+    if r is None:
+        return None
+    return str(r.data.get("name") or RECORD_TITLES[r.kind])
+
+
+def _check_anchor(db: Session, entity_type: str, entity_id: uuid.UUID, anchor: str | None) -> None:
+    """An anchor is a canvas block key, valid only on business_canvas threads."""
+    if anchor is None:
+        return
+    from app.services.business.canvas_defs import CANVAS_BLOCKS
+
+    keys: set[str] = set()
+    if entity_type == "business_canvas":
+        canvas = db.get(BusinessCanvas, entity_id)
+        keys = {b.key for b in CANVAS_BLOCKS[canvas.type]} if canvas is not None else set()
+    if anchor not in keys:
+        _bad_anchor()
+
+
+def _bad_anchor() -> None:
+    raise AppError(
+        "VALIDATION_ERROR",
+        "That section doesn't exist on this item.",
+        422,
+        field_errors=[{"field": "anchor", "message": "Not a section of this item."}],
+    )
+
+
 def _entity_in(db: Session, startup: Startup, entity_type: str, entity_id: uuid.UUID) -> str:
     """Return the entity's display title, or 404 if it isn't in this workspace."""
+    if entity_type in ("business_canvas", "business_record"):
+        title = _business_entity(db, startup, entity_type, entity_id)
+        if title is None:
+            raise NotFound()
+        return title
     base = (
         db.query(RoadmapMilestone)
         .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
@@ -83,6 +126,7 @@ def serialize_comment(c: Comment, names: dict[uuid.UUID, str | None], viewer: uu
         "id": str(c.id),
         "entity_type": c.entity_type,
         "entity_id": str(c.entity_id),
+        "anchor": c.anchor,
         "author": (
             {"id": str(c.author_id), "name": names.get(c.author_id)} if c.author_id else None
         ),
@@ -96,19 +140,23 @@ def serialize_comment(c: Comment, names: dict[uuid.UUID, str | None], viewer: uu
 
 
 def list_comments(
-    db: Session, startup: Startup, viewer: User, entity_type: str, entity_id: uuid.UUID
+    db: Session,
+    startup: Startup,
+    viewer: User,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    anchor: str | None = None,
 ) -> list[dict]:
+    """Oldest first. Without `anchor`, the whole entity's thread (each row says its anchor)."""
     _entity_in(db, startup, entity_type, entity_id)
-    rows = (
-        db.query(Comment)
-        .filter(
-            Comment.startup_id == startup.id,
-            Comment.entity_type == entity_type,
-            Comment.entity_id == entity_id,
-        )
-        .order_by(Comment.created_at.asc(), Comment.id.asc())
-        .all()
+    q = db.query(Comment).filter(
+        Comment.startup_id == startup.id,
+        Comment.entity_type == entity_type,
+        Comment.entity_id == entity_id,
     )
+    if anchor is not None:
+        q = q.filter(Comment.anchor == anchor)
+    rows = q.order_by(Comment.created_at.asc(), Comment.id.asc()).all()
     names = _names(db, {c.author_id for c in rows if c.author_id})
     return [serialize_comment(c, names, viewer.id) for c in rows]
 
@@ -145,15 +193,20 @@ def create_comment(
     entity_id: uuid.UUID,
     body: str,
     mention_user_ids: list[uuid.UUID],
+    anchor: str | None = None,
 ) -> dict:
     if role not in COMMENTER_ROLES:
         raise Forbidden()
+    if anchor is not None and entity_type != "business_canvas":
+        _bad_anchor()
     title = _entity_in(db, startup, entity_type, entity_id)
+    _check_anchor(db, entity_type, entity_id, anchor)
     mentions = _validate_mentions(db, startup, mention_user_ids)
     c = Comment(
         startup_id=startup.id,
         entity_type=entity_type,
         entity_id=entity_id,
+        anchor=anchor,
         author_id=author.id,
         body=body,
         mention_user_ids=[str(m) for m in mentions],

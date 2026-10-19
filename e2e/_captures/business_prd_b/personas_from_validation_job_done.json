@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "6c68b07c-b972-4b89-827b-8fa8c308567d",
+    "type": "ai.business.personas_from_validation",
+    "status": "succeeded",
+    "result": {
+      "status": "ready",
+      "interviews_used": 1,
+      "created_record_ids": [
+        "55bee50a-c4f2-489e-84da-234d1f92f663"
+      ]
+    },
+    "error": null
+  },
+  "meta": null
+}

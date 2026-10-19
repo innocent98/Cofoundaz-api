@@ -69,13 +69,14 @@ def get_members(
 def get_comments(
     entity_type: CommentEntity = Query(...),  # noqa: B008
     entity_id: uuid.UUID = Query(...),  # noqa: B008
+    anchor: str | None = Query(None, max_length=60),  # noqa: B008
     membership: Membership = Depends(require_workspace),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    """PRD 23.2 thread for one entity, oldest first."""
+    """PRD 23.2 thread for one entity, oldest first (optionally one section via `anchor`)."""
     return success_response(
-        team_svc.list_comments(db, _ws(db, membership), user, entity_type, entity_id)
+        team_svc.list_comments(db, _ws(db, membership), user, entity_type, entity_id, anchor)
     )
 
 
@@ -97,6 +98,7 @@ def post_comment(
         entity_id=payload.entity_id,
         body=payload.body,
         mention_user_ids=payload.mention_user_ids,
+        anchor=payload.anchor,
     )
     db.commit()
     return success_response(data)

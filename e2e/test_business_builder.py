@@ -921,3 +921,170 @@ def test_business_builder_prd_a_journey(
         personas = c.get(f"{bb}/personas", headers=wh)
         assert {f["type"] for f in personas.json()["data"]["fields"]} <= {"str", "list[str]"}
         capture("business_prd", "personas_fields", personas)
+
+
+def _drain_ai() -> None:
+    """Run the AI jobs in-process with the stub LLM (same as e2e/test_roadmap_prd.py)."""
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers the business AI jobs)
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
+
+
+def _job(c: httpx.Client, wh: dict, resp: httpx.Response) -> httpx.Response:
+    assert resp.status_code == 202, resp.text
+    _drain_ai()
+    done = c.get(f"/api/v1/jobs/{resp.json()['data']['job_id']}", headers=wh)
+    assert done.status_code == 200, done.text
+    return done
+
+
+def test_business_builder_prd_b_journey(base_url, make_verified_user, capture):
+    """PRD completion slice (b): section comment threads, per-section AI assist (append-only),
+    Mission & Vision "Give me 3 options", personas from validation notes and the pricing advisor.
+    Captures land in e2e/_captures/business_prd_b/ (source of the slice (b) FE guide section)."""
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD B")
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        wh = _wh(c, auth)
+
+        # 1. Section comments on a canvas block, and on a record.
+        c.get(f"{bb}/canvases/swot", headers=wh)
+        c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={"blocks": {"strengths": ["Founder-market fit"]}, "version": 1},
+        )
+        comment = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_canvas",
+                "entity_id": c.get(f"{bb}/canvases/swot", headers=wh).json()["data"]["id"],
+                "anchor": "strengths",
+                "body": "Is founder-market fit provable yet?",
+            },
+        )
+        assert comment.status_code == 201, comment.text
+        capture("business_prd_b", "comment_section_create", comment)
+        cid = comment.json()["data"]["entity_id"]
+        thread = c.get(
+            "/api/v1/team/comments",
+            headers=wh,
+            params={"entity_type": "business_canvas", "entity_id": cid},
+        )
+        assert thread.status_code == 200 and thread.json()["data"][0]["anchor"] == "strengths"
+        capture("business_prd_b", "comment_thread_canvas", thread)
+        bad_anchor = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_canvas",
+                "entity_id": cid,
+                "anchor": "key_partners",
+                "body": "x",
+            },
+        )
+        assert bad_anchor.status_code == 422, bad_anchor.text
+        capture("business_prd_b", "comment_bad_anchor_422", bad_anchor)
+        persona = c.post(f"{bb}/personas", headers=wh, json={"data": {"name": "Amaka"}})
+        rec_comment = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_record",
+                "entity_id": persona.json()["data"]["id"],
+                "body": "Based on two interviews so far.",
+            },
+        )
+        assert rec_comment.status_code == 201, rec_comment.text
+        capture("business_prd_b", "comment_record_create", rec_comment)
+
+        # 2. Per-section AI: append-only into one block.
+        bad_block = c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "nope"})
+        assert bad_block.status_code == 422
+        capture("business_prd_b", "section_ai_bad_block_422", bad_block)
+        enq = c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "strengths"})
+        capture("business_prd_b", "section_ai_enqueue", enq)
+        done = _job(c, wh, enq)
+        assert done.json()["data"]["result"]["status"] == "ready"
+        capture("business_prd_b", "section_ai_job_done", done)
+        after = c.get(f"{bb}/canvases/swot", headers=wh)
+        strengths = after.json()["data"]["blocks"]["strengths"]
+        assert strengths[0] == "Founder-market fit" and len(strengths) == 2
+        assert after.json()["data"]["blocks"]["weaknesses"] == []
+        capture("business_prd_b", "section_ai_canvas_after", after)
+        again = _job(
+            c, wh, c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "strengths"})
+        )
+        assert again.json()["data"]["result"]["status"] == "nothing_new"
+        capture("business_prd_b", "section_ai_nothing_new", again)
+
+        # 3. Mission & Vision options (never written).
+        opts_enq = c.post(
+            f"{bb}/canvases/mission_vision/options", headers=wh, json={"field": "mission"}
+        )
+        capture("business_prd_b", "mv_options_enqueue", opts_enq)
+        opts = _job(c, wh, opts_enq)
+        assert opts.json()["data"]["result"]["options"]
+        capture("business_prd_b", "mv_options_job_done", opts)
+        bad_field = c.post(
+            f"{bb}/canvases/mission_vision/options", headers=wh, json={"field": "values"}
+        )
+        assert bad_field.status_code == 422
+        capture("business_prd_b", "mv_options_bad_field_422", bad_field)
+
+        # 4. Personas from validation notes: 422 before any interview, then appended.
+        none_yet = c.post(f"{bb}/personas/from-validation", headers=wh)
+        assert none_yet.status_code == 422, none_yet.text
+        capture("business_prd_b", "personas_from_validation_422", none_yet)
+        iv = c.post(
+            "/api/v1/validation/interviews",
+            headers=wh,
+            json={
+                "interviewee": "Placeholder Interviewee",
+                "held_on": "2026-10-01",
+                "verdict": "supports",
+                "segment": "Market traders",
+                "notes": "Reconciles cash sales by hand every evening; loses track of credit.",
+                "key_quotes": ["I lose track of who owes me"],
+            },
+        )
+        assert iv.status_code == 201, iv.text
+        pv = _job(c, wh, c.post(f"{bb}/personas/from-validation", headers=wh))
+        result = pv.json()["data"]["result"]
+        assert result["status"] == "ready" and result["interviews_used"] == 1
+        capture("business_prd_b", "personas_from_validation_job_done", pv)
+        listed = c.get(f"{bb}/personas", headers=wh)
+        assert len(listed.json()["data"]["records"]) == 2
+        capture("business_prd_b", "personas_after", listed)
+
+        # 5. Pricing advisor: advice only.
+        c.post(
+            f"{bb}/competitors",
+            headers=wh,
+            json={"data": {"name": "Paystack", "price": "1.5% per transaction"}},
+        )
+        adv_enq = c.post(
+            f"{bb}/pricing/advisor",
+            headers=wh,
+            json={
+                "competitor_prices": [{"name": "Moniepoint", "price": "NGN 0 setup"}],
+                "willingness_to_pay": "Traders said NGN 2,000 a month feels fair",
+            },
+        )
+        capture("business_prd_b", "pricing_advisor_enqueue", adv_enq)
+        adv = _job(c, wh, adv_enq)
+        assert adv.json()["data"]["result"]["status"] == "ready"
+        capture("business_prd_b", "pricing_advisor_job_done", adv)
+        assert c.get(f"{bb}/pricing", headers=wh).json()["data"]["records"] == []
