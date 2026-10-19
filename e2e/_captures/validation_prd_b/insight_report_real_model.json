@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "0b6ff21d-6478-416f-bd4c-ce33225fcd12",
+    "id": "4fbafc3b-220f-4fd2-bc4b-6da83a7367bf",
     "source": "all",
     "inputs": {
       "interviews": 3,
@@ -8,70 +8,71 @@
     },
     "patterns": [
       {
-        "id": "e9c8b2d8117c",
-        "theme": "Same-day cash matters",
+        "id": "6847d0653257",
+        "theme": "Same-day cash urgency",
         "quotes": [
           "Friday is when I need the money, not Monday",
           "I wait three days for my money and my supplier wants cash today",
           "Settlement takes too long, I need cash to restock"
         ],
-        "summary": "Traders experience delayed settlement as a practical cash flow problem, especially when they need to restock."
+        "summary": "Traders need faster settlement to restock and meet supplier payment demands, especially before high-volume trading periods."
       },
       {
-        "id": "eba27edd93ca",
+        "id": "8c88fc0e4914",
         "theme": "Willingness to pay",
         "quotes": [
           "I already pay half a percent, so a bit more for same day is fine",
           "If it came the same day I would pay something small, maybe fifty naira"
         ],
-        "summary": "Traders indicate they would pay a small fee for faster settlement, particularly when the fee is comparable to existing payment costs."
+        "summary": "At least two traders indicated they would accept a small fee for same-day settlement, including one who already pays for POS services."
       },
       {
-        "id": "dfbbe7ba6543",
+        "id": "ea5865cac264",
         "theme": "Association distrust",
         "quotes": [
           "We stopped recommending anybody after the loan app wahala",
           "Talk to the traders one by one, not the association"
         ],
-        "summary": "At least one market association has stopped endorsing vendors and expects NovaPay to reach traders individually."
+        "summary": "An association secretary said the association no longer recommends vendors and expects NovaPay to approach traders individually."
       },
       {
-        "id": "63885d393da6",
-        "theme": "Payout transparency gaps",
+        "id": "c86175d7eeed",
+        "theme": "Payout reliability concerns",
         "quotes": [
           "My POS provider never answers when a payout is stuck",
-          "Charges are hidden until the money lands"
+          "Charges are hidden until the money lands",
+          "Settlement takes too long, I need cash to restock"
         ],
-        "summary": "Payout frustration also includes poor support and unclear charges, not only settlement speed."
+        "summary": "Customers are frustrated by slow settlement, unresponsive providers, and charges that are not disclosed upfront."
       }
     ],
     "contradictions": [
       {
-        "id": "29b02d43fcb7",
-        "summary": "The association secretary rejects association-led vendor recommendations, while the evidence about same-day settlement shows individual traders may be receptive to NovaPay; this suggests association promotion and individual adoption are different routes rather than directly conflicting findings."
+        "id": "6d7b26f504cb",
+        "summary": "Trader interviews indicate demand and willingness to pay for same-day settlement, while the association source rejects the assumption that the association will promote NovaPay and instead recommends individual outreach."
       }
     ],
     "suggestions": [
       {
-        "id": "706d63bfc231",
-        "reason": "Two trader interviews support willingness to pay a small fee, with one citing an existing 0.5% payment cost and another naming a possible fee, but the sample is still limited.",
+        "id": "d3d7281f796d",
+        "reason": "Two traders explicitly said they would pay a small fee for same-day settlement, and the broader evidence shows that delayed payouts create real restocking pressure. This is promising but based on only two direct pricing responses, so it is not yet validated.",
         "to_status": "testing",
         "applied_at": null,
         "from_status": "untested",
-        "assumption_id": "64673910-c2be-4cf4-a28a-1893ab2f5a0a",
+        "assumption_id": "544f8628-4dc7-4502-8834-ce08040219df",
         "assumption_statement": "Market traders will pay a small fee for same-day settlement"
       },
       {
-        "id": "6ed98443d619",
-        "reason": "The association secretary directly rejects recommending vendors and directs NovaPay to approach traders individually, weakening the assumption for this association but not establishing that no market association will ever promote NovaPay.",
-        "to_status": "testing",
+        "id": "997d247516e1",
+        "reason": "The market association secretary explicitly said the association no longer recommends vendors and told NovaPay to approach traders individually, directly refuting the assumption that market associations will promote NovaPay to their members.",
+        "to_status": "invalidated",
         "applied_at": null,
         "from_status": "untested",
-        "assumption_id": "ea4eef56-8e8c-4d6e-8246-375c427446d1",
+        "assumption_id": "47ceffec-5e9f-4231-8a9a-a11922682694",
         "assumption_statement": "Market associations will promote NovaPay to their members"
       }
     ],
-    "created_at": "2026-10-19T20:33:37.401779+00:00"
+    "created_at": "2026-10-19T20:55:37.916055+00:00"
   },
   "meta": null
 }

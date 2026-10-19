@@ -33,7 +33,9 @@ No assumption ticked (`script_generate_no_assumption_422.json`): disable the but
 An id from another workspace or more than 5 ids: `422 VALIDATION_ERROR` (unit-tested, not captured).
 
 ### 1b. Poll `GET /api/v1/jobs/{job_id}`
-Same cadence as slice (a): every 2 s, stop at `succeeded`/`failed`, ~60 s cap.
+Same cadence as slice (a): every 2 s, stop at `succeeded`/`failed`. Real-model runs took ~15 s. A
+failed model call is **retried by the worker after 30 s** (then backoff), and the job reads `queued` meanwhile,
+so cap the poll at ~90 s and then show "Still working, check back in a minute" rather than an error.
 `script_generate_job.json`:
 ```json
 {"data": {"id": "4804f11c-…", "type": "validation.scripts.generate", "status": "succeeded",
@@ -60,16 +62,28 @@ and was never produced in testing.
   "created_at": "2026-10-19T20:30:54.637835+00:00",
   "updated_at": "2026-10-19T20:30:54.637835+00:00"}]}, "meta": null}
 ```
-**REAL MODEL** (`script_real_model.json`, two assumptions, trimmed to 3 of its 8 questions):
+**REAL MODEL** (`script_real_model.json`, two assumptions, trimmed to 3 of its 9 questions):
 ```json
-{"title": "How Market Payments and Recommendations Work Today",
+{
+ "title": "How Market Payments and Member Services Work Today",
  "questions": [
-  {"id": "dd89b8b0f08e", "tip": "Ask for the most recent example and clarify each step and timing.",
-   "question": "Walk me through the last trade where payment was completed, from the trade being agreed to the money being received."},
-  {"id": "23c7193cc7e0", "tip": "Ask what caused the delay, what they did next, and what it cost them.",
-   "question": "Tell me about the last time payment took longer than you expected."},
-  {"id": "54476c715409", "tip": "Ask how much they paid, why they paid it, and whether they would do it again.",
-   "question": "Tell me about the last time you paid a fee to speed up, secure, or simplify a payment."}]}
+  {
+   "id": "5dc3f0bfd965",
+   "tip": "Ask for the most recent real example, including who paid whom and when.",
+   "question": "Tell me about the last market trade you completed and how the payment was settled."
+  },
+  {
+   "id": "ea56e7255318",
+   "tip": "Listen for actual settlement times, delays, and steps rather than general opinions.",
+   "question": "What usually happens between completing a trade and receiving the money?"
+  },
+  {
+   "id": "3ffe5ba289b8",
+   "tip": "Ask what happened next and what it cost in time, money, or trust.",
+   "question": "Tell me about the last time a delayed payment caused a problem for you or your members."
+  }
+ ]
+}
 ```
 Show the PRD tip copy *"Ask about the last time it happened, not hypotheticals."* as the editor's
 static hint; each question's own `tip` sits under it.
@@ -145,37 +159,62 @@ An unknown `source` → pydantic `422 VALIDATION_ERROR` (unit-tested).
 ### 2c. Read `GET /insights/{id}` · history `GET /insights` (newest first, same shape in `insights`)
 **REAL MODEL** (`insight_report_real_model.json`, 3 interviews + 3 open answers, verbatim):
 ```json
-{"data": {
-  "id": "0b6ff21d-6478-416f-bd4c-ce33225fcd12",
+{
+ "data": {
+  "id": "4fbafc3b-220f-4fd2-bc4b-6da83a7367bf",
   "source": "all",
-  "inputs": {"interviews": 3, "open_answers": 3},
+  "inputs": {
+   "interviews": 3,
+   "open_answers": 3
+  },
   "patterns": [
-    {"id": "e9c8b2d8117c", "theme": "Same-day cash matters",
-     "quotes": ["Friday is when I need the money, not Monday",
-                "I wait three days for my money and my supplier wants cash today",
-                "Settlement takes too long, I need cash to restock"],
-     "summary": "Traders experience delayed settlement as a practical cash flow problem, especially when they need to restock."},
-    {"id": "dfbbe7ba6543", "theme": "Association distrust",
-     "quotes": ["We stopped recommending anybody after the loan app wahala",
-                "Talk to the traders one by one, not the association"],
-     "summary": "At least one market association has stopped endorsing vendors and expects NovaPay to reach traders individually."}
+   {
+    "id": "6847d0653257",
+    "theme": "Same-day cash urgency",
+    "quotes": [
+     "Friday is when I need the money, not Monday",
+     "I wait three days for my money and my supplier wants cash today",
+     "Settlement takes too long, I need cash to restock"
+    ],
+    "summary": "Traders need faster settlement to restock and meet supplier payment demands, especially before high-volume trading periods."
+   },
+   {
+    "id": "ea5865cac264",
+    "theme": "Association distrust",
+    "quotes": [
+     "We stopped recommending anybody after the loan app wahala",
+     "Talk to the traders one by one, not the association"
+    ],
+    "summary": "An association secretary said the association no longer recommends vendors and expects NovaPay to approach traders individually."
+   }
   ],
   "contradictions": [
-    {"id": "29b02d43fcb7", "summary": "The association secretary rejects association-led vendor recommendations, while the evidence about same-day settlement shows individual traders may be receptive to NovaPay; …"}
+   {
+    "id": "6d7b26f504cb",
+    "summary": "Trader interviews indicate demand and willingness to pay for same-day settlement, while the association source rejects the assumption that the association will promote NovaPay and instead recommends individual outreach."
+   }
   ],
   "suggestions": [
-    {"id": "706d63bfc231",
-     "reason": "Two trader interviews support willingness to pay a small fee, with one citing an existing 0.5% payment cost and another naming a possible fee, but the sample is still limited.",
-     "to_status": "testing", "applied_at": null, "from_status": "untested",
-     "assumption_id": "64673910-c2be-4cf4-a28a-1893ab2f5a0a",
-     "assumption_statement": "Market traders will pay a small fee for same-day settlement"}
+   {
+    "id": "997d247516e1",
+    "reason": "The market association secretary explicitly said the association no longer recommends vendors and told NovaPay to approach traders individually, directly refuting the assumption that market associations will promote NovaPay to their members.",
+    "to_status": "invalidated",
+    "applied_at": null,
+    "from_status": "untested",
+    "assumption_id": "47ceffec-5e9f-4231-8a9a-a11922682694",
+    "assumption_statement": "Market associations will promote NovaPay to their members"
+   }
   ],
-  "created_at": "2026-10-19T20:33:37.401779+00:00"}}
+  "created_at": "2026-10-19T20:55:37.916055+00:00"
+ }
+}
 ```
-(trimmed: the real report had 4 patterns and 2 suggestions.)
+(trimmed: the real report had 4 patterns and 2 suggestions; the other suggestion was untested → testing.)
 
 Rendering notes:
 - `inputs` → "Based on 3 interviews and 3 survey answers".
+- Themes, summaries and reasons are written by the model from customer evidence, including anonymous
+  survey answers. Render them as plain text (never HTML/markdown), and label the report as AI-generated.
 - A pattern's `quotes` can be **`[]`**: every quote is checked against the real evidence and any the
   model paraphrased or invented is dropped. Render the theme and summary without a quote block.
 - `contradictions` and `suggestions` can be empty arrays: hide those sections.
@@ -226,7 +265,7 @@ investors) get **one** notification for it. `founder_notifications.json` (stub) 
           "startup_id": "8ba01706-d647-45f0-a56a-ce439003ec2e"},
  "read": false, "created_at": "2026-10-19T20:30:54.750857+00:00"}
 ```
-**REAL MODEL** title: `New pattern detected in customer feedback: Same-day cash matters`.
+**REAL MODEL** title: `New pattern detected in customer feedback: Same-day cash urgency`.
 `body` is the CTA label (**"See insight"**); deep link to the report with `data.insight_id`. In-app
 only (no email category, like the slice (a) milestone). A report with no pattern sends nothing.
 Slice (b) also narrowed the slice (a) `validation.smoke_test.milestone` notification to founders +
@@ -247,7 +286,7 @@ team members (it went to every member before).
 | Behaviour | Live | Source |
 |---|---|---|
 | Generate script → job → saved script, list, get | ✅ | `script_generate_*.json`, `scripts_list.json` |
-| Real-model script (8 questions with tips) | ✅ REAL MODEL | `script_generate_job_real_model.json`, `script_real_model.json` |
+| Real-model script (9 questions with tips) | ✅ REAL MODEL | `script_generate_job_real_model.json`, `script_real_model.json` |
 | No assumption → 422 `ASSUMPTIONS_REQUIRED` | ✅ | `script_generate_no_assumption_422.json` |
 | Edit keeps question ids; empty list 422 | ✅ | `script_edited.json`, `script_edit_empty_422.json` |
 | Other edit errors, >5 assumptions, foreign assumption | ❌ unit | `tests/api/test_validation_prd_b.py` |
@@ -255,7 +294,7 @@ team members (it went to every member before).
 | Deleting an assumption unlinks it from scripts | ❌ unit | same |
 | Synthesize nothing → 422 `NOTHING_TO_SYNTHESIZE` | ✅ | `synthesize_nothing_422.json` |
 | Synthesize → job → stored report | ✅ | `synthesize_*.json`, `insight_report.json`, `insights_list.json` |
-| Real-model report (4 themes, verbatim quotes, 2 suggestions) | ✅ REAL MODEL | `synthesize_job_real_model.json`, `insight_report_real_model.json` |
+| Real-model report (4 themes, verbatim quotes, 2 suggestions, no internal refs in prose) | ✅ REAL MODEL | `synthesize_job_real_model.json`, `insight_report_real_model.json` |
 | Interviewee names never sent or returned | ✅ (asserted on the report) + unit (asserted on the prompt) | e2e + unit |
 | Invented quotes dropped; bad / no-op / unknown suggestions dropped | ❌ unit | same |
 | `source=surveys` reads only open answers | ❌ unit | same |

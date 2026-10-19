@@ -20,6 +20,9 @@
 | `validation.insight.detected` once per report with the top theme, only when there is a pattern; copy "New pattern detected in customer feedback: {theme}", body/CTA "See insight"; in-app only | PRD copy | an email category (would add a new preference toggle) |
 | Validation notifications go to **founders + team members** only (`_validation_members`); the slice (a) milestone notification was moved to it too | only those roles can open the Validation Hub; mentors etc. were getting test names and counts | `_all_active_members` |
 | Over budget → `over_budget`, nothing stored | same as every AI job | |
+| Security review: evidence (incl. anonymous survey answers) is sent as a JSON block inside `<evidence>` with `<` escaped, and the system prompt says never to follow instructions in it | prompt injection from the public survey form | trusting raw text |
+| Prose mentioning the prompt's refs ("A2") is rewritten to the assumption's words | a real-model contradiction said "contradicting A2" | |
+| Own token caps: scripts 2,500, synthesis 4,000 (default `LLM_MAX_TOKENS` is 800) | the reasoning model ran out of room and returned an empty completion on 2 of 4 real synthesis runs; 3/3 pass after | raising the global cap |
 
 ## What's involved
 - Migration `0057_interview_scripts_insights`: tables `interview_scripts`, `insight_reports` (startup FK cascade, index).
@@ -37,9 +40,10 @@
 ## Verification
 TDD (tests written first). Unit suite, black, isort, ruff, mypy, pylint, bandit and `alembic upgrade/check/downgrade base/upgrade`
 run in a separate worktree against scratch databases (numbers in the PR). e2e 75/75 including the new journey (captures in
-`e2e/_captures/validation_prd_b/`). Real model (fresh DB, real HTTP): an 8-question Mom-Test script with tips; a report with 4
-themes whose 9 quotes were all verbatim, a fair contradiction, and 2 cautious "untested → testing" suggestions; notification
-"New pattern detected in customer feedback: Same-day cash matters".
+`e2e/_captures/validation_prd_b/`). Real model (fresh DB, real HTTP, 3 consecutive passing runs after the token-cap fix): a 9-question Mom-Test script
+with tips; a report with 4 themes whose quotes were all verbatim, a fair contradiction, "untested → testing" for the
+pricing assumption and "untested → invalidated" for the association one; notification "New pattern detected in
+customer feedback: Same-day cash urgency".
 
 ## Operate / roll back
 `alembic upgrade head` (CD runs it) and **restart the worker** (two new handlers). Roll back: downgrade to
