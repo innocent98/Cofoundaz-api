@@ -2,7 +2,7 @@ import enum
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.enums import PricingModelType, RecordKind, ThreatLevel
 
@@ -36,6 +36,17 @@ class CompetitorData(_Base):
     threat_level: ThreatLevel = ThreatLevel.medium
     map_x: float | None = Field(default=None, ge=0, le=1)
     map_y: float | None = Field(default=None, ge=0, le=1)
+
+    @field_validator("threat_level", mode="before")
+    @classmethod
+    def _blank_threat_is_default(cls, v: Any) -> Any:
+        # A form's unselected "Select..." arrives as "": treat it as not given.
+        return ThreatLevel.medium if v in ("", None) else v
+
+    @field_validator("map_x", "map_y", mode="before")
+    @classmethod
+    def _blank_coordinate_is_unplaced(cls, v: Any) -> Any:
+        return None if v == "" else v
 
 
 class PricingTier(_Base):
