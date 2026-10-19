@@ -261,3 +261,9 @@ enrichment failure fall outside that first 200-row window and never appear in
 Not expected to matter in practice (200 failed jobs of any kind in a single day for one workspace
 is already an anomaly worth its own alerting), but it is a real, unaddressed correctness gap in
 the endpoint's own query shape — see the FE guide's Verification table.
+
+## Update 2026-10-19: default raised to 100,000 tokens/startup/day
+Decided by Adebayo after the re-walk measured one business plan at about 24k tokens (the 15k cap made plans fail
+`over_budget` whenever AI had been used earlier that day). Only the code default in `app/core/config.py` changed; no env
+file in the repo sets the key. If an encrypted environment file sets `LLM_DAILY_TOKEN_BUDGET` explicitly, that value
+still wins and must be updated there. Test: `tests/core/test_config_llm.py::test_default_daily_token_budget_fits_a_business_plan`.
