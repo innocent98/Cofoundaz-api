@@ -1,0 +1,78 @@
+{
+  "data": {
+    "has_roadmap": true,
+    "mission_size": 3,
+    "days": [
+      {
+        "date": "2026-10-19",
+        "rest_day": false,
+        "tasks": [
+          {
+            "roadmap_task_id": "bab1bbb4-1e36-436d-b8e0-ca2fd2769183",
+            "title": "Run a willingness-to-pay test",
+            "effort": "medium",
+            "milestone": {
+              "id": "b86621e6-e38a-457f-9fdb-39f071e78b32",
+              "title": "Pricing test",
+              "due_on": "2026-11-22"
+            },
+            "carried_over": false
+          },
+          {
+            "roadmap_task_id": "a7eb83f8-206d-409b-b646-973af8767aed",
+            "title": "Define the core user journey",
+            "effort": "medium",
+            "milestone": {
+              "id": "2dded1a0-0113-448d-b319-3360b3a9154a",
+              "title": "Core flow",
+              "due_on": "2026-12-27"
+            },
+            "carried_over": false
+          },
+          {
+            "roadmap_task_id": "58dec22b-8719-4460-ad2c-122e65fb5769",
+            "title": "Build the happy path",
+            "effort": "large",
+            "milestone": {
+              "id": "2dded1a0-0113-448d-b319-3360b3a9154a",
+              "title": "Core flow",
+              "due_on": "2026-12-27"
+            },
+            "carried_over": false
+          }
+        ]
+      },
+      {
+        "date": "2026-10-20",
+        "rest_day": false,
+        "tasks": []
+      },
+      {
+        "date": "2026-10-21",
+        "rest_day": false,
+        "tasks": []
+      },
+      {
+        "date": "2026-10-22",
+        "rest_day": false,
+        "tasks": []
+      },
+      {
+        "date": "2026-10-23",
+        "rest_day": false,
+        "tasks": []
+      },
+      {
+        "date": "2026-10-24",
+        "rest_day": false,
+        "tasks": []
+      },
+      {
+        "date": "2026-10-25",
+        "rest_day": false,
+        "tasks": []
+      }
+    ]
+  },
+  "meta": null
+}

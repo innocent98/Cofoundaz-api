@@ -138,7 +138,12 @@ def test_history_empty_returns_zero_pct_no_crash(client, db):
 
     r = client.get("/api/v1/missions/history", headers=h)
     assert r.status_code == 200, r.text
-    assert r.json()["data"] == {"missions": [], "weekly_completion_pct": 0}
+    assert r.json()["data"] == {
+        "missions": [],
+        "weekly_completion_pct": 0,
+        "current_streak": 0,
+        "best_streak": 0,
+    }
 
 
 def test_history_requires_auth(client):

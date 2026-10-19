@@ -125,6 +125,11 @@ def test_scheduled_mission_ready_notification(base_url, make_verified_user, uniq
         assert tree.status_code == 200, tree.text
         assert tree.json()["data"]["phases"], "expected a generated roadmap before the tick"
 
+        # Date-proof: on a weekends-off day the mission is an empty rest day and is (rightly)
+        # not announced, so switch weekend missions on like the other mission journeys.
+        wk = a.patch("/api/v1/missions/settings", headers=wh_a, json={"weekend_missions": True})
+        assert wk.status_code == 200, wk.text
+
         # Sanity: a fresh founder's feed has no mission.ready row yet -- nothing else
         # in this journey has generated today's mission.
         before = a.get("/api/v1/notifications", headers=wh_a)
@@ -145,7 +150,9 @@ def test_scheduled_mission_ready_notification(base_url, make_verified_user, uniq
         mission_notif = next(
             n for n in feed.json()["data"]["notifications"] if n["type"] == "mission.ready"
         )
-        assert set(mission_notif["data"]) == {"startup_id", "mission_id"}
+        assert set(mission_notif["data"]) == {"startup_id", "mission_id", "first_task_title"}
+        assert mission_notif["title"] == "Your mission for today is ready"
+        assert mission_notif["body"] == mission_notif["data"]["first_task_title"]
         assert mission_notif["data"]["startup_id"] == wh_a["X-Workspace-Id"]
 
         # The scheduled_runs claim ledger makes this once-per-day: a second tick later

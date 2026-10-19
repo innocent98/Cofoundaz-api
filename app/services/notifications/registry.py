@@ -99,11 +99,24 @@ SPECS: dict[str, NotifSpec] = {
     "roadmap.replanned": _s(_members_minus_actor, "Your roadmap was re-planned"),
     "roadmap.milestone.completed": _s(_members_minus_actor, "A roadmap milestone was completed"),
     "mission.completed": _s(_members_minus_actor, "Today's mission is complete"),
-    "mission.streak.milestone": _s(_members_minus_actor, "You hit a mission streak milestone"),
+    # PRD 04 notifications copy.
+    "mission.streak.milestone": NotifSpec(
+        _members_minus_actor,
+        lambda p: (
+            f"🔥 {p['streak']} days straight. You're building a habit most founders never do."
+            if p.get("streak")
+            else "You hit a mission streak milestone"
+        ),
+        lambda _p: "",
+    ),
     "healthscore.dropped": _s(_members_minus_actor, "Your Startup Health Score dropped"),
     "assessment.completed": _s(_members_minus_actor, "A startup assessment was completed"),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
-    "mission.ready": _s(_all_active_members, "Today's mission is ready"),
+    "mission.ready": NotifSpec(
+        _all_active_members,
+        lambda _p: "Your mission for today is ready",
+        lambda p: p.get("first_task_title") or "",
+    ),
     "roadmap.milestone.overdue": _s(_all_active_members, "A roadmap milestone is overdue"),
     "assessment.quarterly.due": _s(
         _all_active_members, "Time for your quarterly startup assessment"

@@ -1,0 +1,101 @@
+{
+    "data": {
+        "has_roadmap": true,
+        "mission_size": 3,
+        "days": [
+            {
+                "date": "2026-10-19",
+                "rest_day": false,
+                "tasks": [
+                    {
+                        "roadmap_task_id": "9dc4a38f-2ec7-46c5-82d5-221b3363b71f",
+                        "title": "Describe the problem in one paragraph",
+                        "effort": "small",
+                        "milestone": {
+                            "id": "9797de96-3ac8-47b1-918d-15f7fe9fd2b9",
+                            "title": "Write your problem statement",
+                            "due_on": "2026-10-24"
+                        },
+                        "carried_over": false
+                    },
+                    {
+                        "roadmap_task_id": "b7257c42-f7ac-4f50-be98-a5f6ac97b726",
+                        "title": "List who has this problem",
+                        "effort": "small",
+                        "milestone": {
+                            "id": "9797de96-3ac8-47b1-918d-15f7fe9fd2b9",
+                            "title": "Write your problem statement",
+                            "due_on": "2026-10-24"
+                        },
+                        "carried_over": false
+                    },
+                    {
+                        "roadmap_task_id": "8d956f49-a23b-4cb6-9460-3bc411d065f3",
+                        "title": "Draft a one-page concept",
+                        "effort": "medium",
+                        "milestone": {
+                            "id": "97ef50ce-1d22-4b85-874d-cd85aeb0ddb1",
+                            "title": "Sketch the solution",
+                            "due_on": "2026-11-07"
+                        },
+                        "carried_over": false
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-20",
+                "rest_day": false,
+                "tasks": [
+                    {
+                        "roadmap_task_id": "14f901a5-8ca3-4441-93ed-752c5722df19",
+                        "title": "Recruit 5 interviewees",
+                        "effort": "medium",
+                        "milestone": {
+                            "id": "b5b34fed-b95b-4a37-8730-bf5d62f5850d",
+                            "title": "Talk to 5 potential users",
+                            "due_on": "2026-11-28"
+                        },
+                        "carried_over": false
+                    },
+                    {
+                        "roadmap_task_id": "74fbe9de-a91a-4934-9cf4-c548f2ccedd8",
+                        "title": "Run and note the interviews",
+                        "effort": "medium",
+                        "milestone": {
+                            "id": "b5b34fed-b95b-4a37-8730-bf5d62f5850d",
+                            "title": "Talk to 5 potential users",
+                            "due_on": "2026-11-28"
+                        },
+                        "carried_over": false
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-21",
+                "rest_day": false,
+                "tasks": []
+            },
+            {
+                "date": "2026-10-22",
+                "rest_day": false,
+                "tasks": []
+            },
+            {
+                "date": "2026-10-23",
+                "rest_day": false,
+                "tasks": []
+            },
+            {
+                "date": "2026-10-24",
+                "rest_day": true,
+                "tasks": []
+            },
+            {
+                "date": "2026-10-25",
+                "rest_day": true,
+                "tasks": []
+            }
+        ]
+    },
+    "meta": null
+}

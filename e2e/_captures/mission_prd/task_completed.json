@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "866a01aa-5561-4e5c-bbd6-198bd3bdbce6",
+    "roadmap_task_id": "f3b09749-1f5e-4315-8480-3a4ba012f5b7",
+    "title": "Run 10 customer interviews",
+    "reason": "From your 'Validate demand' milestone.",
+    "effort": "medium",
+    "status": "done",
+    "order": 0,
+    "completed_at": "2026-10-18T00:34:12.056573+00:00",
+    "reject_reason": null,
+    "milestone": {
+      "id": "cc49b3c8-9738-4d50-8a42-174eb2288503",
+      "title": "Validate demand",
+      "due_on": "2026-11-01"
+    }
+  },
+  "meta": null
+}
