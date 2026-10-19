@@ -36,5 +36,14 @@ breakdown appended 4 relevant tasks (`e2e/_captures/roadmap_live/`).
 ## Operate / roll back
 `alembic upgrade head` (0051) + **restart the worker**. Roll back: revert, `alembic downgrade 0050_roadmap_task_mission_rank`.
 
+## Update 2026-10-19: re-walk fixes (branch `fix/roadmap-rewalk`)
+| What | Why | How |
+|---|---|---|
+| Concurrent "Break down" requests serialize per milestone | Two clicks at once both passed the running-job check; two jobs appended 10 near-duplicate tasks | `start_breakdown` locks the milestone row (`SELECT … FOR UPDATE`) before checking for a queued/running job; test asserts the lock precedes the check (a true two-session race can't run inside the rollback-per-test DB fixture), live: 202 + 409 |
+| D-RM-5: completing a milestone completes its open tasks | "Mark Milestone Complete" left 6 open tasks at 0%, and Today's Mission kept offering them | `update_milestone_ep` flips open tasks to `done` on the todo → done transition, then recomputes progress; reopening leaves them done. Rejected: blocking completion while tasks are open (the founder explicitly said it's done) |
+
+Verified: `tests/services/test_roadmap_rewalk.py` (2) + the lock test in `tests/services/test_roadmap_prd.py`; live captures in the
+guide §6.
+
 ## Follow-ups
 - More comment entities (documents, tasks in other hubs) as their pages are built. Team page (PRD 23) uses the same APIs.

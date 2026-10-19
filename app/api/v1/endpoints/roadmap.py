@@ -466,9 +466,16 @@ def update_milestone_ep(
     for field, value in fields.items():
         setattr(m, field, value)
     db.flush()
+    now_done = m.status == RoadmapStatus.done
+    if now_done and not was_done:
+        # D-RM-5: completing a milestone completes its open tasks, so it never reads "done
+        # at 0%" and Today's Mission stops offering work the founder just signed off.
+        db.query(RoadmapTask).filter(
+            RoadmapTask.milestone_id == m.id, RoadmapTask.status != RoadmapStatus.done
+        ).update({RoadmapTask.status: RoadmapStatus.done}, synchronize_session="fetch")
+        db.flush()
     # keep progress honest if the milestone itself was flipped and has no tasks
     recompute_milestone_progress(db, m)
-    now_done = m.status == RoadmapStatus.done
     if now_done and not was_done:
         roadmap = _require_roadmap(db, membership)
         event_bus.publish(
