@@ -123,3 +123,29 @@ def test_ai_fill_fails_loud_when_llm_errors(db, monkeypatch):
 
     with pytest.raises(RuntimeError):
         handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))
+
+
+def test_ai_fill_reports_its_outcome_on_the_job(db, monkeypatch):
+    """The FE showed "AI draft added" even when nothing was drafted (2026-10-19 re-walk):
+    the whole-canvas fill now says what happened, like section AI and records AI do."""
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    s = create_startup(db, owner=create_user(db))
+
+    first = _job(s.id, CanvasType.swot)
+    handle_canvas_ai_fill(db, first)
+    assert first.result["status"] == "ready"
+    assert set(first.result["filled"]) == {b.key for b in CANVAS_BLOCKS[CanvasType.swot]}
+
+    again = _job(s.id, CanvasType.swot)
+    handle_canvas_ai_fill(db, again)  # every block has content now
+    assert again.result == {"status": "nothing_new", "filled": []}
+
+
+def test_ai_fill_reports_over_budget(db, monkeypatch):
+    import app.worker.handlers.ai as handlers
+
+    monkeypatch.setattr(handlers, "metered_complete_json", lambda *a, **k: None)
+    s = create_startup(db, owner=create_user(db))
+    job = _job(s.id, CanvasType.lean)
+    handle_canvas_ai_fill(db, job)
+    assert job.result == {"status": "over_budget", "filled": []}

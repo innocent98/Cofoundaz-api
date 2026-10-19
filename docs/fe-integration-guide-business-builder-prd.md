@@ -630,3 +630,18 @@ means "not placed" (`null`). Live capture `e2e/_captures/business_rewalk/competi
 |---|---|---|
 | Blank threat level → 201, `medium` | ✅ | capture above |
 | Blank map coordinate → `null` | ❌ unit | `tests/services/business/test_record_defs.py` |
+
+## Re-walk fix (2026-10-19): whole-canvas "Fill with AI" reports its outcome
+`POST /business-builder/canvases/{type}/ai-fill` (no `block`) only drafts **empty** blocks. Its job used to finish with
+`result: null` whether it drafted something, found nothing to fill, or hit the AI budget, so the FE always said "AI draft
+added". `GET /jobs/{id}` → `data.result` is now one of:
+
+| `result.status` | Meaning | Show |
+|---|---|---|
+| `ready` | `filled` lists the block keys it drafted | refetch the canvas, "AI draft added" |
+| `nothing_new` | every block already had content (`filled: []`) | "Every section already has content. Use the AI button on a section to add ideas." |
+| `over_budget` | daily AI limit reached (`filled: []`) | the existing over-budget copy |
+
+Live capture `e2e/_captures/business_rewalk/canvas_fill_nothing_new.json`: job `succeeded`,
+`"result": {"filled": [], "status": "nothing_new"}`. `ready` and `over_budget` are unit-tested
+(`tests/services/business/test_canvas_ai_fill.py`), not captured live.

@@ -105,7 +105,9 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     """Draft a business canvas's EMPTY blocks with the LLM (structured output).
 
     Fill-empties-only: re-reads the canvas at run time and never overwrites a block the
-    user already filled. No commit — the runner owns the txn.
+    user already filled. No commit — the runner owns the txn. `job.result` says what
+    happened (`ready` with the filled keys, `nothing_new`, or `over_budget`) so the FE can
+    tell the founder instead of always reporting a draft.
     """
     startup = db.get(Startup, job.payload["startup_id"])
     if startup is None:
@@ -118,6 +120,7 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     current = dict(canvas.blocks or {})
     empty_keys = [b.key for b in CANVAS_BLOCKS[canvas_type] if not current.get(b.key)]
     if not empty_keys:
+        job.result = {"status": "nothing_new", "filled": []}
         return  # nothing to fill
     messages = build_canvas_fill_messages(
         name=startup.name,
@@ -133,7 +136,8 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     if filled is None:
-        return  # over budget — skip enrichment, keep the empty blocks
+        job.result = {"status": "over_budget", "filled": []}
+        return  # over budget, skip enrichment, keep the empty blocks
     # Re-read: a concurrent PATCH may have committed during the (multi-second) LLM call.
     # Under READ COMMITTED this reflects the latest committed blocks/version, so we never
     # clobber an edit that landed while we were waiting on the model.
@@ -144,12 +148,14 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         if not latest.get(b.key) and b.key in filled:  # only blocks STILL empty now
             merged[b.key] = filled[b.key]
     if merged == latest:
-        return  # nothing left to fill (user filled everything meanwhile) — no version bump
+        job.result = {"status": "nothing_new", "filled": []}
+        return  # nothing left to fill (user filled everything meanwhile), no version bump
     validate_blocks(canvas_type, merged)
     canvas.blocks = merged
     canvas.version += 1
     db.flush()
     snapshot_canvas(db, canvas, user_id=None, source="ai")
+    job.result = {"status": "ready", "filled": [k for k in merged if merged[k] != latest.get(k)]}
 
 
 def _canvas_section_fill(db: Session, job: Job, startup: Startup, canvas: BusinessCanvas) -> None:
