@@ -167,7 +167,8 @@ def test_a_released_slug_stays_with_its_workspace(client, db):
     public URL (and the emails of anyone still following an old link)."""
     _u, _s, h = _member(db)
     exp = _smoke(client, h, slug="keep-mine")
-    assert client.delete(f"{BASE}/experiments/{exp['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/experiments/{exp['id']}", headers=h)
+    assert resp.status_code == 200
     _u2, _s2, h2 = _member(db)
     r = client.post(
         f"{BASE}/experiments",
@@ -182,13 +183,12 @@ def test_a_released_slug_stays_with_its_workspace(client, db):
 def test_events_need_a_visitor_id(client, db):
     _u, _s, h = _member(db)
     _smoke(client, h, slug="needs-id")
-    assert client.post(f"{BASE}/pages/needs-id/events", json={"kind": "visit"}).status_code == 422
-    assert (
-        client.post(
-            f"{BASE}/pages/needs-id/events", json={"kind": "visit", "visitor_id": "short"}
-        ).status_code
-        == 422
+    resp = client.post(f"{BASE}/pages/needs-id/events", json={"kind": "visit"})
+    assert resp.status_code == 422
+    resp = client.post(
+        f"{BASE}/pages/needs-id/events", json={"kind": "visit", "visitor_id": "short"}
     )
+    assert resp.status_code == 422
 
 
 def test_public_page_shows_only_the_page_and_only_when_live(client, db):
@@ -240,10 +240,10 @@ def test_visits_clicks_and_signups_are_captured(client, db):
     assert r.json()["data"] == {"message": "You're on the list, we'll be in touch soon."}
     again = client.post(f"{BASE}/pages/trader-pay/signups", json={"email": "ada@example.com"})
     assert again.status_code == 201  # idempotent, same answer, no duplicate
-    assert (
-        client.post(f"{BASE}/pages/trader-pay/signups", json={"email": "nope"}).status_code == 422
-    )
-    assert client.post(f"{BASE}/pages/trader-pay/events", json={"kind": "hack"}).status_code == 422
+    resp = client.post(f"{BASE}/pages/trader-pay/signups", json={"email": "nope"})
+    assert resp.status_code == 422
+    resp = client.post(f"{BASE}/pages/trader-pay/events", json={"kind": "hack"})
+    assert resp.status_code == 422
 
     stats = client.get(f"{BASE}/smoke-tests/{exp['id']}/stats", headers=h).json()["data"]
     assert stats["visits"] == 3  # distinct visitors
@@ -367,19 +367,23 @@ def test_deletes_clean_up_links_and_events(client, db):
     ).json()["data"]
     client.post(f"{BASE}/pages/del-me/signups", json={"email": "x@example.com"})
 
-    assert client.delete(f"{BASE}/assumptions/{a['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/assumptions/{a['id']}", headers=h)
+    assert resp.status_code == 200
     assert (
         client.get(f"{BASE}/interviews", headers=h).json()["data"]["interviews"][0][
             "assumption_ids"
         ]
         == []
     )
-    assert client.delete(f"{BASE}/experiments/{exp['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/experiments/{exp['id']}", headers=h)
+    assert resp.status_code == 200
     assert db.query(SmokeTestEvent).filter_by(startup_id=s.id).count() == 0
     assert client.get(f"{BASE}/pages/del-me").status_code == 404
-    assert client.delete(f"{BASE}/interviews/{iv['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/interviews/{iv['id']}", headers=h)
+    assert resp.status_code == 200
     survey = client.post(f"{BASE}/surveys", json={"title": "Pricing"}, headers=h).json()["data"]
-    assert client.delete(f"{BASE}/surveys/{survey['id']}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/surveys/{survey['id']}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"{BASE}/surveys", headers=h).json()["data"]["surveys"] == []
 
 
@@ -387,7 +391,8 @@ def test_deletes_are_tenant_scoped(client, db):
     _u, _s, h = _member(db)
     a = _assumption(client, h, "Mine", "low")
     _u2, _s2, h2 = _member(db)
-    assert client.delete(f"{BASE}/assumptions/{a['id']}", headers=h2).status_code == 404
+    resp = client.delete(f"{BASE}/assumptions/{a['id']}", headers=h2)
+    assert resp.status_code == 404
 
 
 # --- public routes carry rate limits ----------------------------------------------------------
