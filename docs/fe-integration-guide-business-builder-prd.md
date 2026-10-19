@@ -1,4 +1,4 @@
-# FE integration guide: Business Builder PRD completion, slices (a) and (b)
+# FE integration guide: Business Builder PRD completion, slices (a), (b) and (c)
 
 Last edited, version history + restore, Export to Documents, consultant-only suggest mode, overview metadata.
 
@@ -440,3 +440,179 @@ Done (`pricing_advisor_job_done.json`):
 | Interviewee names never in the prompt | unit (`test_validation_prompt_has_no_interviewee_names`) |
 | Pricing advisor merges competitor-record prices, advice only | ✅ live (stub) + unit; >20 prices 422: unit |
 | Real-model content | ✅ live against the real model on the local stack (`e2e/_captures/business_prd_b_live/`): section AI added 3 strengths, M&V returned 3 mission options, the advisor returned 3 tiers (NGN 0 / 2,000 / 5,000 a month) anchored on the typed willingness to pay. Personas-from-validation with the real model: **not run** (the local workspace has no interviews) |
+
+
+---
+
+# Slice (c): business plan flow, revenue model, Value Proposition fit-lines
+
+Gap rows 12, 15 and 17. Captured live from `e2e/test_business_builder.py::test_business_builder_prd_c_journey`
+(`e2e/_captures/business_prd_c/`, stub LLM) and a real-model plan run on the local stack
+(`e2e/_captures/business_prd_c_live/`).
+
+## 16. Business plan generator (row 17)
+
+### 16.1 Readiness checklist: `GET /plan/readiness` → 200 (`readiness_empty.json`, first rows)
+```json
+{
+  "data": {
+    "items": [
+      { "type": "business_model", "label": "Business Model Canvas", "status": "missing", "completion_pct": 0 },
+      { "type": "lean", "label": "Lean Canvas", "status": "missing", "completion_pct": 0 }
+    ],
+    "ready_count": 0,
+    "total": 9,
+    "missing": ["business_model", "lean", "value_prop", "mission_vision", "swot", "persona", "revenue_stream", "competitor", "pricing"]
+  }
+}
+```
+(The capture lists all 9 items: the 5 canvases, then Customer Personas, Revenue Model, Competitive Analysis and Pricing Strategy.)
+- `status`: `ready` (canvas complete, or at least one record), `partial` (canvas started), `missing`. Show ✅ for
+  ready and ⚠ for partial or missing. `missing` lists every item that isn't ready, partial included.
+- `label` values are display-ready here, unlike the overview's.
+
+### 16.2 "Draft missing sections with AI": `POST /plan/draft-missing` → **202** (`draft_missing.json`)
+```json
+{ "data": { "jobs": [ { "type": "business_model", "job_id": "2512a112-f9a5-4483-921e-eca8b321a853" }, { "type": "lean", "job_id": "47c660af-d8e9-4693-93c0-d0aa5180d630" } ] } }
+```
+This queues one AI fill per non-ready artifact (9 in the capture). Canvas fills only write **empty** blocks; record fills
+only run for kinds with no records. Poll the jobs, or just refetch readiness every few seconds. Once all 9 jobs had run
+in the capture, readiness came back `ready_count: 9` (`readiness_after_draft.json`). Founder / team member only. Show
+the AI confirmation modal (row 7) first.
+
+### 16.3 Generate with options: `POST /plan/generate` (**changed**: optional body)
+```json
+{ "audience": "bank", "length": "full" }
+```
+`audience`: `bank | investors | internal`; `length`: `concise | full`. Omit the body for `investors` + `concise`.
+Labels: "Bank / Investors / Internal", "Concise (10–15 pp) / Full (25–40 pp)" (use a plain hyphen in rendered copy).
+**202** (`plan_generate.json`): `{"data": {"plan_id": "2afce5af-…", "status": "generating"}, "meta": null}`.
+A bad option → **422** (`plan_generate_bad_option_422.json`):
+`{"field": "audience", "message": "Input should be 'bank', 'investors' or 'internal'"}`.
+
+### 16.4 Progress + done: `GET /plan` (**changed**: `options`, `progress`, `error`)
+Right after generate (`plan_generating.json`):
+```json
+{
+  "data": {
+    "id": "2afce5af-d97d-46a4-917f-62f6b0d9c346",
+    "status": "generating",
+    "document_id": null,
+    "options": { "length": "full", "audience": "bank" },
+    "progress": { "done": 0, "stage": "Compiling your canvases", "total": 10 },
+    "error": null,
+    "created_at": "2026-10-19T12:07:05.906457+00:00"
+  },
+  "meta": null
+}
+```
+Mid-run against the **real model** (`business_prd_c_live/plan_progress_mid.json`): `"progress": {"done": 4, "stage": "Explaining how you make money", "total": 10}`.
+The real run went through every caption, about 3s per section, and finished in about 67s:
+"Compiling your canvases" → "Framing the problem and opportunity" → "Describing your solution" → "Sizing your market" →
+"Explaining how you make money" → "Mapping your go-to-market" → "Positioning you against competitors" →
+"Presenting your team" → **"Writing financial narrative"** → "Laying out your milestones".
+Done (`plan_complete.json`): `"status": "complete"`, `"document_id": "d989d9b3-…"`,
+`"progress": {"done": 10, "stage": "Done", "total": 10}`.
+
+**FE:** poll `GET /plan` every 2-3s while `generating`. Show `progress.stage` (append "…") and a `done/total` bar. On
+`complete`, show **"Your business plan is ready."** with **"Open document"** (`/documents/{document_id}`) and
+**"Regenerate a section"**.
+
+**Failed (new):** `status: "failed"` with `error` = `"over_budget"` (the daily AI budget is used up) or
+`"generation_failed"` (the model kept failing after every retry). The plan never stays `generating` forever any more.
+Show a retry CTA that calls generate again. *Verified by unit tests, not live.* Rows created before this release may
+have `options` defaulted and `progress: null`.
+
+### 16.5 Regenerate a section: `POST /plan/sections/{key}/regenerate` → **202** job `ai.business.plan_section`
+Keys: `executive_summary, problem, solution, market, business_model, gtm, competition, team, financials, milestones`
+(headings: Executive Summary, Problem & Opportunity, Solution & Product, Market & Customers, Business Model,
+Go-to-Market, Competition, Team, Financials & Projections, Roadmap & Milestones).
+Done (`regenerate_job_done.json`):
+```json
+"result": { "status": "ready", "section": "financials", "document_version": 2 }
+```
+- It rewrites **only** that section's body in the plan's Document, matched by heading. Every other section keeps the
+  founder's edits (unit-tested).
+- The Document's `version` goes up. If the founder has the document open, reload it before saving or the save will 409.
+- `result.status`: `ready` · `section_missing` (the founder renamed or deleted that heading) · `over_budget` · `gone`.
+- Unknown key, or no finished plan yet → **404** (`regenerate_unknown_404.json`, `NOT_FOUND`).
+
+## 17. Revenue model (row 15)
+
+### 17.1 Projected chart: `GET /revenue-streams/projection?months=6&growth_pct=5` → 200 (`revenue_projection.json`, excerpt)
+```json
+{
+  "data": {
+    "growth_pct": 5.0,
+    "months": ["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04"],
+    "streams": [
+      { "id": "4c71b024-4c21-47e0-ac0f-216add3a1d3d", "name": "Subscriptions", "values": [150000.0, 157500.0, 165375.0, 173643.75, 182325.94, 191442.23] },
+      { "id": "d66342f2-406a-4626-a2e4-2b947e07d08b", "name": "Setup fees", "values": [50000.0, 52500.0, 55125.0, 57881.25, 60775.31, 63814.08] }
+    ],
+    "total": [200000.0, 210000.0, 220500.0, 231525.0, 243101.25, 255256.31]
+  }
+}
+```
+- Month 1 is each stream's `est_monthly`, then it compounds monthly at `growth_pct`. Values are in the same **major
+  units** as `est_monthly` (not minor), rounded to 2 dp.
+- `months` 1-60 (default 12). `growth_pct` -50 to 100. When omitted, it uses Finance's runway "MoM growth" assumption
+  **for Finance roles only** (founder, team member, accountant); every other role defaults to 0, so a mentor or investor
+  never sees the Finance assumption. Show the growth input prefilled with the returned `growth_pct`. Out of range → 422.
+- The live capture also contains an AI-drafted stream with `est_monthly: 0` (from draft-missing), which plots flat at 0.
+
+### 17.2 "Send to financial model": `POST /revenue-streams/send-to-finance` → 200 (`send_to_finance.json`, excerpt)
+```json
+{
+  "data": {
+    "streams": [
+      { "name": "Subscriptions", "pricing_basis": "monthly", "est_monthly": 150000.0, "est_monthly_minor": 15000000 },
+      { "name": "Setup fees", "pricing_basis": "monthly", "est_monthly": 50000.0, "est_monthly_minor": 5000000 }
+    ],
+    "total_monthly_minor": 20000000,
+    "sent_at": "2026-10-19T12:07:07.454182+00:00",
+    "sent_by": "95c05611-7477-446a-b936-672c1f669d87"
+  },
+  "meta": null
+}
+```
+- Each send **overwrites** the previous one. No streams → **422** `NO_REVENUE_STREAMS` ("Add at least one revenue stream
+  before sending it to Finance."; unit-tested). Founder / team member only.
+- **What it does (D-BB-5, revised):** the Finance 3-statement model (`POST /api/v1/finance/model/generate`) uses these
+  as its starting monthly revenue **only while the workspace has no revenue actuals**. Real transactions always win.
+  The model's `assumptions` now say which source was used (`finance_model_from_drivers.json`):
+  ```json
+  { "revenue_source": "business_builder", "revenue_0_minor": 20000000, "monthly_revenue_growth_pct": 0.0, "cogs_pct_of_revenue": 0, "...": "…" }
+  ```
+  `revenue_source` is `business_builder` or `actuals`.
+- **UX:** after sending, toast "Sent to your financial model" with a link to `/finance/model`. On the Finance model page,
+  when `revenue_source` is `business_builder`, show "Revenue is from your Business Builder plan, not actuals". A founder
+  would otherwise read planned revenue as real.
+
+## 18. Value Proposition fit-lines (row 12)
+`GET /canvases/value_prop` (only this canvas type) now includes `fit_links`. Save with
+`PUT /canvases/value_prop/fit` `{"links": [ … ]}`, which **replaces** the whole list. It returns the full canvas body
+(`fit_links_saved.json`, field excerpt):
+```json
+"fit_links": [
+  { "to_item": "[stub-llm] pains", "to_block": "pains", "from_item": "[stub-llm] pain_relievers", "from_block": "pain_relievers" }
+]
+```
+- Valid pairs: `pain_relievers` → `pains` and `gain_creators` → `gains`. Items are matched by their **exact text**,
+  which must exist on the canvas. Otherwise → **422** (`fit_links_bad_pair_422.json`):
+  `"message": "A fit-line must join a pain reliever to a pain, or a gain creator to a gain, using items on the canvas."`,
+  `field_errors[0].field = "links.0"`.
+- When an item is deleted or renamed, its lines disappear on the next read (unit-tested). Redraw from `fit_links` after
+  every canvas save. Saving links doesn't bump the canvas `version`.
+- Up to 100 links. Founder / team member only; a consultant gets 403.
+
+## 19. Verification (slice c)
+| Behaviour | Verified |
+|---|---|
+| Readiness, draft-missing → all 9 ready | ✅ live (stub) |
+| Generate with options, bad option 422 | ✅ live |
+| Progress advancing through every caption | ✅ live, **real model** (`business_prd_c_live/`) |
+| Failed state (over budget, last-attempt LLM failure) | unit only |
+| Regenerate one section, other sections untouched, 404s | ✅ live (job + 404); untouched-sections and `section_missing`: unit |
+| Revenue projection | ✅ live |
+| Send to financial model → Finance model uses drivers | ✅ live (stub model); `actuals` path and 422 no streams: unit |
+| Fit-lines save / bad pair 422 | ✅ live; pruning and consultant 403: unit |

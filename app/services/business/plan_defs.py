@@ -60,3 +60,24 @@ PLAN_SECTIONS: tuple[PlanSection, ...] = (
         "Near-term milestones and the path to the next stage.",
     ),
 )
+
+
+SECTIONS_BY_KEY = {s.key: s for s in PLAN_SECTIONS}
+
+# PRD 08.11 job screen stage captions, shown while the section is being written.
+STAGE_CAPTIONS = {
+    "executive_summary": "Compiling your canvases",
+    "problem": "Framing the problem and opportunity",
+    "solution": "Describing your solution",
+    "market": "Sizing your market",
+    "business_model": "Explaining how you make money",
+    "gtm": "Mapping your go-to-market",
+    "competition": "Positioning you against competitors",
+    "team": "Presenting your team",
+    "financials": "Writing financial narrative",
+    "milestones": "Laying out your milestones",
+}
+
+AUDIENCES = ("bank", "investors", "internal")
+LENGTHS = ("concise", "full")
+DEFAULT_OPTIONS = {"audience": "investors", "length": "concise"}

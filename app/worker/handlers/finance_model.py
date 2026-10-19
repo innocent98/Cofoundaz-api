@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import FinancialModelStatus
+from app.db.models.finance_runway import FinanceRunwaySettings
 from app.db.models.financial_model import FinancialModel
 from app.db.models.job import Job
 from app.db.models.startup import Startup
@@ -36,6 +37,15 @@ def handle_finance_model(db: Session, job: Job) -> None:
         "cash_on_hand": int(summary["cash_on_hand"]),
         "currency": summary["currency"],
     }
+    # PRD 12.6: revenue drivers pulled from the Business Builder revenue model ("Send to
+    # financial model", PRD 08.8). Real actuals always win; the plan only fills a pre-revenue gap.
+    revenue_source = "actuals"
+    settings_row = db.query(FinanceRunwaySettings).filter_by(startup_id=startup.id).first()
+    drivers = (settings_row.revenue_drivers or {}) if settings_row else {}
+    if starting["revenue_0"] <= 0 and int(drivers.get("total_monthly_minor") or 0) > 0:
+        starting["revenue_0"] = int(drivers["total_monthly_minor"])
+        starting["revenue_plan"] = [s.get("name") for s in drivers.get("streams") or []]
+        revenue_source = "business_builder"
     raw = metered_complete_json(
         db,
         startup.id,
@@ -48,7 +58,11 @@ def handle_finance_model(db: Session, job: Job) -> None:
         model.error = "AI budget exceeded"
         db.flush()
         return
-    assumptions = validate_assumptions(raw)
+    assumptions = {
+        **validate_assumptions(raw),
+        "revenue_source": revenue_source,
+        "revenue_0_minor": starting["revenue_0"],
+    }
     stmts = project_three_statements(
         starting,
         assumptions,

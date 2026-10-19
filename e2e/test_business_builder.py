@@ -928,6 +928,8 @@ def _drain_ai() -> None:
     from app.db.session import SessionLocal
     from app.worker import runner
     from app.worker.handlers import ai as _ai  # noqa: F401  (registers the business AI jobs)
+    from app.worker.handlers import finance_model as _fm  # noqa: F401  (ai.finance.model)
+    from app.worker.handlers import plan as _plan  # noqa: F401  (plan generate + section)
 
     db = SessionLocal()
     try:
@@ -1088,3 +1090,102 @@ def test_business_builder_prd_b_journey(base_url, make_verified_user, capture):
         assert adv.json()["data"]["result"]["status"] == "ready"
         capture("business_prd_b", "pricing_advisor_job_done", adv)
         assert c.get(f"{bb}/pricing", headers=wh).json()["data"]["records"] == []
+
+
+def test_business_builder_prd_c_journey(base_url, make_verified_user, capture):
+    """PRD completion slice (c): business plan options, progress, readiness, draft-missing and
+    section regenerate (08.11); revenue projection and "Send to financial model" feeding the
+    Finance 3-statement model (08.8 / 12.6); Value Proposition fit-lines (08.5). Captures land in
+    e2e/_captures/business_prd_c/."""
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD C")
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        wh = _wh(c, auth)
+
+        # 1. Readiness before anything is filled, then draft the missing artifacts with AI.
+        ready0 = c.get(f"{bb}/plan/readiness", headers=wh)
+        assert ready0.status_code == 200 and ready0.json()["data"]["ready_count"] == 0
+        capture("business_prd_c", "readiness_empty", ready0)
+        drafts = c.post(f"{bb}/plan/draft-missing", headers=wh)
+        assert drafts.status_code == 202, drafts.text
+        assert len(drafts.json()["data"]["jobs"]) == 9
+        capture("business_prd_c", "draft_missing", drafts)
+        _drain_ai()
+        ready1 = c.get(f"{bb}/plan/readiness", headers=wh)
+        assert ready1.json()["data"]["ready_count"] == 9, ready1.text
+        capture("business_prd_c", "readiness_after_draft", ready1)
+
+        # 2. Generate with options; progress + options on GET /plan; then done.
+        bad = c.post(f"{bb}/plan/generate", headers=wh, json={"audience": "aliens"})
+        assert bad.status_code == 422
+        capture("business_prd_c", "plan_generate_bad_option_422", bad)
+        gen = c.post(f"{bb}/plan/generate", headers=wh, json={"audience": "bank", "length": "full"})
+        assert gen.status_code == 202, gen.text
+        capture("business_prd_c", "plan_generate", gen)
+        pending = c.get(f"{bb}/plan", headers=wh)
+        assert pending.json()["data"]["progress"]["done"] == 0
+        capture("business_prd_c", "plan_generating", pending)
+        _drain_ai()
+        done = c.get(f"{bb}/plan", headers=wh)
+        assert done.json()["data"]["status"] == "complete", done.text
+        assert done.json()["data"]["options"] == {"audience": "bank", "length": "full"}
+        capture("business_prd_c", "plan_complete", done)
+
+        # 3. Regenerate one section; unknown section 404.
+        nope = c.post(f"{bb}/plan/sections/nope/regenerate", headers=wh)
+        assert nope.status_code == 404
+        capture("business_prd_c", "regenerate_unknown_404", nope)
+        regen = _job(c, wh, c.post(f"{bb}/plan/sections/financials/regenerate", headers=wh))
+        assert regen.json()["data"]["result"]["status"] == "ready", regen.text
+        capture("business_prd_c", "regenerate_job_done", regen)
+
+        # 4. Revenue projection + send to the financial model + build the model.
+        none = c.post(f"{bb}/revenue-streams/send-to-finance", headers=wh)
+        # (draft-missing created AI revenue streams, so this succeeds; see the 422 in unit tests)
+        assert none.status_code == 200, none.text
+        for name, est in (("Subscriptions", 150000), ("Setup fees", 50000)):
+            c.post(
+                f"{bb}/revenue-streams",
+                headers=wh,
+                json={"data": {"name": name, "pricing_basis": "monthly", "est_monthly": est}},
+            )
+        proj = c.get(
+            f"{bb}/revenue-streams/projection", headers=wh, params={"months": 6, "growth_pct": 5}
+        )
+        assert proj.status_code == 200 and len(proj.json()["data"]["months"]) == 6, proj.text
+        capture("business_prd_c", "revenue_projection", proj)
+        sent = c.post(f"{bb}/revenue-streams/send-to-finance", headers=wh)
+        assert sent.status_code == 200, sent.text
+        capture("business_prd_c", "send_to_finance", sent)
+        model = c.post("/api/v1/finance/model/generate", headers=wh, json={})
+        assert model.status_code == 202, model.text
+        _drain_ai()
+        built = c.get("/api/v1/finance/model", headers=wh)
+        assert built.status_code == 200, built.text
+        assumptions = built.json()["data"]["assumptions"]
+        assert assumptions["revenue_source"] == "business_builder"
+        assert assumptions["revenue_0_minor"] == sent.json()["data"]["total_monthly_minor"]
+        capture("business_prd_c", "finance_model_from_drivers", built)
+
+        # 5. Value Proposition fit-lines.
+        vp = c.get(f"{bb}/canvases/value_prop", headers=wh).json()["data"]
+        blocks = vp["blocks"]
+        link = {
+            "from_block": "pain_relievers",
+            "from_item": blocks["pain_relievers"][0],
+            "to_block": "pains",
+            "to_item": blocks["pains"][0],
+        }
+        fit = c.put(f"{bb}/canvases/value_prop/fit", headers=wh, json={"links": [link]})
+        assert fit.status_code == 200 and fit.json()["data"]["fit_links"] == [link], fit.text
+        capture("business_prd_c", "fit_links_saved", fit)
+        bad_fit = c.put(
+            f"{bb}/canvases/value_prop/fit",
+            headers=wh,
+            json={"links": [{**link, "to_block": "gains"}]},
+        )
+        assert bad_fit.status_code == 422
+        capture("business_prd_c", "fit_links_bad_pair_422", bad_fit)
