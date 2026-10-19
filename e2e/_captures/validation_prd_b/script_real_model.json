@@ -1,60 +1,60 @@
 {
   "data": {
-    "id": "f38910db-7069-4f98-b7c5-0c9bc469a70c",
-    "title": "How Market Payments and Member Services Work Today",
+    "id": "13069d0a-99a3-42b1-a273-5f1624e01ba2",
+    "title": "How Traders Settle and How Associations Help",
     "assumption_ids": [
-      "544f8628-4dc7-4502-8834-ce08040219df",
-      "47ceffec-5e9f-4231-8a9a-a11922682694"
+      "36f3bd58-bc95-4f76-a23a-a654440187ad",
+      "95197e4d-8c80-43c4-9fb7-97ca56cc0435"
     ],
     "questions": [
       {
-        "id": "5dc3f0bfd965",
-        "tip": "Ask for the most recent real example, including who paid whom and when.",
-        "question": "Tell me about the last market trade you completed and how the payment was settled."
+        "id": "e076afdf6059",
+        "tip": "Ask for the full timeline and listen for delays, risks, and extra steps.",
+        "question": "Walk me through the last trade you made, from completing the transaction to being able to use the money."
       },
       {
-        "id": "ea56e7255318",
-        "tip": "Listen for actual settlement times, delays, and steps rather than general opinions.",
-        "question": "What usually happens between completing a trade and receiving the money?"
+        "id": "f9b75a53dfd3",
+        "tip": "Ask what actually happened in recent trades rather than what should happen.",
+        "question": "What usually determines when you receive and can use the money from a trade?"
       },
       {
-        "id": "3ffe5ba289b8",
-        "tip": "Ask what happened next and what it cost in time, money, or trust.",
-        "question": "Tell me about the last time a delayed payment caused a problem for you or your members."
+        "id": "ebb9f80ab534",
+        "tip": "Ask what caused the need and what they did next.",
+        "question": "Tell me about the last time you needed the money from a trade sooner than you received it."
       },
       {
-        "id": "6d11981ebeef",
-        "tip": "Explore workarounds already used and what the person paid for them.",
-        "question": "What have you done in the past to receive or send payment sooner?"
+        "id": "9adc619fe729",
+        "tip": "Look for actions, money spent, lost opportunities, and other consequences.",
+        "question": "What did you do the last time you faced a settlement delay or risk, and what did it cost you?"
       },
       {
-        "id": "8156e70252f2",
-        "tip": "Ask how much they paid, why they paid, and what made the cost worthwhile.",
-        "question": "Tell me about the last financial service or payment service you paid to use."
+        "id": "3d4dc9e1c8ae",
+        "tip": "If they have done this, ask how much they paid and who made the decision.",
+        "question": "Tell me about the last time you paid for a service to receive money sooner or reduce settlement risk."
       },
       {
-        "id": "3a98d17636cf",
-        "tip": "Ask for examples of that decision, not what they would do in theory.",
-        "question": "How do you decide whether a payment service is worth paying for?"
+        "id": "a13fe9306a0f",
+        "tip": "Ask for a specific member incident rather than a general view.",
+        "question": "Tell me about the last time members of your market association had a problem with settlement or access to funds."
       },
       {
-        "id": "93c28a9d4a41",
-        "tip": "Ask what the association did, why it recommended it, and what members did afterward.",
-        "question": "Tell me about the last time your market association recommended a product or service to members."
+        "id": "6b3f71f96685",
+        "tip": "Explore the steps taken, who was involved, and what happened afterward.",
+        "question": "What did your association do the last time members faced that problem?"
       },
       {
-        "id": "68d9d626ded4",
-        "tip": "Look for evidence of past promotion, member response, and any money or effort involved.",
-        "question": "What services has your association promoted or arranged for members in the past year?"
+        "id": "63e32fb4848b",
+        "tip": "Ask how the recommendation was made, who approved it, and how members responded.",
+        "question": "Tell me about the last financial or payment service your association recommended to its members."
       },
       {
-        "id": "82d9c80cf2b3",
-        "tip": "Ask how the association responded and what happened after the response.",
-        "question": "Tell me about a time members asked the association to help solve a payment or settlement problem."
+        "id": "4b69e0a6b2c8",
+        "tip": "Ask for recent examples and the evidence used to make those decisions.",
+        "question": "What has made your association recommend some services to members and not others?"
       }
     ],
-    "created_at": "2026-10-19T20:55:32.244379+00:00",
-    "updated_at": "2026-10-19T20:55:32.244379+00:00"
+    "created_at": "2026-10-19T21:58:11.633604+00:00",
+    "updated_at": "2026-10-19T21:58:11.633604+00:00"
   },
   "meta": null
 }

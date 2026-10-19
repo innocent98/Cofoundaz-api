@@ -43,7 +43,7 @@ run in a separate worktree against scratch databases (numbers in the PR). e2e 75
 `e2e/_captures/validation_prd_b/`). Real model (fresh DB, real HTTP, 3 consecutive passing runs after the token-cap fix): a 9-question Mom-Test script
 with tips; a report with 4 themes whose quotes were all verbatim, a fair contradiction, "untested → testing" for the
 pricing assumption and "untested → invalidated" for the association one; notification "New pattern detected in
-customer feedback: Same-day cash urgency".
+customer feedback: Need for faster cash". (Captures refreshed in slice (c) after `inputs` gained `feedback`.)
 
 ## Operate / roll back
 `alembic upgrade head` (CD runs it) and **restart the worker** (two new handlers). Roll back: downgrade to

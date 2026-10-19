@@ -65,22 +65,22 @@ and was never produced in testing.
 **REAL MODEL** (`script_real_model.json`, two assumptions, trimmed to 3 of its 9 questions):
 ```json
 {
- "title": "How Market Payments and Member Services Work Today",
+ "title": "How Traders Settle and How Associations Help",
  "questions": [
   {
-   "id": "5dc3f0bfd965",
-   "tip": "Ask for the most recent real example, including who paid whom and when.",
-   "question": "Tell me about the last market trade you completed and how the payment was settled."
+   "id": "e076afdf6059",
+   "tip": "Ask for the full timeline and listen for delays, risks, and extra steps.",
+   "question": "Walk me through the last trade you made, from completing the transaction to being able to use the money."
   },
   {
-   "id": "ea56e7255318",
-   "tip": "Listen for actual settlement times, delays, and steps rather than general opinions.",
-   "question": "What usually happens between completing a trade and receiving the money?"
+   "id": "f9b75a53dfd3",
+   "tip": "Ask what actually happened in recent trades rather than what should happen.",
+   "question": "What usually determines when you receive and can use the money from a trade?"
   },
   {
-   "id": "3ffe5ba289b8",
-   "tip": "Ask what happened next and what it cost in time, money, or trust.",
-   "question": "Tell me about the last time a delayed payment caused a problem for you or your members."
+   "id": "ebb9f80ab534",
+   "tip": "Ask what caused the need and what they did next.",
+   "question": "Tell me about the last time you needed the money from a trade sooner than you received it."
   }
  ]
 }
@@ -131,8 +131,8 @@ Replace the 2.5 s mock and its hardcoded report. Interviewee names and closed-qu
 never sent to the model.
 
 ### 2a. Start `POST /synthesize` → 202
-Body optional: `{"source": "interviews" | "surveys" | "all"}` (no body = `all`). Use `interviews` on
-the Interviews tab, `surveys` on Surveys, `all` on MVP (slice (c) will add MVP feedback to `all`).
+Body optional: `{"source": "interviews" | "surveys" | "feedback" | "all"}` (no body = `all`). Use `interviews` on
+the Interviews tab, `surveys` on Surveys, `all` on MVP (`feedback` = the MVP inbox's manual entries, added in slice (c)).
 `synthesize_queued.json`:
 ```json
 {"data": {"job_id": "bbb66fe6-0a4b-4a4e-87de-baef5c4eb0ae", "status": "queued"}, "meta": null}
@@ -140,7 +140,7 @@ the Interviews tab, `surveys` on Surveys, `all` on MVP (slice (c) will add MVP f
 Nothing to read for that source (`synthesize_nothing_422.json`). Show it as an empty state with the
 message, not as an error toast:
 ```json
-{"error": {"code": "NOTHING_TO_SYNTHESIZE", "message": "Add an interview or collect an open survey answer first.", "field_errors": []}}
+{"error": {"code": "NOTHING_TO_SYNTHESIZE", "message": "Add an interview, collect an open survey answer or log some feedback first.", "field_errors": []}}
 ```
 An unknown `source` → pydantic `422 VALIDATION_ERROR` (unit-tested).
 
@@ -161,58 +161,60 @@ An unknown `source` → pydantic `422 VALIDATION_ERROR` (unit-tested).
 ```json
 {
  "data": {
-  "id": "4fbafc3b-220f-4fd2-bc4b-6da83a7367bf",
+  "id": "5c184608-35a4-4ab2-8bb9-605bacc9270b",
   "source": "all",
   "inputs": {
+   "feedback": 0,
    "interviews": 3,
    "open_answers": 3
   },
   "patterns": [
    {
-    "id": "6847d0653257",
-    "theme": "Same-day cash urgency",
+    "id": "6c6cbdd3af21",
+    "theme": "Need for faster cash",
     "quotes": [
      "Friday is when I need the money, not Monday",
      "I wait three days for my money and my supplier wants cash today",
      "Settlement takes too long, I need cash to restock"
     ],
-    "summary": "Traders need faster settlement to restock and meet supplier payment demands, especially before high-volume trading periods."
+    "summary": "Traders value same-day settlement because delayed payouts constrain restocking and supplier payments, especially before busy trading periods."
    },
    {
-    "id": "ea5865cac264",
-    "theme": "Association distrust",
+    "id": "6f895a36775c",
+    "theme": "Willingness to pay",
     "quotes": [
-     "We stopped recommending anybody after the loan app wahala",
-     "Talk to the traders one by one, not the association"
+     "I already pay half a percent, so a bit more for same day is fine",
+     "If it came the same day I would pay something small, maybe fifty naira"
     ],
-    "summary": "An association secretary said the association no longer recommends vendors and expects NovaPay to approach traders individually."
+    "summary": "Some traders are willing to pay a small, explicit fee for same-day settlement when the benefit is clear."
    }
   ],
   "contradictions": [
    {
-    "id": "6d7b26f504cb",
-    "summary": "Trader interviews indicate demand and willingness to pay for same-day settlement, while the association source rejects the assumption that the association will promote NovaPay and instead recommends individual outreach."
+    "id": "4d6326018104",
+    "summary": "The assumption that market associations will promote NovaPay to their members conflicts with the Oshodi association secretary's statement that the association no longer recommends vendors and that NovaPay should approach traders individually."
    }
   ],
   "suggestions": [
    {
-    "id": "997d247516e1",
-    "reason": "The market association secretary explicitly said the association no longer recommends vendors and told NovaPay to approach traders individually, directly refuting the assumption that market associations will promote NovaPay to their members.",
-    "to_status": "invalidated",
+    "id": "2a9ab55ec780",
+    "reason": "Two trader interviews support that market traders will pay a small fee for same-day settlement, including one trader who already pays a comparable POS fee. The evidence is promising but limited to two interviews.",
+    "to_status": "testing",
     "applied_at": null,
     "from_status": "untested",
-    "assumption_id": "47ceffec-5e9f-4231-8a9a-a11922682694",
-    "assumption_statement": "Market associations will promote NovaPay to their members"
+    "assumption_id": "36f3bd58-bc95-4f76-a23a-a654440187ad",
+    "assumption_statement": "Market traders will pay a small fee for same-day settlement"
    }
   ],
-  "created_at": "2026-10-19T20:55:37.916055+00:00"
+  "created_at": "2026-10-19T21:58:21.002054+00:00"
  }
 }
 ```
-(trimmed: the real report had 4 patterns and 2 suggestions; the other suggestion was untested → testing.)
+(trimmed: the real report had 4 patterns and 2 suggestions; the other suggestion(s): untested → invalidated.)
 
 Rendering notes:
-- `inputs` → "Based on 3 interviews and 3 survey answers".
+- `inputs` → "Based on 3 interviews and 3 survey answers" (slice (c) added a third key, `feedback`: manual MVP
+  feedback entries read).
 - Themes, summaries and reasons are written by the model from customer evidence, including anonymous
   survey answers. Render them as plain text (never HTML/markdown), and label the report as AI-generated.
 - A pattern's `quotes` can be **`[]`**: every quote is checked against the real evidence and any the
@@ -265,7 +267,7 @@ investors) get **one** notification for it. `founder_notifications.json` (stub) 
           "startup_id": "8ba01706-d647-45f0-a56a-ce439003ec2e"},
  "read": false, "created_at": "2026-10-19T20:30:54.750857+00:00"}
 ```
-**REAL MODEL** title: `New pattern detected in customer feedback: Same-day cash urgency`.
+**REAL MODEL** title: `New pattern detected in customer feedback: Need for faster cash`.
 `body` is the CTA label (**"See insight"**); deep link to the report with `data.insight_id`. In-app
 only (no email category, like the slice (a) milestone). A report with no pattern sends nothing.
 Slice (b) also narrowed the slice (a) `validation.smoke_test.milestone` notification to founders +

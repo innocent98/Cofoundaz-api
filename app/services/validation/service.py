@@ -166,13 +166,53 @@ def evidence_counts(
     return counts
 
 
-def serialize_assumption(assumption: Assumption, evidence_count: int = 0) -> dict[str, Any]:
+def linked_experiments(
+    db: Session, startup_id: uuid.UUID, assumptions: list[Assumption]
+) -> dict[str, list[dict[str, Any]]]:
+    """The experiments citing each assumption, oldest first (gap row 10: shown on the card)."""
+    out: dict[str, list[dict[str, Any]]] = {str(row.id): [] for row in assumptions}
+    if not out:
+        return out
+    for exp in (
+        db.query(Experiment)
+        .filter_by(startup_id=startup_id)
+        .order_by(Experiment.created_at, Experiment.id)
+    ):
+        for value in exp.assumption_ids or []:
+            if str(value) in out:
+                out[str(value)].append(
+                    {
+                        "id": str(exp.id),
+                        "name": exp.name,
+                        "type": exp.type.value,
+                        "status": exp.status.value,
+                    }
+                )
+    return out
+
+
+def serialize_assumptions(
+    db: Session, startup_id: uuid.UUID, assumptions: list[Assumption]
+) -> list[dict[str, Any]]:
+    counts = evidence_counts(db, startup_id, assumptions)
+    linked = linked_experiments(db, startup_id, assumptions)
+    return [
+        serialize_assumption(row, counts[str(row.id)], linked[str(row.id)]) for row in assumptions
+    ]
+
+
+def serialize_assumption(
+    assumption: Assumption,
+    evidence_count: int = 0,
+    experiments: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     return {
         "id": str(assumption.id),
         "statement": assumption.statement,
         "risk": assumption.risk.value,
         "status": assumption.status.value,
         "evidence_count": evidence_count,
+        "linked_experiments": experiments or [],
         "created_at": assumption.created_at.isoformat(),
         "updated_at": assumption.updated_at.isoformat(),
     }
@@ -462,6 +502,49 @@ def update_survey(
             survey.token_hash = hash_token(raw)
     db.flush()
     return survey, raw
+
+
+def rotate_share_link(db: Session, survey: Survey) -> str:
+    """Mint a new public token for an open survey (gap row 9). Only the hash is stored, so the
+    old link can't be shown again: rotating is how a founder gets a link back, and the old one
+    stops working."""
+    if survey.status != SurveyStatus.open:
+        raise AppError("SURVEY_NOT_OPEN", "Open the survey to get a share link.", 409)
+    raw = secrets.token_urlsafe(32)
+    survey.token_hash = hash_token(raw)
+    db.flush()
+    return raw
+
+
+MAX_LISTED_ANSWERS = 500
+
+
+def open_answers(db: Session, startup_id: uuid.UUID, survey_id: Any) -> dict[str, Any]:
+    """Every non-blank answer to each open question, newest first (gap row 9)."""
+    survey = get_survey(db, startup_id, survey_id)
+    questions = [q for q in survey.questions or [] if q.get("type") == "open"]
+    rows = (
+        db.query(SurveyResponse)
+        .filter_by(survey_id=survey.id)
+        .order_by(SurveyResponse.submitted_at.desc(), SurveyResponse.id)
+        .all()
+    )
+    out = []
+    for question in questions:
+        answers = [
+            {"text": value.strip(), "submitted_at": row.submitted_at.isoformat()}
+            for row in rows
+            if isinstance(value := (row.answers or {}).get(question["id"]), str) and value.strip()
+        ]
+        out.append(
+            {
+                "id": question["id"],
+                "prompt": question["prompt"],
+                "answer_count": len(answers),
+                "answers": answers[:MAX_LISTED_ANSWERS],
+            }
+        )
+    return {"survey_id": str(survey.id), "title": survey.title, "questions": out}
 
 
 def response_counts(db: Session, startup_id: uuid.UUID, surveys: list[Survey]) -> dict[str, int]:

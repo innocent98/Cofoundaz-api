@@ -2,7 +2,19 @@ import datetime
 import uuid
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -241,4 +253,87 @@ class InsightReport(UUIDMixin, TimestampMixin, Base):
     )
     suggestions: Mapped[list[Any]] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
+    )
+
+
+class FeedbackItem(UUIDMixin, TimestampMixin, Base):
+    """One piece of MVP feedback (PRD 09.7, D-VAL-3). Interview key quotes and open survey answers
+    are mirrored in automatically (`origin_key` set, read-only, can be dismissed); founders add
+    the rest by hand, tagged interview / in_app / email."""
+
+    __tablename__ = "feedback_items"
+    __table_args__ = (
+        Index(
+            "uq_feedback_items_origin",
+            "startup_id",
+            "origin_key",
+            unique=True,
+            postgresql_where=text("origin_key IS NOT NULL"),
+        ),
+    )
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    origin_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    origin_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    origin_label: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
+    # "interview:{id}:{quote hash}" or "survey:{response id}:{question id}"; null for manual.
+    origin_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    received_on: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    dismissed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class FeedbackClusterRun(UUIDMixin, TimestampMixin, Base):
+    """One AI theme-clustering pass over the inbox. The newest run is the one shown."""
+
+    __tablename__ = "feedback_cluster_runs"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class FeedbackTheme(UUIDMixin, TimestampMixin, Base):
+    """A theme from one clustering run: "{theme} mentioned {n}x across {m} sources" is derived on
+    read from the items in `item_ids` that still exist, so deletes never leave stale counts."""
+
+    __tablename__ = "feedback_themes"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("feedback_cluster_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    theme: Mapped[str] = mapped_column(String(120), nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    item_ids: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    roadmap_task_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("roadmap_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    sent_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

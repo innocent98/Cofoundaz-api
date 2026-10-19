@@ -2,15 +2,16 @@
   "data": {
     "insights": [
       {
-        "id": "ca7654d5-ebb3-4851-8e53-751a1ca3dd70",
+        "id": "89f2905e-b903-457f-ac2c-93469e859840",
         "source": "all",
         "inputs": {
+          "feedback": 0,
           "interviews": 1,
           "open_answers": 1
         },
         "patterns": [
           {
-            "id": "1b9fb15dbd3d",
+            "id": "59a3169f0b8f",
             "theme": "[stub-llm] theme",
             "quotes": [],
             "summary": "[stub-llm] summary"
@@ -18,22 +19,22 @@
         ],
         "contradictions": [
           {
-            "id": "edbe49e15dd9",
+            "id": "f90ce23cacdc",
             "summary": "[stub-llm] summary"
           }
         ],
         "suggestions": [
           {
-            "id": "414b03bf75d1",
+            "id": "a49530e5370c",
             "reason": "[stub-llm] reason",
             "to_status": "untested",
             "applied_at": null,
             "from_status": "testing",
-            "assumption_id": "f7fe6d6e-f516-480a-a7f7-3a05f78ad01b",
+            "assumption_id": "379d6f89-2dfd-4c9c-9027-956e52a9c2bd",
             "assumption_statement": "Traders will pay 0.5% for same-day settlement"
           }
         ],
-        "created_at": "2026-10-19T20:30:54.750857+00:00"
+        "created_at": "2026-10-19T21:57:24.795270+00:00"
       }
     ]
   },

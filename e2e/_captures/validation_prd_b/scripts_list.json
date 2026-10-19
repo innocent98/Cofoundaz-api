@@ -2,20 +2,20 @@
   "data": {
     "scripts": [
       {
-        "id": "a1cfab7e-f030-4f9a-b4d1-2598f938fa97",
+        "id": "443dfec2-00b9-4afc-9611-bac5462eadbd",
         "title": "[stub-llm] title",
         "assumption_ids": [
-          "f7fe6d6e-f516-480a-a7f7-3a05f78ad01b"
+          "379d6f89-2dfd-4c9c-9027-956e52a9c2bd"
         ],
         "questions": [
           {
-            "id": "f1ac6ca91eda",
+            "id": "643c96b128eb",
             "tip": "[stub-llm] tip",
             "question": "[stub-llm] question"
           }
         ],
-        "created_at": "2026-10-19T20:30:54.637835+00:00",
-        "updated_at": "2026-10-19T20:30:54.637835+00:00"
+        "created_at": "2026-10-19T21:57:24.523561+00:00",
+        "updated_at": "2026-10-19T21:57:24.523561+00:00"
       }
     ]
   },

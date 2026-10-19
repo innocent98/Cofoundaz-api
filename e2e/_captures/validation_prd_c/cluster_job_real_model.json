@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "c381c858-bede-4257-a129-1791c68bf0b5",
+    "type": "validation.feedback.cluster",
+    "status": "succeeded",
+    "result": {
+      "run_id": "beb93a4e-04e4-4e53-8652-19f2c0e10c3c",
+      "status": "ready",
+      "theme_count": 4
+    },
+    "error": null
+  },
+  "meta": null
+}

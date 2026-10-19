@@ -143,7 +143,7 @@ def test_validation_prd_b_journey(base_url, make_verified_user, capture):
         report = c.get(f"{V}/insights/{insight_id}", headers=wh)
         assert report.status_code == 200, report.text
         data = report.json()["data"]
-        assert data["inputs"] == {"interviews": 1, "open_answers": 1}
+        assert data["inputs"] == {"interviews": 1, "open_answers": 1, "feedback": 0}
         assert "Placeholder Name" not in report.text
         capture(G, "insight_report", report)
         capture(G, "insights_list", c.get(f"{V}/insights", headers=wh))

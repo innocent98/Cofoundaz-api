@@ -1,5 +1,6 @@
 from datetime import date
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -92,7 +93,24 @@ class ScriptUpdate(BaseModel):
 
 
 class SynthesizeRequest(BaseModel):
-    source: Literal["interviews", "surveys", "all"] = "all"
+    source: Literal["interviews", "surveys", "feedback", "all"] = "all"
+
+
+class FeedbackCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+    # Survey answers are imported, never typed in (D-VAL-3).
+    source: Literal["interview", "in_app", "email"]
+    received_on: date | None = None
+
+
+class FeedbackUpdate(BaseModel):
+    text: str | None = Field(default=None, min_length=1, max_length=4000)
+    source: Literal["interview", "in_app", "email"] | None = None
+    received_on: date | None = None
+
+
+class SendToRoadmap(BaseModel):
+    milestone_id: UUID | None = None
 
 
 class PageEvent(BaseModel):

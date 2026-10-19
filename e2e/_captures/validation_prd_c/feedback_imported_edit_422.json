@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "IMPORTED_FEEDBACK",
+    "message": "This came from an interview or survey. Edit it there, or dismiss it here.",
+    "field_errors": []
+  }
+}

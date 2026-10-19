@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "86932304-3bed-4867-8630-9791bb9caca1",
+    "type": "validation.feedback.cluster",
+    "status": "succeeded",
+    "result": {
+      "run_id": "9c316338-3c2f-4e23-983b-04cdc0cd4b7a",
+      "status": "ready",
+      "theme_count": 1
+    },
+    "error": null
+  },
+  "meta": null
+}

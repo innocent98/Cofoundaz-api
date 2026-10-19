@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": "c5c63b1b-5477-4a72-89c8-929911894fd4",
+    "source": "feedback",
+    "inputs": {
+      "feedback": 2,
+      "interviews": 0,
+      "open_answers": 0
+    },
+    "patterns": [
+      {
+        "id": "6e5e3738a422",
+        "theme": "[stub-llm] theme",
+        "quotes": [],
+        "summary": "[stub-llm] summary"
+      }
+    ],
+    "contradictions": [
+      {
+        "id": "8f78bcf2a5ca",
+        "summary": "[stub-llm] summary"
+      }
+    ],
+    "suggestions": [],
+    "created_at": "2026-10-19T21:57:26.357686+00:00"
+  },
+  "meta": null
+}
