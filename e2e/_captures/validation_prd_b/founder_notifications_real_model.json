@@ -1,0 +1,21 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "99139987-c986-449d-ab2c-de8ec744b637",
+        "type": "validation.insight.detected",
+        "title": "New pattern detected in customer feedback: Same-day cash urgency",
+        "body": "See insight",
+        "data": {
+          "theme": "Same-day cash urgency",
+          "insight_id": "4fbafc3b-220f-4fd2-bc4b-6da83a7367bf",
+          "startup_id": "be20b7f7-d668-4035-8ba6-78eed6ee009c"
+        },
+        "read": false,
+        "created_at": "2026-10-19T20:55:37.916055+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

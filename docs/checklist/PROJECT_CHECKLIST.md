@@ -3459,5 +3459,13 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
       (slug reservation, visit/click/signup capture, waitlist), server verdict, milestone notification, deletes
       (branch `feat/validation-prd-a`, migration 0056, guide `docs/fe-integration-guide-validation-prd-a.md`)
 - [ ] Slice (a) FE (sub-session) + live re-walk
-- [ ] Slice (b) BE: interview scripts + Insight Synthesizer
-- [ ] Slice (c) BE: MVP feedback (D-VAL-2/3)
+- [x] Slice (b) BE: interview scripts + Insight Synthesizer (branch `feat/validation-prd-b`, migration 0057, guide
+      `docs/fe-integration-guide-validation-prd-b.md`, SOP `docs/sop/2026-10-19-validation-prd-b.md`)
+  - [x] `interview_scripts`: AI job saves a 6-10 question script with tips; list/get/edit (stable question ids)/delete
+  - [x] `insight_reports`: synthesizer over interviews and/or open survey answers (no names, no closed answers),
+        verbatim-only quotes, suggestions only for real assumptions that change status
+  - [x] Per-suggestion Apply (row lock, 409 on repeat); `validation.insight.detected` + PRD notification to founders + team members
+  - [x] Tests first (20), e2e journey + captures, real-model captures
+- [ ] Slice (b) FE (sub-session) + live re-walk
+- [ ] Slice (c) BE: MVP feedback (D-VAL-2/3), plus the BE bits of gap rows 9 (open survey answers endpoint, re-show/rotate
+      share link) and 10 (linked experiment names on assumption cards)

@@ -75,6 +75,20 @@ def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def _validation_members(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Founders and team members: the only roles that can open the Validation Hub."""
+    rows = (
+        db.query(Membership.user_id)
+        .filter(
+            Membership.startup_id == payload["startup_id"],
+            Membership.status == MembershipStatus.active,
+            Membership.role.in_([MembershipRole.founder, MembershipRole.team_member]),
+        )
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
@@ -165,9 +179,15 @@ SPECS: dict[str, NotifSpec] = {
     ),
     # PRD 09 notifications: smoke-test signup milestone (D-VAL-5 thresholds in validation/smoke.py).
     "validation.smoke_test.milestone": NotifSpec(
-        _all_active_members,
+        _validation_members,
         lambda p: f"{p.get('name') or 'Your smoke test'} just passed {p.get('signups')} signups",
         lambda _p: "",
+    ),
+    # PRD 09 Insight Synthesizer notification copy, CTA "See insight".
+    "validation.insight.detected": NotifSpec(
+        _validation_members,
+        lambda p: f"New pattern detected in customer feedback: {p.get('theme') or 'a new theme'}",
+        lambda _p: "See insight",
     ),
     "roadmap.milestone.due_soon": NotifSpec(
         _all_active_members,

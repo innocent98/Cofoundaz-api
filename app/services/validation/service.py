@@ -21,7 +21,14 @@ from app.db.models.enums import (
     RiskLevel,
     SurveyStatus,
 )
-from app.db.models.validation import Assumption, Experiment, Interview, Survey, SurveyResponse
+from app.db.models.validation import (
+    Assumption,
+    Experiment,
+    Interview,
+    InterviewScript,
+    Survey,
+    SurveyResponse,
+)
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
 from app.services.validation import smoke
@@ -604,11 +611,12 @@ def _unlink(rows: list[Any], assumption_id: str) -> None:
 
 
 def delete_assumption(db: Session, startup_id: uuid.UUID, assumption_id: Any) -> None:
-    """Delete an assumption and drop it from every interview and experiment that cited it."""
+    """Delete an assumption and drop it from every interview, experiment and interview script
+    that cited it."""
     row = get_assumption(db, startup_id, assumption_id)
     key = str(row.id)
-    _unlink(db.query(Interview).filter_by(startup_id=startup_id).all(), key)
-    _unlink(db.query(Experiment).filter_by(startup_id=startup_id).all(), key)
+    for model in (Interview, Experiment, InterviewScript):
+        _unlink(db.query(model).filter_by(startup_id=startup_id).all(), key)
     db.delete(row)
     db.flush()
 
