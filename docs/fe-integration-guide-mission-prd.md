@@ -167,3 +167,24 @@ break a streak (they neither add nor reset), so "Rest is a strategy too." is now
 | Delivery time drives generation | ❌ unit | `test_mission_is_due_at_the_workspace_delivery_time` |
 | mission.ready copy + first task body | ✅ | e2e `e2e/test_notifications_scheduler.py` asserts title/body |
 | No "ready" ping on an empty rest day | ❌ unit | `test_mission_generate_does_not_announce_an_empty_mission` |
+
+## 8. Re-walk fixes (2026-10-19): behaviour only, no shape changes
+Found by the click-through re-walk on `develop`. Every response shape above is unchanged.
+
+| Action | Before | Now | FE consequence |
+|---|---|---|---|
+| `complete` on a roadmap-linked task | Roadmap task stayed `todo`; tomorrow's mission offered it again | The roadmap task becomes `done` and its milestone `progress` is recomputed | Roadmap/milestone views show the progress after a mission tick: refetch them if they're cached |
+| `snooze` | A snoozed task kept the day `pending` forever, so no "Mission complete." and no streak | Snoozed counts as resolved for today. The day completes once every task is done/rejected/snoozed **and at least one is done**; snoozing the last open task completes it too | After `snooze`, refetch `/missions/today`: `status` may now be `complete` (show the completion state + confetti) |
+| `reject` "Already done" | Task came back tomorrow | Roadmap task becomes `done` (the mission task itself stays `rejected`, so it doesn't count toward the streak) | none |
+| `reject` "Wrong priority" | Task came back tomorrow | Not offered by missions (today, Upcoming, generation) for 7 days, then back in the queue (D-MIS-7) | Upcoming won't list it this week |
+| `reject` "Doesn't apply" | Task came back tomorrow | Never offered by missions again; it stays on the roadmap | none |
+| `GET /missions/history` totals | `total` counted snoozed tasks | `total` leaves out snoozed (moved to tomorrow) as well as rejected | Day rows read e.g. `1/1` instead of `1/2` |
+
+Live capture: `e2e/_captures/mission_rewalk/today_done_rejected_snoozed_complete.json` (done + rejected + snoozed +
+done custom task → `status: "complete"`, `streak: 2`).
+
+| Behaviour | Live? | Source |
+|---|---|---|
+| done + rejected + snoozed → mission `complete`, streak counts | ✅ | capture above |
+| Roadmap task done on mission `complete` / "Already done" | ❌ unit | `tests/services/mission/test_mission_rewalk.py` (no open roadmap-linked task left in the local mission after the walk) |
+| "Wrong priority" rests 7 days; "Doesn't apply" never returns | ❌ unit | same file (needs future days) |

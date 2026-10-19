@@ -39,5 +39,16 @@ test founder (`e2e/_captures/mission_prd_live/`).
 ## Operate / roll back
 `alembic upgrade head` + **restart the worker**. Roll back: revert, `alembic downgrade 0049_kpi_snapshots`.
 
+## Update 2026-10-19: re-walk fixes (branch `fix/mission-rewalk`)
+| What | Why | How |
+|---|---|---|
+| Completing a roadmap-linked mission task (or rejecting it as "Already done") completes the roadmap task + recomputes milestone progress | Mission work never reached the roadmap, so tomorrow re-offered finished work and the Health "roadmap done %" signal never moved | `_complete_roadmap_task` in `app/services/mission/service.py`, called from `complete_task` / `reject_task` |
+| D-MIS-7: "Wrong priority" rests 7 days, "Doesn't apply" never returns to missions | "Thanks, I'll calibrate." promised calibration but rejected tasks came straight back | `_mission_candidates` (query-only, no migration) used by generation and the Upcoming projection; "Assigned to you" still lists every open task |
+| A snoozed task no longer blocks "Mission complete." | Snooze + finish the rest left the day `pending` forever, so no completion state and a broken streak | `_RESOLVED_TODAY` in `_maybe_complete_mission`; `snooze_task` re-checks completion; history/weekly totals leave snoozed out |
+
+Verified: `tests/services/mission/test_mission_rewalk.py` (9), full suite 2373 passed @97.39%; live on the local stack the
+day flipped to `complete` with streak 2 after done + rejected + snoozed (capture in the guide §8). Rejected alternative:
+storing a per-task "excluded" flag (a migration) when the reject history already says it.
+
 ## Follow-ups
 - Per-workspace timezones (scheduler uses `SCHEDULER_TIMEZONE`).

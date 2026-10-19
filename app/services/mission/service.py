@@ -22,6 +22,7 @@ from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, Roadm
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.roadmap.service import recompute_milestone_progress
 
 _DEFAULT_MISSION_SIZE = 3
 _WEEKEND_ISO_WEEKDAYS = (5, 6)  # Saturday, Sunday (date.weekday())
@@ -30,7 +31,17 @@ _WEEKLY_WINDOW_DAYS = 7  # "this week" = the last 7 days ending today (inclusive
 
 # The only reject-reason chips the FE offers -- kept here (not in the schema) so
 # the endpoint and any future caller validate against one source of truth.
-VALID_REJECT_REASONS = frozenset({"Already done", "Wrong priority", "Doesn't apply"})
+REASON_ALREADY_DONE = "Already done"
+REASON_WRONG_PRIORITY = "Wrong priority"
+REASON_DOESNT_APPLY = "Doesn't apply"
+VALID_REJECT_REASONS = frozenset({REASON_ALREADY_DONE, REASON_WRONG_PRIORITY, REASON_DOESNT_APPLY})
+# D-MIS-7 "Thanks, I'll calibrate.": a "Wrong priority" task rests this many days before a
+# mission offers it again; a "Doesn't apply" task is never offered again (it stays on the roadmap).
+_WRONG_PRIORITY_REST_DAYS = 7
+# A snoozed task has moved to tomorrow, so like done/rejected it no longer blocks today.
+_RESOLVED_TODAY = (MissionTaskStatus.done, MissionTaskStatus.rejected, MissionTaskStatus.snoozed)
+# Tasks that don't count toward a day's work at all (history totals, weekly %).
+_NOT_TODAYS_WORK = (MissionTaskStatus.rejected, MissionTaskStatus.snoozed)
 
 
 def _today() -> date:
@@ -66,6 +77,45 @@ def _candidate_tasks(db: Session, roadmap: Roadmap) -> list[RoadmapTask]:
         )
         .all()
     )
+
+
+def _mission_candidates(db: Session, roadmap: Roadmap, today: date) -> list[RoadmapTask]:
+    """`_candidate_tasks` minus the ones the founder calibrated out of missions (D-MIS-7)."""
+    rejected_as = (
+        exists()
+        .where(MissionTask.roadmap_task_id == RoadmapTask.id)
+        .where(MissionTask.status == MissionTaskStatus.rejected)
+    )
+    doesnt_apply = rejected_as.where(MissionTask.reject_reason == REASON_DOESNT_APPLY)
+    resting = (
+        rejected_as.where(MissionTask.reject_reason == REASON_WRONG_PRIORITY)
+        .where(Mission.id == MissionTask.mission_id)
+        .where(Mission.mission_date > today - timedelta(days=_WRONG_PRIORITY_REST_DAYS))
+    )
+    excluded = {
+        row[0]
+        for row in db.query(RoadmapTask.id)
+        .join(RoadmapMilestone, RoadmapTask.milestone_id == RoadmapMilestone.id)
+        .join(RoadmapPhase, RoadmapMilestone.phase_id == RoadmapPhase.id)
+        .filter(RoadmapPhase.roadmap_id == roadmap.id, doesnt_apply | resting)
+    }
+    return [t for t in _candidate_tasks(db, roadmap) if t.id not in excluded]
+
+
+def _complete_roadmap_task(db: Session, task: MissionTask) -> None:
+    """Mission work is roadmap work: finishing a roadmap-linked mission task finishes the
+    roadmap task too, so the milestone moves and tomorrow's mission doesn't offer it again."""
+    if task.roadmap_task_id is None:
+        return
+    roadmap_task = db.query(RoadmapTask).filter_by(id=task.roadmap_task_id).first()
+    if roadmap_task is None or roadmap_task.status == RoadmapStatus.done:
+        return
+    roadmap_task.status = RoadmapStatus.done
+    db.flush()
+    milestone = db.query(RoadmapMilestone).filter_by(id=roadmap_task.milestone_id).first()
+    if milestone is not None:
+        recompute_milestone_progress(db, milestone)
+        db.flush()
 
 
 def _most_recent_prior_mission(db: Session, startup: Startup, today: date) -> Mission | None:
@@ -147,7 +197,7 @@ def get_or_generate_today(db: Session, startup: Startup) -> Mission | None:
 
     if order < mission_size:
         milestones_by_id: dict[uuid.UUID, RoadmapMilestone] = {}
-        for task in _candidate_tasks(db, roadmap):
+        for task in _mission_candidates(db, roadmap, today):
             if order >= mission_size:
                 break
             if task.id in carried_roadmap_ids:
@@ -343,7 +393,7 @@ def _weekly_completion_pct(db: Session, startup: Startup) -> int:
     """Share (rounded %) of the workspace's *non-empty* missions in the last 7 days
     (ending today, inclusive) that reached `complete`.
 
-    Only missions with at least one non-`rejected` task count -- toward both the
+    Only missions with at least one task that is neither `rejected` nor `snoozed` count -- toward both the
     numerator and the denominator. This deliberately excludes the empty, perpetually
     `pending` mission that a weekends-off day materialises (`get_or_generate_today`
     creates the row, then the weekend branch returns it task-less): counting those
@@ -357,7 +407,7 @@ def _weekly_completion_pct(db: Session, startup: Startup) -> int:
     has_actionable_task = (
         exists()
         .where(MissionTask.mission_id == Mission.id)
-        .where(MissionTask.status != MissionTaskStatus.rejected)
+        .where(MissionTask.status.notin_(_NOT_TODAYS_WORK))
     )
     in_window = (
         Mission.startup_id == startup.id,
@@ -378,7 +428,8 @@ def _history_counts(db: Session, startup: Startup) -> dict[uuid.UUID, tuple[int,
     """`mission_id -> (completed, total)` for every mission in the workspace, in one
     grouped query.
 
-    `total` counts tasks that are NOT `rejected`; `completed` counts `done`. This
+    `total` counts tasks that are neither `rejected` nor `snoozed` (moved to tomorrow);
+    `completed` counts `done`. This
     keeps the row coherent with `complete_task`'s all-done check (which also ignores
     `rejected`): a mission whose only unfinished work was rejected reads as fully
     done (e.g. 1/1) rather than a contradictory 1/2-but-complete."""
@@ -389,7 +440,7 @@ def _history_counts(db: Session, startup: Startup) -> dict[uuid.UUID, tuple[int,
             .filter(MissionTask.status == MissionTaskStatus.done)
             .label("completed"),
             func.count(MissionTask.id)
-            .filter(MissionTask.status != MissionTaskStatus.rejected)
+            .filter(MissionTask.status.notin_(_NOT_TODAYS_WORK))
             .label("total"),
         )
         .join(Mission, MissionTask.mission_id == Mission.id)
@@ -466,7 +517,7 @@ def _maybe_complete_mission(db: Session, mission: Mission) -> None:
         db.query(MissionTask)
         .filter(
             MissionTask.mission_id == mission.id,
-            MissionTask.status.notin_([MissionTaskStatus.done, MissionTaskStatus.rejected]),
+            MissionTask.status.notin_(_RESOLVED_TODAY),
         )
         .count()
     )
@@ -516,6 +567,7 @@ def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTa
     task.status = MissionTaskStatus.done
     task.completed_at = datetime.now(UTC)
     db.flush()
+    _complete_roadmap_task(db, task)
 
     event_bus.publish(
         db,
@@ -534,8 +586,13 @@ def complete_task(db: Session, startup: Startup, task: MissionTask) -> MissionTa
 
 
 def snooze_task(db: Session, task: MissionTask) -> MissionTask:
+    """Move `task` to tomorrow. Snoozing the last open task completes today's mission when
+    something else was done (a snoozed task no longer blocks "Mission complete.")."""
     task.status = MissionTaskStatus.snoozed
     db.flush()
+    mission = db.query(Mission).filter_by(id=task.mission_id).first()
+    if mission is not None:
+        _maybe_complete_mission(db, mission)
     return task
 
 
@@ -552,6 +609,8 @@ def reject_task(db: Session, task: MissionTask, reject_reason: str) -> MissionTa
     task.status = MissionTaskStatus.rejected
     task.reject_reason = reject_reason
     db.flush()
+    if reject_reason == REASON_ALREADY_DONE:
+        _complete_roadmap_task(db, task)
 
     mission = db.query(Mission).filter_by(id=task.mission_id).first()
     if mission is not None:
