@@ -71,6 +71,30 @@ def test_start_breakdown_enqueues_once(db, ws):
     assert bd.start_breakdown(db, s, m.id).id != job.id  # a finished job doesn't block
 
 
+def test_start_breakdown_locks_the_milestone_before_checking(db, ws):
+    """Two concurrent "Break down" clicks both got 202 in the 2026-10-19 re-walk: the
+    running-job check must happen under a row lock on the milestone so they serialize."""
+    from sqlalchemy import event
+
+    _u, s, m = ws
+    seen: list[str] = []
+
+    def _capture(_conn, _cursor, statement, *_args):
+        seen.append(" ".join(statement.split()))
+
+    engine = db.get_bind()
+    event.listen(engine, "before_cursor_execute", _capture)
+    try:
+        bd.start_breakdown(db, s, m.id)
+    finally:
+        event.remove(engine, "before_cursor_execute", _capture)
+    lock = next(
+        i for i, q in enumerate(seen) if "FROM roadmap_milestones" in q and "FOR UPDATE" in q
+    )
+    check = next(i for i, q in enumerate(seen) if "FROM jobs" in q)
+    assert lock < check
+
+
 def test_breakdown_is_tenant_scoped(db, ws):
     _u, _s, m = ws
     other = create_startup(db, owner=create_user(db))

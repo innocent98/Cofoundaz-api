@@ -37,6 +37,9 @@ def _milestone_in(db: Session, startup: Startup, milestone_id: uuid.UUID) -> Roa
 
 def start_breakdown(db: Session, startup: Startup, milestone_id: uuid.UUID) -> Job:
     m = _milestone_in(db, startup, milestone_id)
+    # Lock the milestone row first so two concurrent clicks serialize: the second waits for
+    # the first to commit its job, then sees it and gets the 409 (D-RM-1 one run at a time).
+    db.query(RoadmapMilestone.id).filter(RoadmapMilestone.id == m.id).with_for_update().one()
     running = (
         db.query(Job.id)
         .filter(
