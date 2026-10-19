@@ -193,12 +193,14 @@ register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)
 
 
 def handle_record_ai_fill(db: Session, job: Job) -> None:
-    """Draft up to 3 records for an EMPTY record kind via structured output. No commit."""
+    """Draft up to 3 records for an EMPTY record kind via structured output. No commit.
+    `job.result` is `ready` (with how many were added), `nothing_new` or `over_budget`."""
     kind = RecordKind(job.payload["kind"])
     startup = db.get(Startup, job.payload["startup_id"])
     if startup is None:
         return
     if db.query(BusinessRecord).filter_by(startup_id=startup.id, kind=kind).count():
+        job.result = {"status": "nothing_new", "added": 0}
         return  # fill-empties only
     result = metered_complete_json(
         db,
@@ -213,13 +215,17 @@ def handle_record_ai_fill(db: Session, job: Job) -> None:
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     if result is None:
-        return  # over budget — skip enrichment, keep the kind empty
+        job.result = {"status": "over_budget", "added": 0}
+        return  # over budget, skip enrichment, keep the kind empty
+    added = 0
     for rec in (result.get("records") or [])[:3]:
         try:
             create_record(db, startup, kind, rec)
+            added += 1
         except AppError:
             continue  # skip a record that fails the kind's validation; keep the good ones
     db.flush()
+    job.result = {"status": "ready" if added else "nothing_new", "added": added}
 
 
 for _kind in RecordKind:

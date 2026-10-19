@@ -645,3 +645,8 @@ added". `GET /jobs/{id}` → `data.result` is now one of:
 Live capture `e2e/_captures/business_rewalk/canvas_fill_nothing_new.json`: job `succeeded`,
 `"result": {"filled": [], "status": "nothing_new"}`. `ready` and `over_budget` are unit-tested
 (`tests/services/business/test_canvas_ai_fill.py`), not captured live.
+
+**Records too** (`POST /business-builder/{kind}/ai-fill`, the records pages' "Draft with AI", fill-empties only): the job
+`result` is now `{"status": "ready" | "nothing_new" | "over_budget", "added": <int>}`. Same messages as the canvas table
+above ("Your list already has entries. Add more by hand, or use the AI buttons on a record." for `nothing_new`). Live
+capture `e2e/_captures/business_rewalk/records_fill_nothing_new.json`: `"result": {"added": 0, "status": "nothing_new"}`.

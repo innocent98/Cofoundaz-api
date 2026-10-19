@@ -13,5 +13,5 @@
 ## Update: whole-canvas AI fill reports its outcome (branch `fix/canvas-fill-result`)
 Closing the re-walk's ⚠ row on "Fill with AI": on a filled canvas the job did nothing (by design, it drafts empty blocks
 only) but the FE said "AI draft added". `handle_canvas_ai_fill` now sets `job.result` to `ready` (+ filled keys),
-`nothing_new` or `over_budget`, matching the section-AI and records-AI jobs. FE message mapping is in the FE follow-up PR.
+`nothing_new` or `over_budget`, matching the section-AI job; `handle_record_ai_fill` (records "Draft with AI") likewise sets `ready`/`nothing_new`/`over_budget` with an `added` count. FE message mapping is in the FE follow-up PR.
 Tests: `test_ai_fill_reports_its_outcome_on_the_job`, `test_ai_fill_reports_over_budget`; live capture in the guide.

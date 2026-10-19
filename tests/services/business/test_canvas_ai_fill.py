@@ -142,10 +142,12 @@ def test_ai_fill_reports_its_outcome_on_the_job(db, monkeypatch):
 
 
 def test_ai_fill_reports_over_budget(db, monkeypatch):
-    import app.worker.handlers.ai as handlers
+    from app.platform import llm_budget
 
-    monkeypatch.setattr(handlers, "metered_complete_json", lambda *a, **k: None)
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100)
     s = create_startup(db, owner=create_user(db))
+    llm_budget.debit(db, s.id, 100)  # at budget
     job = _job(s.id, CanvasType.lean)
     handle_canvas_ai_fill(db, job)
     assert job.result == {"status": "over_budget", "filled": []}
