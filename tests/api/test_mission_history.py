@@ -150,14 +150,14 @@ def test_history_requires_auth(client):
     assert client.get("/api/v1/missions/history").status_code == 401
 
 
-def test_history_mentor_can_read(client, db):
+def test_history_mentor_is_forbidden(client, db):
+    # PRD Module 04 access is founder + team member (D-MIS-8, 2026-10-19 re-walk).
     _u, s, h = _member(db, role=MembershipRole.mentor)
     create_mission(db, s, mission_date=date.today() - timedelta(days=1))
     db.commit()
 
     r = client.get("/api/v1/missions/history", headers=h)
-    assert r.status_code == 200, r.text
-    assert len(r.json()["data"]["missions"]) == 1
+    assert r.status_code == 403, r.text
 
 
 def test_history_cross_workspace_is_forbidden(client, db):

@@ -23,6 +23,7 @@ from app.db.models.startup import Startup
 from app.services.mission.service import (
     _WEEKEND_ISO_WEEKDAYS,
     _candidate_tasks,
+    _mission_candidates,
     _roadmap,
     _settings,
     _today,
@@ -63,7 +64,7 @@ def upcoming(db: Session, startup: Startup) -> dict[str, Any]:
     ]
     used = {t.roadmap_task_id for t in today_tasks if t.roadmap_task_id}
 
-    candidates = _candidate_tasks(db, roadmap)
+    candidates = _mission_candidates(db, roadmap, today)
     by_id = {t.id: t for t in candidates}
     carried = [by_id[i] for i in snoozed_ids if i in by_id]
     queue = [t for t in candidates if t.id not in used]

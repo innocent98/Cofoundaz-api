@@ -1,0 +1,2 @@
+{"captured": "2026-10-19 local stack, GET /api/v1/missions/today as mentor bb-mentor-1 in NovaPay", "status_code": 403,
+ "body": {"error":{"code":"FORBIDDEN","message":"You don't have permission to do that.","field_errors":[]}}}

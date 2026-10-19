@@ -299,7 +299,9 @@ def test_endpoints_and_roles(client, db):
     )
     r = client.put("/api/v1/missions/upcoming/order", json=body, headers=_h(founder, s))
     assert r.status_code == 200, r.text
-    assert client.get("/api/v1/missions/completed", headers=_h(mentor, s)).status_code == 200
+    # PRD Module 04 access is founder + team member: a mentor reads nothing here either.
+    for path in ("today", "upcoming", "completed", "history", "settings"):
+        assert client.get(f"/api/v1/missions/{path}", headers=_h(mentor, s)).status_code == 403
     hist = client.get("/api/v1/missions/history", headers=_h(founder, s)).json()["data"]
     assert {"current_streak", "best_streak"} <= set(hist)
 

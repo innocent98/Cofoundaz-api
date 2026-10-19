@@ -13,7 +13,7 @@ from app.db.models.mission import Mission, MissionSettings, MissionTask
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_role, require_workspace
+from app.db.tenancy import require_role
 from app.platform.activity import write_activity
 from app.schemas.mission import (
     MissionSettingsUpdate,
@@ -45,6 +45,7 @@ from app.services.mission.service import (
 )
 
 router = APIRouter()
+# PRD Module 04 access: founder + team member, for reads as well as writes.
 _editor = require_role(MembershipRole.founder, MembershipRole.team_member)
 
 
@@ -92,7 +93,7 @@ def _mission_task(db: Session, membership: Membership, task_id: uuid.UUID) -> Mi
 
 @router.get("/today")
 def get_today(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -114,7 +115,7 @@ def get_today(
 
 @router.get("/history")
 def get_history(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -125,7 +126,7 @@ def get_history(
 
 @router.get("/upcoming")
 def get_upcoming(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -151,7 +152,7 @@ def put_upcoming_order(
 def get_completed(
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -161,7 +162,7 @@ def get_completed(
 
 @router.get("/settings")
 def get_settings(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
