@@ -137,3 +137,21 @@ Entities v1: `roadmap_milestone`, `roadmap_task` (anything else → 422). Show t
 | Comment create (mention) → teammate notified → thread → non-author edit 403 → resolve | ✅ | e2e journey |
 | Over-budget / gone results; investor 403; foreign entity 404; non-member mention 422; delete | ❌ unit | `tests/services/test_roadmap_prd.py` |
 | Due-soon scheduling + copy; overdue copy | ❌ unit | `test_due_soon_scheduling_and_copy` |
+
+## 6. Re-walk fixes (2026-10-19): behaviour only, no new fields
+| Action | Before | Now | FE consequence |
+|---|---|---|---|
+| Two `POST /roadmap/milestones/{id}/breakdown` at the same time | both `202`, two jobs appended near-duplicate tasks | the second gets `409` `BREAKDOWN_IN_PROGRESS` "I'm already breaking this milestone down." (milestone row lock) | show the message (the drawer and the Milestones table already do) |
+| `PATCH /roadmap/milestones/{id}` `{"status":"done"}` | milestone `done` but its tasks stayed open, progress could read 0% | every open task becomes `done`, `progress` 100 (D-RM-5); setting it back to `todo` leaves the tasks done | refetch the milestone's tasks after completing it; Today's Mission no longer offers them |
+
+Captured (local stack, ids are local throwaway data):
+- `e2e/_captures/roadmap_rewalk/breakdown_concurrent_202_409.json`: first `202 {"data":{"job_id":"…","status":"queued"}}`,
+  second `409 {"error":{"code":"BREAKDOWN_IN_PROGRESS","message":"I'm already breaking this milestone down.","field_errors":[]}}`.
+- `e2e/_captures/roadmap_rewalk/milestone_complete_completes_tasks.json`: `200`, body `{"data":{…,"status":"done","progress":100,…}}`;
+  note the PATCH body has **no `tasks`** key (read them from `GET /roadmap`), and both tasks came back `done`.
+
+| Behaviour | Live? | Source |
+|---|---|---|
+| Concurrent breakdown → 202 + 409 | ✅ | capture above |
+| Milestone complete → tasks done, 100% | ✅ | capture above |
+| Reopen leaves tasks done | ❌ unit | `tests/services/test_roadmap_rewalk.py` |
