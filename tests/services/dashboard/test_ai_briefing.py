@@ -3,6 +3,7 @@ from app.services.dashboard.ai_briefing import (
     build_dashboard_briefing_messages,
     dashboard_briefing_schema,
 )
+from tests.factories import create_startup, create_user
 
 
 def test_schema_shape():
@@ -32,7 +33,6 @@ def test_builder_includes_finance_context_when_known():
         name="N",
         industry=None,
         stage=None,
-        health_score=None,
         health_band=None,
         mission_total=0,
         mission_done=0,
@@ -51,7 +51,6 @@ def test_builder_says_not_tracked_without_finance():
         name="N",
         industry=None,
         stage=None,
-        health_score=None,
         health_band=None,
         mission_total=0,
         mission_done=0,
@@ -68,7 +67,6 @@ def test_builder_is_pii_free_and_includes_context():
         name="Cofoundaz",
         industry="Fintech",
         stage="idea",
-        health_score=31,
         health_band="at_risk",
         mission_total=3,
         mission_done=1,
@@ -78,5 +76,38 @@ def test_builder_is_pii_free_and_includes_context():
     assert [m.role for m in msgs] == ["system", "user"]
     body = msgs[1].content
     assert "Cofoundaz" in body and "Fintech" in body
-    assert "31" in body and "at_risk" in body
+    assert "at_risk" in body
     assert "3" in body and "1" in body  # mission counts present
+
+
+def test_prompt_never_carries_the_health_score_number():
+    """The card shows the live score; prose that quoted a stale one contradicted it (88 vs 95)."""
+    msgs = build_dashboard_briefing_messages(
+        name="Cofoundaz",
+        industry="Fintech",
+        stage="idea",
+        health_band="strong",
+        mission_total=5,
+        mission_done=2,
+        upcoming_count=0,
+        tasks_done_week=7,
+    )
+    assert "Health score" not in msgs[1].content
+    assert "strong" in msgs[1].content
+    assert "Health Score number" in msgs[0].content
+
+
+def test_context_has_no_health_score_key(db):
+    from app.db.models.health_score import HealthScore
+    from app.services.dashboard.service import gather_briefing_context
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    db.add(
+        HealthScore(startup_id=s.id, score=88, band="strong", dimension_scores={}, config_version=1)
+    )
+    db.flush()
+    ctx = gather_briefing_context(db, s)
+    assert "health_score" not in ctx
+    assert ctx["health_band"] == "strong"
+    assert "88" not in str(build_dashboard_briefing_messages(**ctx)[1].content)

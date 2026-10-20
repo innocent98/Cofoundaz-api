@@ -73,7 +73,6 @@ def build_dashboard_briefing_messages(
     name: str | None,
     industry: str | None,
     stage: str | None,
-    health_score: int | None,
     health_band: str | None,
     mission_total: int,
     mission_done: int,
@@ -95,7 +94,9 @@ def build_dashboard_briefing_messages(
         "characters that IS the task itself, e.g. 'Interview 3 target customers', never a "
         "meta-instruction like 'Add a task to...'. Use kind 'task' for something the founder "
         "does (it is added to today's mission as written) and 'navigate' only for 'Review X' "
-        "steps). No preamble, no headings, no invented numbers."
+        "steps). The dashboard shows the live Health Score right next to this text and it changes "
+        "during the day, so never state the Health Score number or any change in it; you may "
+        "refer to the health band in words. No preamble, no headings, no invented numbers."
     )
     finance = (
         f"Runway: {runway_months} months.\n"
@@ -105,8 +106,7 @@ def build_dashboard_briefing_messages(
     user = (
         f"Startup: {name or 'unnamed'}. Industry: {industry or 'unspecified'}. "
         f"Stage: {stage or 'unspecified'}.\n"
-        f"Health score: {health_score if health_score is not None else 'n/a'} "
-        f"(band: {health_band or 'n/a'}).\n"
+        f"Health band: {health_band or 'n/a'}.\n"
         f"Today's mission: {mission_done}/{mission_total} tasks done.\n"
         f"Deadlines in the next 7 days: {upcoming_count}.\n"
         f"Tasks completed this week: {tasks_done_week}.\n"

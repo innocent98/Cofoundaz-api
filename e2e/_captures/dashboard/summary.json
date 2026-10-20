@@ -1,7 +1,7 @@
 {
   "data": {
     "greeting": {
-      "salutation": "Good evening",
+      "salutation": "Good afternoon",
       "first_name": "Ada",
       "startup_name": "Cofoundaz"
     },
@@ -10,127 +10,169 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-10-17T22:00:39.238419+00:00",
+      "computed_at": "2026-10-20T15:16:03.149991+00:00",
       "config_version": 1,
       "dimensions": [
         {
           "key": "team",
           "label": "Team",
           "score": 50,
-          "band": "needs_work"
+          "band": "needs_work",
+          "trend": [
+            50
+          ]
         },
         {
           "key": "legal",
           "label": "Legal",
           "score": 0,
-          "band": "at_risk"
+          "band": "at_risk",
+          "trend": [
+            0
+          ]
         },
         {
           "key": "money",
           "label": "Financial",
           "score": 43,
-          "band": "needs_work"
+          "band": "needs_work",
+          "trend": [
+            43
+          ]
         },
         {
           "key": "market",
           "label": "Market",
           "score": 38,
-          "band": "at_risk"
+          "band": "at_risk",
+          "trend": [
+            38
+          ]
         },
         {
           "key": "product",
           "label": "Product",
           "score": 25,
-          "band": "at_risk"
+          "band": "at_risk",
+          "trend": [
+            25
+          ]
         }
       ],
       "top_recommendations": [
         {
-          "id": "1a0406af-e476-437d-8a3a-fff3e663e97a",
-          "dimension": "legal",
-          "key": "legal.incorporate",
-          "title": "Complete incorporation",
-          "body": "Register the company and issue founder shares. Operating unincorporated exposes founders personally and blocks fundraising.",
-          "estimated_lift": 9,
-          "effort": "high",
+          "id": "3f0f5cef-b590-46a5-8fad-2e695784ea01",
+          "dimension": "money",
+          "key": "live.money.transactions_30d",
+          "title": "Track your money in and out",
+          "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+          "estimated_lift": 10,
+          "effort": "low",
           "status": "pending",
-          "priority": 1
+          "priority": 1,
+          "href": "/finance"
         },
         {
-          "id": "e6d63151-302b-447f-b25b-860ae636f8c7",
+          "id": "55c8e377-987f-4ffe-a677-d2abb36abf67",
           "dimension": "legal",
-          "key": "legal.founder_agreement",
-          "title": "Sign a founders' agreement",
-          "body": "Put equity splits, vesting, and roles in writing before it is contentious. This prevents the most common founder disputes.",
-          "estimated_lift": 7,
+          "key": "live.legal.signatures_complete",
+          "title": "Get your key agreements signed",
+          "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+          "estimated_lift": 10,
           "effort": "medium",
           "status": "pending",
-          "priority": 2
+          "priority": 2,
+          "href": "/documents/signatures"
         },
         {
-          "id": "b6b4e6f9-da71-4cfc-ab5f-3ef31884b319",
+          "id": "bcd37c70-7433-471b-a074-da18ee3a2896",
           "dimension": "product",
-          "key": "product.define_mvp",
-          "title": "Define your MVP scope",
-          "body": "Write a one-page MVP definition: the single problem, the smallest feature set that solves it, and what you are deliberately leaving out.",
-          "estimated_lift": 8,
+          "key": "live.product.roadmap_progress",
+          "title": "Close out your next roadmap tasks",
+          "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+          "estimated_lift": 5,
           "effort": "medium",
           "status": "pending",
-          "priority": 3
+          "priority": 3,
+          "href": "/roadmap"
         }
       ],
-      "summary": "Your Health Score is 31 (at risk). Your weakest area is Legal."
+      "summary": "You're at risk for validation stage. Team is carrying you; Legal is holding you back."
     },
     "mission": {
-      "mission_date": "2026-10-17",
+      "mission_date": "2026-10-20",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "cf3173ce-a1f7-4ba3-9221-ecb52264afe7",
-          "roadmap_task_id": "b819636e-8e71-4f17-a475-c8808ec9d3b2",
+          "id": "498b1274-b259-4a8b-a1d0-b4097ca86f54",
+          "roadmap_task_id": "e07959c8-e488-4d68-96fc-05ed1faae056",
           "title": "Run 10 customer interviews",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "medium",
           "status": "todo",
           "order": 0,
           "completed_at": null,
-          "reject_reason": null
+          "reject_reason": null,
+          "milestone": {
+            "id": "551fa3c1-a326-425a-8d99-a86c5a3087cd",
+            "title": "Validate demand",
+            "due_on": "2026-11-03"
+          }
         },
         {
-          "id": "30609687-5395-45ee-b898-e66ebee55ed3",
-          "roadmap_task_id": "309a49e0-5367-4f8a-960f-ebf75941c70b",
+          "id": "0af5d349-c11a-4b9f-97ab-6670b9f6aef7",
+          "roadmap_task_id": "b750772d-4cac-436c-b630-af94e76555f4",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
           "status": "todo",
           "order": 1,
           "completed_at": null,
-          "reject_reason": null
+          "reject_reason": null,
+          "milestone": {
+            "id": "551fa3c1-a326-425a-8d99-a86c5a3087cd",
+            "title": "Validate demand",
+            "due_on": "2026-11-03"
+          }
         },
         {
-          "id": "c4fc78c9-f6e4-45e8-a785-63a5793d3e86",
-          "roadmap_task_id": "179371cc-05f9-4b3b-abc1-425315d2ba17",
+          "id": "3a9e4365-bcd6-4757-b169-cd86dd7bcd83",
+          "roadmap_task_id": "dea67000-16b5-4cc8-a558-fb759161d574",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
           "status": "todo",
           "order": 2,
           "completed_at": null,
-          "reject_reason": null
+          "reject_reason": null,
+          "milestone": {
+            "id": "b30c0520-fdb6-4761-8d29-17c4f4d7632b",
+            "title": "Pricing test",
+            "due_on": "2026-11-24"
+          }
         }
       ],
       "empty_reason": null
     },
+    "mission_status": "ok",
     "upcoming": [],
     "kpis": {
       "tasks_done_this_week": 0,
+      "tasks_trend": {
+        "delta": null,
+        "series": []
+      },
       "metrics": {
         "revenue": {
           "status": "no_data",
           "value_minor": null,
           "currency": null,
-          "basis": "trailing_3mo_avg"
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
         },
         "runway": {
           "status": "no_data",
@@ -138,7 +180,11 @@
           "is_low": false,
           "monthly_burn_minor": null,
           "cash_on_hand_minor": null,
-          "currency": null
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
         },
         "pipeline": {
           "status": "not_built",
@@ -150,7 +196,11 @@
           "ctr_percent": null,
           "impressions": null,
           "clicks": null,
-          "range": "30d"
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
         }
       },
       "revenue": null,
@@ -164,7 +214,7 @@
     "briefing": {
       "status": "generating",
       "message": "Putting together your briefing\u2026",
-      "id": "71354b4f-8227-416d-8410-50ac6dcd2c97",
+      "id": "b7a19cc9-7bf3-47a6-b8de-db2222b9dabd",
       "actions": []
     },
     "risks": {

@@ -20,7 +20,7 @@ from sqlalchemy.orm import Query, Session
 from app.db.models.ai_chat import AiConversation
 from app.db.models.calendar import CalendarEvent
 from app.db.models.document import Document
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipRole
+from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MISSION_ROLES, MembershipRole
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from app.db.models.marketing import AudienceSegment, Campaign, ContentCalendarEntry, SeoKeyword
@@ -50,7 +50,7 @@ class Page:
 # so a role never finds a page it would be refused.
 PAGES: tuple[Page, ...] = (
     Page("Dashboard", "/dashboard", ALL_ROLES, "home overview"),
-    Page("Today's Mission", "/mission", ALL_ROLES, "tasks today daily"),
+    Page("Today's Mission", "/mission", MISSION_ROLES, "tasks today daily"),
     Page("Health Score", "/health", ALL_ROLES, "score dimensions"),
     Page("Roadmap", "/roadmap", ALL_ROLES, "plan timeline"),
     Page("Milestones", "/roadmap/milestones", ALL_ROLES, "roadmap"),
@@ -71,7 +71,7 @@ PAGES: tuple[Page, ...] = (
     Page("Assumptions", "/validation/assumptions", CORE_ROLES, "validation"),
     Page("Interviews", "/validation/interviews", CORE_ROLES, "validation customer"),
     Page("Surveys", "/validation/surveys", CORE_ROLES, "validation"),
-    Page("Assessment", "/assessment", frozenset({MembershipRole.founder}), "calibrate"),
+    Page("Assessment", "/assessment", CORE_ROLES, "calibrate"),
     Page("Marketing Hub", "/marketing", MARKETING_ROLES, "growth"),
     Page("Campaigns", "/marketing/campaigns", MARKETING_ROLES, "marketing"),
     Page("Content Calendar", "/marketing/calendar", MARKETING_ROLES, "marketing posts"),
@@ -256,7 +256,7 @@ def _fixed(href: str) -> Callable[[Any], str]:
 SOURCES: tuple[Source, ...] = (
     Source("milestone", "Roadmap", ALL_ROLES, _fixed("/roadmap/milestones"), _milestones),
     Source("roadmap_task", "Roadmap", ALL_ROLES, _fixed("/roadmap"), _roadmap_tasks),
-    Source("mission_task", "Mission", ALL_ROLES, _fixed("/mission"), _mission_tasks),
+    Source("mission_task", "Mission", MISSION_ROLES, _fixed("/mission"), _mission_tasks),
     Source("document", "Documents", ALL_ROLES, lambda i: f"/documents/{i}", _documents),
     Source("conversation", "AI Co-Founder", CORE_ROLES, lambda i: f"/ai?c={i}", _conversations),
     Source("calendar_event", "Calendar", CORE_ROLES, _fixed("/calendar"), _events),

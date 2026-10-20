@@ -78,6 +78,10 @@ rule "hidden, not disabled"). Live: the mentor's `q=fin` (`mentor_fin.json`):
 while the founder's `q=fin` (`founder_fin.json`) returns the Finance Hub, Runway, Invoices, Expenses and Budgets pages.
 AI conversations are private: each person only ever finds their own.
 
+**2026-10-20 (D-MIS-8):** mission tasks and the "Today's Mission" page are now core-role only (founder + team member),
+and the "Assessment" page is offered to team members as well as founders. See
+`docs/fe-integration-guide-dashboard-role-leaks.md` §2 for the captures.
+
 ## 5. Empty and error states
 - `q` under 2 characters (`founder_too_short.json`): `{"data": {"query": "a", "results": []}, "meta": null}`. Show
   a hint ("Type at least 2 characters"), not "No results".

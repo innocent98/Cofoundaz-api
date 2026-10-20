@@ -5,7 +5,14 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipRole, MembershipStatus
+from app.db.models.enums import (
+    BRIEFING_ROLES,
+    FINANCE_ROLES,
+    MARKETING_ROLES,
+    MISSION_ROLES,
+    MembershipRole,
+    MembershipStatus,
+)
 from app.db.models.membership import Membership
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
@@ -46,19 +53,36 @@ def _existing_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=joiner)
 
 
-def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
-    """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
-    roles = FINANCE_ROLES if payload.get("audience") == "finance" else MARKETING_ROLES
+def _with_roles(db: Session, startup_id: Any, roles: frozenset[MembershipRole]) -> list[uuid.UUID]:
     rows = (
         db.query(Membership.user_id)
         .filter(
-            Membership.startup_id == payload["startup_id"],
+            Membership.startup_id == startup_id,
             Membership.status == MembershipStatus.active,
             Membership.role.in_(list(roles)),
         )
         .all()
     )
     return [r[0] for r in rows]
+
+
+def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
+    roles = FINANCE_ROLES if payload.get("audience") == "finance" else MARKETING_ROLES
+    return _with_roles(db, payload["startup_id"], roles)
+
+
+def _roles_minus_actor(
+    roles: frozenset[MembershipRole],
+) -> Callable[[Session, dict], list[uuid.UUID]]:
+    """Audience = active members holding one of `roles` (the read gate of the feature the
+    notification opens), minus the actor. A role that can't open the page must not hear of it."""
+
+    def _audience(db: Session, payload: dict) -> list[uuid.UUID]:
+        actor = _actor(payload)
+        return [u for u in _with_roles(db, payload["startup_id"], roles) if u != actor]
+
+    return _audience
 
 
 def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
@@ -140,10 +164,10 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "roadmap.replanned": _s(_members_minus_actor, "Your roadmap was re-planned"),
     "roadmap.milestone.completed": _s(_members_minus_actor, "A roadmap milestone was completed"),
-    "mission.completed": _s(_members_minus_actor, "Today's mission is complete"),
+    "mission.completed": _s(_roles_minus_actor(MISSION_ROLES), "Today's mission is complete"),
     # PRD 04 notifications copy.
     "mission.streak.milestone": NotifSpec(
-        _members_minus_actor,
+        _roles_minus_actor(MISSION_ROLES),
         lambda p: (
             f"🔥 {p['streak']} days straight. You're building a habit most founders never do."
             if p.get("streak")
@@ -175,7 +199,7 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
     "mission.ready": NotifSpec(
-        _all_active_members,
+        _roles_minus_actor(MISSION_ROLES),
         lambda _p: "Your mission for today is ready",
         lambda p: p.get("first_task_title") or "",
     ),
@@ -215,9 +239,13 @@ SPECS: dict[str, NotifSpec] = {
     "business.plan.generated": _s(
         _all_active_members, "Your AI-generated business plan is ready", "Open it"
     ),
-    "finance.runway.low": _s(_all_active_members, "Your runway is running low"),
+    # Finance hub readers only (founder, team member, accountant).
+    "finance.runway.low": _s(_roles_minus_actor(FINANCE_ROLES), "Your runway is running low"),
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
-    "dashboard.briefing.ready": _s(_all_active_members, "Your daily AI briefing is ready"),
+    # Only BRIEFING_ROLES see the briefing prose (it is built from finance figures).
+    "dashboard.briefing.ready": _s(
+        _roles_minus_actor(BRIEFING_ROLES), "Your daily AI briefing is ready"
+    ),
     # PRD 02.1 "{Metric} crossed {threshold}: now {value}"; title is composed by the job.
     # PRD 23 notifications copy: only the mentioned member is notified.
     "team.comment.mentioned": NotifSpec(
@@ -231,17 +259,17 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "",
     ),
     "marketing.post.published": NotifSpec(
-        _members_minus_actor,
+        _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Scheduled post published: {p.get('title', 'a post')}",
         lambda _p: "",
     ),
     "marketing.campaign.launched": NotifSpec(
-        _members_minus_actor,
+        _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Campaign launched: {p.get('name', 'a campaign')}",
         lambda _p: "",
     ),
     "marketing.campaign.completed": NotifSpec(
-        _members_minus_actor,
+        _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",
         lambda _p: "",
     ),

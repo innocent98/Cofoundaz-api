@@ -27,6 +27,9 @@ nothing breaks before the FE moves over. Render from `items`, not `message`.
 
 ## 2. Shapes (live, real LLM)
 
+> Since 2026-10-20 the generated text no longer states the Health Score number (the sample below, captured earlier,
+> still shows one: that is exactly the stale-number bug). See `fe-integration-guide-dashboard-role-leaks.md` §4.
+
 `data.briefing`:
 ```json
 {

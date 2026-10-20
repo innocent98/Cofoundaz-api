@@ -1,0 +1,16 @@
+{
+  "data": {
+    "query": "mission",
+    "results": [
+      {
+        "type": "page",
+        "group": "Pages",
+        "id": "/business-builder/mission-vision",
+        "title": "Mission & Vision",
+        "subtitle": null,
+        "href": "/business-builder/mission-vision"
+      }
+    ]
+  },
+  "meta": null
+}

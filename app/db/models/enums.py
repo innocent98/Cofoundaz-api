@@ -51,6 +51,12 @@ FINANCE_ROLES: frozenset[MembershipRole] = frozenset(
 MARKETING_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
+# D-MIS-8: Today's Mission reads (and the AI briefing, which is built from the same workspace
+# data) are founder + team member only. One definition, shared by routes, search and notifications.
+MISSION_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+BRIEFING_ROLES: frozenset[MembershipRole] = MISSION_ROLES
 
 
 class MembershipStatus(enum.StrEnum):
