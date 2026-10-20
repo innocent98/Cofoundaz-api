@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **What shipped** | `GET /dashboard/activity` and the live `activity.created` stream event are filtered by the caller's membership role. Branch `fix/dashboard-activity-feed-roles` (PR number filled in when opened). Follow-up to #153. |
+| **What shipped** | `GET /dashboard/activity` and the live `activity.created` stream event are filtered by the caller's membership role. PR #155, branch `fix/dashboard-activity-feed-roles`. Follow-up to #153. |
 | **Why** | Security. #153 gated the Dashboard mission, briefing, search and notifications by role, but the activity feed still returned every `activity_log` row to every member, and the SSE stream forwarded every `activity.created` on the workspace channel. A mentor could read mission task titles ("Ada added 'Call the seed lead investor' to today's mission") and, once written, finance and marketing events. Flagged by the Dashboard re-walk and by the security review on #153. |
 
 ## How (decisions)
