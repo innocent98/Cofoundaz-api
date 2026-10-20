@@ -631,7 +631,7 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
   - [x] Row 11: detail `answers` grouped by dimension with prompt, human label, `changed` / `changed_from`
   - [x] Row 12 (D-ASM-3): `assessments.stage_at_time` snapshot at completion, on list + detail
   - [x] Row 13: `meta.quarterly_due` (same rule as the cron) + quarterly notification CTA "Start re-assessment" with `href` `/assessment`
-  - [ ] _Open:_ gap-list rows outside this slice (FE parts, rows not assigned here); wider notification-audience review (non-assessment types still reach mentors)
+  - [ ] _Open:_ gap-list rows outside this slice (FE parts, rows not assigned here); wider notification-audience review: ~~non-assessment types still reach mentors~~ done for mission / briefing / finance / marketing in the Dashboard role-leaks fix (2026-10-20)
 - [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · ~~quarterly re-assessment cron~~ now
       fires via **Module 20 Slice 3** (`assessment.quarterly.due`, ≥ `QUARTERLY_REASSESS_DAYS`
       since the last completed assessment — see that module's own section)
@@ -787,6 +787,19 @@ Slice (c), branch `feat/business-builder-prd-c` (stacked on (b)):
 - [x] `GET /missions/completed` (cursor log); history `current_streak`/`best_streak`; rest days don't break streaks
 - [x] Task `milestone` chip; today `empty_reason` + `assigned_to_me`; streak-milestone PRD copy
 - SOP `docs/sop/2026-10-18-mission-prd.md` · guide `docs/fe-integration-guide-mission-prd.md`
+
+## ✅ Module 02 — Founder Dashboard: role leaks (2026-10-20, branch `fix/dashboard-role-leaks`)
+
+_Rows 1-3, 8, 9 of the Dashboard re-walk (FE `docs/checklist/dashboard-rewalk.md`, PR #120). Rule D-MIS-8: Today's
+Mission reads are founder + team member only. SOP `docs/sop/2026-10-20-dashboard-role-leaks.md` · guide
+`docs/fe-integration-guide-dashboard-role-leaks.md`. PR number filled in when opened._
+
+- [x] Row 1: `GET /dashboard/summary` returns `mission: null` + `mission_status: "restricted"` to other roles; no lazy mission generation for them
+- [x] Row 2: search drops `mission_task` rows and the Today's Mission page for other roles; every other source/page audited (test-enforced)
+- [x] Row 3: notification audiences narrowed: `dashboard.briefing.ready`, `mission.ready|completed|streak.milestone` (core), `finance.runway.low` (finance roles), `marketing.*` (core); every registry spec has a declared audience (test-enforced)
+- [x] Row 8: briefing prompt no longer receives the Health Score number and is told not to state it
+- [x] Row 9: Assessment page in search for team members
+- [ ] _Open:_ `kpis.tasks_done_this_week` and `calibration.assessment_complete` still go to every role; `GET /dashboard/activity` is unfiltered by role (see SOP follow-ups)
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 

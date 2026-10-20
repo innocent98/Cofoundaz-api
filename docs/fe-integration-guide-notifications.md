@@ -314,14 +314,19 @@ but different across types (no shared schema), so the FE should switch/deep-link
 | `business.artifact.completed` | `startup_id`, `artifact` | all active members (passive/system event — no member actor) | not captured live |
 | `roadmap.replanned` | `startup_id`, `roadmap_id`, `replan_id`, `change_count`, `applied_by` | active members minus actor ✅ | not captured live |
 | `roadmap.milestone.completed` | `startup_id`, `roadmap_id`, `milestone_id`, `title`, `actor_id` | active members minus actor ✅ | not captured live |
-| `mission.completed` | `startup_id`, `mission_id`, `mission_date` | all active members (passive/system event — no member actor) | not captured live |
-| `mission.streak.milestone` | `startup_id`, `streak` | all active members (passive/system event — no member actor) | not captured live |
+| `mission.completed` | `startup_id`, `mission_id`, `mission_date` | **founder + team member only** (D-MIS-8, 2026-10-20), minus the actor | not captured live |
+| `mission.streak.milestone` | `startup_id`, `streak` | **founder + team member only** (D-MIS-8, 2026-10-20), minus the actor | not captured live |
 | `healthscore.dropped` | `startup_id`, `score`, `previous_score`, `delta_7d`, `computed_at` | all active members (passive/system event — no member actor) | not captured live |
 | `assessment.completed` | `assessment_id`, `startup_id`, `dimension_scores` | all active members (passive/system event — no member actor) | not captured live |
 | `workspace.member.joined` | `startup_id`, `user_id`, `role` | existing active members, correctly excluding the new joiner | ✅ `actor_excluded_from_own_action.json` (shows this type present in the actor's own feed after a teammate joined) |
-| `mission.ready` | `startup_id`, `mission_id` | all active members (scheduled/system event — no member actor) | ✅ `mission_ready_feed.json` |
+| `mission.ready` | `startup_id`, `mission_id` | **founder + team member only** (D-MIS-8, 2026-10-20) | ✅ `mission_ready_feed.json` |
 | `roadmap.milestone.overdue` | `startup_id`, `milestone_id` | all active members (scheduled/system event — no member actor) | ⚠️ unit only — `tests/worker/test_scheduled_handlers.py::test_overdue_publishes_only_if_still_overdue` (asserts the exact payload published) |
 | `assessment.quarterly.due` | `startup_id` | all active members (scheduled/system event — no member actor) | ⚠️ unit only — `tests/worker/test_scheduled_handlers.py::test_quarterly_publishes` (asserts the exact payload published) |
+
+**Audience changes, 2026-10-20 (D-MIS-8):** `dashboard.briefing.ready` is founder + team member only;
+`finance.runway.low` is founder + team member + accountant; `marketing.post.published`,
+`marketing.campaign.launched` and `marketing.campaign.completed` are founder + team member (minus the actor). The
+full table with live captures is in `docs/fe-integration-guide-dashboard-role-leaks.md` §3.
 
 Non-`data`-shape columns (`title`/`body`) are fixed per type, not shown per-row above — see §1 for
 why `title` is generic and `body` is currently always `""`. The 3 Slice-3 rows are **scheduled/system
