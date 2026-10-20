@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.db.models.enums import (
     AssetType,
@@ -24,6 +24,8 @@ class CalendarEntryCreate(BaseModel):
     status: ContentStatus = ContentStatus.draft
     body: str | None = None
     media_ref: str | None = Field(default=None, max_length=500)
+    media_id: uuid.UUID | None = None
+    campaign_id: uuid.UUID | None = None
     scheduled_at: datetime | None = None
 
     @field_validator("title")
@@ -40,6 +42,8 @@ class CalendarEntryUpdate(BaseModel):
     status: ContentStatus | None = None
     body: str | None = None
     media_ref: str | None = Field(default=None, max_length=500)
+    media_id: uuid.UUID | None = None
+    campaign_id: uuid.UUID | None = None
     scheduled_at: datetime | None = None
 
     @field_validator("title")
@@ -48,6 +52,15 @@ class CalendarEntryUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("Title cannot be blank.")
         return v
+
+
+class MediaResponse(BaseModel):
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
 
 
 class CalendarEntryResponse(BaseModel):
@@ -59,6 +72,9 @@ class CalendarEntryResponse(BaseModel):
     status: ContentStatus
     body: str | None
     media_ref: str | None
+    media_id: uuid.UUID | None = None
+    media: MediaResponse | None = None
+    campaign_id: uuid.UUID | None = None
     scheduled_at: datetime | None
     published_at: datetime | None
     created_at: datetime
@@ -203,11 +219,13 @@ class CopyGenerateRequest(BaseModel):
     tone: CopyTone
     key_message: str = Field(min_length=1, max_length=2000)
     cta: str | None = Field(default=None, max_length=200)
+    campaign_id: uuid.UUID | None = None
 
 
 class GenerationResponse(BaseModel):
     id: uuid.UUID
     startup_id: uuid.UUID
+    campaign_id: uuid.UUID | None = None
     kind: MarketingGenerationKind
     status: MarketingGenerationStatus
     inputs: dict[str, Any]
@@ -294,6 +312,25 @@ class MetricPoint(BaseModel):
     # Upper bound = Postgres int32 max, so an oversized value is a 422 (not a 500 at flush).
     value: int = Field(ge=0, le=2_147_483_647)
 
+    @model_validator(mode="after")
+    def _one_scope(self) -> "MetricPoint":
+        # D-MKT-7: each number is recorded at exactly one scope (a channel, a campaign, or the
+        # whole workspace). A point at two scopes would be counted twice in the funnel.
+        if self.channel is not None and self.campaign_id is not None:
+            raise ValueError("Record a metric against a channel or a campaign, not both.")
+        return self
+
+
+class MetricRow(BaseModel):
+    id: uuid.UUID
+    ts: date
+    metric: MarketingMetricName
+    value: int
+    channel: ChannelKey | None
+    campaign_id: uuid.UUID | None
+    campaign_name: str | None
+    created_at: datetime
+
 
 class MetricsIngest(BaseModel):
     # Bound the batch so one request can't insert an unbounded number of rows.
@@ -306,10 +343,17 @@ class TrafficPoint(BaseModel):
 
 
 class ChannelCac(BaseModel):
+    """`spend`/`conversions` are the totals the CAC is computed from. They include the share of
+    campaign-scoped numbers attributed by the campaign's `channel_mix` (D-MKT-7); that share is
+    broken out in `attributed_*`, and `estimated` is true whenever it is non-zero."""
+
     channel: ChannelKey
     spend: int
     conversions: int
     cac: int | None
+    attributed_spend: int = 0
+    attributed_conversions: int = 0
+    estimated: bool = False
 
 
 class Funnel(BaseModel):
@@ -335,3 +379,39 @@ class AnalyticsResponse(BaseModel):
     cac_by_channel: list[ChannelCac]
     funnel: Funnel
     leaderboard: list[LeaderboardRow]
+
+
+class CampaignStats(BaseModel):
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+    click_through_rate: float
+    conversion_rate: float
+
+
+class PerformancePoint(BaseModel):
+    date: date
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+
+
+class PerformanceChannel(BaseModel):
+    channel: ChannelKey
+    share_percent: float
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+    estimated: bool
+
+
+class CampaignPerformance(BaseModel):
+    campaign_id: uuid.UUID
+    name: str
+    range: str
+    totals: CampaignStats
+    series: list[PerformancePoint]
+    by_channel: list[PerformanceChannel]

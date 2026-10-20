@@ -20,7 +20,8 @@ def test_stage_at_time_migration_applies_and_round_trips():
     )
     assert chk.returncode == 0, chk.stderr
 
-    down = _run("alembic", "downgrade", "-1")
+    # One step below THIS revision, not below head: later migrations stack on top of it.
+    down = _run("alembic", "downgrade", "0060_assessment_stage_at_time-1")
     assert down.returncode == 0, down.stderr
     gone = _run(
         "python",

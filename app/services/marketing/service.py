@@ -6,13 +6,19 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.db.models.enums import CampaignStatus, ChannelKey, ChannelStatus, ContentStatus
-from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingChannel
+from app.db.models.marketing import (
+    Campaign,
+    ContentCalendarEntry,
+    MarketingChannel,
+    MarketingMedia,
+)
 from app.platform.events import event_bus
 from app.schemas.marketing import (
     CalendarEntryCreate,
     CalendarEntryResponse,
     CalendarEntryUpdate,
     ChannelUpdate,
+    MediaResponse,
 )
 from app.services.marketing import analytics as analytics_svc
 
@@ -23,8 +29,39 @@ from app.services.marketing.errors import _validation
 __all__ = ["_validation"]
 
 
-def serialize_entry(e: ContentCalendarEntry) -> CalendarEntryResponse:
-    return CalendarEntryResponse.model_validate(e, from_attributes=True)
+def serialize_entries(db: Session, rows: list[ContentCalendarEntry]) -> list[CalendarEntryResponse]:
+    """Serialize entries with their media attached, in one media query for the whole list."""
+    media_ids = {e.media_id for e in rows if e.media_id is not None}
+    media = (
+        {m.id: m for m in db.query(MarketingMedia).filter(MarketingMedia.id.in_(media_ids)).all()}
+        if media_ids
+        else {}
+    )
+    out = []
+    for e in rows:
+        item = CalendarEntryResponse.model_validate(e, from_attributes=True)
+        m = media.get(e.media_id) if e.media_id else None
+        item.media = MediaResponse.model_validate(m, from_attributes=True) if m else None
+        out.append(item)
+    return out
+
+
+def serialize_entry(db: Session, e: ContentCalendarEntry) -> CalendarEntryResponse:
+    return serialize_entries(db, [e])[0]
+
+
+def _check_links(
+    db: Session, startup_id: uuid.UUID, *, media_id: uuid.UUID | None, campaign_id: uuid.UUID | None
+) -> None:
+    """A post may only point at media and a campaign of its own workspace."""
+    if media_id is not None and (
+        db.query(MarketingMedia.id).filter_by(id=media_id, startup_id=startup_id).first() is None
+    ):
+        raise _validation("media_id", "Unknown media for this workspace.")
+    if campaign_id is not None and (
+        db.query(Campaign.id).filter_by(id=campaign_id, startup_id=startup_id).first() is None
+    ):
+        raise _validation("campaign_id", "Unknown campaign for this workspace.")
 
 
 def create_entry(
@@ -32,6 +69,7 @@ def create_entry(
 ) -> ContentCalendarEntry:
     if data.status == ContentStatus.scheduled and data.scheduled_at is None:
         raise _validation("scheduled_at", "A scheduled entry needs a scheduled_at time.")
+    _check_links(db, startup_id, media_id=data.media_id, campaign_id=data.campaign_id)
     entry = ContentCalendarEntry(
         startup_id=startup_id,
         created_by=created_by,
@@ -40,6 +78,8 @@ def create_entry(
         status=data.status,
         body=data.body,
         media_ref=data.media_ref,
+        media_id=data.media_id,
+        campaign_id=data.campaign_id,
         scheduled_at=data.scheduled_at,
     )
     if data.status == ContentStatus.published:
@@ -68,6 +108,7 @@ def list_entries(
     date_to: datetime | None = None,
     channel: ChannelKey | None = None,
     status: ContentStatus | None = None,
+    campaign_id: uuid.UUID | None = None,
 ) -> list[ContentCalendarEntry]:
     q = db.query(ContentCalendarEntry).filter(ContentCalendarEntry.startup_id == startup_id)
     if date_from is not None:
@@ -78,6 +119,8 @@ def list_entries(
         q = q.filter(ContentCalendarEntry.channel == channel)
     if status is not None:
         q = q.filter(ContentCalendarEntry.status == status)
+    if campaign_id is not None:
+        q = q.filter(ContentCalendarEntry.campaign_id == campaign_id)
     return q.order_by(
         ContentCalendarEntry.scheduled_at.is_(None), ContentCalendarEntry.scheduled_at
     ).all()
@@ -97,6 +140,12 @@ def update_entry(
     new_scheduled = fields["scheduled_at"] if "scheduled_at" in fields else entry.scheduled_at
     if new_status == ContentStatus.scheduled and new_scheduled is None:
         raise _validation("scheduled_at", "A scheduled entry needs a scheduled_at time.")
+    _check_links(
+        db,
+        startup_id,
+        media_id=fields.get("media_id"),
+        campaign_id=fields.get("campaign_id"),
+    )
     for name, value in fields.items():
         setattr(entry, name, value)
     just_published = new_status == ContentStatus.published and entry.published_at is None
@@ -114,19 +163,50 @@ def delete_entry(db: Session, *, startup_id: uuid.UUID, entry_id: uuid.UUID) -> 
     db.flush()
 
 
-def _emit_published(db: Session, entry: ContentCalendarEntry, *, actor_id: uuid.UUID) -> None:
-    event_bus.publish(
-        db,
-        "marketing.post.published",
-        {
-            "startup_id": str(entry.startup_id),
-            "entry_id": str(entry.id),
-            "title": entry.title,
-            "channel": entry.channel.value,
-            "actor_id": str(actor_id),
-            "created_by": str(entry.created_by) if entry.created_by else None,
-        },
+def _emit_published(
+    db: Session, entry: ContentCalendarEntry, *, actor_id: uuid.UUID | None
+) -> None:
+    """`marketing.post.published`. A person marking a post published is the actor and is not
+    notified; the scheduler publishes with no actor, so the whole marketing team (including the
+    author) hears of it. `was_scheduled` picks the copy ("Scheduled post published" vs "Post
+    published") and `href` is the deep link behind the "See results" call to action."""
+    payload: dict = {
+        "startup_id": str(entry.startup_id),
+        "entry_id": str(entry.id),
+        "title": entry.title,
+        "channel": entry.channel.value,
+        "was_scheduled": entry.scheduled_at is not None,
+        "href": f"/marketing/calendar?entry={entry.id}",
+    }
+    if actor_id is not None:
+        payload["actor_id"] = str(actor_id)
+        payload["created_by"] = str(entry.created_by) if entry.created_by else None
+    event_bus.publish(db, "marketing.post.published", payload)
+
+
+def publish_due_entry(db: Session, *, entry_id: uuid.UUID, now: datetime) -> bool:
+    """Flip one due `scheduled` post to `published` (D-MKT-8: status only, nothing is posted to
+    a platform). Idempotent and safe against a concurrent edit: the row is locked and its state
+    re-checked, so a post edited back to draft, rescheduled later or already published between
+    the scheduler's scan and now is left alone. `published_at` is the time it was due."""
+    entry = (
+        db.query(ContentCalendarEntry)
+        .filter(ContentCalendarEntry.id == entry_id)
+        .with_for_update()
+        .one_or_none()
     )
+    if (
+        entry is None
+        or entry.status != ContentStatus.scheduled
+        or entry.scheduled_at is None
+        or entry.scheduled_at > now
+    ):
+        return False
+    entry.status = ContentStatus.published
+    entry.published_at = entry.scheduled_at
+    db.flush()
+    _emit_published(db, entry, actor_id=None)
+    return True
 
 
 def list_channels(db: Session, *, startup_id: uuid.UUID) -> list[MarketingChannel]:

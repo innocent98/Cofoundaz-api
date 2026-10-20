@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
-from app.db.models.marketing import AudienceSegment, MarketingAiGeneration
+from app.db.models.marketing import AudienceSegment, Campaign, MarketingAiGeneration
 from app.platform.jobs import job_dispatcher
 from app.schemas.marketing import ChannelPlanRequest, CopyGenerateRequest, GenerationResponse
 from app.services.marketing.service import _validation
@@ -25,9 +25,14 @@ def create_copy_generation(
         )
         if seg is None:
             raise _validation("audience_segment_id", "Unknown segment for this workspace.")
+    if data.campaign_id is not None and (
+        db.query(Campaign.id).filter_by(id=data.campaign_id, startup_id=startup_id).first() is None
+    ):
+        raise _validation("campaign_id", "Unknown campaign for this workspace.")
     g = MarketingAiGeneration(
         startup_id=startup_id,
         created_by=created_by,
+        campaign_id=data.campaign_id,
         kind=MarketingGenerationKind.copy,
         inputs=data.model_dump(mode="json"),
         status=MarketingGenerationStatus.generating,
@@ -140,13 +145,15 @@ def get_generation(
     return g
 
 
-def list_copy_generations(db: Session, *, startup_id: uuid.UUID) -> list[MarketingAiGeneration]:
-    return (
-        db.query(MarketingAiGeneration)
-        .filter_by(startup_id=startup_id, kind=MarketingGenerationKind.copy)
-        .order_by(MarketingAiGeneration.created_at.desc())
-        .all()
+def list_copy_generations(
+    db: Session, *, startup_id: uuid.UUID, campaign_id: uuid.UUID | None = None
+) -> list[MarketingAiGeneration]:
+    q = db.query(MarketingAiGeneration).filter_by(
+        startup_id=startup_id, kind=MarketingGenerationKind.copy
     )
+    if campaign_id is not None:
+        q = q.filter(MarketingAiGeneration.campaign_id == campaign_id)
+    return q.order_by(MarketingAiGeneration.created_at.desc()).all()
 
 
 def list_content_gap_generations(

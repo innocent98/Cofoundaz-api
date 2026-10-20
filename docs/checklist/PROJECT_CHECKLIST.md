@@ -767,6 +767,19 @@ Slice (c), branch `feat/business-builder-prd-c` (stacked on (b)):
 - [x] Value Proposition fit-lines (`meta.fit_links`, text-matched, pruned on read)
 - SOP `docs/sop/2026-10-19-business-builder-prd-c.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §16-19
 
+## 🟡 Module 10 — Marketing Hub: PRD completion, BE (2026-10-20; gap list `cofoundaz/docs/checklist/marketing-prd-gaps.md`, 35 rows; decisions D-MKT-1 full TM access, D-MKT-8 no external integrations)
+Slice (a), branch `claude/feat-marketing-prd-a` (PR __PR_A__):
+- [x] Scheduler flips due `scheduled` posts to `published` (status only), `marketing.post.published` + "Scheduled post published" / "Post published" copy (rows 3, 34)
+- [x] Notification CTA "See results" + `data.href` deep links (row 4 BE)
+- [x] Campaign list stats (CTR / conversion) in `metrics`, `GET /campaigns/{id}/performance` (rows 6, 7)
+- [x] `campaign_id` on posts and copy generations + filters (row 8)
+- [x] Metric list / delete, one scope per point, CAC by channel attributed by `channel_mix` and labelled estimated (rows 26, 27, D-MKT-7)
+- [x] Interim CSV export (row 25, D-MKT-6)
+- [x] Marketing-scoped post media (rows 2, 13), migration 0061
+- SOP `docs/sop/2026-10-20-marketing-prd-a.md` · guide `docs/fe-integration-guide-marketing-prd.md`
+Slice (b), stacked on (a) (not started):
+- [ ] AI context for all marketing prompts (16) · refine + platform char limits (17, 18) · fit level + channel stats (20) · weekly campaign readout + notification (5) · channel auto-status on launch (21) · keyword estimates (22) · segment definition validation (24) · one channel per post (12)
+
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
 - [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)
 - [x] `GET /team/members`; `/team/comments` thread (create/list/edit/delete/resolve, mentions → notification), migration 0051

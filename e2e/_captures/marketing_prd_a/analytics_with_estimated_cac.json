@@ -1,0 +1,49 @@
+{
+  "data": {
+    "range": "30d",
+    "traffic_by_week": [
+      {
+        "week_start": "2026-10-19",
+        "visits": 300
+      }
+    ],
+    "cac_by_channel": [
+      {
+        "channel": "search",
+        "spend": 8000,
+        "conversions": 4,
+        "cac": 2000,
+        "attributed_spend": 8000,
+        "attributed_conversions": 4,
+        "estimated": true
+      },
+      {
+        "channel": "email",
+        "spend": 17000,
+        "conversions": 11,
+        "cac": 1545,
+        "attributed_spend": 12000,
+        "attributed_conversions": 6,
+        "estimated": true
+      }
+    ],
+    "funnel": {
+      "impressions": 2000,
+      "clicks": 100,
+      "conversions": 15,
+      "click_through_rate": 5.0,
+      "conversion_rate": 15.0
+    },
+    "leaderboard": [
+      {
+        "campaign_id": "54a87848-c841-45e3-9eee-1fe502b6f646",
+        "name": "Waitlist push",
+        "clicks": 100,
+        "conversions": 10,
+        "spend": 20000,
+        "cac": 2000
+      }
+    ]
+  },
+  "meta": null
+}

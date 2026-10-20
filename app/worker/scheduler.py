@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logger import log
 from app.db.models.assessment import Assessment
-from app.db.models.enums import AssessmentStatus, MembershipStatus, RoadmapStatus
+from app.db.models.enums import AssessmentStatus, ContentStatus, MembershipStatus, RoadmapStatus
+from app.db.models.marketing import ContentCalendarEntry
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
@@ -24,6 +25,8 @@ DUE_SOON_DAYS = 2
 SCHED_QUARTERLY = "scheduled.assessment.quarterly"
 SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
+SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
+MARKETING_PUBLISH_BATCH = 500
 
 
 class Due(NamedTuple):
@@ -129,6 +132,56 @@ def _due_health_nightly(db: Session, now: datetime) -> list[Due]:
         for sid in _active_startup_ids(db)
         if str(sid) not in claimed
     ]
+
+
+def _due_marketing_posts(db: Session, now: datetime) -> list[Due]:
+    """Marketing calendar posts whose `scheduled_at` has passed (PRD 10 `marketing.post.published`).
+    One claim per (post, scheduled time): moving a post to a new time makes it claimable again,
+    while a re-scan of the same time never double-fires. Capped per tick; the rest follow on the
+    next one. The job only flips the status (D-MKT-8)."""
+    rows = (
+        db.query(
+            ContentCalendarEntry.id,
+            ContentCalendarEntry.startup_id,
+            ContentCalendarEntry.scheduled_at,
+        )
+        .join(Startup, Startup.id == ContentCalendarEntry.startup_id)
+        .filter(
+            ContentCalendarEntry.status == ContentStatus.scheduled,
+            ContentCalendarEntry.scheduled_at.isnot(None),
+            ContentCalendarEntry.scheduled_at <= now,
+            Startup.deleted_at.is_(None),
+        )
+        .order_by(ContentCalendarEntry.scheduled_at)
+        .limit(MARKETING_PUBLISH_BATCH)
+        .all()
+    )
+    if not rows:
+        return []
+    claimed = {
+        (r[0], r[1])
+        for r in db.query(ScheduledRun.scope_key, ScheduledRun.period_key)
+        .filter(
+            ScheduledRun.task_key == "marketing.publish",
+            ScheduledRun.scope_key.in_([str(r[0]) for r in rows]),
+        )
+        .all()
+    }
+    due = []
+    for eid, sid, at in rows:
+        period = at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%f")
+        if (str(eid), period) not in claimed:
+            due.append(
+                Due(
+                    "marketing.publish",
+                    str(eid),
+                    period,
+                    SCHED_MARKETING_PUBLISH,
+                    sid,
+                    {"startup_id": str(sid), "entry_id": str(eid)},
+                )
+            )
+    return due
 
 
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
@@ -249,6 +302,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_quarterly(db, now),
         *_due_kpi_snapshots(db, now),
         *_due_health_nightly(db, now),
+        *_due_marketing_posts(db, now),
     ]
     enqueued = 0
     for item in due:

@@ -8,6 +8,7 @@ from app.db.models.enums import CampaignStatus
 from app.db.models.marketing import AudienceSegment, Campaign, CampaignSegment
 from app.platform.events import event_bus
 from app.schemas.marketing import CampaignCreate, CampaignResponse, CampaignUpdate
+from app.services.marketing import analytics as analytics_svc
 from app.services.marketing.service import _validation
 
 # legal (from, to) status transitions -> the event to emit (or None)
@@ -29,7 +30,9 @@ def campaign_segment_ids(db: Session, campaign_id: uuid.UUID) -> list[uuid.UUID]
     return [r[0] for r in rows]
 
 
-def serialize_campaign(c: Campaign, segment_ids: list[uuid.UUID]) -> CampaignResponse:
+def serialize_campaign(
+    c: Campaign, segment_ids: list[uuid.UUID], stats: dict | None = None
+) -> CampaignResponse:
     return CampaignResponse(
         id=c.id,
         startup_id=c.startup_id,
@@ -38,7 +41,7 @@ def serialize_campaign(c: Campaign, segment_ids: list[uuid.UUID]) -> CampaignRes
         budget=c.budget,
         channel_mix=c.channel_mix,
         status=c.status,
-        metrics=c.metrics,
+        metrics=stats if stats is not None else analytics_svc.campaign_stats_empty(),
         segment_ids=segment_ids,
         period_start=c.period_start,
         period_end=c.period_end,
@@ -47,6 +50,21 @@ def serialize_campaign(c: Campaign, segment_ids: list[uuid.UUID]) -> CampaignRes
         created_at=c.created_at,
         updated_at=c.updated_at,
     )
+
+
+def serialize_many(db: Session, rows: list[Campaign]) -> list[dict]:
+    """Campaigns as response dicts. `metrics` carries each campaign's all-time totals (impressions,
+    clicks, conversions, spend, click_through_rate, conversion_rate) from its campaign-scoped
+    metric rows, computed in one query for the whole list."""
+    if not rows:
+        return []
+    stats = analytics_svc.campaign_stats(
+        db, startup_id=rows[0].startup_id, campaign_ids=[c.id for c in rows]
+    )
+    return [
+        serialize_campaign(c, campaign_segment_ids(db, c.id), stats[c.id]).model_dump()
+        for c in rows
+    ]
 
 
 def _validate_segment_ids(db: Session, startup_id: uuid.UUID, segment_ids: list[uuid.UUID]) -> None:
@@ -149,6 +167,7 @@ def update_campaign(
                 "startup_id": str(campaign.startup_id),
                 "campaign_id": str(campaign.id),
                 "name": campaign.name,
+                "href": f"/marketing/campaigns/{campaign.id}",
                 "actor_id": str(actor_id),
             },
         )

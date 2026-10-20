@@ -1,0 +1,20 @@
+{
+  "data": {
+    "id": "3eb508f6-15b8-4959-a0a1-06a8bea034e5",
+    "startup_id": "57829571-0f6c-4298-8e87-5cbc70631b58",
+    "created_by": "dd5d48f6-1a40-4426-a84e-079dc98b68c1",
+    "title": "Waitlist teaser",
+    "channel": "organic_social",
+    "status": "published",
+    "body": "Something is coming.",
+    "media_ref": null,
+    "media_id": null,
+    "media": null,
+    "campaign_id": "54a87848-c841-45e3-9eee-1fe502b6f646",
+    "scheduled_at": "2026-10-20T18:11:36.872292Z",
+    "published_at": "2026-10-20T18:11:36.872292Z",
+    "created_at": "2026-10-20T18:14:36.875181Z",
+    "updated_at": "2026-10-20T18:14:38.719632Z"
+  },
+  "meta": null
+}
