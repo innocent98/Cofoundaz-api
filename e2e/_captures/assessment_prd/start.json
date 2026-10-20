@@ -1,0 +1,39 @@
+{
+  "data": {
+    "assessment_id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+    "type": "initial",
+    "status": "in_progress",
+    "next_question": {
+      "key": "product_stage",
+      "dimension": "product",
+      "section": "Product",
+      "qtype": "single_choice",
+      "prompt": "How far along is your product?",
+      "options": [
+        {
+          "value": "idea",
+          "label": "Just an idea"
+        },
+        {
+          "value": "prototype",
+          "label": "A prototype"
+        },
+        {
+          "value": "mvp",
+          "label": "A working MVP"
+        },
+        {
+          "value": "live",
+          "label": "Live with users"
+        }
+      ],
+      "helper": null
+    },
+    "progress": {
+      "answered": 0,
+      "remaining": 8,
+      "pct": 0
+    }
+  },
+  "meta": null
+}

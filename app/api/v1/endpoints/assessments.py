@@ -1,32 +1,44 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
-from app.core.envelope import success_response
+from app.core.envelope import Meta, success_response
 from app.core.errors import AppError, NotFound
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult
-from app.db.models.enums import MembershipRole
+from app.db.models.enums import AssessmentStatus, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_role, require_workspace
+from app.db.tenancy import require_role
 from app.platform.activity import write_activity
 from app.schemas.assessment import AnswerRequest
 from app.services.assessment.bank import ASSESSMENT_BANK, question_by_key
-from app.services.assessment.engine import next_question
+from app.services.assessment.engine import next_question, progress
 from app.services.assessment.service import (
+    answer_groups,
     answered_map,
     complete_assessment,
+    progress_for,
+    quarterly_due,
     serialize_question,
     start_or_resume,
     submit_answer,
 )
 
 router = APIRouter()
+
+# D-ASM-1: assessment answers + narrative are founder business data. Reads are for founders and
+# team members only; mentors, investors, consultants etc. get the standard 403.
+_READ_ROLES = (MembershipRole.founder, MembershipRole.team_member)
+
+
+class AssessmentListMeta(Meta):
+    # Same rule as the quarterly cron (see service.quarterly_due).
+    quarterly_due: bool = False
 
 
 def _startup(db: Session, membership: Membership) -> Startup:
@@ -70,6 +82,7 @@ def start_assessment(
             "type": a.type.value,
             "status": a.status.value,
             "next_question": serialize_question(nq),
+            "progress": progress_for(db, a, startup),
         }
     )
 
@@ -84,7 +97,9 @@ def get_next_question(
     a = _assessment(db, membership, assessment_id)
     startup = _startup(db, membership)
     nq = next_question(ASSESSMENT_BANK, answered_map(db, a), startup)
-    return success_response({"next_question": serialize_question(nq)})
+    return success_response(
+        {"next_question": serialize_question(nq), "progress": progress_for(db, a, startup)}
+    )
 
 
 @router.post("/{assessment_id}/answers")
@@ -98,8 +113,9 @@ def post_answer(
     a = _assessment(db, membership, assessment_id)
     startup = _startup(db, membership)
     nq = submit_answer(db, a, startup, payload.question_key, payload.value)
+    result = {"next_question": serialize_question(nq), "progress": progress_for(db, a, startup)}
     db.commit()
-    return success_response({"next_question": serialize_question(nq)})
+    return success_response(result)
 
 
 @router.post("/{assessment_id}/complete")
@@ -111,7 +127,7 @@ def post_complete_assessment(
 ) -> dict[str, Any]:
     a = _assessment(db, membership, assessment_id)
     startup = _startup(db, membership)
-    result, claimed = complete_assessment(db, a, startup)
+    result, claimed = complete_assessment(db, a, startup, actor_id=user.id)
     if claimed:
         write_activity(
             db,
@@ -128,22 +144,22 @@ def post_complete_assessment(
 
 @router.get("")
 def list_assessments(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    status: Literal["in_progress", "completed"] | None = Query(None),  # noqa: B008
+    membership: Membership = Depends(require_role(*_READ_ROLES)),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = (
-        db.query(Assessment)
-        .filter(Assessment.startup_id == membership.startup_id)
-        .order_by(Assessment.started_at.desc())
-        .all()
-    )
+    q = db.query(Assessment).filter(Assessment.startup_id == membership.startup_id)
+    if status is not None:
+        q = q.filter(Assessment.status == AssessmentStatus(status))
+    rows = q.order_by(Assessment.started_at.desc()).all()
     results = {
         r.assessment_id: r
         for r in db.query(AssessmentResult)
         .filter(AssessmentResult.assessment_id.in_([a.id for a in rows] or [uuid.uuid4()]))
         .all()
     }
+    startup = _startup(db, membership)
     return success_response(
         [
             {
@@ -155,9 +171,17 @@ def list_assessments(
                 "overall_provisional": (
                     results[a.id].overall_provisional if a.id in results else None
                 ),
+                "stage_at_time": a.stage_at_time,
+                # only an in-progress assessment has a path left to walk
+                "progress": (
+                    progress(ASSESSMENT_BANK, answered_map(db, a), startup)
+                    if a.status == AssessmentStatus.in_progress
+                    else None
+                ),
             }
             for a in rows
-        ]
+        ],
+        AssessmentListMeta(quarterly_due=quarterly_due(db, membership.startup_id)),
     )
 
 
@@ -166,7 +190,7 @@ def list_assessments(
 @router.get("/compare")
 def compare_assessments(
     ids: str = Query(...),
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(require_role(*_READ_ROLES)),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -201,7 +225,7 @@ def compare_assessments(
 @router.get("/{assessment_id}")
 def get_assessment(
     assessment_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(require_role(*_READ_ROLES)),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -220,7 +244,9 @@ def get_assessment(
             "id": str(a.id),
             "type": a.type.value,
             "status": a.status.value,
+            "stage_at_time": a.stage_at_time,
             "answers_by_dimension": answers_by_dimension,
+            "answers": answer_groups(db, a),
             "result": (
                 None
                 if result is None

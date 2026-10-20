@@ -89,6 +89,12 @@ def _validation_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def _assessment_members_minus_actor(db: Session, payload: dict) -> list[uuid.UUID]:
+    """D-ASM-1: only founders and team members can open the Assessment, so only they hear of it."""
+    actor = _actor(payload)
+    return [u for u in _validation_members(db, payload) if u != actor]
+
+
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
@@ -164,7 +170,9 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "",
     ),
-    "assessment.completed": _s(_members_minus_actor, "A startup assessment was completed"),
+    "assessment.completed": _s(
+        _assessment_members_minus_actor, "A startup assessment was completed"
+    ),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
     "mission.ready": NotifSpec(
         _all_active_members,
@@ -198,8 +206,10 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "",
     ),
+    # D-ASM-1: the founder owns re-assessment. CTA "Start re-assessment"; the payload carries
+    # `href` (/assessment) from the scheduler handler.
     "assessment.quarterly.due": _s(
-        _all_active_members, "Time for your quarterly startup assessment"
+        _founders, "Time for your quarterly startup assessment", "Start re-assessment"
     ),
     # PRD 08 notifications copy, CTA "Open it".
     "business.plan.generated": _s(

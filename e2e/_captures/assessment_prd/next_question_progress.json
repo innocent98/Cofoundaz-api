@@ -1,0 +1,19 @@
+{
+  "data": {
+    "next_question": {
+      "key": "product_confidence",
+      "dimension": "product",
+      "section": "Product",
+      "qtype": "scale_1_5",
+      "prompt": "How confident are you in your core feature set?",
+      "options": null,
+      "helper": "1 = not at all, 5 = very confident"
+    },
+    "progress": {
+      "answered": 1,
+      "remaining": 8,
+      "pct": 11
+    }
+  },
+  "meta": null
+}

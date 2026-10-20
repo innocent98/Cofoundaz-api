@@ -620,6 +620,18 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
 - [x] `GET /assessments` · `GET /assessments/{id}` · `GET /assessments/compare`
 - [x] Race-safety on all 3 write paths + concurrency tests
 - [x] Live E2E adaptive journey + SOP
+- [x] **PRD gaps (BE), branch `feat/assessment-prd`, 2026-10-20** — SOP `docs/sop/2026-10-20-assessment-prd.md`,
+      FE guide `docs/fe-integration-guide-assessment-prd.md`, migration `0060_assessment_stage_at_time`
+      (chains from `0058`; re-point if Legal's `0059` merges first)
+  - [x] Row 5 (security, D-ASM-1): list / detail / compare gated to founder + team member, others 403
+  - [x] Row 6 (security): `assessment.completed` to founders + team members minus completer; `assessment.quarterly.due` to founders only
+  - [x] Row 7 (D-ASM-2): `progress {answered, remaining, pct}` on start / next-question / answers / in-progress list rows
+  - [x] Row 8: `GET /assessments?status=in_progress|completed` (422 otherwise)
+  - [x] Row 9 (D-ASM-4): `/complete` returns `health {score, previous_score, delta, dimensions[]}`
+  - [x] Row 11: detail `answers` grouped by dimension with prompt, human label, `changed` / `changed_from`
+  - [x] Row 12 (D-ASM-3): `assessments.stage_at_time` snapshot at completion, on list + detail
+  - [x] Row 13: `meta.quarterly_due` (same rule as the cron) + quarterly notification CTA "Start re-assessment" with `href` `/assessment`
+  - [ ] _Open:_ gap-list rows outside this slice (FE parts, rows not assigned here); wider notification-audience review (non-assessment types still reach mentors)
 - [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · ~~quarterly re-assessment cron~~ now
       fires via **Module 20 Slice 3** (`assessment.quarterly.due`, ≥ `QUARTERLY_REASSESS_DAYS`
       since the last completed assessment — see that module's own section)

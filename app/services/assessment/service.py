@@ -1,20 +1,23 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.errors import AppError
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult
-from app.db.models.enums import AssessmentStatus, AssessmentType
+from app.db.models.enums import AssessmentStatus, AssessmentType, Dimension
+from app.db.models.health_score import HealthScore
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
-from app.services.assessment.bank import ASSESSMENT_BANK, Question
-from app.services.assessment.engine import next_question, validate_answer
+from app.services.assessment.bank import ASSESSMENT_BANK, QType, Question, question_by_key
+from app.services.assessment.engine import next_question, progress, validate_answer
 from app.services.assessment.scoring import score
 
 
@@ -117,11 +120,16 @@ def submit_answer(
     return next_question(ASSESSMENT_BANK, answered_map(db, assessment), startup)
 
 
+def progress_for(db: Session, assessment: Assessment, startup: Startup) -> dict[str, int]:
+    return progress(ASSESSMENT_BANK, answered_map(db, assessment), startup)
+
+
 def _result_dict(
     assessment_id: uuid.UUID,
     dimension_scores: dict[str, int],
     overall_provisional: int,
     narrative: str,
+    health: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "assessment_id": str(assessment_id),
@@ -129,11 +137,42 @@ def _result_dict(
         "dimension_scores": dimension_scores,
         "overall_provisional": overall_provisional,
         "narrative": narrative,
+        # None on a replayed /complete (the transition already happened; the before/after pair is
+        # only knowable by the call that did the recompute).
+        "health": health,
+    }
+
+
+def _health_change(
+    previous_score: int | None, previous_dims: dict[str, int] | None, now: HealthScore | None
+) -> dict[str, Any] | None:
+    """D-ASM-4: the Health Score this completion produced, against the one just before it."""
+    if now is None:
+        return None
+    prev_dims = previous_dims or {}
+    dims = []
+    for d in Dimension:
+        score = int(now.dimension_scores.get(d.value, 0))
+        prev = prev_dims.get(d.value)
+        prev_i = int(prev) if prev is not None else None
+        dims.append(
+            {
+                "key": d.value,
+                "score": score,
+                "previous": prev_i,
+                "delta": None if prev_i is None else score - prev_i,
+            }
+        )
+    return {
+        "score": now.score,
+        "previous_score": previous_score,
+        "delta": None if previous_score is None else now.score - previous_score,
+        "dimensions": dims,
     }
 
 
 def complete_assessment(
-    db: Session, assessment: Assessment, startup: Startup
+    db: Session, assessment: Assessment, startup: Startup, actor_id: uuid.UUID | None = None
 ) -> tuple[dict[str, Any], bool]:
     """Complete `assessment`, returning `(result, claimed)`.
 
@@ -169,7 +208,12 @@ def complete_assessment(
         db.query(Assessment)
         .filter(Assessment.id == assessment.id, Assessment.status == AssessmentStatus.in_progress)
         .update(
-            {"status": AssessmentStatus.completed, "completed_at": now}, synchronize_session=False
+            {
+                "status": AssessmentStatus.completed,
+                "completed_at": now,
+                "stage_at_time": startup.stage.value if startup.stage is not None else None,
+            },
+            synchronize_session=False,
         )
     )
     if claimed == 0:
@@ -200,6 +244,7 @@ def complete_assessment(
     # We won the claim -- keep the in-memory object in sync with what we just committed.
     assessment.status = AssessmentStatus.completed
     assessment.completed_at = now
+    assessment.stage_at_time = startup.stage.value if startup.stage is not None else None
 
     scored = score(ASSESSMENT_BANK, answers, startup)
     db.add(
@@ -223,7 +268,11 @@ def complete_assessment(
     # ai.health.recommendations job from this request -- masked only by get_overview's
     # lazy-on-read recompute on a later GET /health-score.
     db.flush()
-    recompute_health_score(db, startup, trigger="assessment_complete")
+    # Read the before-picture BEFORE the recompute upserts over it (D-ASM-4).
+    before = db.query(HealthScore).filter_by(startup_id=startup.id).first()
+    previous_score = before.score if before is not None else None
+    previous_dims = dict(before.dimension_scores) if before is not None else None
+    health_now = recompute_health_score(db, startup, trigger="assessment_complete")
     job_dispatcher.enqueue(db, "ai.assessment.narrative", job_payload, startup.id)
     event_bus.publish(
         db,
@@ -232,6 +281,8 @@ def complete_assessment(
             "assessment_id": str(assessment.id),
             "startup_id": str(startup.id),
             "dimension_scores": scored["dimension_scores"],
+            # lets the notification fan-out skip the person who just did it
+            **({"actor_id": str(actor_id)} if actor_id is not None else {}),
         },
     )
     db.flush()
@@ -241,6 +292,95 @@ def complete_assessment(
             scored["dimension_scores"],
             scored["overall_provisional"],
             scored["narrative"],
+            _health_change(previous_score, previous_dims, health_now),
         ),
         True,
     )
+
+
+def quarterly_due(db: Session, startup_id: uuid.UUID, now: datetime | None = None) -> bool:
+    """True when a quarterly re-assessment is due.
+
+    Deliberately the same rule as the cron (`app.worker.scheduler._due_quarterly`): the latest
+    COMPLETED assessment is at least `QUARTERLY_REASSESS_DAYS` old and no assessment is already in
+    progress. The cron additionally de-duplicates per quarter (`ScheduledRun`); that is about not
+    re-notifying, not about whether the founder is due, so it is not part of this flag.
+    """
+    now = now or datetime.now(UTC)
+    last = (
+        db.query(func.max(Assessment.completed_at))
+        .filter(
+            Assessment.startup_id == startup_id, Assessment.status == AssessmentStatus.completed
+        )
+        .scalar()
+    )
+    if last is None or last > now - timedelta(days=settings.QUARTERLY_REASSESS_DAYS):
+        return False
+    in_progress = (
+        db.query(Assessment.id)
+        .filter(
+            Assessment.startup_id == startup_id, Assessment.status == AssessmentStatus.in_progress
+        )
+        .first()
+    )
+    return in_progress is None
+
+
+def answer_label(q: Question | None, value: Any) -> str:
+    """The human-readable form of a stored answer (choice label, scale number, amount, text)."""
+    if q is None:
+        return str(value)
+    labels = {o["value"]: o["label"] for o in (q.options or [])}
+    if q.qtype == QType.SINGLE_CHOICE and not isinstance(value, list | dict):
+        return str(labels.get(value, value))
+    if q.qtype == QType.MULTI_CHOICE and isinstance(value, list):
+        return ", ".join(str(labels.get(v, v)) for v in value)
+    if q.qtype == QType.NUMERIC_CURRENCY and isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def _same(a: Any, b: Any) -> bool:
+    if isinstance(a, list) and isinstance(b, list):
+        return sorted(map(str, a)) == sorted(map(str, b))
+    return bool(a == b)
+
+
+def previous_completed(db: Session, assessment: Assessment) -> Assessment | None:
+    """The latest COMPLETED assessment of the same startup that finished before `assessment`
+    (or, for one still in progress, the latest completed one)."""
+    q = db.query(Assessment).filter(
+        Assessment.startup_id == assessment.startup_id,
+        Assessment.status == AssessmentStatus.completed,
+        Assessment.id != assessment.id,
+    )
+    if assessment.completed_at is not None:
+        q = q.filter(Assessment.completed_at < assessment.completed_at)
+    return q.order_by(Assessment.completed_at.desc()).first()
+
+
+def answer_groups(db: Session, assessment: Assessment) -> list[dict[str, Any]]:
+    """Structured answers grouped by dimension, each with prompt, human label and change marker."""
+    current = answered_map(db, assessment)
+    prev = previous_completed(db, assessment)
+    prev_answers = answered_map(db, prev) if prev is not None else {}
+
+    order = {q.key: i for i, q in enumerate(ASSESSMENT_BANK.questions)}
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for key in sorted(current, key=lambda k: (order.get(k, len(order)), k)):
+        q = question_by_key(ASSESSMENT_BANK, key)
+        value = current[key]
+        changed = key in prev_answers and not _same(prev_answers[key], value)
+        groups.setdefault(q.dimension.value if q is not None else "unknown", []).append(
+            {
+                "question_key": key,
+                "prompt": q.prompt if q is not None else None,
+                "qtype": q.qtype if q is not None else None,
+                "value": value,
+                "answer_label": answer_label(q, value),
+                "changed": changed,
+                "changed_from": answer_label(q, prev_answers[key]) if changed else None,
+            }
+        )
+    dims = [d.value for d in Dimension]
+    return [{"dimension": d, "questions": groups[d]} for d in [*dims, "unknown"] if d in groups]

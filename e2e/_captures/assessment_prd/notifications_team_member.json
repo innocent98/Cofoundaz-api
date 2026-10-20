@@ -1,0 +1,63 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "48423a10-a770-42f7-9815-9d62527cfa0a",
+        "type": "healthscore.dropped",
+        "title": "Your Health Score dropped 49 points, worth a look",
+        "body": "See why",
+        "data": {
+          "score": 31,
+          "delta_7d": -49,
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "computed_at": "2026-10-20T13:46:45.557761+00:00",
+          "previous_score": 80
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:45.549161+00:00"
+      },
+      {
+        "id": "3d85c6be-ab35-4729-ba7d-a03f3042e4f6",
+        "type": "assessment.completed",
+        "title": "A startup assessment was completed",
+        "body": "",
+        "data": {
+          "actor_id": "dc724090-a2b5-4481-ae7d-a5839a8e76f8",
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "assessment_id": "49e9139f-3b63-4efc-bdff-5e347e0a263d",
+          "dimension_scores": {
+            "team": 50,
+            "legal": 0,
+            "money": 43,
+            "market": 38,
+            "product": 25
+          }
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:45.549161+00:00"
+      },
+      {
+        "id": "2f1315e3-3bd7-401d-a1a0-3db1665e4369",
+        "type": "assessment.completed",
+        "title": "A startup assessment was completed",
+        "body": "",
+        "data": {
+          "actor_id": "dc724090-a2b5-4481-ae7d-a5839a8e76f8",
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "assessment_id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+          "dimension_scores": {
+            "team": 75,
+            "legal": 100,
+            "money": 71,
+            "market": 75,
+            "product": 78
+          }
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:45.201085+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

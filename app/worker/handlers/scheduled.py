@@ -82,7 +82,9 @@ def handle_roadmap_due_soon(db: Session, job: Job) -> None:
 
 def handle_assessment_quarterly(db: Session, job: Job) -> None:
     event_bus.publish(
-        db, "assessment.quarterly.due", {"startup_id": str(job.payload["startup_id"])}
+        db,
+        "assessment.quarterly.due",
+        {"startup_id": str(job.payload["startup_id"]), "href": "/assessment"},
     )
 
 

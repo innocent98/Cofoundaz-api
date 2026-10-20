@@ -133,7 +133,9 @@ def test_complete_is_idempotent_no_reenqueue(client, db):
     second = client.post(f"/api/v1/assessments/{aid}/complete", headers=h)
 
     assert second.status_code == 200, second.text
-    assert second.json()["data"] == first.json()["data"]
+    # `health` (D-ASM-4) is only knowable to the call that did the recompute: null on a replay.
+    assert {**second.json()["data"], "health": None} == {**first.json()["data"], "health": None}
+    assert second.json()["data"]["health"] is None
     assert db.query(Job).count() == before_jobs  # no new jobs
     assert len(event_bus.published) == before_events  # no re-fired event
     assert db.query(AssessmentResult).filter_by(assessment_id=aid).count() == 1  # not re-scored

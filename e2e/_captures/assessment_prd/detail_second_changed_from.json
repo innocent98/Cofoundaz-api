@@ -1,0 +1,163 @@
+{
+  "data": {
+    "id": "49e9139f-3b63-4efc-bdff-5e347e0a263d",
+    "type": "quarterly",
+    "status": "completed",
+    "stage_at_time": "build",
+    "answers_by_dimension": {
+      "product": [
+        {
+          "question_key": "product_stage",
+          "value": "idea"
+        }
+      ],
+      "market": [
+        {
+          "question_key": "market_clarity",
+          "value": 3
+        },
+        {
+          "question_key": "market_research",
+          "value": "none"
+        }
+      ],
+      "money": [
+        {
+          "question_key": "has_revenue",
+          "value": "no"
+        },
+        {
+          "question_key": "runway_confidence",
+          "value": 3
+        }
+      ],
+      "legal": [
+        {
+          "question_key": "incorporated",
+          "value": "no"
+        }
+      ],
+      "team": [
+        {
+          "question_key": "team_size",
+          "value": "solo"
+        },
+        {
+          "question_key": "team_confidence",
+          "value": 3
+        }
+      ]
+    },
+    "answers": [
+      {
+        "dimension": "product",
+        "questions": [
+          {
+            "question_key": "product_stage",
+            "prompt": "How far along is your product?",
+            "qtype": "single_choice",
+            "value": "idea",
+            "answer_label": "Just an idea",
+            "changed": true,
+            "changed_from": "Live with users"
+          }
+        ]
+      },
+      {
+        "dimension": "market",
+        "questions": [
+          {
+            "question_key": "market_clarity",
+            "prompt": "How clearly do you understand your target market?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "market_research",
+            "prompt": "How much customer research have you done?",
+            "qtype": "single_choice",
+            "value": "none",
+            "answer_label": "No research yet",
+            "changed": true,
+            "changed_from": "Deep, ongoing research"
+          }
+        ]
+      },
+      {
+        "dimension": "money",
+        "questions": [
+          {
+            "question_key": "has_revenue",
+            "prompt": "Are you generating revenue yet?",
+            "qtype": "single_choice",
+            "value": "no",
+            "answer_label": "Not yet",
+            "changed": true,
+            "changed_from": "Yes, we have revenue"
+          },
+          {
+            "question_key": "runway_confidence",
+            "prompt": "How confident are you in your financial runway?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      },
+      {
+        "dimension": "legal",
+        "questions": [
+          {
+            "question_key": "incorporated",
+            "prompt": "Is your company incorporated?",
+            "qtype": "single_choice",
+            "value": "no",
+            "answer_label": "Not incorporated",
+            "changed": true,
+            "changed_from": "Incorporated"
+          }
+        ]
+      },
+      {
+        "dimension": "team",
+        "questions": [
+          {
+            "question_key": "team_size",
+            "prompt": "Who's building this with you?",
+            "qtype": "single_choice",
+            "value": "solo",
+            "answer_label": "Just me",
+            "changed": true,
+            "changed_from": "A team"
+          },
+          {
+            "question_key": "team_confidence",
+            "prompt": "How well are your key skill gaps covered?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      }
+    ],
+    "result": {
+      "dimension_scores": {
+        "team": 50,
+        "legal": 0,
+        "money": 43,
+        "market": 38,
+        "product": 25
+      },
+      "overall_provisional": 31,
+      "narrative": "Your strongest area is team (50). Focus next on legal (0)."
+    }
+  },
+  "meta": null
+}

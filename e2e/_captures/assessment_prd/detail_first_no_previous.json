@@ -1,0 +1,202 @@
+{
+  "data": {
+    "id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+    "type": "initial",
+    "status": "completed",
+    "stage_at_time": "build",
+    "answers_by_dimension": {
+      "product": [
+        {
+          "question_key": "product_stage",
+          "value": "live"
+        },
+        {
+          "question_key": "product_confidence",
+          "value": 3
+        }
+      ],
+      "market": [
+        {
+          "question_key": "market_clarity",
+          "value": 3
+        },
+        {
+          "question_key": "market_research",
+          "value": "deep"
+        }
+      ],
+      "money": [
+        {
+          "question_key": "has_revenue",
+          "value": "yes"
+        },
+        {
+          "question_key": "mrr",
+          "value": 1000
+        },
+        {
+          "question_key": "runway_confidence",
+          "value": 3
+        }
+      ],
+      "legal": [
+        {
+          "question_key": "incorporated",
+          "value": "yes"
+        },
+        {
+          "question_key": "ip_assigned",
+          "value": "yes"
+        }
+      ],
+      "team": [
+        {
+          "question_key": "team_size",
+          "value": "team"
+        },
+        {
+          "question_key": "team_confidence",
+          "value": 3
+        }
+      ]
+    },
+    "answers": [
+      {
+        "dimension": "product",
+        "questions": [
+          {
+            "question_key": "product_stage",
+            "prompt": "How far along is your product?",
+            "qtype": "single_choice",
+            "value": "live",
+            "answer_label": "Live with users",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "product_confidence",
+            "prompt": "How confident are you in your core feature set?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      },
+      {
+        "dimension": "market",
+        "questions": [
+          {
+            "question_key": "market_clarity",
+            "prompt": "How clearly do you understand your target market?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "market_research",
+            "prompt": "How much customer research have you done?",
+            "qtype": "single_choice",
+            "value": "deep",
+            "answer_label": "Deep, ongoing research",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      },
+      {
+        "dimension": "money",
+        "questions": [
+          {
+            "question_key": "has_revenue",
+            "prompt": "Are you generating revenue yet?",
+            "qtype": "single_choice",
+            "value": "yes",
+            "answer_label": "Yes, we have revenue",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "mrr",
+            "prompt": "Roughly what is your monthly recurring revenue?",
+            "qtype": "numeric_currency",
+            "value": 1000,
+            "answer_label": "1000",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "runway_confidence",
+            "prompt": "How confident are you in your financial runway?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      },
+      {
+        "dimension": "legal",
+        "questions": [
+          {
+            "question_key": "incorporated",
+            "prompt": "Is your company incorporated?",
+            "qtype": "single_choice",
+            "value": "yes",
+            "answer_label": "Incorporated",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "ip_assigned",
+            "prompt": "Is your intellectual property formally assigned to the company?",
+            "qtype": "single_choice",
+            "value": "yes",
+            "answer_label": "Yes",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      },
+      {
+        "dimension": "team",
+        "questions": [
+          {
+            "question_key": "team_size",
+            "prompt": "Who's building this with you?",
+            "qtype": "single_choice",
+            "value": "team",
+            "answer_label": "A team",
+            "changed": false,
+            "changed_from": null
+          },
+          {
+            "question_key": "team_confidence",
+            "prompt": "How well are your key skill gaps covered?",
+            "qtype": "scale_1_5",
+            "value": 3,
+            "answer_label": "3",
+            "changed": false,
+            "changed_from": null
+          }
+        ]
+      }
+    ],
+    "result": {
+      "dimension_scores": {
+        "team": 75,
+        "legal": 100,
+        "money": 71,
+        "market": 75,
+        "product": 78
+      },
+      "overall_provisional": 80,
+      "narrative": "Your strongest area is legal (100). Focus next on money (71)."
+    }
+  },
+  "meta": null
+}
