@@ -1,0 +1,64 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "0cfbf29c-8eb1-496b-afa5-ed2aff4d321e",
+        "type": "healthscore.dropped",
+        "title": "Your Health Score dropped 36 points, worth a look",
+        "body": "See why",
+        "data": {
+          "score": 44,
+          "delta_7d": -36,
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "computed_at": "2026-10-20T13:46:46.303069+00:00",
+          "previous_score": 31
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:46.298565+00:00"
+      },
+      {
+        "id": "e6f3540f-9423-41f3-a12e-b85794aeb811",
+        "type": "mission.ready",
+        "title": "Your mission for today is ready",
+        "body": "Finish the core feature set",
+        "data": {
+          "mission_id": "4095cf6b-83ff-486a-8c8b-6f43f5eb64fe",
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "first_task_title": "Finish the core feature set"
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:46.111670+00:00"
+      },
+      {
+        "id": "c1646e7a-77f6-486f-bf0d-1394a43db59f",
+        "type": "healthscore.dropped",
+        "title": "Your Health Score dropped 49 points, worth a look",
+        "body": "See why",
+        "data": {
+          "score": 31,
+          "delta_7d": -49,
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1",
+          "computed_at": "2026-10-20T13:46:45.557761+00:00",
+          "previous_score": 80
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:45.549161+00:00"
+      },
+      {
+        "id": "61dfb87b-61c9-4944-8583-96ceee1f58cf",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "a455d517-8750-483a-8457-9fb1c88b17e3",
+          "startup_id": "48469527-1d83-4ddf-afd0-b4df963e92e1"
+        },
+        "read": false,
+        "created_at": "2026-10-20T13:46:44.982119+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}
