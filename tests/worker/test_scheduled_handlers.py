@@ -112,7 +112,10 @@ def test_quarterly_publishes(db, monkeypatch):
     scheduled.handle_assessment_quarterly(
         db, _job("scheduled.assessment.quarterly", {"startup_id": str(s.id)})
     )
-    assert ("assessment.quarterly.due", {"startup_id": str(s.id)}) in published
+    assert (
+        "assessment.quarterly.due",
+        {"startup_id": str(s.id), "href": "/assessment"},
+    ) in published
 
 
 def test_handlers_registered():

@@ -112,7 +112,11 @@ def test_concurrent_complete_of_same_assessment_only_one_scores(engine: Engine):
         assert all(exc is None for _, _, exc in results), f"neither call should raise: {results}"
 
         r0, r1 = results[0][0], results[1][0]
-        assert r0 == r1, "both callers must observe the identical scored result"
+        # `health` is only knowable to the call that claimed the transition (null on the replay)
+        assert {**r0, "health": None} == {
+            **r1,
+            "health": None,
+        }, "both callers must observe the identical scored result"
 
         claimed0, claimed1 = results[0][1], results[1][1]
         assert sorted([claimed0, claimed1]) == [
