@@ -272,6 +272,12 @@ SPECS: dict[str, NotifSpec] = {
         lambda p: f"Campaign launched: {p.get('name', 'a campaign')}",
         lambda _p: "See results",
     ),
+    # PRD 10 "Campaign performance summary ready", CTA "See results" (the payload's `href`).
+    "marketing.campaign.readout.ready": NotifSpec(
+        _roles_minus_actor(MARKETING_ROLES),
+        lambda p: f"Campaign performance summary ready: {p.get('name', 'a campaign')}",
+        lambda _p: "See results",
+    ),
     "marketing.campaign.completed": NotifSpec(
         _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",

@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -17,6 +18,9 @@ from app.schemas.marketing import (
 )
 from app.services.marketing.service import _validation
 
+# Typed in by hand (no SEO data provider): changing any of them stamps `metrics_updated_at`.
+_MANUAL_METRICS = ("volume", "difficulty", "current_rank")
+
 
 def serialize_keyword(row: SeoKeyword) -> KeywordResponse:
     return KeywordResponse.model_validate(row, from_attributes=True)
@@ -24,6 +28,8 @@ def serialize_keyword(row: SeoKeyword) -> KeywordResponse:
 
 def create_keyword(db: Session, *, startup_id: uuid.UUID, data: KeywordCreate) -> SeoKeyword:
     row = SeoKeyword(startup_id=startup_id, **data.model_dump())
+    if any(getattr(data, f) is not None for f in _MANUAL_METRICS):
+        row.metrics_updated_at = datetime.now(UTC)
     db.add(row)
     db.flush()
     return row
@@ -49,8 +55,13 @@ def update_keyword(
     db: Session, *, startup_id: uuid.UUID, keyword_id: uuid.UUID, data: KeywordUpdate
 ) -> SeoKeyword:
     row = get_keyword(db, startup_id=startup_id, keyword_id=keyword_id)
+    changed = False
     for name, value in data.model_dump(exclude_unset=True).items():
+        if name in _MANUAL_METRICS and getattr(row, name) != value:
+            changed = True
         setattr(row, name, value)
+    if changed:
+        row.metrics_updated_at = datetime.now(UTC)
     db.flush()
     return row
 

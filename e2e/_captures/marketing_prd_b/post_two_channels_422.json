@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "channel",
+        "message": "Input should be 'organic_social', 'paid_social', 'search', 'email', 'content_seo', 'partnerships', 'events' or 'referral'"
+      }
+    ]
+  }
+}

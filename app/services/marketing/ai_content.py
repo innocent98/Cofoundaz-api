@@ -6,7 +6,12 @@ from app.core.errors import NotFound
 from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
 from app.db.models.marketing import AudienceSegment, Campaign, MarketingAiGeneration
 from app.platform.jobs import job_dispatcher
-from app.schemas.marketing import ChannelPlanRequest, CopyGenerateRequest, GenerationResponse
+from app.schemas.marketing import (
+    ChannelPlanRequest,
+    CopyGenerateRequest,
+    GenerationResponse,
+    RefineRequest,
+)
 from app.services.marketing.service import _validation
 
 
@@ -35,6 +40,51 @@ def create_copy_generation(
         campaign_id=data.campaign_id,
         kind=MarketingGenerationKind.copy,
         inputs=data.model_dump(mode="json"),
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(g)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "ai.marketing.copy",
+        {"generation_id": str(g.id), "startup_id": str(startup_id)},
+        startup_id,
+    )
+    return g
+
+
+def refine_copy_generation(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    created_by: uuid.UUID,
+    generation_id: uuid.UUID,
+    data: RefineRequest,
+) -> MarketingAiGeneration:
+    """Refine one variant of a finished copy generation: a NEW generation (3 refined variants)
+    that keeps the parent's inputs, including the original key message, and links to it in
+    `inputs.refine`. The parent is never modified."""
+    parent = get_generation(
+        db, startup_id=startup_id, generation_id=generation_id, kind=MarketingGenerationKind.copy
+    )
+    variants = (parent.output or {}).get("variants", [])
+    if parent.status != MarketingGenerationStatus.ready:
+        raise _validation("generation_id", "Only a finished generation can be refined.")
+    if data.variant_index >= len(variants):
+        raise _validation("variant_index", "That variant does not exist.")
+    g = MarketingAiGeneration(
+        startup_id=startup_id,
+        created_by=created_by,
+        campaign_id=parent.campaign_id,
+        kind=MarketingGenerationKind.copy,
+        inputs={
+            **parent.inputs,
+            "refine": {
+                "parent_generation_id": str(parent.id),
+                "variant_index": data.variant_index,
+                "instruction": data.instruction,
+            },
+        },
         status=MarketingGenerationStatus.generating,
     )
     db.add(g)

@@ -25,6 +25,7 @@ from app.db.models.enums import (
     ChannelKey,
     ChannelStatus,
     ContentStatus,
+    FitLevel,
     MarketingGenerationKind,
     MarketingGenerationStatus,
     MarketingMetricName,
@@ -119,6 +120,9 @@ class MarketingChannel(UUIDMixin, TimestampMixin, Base):
     ai_fit_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     fit_note_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    fit_level: Mapped[FitLevel | None] = mapped_column(
+        Enum(FitLevel, native_enum=False, length=10), nullable=True
     )
 
     __table_args__ = (
@@ -240,6 +244,10 @@ class SeoKeyword(UUIDMixin, TimestampMixin, Base):
     difficulty: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_page: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # When volume / difficulty / rank were last typed in (they are manual estimates, D-MKT-8).
+    metrics_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class TrackedPage(UUIDMixin, TimestampMixin, Base):
@@ -300,3 +308,35 @@ class MarketingMetric(UUIDMixin, TimestampMixin, Base):
     value: Mapped[int] = mapped_column(Integer, nullable=False)
 
     __table_args__ = (Index("ix_marketing_metrics_startup_ts", "startup_id", "ts"),)
+
+
+class CampaignReadout(UUIDMixin, TimestampMixin, Base):
+    """The weekly AI readout of one active campaign (PRD 10: "AI weekly readout card").
+    One row per campaign per ISO week."""
+
+    __tablename__ = "campaign_readouts"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[MarketingGenerationStatus] = mapped_column(
+        Enum(MarketingGenerationStatus, native_enum=False, length=12),
+        nullable=False,
+        default=MarketingGenerationStatus.generating,
+    )
+    output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "week_start", name="uq_campaign_readout_week"),
+    )

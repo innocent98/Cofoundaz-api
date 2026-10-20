@@ -162,7 +162,7 @@ def test_marketing_campaigns_journey(base_url, make_verified_user, capture):
         segment_created = c.post(
             "/api/v1/marketing/segments",
             headers=wh,
-            json={"name": "SMB founders", "est_size": 1200, "definition": {"rules": []}},
+            json={"name": "SMB founders", "est_size": 1200, "definition": {"business_type": "SMB"}},
         )
         assert segment_created.status_code == 200, segment_created.text
         capture("marketing", "segment_created", segment_created)

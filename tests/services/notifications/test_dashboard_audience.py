@@ -31,6 +31,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "marketing.post.published": CORE,
     "marketing.campaign.launched": CORE,
     "marketing.campaign.completed": CORE,
+    "marketing.campaign.readout.ready": CORE,
     # Assessment / Validation / KPI strip (earlier PRs, kept honest here)
     "assessment.completed": CORE,
     "assessment.quarterly.due": FOUNDER,

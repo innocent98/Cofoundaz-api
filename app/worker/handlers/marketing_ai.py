@@ -1,28 +1,45 @@
 import math
-from datetime import UTC, datetime
+import uuid
+from collections.abc import Callable
+from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.models.enums import ChannelKey, MarketingGenerationStatus
+from app.db.models.enums import CampaignStatus, ChannelKey, FitLevel, MarketingGenerationStatus
 from app.db.models.job import Job
-from app.db.models.marketing import AudienceSegment, MarketingAiGeneration, SeoKeyword
+from app.db.models.marketing import (
+    AudienceSegment,
+    Campaign,
+    CampaignReadout,
+    MarketingAiGeneration,
+    SeoKeyword,
+)
 from app.db.models.startup import Startup
+from app.platform.events import event_bus
 from app.platform.llm_budget import metered_complete_json
+from app.services.marketing.ai_context import build_marketing_context, fence, has_placeholder
 from app.services.marketing.ai_prompts import (
     build_channel_fit_messages,
     build_channel_plan_messages,
     build_content_gap_messages,
     build_copy_messages,
     build_plan_week_messages,
+    build_readout_messages,
+    build_refine_messages,
     channel_fit_schema,
     channel_plan_schema,
     content_gap_schema,
     copy_schema,
     plan_week_schema,
+    readout_schema,
 )
+from app.services.marketing.platforms import limit_for
+from app.services.marketing.readouts import readout_facts
 from app.services.marketing.service import list_channels
 from app.worker.runner import register_handler
+from app.worker.scheduler import SCHED_MARKETING_READOUT
 
 
 def _load(db: Session, job: Job) -> MarketingAiGeneration | None:
@@ -38,10 +55,46 @@ def _fail_over_budget(db: Session, g: MarketingAiGeneration) -> None:
     db.flush()
 
 
+_RETRY_PLACEHOLDERS = (
+    "Your previous answer contained bracket placeholders such as [link]. Rewrite it with real, "
+    "finished text and no square-bracket placeholders at all."
+)
+
+
+def _complete_checked(
+    db: Session,
+    startup_id: Any,
+    build: Callable[[str], list],
+    schema: dict,
+    problem: Callable[[dict], str | None],
+) -> dict | None:
+    """Call the model; if the answer has a fixable problem (bracket placeholders, copy over the
+    length limit) ask once more, naming the problem. Returns the retry's answer when there is
+    one, else the first. None only when the daily budget is spent on the first call."""
+    result = metered_complete_json(
+        db, startup_id, build(""), schema=schema, max_tokens=settings.LLM_MAX_TOKENS
+    )
+    if result is None:
+        return None
+    note = problem(result)
+    if note:
+        retry = metered_complete_json(
+            db, startup_id, build(note), schema=schema, max_tokens=settings.LLM_MAX_TOKENS
+        )
+        if retry is not None:
+            result = retry
+    return result
+
+
 def handle_marketing_copy(db: Session, job: Job) -> None:
-    """Fill a copy generation with 3 variants via the LLM. No commit."""
+    """Fill a copy generation with 3 variants via the LLM, or 3 refinements of one variant when
+    `inputs.refine` is set. Platform length limits and bracket placeholders are checked once. No commit.
+    """
     g = _load(db, job)
     if g is None:
+        return
+    startup = db.get(Startup, g.startup_id)
+    if startup is None:
         return
     inp = g.inputs
     segment_name = None
@@ -49,25 +102,60 @@ def handle_marketing_copy(db: Session, job: Job) -> None:
     if seg_id:
         seg = db.get(AudienceSegment, seg_id)
         segment_name = seg.name if seg is not None else None
-    result = metered_complete_json(
-        db,
-        g.startup_id,
-        build_copy_messages(
-            asset_type=inp.get("asset_type", ""),
-            channel=inp.get("channel"),
-            tone=inp.get("tone", ""),
-            key_message=inp.get("key_message", ""),
-            cta=inp.get("cta"),
-            segment_name=segment_name,
-        ),
-        schema=copy_schema(),
-        max_tokens=settings.LLM_MAX_TOKENS,
-    )
+    plat = limit_for(inp.get("platform"))
+    char_limit = plat.limit if plat else None
+    context = fence(build_marketing_context(db, startup))
+
+    refine = inp.get("refine")
+    parent_variant = ""
+    if refine:
+        parent = db.get(MarketingAiGeneration, refine.get("parent_generation_id"))
+        variants_in = (parent.output or {}).get("variants", []) if parent is not None else []
+        idx = refine.get("variant_index", 0)
+        if parent is None or parent.startup_id != g.startup_id or not 0 <= idx < len(variants_in):
+            g.status = MarketingGenerationStatus.failed
+            g.error = "parent_missing"
+            db.flush()
+            return
+        parent_variant = str(variants_in[idx])
+
+    def build(note: str) -> list:
+        common = {
+            "asset_type": inp.get("asset_type", ""),
+            "channel": inp.get("channel"),
+            "tone": inp.get("tone", ""),
+            "key_message": inp.get("key_message", ""),
+            "platform_label": plat.label if plat else None,
+            "char_limit": char_limit,
+            "context": context,
+            "retry_note": note,
+        }
+        if refine:
+            return build_refine_messages(
+                variant=parent_variant, instruction=refine.get("instruction", ""), **common
+            )
+        return build_copy_messages(cta=inp.get("cta"), segment_name=segment_name, **common)
+
+    def problem(result: dict) -> str | None:
+        variants = [str(v) for v in (result.get("variants") or [])]
+        if has_placeholder(*variants):
+            return _RETRY_PLACEHOLDERS
+        if char_limit and any(len(v) > char_limit for v in variants):
+            return f"Every variant must be at most {char_limit} characters. Shorten them."
+        return None
+
+    result = _complete_checked(db, g.startup_id, build, copy_schema(), problem)
     if result is None:
         _fail_over_budget(db, g)
         return
     variants = [str(v) for v in (result.get("variants") or [])][:3]
-    g.output = {"variants": variants}
+    g.output = {
+        "variants": variants,
+        "platform": plat.key.value if plat else None,
+        "limit": char_limit,
+        "lengths": [len(v) for v in variants],
+        "over_limit": [i for i, v in enumerate(variants) if char_limit and len(v) > char_limit],
+    }
     g.status = MarketingGenerationStatus.ready
     db.flush()
 
@@ -83,17 +171,27 @@ def handle_marketing_plan_week(db: Session, job: Job) -> None:
     startup = db.get(Startup, g.startup_id)
     if startup is None:
         return
-    result = metered_complete_json(
-        db,
-        g.startup_id,
-        build_plan_week_messages(
+    context = fence(build_marketing_context(db, startup))
+
+    def build(note: str) -> list:
+        return build_plan_week_messages(
             stage=(startup.stage.value if startup.stage else None),
             industry=startup.industry,
             name=startup.name,
-        ),
-        schema=plan_week_schema(),
-        max_tokens=settings.LLM_MAX_TOKENS,
-    )
+            context=context,
+            retry_note=note,
+        )
+
+    def problem(result: dict) -> str | None:
+        texts = [
+            str(e.get(k, ""))
+            for e in (result.get("entries") or [])
+            if isinstance(e, dict)
+            for k in ("title", "body")
+        ]
+        return _RETRY_PLACEHOLDERS if has_placeholder(*texts) else None
+
+    result = _complete_checked(db, g.startup_id, build, plan_week_schema(), problem)
     if result is None:
         _fail_over_budget(db, g)
         return
@@ -152,6 +250,7 @@ def handle_marketing_channel_plan(db: Session, job: Job) -> None:
             stage=(startup.stage.value if startup.stage else None),
             industry=startup.industry,
             budget=inp.get("budget"),
+            context=fence(build_marketing_context(db, startup)),
         ),
         schema=channel_plan_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
@@ -189,6 +288,7 @@ def handle_marketing_channel_fit(db: Session, job: Job) -> None:
             stage=(startup.stage.value if startup.stage else None),
             industry=startup.industry,
             statuses=statuses,
+            context=fence(build_marketing_context(db, startup)),
         ),
         schema=channel_fit_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
@@ -197,15 +297,26 @@ def handle_marketing_channel_fit(db: Session, job: Job) -> None:
         _fail_over_budget(db, g)
         return
     valid = {c.value for c in ChannelKey}
-    notes = {k: str(v) for k, v in (result.get("notes") or {}).items() if k in valid}
+    notes: dict[str, str] = {}
+    levels: dict[str, str] = {}
+    for k, v in (result.get("notes") or {}).items():
+        if k not in valid:
+            continue
+        if isinstance(v, dict):  # {"level": "high", "note": "..."}
+            notes[k] = str(v.get("note", ""))
+            if v.get("level") in {f.value for f in FitLevel}:
+                levels[k] = v["level"]
+        else:  # a bare note with no level
+            notes[k] = str(v)
     now = datetime.now(UTC)
     by_key = {c.key.value: c for c in channels}
     for key, note in notes.items():
         row = by_key.get(key)
         if row is not None:
             row.ai_fit_note = note
+            row.fit_level = FitLevel(levels[key]) if key in levels else None
             row.fit_note_generated_at = now
-    g.output = {"notes": notes}
+    g.output = {"notes": notes, "levels": levels}
     g.status = MarketingGenerationStatus.ready
     db.flush()
 
@@ -236,6 +347,7 @@ def handle_marketing_content_gap(db: Session, job: Job) -> None:
             keywords=keywords,
             stage=(startup.stage.value if startup.stage else None),
             industry=startup.industry,
+            context=fence(build_marketing_context(db, startup)),
         ),
         schema=content_gap_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
@@ -250,3 +362,65 @@ def handle_marketing_content_gap(db: Session, job: Job) -> None:
 
 
 register_handler("ai.marketing.content_gap", handle_marketing_content_gap)
+
+
+def handle_marketing_readout(db: Session, job: Job) -> None:
+    """Write this week's readout for one active campaign and tell the marketing team. The row
+    is unique per (campaign, week), so a re-run never writes or notifies twice. No commit."""
+    campaign = db.get(Campaign, uuid.UUID(str(job.payload["campaign_id"])))
+    startup_id = str(job.payload["startup_id"])
+    if (
+        campaign is None
+        or str(campaign.startup_id) != startup_id
+        or campaign.status != CampaignStatus.active
+    ):
+        return
+    week_start = date.fromisoformat(str(job.payload["week_start"]))
+    existing = (
+        db.query(CampaignReadout).filter_by(campaign_id=campaign.id, week_start=week_start).first()
+    )
+    if existing is not None:
+        return
+    row = CampaignReadout(
+        startup_id=campaign.startup_id,
+        campaign_id=campaign.id,
+        week_start=week_start,
+        status=MarketingGenerationStatus.generating,
+    )
+    db.add(row)
+    db.flush()
+    result = metered_complete_json(
+        db,
+        campaign.startup_id,
+        build_readout_messages(facts=readout_facts(db, campaign, datetime.now(UTC).date())),
+        schema=readout_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        row.status = MarketingGenerationStatus.failed
+        row.error = "over_budget"
+        db.flush()
+        return
+    row.output = {
+        "headline": str(result.get("headline") or ""),
+        "summary": str(result.get("summary") or ""),
+        "wins": [str(x) for x in (result.get("wins") or [])][:3],
+        "watch": [str(x) for x in (result.get("watch") or [])][:3],
+        "next_step": str(result.get("next_step") or ""),
+    }
+    row.status = MarketingGenerationStatus.ready
+    db.flush()
+    event_bus.publish(
+        db,
+        "marketing.campaign.readout.ready",
+        {
+            "startup_id": startup_id,
+            "campaign_id": str(campaign.id),
+            "readout_id": str(row.id),
+            "name": campaign.name,
+            "href": f"/marketing/campaigns/{campaign.id}",
+        },
+    )
+
+
+register_handler(SCHED_MARKETING_READOUT, handle_marketing_readout)

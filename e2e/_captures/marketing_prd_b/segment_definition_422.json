@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "definition",
+        "message": "Value error, Unknown attribute 'favourite_colour'. Use one of: location, business_type, company_size, income_band, channel_acquired, behaviour_tags."
+      }
+    ]
+  }
+}

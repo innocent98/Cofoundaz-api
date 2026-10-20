@@ -1,0 +1,34 @@
+{
+  "data": {
+    "id": "f5c33759-cba9-40fe-9b89-aebc7eadfd42",
+    "startup_id": "b9b42c95-d001-4e99-a824-9bbea9353147",
+    "campaign_id": null,
+    "kind": "copy",
+    "status": "ready",
+    "inputs": {
+      "cta": null,
+      "tone": "bold",
+      "channel": "organic_social",
+      "platform": "x",
+      "asset_type": "ad",
+      "campaign_id": null,
+      "key_message": "Settle the same day",
+      "audience_segment_id": null
+    },
+    "output": {
+      "limit": 280,
+      "lengths": [
+        19
+      ],
+      "platform": "x",
+      "variants": [
+        "[stub-llm] variants"
+      ],
+      "over_limit": []
+    },
+    "error": null,
+    "created_at": "2026-10-20T18:32:44.192329Z",
+    "updated_at": "2026-10-20T18:32:44.219108Z"
+  },
+  "meta": null
+}

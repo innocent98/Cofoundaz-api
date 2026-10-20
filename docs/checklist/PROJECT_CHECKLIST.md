@@ -777,8 +777,14 @@ Slice (a), branch `claude/feat-marketing-prd-a` (PR #156):
 - [x] Interim CSV export (row 25, D-MKT-6)
 - [x] Marketing-scoped post media (rows 2, 13), migration 0061
 - SOP `docs/sop/2026-10-20-marketing-prd-a.md` · guide `docs/fe-integration-guide-marketing-prd.md`
-Slice (b), stacked on (a) (not started):
-- [ ] AI context for all marketing prompts (16) · refine + platform char limits (17, 18) · fit level + channel stats (20) · weekly campaign readout + notification (5) · channel auto-status on launch (21) · keyword estimates (22) · segment definition validation (24) · one channel per post (12)
+Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR __PR_B__):
+- [x] AI context (Business Builder, personas, positioning, segments, channel fit) in all marketing prompts, placeholder ban with one retry (row 16)
+- [x] Copy Refine (new linked generation) + platform length limits with `lengths` / `over_limit` (rows 17, 18, D-MKT-3)
+- [x] Channel `fit_level` + `stats_30d` (row 20); channel auto-status Not started to Testing on launch (row 21, D-MKT-4)
+- [x] Weekly campaign readout job (numbers-only prompt) + "Campaign performance summary ready" notification (row 5)
+- [x] Keyword `source` / `metrics_updated_at` (row 22); segment definition validation + attributes route (row 24, D-MKT-5); one channel per post kept and tested (row 12, D-MKT-2)
+- [ ] Real-model capture of the AI parts (no key in the build session; stub-model e2e only), see the SOP
+- SOP `docs/sop/2026-10-20-marketing-prd-b.md` · guide `docs/fe-integration-guide-marketing-prd.md` §7-14
 
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
 - [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)

@@ -9,8 +9,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logger import log
 from app.db.models.assessment import Assessment
-from app.db.models.enums import AssessmentStatus, ContentStatus, MembershipStatus, RoadmapStatus
-from app.db.models.marketing import ContentCalendarEntry
+from app.db.models.enums import (
+    AssessmentStatus,
+    CampaignStatus,
+    ContentStatus,
+    MembershipStatus,
+    RoadmapStatus,
+)
+from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
@@ -26,6 +32,8 @@ SCHED_QUARTERLY = "scheduled.assessment.quarterly"
 SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
 SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
+SCHED_MARKETING_READOUT = "scheduled.marketing.readout"
+READOUT_HOUR = 8  # local time; the first tick of the ISO week at or after this hour
 MARKETING_PUBLISH_BATCH = 500
 
 
@@ -184,6 +192,47 @@ def _due_marketing_posts(db: Session, now: datetime) -> list[Due]:
     return due
 
 
+def _due_campaign_readouts(db: Session, now: datetime) -> list[Due]:
+    """Once per ISO week per active campaign that recorded any numbers in the last 14 days (a
+    campaign with no data gets no readout and costs no tokens)."""
+    local = _local(now)
+    if local.hour < READOUT_HOUR:
+        return []
+    iso = local.isocalendar()
+    period = f"{iso.year}-W{iso.week:02d}"
+    since = local.date() - timedelta(days=14)
+    has_data = exists().where(
+        MarketingMetric.campaign_id == Campaign.id, MarketingMetric.ts >= since
+    )
+    rows = (
+        db.query(Campaign.id, Campaign.startup_id)
+        .join(Startup, Startup.id == Campaign.startup_id)
+        .filter(Campaign.status == CampaignStatus.active, Startup.deleted_at.is_(None), has_data)
+        .all()
+    )
+    if not rows:
+        return []
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key).filter(
+            ScheduledRun.task_key == "marketing.readout", ScheduledRun.period_key == period
+        )
+    }
+    week_start = (local.date() - timedelta(days=local.weekday())).isoformat()
+    return [
+        Due(
+            "marketing.readout",
+            str(cid),
+            period,
+            SCHED_MARKETING_READOUT,
+            sid,
+            {"startup_id": str(sid), "campaign_id": str(cid), "week_start": week_start},
+        )
+        for cid, sid in rows
+        if str(cid) not in claimed
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -303,6 +352,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_kpi_snapshots(db, now),
         *_due_health_nightly(db, now),
         *_due_marketing_posts(db, now),
+        *_due_campaign_readouts(db, now),
     ]
     enqueued = 0
     for item in due:
