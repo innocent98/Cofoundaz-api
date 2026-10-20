@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **What shipped** | Gap rows 5, 12, 16, 17, 18, 20, 21, 22, 24 of `cofoundaz/docs/checklist/marketing-prd-gaps.md`. Branch `claude/feat-marketing-prd-b`, stacked on `claude/feat-marketing-prd-a` (PR #156). PR __PR_B__. |
+| **What shipped** | Gap rows 5, 12, 16, 17, 18, 20, 21, 22, 24 of `cofoundaz/docs/checklist/marketing-prd-gaps.md`. Branch `claude/feat-marketing-prd-b`, stacked on `claude/feat-marketing-prd-a` (PR #156). PR #157. |
 | **Why** | The live walk found Marketing prompts saw only name/industry/stage, so "Plan my first week" returned `[specific payment challenge]` and the channel split put 25% on a channel the fit notes called low priority; no Refine, no length limits, fit notes had no level, no weekly readout, launching a campaign left every channel "Not started", keyword numbers looked authoritative though typed by hand, and a segment `definition` accepted anything. |
 
 ## How (decisions)

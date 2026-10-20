@@ -777,7 +777,7 @@ Slice (a), branch `claude/feat-marketing-prd-a` (PR #156):
 - [x] Interim CSV export (row 25, D-MKT-6)
 - [x] Marketing-scoped post media (rows 2, 13), migration 0061
 - SOP `docs/sop/2026-10-20-marketing-prd-a.md` · guide `docs/fe-integration-guide-marketing-prd.md`
-Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR __PR_B__):
+Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR #157):
 - [x] AI context (Business Builder, personas, positioning, segments, channel fit) in all marketing prompts, placeholder ban with one retry (row 16)
 - [x] Copy Refine (new linked generation) + platform length limits with `lengths` / `over_limit` (rows 17, 18, D-MKT-3)
 - [x] Channel `fit_level` + `stats_30d` (row 20); channel auto-status Not started to Testing on launch (row 21, D-MKT-4)
