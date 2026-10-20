@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **What shipped** | Gap rows 2, 3, 4 (BE), 6, 7, 8, 13, 25, 26, 27, 34 of `cofoundaz/docs/checklist/marketing-prd-gaps.md`. Branch `claude/feat-marketing-prd-a`, PR __PR_A__. Slice (b) is stacked on it. |
+| **What shipped** | Gap rows 2, 3, 4 (BE), 6, 7, 8, 13, 25, 26, 27, 34 of `cofoundaz/docs/checklist/marketing-prd-gaps.md`. Branch `claude/feat-marketing-prd-a`, PR #156. Slice (b) is stacked on it. |
 | **Why** | A live walk found: scheduled posts never published (no marketing job), notifications had no CTA or deep link, campaigns had no stats or detail data, posts and copy could not be tied to a campaign, a mistyped metric was permanent, recording one number at two scopes double-counted the funnel, there was no export and no media slot (and the obvious reuse, Documents upload, is readable by every role). |
 
 ## How (decisions)

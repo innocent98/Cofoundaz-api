@@ -768,7 +768,7 @@ Slice (c), branch `feat/business-builder-prd-c` (stacked on (b)):
 - SOP `docs/sop/2026-10-19-business-builder-prd-c.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §16-19
 
 ## 🟡 Module 10 — Marketing Hub: PRD completion, BE (2026-10-20; gap list `cofoundaz/docs/checklist/marketing-prd-gaps.md`, 35 rows; decisions D-MKT-1 full TM access, D-MKT-8 no external integrations)
-Slice (a), branch `claude/feat-marketing-prd-a` (PR __PR_A__):
+Slice (a), branch `claude/feat-marketing-prd-a` (PR #156):
 - [x] Scheduler flips due `scheduled` posts to `published` (status only), `marketing.post.published` + "Scheduled post published" / "Post published" copy (rows 3, 34)
 - [x] Notification CTA "See results" + `data.href` deep links (row 4 BE)
 - [x] Campaign list stats (CTR / conversion) in `metrics`, `GET /campaigns/{id}/performance` (rows 6, 7)
