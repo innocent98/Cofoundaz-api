@@ -196,11 +196,10 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
             payload = json.loads(msg["data"])
             # The activity channel is workspace-wide, so filter per recipient with the same
             # rule as GET /dashboard/activity (D-MIS-8): a mentor never sees a mission task.
-            item = payload.get("item")
-            if item is not None and not activity_visible(
-                role, item.get("action", ""), item.get("entity_type")
-            ):
-                continue
+            if payload.get("event") == "activity.created":
+                item = payload.get("item") or {}
+                if not activity_visible(role, item.get("action", ""), item.get("entity_type")):
+                    continue
             # notification.created carries `notification`; activity.created carries `item`.
             yield _sse(payload["event"], payload.get("notification") or payload.get("item"))
 

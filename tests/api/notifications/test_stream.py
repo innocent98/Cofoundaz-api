@@ -198,3 +198,33 @@ def test_stream_endpoint_rejects_inactive_membership(client, monkeypatch):
     monkeypatch.setattr(notif_ep, "_membership_role", lambda uid, sid: None)
     r = client.get("/api/v1/notifications/stream?ticket=t")
     assert r.status_code == 403
+
+
+def test_event_stream_drops_malformed_activity_for_non_core(monkeypatch):
+    """An activity.created without an item can't be classified, so it fails closed."""
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 0)
+    monkeypatch.setattr(notif_ep, "_membership_role", lambda uid, sid: MembershipRole.mentor)
+    msgs = [{"type": "message", "data": '{"event":"activity.created"}'}]
+
+    class FakePubSub:
+        async def get_message(self, ignore_subscribe_messages=True, timeout=None):
+            return msgs.pop(0) if msgs else None
+
+    @asynccontextmanager
+    async def fake_sub(*channels):
+        yield FakePubSub()
+
+    monkeypatch.setattr(notif_ep.realtime, "subscription", fake_sub)
+
+    class FakeReq:
+        def __init__(self):
+            self.n = 0
+
+        async def is_disconnected(self):
+            self.n += 1
+            return self.n > 2
+
+    async def collect():
+        return [f async for f in notif_ep._event_stream(FakeReq(), "s1", "u1")]
+
+    assert not any("activity.created" in f for f in asyncio.run(collect()))
