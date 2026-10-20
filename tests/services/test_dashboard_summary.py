@@ -25,6 +25,7 @@ def test_summary_has_all_sections_and_greeting(db):
         "greeting",
         "health",
         "mission",
+        "mission_status",
         "upcoming",
         "kpis",
         "calibration",

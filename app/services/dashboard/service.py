@@ -10,7 +10,14 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.db.models.activity import ActivityLog
 from app.db.models.dashboard import DailyBriefing
-from app.db.models.enums import BriefingStatus, MembershipRole, MissionTaskStatus, RoadmapStatus
+from app.db.models.enums import (
+    BRIEFING_ROLES,
+    MISSION_ROLES,
+    BriefingStatus,
+    MembershipRole,
+    MissionTaskStatus,
+    RoadmapStatus,
+)
 from app.db.models.health_score import HealthScore
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
@@ -183,7 +190,6 @@ def gather_briefing_context(db: Session, startup: Startup) -> dict[str, Any]:
         "name": startup.name,
         "industry": startup.industry,
         "stage": startup.stage.value if startup.stage else None,
-        "health_score": hs.score if hs else None,
         "health_band": hs.band if hs else None,
         "mission_total": mission_total,
         "mission_done": mission_done,
@@ -258,9 +264,9 @@ def _briefing_blocks(db: Session, startup: Startup) -> dict[str, Any]:
     return serialize_blocks(row)
 
 
-# The AI briefing reads real finance figures (see _finance_context), so its prose must not
-# reach roles that can't open Finance/Marketing (investor, mentor, advisors, accountant).
-BRIEFING_ROLES = frozenset({MembershipRole.founder, MembershipRole.team_member})
+# BRIEFING_ROLES (imported above): the AI briefing reads real finance figures (see
+# _finance_context), so its prose must not reach roles that can't open Finance/Marketing
+# (investor, mentor, advisors, accountant).
 
 
 def _restricted_briefing_blocks() -> dict[str, Any]:
@@ -281,7 +287,14 @@ def get_summary(
             "startup_name": startup.name,
         },
         "health": _section(lambda: get_overview(db, startup)),
-        "mission": _section_isolated(db, lambda: _mission_section(db, startup)),
+        # D-MIS-8: only roles that can open Today's Mission get it. Everyone else gets
+        # `mission: null` + `mission_status: "restricted"`, and nothing is lazily generated for them.
+        "mission": (
+            _section_isolated(db, lambda: _mission_section(db, startup))
+            if role in MISSION_ROLES
+            else None
+        ),
+        "mission_status": "ok" if role in MISSION_ROLES else "restricted",
         "upcoming": _section_isolated(db, lambda: _upcoming(db, startup)),
         "kpis": _section_isolated(
             db,

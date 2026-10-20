@@ -42,6 +42,7 @@ _SUMMARY_KEYS = {
     "greeting",
     "health",
     "mission",
+    "mission_status",
     "upcoming",
     "kpis",
     "calibration",
@@ -148,6 +149,7 @@ def test_dashboard_journey(base_url, make_verified_user, capture):
         assert summary.status_code == 200, summary.text
         summary_data = summary.json()["data"]
         assert set(summary_data) == _SUMMARY_KEYS
+        assert summary_data["mission_status"] == "ok"
 
         assert summary_data["health"]["status"] == "ok", summary_data["health"]
         assert isinstance(summary_data["health"]["score"], int)
