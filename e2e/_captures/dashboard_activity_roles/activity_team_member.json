@@ -1,0 +1,90 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "63fed7e6-5518-4911-8c42-0954fbed2d06",
+        "action": "roadmap.e2e.sentinel",
+        "entity_type": "roadmap",
+        "entity_id": null,
+        "summary": "e2e sentinel (open to every role)",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-20T17:02:54.564033+00:00"
+      },
+      {
+        "id": "9f5ef4f1-f04a-44f2-991d-fd882a242b47",
+        "action": "marketing.campaign.launched",
+        "entity_type": "campaign",
+        "entity_id": null,
+        "summary": "Ada launched the spring campaign",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-20T17:02:54.557627+00:00"
+      },
+      {
+        "id": "efe394d1-74b2-44b4-a750-50f39864ce45",
+        "action": "finance.transaction.created",
+        "entity_type": "transaction",
+        "entity_id": null,
+        "summary": "Ada recorded a 5,000 expense",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-20T17:02:54.548987+00:00"
+      },
+      {
+        "id": "3816e3ed-b1c2-4fa0-972d-f8bdf196cf96",
+        "action": "mission.task.added",
+        "entity_type": "mission_task",
+        "entity_id": "68f72a3b-6ab4-480b-bda9-09f32c06e672",
+        "summary": "Ada F added 'Call the seed lead investor' to today's mission",
+        "meta": null,
+        "actor": {
+          "id": "a9f424cc-9247-4ce8-ad42-5324e3d8d3aa",
+          "name": "Ada F"
+        },
+        "created_at": "2026-10-20T17:02:54.476078+00:00"
+      },
+      {
+        "id": "f5d8e70e-518e-409e-abca-f44b2c1ecb96",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "4dd23fa9-4f27-4f8c-b0a8-4d00d6403126",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "159b4902-93ca-4910-9337-ba689cef8c78",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:53.396462+00:00"
+      },
+      {
+        "id": "ea37925c-b546-44b9-a855-495052d3ce03",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "2b73141d-6173-4997-ad0e-336a4e57ad09",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "d6cd3956-c241-43ca-a5b6-190c6db839dc",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:52.734624+00:00"
+      },
+      {
+        "id": "562435d1-eaf1-41d3-b1fc-0f05bb8d0563",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "6cc4034d-8a90-4dc2-8c3c-c69dbf2e159d",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "9f252c99-bb2c-428a-880d-a6423a1fd2ad",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:51.917584+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

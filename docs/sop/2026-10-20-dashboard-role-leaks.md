@@ -56,7 +56,7 @@ Already-stored briefings keep their old text (possibly with a stale score) until
 
 ## Follow-ups
 - `GET /dashboard/summary` still returns, to every role: `kpis.tasks_done_this_week` / `tasks_trend` (a count derived from mission tasks, so a mission aggregate), and `calibration.assessment_complete` (a fact about the Assessment). Low sensitivity, but the same class; hiding them means a tile change on the FE, so it needs a decision.
-- `GET /dashboard/activity` and the `activity.created` stream are not filtered by role: mission task completions, finance and marketing actions appear in every member's feed. Needs its own pass (filter by action prefix vs. entity type).
+- ~~`GET /dashboard/activity` and the `activity.created` stream are not filtered by role~~ done: `docs/sop/2026-10-20-dashboard-activity-roles.md`.
 - Unsure, not changed: `document.shared` / `document.signature.*` go to every member because `GET /documents` is open to every role; if shares are meant to be targeted, the audience should be the share's recipients.
 - `GET /health-score` recommendations (`top_recommendations[].href`) link to `/finance`, `/documents/signatures` for roles that cannot open them. Pre-existing, FE can already hide links to pages the role lacks.
 - Briefing: `mission_done`/`mission_total` and `tasks_done_week` are also frozen at generation time; they can go stale the same way the score did.

@@ -799,7 +799,10 @@ Mission reads are founder + team member only. SOP `docs/sop/2026-10-20-dashboard
 - [x] Row 3: notification audiences narrowed: `dashboard.briefing.ready`, `mission.ready|completed|streak.milestone` (core), `finance.runway.low` (finance roles), `marketing.*` (core); every registry spec has a declared audience (test-enforced)
 - [x] Row 8: briefing prompt no longer receives the Health Score number and is told not to state it
 - [x] Row 9: Assessment page in search for team members
-- [ ] _Open:_ `kpis.tasks_done_this_week` and `calibration.assessment_complete` still go to every role; `GET /dashboard/activity` is unfiltered by role (see SOP follow-ups)
+- [x] Follow-up: `GET /dashboard/activity` + live `activity.created` filtered by role (mission → core, finance → `FINANCE_ROLES`, marketing → `MARKETING_ROLES`, unclassified fails closed; SQL filter keeps cursor pages full) — PR #155 (branch `fix/dashboard-activity-feed-roles`), SOP `docs/sop/2026-10-20-dashboard-activity-roles.md`, guide section 5
+- [ ] _Open:_ `kpis.tasks_done_this_week` and `calibration.assessment_complete` still go to every role (see SOP follow-ups)
+- [ ] _Open:_ `assessment.completed` activity row is open to every role (matches the Health Score marker); lead decision whether it follows the assessment read gate
+- [ ] _Deferred:_ Health Score "Teammate joined" marker never fires (`MARKER_LABELS` expects `workspace.member.joined`, invitations write `member.joined`)
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 

@@ -14,11 +14,12 @@ from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import AppError
-from app.db.models.enums import MembershipStatus
+from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import SessionLocal, get_db
 from app.db.tenancy import require_workspace
+from app.platform.activity import activity_visible
 from app.platform.realtime import (
     activity_channel,
     channel_for,
@@ -139,19 +140,20 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
-def _active_membership(user_id: str, startup_id: str) -> bool:
+def _membership_role(user_id: str, startup_id: str) -> MembershipRole | None:
+    """The member's current role, or None once the membership is no longer active."""
     db = SessionLocal()
     try:
-        return (
-            db.query(Membership)
+        role: MembershipRole | None = (
+            db.query(Membership.role)
             .filter(
                 Membership.user_id == uuid.UUID(user_id),
                 Membership.startup_id == uuid.UUID(startup_id),
                 Membership.status == MembershipStatus.active,
             )
-            .first()
-            is not None
+            .scalar()
         )
+        return role
     finally:
         db.close()
 
@@ -165,6 +167,10 @@ def _unread(user_id: str, startup_id: str) -> int:
 
 
 async def _event_stream(request: Request, startup_id: str, user_id: str) -> AsyncIterator[str]:
+    role = await run_in_threadpool(_membership_role, user_id, startup_id)
+    if role is None:
+        yield _sse("revoked", {"reason": "membership_inactive"})
+        return
     n = await run_in_threadpool(_unread, user_id, startup_id)
     yield _sse("unread", {"unread": n})
     channels = (channel_for(startup_id, user_id), activity_channel(startup_id))
@@ -173,9 +179,11 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
         while not await request.is_disconnected():
             # The stream carries workspace-wide activity, so a member removed while connected
             # must stop receiving it. Re-check on a timer (not just on idle heartbeats, which a
-            # busy stream could skip) and close the stream once the membership is gone.
+            # busy stream could skip) and close the stream once the membership is gone. The
+            # re-check also refreshes the role, so a role change re-filters activity below.
             if time.monotonic() - last_check >= settings.SSE_HEARTBEAT_INTERVAL:
-                if not await run_in_threadpool(_active_membership, user_id, startup_id):
+                role = await run_in_threadpool(_membership_role, user_id, startup_id)
+                if role is None:
                     yield _sse("revoked", {"reason": "membership_inactive"})
                     return
                 last_check = time.monotonic()
@@ -186,6 +194,12 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
                 yield ": heartbeat\n\n"
                 continue
             payload = json.loads(msg["data"])
+            # The activity channel is workspace-wide, so filter per recipient with the same
+            # rule as GET /dashboard/activity (D-MIS-8): a mentor never sees a mission task.
+            if payload.get("event") == "activity.created":
+                item = payload.get("item") or {}
+                if not activity_visible(role, item.get("action", ""), item.get("entity_type")):
+                    continue
             # notification.created carries `notification`; activity.created carries `item`.
             yield _sse(payload["event"], payload.get("notification") or payload.get("item"))
 
@@ -206,7 +220,7 @@ async def stream_endpoint(request: Request, ticket: str) -> StreamingResponse:
     if pair is None:
         raise AppError("INVALID_TICKET", "Invalid or expired stream ticket.", 401)
     user_id, startup_id = pair
-    if not await run_in_threadpool(_active_membership, user_id, startup_id):
+    if await run_in_threadpool(_membership_role, user_id, startup_id) is None:
         raise AppError("FORBIDDEN", "No active membership for this workspace.", 403)
     return StreamingResponse(
         _event_stream(request, startup_id, user_id),

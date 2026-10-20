@@ -1,0 +1,31 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "63fed7e6-5518-4911-8c42-0954fbed2d06",
+        "action": "roadmap.e2e.sentinel",
+        "entity_type": "roadmap",
+        "entity_id": null,
+        "summary": "e2e sentinel (open to every role)",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-20T17:02:54.564033+00:00"
+      },
+      {
+        "id": "f5d8e70e-518e-409e-abca-f44b2c1ecb96",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "4dd23fa9-4f27-4f8c-b0a8-4d00d6403126",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "159b4902-93ca-4910-9337-ba689cef8c78",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:53.396462+00:00"
+      }
+    ],
+    "next_cursor": "MjAyNi0xMC0yMFQxNzowMjo1My4zOTY0NjIrMDA6MDB8ZjVkOGU3MGUtNTE4ZS00MDllLWFiY2EtZjQ0YjJjMWVjYjk2"
+  },
+  "meta": null
+}

@@ -23,7 +23,7 @@ from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
-from app.platform.activity import serialize_activity
+from app.platform.activity import activity_visibility_filter, serialize_activity
 from app.platform.jobs import job_dispatcher
 from app.services.dashboard.briefing import serialize_blocks
 from app.services.dashboard.kpi_history import trend
@@ -342,13 +342,17 @@ def _decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
 
 
 def get_activity(
-    db: Session, startup: Startup, cursor: str | None = None, limit: int = 20
+    db: Session,
+    startup: Startup,
+    role: MembershipRole,
+    cursor: str | None = None,
+    limit: int = 20,
 ) -> dict[str, Any]:
     limit = max(1, min(limit, 50))
     q = (
         db.query(ActivityLog, UserProfile.full_name)
         .outerjoin(UserProfile, UserProfile.user_id == ActivityLog.actor_user_id)
-        .filter(ActivityLog.startup_id == startup.id)
+        .filter(ActivityLog.startup_id == startup.id, activity_visibility_filter(role))
         .order_by(ActivityLog.created_at.desc(), ActivityLog.id.desc())
     )
     if cursor:

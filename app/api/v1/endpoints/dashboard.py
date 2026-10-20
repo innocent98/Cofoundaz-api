@@ -46,7 +46,7 @@ def dashboard_activity(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    return success_response(get_activity(db, startup, cursor=cursor, limit=limit))
+    return success_response(get_activity(db, startup, membership.role, cursor=cursor, limit=limit))
 
 
 @router.post("/briefing/{briefing_id}/actions/{index}/accept")

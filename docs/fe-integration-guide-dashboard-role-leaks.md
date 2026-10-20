@@ -14,6 +14,7 @@ Roles below: "core" = `founder` and `team_member`. "Other" = `mentor`, `accounta
 | `GET /dashboard/summary` | `mission` object + `mission_status: "ok"` | `mission: null` + `mission_status: "restricted"` |
 | `GET /search` | finds mission tasks, the Mission page, the Assessment page | none of the three |
 | notifications | unchanged | no longer receive `mission.*`, `dashboard.briefing.ready` (and the others in section 3) |
+| `GET /dashboard/activity` + live `activity.created` | every row | no `mission.*` rows; finance rows only for the accountant; no marketing rows (section 5) |
 
 ---
 
@@ -189,7 +190,118 @@ change; it gets the band (`strong`, `at_risk`, ...) so it can still talk in word
 
 ---
 
-## 5. Verification
+## 5. `GET /dashboard/activity` and the live `activity.created` event (follow-up)
+
+The activity feed and its live stream event are now filtered by the caller's role, with the same rules as the
+routes the rows describe. **The shapes did not change**: same `items` / `next_cursor` envelope, same item object.
+What changes is which rows a role receives. Bodies below are from a live run of `e2e/test_dashboard_activity_roles.py`
+(captures in `e2e/_captures/dashboard_activity_roles/`).
+
+| Row (by `action` prefix, or `entity_type`) | Who receives it |
+|---|---|
+| `mission.*`, or `entity_type: "mission_task"` | founder, team member |
+| `finance.*`, or `entity_type` `transaction` / `invoice` / `expense` / `budget` | founder, team member, accountant |
+| `marketing.*`, or `entity_type` `campaign` / `post` / `keyword` / `segment` | founder, team member |
+| `roadmap.*`, `healthscore.*`, `business.*`, `document.*`, `assessment.*`, `member.*`, `workspace.*` | every role |
+| any other prefix (not classified yet) | founder, team member |
+
+What the FE must do:
+- **Nothing new to call or parse.** Render whatever comes back. Don't filter client-side and don't assume the feed
+  contains the user's own mission activity: a mentor's feed is legitimately shorter.
+- **Pagination still works.** Filtering happens in the query, so a page is full whenever more visible rows exist,
+  and `next_cursor: null` still means the end. Hidden rows never produce a short or empty page mid-feed.
+- **Live stream:** a mentor's stream simply never receives a mission, finance or marketing `activity.created`. If a
+  member's role changes while connected, the new filter applies at the next membership re-check (heartbeat
+  interval), without reconnecting.
+- **Today's real writers:** `mission.task.added|completed|snoozed|rejected`, `roadmap.milestone.completed`,
+  `roadmap.milestone.broken_down`, `roadmap.replanned`, `assessment.completed`, `member.joined`. **No endpoint writes
+  a finance or marketing activity row yet**; the rules for them are in place for when one does.
+
+Mentor, first page of 2 (`activity_mentor_page1.json`, verbatim). Three hidden rows (a mission task, a finance and a
+marketing row) sit between these two items in the workspace, yet the page is full and carries a cursor:
+```json
+{
+  "data": {
+    "items": [
+      {
+        "id": "529e6fda-fe5d-4c54-af88-d747329b3d3d",
+        "action": "roadmap.e2e.sentinel",
+        "entity_type": "roadmap",
+        "entity_id": null,
+        "summary": "e2e sentinel (open to every role)",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-20T16:44:11.701886+00:00"
+      },
+      {
+        "id": "767d3eaa-0de3-4b4c-aecd-ab54d0180527",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "029df83a-34c5-4a47-8796-b3d54664b1f4",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "1deabf60-bdf9-4b15-b0d5-0b8356d50d2a",
+          "name": null
+        },
+        "created_at": "2026-10-20T16:44:07.401101+00:00"
+      }
+    ],
+    "next_cursor": "MjAyNi0xMC0yMFQxNjo0NDowNy40MDExMDErMDA6MDB8NzY3ZDNlYWEtMGRlMy00YjRjLWFlY2QtYWI1NGQwMTgwNTI3"
+  },
+  "meta": null
+}
+```
+`activity_mentor_page2.json` returns the remaining two `member.joined` rows with `next_cursor: null`.
+`activity_mentor.json` (no `limit`) is the same four rows in one page.
+
+Founder and team member get every row (`activity_founder.json`, `activity_team_member.json`: the same 7 actions in the
+same order). The mission row a mentor no longer sees, one item from `activity_founder.json`:
+```json
+{
+  "id": "f5f179cd-69cc-41d1-81b3-3fcd71519caa",
+  "action": "mission.task.added",
+  "entity_type": "mission_task",
+  "entity_id": "cd953b66-958f-4be9-91af-30f253e31f0e",
+  "summary": "Ada F added 'Call the seed lead investor' to today's mission",
+  "meta": null,
+  "actor": {
+    "id": "caa06b63-944a-4855-a63e-9360922d87de",
+    "name": "Ada F"
+  },
+  "created_at": "2026-10-20T16:44:08.571485+00:00"
+}
+```
+Accountant (`activity_accountant.json`): the finance row and the open rows; no mission or marketing row.
+
+Live stream (`event: activity.created`, `data` = the same item object). The founder's stream delivered four frames
+in order (`stream_activity_founder.json`: `mission.task.added`, `finance.transaction.created`,
+`marketing.campaign.launched`, `roadmap.e2e.sentinel`); the mentor's stream, open at the same time, delivered
+only the last (`stream_activity_mentor.json`, verbatim):
+```json
+[
+  {
+    "id": "529e6fda-fe5d-4c54-af88-d747329b3d3d",
+    "action": "roadmap.e2e.sentinel",
+    "entity_type": "roadmap",
+    "entity_id": null,
+    "summary": "e2e sentinel (open to every role)",
+    "meta": null,
+    "actor": null,
+    "created_at": "2026-10-20T16:44:11.701886+00:00"
+  }
+]
+```
+
+**How the test data was made (read before trusting a field):** the mission row and the `member.joined` rows were
+written by real endpoints (`POST /missions/tasks`, invitation accept). The `finance.transaction.created`,
+`marketing.campaign.launched` and `roadmap.e2e.sentinel` rows were written by the e2e process itself with
+`write_activity` (the function every endpoint uses), because no endpoint writes those types yet. Their action names
+and summaries are test data, not real product events; the feed and stream responses that filter them are real.
+
+---
+
+## 6. Verification
 
 | Behaviour | Verified | Source |
 |---|---|---|
@@ -208,3 +320,13 @@ change; it gets the band (`strong`, `at_risk`, ...) so it can still talk in word
 | `mission.ready`, `mission.streak.milestone`, `finance.runway.low`, `marketing.*` audiences | unit only | same file (the scheduler tick / marketing triggers are not part of this journey) |
 | Briefing prompt carries no Health Score number | unit only | `tests/services/dashboard/test_ai_briefing.py` |
 | Real LLM output no longer quotes a number | not verified | e2e uses the stub LLM |
+| Activity feed: mentor gets no mission/finance/marketing rows, no mission task title | live | `activity_mentor.json` |
+| Activity feed: accountant gets finance, not mission or marketing | live | `activity_accountant.json` |
+| Activity feed: founder and team member get every row | live | `activity_founder.json`, `activity_team_member.json` |
+| Activity pagination stays full across hidden rows | live | `activity_mentor_page1.json`, `activity_mentor_page2.json` |
+| Live `activity.created` filtered per recipient (founder 4 frames, mentor 1) | live | `stream_activity_founder.json`, `stream_activity_mentor.json` |
+| All 7 `MembershipRole` values on the feed and the stream | unit | `tests/api/test_dashboard_activity_roles.py`, `tests/api/notifications/test_stream.py` (parametrised) |
+| Role change mid-stream re-filters at the next re-check | unit only | `tests/api/notifications/test_stream.py::test_event_stream_picks_up_a_role_change_on_recheck` |
+| One SQL statement per feed page (no N+1) | unit only | `tests/api/test_dashboard_activity_roles.py::test_activity_query_count_is_constant` |
+| SQL filter and stream check agree; every written action is classified | unit only | `tests/platform/test_activity_visibility.py` |
+| A real finance/marketing activity row from a product endpoint | not verified | no endpoint writes one yet; rows were written in-process |

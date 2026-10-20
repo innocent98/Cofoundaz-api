@@ -314,6 +314,10 @@ FE needing to know that `id` happens to *be* a milestone id in this particular s
 
 ## 2. `GET /api/v1/dashboard/activity` — team activity feed
 
+> **Filtered by role since 2026-10-20** (mission rows founder + team member only, finance rows `FINANCE_ROLES`,
+> marketing rows `MARKETING_ROLES`), and so is the live `activity.created` event. Same shapes; see
+> `docs/fe-integration-guide-dashboard-role-leaks.md` section 5. A cursor page across hidden rows is now captured live there.
+
 Keyset-paginated, newest-first. Query params: `cursor` (opaque string, omit for the first page),
 `limit` (int, **server-clamped to 1–50** even if you request more or less — both by FastAPI's
 own `Query(ge=1, le=50)` validation on the endpoint *and* a second clamp inside the service
