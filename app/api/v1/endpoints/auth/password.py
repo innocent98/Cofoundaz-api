@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.envelope import success_response
+from app.core.errors import EmailDeliveryFailed
+from app.core.logger import log
 from app.core.redis import get_redis
 from app.core.security import get_password_hash
 from app.db.models.enums import AuthTokenPurpose, UserStatus
@@ -39,15 +41,22 @@ def forgot(
     if get_redis().set(cooldown_key, "1", ex=_FORGOT_COOLDOWN_SECONDS, nx=True):
         user = db.query(User).filter(User.email == payload.email).first()
         if user is not None and user.status != UserStatus.disabled:
-            invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)
-            raw = issue_auth_token(db, user, AuthTokenPurpose.password_reset, _RESET_TTL)
-            get_email_sender().send(password_reset_email(user.email, raw))
-            write_audit(
-                db,
-                "auth.password.reset_requested",
-                actor_user_id=user.id,
-                ip=request.client.host if request.client else None,
-            )
+            try:
+                # SAVEPOINT: a failed send rolls back the token it would have delivered.
+                with db.begin_nested():
+                    invalidate_unconsumed_tokens(db, user, AuthTokenPurpose.password_reset)
+                    raw = issue_auth_token(db, user, AuthTokenPurpose.password_reset, _RESET_TTL)
+                    get_email_sender().send(password_reset_email(user.email, raw))
+                    write_audit(
+                        db,
+                        "auth.password.reset_requested",
+                        actor_user_id=user.id,
+                        ip=request.client.host if request.client else None,
+                    )
+            except EmailDeliveryFailed:
+                # Swallowed: only a real account reaches the send, so surfacing the failure
+                # would be an enumeration signal. The response below stays identical.
+                log.warning("password reset email failed: email provider refused the send")
             db.commit()
     # Same response in all cases (unknown email, disabled account, active account,
     # throttled retry) — no enumeration. Only the internal side effects above are gated.
