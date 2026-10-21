@@ -304,7 +304,7 @@ def test_finance_runway_journey(base_url, make_verified_user, capture):
         capture("finance_runway", "notifications_after_low", feed_low)
         fired = _runway_low_notifications(c, wh)
         assert len(fired) == 1, fired
-        assert fired[0]["title"] == "Your runway is running low"
+        assert fired[0]["title"] == "Runway below 6 months, review recommended"
         assert fired[0]["read"] is False
         assert fired[0]["data"]["currency"] == "NGN"
 
