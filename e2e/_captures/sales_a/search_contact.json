@@ -1,0 +1,16 @@
+{
+  "data": {
+    "query": "Tunde",
+    "results": [
+      {
+        "type": "sales_contact",
+        "group": "Sales",
+        "id": "a464ba09-10f9-4e0f-afc1-25e9ca7518b2",
+        "title": "Tunde Okafor",
+        "subtitle": "Contact \u00b7 tunde@acme.example",
+        "href": "/sales/contacts?contact=a464ba09-10f9-4e0f-afc1-25e9ca7518b2"
+      }
+    ]
+  },
+  "meta": null
+}

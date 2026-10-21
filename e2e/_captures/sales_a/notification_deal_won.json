@@ -1,0 +1,17 @@
+{
+  "id": "fd3cc02d-d33b-4f9c-862b-b5c323e0fb1d",
+  "type": "sales.deal.won",
+  "title": "Deal moved to Closed Won: Acme fleet rollout \ud83c\udf89",
+  "body": "",
+  "data": {
+    "href": "/sales?deal=f9c69088-b134-4147-aa03-e424c2fd2320",
+    "name": "Acme fleet rollout",
+    "deal_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+    "actor_id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+    "startup_id": "d8975b05-ca24-43da-bf4a-53171e492dbb",
+    "to_stage_id": "86b96932-77b7-4915-983e-00d5da346f36",
+    "from_stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8"
+  },
+  "read": false,
+  "created_at": "2026-10-21T11:58:05.499756+00:00"
+}

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "added": 2,
+    "duplicates_skipped": 1,
+    "invalid_rows": [
+      {
+        "row": 4,
+        "error": "Email is not valid."
+      },
+      {
+        "row": 5,
+        "error": "A name or company is required."
+      }
+    ],
+    "invalid_total": 2
+  },
+  "meta": null
+}

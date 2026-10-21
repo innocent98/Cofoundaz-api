@@ -1,0 +1,297 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "b443e786-7995-41eb-8356-825c159cfe9e",
+        "action": "sales.activity.created",
+        "entity_type": "sales_activity",
+        "entity_id": "bb5265c7-3a8d-4fdf-917f-2d690c9b2d86",
+        "summary": "Logged a email",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.733888+00:00"
+      },
+      {
+        "id": "bf67fa8b-1e1c-440e-aa8a-1985c9a0e0d2",
+        "action": "sales.activity.deleted",
+        "entity_type": "sales_activity",
+        "entity_id": "032749eb-a6b9-478f-ad2a-458a4d80efa5",
+        "summary": "Deleted a meeting",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.710829+00:00"
+      },
+      {
+        "id": "de58685b-de77-4718-a3a3-50c177eaa53a",
+        "action": "sales.activity.updated",
+        "entity_type": "sales_activity",
+        "entity_id": "032749eb-a6b9-478f-ad2a-458a4d80efa5",
+        "summary": "Edited a meeting",
+        "meta": {
+          "fields": [
+            "body",
+            "kind"
+          ]
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.668877+00:00"
+      },
+      {
+        "id": "3146e201-c67a-49a1-9fe4-8cef19a08d97",
+        "action": "sales.activity.created",
+        "entity_type": "sales_activity",
+        "entity_id": "87d5a240-6492-4cee-a17b-14b5a4d46d2b",
+        "summary": "Logged a note",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.644856+00:00"
+      },
+      {
+        "id": "9b06a60d-640a-4b52-a5c7-85ad697b74d4",
+        "action": "sales.activity.created",
+        "entity_type": "sales_activity",
+        "entity_id": "032749eb-a6b9-478f-ad2a-458a4d80efa5",
+        "summary": "Logged a call",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.622902+00:00"
+      },
+      {
+        "id": "56cde306-e313-470c-bc92-a4604d2fff3d",
+        "action": "sales.deal.won",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Moved deal Acme fleet rollout to Closed Won",
+        "meta": {
+          "to_stage_id": "86b96932-77b7-4915-983e-00d5da346f36",
+          "from_stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.549800+00:00"
+      },
+      {
+        "id": "782543dc-7f64-4150-b36c-4c51238b0469",
+        "action": "sales.deal.stage_changed",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Moved deal Acme fleet rollout to Proposal",
+        "meta": {
+          "to_stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8",
+          "from_stage_id": "86b96932-77b7-4915-983e-00d5da346f36"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.523899+00:00"
+      },
+      {
+        "id": "2e4d7cdd-e64d-4638-9a7e-0ab527476c21",
+        "action": "sales.deal.won",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Moved deal Acme fleet rollout to Closed Won",
+        "meta": {
+          "to_stage_id": "86b96932-77b7-4915-983e-00d5da346f36",
+          "from_stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.499756+00:00"
+      },
+      {
+        "id": "25020300-67cf-489d-8cf7-bc26f63c266c",
+        "action": "sales.deal.stage_changed",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Moved deal Acme fleet rollout to Proposal",
+        "meta": {
+          "to_stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8",
+          "from_stage_id": "bbc20e32-c63a-4ed9-a153-5f269239e62a"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.478848+00:00"
+      },
+      {
+        "id": "0ccda84b-5c1f-4585-9cb8-c2bc57f8450a",
+        "action": "sales.deal.lost",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Moved deal Acme fleet rollout to Closed Lost",
+        "meta": {
+          "to_stage_id": "bbc20e32-c63a-4ed9-a153-5f269239e62a",
+          "from_stage_id": "42bb4376-6516-42e8-afa4-2868b9d57582"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.462709+00:00"
+      },
+      {
+        "id": "0bf14127-4515-4e5e-b1a4-e55f9fac2128",
+        "action": "sales.deal.updated",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Updated deal Acme fleet rollout",
+        "meta": {
+          "fields": [
+            "value_minor"
+          ]
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.432974+00:00"
+      },
+      {
+        "id": "1afeae81-b9e7-4273-9d31-5dd2b404209e",
+        "action": "sales.deal.created",
+        "entity_type": "deal",
+        "entity_id": "6c62e89d-651d-4634-9c3e-3a12319b17be",
+        "summary": "Added deal Quiet renewal",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.389138+00:00"
+      },
+      {
+        "id": "d7a1fcbf-e0e0-466e-91b0-6d671991601d",
+        "action": "sales.deal.created",
+        "entity_type": "deal",
+        "entity_id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "summary": "Added deal Acme fleet rollout",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.374886+00:00"
+      },
+      {
+        "id": "dc2dfe21-65df-41ad-b1f8-6c424763a057",
+        "action": "sales.deal.created",
+        "entity_type": "deal",
+        "entity_id": "8ccd4b30-fb4c-4a27-ae5b-2b5fa9c5775b",
+        "summary": "Added deal Solo Prospect",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.341505+00:00"
+      },
+      {
+        "id": "a0e0da55-3b3d-4318-bd9b-aa599ad79b72",
+        "action": "sales.lead.converted",
+        "entity_type": "sales_lead",
+        "entity_id": "fe95dd7d-f72c-4825-9148-c29dc1ab9a20",
+        "summary": "Converted lead Solo Prospect to a deal",
+        "meta": {
+          "deal_id": "8ccd4b30-fb4c-4a27-ae5b-2b5fa9c5775b"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.341505+00:00"
+      },
+      {
+        "id": "93a2e391-c3a8-470d-bdb0-3879aa6886d3",
+        "action": "sales.deal.created",
+        "entity_type": "deal",
+        "entity_id": "1bdbf640-8f3a-4704-ad30-c10ac289581b",
+        "summary": "Added deal Zenith Foods",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.320403+00:00"
+      },
+      {
+        "id": "31071c33-99dc-4be0-a2e0-71766beba2d9",
+        "action": "sales.lead.converted",
+        "entity_type": "sales_lead",
+        "entity_id": "2de2187e-63d9-4c0d-b1ed-838ee910fbe3",
+        "summary": "Converted lead Chidi Eze to a deal",
+        "meta": {
+          "deal_id": "1bdbf640-8f3a-4704-ad30-c10ac289581b"
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.320403+00:00"
+      },
+      {
+        "id": "11fa986c-3705-4a03-bb88-4cb275ea6096",
+        "action": "sales.account.created",
+        "entity_type": "sales_account",
+        "entity_id": "f990cd70-c326-4fc2-b2f8-07c3f527cf0c",
+        "summary": "Added account Zenith Foods",
+        "meta": null,
+        "actor": null,
+        "created_at": "2026-10-21T11:58:05.320403+00:00"
+      },
+      {
+        "id": "ac418c62-3127-43d1-81e5-08a0616ea637",
+        "action": "sales.lead.imported",
+        "entity_type": null,
+        "entity_id": null,
+        "summary": "Imported 2 leads from CSV",
+        "meta": {
+          "added": 2,
+          "invalid_total": 2,
+          "duplicates_skipped": 1
+        },
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.296179+00:00"
+      },
+      {
+        "id": "58f0ef7c-34b4-4708-aadf-244031c7f29f",
+        "action": "sales.lead.created",
+        "entity_type": "sales_lead",
+        "entity_id": "fe95dd7d-f72c-4825-9148-c29dc1ab9a20",
+        "summary": "Added lead Solo Prospect",
+        "meta": null,
+        "actor": {
+          "id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+          "name": "Ada Founder"
+        },
+        "created_at": "2026-10-21T11:58:05.256745+00:00"
+      }
+    ],
+    "next_cursor": "MjAyNi0xMC0yMVQxMTo1ODowNS4yNTY3NDUrMDA6MDB8NThmMGVmN2MtMzRiNC00NzA4LWFhZGYtMjQ0MDMxYzdmMjlm"
+  },
+  "meta": null
+}

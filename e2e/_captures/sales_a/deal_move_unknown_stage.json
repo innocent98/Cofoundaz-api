@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Stage not found.",
+    "field_errors": [
+      {
+        "field": "stage_id",
+        "message": "Stage not found."
+      }
+    ]
+  }
+}

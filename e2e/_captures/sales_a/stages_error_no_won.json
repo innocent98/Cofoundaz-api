@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The pipeline needs exactly one Won stage.",
+    "field_errors": [
+      {
+        "field": "stages",
+        "message": "The pipeline needs exactly one Won stage."
+      }
+    ]
+  }
+}

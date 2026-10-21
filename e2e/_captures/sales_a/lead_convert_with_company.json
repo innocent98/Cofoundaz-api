@@ -1,0 +1,45 @@
+{
+  "data": {
+    "deal": {
+      "id": "1bdbf640-8f3a-4704-ad30-c10ac289581b",
+      "name": "Zenith Foods",
+      "account_id": "f990cd70-c326-4fc2-b2f8-07c3f527cf0c",
+      "account_name": "Zenith Foods",
+      "contact_id": "215b2111-b336-4399-92e9-d9ef5008b140",
+      "contact_name": "Chidi Eze",
+      "value_minor": 0,
+      "currency": "NGN",
+      "stage_id": "42bb4376-6516-42e8-afa4-2868b9d57582",
+      "next_step": null,
+      "next_step_due": null,
+      "closed_reason": null,
+      "closed_note": null,
+      "closed_at": null,
+      "owner_id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+      "last_activity_at": "2026-10-21T11:58:05.327975Z",
+      "is_stalled": false,
+      "days_inactive": 0,
+      "created_at": "2026-10-21T11:58:05.320403Z"
+    },
+    "account": {
+      "id": "f990cd70-c326-4fc2-b2f8-07c3f527cf0c",
+      "name": "Zenith Foods",
+      "website": null,
+      "industry": null,
+      "description": null,
+      "owner_id": null,
+      "created_at": "2026-10-21T11:58:05.320403Z"
+    },
+    "contact": {
+      "id": "215b2111-b336-4399-92e9-d9ef5008b140",
+      "account_id": "f990cd70-c326-4fc2-b2f8-07c3f527cf0c",
+      "first_name": "Chidi",
+      "last_name": "Eze",
+      "email": "chidi@zenith.example",
+      "phone": null,
+      "title": null,
+      "created_at": "2026-10-21T11:58:05.320403Z"
+    }
+  },
+  "meta": null
+}
