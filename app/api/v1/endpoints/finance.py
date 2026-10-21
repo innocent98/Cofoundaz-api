@@ -24,6 +24,7 @@ from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import expenses as expense_svc
 from app.services.finance import invoices as invoice_svc
 from app.services.finance import model_service as model_svc
+from app.services.finance import reminders as reminder_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
 from app.services.finance.invoice_pdf import render_invoice_pdf
@@ -285,6 +286,21 @@ def create_invoice_pay_link(
                 502,
             )
         db.commit()
+    today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.post("/invoices/{invoice_id}/remind", response_model=dict[str, Any])
+def remind_invoice(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    inv = reminder_svc.send_manual_reminder(
+        db, startup_id=membership.startup_id, invoice_id=invoice_id, now=datetime.now(UTC)
+    )
+    db.commit()
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
 
