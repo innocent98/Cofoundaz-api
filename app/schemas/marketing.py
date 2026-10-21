@@ -508,5 +508,6 @@ class ReadoutResponse(BaseModel):
     week_start: date
     status: MarketingGenerationStatus
     output: dict[str, Any]
+    figures: dict[str, Any] | None = None
     error: str | None
     created_at: datetime

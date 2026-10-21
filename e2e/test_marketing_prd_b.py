@@ -13,7 +13,7 @@ Every body is captured to `e2e/_captures/marketing_prd_b/*.json` (source of
 Keep app-internal imports LAZY: the remote live-e2e gate has no app env.
 """
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import httpx
 
@@ -186,9 +186,16 @@ def test_marketing_prd_b_journey(base_url, make_verified_user, capture, capture_
         capture_json("marketing_prd_b", "channel_statuses_after_launch", after)
 
         # 5. Weekly readout: scheduler tick (a Monday-or-later 09:00 UTC) + worker.
+        # The readout reads the 7 days before today against the 7 before those (today excluded).
+        d0 = date.fromisoformat(today)
+        yesterday, week_ago = d0 - timedelta(days=1), d0 - timedelta(days=8)
         pts = [
-            {"ts": today, "campaign_id": cid, "metric": "impressions", "value": 2000},
-            {"ts": today, "campaign_id": cid, "metric": "clicks", "value": 100},
+            {"ts": d.isoformat(), "campaign_id": cid, "metric": mt, "value": v}
+            for d, vals in (
+                (yesterday, (2000, 100, 4, 150000)),
+                (week_ago, (1600, 64, 2, 120050)),
+            )
+            for mt, v in zip(("impressions", "clicks", "conversions", "spend"), vals, strict=True)
         ]
         resp = c.post(f"{m}/metrics", headers=wh, json={"points": pts})
         assert resp.status_code == 200
@@ -199,6 +206,12 @@ def test_marketing_prd_b_journey(base_url, make_verified_user, capture, capture_
         assert readouts.status_code == 200, readouts.text
         rows = readouts.json()["data"]["readouts"]
         assert len(rows) == 1 and rows[0]["status"] == "ready"
+        fig = rows[0]["figures"]
+        assert fig["this_week"]["spend"] == {"value": 150000, "display": "₦1,500.00"}
+        assert fig["this_week"]["ctr"]["display"] == "5.0%"
+        assert fig["this_week"]["cac"]["display"] == "₦375.00"
+        assert fig["change"]["clicks"]["display"] == "+56.3%"
+        assert rows[0]["output"]["source"] == "ai" and "figures" not in rows[0]["output"]
         capture("marketing_prd_b", "campaign_readouts", readouts)
         notes = c.get("/api/v1/notifications", headers=wh).json()["data"]["notifications"]
         mine = [n for n in notes if n["type"] == "marketing.campaign.readout.ready"]

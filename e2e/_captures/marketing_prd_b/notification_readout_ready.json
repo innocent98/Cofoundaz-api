@@ -1,15 +1,15 @@
 {
-  "id": "484189f8-1023-46eb-a679-0ccffc693e24",
+  "id": "a13df8cf-89fb-48f6-870b-18b03c3fde13",
   "type": "marketing.campaign.readout.ready",
   "title": "Campaign performance summary ready: Waitlist push",
   "body": "See results",
   "data": {
-    "href": "/marketing/campaigns/56e3de5a-c3d3-411f-aecf-afa46b32c369",
+    "href": "/marketing/campaigns/b1fcbfab-1f95-475a-b124-4647780e9c18",
     "name": "Waitlist push",
-    "readout_id": "50d8a1e9-ddcc-47a2-8f02-ea3222a914b8",
-    "startup_id": "b9b42c95-d001-4e99-a824-9bbea9353147",
-    "campaign_id": "56e3de5a-c3d3-411f-aecf-afa46b32c369"
+    "readout_id": "703a65e0-c401-41dc-be83-0b46b6e65d6a",
+    "startup_id": "d88ccbbb-742a-4b2f-b16d-c8a2f6f76b7f",
+    "campaign_id": "b1fcbfab-1f95-475a-b124-4647780e9c18"
   },
   "read": false,
-  "created_at": "2026-10-20T18:32:44.580169+00:00"
+  "created_at": "2026-10-21T09:28:11.726205+00:00"
 }

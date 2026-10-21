@@ -31,18 +31,17 @@ from app.services.marketing.ai_prompts import (
     build_content_gap_messages,
     build_copy_messages,
     build_plan_week_messages,
-    build_readout_messages,
     build_refine_messages,
     channel_fit_schema,
     channel_plan_schema,
     content_gap_schema,
     copy_schema,
     plan_week_schema,
-    readout_schema,
 )
 from app.services.marketing.plan_slots import assign_slots
 from app.services.marketing.platforms import limit_for
-from app.services.marketing.readouts import readout_facts
+from app.services.marketing.readout_figures import build_figures
+from app.services.marketing.readouts import generate_verified_output
 from app.services.marketing.service import list_channels
 from app.worker.runner import register_handler
 from app.worker.scheduler import SCHED_MARKETING_READOUT
@@ -400,25 +399,14 @@ def handle_marketing_readout(db: Session, job: Job) -> None:
     )
     db.add(row)
     db.flush()
-    result = metered_complete_json(
-        db,
-        campaign.startup_id,
-        build_readout_messages(facts=readout_facts(db, campaign, datetime.now(UTC).date())),
-        schema=readout_schema(),
-        max_tokens=settings.LLM_MAX_TOKENS,
-    )
-    if result is None:
+    figures = build_figures(db, campaign, datetime.now(UTC).date())
+    output = generate_verified_output(db, campaign, figures)
+    if output is None:
         row.status = MarketingGenerationStatus.failed
         row.error = "over_budget"
         db.flush()
         return
-    row.output = {
-        "headline": str(result.get("headline") or ""),
-        "summary": str(result.get("summary") or ""),
-        "wins": [str(x) for x in (result.get("wins") or [])][:3],
-        "watch": [str(x) for x in (result.get("watch") or [])][:3],
-        "next_step": str(result.get("next_step") or ""),
-    }
+    row.output = {**output, "figures": figures}
     row.status = MarketingGenerationStatus.ready
     db.flush()
     event_bus.publish(

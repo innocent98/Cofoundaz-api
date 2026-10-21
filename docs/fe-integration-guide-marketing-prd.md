@@ -980,15 +980,15 @@ Refetch `/channels` and the overview after a launch. `channel_statuses_after_lau
 ## 11. Weekly campaign readout (row 5)
 
 Once per ISO week, from 08:00 workspace time, every **active** campaign that recorded numbers in the last 14 days gets an AI readout
-(a campaign with no data gets none and costs no tokens). The model sees numbers only (objective, plan, last 7 days vs the 7 before, all time); never the campaign name or any founder text.
-`GET /campaigns/{id}/readouts` returns up to 12, newest first. `campaign_readouts.json` (stub text):
+(a campaign with no data gets none and costs no tokens). The model never computes anything. Every figure (spend, impressions, clicks, CTR, conversions, CAC and the week-on-week change) is computed by the API and handed to the model as a pre-formatted string, money already converted from kobo to naira (₦); the model sees no campaign name or founder text. After generation the API checks every number in the prose against those figures; a mismatch is retried once and then replaced by a template summary built from the same figures, so stored prose never carries a number nobody computed.
+`GET /campaigns/{id}/readouts` returns up to 12, newest first. `campaign_readouts.json` (stub model text; the figures are real, computed from the seeded metrics: this week = the 7 days before today, today excluded):
 ```json
 {
   "data": {
     "readouts": [
       {
-        "id": "50d8a1e9-ddcc-47a2-8f02-ea3222a914b8",
-        "campaign_id": "56e3de5a-c3d3-411f-aecf-afa46b32c369",
+        "id": "703a65e0-c401-41dc-be83-0b46b6e65d6a",
+        "campaign_id": "b1fcbfab-1f95-475a-b124-4647780e9c18",
         "week_start": "2026-10-19",
         "status": "ready",
         "output": {
@@ -998,19 +998,142 @@ Once per ISO week, from 08:00 workspace time, every **active** campaign that rec
           "watch": [
             "[stub-llm] watch"
           ],
+          "source": "ai",
           "summary": "[stub-llm] summary",
           "headline": "[stub-llm] headline",
           "next_step": "[stub-llm] next_step"
         },
+        "figures": {
+          "change": {
+            "cac": {
+              "value": -37.5,
+              "display": "-37.5%"
+            },
+            "ctr": {
+              "value": 1.0,
+              "display": "+1.0 pts"
+            },
+            "spend": {
+              "value": 24.9,
+              "display": "+24.9%"
+            },
+            "clicks": {
+              "value": 56.3,
+              "display": "+56.3%"
+            },
+            "conversions": {
+              "value": 100.0,
+              "display": "+100.0%"
+            },
+            "impressions": {
+              "value": 25.0,
+              "display": "+25.0%"
+            }
+          },
+          "windows": {
+            "last_week": {
+              "end": "2026-10-14",
+              "start": "2026-10-07"
+            },
+            "this_week": {
+              "end": "2026-10-21",
+              "start": "2026-10-14"
+            }
+          },
+          "all_time": {
+            "cac": {
+              "value": 45008,
+              "display": "\u20a6450.08"
+            },
+            "ctr": {
+              "value": 4.6,
+              "display": "4.6%"
+            },
+            "spend": {
+              "value": 270050,
+              "display": "\u20a62,700.50"
+            },
+            "clicks": {
+              "value": 164,
+              "display": "164"
+            },
+            "conversions": {
+              "value": 6,
+              "display": "6"
+            },
+            "impressions": {
+              "value": 3600,
+              "display": "3,600"
+            }
+          },
+          "currency": "NGN",
+          "days_live": {
+            "value": 0,
+            "display": "0 days"
+          },
+          "last_week": {
+            "cac": {
+              "value": 60025,
+              "display": "\u20a6600.25"
+            },
+            "ctr": {
+              "value": 4.0,
+              "display": "4.0%"
+            },
+            "spend": {
+              "value": 120050,
+              "display": "\u20a61,200.50"
+            },
+            "clicks": {
+              "value": 64,
+              "display": "64"
+            },
+            "conversions": {
+              "value": 2,
+              "display": "2"
+            },
+            "impressions": {
+              "value": 1600,
+              "display": "1,600"
+            }
+          },
+          "this_week": {
+            "cac": {
+              "value": 37500,
+              "display": "\u20a6375.00"
+            },
+            "ctr": {
+              "value": 5.0,
+              "display": "5.0%"
+            },
+            "spend": {
+              "value": 150000,
+              "display": "\u20a61,500.00"
+            },
+            "clicks": {
+              "value": 100,
+              "display": "100"
+            },
+            "conversions": {
+              "value": 4,
+              "display": "4"
+            },
+            "impressions": {
+              "value": 2000,
+              "display": "2,000"
+            }
+          }
+        },
         "error": null,
-        "created_at": "2026-10-20T18:32:44.580169Z"
+        "created_at": "2026-10-21T09:28:11.726205Z"
       }
     ]
   },
   "meta": null
 }
 ```
-- `output`: `headline`, `summary`, `wins` (max 3), `watch` (max 3), `next_step`. Render as the "AI weekly readout" card on the campaign detail page; show the newest `ready` one and `week_start` as "Week of …".
+- `output`: `headline`, `summary`, `wins` (max 3), `watch` (max 3), `next_step`, and `source` (`"ai"` when the model's prose passed number verification, `"template"` when it did not and the deterministic summary was used). Render as the "AI weekly readout" card on the campaign detail page; show the newest `ready` one and `week_start` as "Week of …".
+- **`figures` is a sibling of `output`, not inside it.** Render every number on the card from `figures[*].display` (already formatted: `₦1,500.00`, `5.0%`, `+56.3%`, `n/a`), never from the prose. `value` is the raw number (kobo for money, percentage points for CTR change, `null` when not computable); `display` is `"n/a"` when there is no denominator (no impressions, no conversions, no previous week). Rows written before this change have `figures: null` and prose that may mis-state numbers: show the prose without figures, or hide the card.
 - `status` is `generating`, `ready` or `failed` (`error: "over_budget"` when the workspace's AI budget was spent that day; show nothing, or "Readout unavailable this week"). A `generating` row is normally seconds old.
 - An empty list means no readout yet (new campaign, no data, or before Monday 08:00): show an empty state, not an error.
 - The notification (`marketing.campaign.readout.ready`, founders and team members, nobody else) reads "Campaign performance summary ready: {name}", body **"See results"**, `data.href` = `/marketing/campaigns/{campaign_id}`, plus `data.readout_id`. `notification_readout_ready.json`:
@@ -1232,7 +1355,9 @@ It needs the same bearer token and `X-Workspace-Id` as every marketing call (an 
 | Fit levels, `fit_level` on channels, `stats_30d` | **verified live** (stub model) (§10); unknown level dropped / bare note kept: unit |
 | Channel auto-status on launch | **verified live** (§10); never-downgrade, 0% share, pause/resume: unit |
 | Weekly readout job, list, notification (founders + team only), once per week | **verified live** (stub model) (§11); over-budget, foreign payload, non-active campaign: unit |
-| Readout text quality / real numbers in prose | **not exercised**: needs the real model |
+| `figures` object, ₦ formatting, week-on-week change, `source: "ai"` | **verified live** (stub model) (§11) |
+| Number verification: retry once, then template fallback; raw kobo never sent to the model | **unit only** (scripted model): `tests/api/test_marketing_prd_b.py::test_unverified_numbers_trigger_one_retry_that_is_then_stored`, `::test_two_bad_answers_fall_back_to_the_template_and_never_store_the_bad_prose` |
+| Readout text quality with the real model | **not exercised**: no real-model run was made (stub only); the verifier makes wrong numbers impossible to store, but prose style is unreviewed |
 | Keyword `source` / `metrics_updated_at` | **verified live** (§12); "only on change" rule: unit |
 | Segment definition validation and cleaning, attributes route | **verified live** (§13); each bad shape: unit |
 | One channel per post | **verified live** (§14) |

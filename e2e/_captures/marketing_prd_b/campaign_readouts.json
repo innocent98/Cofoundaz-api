@@ -2,8 +2,8 @@
   "data": {
     "readouts": [
       {
-        "id": "50d8a1e9-ddcc-47a2-8f02-ea3222a914b8",
-        "campaign_id": "56e3de5a-c3d3-411f-aecf-afa46b32c369",
+        "id": "703a65e0-c401-41dc-be83-0b46b6e65d6a",
+        "campaign_id": "b1fcbfab-1f95-475a-b124-4647780e9c18",
         "week_start": "2026-10-19",
         "status": "ready",
         "output": {
@@ -13,12 +13,134 @@
           "watch": [
             "[stub-llm] watch"
           ],
+          "source": "ai",
           "summary": "[stub-llm] summary",
           "headline": "[stub-llm] headline",
           "next_step": "[stub-llm] next_step"
         },
+        "figures": {
+          "change": {
+            "cac": {
+              "value": -37.5,
+              "display": "-37.5%"
+            },
+            "ctr": {
+              "value": 1.0,
+              "display": "+1.0 pts"
+            },
+            "spend": {
+              "value": 24.9,
+              "display": "+24.9%"
+            },
+            "clicks": {
+              "value": 56.3,
+              "display": "+56.3%"
+            },
+            "conversions": {
+              "value": 100.0,
+              "display": "+100.0%"
+            },
+            "impressions": {
+              "value": 25.0,
+              "display": "+25.0%"
+            }
+          },
+          "windows": {
+            "last_week": {
+              "end": "2026-10-14",
+              "start": "2026-10-07"
+            },
+            "this_week": {
+              "end": "2026-10-21",
+              "start": "2026-10-14"
+            }
+          },
+          "all_time": {
+            "cac": {
+              "value": 45008,
+              "display": "\u20a6450.08"
+            },
+            "ctr": {
+              "value": 4.6,
+              "display": "4.6%"
+            },
+            "spend": {
+              "value": 270050,
+              "display": "\u20a62,700.50"
+            },
+            "clicks": {
+              "value": 164,
+              "display": "164"
+            },
+            "conversions": {
+              "value": 6,
+              "display": "6"
+            },
+            "impressions": {
+              "value": 3600,
+              "display": "3,600"
+            }
+          },
+          "currency": "NGN",
+          "days_live": {
+            "value": 0,
+            "display": "0 days"
+          },
+          "last_week": {
+            "cac": {
+              "value": 60025,
+              "display": "\u20a6600.25"
+            },
+            "ctr": {
+              "value": 4.0,
+              "display": "4.0%"
+            },
+            "spend": {
+              "value": 120050,
+              "display": "\u20a61,200.50"
+            },
+            "clicks": {
+              "value": 64,
+              "display": "64"
+            },
+            "conversions": {
+              "value": 2,
+              "display": "2"
+            },
+            "impressions": {
+              "value": 1600,
+              "display": "1,600"
+            }
+          },
+          "this_week": {
+            "cac": {
+              "value": 37500,
+              "display": "\u20a6375.00"
+            },
+            "ctr": {
+              "value": 5.0,
+              "display": "5.0%"
+            },
+            "spend": {
+              "value": 150000,
+              "display": "\u20a61,500.00"
+            },
+            "clicks": {
+              "value": 100,
+              "display": "100"
+            },
+            "conversions": {
+              "value": 4,
+              "display": "4"
+            },
+            "impressions": {
+              "value": 2000,
+              "display": "2,000"
+            }
+          }
+        },
         "error": null,
-        "created_at": "2026-10-20T18:32:44.580169Z"
+        "created_at": "2026-10-21T09:28:11.726205Z"
       }
     ]
   },

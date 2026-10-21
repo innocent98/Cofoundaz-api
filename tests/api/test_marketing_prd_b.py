@@ -713,7 +713,7 @@ def test_readout_scan_ignores_deleted_workspaces(db):
 
 READOUT = {
     "headline": "Clicks are up",
-    "summary": "Clicks doubled week on week.",
+    "summary": "Clicks rose week on week.",
     "wins": ["More clicks"],
     "watch": ["No conversions yet"],
     "next_step": "Add a conversion metric",
@@ -749,7 +749,8 @@ def test_readout_job_writes_the_readout_notifies_marketing_roles_and_sends_numbe
     assert row.week_start == date(2026, 10, 26)
     text = _prompt(fake.calls[0])
     assert "Waitlist push" not in text  # no campaign name, no free text: numbers only
-    assert '"objective": "launch"' in text and '"last_7_days"' in text
+    assert '"objective": "launch"' in text and '"this_week"' in text
+    assert row.output["source"] == "ai" and row.output["figures"]["currency"] == "NGN"
     notes = db.query(Notification).filter_by(type="marketing.campaign.readout.ready").all()
     assert {n.user_id for n in notes} == {founder.id, tm.id}  # not the mentor
     n = notes[0]
@@ -857,3 +858,84 @@ def test_a_team_member_can_use_the_new_routes(client, db):
         headers=h,
     )
     assert r.status_code == 202
+
+
+# ---- readout figures: every number in the stored prose is a computed figure ----
+def _live_week_data(db, c):
+    today = datetime.now(UTC).date()
+    for metric, v in [
+        (MarketingMetricName.impressions, 12000),
+        (MarketingMetricName.clicks, 300),
+        (MarketingMetricName.conversions, 6),
+        (MarketingMetricName.spend, 450075),
+    ]:
+        db.add(
+            MarketingMetric(
+                startup_id=c.startup_id,
+                ts=today - timedelta(days=2),
+                campaign_id=c.id,
+                metric=metric,
+                value=v,
+            )
+        )
+    db.flush()
+
+
+GOOD = {**READOUT, "summary": "Spend was ₦4,500.75 for 300 clicks and 6 conversions."}
+BAD = {**READOUT, "summary": "Spend was 450075 kobo for 301 clicks."}
+
+
+def _readout_row(db, monkeypatch, *payloads):
+    _u, s, _h = _member(db)
+    c = _active_campaign(db, s, with_data=False)
+    _live_week_data(db, c)
+    fake = _llm(monkeypatch, *payloads)
+    handle_marketing_readout(db, _readout_job(c))
+    return db.query(CampaignReadout).one(), fake
+
+
+def test_verified_prose_is_stored_with_the_computed_figures(db, monkeypatch):
+    row, fake = _readout_row(db, monkeypatch, GOOD)
+    assert len(fake.calls) == 1
+    assert row.output["source"] == "ai" and row.output["summary"] == GOOD["summary"]
+    assert row.output["figures"]["this_week"]["spend"]["display"] == "₦4,500.75"
+    prompt = _prompt(fake.calls[0])
+    assert "₦4,500.75" in prompt and "450075" not in prompt  # no raw kobo reaches the model
+    assert "VERBATIM" in prompt
+
+
+def test_unverified_numbers_trigger_one_retry_that_is_then_stored(db, monkeypatch):
+    row, fake = _readout_row(db, monkeypatch, BAD, GOOD)
+    assert len(fake.calls) == 2
+    assert "450075" in _prompt(fake.calls[1]) and "301" in _prompt(
+        fake.calls[1]
+    )  # told what failed
+    assert row.output["source"] == "ai" and row.output["summary"] == GOOD["summary"]
+
+
+def test_two_bad_answers_fall_back_to_the_template_and_never_store_the_bad_prose(db, monkeypatch):
+    row, fake = _readout_row(db, monkeypatch, BAD)
+    assert len(fake.calls) == 2
+    assert row.status == MarketingGenerationStatus.ready and row.output["source"] == "template"
+    stored = " ".join(str(v) for v in row.output.values() if isinstance(v, (str, list)))
+    assert "450075" not in stored and "301" not in stored
+    assert "₦4,500.75" in row.output["summary"]
+
+
+def test_budget_spent_on_the_retry_uses_the_template(db, monkeypatch):
+    calls = iter([False, True])
+    monkeypatch.setattr(llm_budget, "over_budget", lambda *_a: next(calls))
+    row, fake = _readout_row(db, monkeypatch, BAD)
+    assert len(fake.calls) == 1 and row.output["source"] == "template"
+
+
+def test_readouts_endpoint_returns_figures_beside_the_prose(db, client, monkeypatch):
+    u, s, h = _member(db)
+    c = _active_campaign(db, s, with_data=False)
+    _live_week_data(db, c)
+    _llm(monkeypatch, GOOD)
+    handle_marketing_readout(db, _readout_job(c))
+    r = client.get(f"{BASE}/campaigns/{c.id}/readouts", headers=h)
+    item = r.json()["data"]["readouts"][0]
+    assert item["figures"]["this_week"]["clicks"] == {"value": 300, "display": "300"}
+    assert "figures" not in item["output"] and item["output"]["source"] == "ai"

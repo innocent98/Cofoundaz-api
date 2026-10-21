@@ -284,15 +284,28 @@ def readout_schema() -> dict[str, Any]:
     }
 
 
-def build_readout_messages(*, facts: dict[str, Any]) -> list[LLMMessage]:
-    """Weekly campaign readout. The prompt gets numbers only (no campaign name, no free text),
-    so there is nothing user-written for it to be steered by."""
+def build_readout_messages(
+    *, facts: dict[str, Any], rejected: list[str] | None = None
+) -> list[LLMMessage]:
+    """Weekly campaign readout. The prompt gets pre-formatted figures only (no campaign name, no
+    free text, no raw numbers), so there is nothing to compute and nothing user-written to steer
+    it. `rejected` lists numbers the previous answer used that were not in the figures."""
     system = (
         "You are a marketing analyst writing a short weekly readout for a startup founder about "
-        "one campaign. Use only the numbers given: compare this week with last week, say what "
-        "is working, what to watch, and one concrete next step. Money is in the smallest "
-        "currency unit; do not name a currency. Plain language, no jargon, no hype. If a metric "
-        "is zero or missing, say there is no data for it rather than guessing."
+        "one campaign. Compare this week with last week using ONLY the figures given: say what "
+        "is working, what to watch, and one concrete next step. Every figure is already "
+        "formatted (currency, commas, percent, sign): quote it VERBATIM, character for "
+        "character. Never calculate, round, convert, estimate or restate a figure, and never "
+        "write a number that is not in the figures (no counts of items, no dates, no "
+        "'doubled' or 'twice'). Describe changes in words, or quote the given change figure. "
+        "If a figure is n/a or zero, say there is no data for it rather than guessing. Plain "
+        "language, no jargon, no hype."
     )
-    user = "Campaign facts (JSON):\n" + json.dumps(facts, ensure_ascii=False, indent=1)
+    user = "Campaign figures (JSON):\n" + json.dumps(facts, ensure_ascii=False, indent=1)
+    if rejected:
+        user += (
+            "\n\nYour previous answer used numbers that are not in the figures: "
+            + ", ".join(rejected)
+            + ". Write it again quoting only the given figures."
+        )
     return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]
