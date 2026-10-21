@@ -51,6 +51,9 @@ FINANCE_ROLES: frozenset[MembershipRole] = frozenset(
 MARKETING_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
+SALES_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
 # D-MIS-8: Today's Mission reads (and the AI briefing, which is built from the same workspace
 # data) are founder + team member only. One definition, shared by routes, search and notifications.
 MISSION_ROLES: frozenset[MembershipRole] = frozenset(
@@ -427,3 +430,42 @@ class CalendarEventType(enum.StrEnum):
     meeting = "meeting"
     deadline = "deadline"
     task = "task"
+
+
+class LeadSource(enum.StrEnum):
+    manual = "manual"
+    csv = "csv"
+    referral = "referral"
+    inbound = "inbound"
+    event = "event"
+    other = "other"
+
+
+class LeadStatus(enum.StrEnum):
+    new = "new"
+    working = "working"
+    qualified = "qualified"
+    disqualified = "disqualified"
+    converted = "converted"
+
+
+class StageKind(enum.StrEnum):
+    open = "open"
+    won = "won"
+    lost = "lost"
+
+
+class ActivityKind(enum.StrEnum):
+    call = "call"
+    email = "email"
+    meeting = "meeting"
+    note = "note"
+
+
+class ClosedReason(enum.StrEnum):
+    price = "price"
+    timing = "timing"
+    competitor = "competitor"
+    no_budget = "no_budget"
+    ghosted = "ghosted"
+    other = "other"

@@ -57,6 +57,16 @@ from app.db.models.roadmap import (  # noqa: F401
     RoadmapTask,
     RoadmapTaskDependency,
 )
+from app.db.models.sales import (  # noqa: F401
+    Deal,
+    DealStageChange,
+    PipelineStage,
+    SalesAccount,
+    SalesActivity,
+    SalesContact,
+    SalesLead,
+    SalesSettings,
+)
 from app.db.models.scheduled_run import ScheduledRun  # noqa: F401
 from app.db.models.startup import Startup, StartupProfile  # noqa: F401
 from app.db.models.user import User, UserProfile  # noqa: F401

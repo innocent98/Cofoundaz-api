@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Value error, Use convert to mark a lead as converted."
+      }
+    ]
+  }
+}

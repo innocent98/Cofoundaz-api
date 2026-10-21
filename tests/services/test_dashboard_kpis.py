@@ -61,7 +61,12 @@ def test_empty_workspace_reports_no_data_not_zero(db, startup):
     assert m["runway"]["months"] is None
     assert m["campaign_ctr"]["status"] == "no_data"
     assert m["campaign_ctr"]["ctr_percent"] is None
-    assert m["pipeline"] == {"status": "not_built", "value_minor": None, "currency": None}
+    assert m["pipeline"] == {
+        "status": "no_data",
+        "value_minor": None,
+        "currency": None,
+        "trend": {"delta": None, "series": []},
+    }
 
 
 def test_burning_startup_gets_revenue_and_runway(db, startup):

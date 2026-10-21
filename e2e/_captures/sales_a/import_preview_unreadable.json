@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "We could not read that CSV file.",
+    "field_errors": []
+  }
+}

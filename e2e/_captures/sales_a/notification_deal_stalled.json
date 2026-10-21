@@ -1,0 +1,16 @@
+{
+  "id": "c3ecf76c-2c26-4bca-b7d4-cae91e1a661d",
+  "type": "sales.deal.stalled",
+  "title": "Deal stalled: Quiet renewal has had no activity for 20 days",
+  "body": "Suggest a follow-up",
+  "data": {
+    "days": 20,
+    "href": "/sales?deal=6c62e89d-651d-4634-9c3e-3a12319b17be&followup=1",
+    "name": "Quiet renewal",
+    "deal_id": "6c62e89d-651d-4634-9c3e-3a12319b17be",
+    "owner_id": null,
+    "startup_id": "d8975b05-ca24-43da-bf4a-53171e492dbb"
+  },
+  "read": false,
+  "created_at": "2026-10-21T11:58:07.352884+00:00"
+}

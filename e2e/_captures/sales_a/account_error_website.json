@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "website",
+        "message": "Value error, Website must be an http or https address."
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Move the deals out of Qualified first.",
+    "field_errors": [
+      {
+        "field": "stages",
+        "message": "Move the deals out of Qualified first."
+      }
+    ]
+  }
+}

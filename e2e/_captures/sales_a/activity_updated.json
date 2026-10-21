@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": "032749eb-a6b9-478f-ad2a-458a4d80efa5",
+    "kind": "meeting",
+    "body": "Intro meeting with Tunde",
+    "occurred_at": "2026-10-21T11:58:05.628640Z",
+    "author_id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+    "account_id": null,
+    "contact_id": null,
+    "deal_id": "6c62e89d-651d-4634-9c3e-3a12319b17be",
+    "created_at": "2026-10-21T11:58:05.622902Z"
+  },
+  "meta": null
+}

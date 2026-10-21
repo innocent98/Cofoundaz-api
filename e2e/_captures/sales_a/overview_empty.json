@@ -1,0 +1,60 @@
+{
+  "data": {
+    "total_pipeline_minor": 0,
+    "weighted_forecast_minor": 0,
+    "win_rate": null,
+    "currency": "NGN",
+    "stages": [
+      {
+        "stage_id": "42bb4376-6516-42e8-afa4-2868b9d57582",
+        "name": "New",
+        "kind": "open",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "18d4f674-b17f-4e3c-ad92-33288b28bed4",
+        "name": "Contacted",
+        "kind": "open",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "d4b9b58a-7bcd-48ec-8010-b9cd3961d642",
+        "name": "Qualified",
+        "kind": "open",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "d5ec6cf1-bdaf-4345-9a10-db64efcf02b8",
+        "name": "Proposal",
+        "kind": "open",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "a3f61ce8-663e-45c0-a5ec-e7fe04761418",
+        "name": "Negotiation",
+        "kind": "open",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "86b96932-77b7-4915-983e-00d5da346f36",
+        "name": "Closed Won",
+        "kind": "won",
+        "deal_count": 0,
+        "value_minor": 0
+      },
+      {
+        "stage_id": "bbc20e32-c63a-4ed9-a153-5f269239e62a",
+        "name": "Closed Lost",
+        "kind": "lost",
+        "deal_count": 0,
+        "value_minor": 0
+      }
+    ]
+  },
+  "meta": null
+}

@@ -5,8 +5,7 @@ by the same roles as the module it comes from, so search never surfaces a row th
 open from that module's page. Matching is a case-insensitive substring (ILIKE) with LIKE
 metacharacters escaped. Each source returns at most `PER_SOURCE` rows.
 
-Not searchable by design: journal entries (no title; content is encrypted at rest) and Sales
-contacts (no backend yet).
+Not searchable by design: journal entries (no title; content is encrypted at rest).
 """
 
 from collections.abc import Callable
@@ -14,18 +13,25 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import String, cast, or_
+from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Query, Session
 
 from app.db.models.ai_chat import AiConversation
 from app.db.models.calendar import CalendarEvent
 from app.db.models.document import Document
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MISSION_ROLES, MembershipRole
+from app.db.models.enums import (
+    FINANCE_ROLES,
+    MARKETING_ROLES,
+    MISSION_ROLES,
+    SALES_ROLES,
+    MembershipRole,
+)
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from app.db.models.marketing import AudienceSegment, Campaign, ContentCalendarEntry, SeoKeyword
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
+from app.db.models.sales import Deal, SalesAccount, SalesContact, SalesLead
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.models.validation import Assumption, Experiment, Survey
@@ -76,6 +82,9 @@ PAGES: tuple[Page, ...] = (
     Page("Campaigns", "/marketing/campaigns", MARKETING_ROLES, "marketing"),
     Page("Content Calendar", "/marketing/calendar", MARKETING_ROLES, "marketing posts"),
     Page("SEO Tools", "/marketing/seo", MARKETING_ROLES, "marketing keywords"),
+    Page("Sales Hub", "/sales", SALES_ROLES, "pipeline deals crm"),
+    Page("Leads", "/sales/leads", SALES_ROLES, "sales prospects"),
+    Page("Accounts", "/sales/accounts", SALES_ROLES, "sales companies customers"),
     Page("Finance Hub", "/finance", FINANCE_ROLES, "money cash flow"),
     Page("Runway", "/finance/runway", FINANCE_ROLES, "finance burn"),
     Page("Invoices", "/finance/invoices", FINANCE_ROLES, "finance billing"),
@@ -249,6 +258,56 @@ def _segments(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
     )
 
 
+def _deals(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
+    return (
+        db.query(Deal.id, Deal.name, Deal.value_minor)
+        .filter(Deal.startup_id == s.id, _has(Deal.name, p))
+        .order_by(Deal.updated_at.desc())
+    )
+
+
+def _sales_accounts(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
+    return (
+        db.query(SalesAccount.id, SalesAccount.name, SalesAccount.industry)
+        .filter(SalesAccount.startup_id == s.id, _has(SalesAccount.name, p))
+        .order_by(SalesAccount.name)
+    )
+
+
+def _sales_contacts(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
+    full_name = func.trim(
+        func.concat(SalesContact.first_name, " ", func.coalesce(SalesContact.last_name, ""))
+    )
+    query: Query[Any] = (
+        db.query(SalesContact.id, full_name, SalesContact.email)
+        .filter(
+            SalesContact.startup_id == s.id,
+            or_(
+                _has(SalesContact.first_name, p),
+                _has(SalesContact.last_name, p),
+                _has(SalesContact.email, p),
+            ),
+        )
+        .order_by(SalesContact.first_name)
+    )
+    return query
+
+
+def _sales_leads(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
+    return (
+        db.query(
+            SalesLead.id,
+            func.coalesce(SalesLead.name, SalesLead.company, SalesLead.email),
+            SalesLead.company,
+        )
+        .filter(
+            SalesLead.startup_id == s.id,
+            or_(_has(SalesLead.name, p), _has(SalesLead.company, p), _has(SalesLead.email, p)),
+        )
+        .order_by(SalesLead.created_at.desc())
+    )
+
+
 def _fixed(href: str) -> Callable[[Any], str]:
     return lambda _id: href
 
@@ -273,6 +332,18 @@ SOURCES: tuple[Source, ...] = (
     ),
     Source("keyword", "Marketing", MARKETING_ROLES, _fixed("/marketing/seo"), _keywords),
     Source("segment", "Marketing", MARKETING_ROLES, _fixed("/marketing/segments"), _segments),
+    Source("deal", "Sales", SALES_ROLES, lambda i: f"/sales?deal={i}", _deals),
+    Source(
+        "sales_account", "Sales", SALES_ROLES, lambda i: f"/sales/accounts/{i}", _sales_accounts
+    ),
+    Source(
+        "sales_contact",
+        "Sales",
+        SALES_ROLES,
+        lambda i: f"/sales/contacts?contact={i}",
+        _sales_contacts,
+    ),
+    Source("sales_lead", "Sales", SALES_ROLES, lambda i: f"/sales/leads?lead={i}", _sales_leads),
 )
 
 _SUBTITLE: dict[str, Callable[[Any], str | None]] = {
@@ -291,6 +362,10 @@ _SUBTITLE: dict[str, Callable[[Any], str | None]] = {
     "post": lambda v: f"Scheduled post · {getattr(v, 'value', v)}",
     "keyword": lambda _v: "SEO keyword",
     "segment": lambda _v: "Audience segment",
+    "deal": lambda _v: "Deal",
+    "sales_account": lambda v: f"Account · {v}" if v else "Account",
+    "sales_contact": lambda v: f"Contact · {v}" if v else "Contact",
+    "sales_lead": lambda v: f"Lead · {v}" if v else "Lead",
 }
 
 

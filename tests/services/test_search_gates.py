@@ -26,12 +26,17 @@ SOURCE_GATES = {
     "post": CORE,
     "keyword": CORE,
     "segment": CORE,
+    "deal": CORE,
+    "sales_account": CORE,
+    "sales_contact": CORE,
+    "sales_lead": CORE,
 }
 PAGE_GATES = {
     "/mission": CORE,
     "/assessment": CORE,
     "/validation": CORE,
     "/marketing": CORE,
+    "/sales": CORE,
     "/finance": FINANCE,
     "/academy": CORE,
     "/calendar": CORE,

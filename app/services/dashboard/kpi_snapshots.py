@@ -31,6 +31,9 @@ def current_values(metrics: dict[str, Any], tasks_done_week: int) -> dict[str, i
     run = metrics.get("runway", {})
     if run.get("status") in ("ok", "out_of_cash"):
         out["runway"] = run["months"]
+    pipe = metrics.get("pipeline", {})
+    if pipe.get("status") == "ok":
+        out["pipeline"] = pipe["value_minor"]
     ctr = metrics.get("campaign_ctr", {})
     if ctr.get("status") == "ok":
         out["campaign_ctr"] = ctr["ctr_percent"]

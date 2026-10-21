@@ -14,7 +14,7 @@ from app.db.models.kpi_snapshot import KpiSnapshot
 SERIES_DAYS = 14
 DELTA_DAYS = 7
 # Metrics stored as whole numbers (minor units / counts); the rest are decimals.
-INTEGER_METRICS = frozenset({"revenue", "tasks_done_week"})
+INTEGER_METRICS = frozenset({"revenue", "pipeline", "tasks_done_week"})
 
 
 def as_number(metric: str, value: Decimal) -> int | float:

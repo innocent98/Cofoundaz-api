@@ -2,7 +2,7 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import String, cast, exists, func
+from sqlalchemy import String, cast, exists, func, literal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,11 +15,13 @@ from app.db.models.enums import (
     ContentStatus,
     MembershipStatus,
     RoadmapStatus,
+    StageKind,
 )
 from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
+from app.db.models.sales import Deal, PipelineStage, SalesSettings
 from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
 from app.platform.jobs import job_dispatcher
@@ -33,6 +35,9 @@ SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
 SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
 SCHED_MARKETING_READOUT = "scheduled.marketing.readout"
+SCHED_SALES_STALL = "scheduled.sales.stall"
+DEFAULT_STALL_DAYS = 14
+SALES_STALL_BATCH = 500
 READOUT_HOUR = 8  # local time; the first tick of the ISO week at or after this hour
 MARKETING_PUBLISH_BATCH = 500
 
@@ -190,6 +195,40 @@ def _due_marketing_posts(db: Session, now: datetime) -> list[Due]:
                 )
             )
     return due
+
+
+def _due_sales_stalls(db: Session, now: datetime) -> list[Due]:
+    """Open deals quiet for the workspace's `stall_days` (default 14) that were not notified yet.
+    The claim period is the deal's `last_activity_at` stamp, so one stall episode fires once even
+    across repeated or concurrent scans, and new activity (a new stamp) opens a fresh episode."""
+    stall_days = func.coalesce(SalesSettings.stall_days, DEFAULT_STALL_DAYS)
+    rows = (
+        db.query(Deal.id, Deal.startup_id, Deal.last_activity_at)
+        .join(PipelineStage, PipelineStage.id == Deal.stage_id)
+        .join(Startup, Startup.id == Deal.startup_id)
+        .outerjoin(SalesSettings, SalesSettings.startup_id == Deal.startup_id)
+        .filter(
+            PipelineStage.kind == StageKind.open,
+            PipelineStage.archived_at.is_(None),
+            Startup.deleted_at.is_(None),
+            Deal.stalled_notified_at.is_(None),
+            Deal.last_activity_at <= literal(now) - func.make_interval(0, 0, 0, stall_days),
+        )
+        .order_by(Deal.last_activity_at)
+        .limit(SALES_STALL_BATCH)
+        .all()
+    )
+    return [
+        Due(
+            "sales.stall",
+            str(did),
+            at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%f"),
+            SCHED_SALES_STALL,
+            sid,
+            {"startup_id": str(sid), "deal_id": str(did)},
+        )
+        for did, sid, at in rows
+    ]
 
 
 def _due_campaign_readouts(db: Session, now: datetime) -> list[Due]:
@@ -353,6 +392,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_health_nightly(db, now),
         *_due_marketing_posts(db, now),
         *_due_campaign_readouts(db, now),
+        *_due_sales_stalls(db, now),
     ]
     enqueued = 0
     for item in due:

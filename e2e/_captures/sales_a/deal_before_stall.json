@@ -1,0 +1,35 @@
+{
+  "data": {
+    "id": "6c62e89d-651d-4634-9c3e-3a12319b17be",
+    "name": "Quiet renewal",
+    "account_id": "6a5e9104-94ee-4f8e-a78e-25bc7bce5292",
+    "account_name": "Acme Logistics",
+    "contact_id": null,
+    "contact_name": null,
+    "value_minor": 80000000,
+    "currency": "NGN",
+    "stage_id": "d4b9b58a-7bcd-48ec-8010-b9cd3961d642",
+    "next_step": null,
+    "next_step_due": null,
+    "closed_reason": null,
+    "closed_note": null,
+    "closed_at": null,
+    "owner_id": null,
+    "last_activity_at": "2026-10-21T11:58:05.737573Z",
+    "is_stalled": false,
+    "days_inactive": 0,
+    "created_at": "2026-10-21T11:58:05.389138Z",
+    "stage_history": [
+      {
+        "id": "6a6ba008-4a06-4b37-bf7f-c390215107a9",
+        "from_stage_id": null,
+        "from_stage_name": null,
+        "to_stage_id": "d4b9b58a-7bcd-48ec-8010-b9cd3961d642",
+        "to_stage_name": "Qualified",
+        "changed_by": "6d491050-3918-40c1-a09e-f4f6145278e6",
+        "changed_at": "2026-10-21T11:58:05.392345Z"
+      }
+    ]
+  },
+  "meta": null
+}
