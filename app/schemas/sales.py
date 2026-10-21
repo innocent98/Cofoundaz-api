@@ -1,11 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.db.models.enums import LeadSource, LeadStatus, StageKind
+from app.db.models.enums import ClosedReason, LeadSource, LeadStatus, StageKind
 
 
 class StageIn(BaseModel):
@@ -280,3 +280,104 @@ class ImportResult(BaseModel):
     duplicates_skipped: int
     invalid_rows: list[dict[str, Any]]
     invalid_total: int
+
+
+# ---- Deals ----
+class DealCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    account_id: uuid.UUID | None = None
+    contact_id: uuid.UUID | None = None
+    value_minor: int = Field(default=0, ge=0, le=2_000_000_000_000)
+    stage_id: uuid.UUID | None = None
+    next_step: str | None = Field(default=None, max_length=300)
+    next_step_due: date | None = None
+    owner_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required.")
+        return v
+
+    @field_validator("next_step")
+    @classmethod
+    def _blank(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class DealUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    account_id: uuid.UUID | None = None
+    contact_id: uuid.UUID | None = None
+    value_minor: int | None = Field(default=None, ge=0, le=2_000_000_000_000)
+    # accepted only so the service can answer with a clear 422 instead of silently ignoring it
+    stage_id: uuid.UUID | None = None
+    next_step: str | None = Field(default=None, max_length=300)
+    next_step_due: date | None = None
+    owner_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required.")
+        return v
+
+    @field_validator("next_step")
+    @classmethod
+    def _blank(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class DealStageMove(BaseModel):
+    stage_id: uuid.UUID
+    closed_reason: ClosedReason | None = None
+    closed_note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("closed_note")
+    @classmethod
+    def _blank(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class DealItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    account_id: uuid.UUID | None
+    account_name: str | None = None
+    contact_id: uuid.UUID | None
+    contact_name: str | None = None
+    value_minor: int
+    currency: str
+    stage_id: uuid.UUID
+    next_step: str | None
+    next_step_due: date | None
+    closed_reason: ClosedReason | None
+    closed_note: str | None
+    closed_at: datetime | None
+    owner_id: uuid.UUID | None
+    last_activity_at: datetime
+    is_stalled: bool = False
+    days_inactive: int = 0
+    created_at: datetime
+
+
+class StageChangeOut(BaseModel):
+    id: uuid.UUID
+    from_stage_id: uuid.UUID | None
+    from_stage_name: str | None
+    to_stage_id: uuid.UUID
+    to_stage_name: str | None
+    changed_by: uuid.UUID | None
+    changed_at: datetime
+
+
+class DealDetailOut(DealItem):
+    stage_history: list[StageChangeOut]

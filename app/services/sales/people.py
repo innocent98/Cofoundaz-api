@@ -208,8 +208,16 @@ def account_detail(db: Session, startup_id: uuid.UUID, account_id: uuid.UUID) ->
             .order_by(SalesContact.first_name, SalesContact.id)
         )
     )
-    # Task 5 fills open_deals and lifetime_won_minor once deals are wired
-    return {"account": account, "contacts": contacts, "open_deals": [], "lifetime_won_minor": 0}
+    # local import: deals.py imports this module for check_owner/_check_account
+    from app.services.sales.deals import account_deal_summary
+
+    open_deals, lifetime_won = account_deal_summary(db, startup_id, account.id)
+    return {
+        "account": account,
+        "contacts": contacts,
+        "open_deals": [d.model_dump(mode="json") for d in open_deals],
+        "lifetime_won_minor": lifetime_won,
+    }
 
 
 # ---- Contacts ----

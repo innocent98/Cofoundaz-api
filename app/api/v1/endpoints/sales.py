@@ -21,6 +21,10 @@ from app.schemas.sales import (
     ContactCreate,
     ContactOut,
     ContactUpdate,
+    DealCreate,
+    DealDetailOut,
+    DealStageMove,
+    DealUpdate,
     ImportCommit,
     LeadCreate,
     LeadOut,
@@ -31,6 +35,7 @@ from app.schemas.sales import (
     StagesReplace,
 )
 from app.services.sales import csv_import as csv_svc
+from app.services.sales import deals as deals_svc
 from app.services.sales import leads as leads_svc
 from app.services.sales import people as people_svc
 from app.services.sales import stages as stages_svc
@@ -131,6 +136,7 @@ def get_account(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     detail = people_svc.account_detail(db, membership.startup_id, account_id)
+    db.commit()  # open_deals lazily creates the settings row
     return success_response(
         AccountDetailOut(
             account=AccountOut.model_validate(detail["account"]),
@@ -354,3 +360,123 @@ def delete_lead(
     leads_svc.delete_lead(db, membership.startup_id, lead_id, actor_id=user.id)
     db.commit()
     return success_response({"deleted": True})
+
+
+# ---- Deals ----
+def _deal_detail(db: Session, startup_id: uuid.UUID, deal: Any) -> dict[str, Any]:
+    item = deals_svc.deal_items(db, startup_id, [deal])[0]
+    history = deals_svc.stage_history(db, startup_id, deal.id)
+    return DealDetailOut(**item.model_dump(), stage_history=history).model_dump(mode="json")
+
+
+@router.get("/deals", response_model=dict[str, Any])
+def list_deals(
+    stage_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    account_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    owner_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    q: str | None = Query(default=None, max_length=200),  # noqa: B008
+    open_only: bool = Query(default=False),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    items, total = deals_svc.list_deals(
+        db,
+        membership.startup_id,
+        stage_id=stage_id,
+        account_id=account_id,
+        owner_id=owner_id,
+        q=q,
+        open_only=open_only,
+        limit=limit,
+        offset=offset,
+    )
+    db.commit()  # the stall threshold lazily creates the settings row
+    return success_response(
+        {
+            "items": [i.model_dump(mode="json") for i in items],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.post("/deals", response_model=dict[str, Any])
+def create_deal(
+    payload: DealCreate,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deal = deals_svc.create_deal(
+        db, startup_id=membership.startup_id, actor_id=user.id, data=payload
+    )
+    out = deals_svc.deal_items(db, membership.startup_id, [deal])[0].model_dump(mode="json")
+    db.commit()
+    return success_response(out)
+
+
+@router.get("/deals/{deal_id}", response_model=dict[str, Any])
+def get_deal(
+    deal_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deal = deals_svc.get_deal(db, membership.startup_id, deal_id)
+    out = _deal_detail(db, membership.startup_id, deal)
+    db.commit()
+    return success_response(out)
+
+
+@router.patch("/deals/{deal_id}", response_model=dict[str, Any])
+def update_deal(
+    deal_id: uuid.UUID,
+    payload: DealUpdate,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deal = deals_svc.update_deal(
+        db, startup_id=membership.startup_id, deal_id=deal_id, actor_id=user.id, data=payload
+    )
+    out = deals_svc.deal_items(db, membership.startup_id, [deal])[0].model_dump(mode="json")
+    db.commit()
+    return success_response(out)
+
+
+@router.delete("/deals/{deal_id}", response_model=dict[str, Any])
+def delete_deal(
+    deal_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deals_svc.delete_deal(db, startup_id=membership.startup_id, deal_id=deal_id, actor_id=user.id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.post("/deals/{deal_id}/stage", response_model=dict[str, Any])
+def move_deal_stage(
+    deal_id: uuid.UUID,
+    payload: DealStageMove,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deal = deals_svc.move_stage(
+        db,
+        startup_id=membership.startup_id,
+        deal_id=deal_id,
+        stage_id=payload.stage_id,
+        actor_id=user.id,
+        closed_reason=payload.closed_reason,
+        closed_note=payload.closed_note,
+    )
+    out = _deal_detail(db, membership.startup_id, deal)
+    db.commit()
+    return success_response(out)
