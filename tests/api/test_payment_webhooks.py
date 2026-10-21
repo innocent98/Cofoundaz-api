@@ -812,7 +812,9 @@ def test_flutterwave_ledger_uses_the_api_values_not_the_webhooks(client, db, flw
     assert rows[0].date.isoformat() == "2026-10-02"
     fees = (
         db.query(Transaction)
-        .filter(Transaction.startup_id == s.id, Transaction.direction == TransactionDirection.outflow)
+        .filter(
+            Transaction.startup_id == s.id, Transaction.direction == TransactionDirection.outflow
+        )
         .all()
     )
     assert [f.amount_minor for f in fees] == [1025]
