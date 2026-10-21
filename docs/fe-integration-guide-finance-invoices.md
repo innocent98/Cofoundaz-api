@@ -19,6 +19,14 @@
 > `id`, `transaction_id`, `created_at`, `paid_at` and the `delivered+inv-…@resend.dev` addresses
 > are throwaway values from the test run — treat them as **placeholders**.
 
+> **Update (invoice automation, 2026-10-21).** Overdue notices, automatic and manual reminders, the
+> invoice PDF endpoint, the paid and runway events, three new invoice fields (`last_reminded_at`,
+> `reminder_count`, `overdue_notified_at`) and the NGN-only currency rule are documented, with live
+> captures, in [`fe-integration-guide-finance-invoices-automation.md`](fe-integration-guide-finance-invoices-automation.md).
+> Where this older guide says there is no PDF endpoint, no reminders, no invoice notifications or
+> that `currency` is free text, the newer guide wins. The example blocks below were captured before
+> the three new fields existed, so they do not show them; the live API now always returns them.
+
 Invoices are the second money-in document of the Finance Hub. The FE gets (1) an **invoice builder**
 (line items, tax, terms → server-computed totals), (2) a **lifecycle** — draft → sent → paid, with a
 derived `overdue` — including **emailing the invoice to the client**, and (3) a **real consequence in
@@ -47,6 +55,8 @@ e2e-captured.
 | 7 | `POST /finance/invoices/{id}/mark-unpaid` | paid → sent, reverses the inflow |
 | 8 | `DELETE /finance/invoices/{id}` | delete (draft only) |
 | 9 | `POST /finance/invoices/{id}/pay-link` | create or retry the provider pay link (see below) |
+| 10 | `GET /finance/invoices/{id}/pdf` | download the invoice PDF (new, see the automation guide) |
+| 11 | `POST /finance/invoices/{id}/remind` | email the client a reminder now (new, see the automation guide) |
 
 ---
 
@@ -111,16 +121,16 @@ deleted — once sent, the commercial terms are frozen.
 
 **(8) Known limits to design around** (also in "Known limitations" below): single-currency
 assumption (currencies are **not converted** — a foreign-currency invoice's inflow adds raw minor units
-into cash-on-hand); `currency` is only length-checked (1–3 chars), not validated as ISO 4217; **no
-automatic reminders or overdue notifications yet** — `auto_remind` is just a stored flag; **"Download
-PDF" has no server endpoint** — it is FE-only.
+into cash-on-hand); `currency` is now **NGN only** (any other value is a 422, D-FIN-6); **reminders and overdue
+notifications now exist** (`auto_remind` drives automatic client reminders) and **the PDF is served by
+`GET /finance/invoices/{id}/pdf`**, both documented in the automation guide.
 
 ---
 
 ## The invoice object
 
 Every invoice endpoint (except list, which wraps an array, and delete) returns exactly this shape,
-all 22 fields always present (19 + the three payment fields below) (nullable ones are present-as-`null`, never omitted):
+all 25 fields always present (19 + the three payment fields below + the three reminder fields below) (nullable ones are present-as-`null`, never omitted):
 
 | Field | Type | Notes |
 |---|---|---|
@@ -133,17 +143,20 @@ all 22 fields always present (19 + the three payment fields below) (nullable one
 | `tax_percent` | float | as stored (2 dp), e.g. `7.5`, `0.0` |
 | `tax_minor` | int | server-computed |
 | `total_minor` | int | server-computed |
-| `currency` | string | 1–3 chars, default `"NGN"` |
+| `currency` | string | `"NGN"` only (default); anything else is a 422 `Value error, Only NGN invoices are supported.` |
 | `terms` | string | `net_15` \| `net_30` \| `due_on_receipt` |
 | `status` | string | **derived**: `draft` \| `sent` \| `paid` \| `overdue` |
 | `issued_on` | `YYYY-MM-DD` \| null | `null` until sent (set to today, UTC, on send) |
 | `due_on` | `YYYY-MM-DD` \| null | `null` until sent; `issued_on` + 15 / 30 / 0 days by `terms` |
 | `paid_at` | ISO datetime \| null | set on mark-paid; back to `null` on mark-unpaid |
-| `auto_remind` | bool | stored flag only — no reminder is sent yet (see limitations) |
+| `auto_remind` | bool | when true the daily scan emails the client a reminder (first scan after due, then every 7 days, max 8); see the automation guide |
 | `transaction_id` | uuid \| null | the ledger inflow this invoice produced; non-null exactly while `paid` |
 | `pay_url` | string \| null | hosted checkout link, set when the invoice was sent (or the pay-link route was called) while a Paystack or Flutterwave connection was active. `null` otherwise. **Added by the payments work** |
 | `pay_provider` | `"paystack"` \| `"flutterwave"` \| null | which provider issued `pay_url`. **Added by the payments work** |
 | `paid_via` | `"paystack"` \| `"flutterwave"` \| null | set only when the provider's webhook marked the invoice paid; `null` for manual mark-paid. **Added by the payments work** |
+| `last_reminded_at` | ISO datetime \| null | **new**: when the latest reminder (auto or manual) was queued |
+| `reminder_count` | int | **new**: reminders queued so far (auto plus manual), `0` at creation |
+| `overdue_notified_at` | ISO datetime \| null | **new**: when the one-shot overdue notification was created, `null` until the scan sees it overdue |
 | `created_at` / `updated_at` | ISO datetime | |
 
 **Field-nesting traps.** (a) The list is at `data.invoices`, **not** `data` — every other invoice
@@ -206,7 +219,7 @@ the server ignores):
 | `line_items[].quantity` | int | yes | 1–100,000 |
 | `line_items[].unit_price_minor` | int | yes | 0–2,147,483,647 |
 | `tax_percent` | number | no (default `0`) | 0–100 |
-| `currency` | string | no (default `"NGN"`) | 1–3 chars (not ISO-validated) |
+| `currency` | string | no (default `"NGN"`) | must be `NGN` (case-insensitive); other values 422 |
 | `terms` | string | no (default `"net_30"`) | `net_15` \| `net_30` \| `due_on_receipt`; anything else → 422 |
 
 Unknown fields (like `total_minor` above) are ignored, not rejected.
@@ -1522,8 +1535,7 @@ was stubbed); the non-NGN pay-link 422 message and the 502 `PAYMENT_PROVIDER_UNA
   (an unpaid invoice that was overdue stays overdue after mark-unpaid).
 - **Mark-paid is safe to double-tap** (idempotent), but `send` is not guarded against a double-tap
   (see limitations) — disable the Send button after the first click until the response arrives.
-- **"Download PDF" is FE-only.** There is no server PDF endpoint; generate it client-side from the
-  invoice object (the server deferred PDF).
+- **"Download PDF" uses the server.** `GET /finance/invoices/{id}/pdf` (automation guide); fetch it with the auth headers.
 - **Deletes are hard** and only for drafts.
 
 ## Known limitations (be honest with users)
@@ -1531,12 +1543,12 @@ was stubbed); the non-NGN pay-link 422 message and the 502 `PAYMENT_PROVIDER_UNA
 | Limitation | Effect |
 |---|---|
 | **Single-currency assumption.** Currencies are not converted (same as Slices 1–2). | An invoice in a non-workspace currency, once paid, adds its **raw minor units** into `cash_on_hand` and every cash-flow/runway figure as if it were the workspace currency. Don't let users mix currencies until conversion ships |
-| **`currency` is not ISO-validated** — only 1–3 characters. | `"ZZ"` or `"1"` is accepted; validate on the FE (a currency picker) |
-| **No reminder / overdue scheduler yet.** | `auto_remind` is stored and returned but **nothing is sent automatically**; `overdue` is only computed at read time. No overdue notification or email |
-| **No server-side PDF.** | FE renders/downloads its own |
+| **`currency` is NGN only.** | Other values are a 422; no currency picker |
+| ~~No reminder / overdue scheduler yet.~~ Superseded. | A daily scan now sends the overdue notification and automatic reminders (automation guide) |
+| ~~No server-side PDF.~~ Superseded. | `GET /finance/invoices/{id}/pdf` |
 | **No Client/CRM entity.** | `client_name` / `client_email` are free text per invoice |
 | **`send`, `PATCH`, `DELETE` use an unlocked read** (`mark-paid` / `mark-unpaid` **do** lock the row). | A rapid double-click on Send could queue **two emails** (the invoice itself only flips once); two concurrent PATCHes can lose an update. Disable buttons while a request is in flight |
-| **No `invoice.*` domain events / notifications.** | Nothing fires in the notification feed when an invoice is sent or paid |
+| **No notification on send.** | `finance.invoice.overdue` and `finance.invoice.paid` now fire (automation guide); sending an invoice still creates none |
 | **List is unpaginated; ordering is `created_at` desc.** | Fine at current volumes |
 | **`number` year is the UTC creation year;** invoice numbers can be reused if the newest draft is deleted. | Don't treat `number` as a permanent external key — use `id` |
 
@@ -1589,6 +1601,6 @@ in `e2e/_captures/invoices/`. ⚠️ **unit-only** = asserted by the named unit 
 | RBAC: founder / team_member / accountant allowed; other roles → 403 | ⚠️ unit-only | `test_rbac_forbidden`, `test_accountant_allowed`, `test_lifecycle_rbac_forbidden`, `test_mark_paid_accountant_allowed`, `test_mark_paid_unpaid_rbac_forbidden` |
 | Cross-workspace access → 404 (get/patch/delete/send/mark-paid/mark-unpaid/list exclusion) | ⚠️ unit-only | `test_get_one_and_cross_tenant_404`, `test_cross_tenant_*` |
 | Mixed-currency invoice summed into cash-on-hand without conversion | ⚠️ from source only (no test exercises it) | `app/services/finance/invoices.py::mark_paid`, `cashflow.py` |
-| `currency` not ISO-validated (1–3 chars only) | ⚠️ from source only | `app/schemas/invoice.py` |
-| Reminder / overdue scheduler | ⚠️ not built — `auto_remind` is a stored flag only | — |
+| `currency` NGN only (D-FIN-6) | verified live in the automation guide | `error_create_non_ngn_currency.json` |
+| Reminder / overdue scheduler | superseded: verified live in the automation guide | `fe-integration-guide-finance-invoices-automation.md` |
 | 403 / `EMAIL_NOT_VERIFIED` error bodies | ⚠️ not captured | `app/core/errors.py` |

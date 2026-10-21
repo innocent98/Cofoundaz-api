@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a sent invoice that is past due can be reminded.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Only a sent invoice that is past due can be reminded."
+      }
+    ]
+  }
+}

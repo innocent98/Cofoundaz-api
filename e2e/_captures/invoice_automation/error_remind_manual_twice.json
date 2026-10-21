@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A reminder was already sent in the last 24 hours.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "A reminder was already sent in the last 24 hours."
+      }
+    ]
+  }
+}
