@@ -58,3 +58,22 @@ def test_flutterwave_through_stub():
     assert link.url.startswith("https://")
     with pytest.raises(ProviderAuthError):
         f.verify_key(Credentials("FLWSECK_TEST-bad", "h"))
+
+
+def test_flutterwave_verify_through_stub_echoes_the_latest_created_link():
+    f = flutterwave.FlutterwaveProvider(httpx.Client(transport=stub_transport()))
+    creds = Credentials("FLWSECK_TEST-good", "h")
+    f.create_payment_link(
+        creds,
+        reference="inv_verify",
+        amount_minor=250000,
+        email="a@b.co",
+        currency="NGN",
+        description="d",
+        redirect_url="https://x.test",
+    )
+    ev = f.verify_transaction(creds, transaction_id="777")
+    assert ev is not None
+    assert (ev.reference, ev.amount_minor, ev.currency) == ("inv_verify", 250000, "NGN")
+    with pytest.raises(ProviderAuthError):
+        f.verify_transaction(Credentials("FLWSECK_TEST-bad", "h"), transaction_id="777")

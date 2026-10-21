@@ -15,6 +15,11 @@ _FLUTTERWAVE_HOST = "api.flutterwave.com"
 
 _STUB_WHEN = "2026-10-01T09:30:00.000Z"
 
+# Flutterwave payment links created through this stub, newest last. The verify endpoint answers
+# any transaction id with the most recent link as a successful charge, so a webhook that matches
+# the link the journey just created is confirmed (the stub cannot map ids to references).
+_FLW_LINKS: list[dict[str, object]] = []
+
 
 def _json(status: int, body: object) -> httpx.Response:
     return httpx.Response(status, json=body)
@@ -133,12 +138,44 @@ def _flutterwave(request: httpx.Request) -> httpx.Response:
     if path == "/v3/payments":
         body = json.loads(request.content or b"{}")
         ref = str(body.get("tx_ref") or "stub_flw_ref")
+        _FLW_LINKS.append(
+            {"tx_ref": ref, "amount": body.get("amount"), "currency": body.get("currency")}
+        )
+        del _FLW_LINKS[:-50]
         return _json(
             200,
             {
                 "status": "success",
                 "message": "Hosted Link",
                 "data": {"link": f"https://checkout.flutterwave.com/v3/hosted/pay/stub-{ref}"},
+            },
+        )
+    parts = path.strip("/").split("/")
+    if len(parts) == 4 and parts[:2] == ["v3", "transactions"] and parts[3] == "verify":
+        if not _FLW_LINKS:
+            return _json(
+                404,
+                {
+                    "status": "error",
+                    "message": "No transaction was found for this id",
+                    "data": None,
+                },
+            )
+        link = _FLW_LINKS[-1]
+        return _json(
+            200,
+            {
+                "status": "success",
+                "message": "Transaction fetched successfully",
+                "data": {
+                    "id": int(parts[2]) if parts[2].isdigit() else parts[2],
+                    "tx_ref": link["tx_ref"],
+                    "amount": json.loads(str(link["amount"] or "0")),
+                    "currency": link["currency"] or "NGN",
+                    "app_fee": 24.2,
+                    "status": "successful",
+                    "created_at": _STUB_WHEN,
+                },
             },
         )
     return _json(404, {"status": "error", "message": "Not found", "data": None})

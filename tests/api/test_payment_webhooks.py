@@ -6,7 +6,9 @@ import threading
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
+import httpx
 import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
@@ -22,10 +24,11 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.main import app
-from app.services.finance.payments import crypto
+from app.services.finance.payments import crypto, flutterwave
 from tests.api.test_finance import BASE, _member
 from tests.services.finance.payments_helpers import make_connection, make_invoice, make_workspace
 
+FIX = Path(__file__).resolve().parents[1] / "fixtures" / "payments"
 PS_KEY = "sk_test_fake_fake_fake1234"
 OTHER_KEY = "sk_test_some_otherwor_kspace99"
 FLW_KEY = "FLWSECK_TEST-fake_fake_fake5678-X"
@@ -38,6 +41,39 @@ def _enc(monkeypatch):
     monkeypatch.setattr(
         settings, "FINANCE_CONNECTIONS_ENCRYPTION_KEY", Fernet.generate_key().decode()
     )
+
+
+class FlwApi:
+    """Mock Flutterwave API for the re-verify call; records every request."""
+
+    def __init__(self) -> None:
+        self.calls: list[httpx.Request] = []
+        self.respond: object = self.fixture("flutterwave_verify_success.json")
+
+    @staticmethod
+    def fixture(name: str, status: int = 200) -> httpx.Response:
+        return httpx.Response(status, content=(FIX / name).read_bytes())
+
+    def set_fixture(self, name: str, status: int = 200) -> None:
+        self.respond = self.fixture(name, status)
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.calls.append(request)
+        if isinstance(self.respond, Exception):
+            raise self.respond
+        assert isinstance(self.respond, httpx.Response)
+        return self.respond
+
+
+@pytest.fixture(autouse=True)
+def flw_api(monkeypatch) -> FlwApi:
+    api = FlwApi()
+    monkeypatch.setattr(
+        flutterwave,
+        "http_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(api.handler)),
+    )
+    return api
 
 
 def ps_sig(body: bytes, key: str = PS_KEY) -> str:
@@ -645,3 +681,187 @@ def test_crash_after_event_insert_leaves_no_seen_marker_and_retry_succeeds(engin
         assert retry.status_code == 200
         assert retry.json()["data"] == {"received": True}
         assert _count_inflows(engine, w["startup_id"]) == 1
+
+
+# --------------------------------------------------- Flutterwave: re-verify with the API
+
+
+def _flw_world(db):
+    _u, s, _h = _member(db)
+    conn = _flw_conn(db, s)
+    inv = make_invoice(db, s, reference="tx_alpha", total=500000)
+    inv.pay_provider = "flutterwave"
+    db.flush()
+    return s, conn, inv
+
+
+def _events(db, conn):
+    return db.query(ProviderEvent).filter_by(connection_id=conn.id).all()
+
+
+def test_flutterwave_reverify_calls_the_verify_endpoint_with_the_bearer_key(client, db, flw_api):
+    s, conn, inv = _flw_world(db)
+    assert post_flw(client, conn, flw_body()).status_code == 200
+    assert len(flw_api.calls) == 1
+    req = flw_api.calls[0]
+    assert req.method == "GET" and req.url.path == "/v3/transactions/2001/verify"
+    assert req.headers["authorization"] == f"Bearer {FLW_KEY}"
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.paid
+    assert len(_inflows(db, s.id)) == 1
+
+
+@pytest.mark.parametrize(
+    "fixture,status",
+    [
+        ("flutterwave_verify_failed.json", 200),
+        ("flutterwave_verify_amount_mismatch.json", 200),
+        ("flutterwave_verify_currency_mismatch.json", 200),
+        ("flutterwave_verify_ref_mismatch.json", 200),
+        ("flutterwave_verify_404.json", 404),
+        ("flutterwave_verify_404.json", 400),
+    ],
+)
+def test_flutterwave_forged_event_the_api_disagrees_with_is_unverified(
+    client, db, flw_api, fixture, status
+):
+    s, conn, inv = _flw_world(db)
+    flw_api.set_fixture(fixture, status)
+    resp = post_flw(client, conn, flw_body())
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"] == {"received": True}
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.sent
+    assert _inflows(db, s.id) == []
+    assert [e.outcome for e in _events(db, conn)] == ["unverified"]
+
+
+def test_flutterwave_unverified_event_does_not_block_the_real_delivery(client, db, flw_api):
+    s, conn, inv = _flw_world(db)
+    flw_api.set_fixture("flutterwave_verify_failed.json")
+    assert post_flw(client, conn, flw_body()).status_code == 200  # forged first
+    flw_api.set_fixture("flutterwave_verify_success.json")
+    resp = post_flw(client, conn, flw_body())  # the real one, same transaction id
+    assert resp.json()["data"] == {"received": True}
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.paid
+    assert len(_inflows(db, s.id)) == 1
+    assert [e.outcome for e in _events(db, conn)] == ["invoice_paid"]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        httpx.ReadTimeout("slow"),
+        "500",
+    ],
+)
+def test_flutterwave_provider_down_is_502_with_no_event_row_and_retry_works(
+    client, db, flw_api, failure
+):
+    s, conn, inv = _flw_world(db)
+    if isinstance(failure, Exception):
+        flw_api.respond = failure
+    else:
+        flw_api.set_fixture("flutterwave_500.json", 500)
+    resp = post_flw(client, conn, flw_body())
+    assert resp.status_code == 502
+    assert resp.json()["error"]["code"] == "PAYMENT_PROVIDER_UNAVAILABLE"
+    assert _events(db, conn) == []
+    assert _inflows(db, s.id) == []
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.sent
+
+    flw_api.set_fixture("flutterwave_verify_success.json")
+    retry = post_flw(client, conn, flw_body())
+    assert retry.status_code == 200
+    assert retry.json()["data"] == {"received": True}
+    assert len(_inflows(db, s.id)) == 1
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.paid
+
+
+def test_flutterwave_our_key_rejected_by_verify_is_unverified_and_needs_attention(
+    client, db, flw_api
+):
+    s, conn, inv = _flw_world(db)
+    flw_api.set_fixture("flutterwave_401.json", 401)
+    resp = post_flw(client, conn, flw_body())
+    assert resp.status_code == 200
+    db.refresh(inv)
+    db.refresh(conn)
+    assert inv.status == InvoiceStatus.sent
+    assert _inflows(db, s.id) == []
+    assert [e.outcome for e in _events(db, conn)] == ["unverified"]
+    assert conn.status == "needs_attention"
+
+
+def test_flutterwave_ledger_uses_the_api_values_not_the_webhooks(client, db, flw_api):
+    s, conn, inv = _flw_world(db)
+    api = json.loads((FIX / "flutterwave_verify_success.json").read_text())
+    api["data"]["app_fee"] = 10.25
+    api["data"]["created_at"] = "2026-10-02T11:00:00.000Z"
+    flw_api.respond = httpx.Response(200, json=api)
+    # same amount/currency/ref, but the webhook claims a different fee and date
+    body = json.loads(flw_body(fee=99.99))
+    body["data"]["created_at"] = "2026-09-01T00:00:00.000Z"
+    resp = post_flw(client, conn, json.dumps(body).encode())
+    assert resp.status_code == 200
+    rows = _inflows(db, s.id)
+    assert len(rows) == 1 and rows[0].amount_minor == 500000
+    assert rows[0].date.isoformat() == "2026-10-02"
+    fees = (
+        db.query(Transaction)
+        .filter(Transaction.startup_id == s.id, Transaction.direction == TransactionDirection.outflow)
+        .all()
+    )
+    assert [f.amount_minor for f in fees] == [1025]
+
+
+def test_flutterwave_webhook_amount_differing_from_the_api_is_unverified(client, db, flw_api):
+    s, conn, inv = _flw_world(db)
+    resp = post_flw(client, conn, flw_body(amount=1000))  # API says 5000
+    assert resp.status_code == 200
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.sent
+    assert _inflows(db, s.id) == []
+    assert [e.outcome for e in _events(db, conn)] == ["unverified"]
+
+
+def test_flutterwave_non_invoice_charge_import_also_needs_api_confirmation(client, db, flw_api):
+    _u, s, _h = _member(db)
+    conn = _flw_conn(db, s)  # no invoice carries this reference
+    flw_api.set_fixture("flutterwave_verify_failed.json")
+    assert post_flw(client, conn, flw_body()).status_code == 200
+    assert _inflows(db, s.id) == []
+    assert [e.outcome for e in _events(db, conn)] == ["unverified"]
+
+    flw_api.set_fixture("flutterwave_verify_success.json")
+    assert post_flw(client, conn, flw_body()).status_code == 200
+    rows = _inflows(db, s.id)
+    assert len(rows) == 1 and rows[0].amount_minor == 500000
+
+
+def test_flutterwave_duplicate_delivery_makes_no_second_verify_call(client, db, flw_api):
+    _s, conn, _inv = _flw_world(db)
+    post_flw(client, conn, flw_body())
+    dup = post_flw(client, conn, flw_body())
+    assert dup.json()["data"] == {"received": True, "duplicate": True}
+    assert len(flw_api.calls) == 1
+
+
+def test_flutterwave_unrelated_event_makes_no_verify_call(client, db, flw_api):
+    _s, conn, _inv = _flw_world(db)
+    body = json.dumps({"event": "transfer.completed", "data": {"id": 5}}).encode()
+    assert post_flw(client, conn, body).status_code == 200
+    assert flw_api.calls == []
+
+
+def test_paystack_path_makes_no_verify_call(client, db, flw_api):
+    _u, s, _h = _member(db)
+    conn = make_connection(db, s)
+    inv = make_invoice(db, s, reference="inv_ref_1")
+    assert post_ps(client, conn, ps_body()).status_code == 200
+    db.refresh(inv)
+    assert inv.status == InvoiceStatus.paid
+    assert flw_api.calls == []

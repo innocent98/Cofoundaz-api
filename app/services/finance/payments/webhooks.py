@@ -17,18 +17,24 @@ from app.services.finance import invoices as invoices_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance.payments import connections as conn_svc
 from app.services.finance.payments.base import (
+    Credentials,
+    ProviderAuthError,
     ProviderBadResponse,
     ProviderTransaction,
+    ProviderUnavailable,
     WebhookEvent,
 )
+from app.services.finance.payments.flutterwave import FlutterwaveProvider
 from app.services.finance.payments.importer import CURRENCY, ImportResult, import_items
 from app.services.finance.payments.registry import get_provider
+from app.services.finance.payments.sync import AUTH_ERROR_MESSAGE
 
 MAX_BODY_BYTES = 256 * 1024
 _EVENT_ID_MAX = 200
 # needs_attention means the provider rejected the stored key (possibly revoked or leaked), so
 # events signed with it are not trusted; sync catches the money up once the key is replaced.
 _RECEIVABLE = (ConnectionStatus.active.value,)
+UNVERIFIED = "unverified"
 
 
 def _invalid_signature() -> AppError:
@@ -159,6 +165,44 @@ def _apply_charge(db: Session, conn: FinanceConnection, event: WebhookEvent) -> 
     return _outcome_of(result), result.changed
 
 
+def _reverify_flutterwave(
+    conn: FinanceConnection,
+    adapter: FlutterwaveProvider,
+    creds: Credentials,
+    event: WebhookEvent,
+) -> WebhookEvent | None:
+    """The API's own view of a Flutterwave charge, or None when it does not back the webhook.
+
+    `verif-hash` is a static secret, so whoever learns it can forge `charge.completed`; money is
+    only ever applied from what the API confirms. Provider downtime raises a 502 so the
+    delivery is retried; our rejected key is also "not confirmed" and flags the connection.
+    """
+    if event.transaction_id is None or event.reference is None:
+        return None
+    try:
+        confirmed = adapter.verify_transaction(creds, transaction_id=event.transaction_id)
+    except ProviderUnavailable:
+        raise AppError(
+            "PAYMENT_PROVIDER_UNAVAILABLE",
+            "Could not reach the payment provider to confirm this payment. Try again shortly.",
+            502,
+        ) from None
+    except ProviderAuthError:
+        conn.status = ConnectionStatus.needs_attention.value
+        conn.last_error = AUTH_ERROR_MESSAGE
+        return None
+    except ProviderBadResponse:
+        return None  # 404 / other 4xx / unreadable: the API does not know this transaction
+    if (
+        confirmed is None
+        or confirmed.reference != event.reference
+        or confirmed.amount_minor != event.amount_minor
+        or confirmed.currency != event.currency
+    ):
+        return None
+    return confirmed
+
+
 def process(
     db: Session,
     *,
@@ -186,17 +230,36 @@ def process(
         raise AppError("INVALID_PAYLOAD", "The webhook body could not be read.", 400) from None
 
     key = _dedupe_key(event, raw_body)
-    row = ProviderEvent(
-        connection_id=conn.id, event_id=key, event_type=event.kind, outcome="received"
-    )
-    try:
-        with db.begin_nested():
-            db.add(row)  # inside the savepoint: a duplicate rolls back with it
-    except IntegrityError:
+    # A forged delivery leaves an "unverified" row; it must not shadow the real one that
+    # follows, so only that outcome may be processed again.
+    row = db.execute(
+        select(ProviderEvent)
+        .where(ProviderEvent.connection_id == conn.id, ProviderEvent.event_id == key)
+        .with_for_update()
+    ).scalar_one_or_none()
+    if row is not None and row.outcome != UNVERIFIED:
         return {"received": True, "duplicate": True}
 
-    if event.kind == "charge":
-        outcome, changed = _apply_charge(db, conn, event)
+    # Verify with the provider API BEFORE the event row or any invoice lock exists: an outage
+    # raises 502 with nothing written, so the provider's retry can succeed.
+    verified: WebhookEvent | None = event
+    if isinstance(adapter, FlutterwaveProvider) and event.kind == "charge":
+        verified = _reverify_flutterwave(conn, adapter, creds, event)
+
+    if row is None:
+        row = ProviderEvent(
+            connection_id=conn.id, event_id=key, event_type=event.kind, outcome="received"
+        )
+        try:
+            with db.begin_nested():
+                db.add(row)  # inside the savepoint: a duplicate rolls back with it
+        except IntegrityError:
+            return {"received": True, "duplicate": True}
+
+    if verified is None:
+        outcome, changed = UNVERIFIED, False
+    elif event.kind == "charge":
+        outcome, changed = _apply_charge(db, conn, verified)
     elif event.kind == "refund":
         result = import_items(db, connection=conn, items=_refund_items(conn, event, key))
         outcome, changed = _outcome_of(result), result.changed

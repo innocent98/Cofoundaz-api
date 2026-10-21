@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, Literal
+from urllib.parse import quote
 
 import httpx
 
@@ -53,6 +54,12 @@ def to_minor(value: Any) -> int | None:
     if not dec.is_finite():
         return None
     return int((dec.quantize(_CENT, rounding=ROUND_HALF_UP) * 100).to_integral_value())
+
+
+def _transaction_id(value: Any) -> str | None:
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None
+    return str(value) or None
 
 
 def _minor_to_major_str(minor: int) -> str:
@@ -265,5 +272,36 @@ class FlutterwaveProvider:
                 str(data["currency"]) if data.get("currency") else None,
                 to_minor(data.get("app_fee")),
                 _parse_dt(data.get("created_at")),
+                _transaction_id(data.get("id")),
             )
         return WebhookEvent(event_id, "other", None, None, None, None, None)
+
+    def verify_transaction(self, creds: Credentials, *, transaction_id: str) -> WebhookEvent | None:
+        """Ask Flutterwave whether this transaction really succeeded.
+
+        `verif-hash` is a static shared secret, not a per-body signature, so a webhook alone
+        proves nothing. Returns the API's own view as a charge event (reference, amount,
+        currency, fee, time all from the API), or None when the API does not show a successful
+        transaction with this id. Raises ProviderAuthError / ProviderUnavailable /
+        ProviderBadResponse (a 404 or other 4xx) from the transport.
+        """
+        body = self._request(creds, "GET", f"/transactions/{quote(transaction_id, safe='')}/verify")
+        data = body.get("data")
+        if body.get("status") != "success" or not isinstance(data, dict):
+            return None
+        if data.get("status") != "successful" or _transaction_id(data.get("id")) != transaction_id:
+            return None
+        ref = data.get("tx_ref")
+        amount = to_minor(data.get("amount"))
+        if not isinstance(ref, str) or not ref or amount is None or not data.get("currency"):
+            return None
+        return WebhookEvent(
+            f"charge.completed:{transaction_id}",
+            "charge",
+            ref,
+            amount,
+            str(data["currency"]),
+            to_minor(data.get("app_fee")),
+            _parse_dt(data.get("created_at")),
+            transaction_id,
+        )

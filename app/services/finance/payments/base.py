@@ -58,6 +58,7 @@ class WebhookEvent:
     currency: str | None
     fee_minor: int | None
     occurred_at: datetime | None
+    transaction_id: str | None = None
 
 
 class PaymentProvider(Protocol):

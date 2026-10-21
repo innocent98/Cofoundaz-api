@@ -1395,7 +1395,7 @@ The fee row from the webhook (2420 kobo, `Payment fees`) is in `capture: transac
 }
 ```
 
-Flutterwave: same flow with the `verif-hash` header. `capture: webhook_flutterwave_charge_accepted.json`
+Flutterwave: same flow with the `verif-hash` header. Because that header is a static shared secret (not a per-body signature), the server also asks the Flutterwave API to confirm the transaction (`GET /v3/transactions/{id}/verify`) before applying any money. If the API does not confirm it (not successful, different `tx_ref`, amount or currency, unknown id), the reply is still 200 `{"received": true}` but nothing changes (indistinguishable from success, like the mismatch case below). If Flutterwave cannot be reached the webhook route answers 502 `PAYMENT_PROVIDER_UNAVAILABLE` so Flutterwave retries; this is never shown to the user. `capture: webhook_flutterwave_charge_accepted.json`
 
 ```json
 {
@@ -1614,6 +1614,7 @@ or not exercised at all in e2e; the source of the shape is named.
 | Non-NGN 422 and provider-failure 502 on pay-link | NOT VERIFIED live | source and unit tests |
 | Flutterwave payment-link request (amount sent as a string) accepted by the real API | NOT VERIFIED | the stub accepts any body; check against the real Flutterwave `/v3/payments` |
 | Real Paystack and Flutterwave response shapes (key check, listing, balances, link creation) | NOT VERIFIED | handwritten fixtures under `tests/fixtures/payments/` and the stub |
+| Flutterwave webhook re-verified with the API (`GET /v3/transactions/{id}/verify`) before money is applied; unconfirmed = 200 with no effect (`unverified`); provider down = 502 `PAYMENT_PROVIDER_UNAVAILABLE`, no event stored, retry works | NOT VERIFIED against real Flutterwave | unit tests with handwritten fixtures `flutterwave_verify_*.json`; the live e2e only passes through the stub, which confirms the most recently created pay link. The real verify response shape needs the sandbox walk |
 | Real webhook delivery to our URL, real signature headers (`x-paystack-signature`, `verif-hash`), retry behaviour | NOT VERIFIED | the test computes signatures itself with our own implementation of the documented scheme; a mistake in the scheme would be invisible here |
 | Webhook marks invoice paid once, duplicate acked with `duplicate: true`, both providers | LIVE (self-signed) | `webhook_*_accepted.json`, `webhook_*_duplicate.json`, `invoice_paid_via_*.json` |
 | Concurrent duplicate webhook delivery | NOT VERIFIED live | unit test |
