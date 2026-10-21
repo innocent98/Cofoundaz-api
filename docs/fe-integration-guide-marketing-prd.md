@@ -1167,6 +1167,47 @@ Decision: a post has exactly one `channel`; cross-posting means duplicating the 
 
 ---
 
+## 15. Re-walk fixes (2026-10-21)
+
+All bodies below are copied from `e2e/_captures/marketing_rewalk_be/` (live, stub model).
+
+**Overview "AI content ideas"** (`GET /marketing` → `ai_content_ideas`) now counts the **newest ready** content-gap run only, the same list the SEO page shows. Two runs of one idea each give `1`, not `2` (`overview_after_two_runs.json`):
+```json
+{ "scheduled_this_week": 0, "active_channels": 0, "active_campaigns": 0, "top_channel_by_conversions": null, "ai_content_ideas": 1 }
+```
+
+**Plan my first week never proposes a past slot.** Each proposal now carries `scheduled_at` (ISO, UTC): the next 09:00 UTC after now, one per day, never on a slot that already holds a calendar entry. Use it as the entry's `scheduled_at` instead of building a date from `day_offset` (`plan_week_ready.json`):
+```json
+"entries": [
+  { "body": "[stub-llm] body", "title": "[stub-llm] title", "channel": "organic_social", "day_offset": 0, "scheduled_at": "2026-10-22T09:00:00+00:00" }
+]
+```
+The workspace has no timezone setting, so slots are 09:00 UTC (10:00 in Lagos). When the proposal is added, keep it as `scheduled`/`draft` as before.
+
+**⌘K search hits link to the item** (`search_zeppelin.json`): campaign `href` = `/marketing/campaigns/<id>`, post `href` = `/marketing/calendar?entry=<id>`, segment `href` = `/marketing/segments` (the FE has no segment detail route, so the list is the target).
+
+**Content-gap runs say when they are stale.** `GET /seo/content-gaps` and `GET /seo/content-gaps/{id}` now return `stale` on each generation: `false` right after a run, `true` once the brand context (business, Business Builder answers, personas, positioning, audience segments) changed after it, `null` while the run is not `ready`. A `ready` run written before this change has no stored fingerprint and reads `true` once. The API never regenerates by itself. `content_gaps_stale.json` (after the positioning audience was edited):
+```json
+{ "kind": "content_gap", "status": "ready", "inputs": {}, "output": { "gaps": [ { "angle": "[stub-llm] angle", "title": "[stub-llm] title", "target_keyword": "[stub-llm] target_keyword" } ] }, "error": null, "stale": true }
+```
+**UX instruction:** when the newest ready run has `stale: true`, show "Your brand details changed since these ideas were written" with a **Regenerate** button (`POST /seo/content-gaps/generate`); keep showing the old ideas until the new run is ready. Every other generation response (copy, plan-week, fit notes) now also has a `stale` field, always `null`; ignore it there.
+
+**Media can be previewed.** `GET /marketing/media/{id}/file` returns the image bytes (`media_file_headers.json`):
+```json
+{ "status": 200, "content-type": "image/png", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff", "bytes": 40 }
+```
+It needs the same bearer token and `X-Workspace-Id` as every marketing call (an `<img src>` cannot send them), so load it with `fetch`, turn the response into a blob and use `URL.createObjectURL`. Without a token it is 401/403, a mentor gets 403, another workspace's id is 404. With Cloudinary storage the route answers `302` to the image's public URL (random key); `fetch` follows it. **Not exercised live:** the Cloudinary redirect (unit-checked only by code path; no Cloudinary in e2e).
+
+| Behaviour | Status |
+|---|---|
+| Overview count = newest ready run | **verified live** (stub) |
+| Plan-week `scheduled_at` future, one per day, skips taken slots | **verified live** (future + shape); the hour-of-day table and taken-slot skipping are unit tests (`tests/api/test_marketing_rewalk.py`) |
+| Search hrefs | **verified live** |
+| `stale` false → true after a context change | **verified live** |
+| Media file route, local storage | **verified live**; role/other-workspace denial is unit |
+| Media file route, Cloudinary redirect | **not exercised** |
+
+
 ## Verification table
 
 | Behaviour | Status |
@@ -1195,3 +1236,4 @@ Decision: a post has exactly one `channel`; cross-posting means duplicating the 
 | Keyword `source` / `metrics_updated_at` | **verified live** (§12); "only on change" rule: unit |
 | Segment definition validation and cleaning, attributes route | **verified live** (§13); each bad shape: unit |
 | One channel per post | **verified live** (§14) |
+| Re-walk fixes: idea count, plan-week slots, search hrefs, stale runs, media file (§15) | see the table inside §15 |

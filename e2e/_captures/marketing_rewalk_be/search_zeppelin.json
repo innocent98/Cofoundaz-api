@@ -1,0 +1,32 @@
+{
+  "data": {
+    "query": "Zeppelin",
+    "results": [
+      {
+        "type": "campaign",
+        "group": "Marketing",
+        "id": "f59a5687-6bcc-4ca9-8479-7d8fecbeb667",
+        "title": "Zeppelin push",
+        "subtitle": "Campaign \u00b7 draft",
+        "href": "/marketing/campaigns/f59a5687-6bcc-4ca9-8479-7d8fecbeb667"
+      },
+      {
+        "type": "post",
+        "group": "Marketing",
+        "id": "535ceeb5-8c2b-4b55-be0f-43df835d09ee",
+        "title": "Zeppelin teaser",
+        "subtitle": "Scheduled post \u00b7 draft",
+        "href": "/marketing/calendar?entry=535ceeb5-8c2b-4b55-be0f-43df835d09ee"
+      },
+      {
+        "type": "segment",
+        "group": "Marketing",
+        "id": "742a9cb3-15cc-47ae-adfc-08f4ba346175",
+        "title": "Zeppelin fans",
+        "subtitle": "Audience segment",
+        "href": "/marketing/segments"
+      }
+    ]
+  },
+  "meta": null
+}

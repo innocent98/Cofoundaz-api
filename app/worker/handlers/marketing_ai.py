@@ -19,7 +19,12 @@ from app.db.models.marketing import (
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.llm_budget import metered_complete_json
-from app.services.marketing.ai_context import build_marketing_context, fence, has_placeholder
+from app.services.marketing.ai_context import (
+    build_marketing_context,
+    context_hash,
+    fence,
+    has_placeholder,
+)
 from app.services.marketing.ai_prompts import (
     build_channel_fit_messages,
     build_channel_plan_messages,
@@ -35,6 +40,7 @@ from app.services.marketing.ai_prompts import (
     plan_week_schema,
     readout_schema,
 )
+from app.services.marketing.plan_slots import assign_slots
 from app.services.marketing.platforms import limit_for
 from app.services.marketing.readouts import readout_facts
 from app.services.marketing.service import list_channels
@@ -163,6 +169,10 @@ def handle_marketing_copy(db: Session, job: Job) -> None:
 register_handler("ai.marketing.copy", handle_marketing_copy)
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
 def handle_marketing_plan_week(db: Session, job: Job) -> None:
     """Fill a plan-week generation with up to 7 proposed calendar entries. No commit."""
     g = _load(db, job)
@@ -201,7 +211,7 @@ def handle_marketing_plan_week(db: Session, job: Job) -> None:
         for e in (result.get("entries") or [])
         if isinstance(e, dict) and e.get("channel") in valid
     ][:7]
-    g.output = {"entries": entries}
+    g.output = {"entries": assign_slots(db, g.startup_id, entries, _now())}
     g.status = MarketingGenerationStatus.ready
     db.flush()
 
@@ -356,6 +366,7 @@ def handle_marketing_content_gap(db: Session, job: Job) -> None:
         _fail_over_budget(db, g)
         return
     gaps = [x for x in (result.get("gaps") or []) if isinstance(x, dict)][:7]
+    g.inputs = {**g.inputs, "context_hash": context_hash(build_marketing_context(db, startup))}
     g.output = {"gaps": gaps}
     g.status = MarketingGenerationStatus.ready
     db.flush()

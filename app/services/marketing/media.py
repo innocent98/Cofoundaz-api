@@ -7,9 +7,12 @@ carries a random name so a URL is not guessable.
 """
 
 import uuid
+from pathlib import Path
 
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.errors import NotFound
 from app.db.models.marketing import MarketingMedia
 from app.platform.storage import get_storage
@@ -85,3 +88,23 @@ def delete_media(db: Session, *, startup_id: uuid.UUID, media_id: uuid.UUID) -> 
 
 def serialize_media(m: MarketingMedia) -> MediaResponse:
     return MediaResponse.model_validate(m, from_attributes=True)
+
+
+def media_file_response(db: Session, *, startup_id: uuid.UUID, media_id: uuid.UUID) -> Response:
+    """Serve one image of this workspace. Local storage streams the file (the path is checked to
+    sit under the storage root); a hosted backend (Cloudinary) already has a public URL with a
+    random key, so the caller is redirected to it."""
+    row = db.query(MarketingMedia).filter_by(id=media_id, startup_id=startup_id).one_or_none()
+    if row is None:
+        raise NotFound()
+    if row.url.startswith("https://"):
+        return RedirectResponse(row.url, status_code=302)
+    root = Path(settings.LOCAL_STORAGE_DIR).resolve()
+    path = (root / row.storage_key).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise NotFound()
+    return FileResponse(
+        path,
+        media_type=row.content_type,
+        headers={"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"},
+    )

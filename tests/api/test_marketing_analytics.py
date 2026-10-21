@@ -340,10 +340,15 @@ def test_overview_ai_content_ideas_counts_ready_gaps_only(client, db):
         (MarketingGenerationKind.content_gap, MarketingGenerationStatus.failed, {"gaps": [1]}),
         (MarketingGenerationKind.copy, MarketingGenerationStatus.ready, {"gaps": [1, 2]}),
     ]
-    for kind, status, output in specs:
+    for i, (kind, status, output) in enumerate(specs):
         db.add(
             MarketingAiGeneration(
-                startup_id=s.id, kind=kind, status=status, inputs={}, output=output
+                startup_id=s.id,
+                kind=kind,
+                status=status,
+                inputs={},
+                output=output,
+                created_at=datetime.now(UTC) - timedelta(days=i),  # the 3-gap run is the newest
             )
         )
     db.flush()

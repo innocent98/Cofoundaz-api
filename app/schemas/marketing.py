@@ -312,6 +312,7 @@ class GenerationResponse(BaseModel):
     inputs: dict[str, Any]
     output: dict[str, Any]
     error: str | None
+    stale: bool | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -434,13 +434,17 @@ def top_channel_by_conversions(db: Session, *, startup_id: uuid.UUID) -> str | N
 
 
 def count_ai_content_ideas(db: Session, *, startup_id: uuid.UUID) -> int:
-    rows = (
+    """Ideas in the newest ready content-gap run: the same list the SEO page shows (older runs
+    are superseded, not added up)."""
+    out = (
         db.query(MarketingAiGeneration.output)
         .filter(
             MarketingAiGeneration.startup_id == startup_id,
             MarketingAiGeneration.kind == MarketingGenerationKind.content_gap,
             MarketingAiGeneration.status == MarketingGenerationStatus.ready,
         )
-        .all()
+        .order_by(MarketingAiGeneration.created_at.desc())
+        .limit(1)
+        .scalar()
     )
-    return sum(len((out or {}).get("gaps", []) or []) for (out,) in rows)
+    return len((out or {}).get("gaps", []) or [])

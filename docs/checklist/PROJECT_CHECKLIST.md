@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Marketing re-walk BE fixes (2026-10-21): branch `fix/marketing-rewalk-be` — overview idea count = newest ready run, plan-week `scheduled_at` never in the past, search hrefs to the item, content-gap `stale` flag, `GET /marketing/media/{id}/file`. SOP `docs/sop/2026-10-21-marketing-rewalk-be.md`; FE guide §15. PR to `develop` pending._
+
 _Last reconciled: 2026-10-17 (late) · **Dashboard KPIs BE** shipped on `feat/dashboard-kpis` (Module 02: real
 revenue/runway/CTR tiles, see the Module 02 section). PR to `develop` pending._
 

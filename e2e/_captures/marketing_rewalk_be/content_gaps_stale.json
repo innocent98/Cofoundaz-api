@@ -1,0 +1,49 @@
+{
+  "data": {
+    "generations": [
+      {
+        "id": "8852b852-e544-4e5c-8dfa-15a950e113b2",
+        "startup_id": "73046fc7-f908-4af2-a25b-f91db85a0325",
+        "campaign_id": null,
+        "kind": "content_gap",
+        "status": "ready",
+        "inputs": {},
+        "output": {
+          "gaps": [
+            {
+              "angle": "[stub-llm] angle",
+              "title": "[stub-llm] title",
+              "target_keyword": "[stub-llm] target_keyword"
+            }
+          ]
+        },
+        "error": null,
+        "stale": true,
+        "created_at": "2026-10-21T09:39:10.161899Z",
+        "updated_at": "2026-10-21T09:39:10.184815Z"
+      },
+      {
+        "id": "bdbc964a-dcf2-4c56-8c3b-c326085364f3",
+        "startup_id": "73046fc7-f908-4af2-a25b-f91db85a0325",
+        "campaign_id": null,
+        "kind": "content_gap",
+        "status": "ready",
+        "inputs": {},
+        "output": {
+          "gaps": [
+            {
+              "angle": "[stub-llm] angle",
+              "title": "[stub-llm] title",
+              "target_keyword": "[stub-llm] target_keyword"
+            }
+          ]
+        },
+        "error": null,
+        "stale": true,
+        "created_at": "2026-10-21T09:39:10.084935Z",
+        "updated_at": "2026-10-21T09:39:10.105796Z"
+      }
+    ]
+  },
+  "meta": null
+}
