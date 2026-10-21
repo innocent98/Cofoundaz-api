@@ -1,23 +1,40 @@
 """Weekly AI readout of an active campaign (PRD 10: "AI weekly readout card").
 
-The prompt is built from numbers only: no campaign name, no free text from the founder.
+The figures come from `readout_figures` (computed in Python); the prompt carries only those
+pre-formatted figures, no campaign name and no free text from the founder.
 """
 
 import uuid
-from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import func
+from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import MarketingMetricName
-from app.db.models.marketing import Campaign, CampaignReadout, MarketingMetric
+from app.core.config import settings
+from app.db.models.marketing import Campaign, CampaignReadout
+from app.platform.llm_budget import metered_complete_json
 from app.schemas.marketing import ReadoutResponse
-from app.services.marketing.analytics import _stats
+from app.services.marketing.ai_prompts import build_readout_messages, readout_schema
+from app.services.marketing.readout_figures import (
+    fallback_output,
+    llm_facts,
+    unverified_numbers,
+)
 
 
 def serialize_readout(r: CampaignReadout) -> ReadoutResponse:
-    return ReadoutResponse.model_validate(r, from_attributes=True)
+    output = dict(r.output or {})
+    figures = output.pop("figures", None)
+    return ReadoutResponse(
+        id=r.id,
+        campaign_id=r.campaign_id,
+        week_start=r.week_start,
+        status=r.status,
+        output=output,
+        figures=figures,
+        error=r.error,
+        created_at=r.created_at,
+    )
 
 
 def list_readouts(
@@ -32,34 +49,48 @@ def list_readouts(
     )
 
 
-def _window(
-    db: Session, campaign_id: uuid.UUID, start: date | None, end: date | None
-) -> dict[str, Any]:
-    q = db.query(MarketingMetric.metric, func.sum(MarketingMetric.value)).filter(
-        MarketingMetric.campaign_id == campaign_id
-    )
-    if start is not None:
-        q = q.filter(MarketingMetric.ts >= start)
-    if end is not None:
-        q = q.filter(MarketingMetric.ts < end)
-    totals: dict[MarketingMetricName, int] = {
-        m: int(v or 0) for m, v in q.group_by(MarketingMetric.metric)
-    }
-    return _stats(totals)
-
-
-def readout_facts(db: Session, campaign: Campaign, today: date) -> dict[str, Any]:
-    """Everything the model is told about the campaign: its objective, its plan, and the last
-    seven days against the seven before them."""
+def _clean(result: dict[str, Any]) -> dict[str, Any]:
     return {
-        "objective": campaign.objective.value,
-        "status": campaign.status.value,
-        "budget": campaign.budget,
-        "channel_mix_percent": campaign.channel_mix,
-        "days_live": (today - campaign.launched_at.date()).days if campaign.launched_at else None,
-        "last_7_days": _window(db, campaign.id, today - timedelta(days=7), today),
-        "previous_7_days": _window(
-            db, campaign.id, today - timedelta(days=14), today - timedelta(days=7)
-        ),
-        "all_time": _window(db, campaign.id, None, None),
+        "headline": str(result.get("headline") or ""),
+        "summary": str(result.get("summary") or ""),
+        "wins": [str(x) for x in (result.get("wins") or [])][:3],
+        "watch": [str(x) for x in (result.get("watch") or [])][:3],
+        "next_step": str(result.get("next_step") or ""),
     }
+
+
+def generate_verified_output(
+    db: Session, campaign: Campaign, figures: dict[str, Any]
+) -> dict[str, Any] | None:
+    """The readout prose, with every number checked against `figures`.
+
+    The model is shown only the pre-formatted figures. If its prose states any other number it is
+    asked once more (told which numbers were rejected); if the retry fails too, or the day's AI
+    budget runs out on the retry, the deterministic template summary is used instead. Prose with
+    an unverified number is never returned. None means the budget was already spent before the
+    first attempt. `source` says which path produced the text."""
+    facts = llm_facts(figures, campaign)
+    rejected: list[str] | None = None
+    for attempt in range(2):
+        result = metered_complete_json(
+            db,
+            campaign.startup_id,
+            build_readout_messages(facts=facts, rejected=rejected),
+            schema=readout_schema(),
+            max_tokens=settings.LLM_MAX_TOKENS,
+        )
+        if result is None:
+            if attempt == 0:
+                return None
+            break
+        output = _clean(result)
+        bad = unverified_numbers(output, facts)
+        if not bad:
+            return {**output, "source": "ai"}
+        rejected = sorted(set(bad))
+        logger.warning(
+            "marketing readout: model stated unverified numbers {} (attempt {})",
+            rejected,
+            attempt + 1,
+        )
+    return {**fallback_output(figures), "source": "template"}

@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Marketing readout figures (2026-10-21): branch `fix/marketing-readout-figures` — weekly readout figures (spend, impressions, clicks, CTR, conversions, CAC, week-on-week) computed in Python and formatted in ₦; the model only quotes them; prose is number-verified (retry once, then template); `figures` returned beside `output`. SOP `docs/sop/2026-10-21-marketing-readout-figures.md`; FE guide §11 updated. No real-model run yet. PR to `develop` pending._
+
 _Last reconciled: 2026-10-17 (late) · **Dashboard KPIs BE** shipped on `feat/dashboard-kpis` (Module 02: real
 revenue/runway/CTR tiles, see the Module 02 section). PR to `develop` pending._
 
