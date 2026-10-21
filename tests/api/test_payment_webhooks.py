@@ -859,6 +859,23 @@ def test_flutterwave_unrelated_event_makes_no_verify_call(client, db, flw_api):
     assert flw_api.calls == []
 
 
+@pytest.mark.parametrize("event", ["refund.completed", "refund.processed", "charge.refunded"])
+def test_flutterwave_forged_refund_shaped_event_writes_no_ledger_row(client, db, flw_api, event):
+    # Flutterwave refund events are never parsed into money effects (parse_webhook only yields
+    # "charge" or "other"), so a forged one with a valid hash cannot create an outflow.
+    s, conn, _inv = _flw_world(db)
+    body = json.dumps(
+        {
+            "event": event,
+            "data": {"id": 9001, "tx_ref": "tx_alpha", "amount": 5000, "currency": "NGN"},
+        }
+    ).encode()
+    resp = post_flw(client, conn, body)
+    assert resp.status_code == 200
+    assert flw_api.calls == []
+    assert db.query(Transaction).filter(Transaction.startup_id == s.id).count() == 0
+
+
 def test_paystack_path_makes_no_verify_call(client, db, flw_api):
     _u, s, _h = _member(db)
     conn = make_connection(db, s)

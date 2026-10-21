@@ -40,3 +40,6 @@
 - The Flutterwave verify response shape is handwritten (`tests/fixtures/payments/flutterwave_verify_*.json`) and still needs the sandbox walk: confirm `GET /v3/transactions/{id}/verify` returns `data.id`, `tx_ref`, `amount`, `currency`, `status: successful`, `app_fee`, `created_at` as assumed.
 - Webhooks are accepted only for `active` connections: a `needs_attention` key may be revoked or leaked, so sync (after key replacement) recovers anything missed.
 - `needs_attention` banner and notification (row 7), widen `amount_minor`, KMS key custody, live sandbox verification.
+
+## Note: Flutterwave refunds
+Flutterwave refund webhooks are deliberately **not** turned into ledger rows: `FlutterwaveProvider.parse_webhook` only returns kind `charge` (re-verified through the API) or `other`. Refunds enter the ledger only through the sync listing, which uses our own authenticated API call. A forged refund event with a valid `verif-hash` therefore has no effect (pinned by `test_flutterwave_forged_refund_shaped_event_writes_no_ledger_row`). If refund webhooks are ever parsed, re-verify them with `GET /v3/refunds/{id}` first.
