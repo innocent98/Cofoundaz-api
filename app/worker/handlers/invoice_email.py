@@ -4,11 +4,14 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import InvoiceStatus
+from app.db.models.enums import InvoiceStatus, MembershipRole, MembershipStatus
 from app.db.models.invoice import Invoice
 from app.db.models.job import Job
+from app.db.models.membership import Membership
 from app.db.models.startup import Startup
-from app.platform.email import EmailMessage, get_email_sender
+from app.db.models.user import UserProfile
+from app.platform.email import EmailAttachment, EmailMessage, get_email_sender
+from app.services.finance.invoice_pdf import render_invoice_pdf
 from app.worker.runner import register_handler
 
 
@@ -60,9 +63,91 @@ def handle_invoice_email(db: Session, job: Job) -> None:
     name = startup.name if startup and startup.name else "Cofoundaz"
     # Strip CR/LF to prevent header injection in the SMTP backend.
     subject = f"Invoice {inv.number} from {name}".replace("\r", " ").replace("\n", " ")
+    pdf = EmailAttachment(
+        filename=f"invoice-{inv.number}.pdf",
+        content=render_invoice_pdf(inv, name),
+        content_type="application/pdf",
+    )
     get_email_sender().send(
-        EmailMessage(to=inv.client_email, subject=subject, html=render_invoice_email(inv, name))
+        EmailMessage(
+            to=inv.client_email,
+            subject=subject,
+            html=render_invoice_email(inv, name),
+            attachments=[pdf],
+        )
+    )
+
+
+def _founder_name(db: Session, startup: Startup | None, fallback: str) -> str:
+    """Display name of the workspace owner (creator, when still an active founder), else the
+    earliest active founder; falls back to the startup name when nobody has a name set."""
+    if startup is None:
+        return fallback
+    rows = (
+        db.query(Membership.user_id, UserProfile.full_name)
+        .outerjoin(UserProfile, UserProfile.user_id == Membership.user_id)
+        .filter(
+            Membership.startup_id == startup.id,
+            Membership.role == MembershipRole.founder,
+            Membership.status == MembershipStatus.active,
+        )
+        .order_by(Membership.created_at, Membership.id)
+        .all()
+    )
+    rows.sort(key=lambda r: r[0] != startup.created_by)  # stable: owner first
+    for _uid, full_name in rows:
+        if full_name and full_name.strip():
+            return str(full_name).strip()
+    return fallback
+
+
+def _safe_pay_url(inv: Invoice) -> str | None:
+    url = inv.pay_url
+    if url and url.startswith(("https://", "http://")):
+        return url
+    return None
+
+
+def render_reminder_email(inv: Invoice, startup_name: str, founder_name: str) -> str:
+    """Friendly overdue nudge. Every interpolated value is user- or provider-controlled, so all
+    of it is HTML-escaped; the pay link is only shown for an absolute http(s) URL."""
+    words = inv.client_name.split()
+    client_first = words[0] if words else "there"
+    due = inv.due_on.isoformat() if inv.due_on else "the due date"
+    text = (
+        f"Hi {html.escape(client_first)}, a friendly nudge that invoice {html.escape(inv.number)} "
+        f"for {_fmt_money(inv.total_minor, inv.currency)} was due on {html.escape(due)}."
+    )
+    url = _safe_pay_url(inv)
+    if url:
+        safe = html.escape(url, quote=True)
+        text += f' You can view and pay it here: <a href="{safe}">{safe}</a>.'
+    text += f" Thanks, {html.escape(founder_name)}"
+    return f"<div style='font-family:system-ui,sans-serif;max-width:560px'><p>{text}</p></div>"
+
+
+def handle_invoice_reminder(db: Session, job: Job) -> None:
+    inv = db.get(Invoice, uuid.UUID(str(job.payload["invoice_id"])))
+    # Paid (or deleted) between queueing and sending: stay silent.
+    if inv is None or inv.status != InvoiceStatus.sent or not inv.client_email:
+        return
+    startup = db.get(Startup, inv.startup_id)
+    name = startup.name if startup and startup.name else "Cofoundaz"
+    subject = f"Reminder: invoice {inv.number} from {name}".replace("\r", " ").replace("\n", " ")
+    pdf = EmailAttachment(
+        filename=f"invoice-{inv.number}.pdf",
+        content=render_invoice_pdf(inv, name),
+        content_type="application/pdf",
+    )
+    get_email_sender().send(
+        EmailMessage(
+            to=inv.client_email,
+            subject=subject,
+            html=render_reminder_email(inv, name, _founder_name(db, startup, name)),
+            attachments=[pdf],
+        )
     )
 
 
 register_handler("email.invoice_sent", handle_invoice_email)
+register_handler("email.invoice_reminder", handle_invoice_reminder)

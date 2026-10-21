@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.money import format_money
 from app.db.models.enums import SALES_ROLES, MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
 from app.db.models.notification import Notification
@@ -240,7 +241,34 @@ SPECS: dict[str, NotifSpec] = {
         _all_active_members, "Your AI-generated business plan is ready", "Open it"
     ),
     # Finance hub readers only (founder, team member, accountant).
-    "finance.runway.low": _s(_audience("finance.runway.low"), "Your runway is running low"),
+    "finance.runway.low": _s(
+        _audience("finance.runway.low"),
+        "Runway below 6 months, review recommended",
+        "Open Finance",
+    ),
+    "finance.runway.updated": NotifSpec(
+        _audience("finance.runway.updated", minus_actor=False),
+        lambda p: (
+            f"Your runway is now {float(p['runway_months']):.1f} months"
+            if p.get("runway_months") is not None
+            else "Your runway is healthy"
+        ),
+        lambda _p: "Open Finance",
+    ),
+    # System event (a scheduler scan), so there is no actor to exclude.
+    "finance.invoice.overdue": NotifSpec(
+        _audience("finance.invoice.overdue", minus_actor=False),
+        lambda p: (
+            f"Invoice overdue: {p.get('number')} \u00b7 {p.get('client_name')} \u00b7 "
+            f"{format_money(int(p.get('amount_minor') or 0), str(p.get('currency') or 'NGN'))}"
+        ),
+        lambda _p: "Send reminder",
+    ),
+    "finance.invoice.paid": NotifSpec(
+        _audience("finance.invoice.paid", minus_actor=False),
+        lambda p: f"Invoice paid: {p.get('number')} 🎉",
+        lambda _p: "View invoice",
+    ),
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     # Only BRIEFING_ROLES see the briefing prose (it is built from finance figures).
     "dashboard.briefing.ready": _s(

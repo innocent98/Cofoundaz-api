@@ -98,6 +98,7 @@ def evaluate_runway_alert(db: Session, *, startup_id: uuid.UUID) -> None:
     monthly_burn = int(summary["monthly_burn"])
     low_now = _runway_is_low(monthly_burn, summary["runway_months"])
     row = _get_or_create_settings(db, startup_id=startup_id)
+    was_low = bool(row.alert_is_low)
     if low_now and not row.alert_is_low:
         row.alert_is_low = True
         row.alert_last_fired_at = datetime.now(UTC)
@@ -110,11 +111,25 @@ def evaluate_runway_alert(db: Session, *, startup_id: uuid.UUID) -> None:
                 "runway_months": summary["runway_months"],
                 "monthly_burn": monthly_burn,
                 "currency": summary["currency"],
+                "href": "/finance/runway",
             },
         )
     elif not low_now and row.alert_is_low:
         row.alert_is_low = False
         db.flush()
+    if low_now != was_low:
+        event_bus.publish(
+            db,
+            "finance.runway.updated",
+            {
+                "startup_id": str(startup_id),
+                "runway_months": summary["runway_months"],
+                "monthly_burn": monthly_burn,
+                "currency": summary["currency"],
+                "band": "low" if low_now else "healthy",
+                "href": "/finance/runway",
+            },
+        )
 
 
 def upsert_runway_signal(db: Session, *, startup_id: uuid.UUID) -> None:

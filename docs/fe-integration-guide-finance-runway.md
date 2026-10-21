@@ -831,7 +831,7 @@ isolation of assumptions is unit-verified (`test_cross_tenant_assumptions_isolat
 ## 3. The low-runway notification — `finance.runway.low`
 
 **What the user experiences.** When the startup transitions into **low runway**, every active
-member of the workspace gets one in-app notification titled **"Your runway is running low"**.
+member of the workspace gets an in-app notification titled **"Runway below 6 months, review recommended"** (body `Open Finance`). Since the invoice automation slice it is accompanied, on the same transition, by a second notification `finance.runway.updated` (title `Your runway is now {n} months`), see the update note below.
 Surface it through the existing notifications feed (`GET /notifications`, unread badge via
 `GET /notifications/unread-count`, and the realtime stream if the FE already uses it) — this slice
 adds **no new endpoint** for it.
@@ -844,18 +844,35 @@ this feed (`notifications_after_low.json`, verbatim):
   "data": {
     "notifications": [
       {
-        "id": "35006915-7106-484b-9095-0a5e71301bbb",
-        "type": "finance.runway.low",
-        "title": "Your runway is running low",
-        "body": "",
+        "id": "535c0de9-480f-4d05-8c0a-cddbf181e9a9",
+        "type": "finance.runway.updated",
+        "title": "Your runway is now 1.2 months",
+        "body": "Open Finance",
         "data": {
+          "band": "low",
+          "href": "/finance/runway",
           "currency": "NGN",
-          "startup_id": "924e3cba-2f8b-4714-8f52-f65301801e19",
+          "startup_id": "07017dbf-8ffc-4a7c-b4c7-924735e1326f",
           "monthly_burn": 23666667,
           "runway_months": 1.2
         },
         "read": false,
-        "created_at": "2026-09-29T14:22:26.410227+00:00"
+        "created_at": "2026-10-21T15:33:23.075813+00:00"
+      },
+      {
+        "id": "10d99ca2-5440-4e04-b5f5-91ecabcccf29",
+        "type": "finance.runway.low",
+        "title": "Runway below 6 months, review recommended",
+        "body": "Open Finance",
+        "data": {
+          "href": "/finance/runway",
+          "currency": "NGN",
+          "startup_id": "07017dbf-8ffc-4a7c-b4c7-924735e1326f",
+          "monthly_burn": 23666667,
+          "runway_months": 1.2
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:23.075813+00:00"
       }
     ],
     "next_cursor": null
@@ -869,7 +886,7 @@ and `GET /notifications/unread-count` (`notifications_unread_count_after_low.jso
 ```json
 {
   "data": {
-    "unread": 1
+    "unread": 2
   },
   "meta": null
 }
@@ -884,14 +901,22 @@ Slice-1 transaction shape).
 |---|---|---|
 | **When it fires** | "Low" = the workspace is burning (`monthly_burn > 0`) **and** (`runway_months` is `null` — out of cash — **or** `runway_months < 6`). This is exactly the `runway_low` flag on `GET /finance/cash-flow`. | predicate verified live (`cash_flow_low.json` shows `"runway_low": true`) |
 | **Fire once per transition** | It fires when the workspace *enters* low. Further transactions while it is still low do **not** create another notification. | verified live (e2e asserts 1 notification after a second outflow while still low) |
-| **Recovery re-arms it** | When runway recovers (e.g. an inflow makes the workspace cash-positive), the alert re-arms; the next time the workspace falls into low it fires **again**. | verified live — `notifications_after_rearm.json` shows two `finance.runway.low` rows: the newer with `"runway_months": null` (out of cash), the older with `1.2` |
+| **Recovery re-arms it** | When runway recovers (e.g. an inflow makes the workspace cash-positive), the alert re-arms; the next time the workspace falls into low it fires **again**. | verified live — `notifications_after_rearm.json` shows two `finance.runway.low` rows (the newer with `"runway_months": null`, out of cash, the older with `1.2`) interleaved with the `finance.runway.updated` rows for each band flip |
 | **What triggers the check** | Creating, updating or deleting a transaction (`POST` / `PATCH` / `DELETE /finance/transactions`). Changing assumptions via `PUT` does **not** trigger it (assumptions are not part of the predicate). | POST verified live; PATCH/DELETE unit-verified (`test_update_and_delete_transaction_run_the_alert_hook`); PUT-does-not-trigger is source-derived |
 | **Recipients** | All active members of the workspace (no actor exclusion — the person who entered the transaction gets it too). | verified live for the founder; other-member fan-out unit-verified (`test_transition_creates_in_app_notification_for_active_members`) |
 | **Channel** | **In-app only.** There is no email category for `finance.runway.low`, so no email is sent and it does not appear in the email-preference matrix. | source-derived (`app/services/notifications/categories.py` has no entry); NOT VERIFIED LIVE |
-| **Payload** | `type: "finance.runway.low"`, `title: "Your runway is running low"`, `body: ""` (empty), `data: { currency, startup_id, monthly_burn, runway_months }`. **`data.runway_months` is `null` when out of cash** and `data.monthly_burn` is minor units. | verified live (both shapes captured) |
+| **Payload** | `type: "finance.runway.low"`, `title: "Runway below 6 months, review recommended"`, `body: "Open Finance"`, `data: { href, currency, startup_id, monthly_burn, runway_months }` (`href` is `/finance/runway`). **`data.runway_months` is `null` when out of cash** and `data.monthly_burn` is minor units. | verified live (both shapes captured) |
 
 **Deep link.** `body` is empty by design — the FE renders copy and the link from `type` + `data`
 (route to the Runway screen). Do not display `data.startup_id`.
+
+> **Update (invoice automation slice, 2026-10-21).** The low-runway copy changed (PRD wording, no
+> dash) and `body` is now `Open Finance`. A band flip also publishes **`finance.runway.updated`**
+> (healthy to low, and low to healthy), so entering low now produces **two** notifications, both
+> unread (see the refreshed blocks above and
+> `docs/fe-integration-guide-finance-invoices-automation.md` section 8). The blocks in this
+> section were re-pasted from the re-run captures `notifications_after_low.json` and
+> `notifications_unread_count_after_low.json`.
 
 **Do not rely on the notification for current state.** It is an edge event, not a status. The
 banner on the Runway/Cash-flow screens should be driven by `runway_low` (cash-flow) or the

@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "f45a1593-c2da-4a25-bf24-c755bc69e3fb",
+    "date": "2026-10-21",
+    "description": "Bridge round",
+    "category": "Fundraising",
+    "amount_minor": 400000000,
+    "currency": "NGN",
+    "direction": "in",
+    "source": "manual",
+    "created_at": "2026-10-21T15:33:21.166771Z",
+    "updated_at": "2026-10-21T15:33:21.166771Z"
+  },
+  "meta": null
+}

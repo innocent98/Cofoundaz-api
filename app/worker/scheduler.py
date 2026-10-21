@@ -2,7 +2,7 @@ from datetime import UTC, datetime, time, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import String, cast, exists, func, literal
+from sqlalchemy import String, and_, cast, exists, func, literal, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,11 +13,13 @@ from app.db.models.enums import (
     AssessmentStatus,
     CampaignStatus,
     ContentStatus,
+    InvoiceStatus,
     MembershipStatus,
     RoadmapStatus,
     StageKind,
 )
 from app.db.models.finance_connection import FinanceConnection
+from app.db.models.invoice import Invoice
 from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
@@ -26,6 +28,7 @@ from app.db.models.sales import Deal, PipelineStage, SalesSettings
 from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
 from app.platform.jobs import job_dispatcher
+from app.services.finance.reminders import MAX_AUTO_REMINDERS, REMINDER_INTERVAL_DAYS
 
 SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
@@ -38,6 +41,8 @@ SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
 SCHED_MARKETING_READOUT = "scheduled.marketing.readout"
 SCHED_PAYMENTS_SYNC = "scheduled.finance.payments_sync"
 SCHED_SALES_STALL = "scheduled.sales.stall"
+SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
+INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
 READOUT_HOUR = 8  # local time; the first tick of the ISO week at or after this hour
@@ -305,6 +310,63 @@ def _due_payment_syncs(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_invoice_overdue(db: Session, now: datetime) -> list[Due]:
+    """Sent invoices past their due date that still need work today: the one-shot overdue
+    event has not fired, or auto-reminders are on, under the cap, and the last one is 7+ days
+    old. One claim per invoice per local day; the handler's row-locked re-check is the
+    cross-worker guarantee (the claim only stops repeated ticks flooding the queue)."""
+    local = _local(now)
+    today = local.date()
+    period = today.isoformat()
+    spacing_cutoff = now - timedelta(days=REMINDER_INTERVAL_DAYS)
+    rows = (
+        db.query(Invoice.id, Invoice.startup_id)
+        .join(Startup, Startup.id == Invoice.startup_id)
+        .filter(
+            Invoice.status == InvoiceStatus.sent,
+            Invoice.due_on.isnot(None),
+            Invoice.due_on < today,
+            Startup.deleted_at.is_(None),
+            or_(
+                Invoice.overdue_notified_at.is_(None),
+                and_(
+                    Invoice.auto_remind.is_(True),
+                    Invoice.reminder_count < MAX_AUTO_REMINDERS,
+                    or_(
+                        Invoice.last_reminded_at.is_(None),
+                        Invoice.last_reminded_at <= spacing_cutoff,
+                    ),
+                ),
+            ),
+        )
+        .order_by(Invoice.due_on, Invoice.id)
+        .limit(INVOICE_OVERDUE_BATCH)
+        .all()
+    )
+    if not rows:
+        return []
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key).filter(
+            ScheduledRun.task_key == "finance.invoice_overdue",
+            ScheduledRun.period_key == period,
+            ScheduledRun.scope_key.in_([str(r[0]) for r in rows]),
+        )
+    }
+    return [
+        Due(
+            "finance.invoice_overdue",
+            str(iid),
+            period,
+            SCHED_INVOICE_OVERDUE,
+            sid,
+            {"startup_id": str(sid), "invoice_id": str(iid)},
+        )
+        for iid, sid in rows
+        if str(iid) not in claimed
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -427,6 +489,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_campaign_readouts(db, now),
         *_due_payment_syncs(db, now),
         *_due_sales_stalls(db, now),
+        *_due_invoice_overdue(db, now),
     ]
     enqueued = 0
     for item in due:

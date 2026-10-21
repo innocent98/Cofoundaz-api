@@ -148,3 +148,20 @@ def test_register_wires_invoice_email_handler():
     runner.JOB_HANDLERS.clear()
     register()
     assert "email.invoice_sent" in runner.JOB_HANDLERS
+
+
+def test_invoice_pdf_is_attached(db, monkeypatch):
+    sender = _sender(monkeypatch)
+    u = create_user(db)
+    s = create_startup(db, owner=u, name="Initech")
+    inv = _invoice(db, s.id)
+
+    handler.handle_invoice_email(db, _job(inv.id))
+
+    attachments = sender.sent[0].attachments
+    assert len(attachments) == 1
+    att = attachments[0]
+    assert att.filename == "invoice-INV-0042.pdf"
+    assert att.content_type == "application/pdf"
+    assert att.content.startswith(b"%PDF-")
+    assert b"INV-0042" in att.content

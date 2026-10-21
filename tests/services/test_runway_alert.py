@@ -100,4 +100,4 @@ def test_transition_creates_in_app_notification_for_active_members(db, bus):
     runway_svc.evaluate_runway_alert(db, startup_id=startup.id)
     notifs = db.query(Notification).filter_by(startup_id=startup.id, type=EVENT).all()
     assert {n.user_id for n in notifs} == {founder.id, teammate.id}
-    assert all(n.title == "Your runway is running low" for n in notifs)
+    assert all(n.title == "Runway below 6 months, review recommended" for n in notifs)

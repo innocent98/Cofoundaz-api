@@ -1,4 +1,6 @@
-from dataclasses import dataclass
+import base64
+import re
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import httpx
@@ -9,10 +11,25 @@ from app.core.logger import log
 
 
 @dataclass
+class EmailAttachment:
+    filename: str
+    content: bytes
+    content_type: str
+
+
+@dataclass
 class EmailMessage:
     to: str
     subject: str
     html: str
+    attachments: list[EmailAttachment] = field(default_factory=list)
+
+
+def _safe_filename(name: str) -> str:
+    # Keep only a plain basename of safe characters: no path separators, no traversal.
+    base = re.split(r"[\\/]", name)[-1]
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", base).lstrip(".")
+    return cleaned or "attachment"
 
 
 class EmailSender(Protocol):
@@ -65,6 +82,12 @@ class SMTPEmailSender:
             html=msg.html,
             mail_from=(settings.EMAILS_FROM_NAME, from_email),
         )
+        for att in msg.attachments:
+            m.attach(
+                filename=_safe_filename(att.filename),
+                data=att.content,
+                mime_type=att.content_type,
+            )
         m.send(
             to=msg.to,
             smtp={
@@ -109,16 +132,26 @@ class ResendEmailSender:
             if settings.EMAILS_FROM_NAME
             else str(from_email)
         )
+        body: dict[str, object] = {
+            "from": sender,
+            "to": [msg.to],
+            "subject": msg.subject,
+            "html": msg.html,
+        }
+        if msg.attachments:
+            body["attachments"] = [
+                {
+                    "filename": _safe_filename(a.filename),
+                    "content": base64.b64encode(a.content).decode("ascii"),
+                    "content_type": a.content_type,
+                }
+                for a in msg.attachments
+            ]
         try:
             response = httpx.post(
                 self._ENDPOINT,
                 headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "from": sender,
-                    "to": [msg.to],
-                    "subject": msg.subject,
-                    "html": msg.html,
-                },
+                json=body,
                 timeout=10.0,
             )
         except httpx.HTTPError as exc:
@@ -155,15 +188,24 @@ class FileEmailSender:
 
         path = Path(self.mail_dir)
         path.mkdir(parents=True, exist_ok=True)
-        payload = {
+        payload: dict[str, object] = {
             "to": msg.to,
             "subject": msg.subject,
             "html": msg.html,
             "sent_at": datetime.now(UTC).isoformat(),
         }
-        (
-            path / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}-{uuid.uuid4().hex[:8]}.json"
-        ).write_text(json.dumps(payload))
+        stem = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}-{uuid.uuid4().hex[:8]}"
+        if msg.attachments:
+            # Attachments land in `<stem>.attachments/<filename>` beside the message file.
+            att_dir = path / f"{stem}.attachments"
+            att_dir.mkdir(parents=True, exist_ok=True)
+            names = []
+            for att in msg.attachments:
+                name = _safe_filename(att.filename)
+                (att_dir / name).write_bytes(att.content)
+                names.append(name)
+            payload["attachments"] = names
+        (path / f"{stem}.json").write_text(json.dumps(payload))
         log.info(f"[email:file] to={msg.to} subject={msg.subject!r} -> {self.mail_dir}")
 
 
