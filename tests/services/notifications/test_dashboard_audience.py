@@ -27,6 +27,9 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "mission.streak.milestone": CORE,
     # Finance hub: founder, team member, accountant
     "finance.runway.low": FINANCE,
+    "finance.runway.updated": FINANCE,
+    "finance.invoice.overdue": FINANCE,
+    "finance.invoice.paid": FINANCE,
     # Marketing hub: founder + team member
     "marketing.post.published": CORE,
     "marketing.campaign.launched": CORE,

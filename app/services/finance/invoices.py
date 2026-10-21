@@ -16,6 +16,7 @@ from app.db.models.enums import (
 )
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
+from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.schemas.invoice import InvoiceCreate, InvoiceResponse, InvoiceUpdate, MoneyLine
 from app.services.finance.errors import _validation
@@ -203,6 +204,7 @@ def mark_paid(
     startup_id: uuid.UUID,
     invoice_id: uuid.UUID,
     now: dt.datetime | None = None,
+    paid_via: str | None = None,
 ) -> Invoice:
     inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
     if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
@@ -225,7 +227,23 @@ def mark_paid(
     inv.status = InvoiceStatus.paid
     inv.paid_at = paid_at
     inv.transaction_id = txn.id
+    if paid_via is not None:
+        inv.paid_via = paid_via
     db.flush()
+    event_bus.publish(
+        db,
+        "finance.invoice.paid",
+        {
+            "startup_id": str(startup_id),
+            "invoice_id": str(inv.id),
+            "number": inv.number,
+            "client_name": inv.client_name,
+            "amount_minor": inv.total_minor,
+            "currency": inv.currency,
+            "paid_via": paid_via,
+            "href": "/finance/invoices",
+        },
+    )
     return inv
 
 
@@ -252,10 +270,7 @@ def mark_paid_via_provider(
         return inv
     if inv.status != InvoiceStatus.sent:
         return None
-    inv = mark_paid(db, startup_id=startup_id, invoice_id=invoice_id, now=now)
-    inv.paid_via = provider
-    db.flush()
-    return inv
+    return mark_paid(db, startup_id=startup_id, invoice_id=invoice_id, now=now, paid_via=provider)
 
 
 def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:

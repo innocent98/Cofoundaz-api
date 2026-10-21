@@ -252,7 +252,8 @@ def test_transaction_into_low_runway_notifies_once(client, db):
     _post_out(client, h, 600_000)
     first = _runway_notifs(db, startup, founder)
     assert len(first) == 1
-    assert first[0].title == "Your runway is running low"
+    assert first[0].title == "Runway below 6 months, review recommended"
+    assert first[0].body == "Open Finance"
 
     # Still low: a second transaction must not notify again.
     _post_out(client, h, 100_000)
