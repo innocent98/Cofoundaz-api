@@ -22,7 +22,7 @@ def test_stream_rejects_bad_ticket(client, monkeypatch):
 
 def test_event_stream_emits_unread_then_notification(monkeypatch):
     # Drive the async generator directly with fakes: no real Redis/DB.
-    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 3)
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid, role: 3)
     monkeypatch.setattr(notif_ep, "_membership_role", lambda uid, sid: MembershipRole.founder)
 
     class FakePubSub:
@@ -81,7 +81,7 @@ def test_event_stream_closes_when_membership_is_revoked(monkeypatch):
     """A member removed mid-stream stops receiving workspace activity (security review)."""
     from contextlib import asynccontextmanager
 
-    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 0)
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid, role: 0)
     checks = []
 
     def still_member(uid, sid):
@@ -124,7 +124,7 @@ _EVENTS = [
 
 def _stream_actions(monkeypatch, role_lookup, n_loops):
     """Run the stream over one activity.created per _EVENTS entry; return delivered actions."""
-    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 0)
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid, role: 0)
     monkeypatch.setattr(notif_ep, "_membership_role", role_lookup)
 
     msgs = [
@@ -202,7 +202,7 @@ def test_stream_endpoint_rejects_inactive_membership(client, monkeypatch):
 
 def test_event_stream_drops_malformed_activity_for_non_core(monkeypatch):
     """An activity.created without an item can't be classified, so it fails closed."""
-    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid: 0)
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid, role: 0)
     monkeypatch.setattr(notif_ep, "_membership_role", lambda uid, sid: MembershipRole.mentor)
     msgs = [{"type": "message", "data": '{"event":"activity.created"}'}]
 
@@ -228,3 +228,25 @@ def test_event_stream_drops_malformed_activity_for_non_core(monkeypatch):
         return [f async for f in notif_ep._event_stream(FakeReq(), "s1", "u1")]
 
     assert not any("activity.created" in f for f in asyncio.run(collect()))
+
+
+def test_stream_initial_unread_is_computed_for_the_members_role(monkeypatch):
+    seen = []
+    monkeypatch.setattr(notif_ep, "_unread", lambda uid, sid, role: seen.append(role) or 0)
+    monkeypatch.setattr(notif_ep, "_membership_role", lambda uid, sid: MembershipRole.mentor)
+
+    class Req:
+        async def is_disconnected(self):
+            return True
+
+    @asynccontextmanager
+    async def fake_sub(*channels):
+        yield object()
+
+    monkeypatch.setattr(notif_ep.realtime, "subscription", fake_sub)
+
+    async def collect():
+        return [f async for f in notif_ep._event_stream(Req(), "s1", "u1")]
+
+    asyncio.run(collect())
+    assert seen == [MembershipRole.mentor]
