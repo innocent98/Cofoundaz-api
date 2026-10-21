@@ -59,6 +59,7 @@ def scorecard_schema() -> dict[str, Any]:
             "feedback": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["discovery", "objection_handling", "next_step_close", "feedback"],
+        "additionalProperties": False,
     }
 
 
@@ -100,12 +101,14 @@ def call_prep_schema() -> dict[str, Any]:
                         "response": {"type": "string"},
                     },
                     "required": ["objection", "response"],
+                    "additionalProperties": False,
                 },
             },
             "call_goal": {"type": "string"},
             "discovery_questions": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["context", "objections", "call_goal", "discovery_questions"],
+        "additionalProperties": False,
     }
 
 
