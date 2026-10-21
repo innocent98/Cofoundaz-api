@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 
 from app.core.errors import AppError, NotFound
+from app.db.models.enums import MembershipRole
 from app.services.notifications.service import (
     create_notifications,
     list_notifications,
@@ -33,7 +34,7 @@ def test_create_one_per_user_and_unread_count(db):
         data={"document_id": "d1"},
     )
     assert len(rows) == 2
-    assert unread_count(db, user_id=u.id, startup_id=s.id) == 1
+    assert unread_count(db, user_id=u.id, startup_id=s.id, role=MembershipRole.founder) == 1
 
 
 def test_list_scoped_and_unread_filter(db):
@@ -51,11 +52,23 @@ def test_list_scoped_and_unread_filter(db):
         db, user_ids=[u.id], startup_id=s.id, type="b", title="B", body="", data={}
     )
     items, _cur = list_notifications(
-        db, user_id=u.id, startup_id=s.id, unread=False, limit=20, cursor=None
+        db,
+        role=MembershipRole.founder,
+        user_id=u.id,
+        startup_id=s.id,
+        unread=False,
+        limit=20,
+        cursor=None,
     )
     assert [i.title for i in items] == ["B", "A"]  # newest first
     items_u, _c = list_notifications(
-        db, user_id=u.id, startup_id=s.id, unread=True, limit=20, cursor=None
+        db,
+        role=MembershipRole.founder,
+        user_id=u.id,
+        startup_id=s.id,
+        unread=True,
+        limit=20,
+        cursor=None,
     )
     assert len(items_u) == 2
 
@@ -67,11 +80,23 @@ def test_keyset_pagination(db):
             db, user_ids=[u.id], startup_id=s.id, type="t", title=f"N{i}", body="", data={}
         )
     page1, cur = list_notifications(
-        db, user_id=u.id, startup_id=s.id, unread=False, limit=2, cursor=None
+        db,
+        role=MembershipRole.founder,
+        user_id=u.id,
+        startup_id=s.id,
+        unread=False,
+        limit=2,
+        cursor=None,
     )
     assert len(page1) == 2 and cur is not None
     page2, cur2 = list_notifications(
-        db, user_id=u.id, startup_id=s.id, unread=False, limit=2, cursor=cur
+        db,
+        role=MembershipRole.founder,
+        user_id=u.id,
+        startup_id=s.id,
+        unread=False,
+        limit=2,
+        cursor=cur,
     )
     assert len(page2) == 1 and cur2 is None
 
@@ -81,23 +106,37 @@ def test_mark_read_and_all(db):
     rows = create_notifications(
         db, user_ids=[u.id], startup_id=s.id, type="t", title="N", body="", data={}
     )
-    mark_read(db, user_id=u.id, startup_id=s.id, notification_id=rows[0].id)
-    assert unread_count(db, user_id=u.id, startup_id=s.id) == 0
+    mark_read(
+        db, user_id=u.id, startup_id=s.id, role=MembershipRole.founder, notification_id=rows[0].id
+    )
+    assert unread_count(db, user_id=u.id, startup_id=s.id, role=MembershipRole.founder) == 0
     # another user's row is not markable
     other = create_user(db)
     with pytest.raises(NotFound):
-        mark_read(db, user_id=other.id, startup_id=s.id, notification_id=rows[0].id)
+        mark_read(
+            db,
+            user_id=other.id,
+            startup_id=s.id,
+            role=MembershipRole.founder,
+            notification_id=rows[0].id,
+        )
     create_notifications(
         db, user_ids=[u.id], startup_id=s.id, type="t2", title="N2", body="", data={}
     )
-    assert mark_all_read(db, user_id=u.id, startup_id=s.id) == 1
+    assert mark_all_read(db, user_id=u.id, startup_id=s.id, role=MembershipRole.founder) == 1
 
 
 def test_bad_cursor_422(db):
     u, s = _ctx(db)
     with pytest.raises(AppError) as e:
         list_notifications(
-            db, user_id=u.id, startup_id=s.id, unread=False, limit=20, cursor="!!bad!!"
+            db,
+            role=MembershipRole.founder,
+            user_id=u.id,
+            startup_id=s.id,
+            unread=False,
+            limit=20,
+            cursor="!!bad!!",
         )
     assert e.value.http_status == 422
 

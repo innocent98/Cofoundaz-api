@@ -7,7 +7,9 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
+from app.db.models.enums import MembershipRole
 from app.db.models.notification import Notification
+from app.services.notifications.audience import audience_filter
 
 
 def _encode_cursor(created_at: datetime, row_id: uuid.UUID) -> str:
@@ -68,6 +70,7 @@ def list_notifications(
     *,
     user_id: uuid.UUID,
     startup_id: uuid.UUID,
+    role: MembershipRole,
     unread: bool,
     limit: int,
     cursor: str | None,
@@ -75,7 +78,11 @@ def list_notifications(
     limit = max(1, min(limit, 50))
     q = (
         db.query(Notification)
-        .filter(Notification.user_id == user_id, Notification.startup_id == startup_id)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.startup_id == startup_id,
+            audience_filter(role),
+        )
         .order_by(Notification.created_at.desc(), Notification.id.desc())
     )
     if unread:
@@ -95,12 +102,15 @@ def list_notifications(
     return rows, next_cursor
 
 
-def unread_count(db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID) -> int:
+def unread_count(
+    db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID, role: MembershipRole
+) -> int:
     return (
         db.query(Notification)
         .filter(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
+            audience_filter(role),
             Notification.read_at.is_(None),
         )
         .count()
@@ -108,11 +118,17 @@ def unread_count(db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID) -> i
 
 
 def mark_read(
-    db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID, notification_id: Any
+    db: Session,
+    *,
+    user_id: uuid.UUID,
+    startup_id: uuid.UUID,
+    role: MembershipRole,
+    notification_id: Any,
 ) -> Notification:
     row = (
         db.query(Notification)
         .filter_by(id=notification_id, user_id=user_id, startup_id=startup_id)
+        .filter(audience_filter(role))
         .first()
     )
     if row is None:
@@ -123,12 +139,15 @@ def mark_read(
     return row
 
 
-def mark_all_read(db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID) -> int:
+def mark_all_read(
+    db: Session, *, user_id: uuid.UUID, startup_id: uuid.UUID, role: MembershipRole
+) -> int:
     n = (
         db.query(Notification)
         .filter(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
+            audience_filter(role),
             Notification.read_at.is_(None),
         )
         .update({Notification.read_at: datetime.now(UTC)}, synchronize_session=False)

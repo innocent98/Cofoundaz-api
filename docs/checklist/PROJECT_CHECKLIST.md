@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Notifications read filter (2026-10-21): branch `fix/notifications-read-filter` — every notification read path (list, unread-count, mark-read, read-all, stream initial unread) now filters by the member's current role via the single `AUDIENCE` map shared with fan-out; legacy rows hidden, not deleted. SOP `docs/sop/2026-10-21-notifications-read-filter.md`; FE guide `docs/fe-integration-guide-notifications-read-filter.md`. Closes FE re-walk gaps 12 / A5. PR to `develop` pending._
+
 _Last reconciled: 2026-10-17 (late) · **Dashboard KPIs BE** shipped on `feat/dashboard-kpis` (Module 02: real
 revenue/runway/CTR tiles, see the Module 02 section). PR to `develop` pending._
 

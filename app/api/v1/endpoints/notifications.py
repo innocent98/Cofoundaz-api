@@ -52,6 +52,7 @@ def list_notifications_endpoint(
         db,
         user_id=membership.user_id,
         startup_id=membership.startup_id,
+        role=membership.role,
         unread=unread,
         limit=limit,
         cursor=cursor,
@@ -68,7 +69,14 @@ def unread_count_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     return success_response(
-        {"unread": unread_count(db, user_id=membership.user_id, startup_id=membership.startup_id)}
+        {
+            "unread": unread_count(
+                db,
+                user_id=membership.user_id,
+                startup_id=membership.startup_id,
+                role=membership.role,
+            )
+        }
     )
 
 
@@ -83,6 +91,7 @@ def mark_read_endpoint(
         db,
         user_id=membership.user_id,
         startup_id=membership.startup_id,
+        role=membership.role,
         notification_id=notification_id,
     )
     db.commit()
@@ -95,7 +104,9 @@ def read_all_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    marked = mark_all_read(db, user_id=membership.user_id, startup_id=membership.startup_id)
+    marked = mark_all_read(
+        db, user_id=membership.user_id, startup_id=membership.startup_id, role=membership.role
+    )
     db.commit()
     return success_response({"marked": marked})
 
@@ -158,10 +169,12 @@ def _membership_role(user_id: str, startup_id: str) -> MembershipRole | None:
         db.close()
 
 
-def _unread(user_id: str, startup_id: str) -> int:
+def _unread(user_id: str, startup_id: str, role: MembershipRole) -> int:
     db = SessionLocal()
     try:
-        return unread_count(db, user_id=uuid.UUID(user_id), startup_id=uuid.UUID(startup_id))
+        return unread_count(
+            db, user_id=uuid.UUID(user_id), startup_id=uuid.UUID(startup_id), role=role
+        )
     finally:
         db.close()
 
@@ -171,7 +184,7 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
     if role is None:
         yield _sse("revoked", {"reason": "membership_inactive"})
         return
-    n = await run_in_threadpool(_unread, user_id, startup_id)
+    n = await run_in_threadpool(_unread, user_id, startup_id, role)
     yield _sse("unread", {"unread": n})
     channels = (channel_for(startup_id, user_id), activity_channel(startup_id))
     last_check = time.monotonic()
