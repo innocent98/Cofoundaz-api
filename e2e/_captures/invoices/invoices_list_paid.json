@@ -2,10 +2,10 @@
   "data": {
     "invoices": [
       {
-        "id": "efbcbabc-6735-4dce-aaf7-acea2384b0c8",
+        "id": "8f5a3ee8-cf17-4535-9b2a-51f4d4a3c218",
         "number": "INV-2026-001",
         "client_name": "Acme Traders Ltd",
-        "client_email": "delivered+inv-6636f79d668d@resend.dev",
+        "client_email": "delivered+inv-1c5397959668@resend.dev",
         "line_items": [
           {
             "description": "Design retainer",
@@ -27,13 +27,16 @@
         "currency": "NGN",
         "terms": "net_30",
         "status": "paid",
-        "issued_on": "2026-09-30",
-        "due_on": "2026-10-30",
-        "paid_at": "2026-09-30T08:32:55.704271Z",
+        "issued_on": "2026-10-21",
+        "due_on": "2026-11-20",
+        "paid_at": "2026-10-21T13:02:20.173887Z",
         "auto_remind": true,
-        "transaction_id": "37220419-300c-4eb8-ae3b-0317af2ba13d",
-        "created_at": "2026-09-30T08:32:55.588896Z",
-        "updated_at": "2026-09-30T08:32:55.701521Z"
+        "transaction_id": "5c9008bb-7cd8-40c0-909c-445653c3035b",
+        "pay_url": null,
+        "pay_provider": null,
+        "paid_via": null,
+        "created_at": "2026-10-21T13:02:19.965326Z",
+        "updated_at": "2026-10-21T13:02:20.169503Z"
       }
     ]
   },

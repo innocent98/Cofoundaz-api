@@ -1,0 +1,4 @@
+{"status": true, "message": "Refunds retrieved", "data": [
+ {"id": 7001, "transaction_reference": "ref_alpha", "amount": 200000, "currency": "NGN", "status": "processed", "createdAt": "2026-10-03T08:00:00.000Z"},
+ {"id": 7002, "transaction_reference": "ref_alpha", "amount": 100000, "currency": "NGN", "status": "failed", "createdAt": "2026-10-03T09:00:00.000Z"}
+], "meta": {"total": 2, "page": 1, "perPage": 100, "pageCount": 1}}

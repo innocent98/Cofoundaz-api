@@ -1,0 +1,1 @@
+{"status": true, "message": "Authorization URL created", "data": {"authorization_url": "https://checkout.paystack.com/fake_access_code", "access_code": "fake_access_code", "reference": "inv_placeholder_ref"}}
