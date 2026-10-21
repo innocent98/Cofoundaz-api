@@ -807,6 +807,20 @@ Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR #157):
 - [x] Task `milestone` chip; today `empty_reason` + `assigned_to_me`; streak-milestone PRD copy
 - SOP `docs/sop/2026-10-18-mission-prd.md` · guide `docs/fe-integration-guide-mission-prd.md`
 
+## 🟡 Staging signup 500: unverified Resend domain (2026-10-21, branch `fix/staging-signup-500`)
+
+Staging CD has been red since #152: signup returned 500 because Resend un-verified `cofoundaz.com`
+(403 "domain is not verified"; the DKIM/SPF records are missing from the live DNS zone). SOP:
+`docs/sop/2026-10-21-staging-signup-500-email-delivery.md`.
+
+- [x] Root cause found with evidence (live Resend probe, DNS on ns2/ns3, env names unchanged apart from Google, code diff #151→#152 has nothing in auth)
+- [x] Code: provider refusal → enveloped `503 EMAIL_DELIVERY_FAILED` on signup; verify/resend and forgot stay generic (SAVEPOINT, no token left behind). TDD, unit + live local captures
+- [x] FE guide `docs/fe-integration-guide-auth-emails.md` §5a (live captures in `e2e/_captures/staging-signup-500/`)
+- [ ] PR to `develop` merged (Adebayo)
+- [ ] **Adebayo:** re-add the Resend DNS records for `cofoundaz.com` at the DNS host, then Verify in Resend, then re-run the failed `CD (staging)` run
+- [ ] _Deferred:_ a generic `Exception` handler, so any other unhandled error is also enveloped (it is plain-text 500 today)
+- [ ] _Deferred:_ a DKIM-record assertion in the deploy smoke checks
+
 ## ✅ Module 02 — Founder Dashboard: role leaks (2026-10-20, branch `fix/dashboard-role-leaks`)
 
 _Rows 1-3, 8, 9 of the Dashboard re-walk (FE `docs/checklist/dashboard-rewalk.md`, PR #120). Rule D-MIS-8: Today's

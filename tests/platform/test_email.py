@@ -1,5 +1,6 @@
 import json
 
+from app.core.errors import EmailDeliveryFailed
 from app.platform.email import ConsoleEmailSender, EmailMessage, FileEmailSender, get_email_sender
 
 
@@ -196,7 +197,49 @@ def test_resend_sender_raises_on_non_2xx(monkeypatch):
         "post",
         lambda url, *, headers, json, timeout: _FakeResponse(422, '{"message":"bad"}'),
     )
-    with pytest.raises(RuntimeError, match="Resend API returned 422"):
+    with pytest.raises(EmailDeliveryFailed) as excinfo:
+        ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+    # A typed AppError, so an endpoint that lets it propagate answers with an
+    # enveloped 503 instead of a bare-text 500.
+    assert excinfo.value.http_status == 503
+    assert excinfo.value.code == "EMAIL_DELIVERY_FAILED"
+
+
+def test_resend_sender_403_unverified_domain_is_a_delivery_failure(monkeypatch):
+    """The 2026-10-20 staging outage: Resend 403s every send once the From domain
+    loses verification. That must surface as EMAIL_DELIVERY_FAILED, not a 500."""
+    import pytest
+
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    body = '{"message":"The cofoundaz.com domain is not verified.","name":"validation_error"}'
+    monkeypatch.setattr(
+        email_mod.httpx, "post", lambda url, *, headers, json, timeout: _FakeResponse(403, body)
+    )
+    with pytest.raises(EmailDeliveryFailed):
+        ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+
+def test_resend_sender_transport_error_is_a_delivery_failure(monkeypatch):
+    import httpx
+    import pytest
+
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+
+    def boom(url, *, headers, json, timeout):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(email_mod.httpx, "post", boom)
+    with pytest.raises(EmailDeliveryFailed):
         ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
 
 

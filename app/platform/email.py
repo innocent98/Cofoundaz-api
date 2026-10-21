@@ -4,6 +4,7 @@ from typing import Protocol
 import httpx
 
 from app.core.config import settings
+from app.core.errors import EmailDeliveryFailed
 from app.core.logger import log
 
 
@@ -80,8 +81,9 @@ class ResendEmailSender:
     """Sends via the Resend HTTP API (https://resend.com).
 
     Uses httpx (already a project dependency) rather than the `resend` SDK — the
-    API is a single authenticated POST. Fails loud (raises) on a missing key,
-    a missing From address, or a non-2xx response, mirroring SMTPEmailSender:
+    API is a single authenticated POST. Fails loud on a missing key or From
+    address (RuntimeError: a deploy misconfiguration) and on a non-2xx response
+    or transport error (EmailDeliveryFailed, an enveloped 503), mirroring SMTPEmailSender:
     a caller that must deliver (email verification, password reset) should see
     the failure, not have it swallowed. Callers that can tolerate a miss (e.g.
     a best-effort document-share notification) wrap the send themselves.
@@ -107,21 +109,31 @@ class ResendEmailSender:
             if settings.EMAILS_FROM_NAME
             else str(from_email)
         )
-        response = httpx.post(
-            self._ENDPOINT,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "from": sender,
-                "to": [msg.to],
-                "subject": msg.subject,
-                "html": msg.html,
-            },
-            timeout=10.0,
-        )
-        if response.status_code >= 300:
-            raise RuntimeError(
-                f"Resend API returned {response.status_code} sending to {msg.to}: {response.text}"
+        try:
+            response = httpx.post(
+                self._ENDPOINT,
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": sender,
+                    "to": [msg.to],
+                    "subject": msg.subject,
+                    "html": msg.html,
+                },
+                timeout=10.0,
             )
+        except httpx.HTTPError as exc:
+            log.error(f"[email:resend] transport error sending to {msg.to}: {exc!r}")
+            raise EmailDeliveryFailed() from exc
+        # A provider refusal (unverified domain 403, bad recipient 422, quota 429, 5xx) is
+        # a typed, enveloped 503 rather than a bare RuntimeError -> plain-text 500. The
+        # provider's own body is logged so the cause is one `docker compose logs` away;
+        # it never reaches the client.
+        if response.status_code >= 300:
+            log.error(
+                f"[email:resend] Resend API returned {response.status_code} "
+                f"sending to {msg.to}: {response.text}"
+            )
+            raise EmailDeliveryFailed()
         log.info(f"[email:resend] to={msg.to} subject={msg.subject!r}")
 
 

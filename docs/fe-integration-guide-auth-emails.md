@@ -68,6 +68,39 @@ should read `https://<your-app-origin>/verify-email/…`, **not** `…api.cofoun
   `{"data": {"sent": true, "message": "If that email has an account, a reset link is on its way."},
   "meta": null}` (verified live on staging; generic, throttled 60s/email). Sends the reset email.
 
+## 5a. When the email provider fails (added 2026-10-21)
+
+> Captured live against a local app on this branch (`fix/staging-signup-500`), using
+> `EMAIL_BACKEND=resend` with a deliberately invalid key, so Resend really refused the send (401).
+> Bodies are copied from `e2e/_captures/staging-signup-500/`. Emails are placeholders.
+> **Not yet live on staging:** it runs `develop`, which doesn't contain this change until it is merged.
+
+**Signup**: `POST /api/v1/auth/signup` → **503**
+
+```json
+{"error":{"code":"EMAIL_DELIVERY_FAILED","message":"We couldn't send the email right now. Please try again in a few minutes.","field_errors":[]}}
+```
+
+- **No account is created.** The same signup retried later is accepted (a retry during the
+  outage returns the same 503, **not** `409 EMAIL_TAKEN`). The FE should show the message,
+  keep the form filled in, and let the user resubmit. Don't send them to "check your inbox".
+- Before this change the same failure was a **plain-text** `500 Internal Server Error` (not
+  JSON). That was the staging outage of 2026-10-20/21.
+
+**Resend verification / forgot password**: unchanged on purpose. They still return the generic
+**200** with the same body as an unknown email:
+
+```json
+{"data":{"sent":true},"meta":null}
+```
+```json
+{"data":{"sent":true,"message":"If that email has an account, a reset link is on its way."},"meta":null}
+```
+
+Field trap: these endpoints **never** return `EMAIL_DELIVERY_FAILED`. An error here would tell
+anyone which emails have accounts. If the user says the email never arrived, offer "resend" again
+(after the 60s cooldown).
+
 ## 6. Verification table
 
 | Behaviour | Verified |
@@ -78,3 +111,5 @@ should read `https://<your-app-origin>/verify-email/…`, **not** `…api.cofoun
 | `verify` 200 `{verified:true}` / `reset` 200 `{reset:true}` | ✅ e2e journeys (shape shown is the standard envelope) |
 | `verify`/`reset` 400 `TOKEN_INVALID`, `reset` 422 `WEAK_PASSWORD` | ✅ unit tests |
 | Actual rendered link points at the FE origin | ⚠️ depends on `APP_BASE_URL` in the deploy env — confirm via Resend log (§4) |
+| Signup 503 `EMAIL_DELIVERY_FAILED` on provider refusal; no account created; retry not 409 | ✅ live, local app on this branch, 2026-10-21 (captures in `e2e/_captures/staging-signup-500/`). Not yet on staging |
+| verify/resend and forgot stay generic 200 on provider refusal; no token left behind | ✅ live, local app on this branch, 2026-10-21 + unit tests |

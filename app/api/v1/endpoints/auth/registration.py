@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.envelope import success_response
-from app.core.errors import EmailTaken
+from app.core.errors import EmailDeliveryFailed, EmailTaken
+from app.core.logger import log
 from app.core.redis import get_redis
 from app.core.security import get_password_hash
 from app.db.models.enums import AuthTokenPurpose, UserStatus
@@ -87,7 +88,14 @@ def resend(payload: EmailRequest, db: Session = Depends(get_db)) -> dict[str, An
             .first()
         )
         if user is not None:
-            _send_verification(db, user)
+            try:
+                # SAVEPOINT: a failed send rolls back the just-issued token, not the session.
+                with db.begin_nested():
+                    _send_verification(db, user)
+            except EmailDeliveryFailed:
+                # Swallowed: only a real pending account reaches the send, so a 503 here
+                # would reveal that the email is registered. The cooldown still applies.
+                log.warning("verification resend failed: email provider refused the send")
             db.commit()
     # Generic response regardless of whether the email exists or was throttled — avoids
     # account enumeration.

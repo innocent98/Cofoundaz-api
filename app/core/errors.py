@@ -48,6 +48,15 @@ class PasswordTooLong(AppError):  # noqa: N818
     message = "That password is too long. Emoji and accented letters take up extra room."
 
 
+class EmailDeliveryFailed(AppError):  # noqa: N818
+    # The mail provider refused or never answered (unverified sending domain, quota,
+    # outage). 503 because it is the server's dependency failing, and it is retryable.
+    # Raised by the email backends; endpoints whose response must not reveal whether an
+    # account exists (forgot, verify/resend) catch it instead of letting it propagate.
+    code, http_status = "EMAIL_DELIVERY_FAILED", 503
+    message = "We couldn't send the email right now. Please try again in a few minutes."
+
+
 class InvalidCredentials(AppError):  # noqa: N818
     code, http_status = "INVALID_CREDENTIALS", 401
     message = "That email and password don't match."
