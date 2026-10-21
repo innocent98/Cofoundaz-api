@@ -35,6 +35,11 @@ _RESTRICTED_ENTITIES: dict[str, frozenset[MembershipRole]] = {
     "segment": MARKETING_ROLES,
     "sales_stage": SALES_ROLES,
     "sales_settings": SALES_ROLES,
+    "sales_account": SALES_ROLES,
+    "sales_contact": SALES_ROLES,
+    "sales_lead": SALES_ROLES,
+    "deal": SALES_ROLES,
+    "sales_activity": SALES_ROLES,
 }
 # Open to every role: #153 kept health score, roadmap, business and document data open;
 # assessment.completed is already shown to every role as a health-score history marker, and
