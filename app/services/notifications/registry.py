@@ -5,17 +5,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import (
-    BRIEFING_ROLES,
-    FINANCE_ROLES,
-    MARKETING_ROLES,
-    MISSION_ROLES,
-    MembershipRole,
-    MembershipStatus,
-)
+from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.notifications.audience import AUDIENCE, kpi_roles
 from app.services.notifications.categories import category_for
 from app.services.notifications.preferences import email_enabled
 from app.services.notifications.service import create_notifications
@@ -66,57 +60,24 @@ def _with_roles(db: Session, startup_id: Any, roles: frozenset[MembershipRole]) 
     return [r[0] for r in rows]
 
 
-def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
-    """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
-    roles = FINANCE_ROLES if payload.get("audience") == "finance" else MARKETING_ROLES
-    return _with_roles(db, payload["startup_id"], roles)
-
-
-def _roles_minus_actor(
-    roles: frozenset[MembershipRole],
+def _audience(
+    event: str, *, minus_actor: bool = True
 ) -> Callable[[Session, dict], list[uuid.UUID]]:
-    """Audience = active members holding one of `roles` (the read gate of the feature the
-    notification opens), minus the actor. A role that can't open the page must not hear of it."""
+    """Recipients = active members holding one of AUDIENCE[event]'s roles (the read gate of the
+    feature the notification opens), minus the actor when `minus_actor`. The read paths filter by
+    the same map, so what is delivered and what is shown cannot drift."""
+    roles = AUDIENCE[event]
 
-    def _audience(db: Session, payload: dict) -> list[uuid.UUID]:
-        actor = _actor(payload)
+    def _recipients(db: Session, payload: dict) -> list[uuid.UUID]:
+        actor = _actor(payload) if minus_actor else None
         return [u for u in _with_roles(db, payload["startup_id"], roles) if u != actor]
 
-    return _audience
+    return _recipients
 
 
-def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
-    """Active founders only (PRD 08: the founder approves a consultant's suggestions)."""
-    rows = (
-        db.query(Membership.user_id)
-        .filter(
-            Membership.startup_id == payload["startup_id"],
-            Membership.status == MembershipStatus.active,
-            Membership.role == MembershipRole.founder,
-        )
-        .all()
-    )
-    return [r[0] for r in rows]
-
-
-def _validation_members(db: Session, payload: dict) -> list[uuid.UUID]:
-    """Founders and team members: the only roles that can open the Validation Hub."""
-    rows = (
-        db.query(Membership.user_id)
-        .filter(
-            Membership.startup_id == payload["startup_id"],
-            Membership.status == MembershipStatus.active,
-            Membership.role.in_([MembershipRole.founder, MembershipRole.team_member]),
-        )
-        .all()
-    )
-    return [r[0] for r in rows]
-
-
-def _assessment_members_minus_actor(db: Session, payload: dict) -> list[uuid.UUID]:
-    """D-ASM-1: only founders and team members can open the Assessment, so only they hear of it."""
-    actor = _actor(payload)
-    return [u for u in _validation_members(db, payload) if u != actor]
+def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
+    return _with_roles(db, payload["startup_id"], kpi_roles(payload))
 
 
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
@@ -150,7 +111,7 @@ SPECS: dict[str, NotifSpec] = {
     "document.signature.completed": _s(_members_minus_actor, "A document is fully signed"),
     # PRD 08 notifications copy: to the founder, CTA "Review suggestions".
     "business.suggestion.created": NotifSpec(
-        _founders,
+        _audience("business.suggestion.created", minus_actor=False),
         lambda p: (
             f"{p.get('author_name') or 'Your consultant'} suggested changes to "
             f"{p.get('artifact') or 'your Business Builder'}"
@@ -164,10 +125,10 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "roadmap.replanned": _s(_members_minus_actor, "Your roadmap was re-planned"),
     "roadmap.milestone.completed": _s(_members_minus_actor, "A roadmap milestone was completed"),
-    "mission.completed": _s(_roles_minus_actor(MISSION_ROLES), "Today's mission is complete"),
+    "mission.completed": _s(_audience("mission.completed"), "Today's mission is complete"),
     # PRD 04 notifications copy.
     "mission.streak.milestone": NotifSpec(
-        _roles_minus_actor(MISSION_ROLES),
+        _audience("mission.streak.milestone"),
         lambda p: (
             f"🔥 {p['streak']} days straight. You're building a habit most founders never do."
             if p.get("streak")
@@ -195,11 +156,11 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "",
     ),
     "assessment.completed": _s(
-        _assessment_members_minus_actor, "A startup assessment was completed"
+        _audience("assessment.completed"), "A startup assessment was completed"
     ),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
     "mission.ready": NotifSpec(
-        _roles_minus_actor(MISSION_ROLES),
+        _audience("mission.ready"),
         lambda _p: "Your mission for today is ready",
         lambda p: p.get("first_task_title") or "",
     ),
@@ -211,13 +172,13 @@ SPECS: dict[str, NotifSpec] = {
     ),
     # PRD 09 notifications: smoke-test signup milestone (D-VAL-5 thresholds in validation/smoke.py).
     "validation.smoke_test.milestone": NotifSpec(
-        _validation_members,
+        _audience("validation.smoke_test.milestone", minus_actor=False),
         lambda p: f"{p.get('name') or 'Your smoke test'} just passed {p.get('signups')} signups",
         lambda _p: "",
     ),
     # PRD 09 Insight Synthesizer notification copy, CTA "See insight".
     "validation.insight.detected": NotifSpec(
-        _validation_members,
+        _audience("validation.insight.detected", minus_actor=False),
         lambda p: f"New pattern detected in customer feedback: {p.get('theme') or 'a new theme'}",
         lambda _p: "See insight",
     ),
@@ -233,18 +194,20 @@ SPECS: dict[str, NotifSpec] = {
     # D-ASM-1: the founder owns re-assessment. CTA "Start re-assessment"; the payload carries
     # `href` (/assessment) from the scheduler handler.
     "assessment.quarterly.due": _s(
-        _founders, "Time for your quarterly startup assessment", "Start re-assessment"
+        _audience("assessment.quarterly.due", minus_actor=False),
+        "Time for your quarterly startup assessment",
+        "Start re-assessment",
     ),
     # PRD 08 notifications copy, CTA "Open it".
     "business.plan.generated": _s(
         _all_active_members, "Your AI-generated business plan is ready", "Open it"
     ),
     # Finance hub readers only (founder, team member, accountant).
-    "finance.runway.low": _s(_roles_minus_actor(FINANCE_ROLES), "Your runway is running low"),
+    "finance.runway.low": _s(_audience("finance.runway.low"), "Your runway is running low"),
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     # Only BRIEFING_ROLES see the briefing prose (it is built from finance figures).
     "dashboard.briefing.ready": _s(
-        _roles_minus_actor(BRIEFING_ROLES), "Your daily AI briefing is ready"
+        _audience("dashboard.briefing.ready"), "Your daily AI briefing is ready"
     ),
     # PRD 02.1 "{Metric} crossed {threshold}: now {value}"; title is composed by the job.
     # PRD 23 notifications copy: only the mentioned member is notified.
@@ -259,7 +222,7 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "",
     ),
     "marketing.post.published": NotifSpec(
-        _roles_minus_actor(MARKETING_ROLES),
+        _audience("marketing.post.published"),
         lambda p: (
             f"Scheduled post published: {p.get('title', 'a post')}"
             if p.get("was_scheduled", True)
@@ -268,18 +231,18 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "See results",  # CTA; the deep link is the payload's `href`
     ),
     "marketing.campaign.launched": NotifSpec(
-        _roles_minus_actor(MARKETING_ROLES),
+        _audience("marketing.campaign.launched"),
         lambda p: f"Campaign launched: {p.get('name', 'a campaign')}",
         lambda _p: "See results",
     ),
     # PRD 10 "Campaign performance summary ready", CTA "See results" (the payload's `href`).
     "marketing.campaign.readout.ready": NotifSpec(
-        _roles_minus_actor(MARKETING_ROLES),
+        _audience("marketing.campaign.readout.ready"),
         lambda p: f"Campaign performance summary ready: {p.get('name', 'a campaign')}",
         lambda _p: "See results",
     ),
     "marketing.campaign.completed": NotifSpec(
-        _roles_minus_actor(MARKETING_ROLES),
+        _audience("marketing.campaign.completed"),
         lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",
         lambda _p: "See results",
     ),
