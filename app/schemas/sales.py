@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.db.models.enums import StageKind
+from app.db.models.enums import LeadSource, LeadStatus, StageKind
 
 
 class StageIn(BaseModel):
@@ -201,3 +201,82 @@ class AccountDetailOut(BaseModel):
     contacts: list[ContactOut]
     open_deals: list[dict[str, Any]]
     lifetime_won_minor: int
+
+
+# ---- Leads ----
+class LeadCreate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    email: EmailStr | None = None
+    source: LeadSource = LeadSource.manual
+    status: LeadStatus = LeadStatus.new
+    owner_id: uuid.UUID | None = None
+
+    @field_validator("name", "company")
+    @classmethod
+    def _blank(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @field_validator("status")
+    @classmethod
+    def _not_converted(cls, v: LeadStatus) -> LeadStatus:
+        if v == LeadStatus.converted:
+            raise ValueError("Use convert to mark a lead as converted.")
+        return v
+
+
+class LeadUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    email: EmailStr | None = None
+    source: LeadSource | None = None
+    status: LeadStatus | None = None
+    owner_id: uuid.UUID | None = None
+
+    @field_validator("name", "company")
+    @classmethod
+    def _blank(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+
+class LeadOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str | None
+    company: str | None
+    email: str | None
+    source: LeadSource
+    status: LeadStatus
+    owner_id: uuid.UUID | None
+    converted_deal_id: uuid.UUID | None
+    converted_contact_id: uuid.UUID | None
+    converted_account_id: uuid.UUID | None
+    created_at: datetime
+
+
+class ImportMapping(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    company: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    source: str | None = Field(default=None, max_length=200)
+
+
+class ImportCommit(BaseModel):
+    upload_id: str = Field(min_length=1, max_length=64)
+    mapping: ImportMapping
+
+
+class PreviewOut(BaseModel):
+    upload_id: str
+    headers: list[str]
+    sample_rows: list[list[str]]
+    suggested_mapping: dict[str, str | None]
+    row_count: int
+
+
+class ImportResult(BaseModel):
+    added: int
+    duplicates_skipped: int
+    invalid_rows: list[dict[str, Any]]
+    invalid_total: int
