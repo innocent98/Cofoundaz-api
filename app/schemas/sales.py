@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.db.models.enums import ClosedReason, LeadSource, LeadStatus, StageKind
+from app.db.models.enums import ActivityKind, ClosedReason, LeadSource, LeadStatus, StageKind
 
 
 class StageIn(BaseModel):
@@ -381,3 +381,57 @@ class StageChangeOut(BaseModel):
 
 class DealDetailOut(DealItem):
     stage_history: list[StageChangeOut]
+
+
+class ConvertOut(BaseModel):
+    deal: DealItem
+    account: AccountOut | None
+    contact: ContactOut
+
+
+# ---- Activities ----
+class ActivityCreate(BaseModel):
+    kind: ActivityKind
+    body: str = Field(min_length=1, max_length=5000)
+    occurred_at: datetime | None = None
+    account_id: uuid.UUID | None = None
+    contact_id: uuid.UUID | None = None
+    deal_id: uuid.UUID | None = None
+
+    @field_validator("body")
+    @classmethod
+    def _strip_body(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Body is required.")
+        return v
+
+
+class ActivityUpdate(BaseModel):
+    kind: ActivityKind | None = None
+    body: str | None = Field(default=None, min_length=1, max_length=5000)
+    occurred_at: datetime | None = None
+
+    @field_validator("body")
+    @classmethod
+    def _strip_body(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            raise ValueError("Body is required.")
+        return v
+
+
+class ActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: ActivityKind
+    body: str
+    occurred_at: datetime
+    author_id: uuid.UUID | None
+    account_id: uuid.UUID | None
+    contact_id: uuid.UUID | None
+    deal_id: uuid.UUID | None
+    created_at: datetime

@@ -1,13 +1,16 @@
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.db.models.enums import LeadSource, LeadStatus
-from app.db.models.sales import SalesLead
+from app.db.models.sales import Deal, SalesAccount, SalesContact, SalesLead
 from app.platform.activity import write_activity
-from app.schemas.sales import LeadCreate, LeadUpdate
+from app.schemas.sales import DealCreate, LeadCreate, LeadUpdate
+from app.services.sales import deals as deals_svc
 from app.services.sales.errors import _validation
 from app.services.sales.people import _like, check_owner
 
@@ -155,3 +158,105 @@ def delete_lead(
         entity_type="sales_lead",
         entity_id=rid,
     )
+
+
+@dataclass
+class ConvertResult:
+    deal: Deal
+    account: SalesAccount | None
+    contact: SalesContact
+
+
+def _account_by_name(db: Session, startup_id: uuid.UUID, name: str) -> SalesAccount | None:
+    return db.scalar(
+        select(SalesAccount).where(
+            SalesAccount.startup_id == startup_id,
+            func.lower(SalesAccount.name) == name.lower(),
+        )
+    )
+
+
+def _find_or_create_account(
+    db: Session, startup_id: uuid.UUID, company: str, owner_id: uuid.UUID | None
+) -> SalesAccount:
+    found = _account_by_name(db, startup_id, company)
+    if found is not None:
+        return found
+    row = SalesAccount(startup_id=startup_id, name=company, owner_id=owner_id)
+    try:
+        # add() INSIDE the SAVEPOINT: a racing duplicate-name insert must not poison the session
+        with db.begin_nested():
+            db.add(row)
+            db.flush()
+    except IntegrityError:
+        racing = _account_by_name(db, startup_id, company)
+        if racing is None:
+            raise
+        return racing
+    write_activity(
+        db,
+        startup_id=startup_id,
+        action="sales.account.created",
+        summary=f"Added account {row.name}",
+        actor_user_id=owner_id,
+        entity_type="sales_account",
+        entity_id=row.id,
+    )
+    return row
+
+
+def convert_lead(
+    db: Session, *, startup_id: uuid.UUID, lead_id: uuid.UUID, actor_id: uuid.UUID
+) -> ConvertResult:
+    lead = db.scalar(
+        select(SalesLead)
+        .where(SalesLead.id == lead_id, SalesLead.startup_id == startup_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if lead is None:
+        raise NotFound()
+    if lead.status == LeadStatus.converted:
+        raise _validation("status", _CONVERTED_MSG)
+
+    company = lead.company
+    account = _find_or_create_account(db, startup_id, company, lead.owner_id) if company else None
+
+    first, _, rest = (lead.name or company or "").strip().partition(" ")
+    contact = SalesContact(
+        startup_id=startup_id,
+        account_id=account.id if account else None,
+        first_name=first,
+        last_name=rest.strip() or None,
+        email=lead.email,
+    )
+    db.add(contact)
+    db.flush()
+
+    deal = deals_svc.create_deal(
+        db,
+        startup_id=startup_id,
+        actor_id=actor_id,
+        data=DealCreate(
+            name=company or lead.name or "Deal",
+            account_id=account.id if account else None,
+            contact_id=contact.id,
+            owner_id=lead.owner_id or actor_id,
+        ),
+    )
+    lead.status = LeadStatus.converted
+    lead.converted_deal_id = deal.id
+    lead.converted_contact_id = contact.id
+    lead.converted_account_id = account.id if account else None
+    db.flush()
+    write_activity(
+        db,
+        startup_id=startup_id,
+        action="sales.lead.converted",
+        summary=f"Converted lead {_label(lead)} to a deal",
+        actor_user_id=actor_id,
+        entity_type="sales_lead",
+        entity_id=lead.id,
+        meta={"deal_id": str(deal.id)},
+    )
+    return ConvertResult(deal=deal, account=account, contact=contact)

@@ -18,9 +18,13 @@ from app.schemas.sales import (
     AccountDetailOut,
     AccountOut,
     AccountUpdate,
+    ActivityCreate,
+    ActivityOut,
+    ActivityUpdate,
     ContactCreate,
     ContactOut,
     ContactUpdate,
+    ConvertOut,
     DealCreate,
     DealDetailOut,
     DealStageMove,
@@ -34,6 +38,7 @@ from app.schemas.sales import (
     StageOut,
     StagesReplace,
 )
+from app.services.sales import activities as activities_svc
 from app.services.sales import csv_import as csv_svc
 from app.services.sales import deals as deals_svc
 from app.services.sales import leads as leads_svc
@@ -326,6 +331,25 @@ def import_leads(
     return success_response(res.model_dump(mode="json"))
 
 
+@router.post("/leads/{lead_id}/convert", response_model=dict[str, Any])
+def convert_lead(
+    lead_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    res = leads_svc.convert_lead(
+        db, startup_id=membership.startup_id, lead_id=lead_id, actor_id=user.id
+    )
+    out = ConvertOut(
+        deal=deals_svc.deal_items(db, membership.startup_id, [res.deal])[0],
+        account=AccountOut.model_validate(res.account) if res.account else None,
+        contact=ContactOut.model_validate(res.contact),
+    ).model_dump(mode="json")
+    db.commit()
+    return success_response(out)
+
+
 @router.get("/leads/{lead_id}", response_model=dict[str, Any])
 def get_lead(
     lead_id: uuid.UUID,
@@ -480,3 +504,73 @@ def move_deal_stage(
     out = _deal_detail(db, membership.startup_id, deal)
     db.commit()
     return success_response(out)
+
+
+# ---- Activities ----
+@router.get("/activities", response_model=dict[str, Any])
+def list_activities(
+    account_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    contact_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    deal_id: uuid.UUID | None = Query(default=None),  # noqa: B008
+    limit: int = Query(default=50, ge=1, le=200),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows, total = activities_svc.list_activities(
+        db,
+        membership.startup_id,
+        account_id=account_id,
+        contact_id=contact_id,
+        deal_id=deal_id,
+        limit=limit,
+        offset=offset,
+    )
+    return success_response(
+        {
+            "items": [ActivityOut.model_validate(r).model_dump(mode="json") for r in rows],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.post("/activities", response_model=dict[str, Any])
+def create_activity(
+    payload: ActivityCreate,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = activities_svc.create_activity(db, membership.startup_id, payload, author_id=user.id)
+    db.commit()
+    return success_response(ActivityOut.model_validate(row).model_dump(mode="json"))
+
+
+@router.patch("/activities/{activity_id}", response_model=dict[str, Any])
+def update_activity(
+    activity_id: uuid.UUID,
+    payload: ActivityUpdate,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = activities_svc.update_activity(
+        db, membership.startup_id, activity_id, payload, actor_id=user.id
+    )
+    db.commit()
+    return success_response(ActivityOut.model_validate(row).model_dump(mode="json"))
+
+
+@router.delete("/activities/{activity_id}", response_model=dict[str, Any])
+def delete_activity(
+    activity_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    activities_svc.delete_activity(db, membership.startup_id, activity_id, actor_id=user.id)
+    db.commit()
+    return success_response({"deleted": True})
