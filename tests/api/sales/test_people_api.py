@@ -155,3 +155,13 @@ def test_contact_flow_and_cross_tenant_account(client, db):
     assert client.get(f"{BASE}/contacts/{cid}", headers=h2).status_code == 404
     assert client.delete(f"{BASE}/contacts/{cid}", headers=h).status_code == 200
     assert client.get(f"{BASE}/contacts/{cid}", headers=h).status_code == 404
+
+
+def test_account_website_must_be_http_or_https(client, db):
+    _u, _s, h = _member(db)
+    for bad in ("javascript:alert(1)", "data:text/html,x", "ftp://x.com"):
+        r = client.post(f"{BASE}/accounts", json={"name": "Acme X", "website": bad}, headers=h)
+        assert r.status_code == 422, bad
+    ok = client.post(f"{BASE}/accounts", json={"name": "Acme Y", "website": "acme.com"}, headers=h)
+    assert ok.status_code < 300
+    assert ok.json()["data"]["website"] == "https://acme.com"

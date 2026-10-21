@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -55,6 +56,19 @@ def _blank_to_none(v: str | None) -> str | None:
     return v or None
 
 
+def _clean_website(v: str | None) -> str | None:
+    """http(s) only: the FE renders this as a link, so a `javascript:` value must never be stored."""
+    v = _blank_to_none(v)
+    if v is None:
+        return None
+    if "://" not in v and ":" not in v.split("/", 1)[0]:
+        v = f"https://{v}"
+    parsed = urlparse(v)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("Website must be an http or https address.")
+    return v
+
+
 # ---- Accounts ----
 class AccountCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
@@ -71,10 +85,15 @@ class AccountCreate(BaseModel):
             raise ValueError("Name is required.")
         return v
 
-    @field_validator("website", "industry", "description")
+    @field_validator("industry", "description")
     @classmethod
     def _blank(cls, v: str | None) -> str | None:
         return _blank_to_none(v)
+
+    @field_validator("website")
+    @classmethod
+    def _website(cls, v: str | None) -> str | None:
+        return _clean_website(v)
 
 
 class AccountUpdate(BaseModel):
@@ -94,10 +113,15 @@ class AccountUpdate(BaseModel):
             raise ValueError("Name is required.")
         return v
 
-    @field_validator("website", "industry", "description")
+    @field_validator("industry", "description")
     @classmethod
     def _blank(cls, v: str | None) -> str | None:
         return _blank_to_none(v)
+
+    @field_validator("website")
+    @classmethod
+    def _website(cls, v: str | None) -> str | None:
+        return _clean_website(v)
 
 
 class AccountOut(BaseModel):
