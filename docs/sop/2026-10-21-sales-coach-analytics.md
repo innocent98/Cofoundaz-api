@@ -75,3 +75,6 @@ Endpoints (founder + team member only): `POST|GET /sales/coach/sessions`, `GET /
 - Analytics has no per-member filter or CSV export; the funnel cohort (created in range) may need a "stage activity in range" variant if founders expect it.
 - Slice B (sequences) and FE-BC remain; Health Score sales signal (D-SAL-10) unchanged.
 - The spec's gap list (`docs/checklist/sales-prd-gaps.md`, rows 25 to 30) lives in the FE repo, not this one; tick those rows there.
+
+## Fix 2026-10-21: strict schema (fix/sales-coach-schema)
+Real-model scorecards and call preps failed with an OpenAI 400 ("additionalProperties is required to be supplied and to be false"): strict `json_schema` needs `additionalProperties: false` on every object. Added it to `scorecard_schema()` and `call_prep_schema()` (top level and the objection items) in `app/services/sales/coach_prompts.py`; `tests/services/sales/test_coach_schemas.py` walks both schemas and asserts every object is strict-valid. The LLM stub never enforced this, which is why unit and e2e tests passed.
