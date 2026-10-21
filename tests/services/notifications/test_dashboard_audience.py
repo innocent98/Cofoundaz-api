@@ -32,6 +32,8 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.launched": CORE,
     "marketing.campaign.completed": CORE,
     "marketing.campaign.readout.ready": CORE,
+    # Sales hub: founder + team member
+    "sales.deal.won": CORE,
     # Assessment / Validation / KPI strip (earlier PRs, kept honest here)
     "assessment.completed": CORE,
     "assessment.quarterly.due": FOUNDER,
@@ -56,8 +58,9 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "document.signature.completed": ALL,
     "workspace.member.joined": ALL,
 }
-# Addressed to one named user, not to a role audience.
-DIRECT = {"team.comment.mentioned"}
+# Addressed to named users, not to a whole role audience (stalled: the deal owner, else the
+# founders; always inside the Sales hub audience, covered in test_sales_notifications.py).
+DIRECT = {"team.comment.mentioned", "sales.deal.stalled"}
 
 
 def _team(db):

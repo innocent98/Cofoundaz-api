@@ -1,12 +1,15 @@
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import MembershipRole, MembershipStatus
+from app.db.models.enums import SALES_ROLES, MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
+from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.notifications.audience import AUDIENCE, kpi_roles
@@ -73,6 +76,40 @@ def _audience(
         return [u for u in _with_roles(db, payload["startup_id"], roles) if u != actor]
 
     return _recipients
+
+
+def _deal_won_once_a_day(db: Session, payload: dict) -> list[uuid.UUID]:
+    """`sales.deal.won` recipients (founder + team members, the mover included), except none when
+    this deal already produced a won notification today (UTC): a second drag into Closed Won is
+    not news, a reopen and win on a later day is."""
+    today = datetime.now(UTC).date()
+    already = (
+        db.query(Notification.id)
+        .filter(
+            Notification.startup_id == payload["startup_id"],
+            Notification.type == "sales.deal.won",
+            Notification.data["deal_id"].astext == str(payload.get("deal_id")),
+            func.date(func.timezone("UTC", Notification.created_at)) == today,
+        )
+        .first()
+    )
+    return [] if already else _audience("sales.deal.won", minus_actor=False)(db, payload)
+
+
+def _deal_stalled_recipients(db: Session, payload: dict) -> list[uuid.UUID]:
+    """The deal owner while they are still an active founder or team member, else every active
+    founder (nobody when there is none)."""
+    startup_id = payload["startup_id"]
+    members = _with_roles(db, startup_id, SALES_ROLES)
+    owner = payload.get("owner_id")
+    if owner:
+        try:
+            owner_id = uuid.UUID(str(owner))
+        except ValueError:
+            owner_id = None
+        if owner_id in members:
+            return [owner_id]
+    return _with_roles(db, startup_id, frozenset({MembershipRole.founder}))
 
 
 def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
@@ -245,6 +282,20 @@ SPECS: dict[str, NotifSpec] = {
         _audience("marketing.campaign.completed"),
         lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",
         lambda _p: "See results",
+    ),
+    # PRD 11 / D-SAL-7 (copy avoids dashes). The stalled payload carries `href` for the follow-up.
+    "sales.deal.won": NotifSpec(
+        _deal_won_once_a_day,
+        lambda p: f"Deal moved to Closed Won: {p.get('name', 'a deal')} 🎉",
+        lambda _p: "",
+    ),
+    "sales.deal.stalled": NotifSpec(
+        _deal_stalled_recipients,
+        lambda p: (
+            f"Deal stalled: {p.get('name', 'a deal')} has had no activity for "
+            f"{p.get('days', 0)} days"
+        ),
+        lambda _p: "Suggest a follow-up",
     ),
 }
 

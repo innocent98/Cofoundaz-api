@@ -24,6 +24,8 @@ from app.services.notifications.service import (
 from tests.factories import create_membership, create_startup, create_user
 
 CORE = {MembershipRole.founder, MembershipRole.team_member}
+# Recipients are a payload-driven subset of the audience (stalled: owner, else founders).
+NARROWER_THAN_AUDIENCE = {"sales.deal.stalled"}
 
 
 def _team(db):
@@ -133,7 +135,10 @@ def test_every_audience_rule_matches_actual_fan_out(db):
         payload = {"startup_id": str(s.id)}
         got = set(spec.recipients(db, payload))
         want = {users[r].id for r in audience_roles(type_, payload)}
-        assert got == want, type_
+        if type_ in NARROWER_THAN_AUDIENCE:
+            assert got <= want, type_
+        else:
+            assert got == want, type_
 
 
 def test_audience_rows_are_real_registry_types():

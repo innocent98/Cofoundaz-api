@@ -16,6 +16,7 @@ from app.db.models.enums import (
     FINANCE_ROLES,
     MARKETING_ROLES,
     MISSION_ROLES,
+    SALES_ROLES,
     MembershipRole,
 )
 from app.db.models.notification import Notification
@@ -40,6 +41,8 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.launched": MARKETING_ROLES,
     "marketing.campaign.readout.ready": MARKETING_ROLES,
     "marketing.campaign.completed": MARKETING_ROLES,
+    "sales.deal.won": SALES_ROLES,
+    "sales.deal.stalled": SALES_ROLES,
 }
 
 # The audience of this type depends on its payload: payload["audience"] == "finance" opens it to
