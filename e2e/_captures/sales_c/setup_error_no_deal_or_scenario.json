@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick a deal or describe a scenario.",
+    "field_errors": [
+      {
+        "field": "deal_id",
+        "message": "Pick a deal or describe a scenario."
+      }
+    ]
+  }
+}

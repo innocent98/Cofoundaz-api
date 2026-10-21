@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "query.from",
+        "message": "Input should be a valid date or datetime, input is too short"
+      }
+    ]
+  }
+}

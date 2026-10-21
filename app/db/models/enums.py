@@ -469,3 +469,23 @@ class ClosedReason(enum.StrEnum):
     no_budget = "no_budget"
     ghosted = "ghosted"
     other = "other"
+
+
+class CoachDifficulty(enum.StrEnum):
+    friendly = "friendly"
+    neutral = "neutral"
+    tough = "tough"
+
+
+class CoachSessionStatus(enum.StrEnum):
+    # `scoring` while the scorecard job runs; `ended` once it finished (scorecard present) or
+    # failed (scorecard null + scorecard_error set; ending again retries).
+    active = "active"
+    scoring = "scoring"
+    ended = "ended"
+
+
+class CallPrepStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"

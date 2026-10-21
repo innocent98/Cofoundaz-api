@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "difficulty",
+        "message": "Input should be 'friendly', 'neutral' or 'tough'"
+      }
+    ]
+  }
+}
