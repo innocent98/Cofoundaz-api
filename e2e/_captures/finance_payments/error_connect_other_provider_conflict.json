@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PAYMENT_PROVIDER_ALREADY_CONNECTED",
+    "message": "Disconnect Paystack before connecting Flutterwave.",
+    "field_errors": []
+  }
+}

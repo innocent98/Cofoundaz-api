@@ -17,6 +17,7 @@ from app.db.models.enums import (
     RoadmapStatus,
     StageKind,
 )
+from app.db.models.finance_connection import FinanceConnection
 from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
@@ -35,6 +36,7 @@ SCHED_KPI_SNAPSHOT = "scheduled.kpi.snapshot"
 SCHED_HEALTH_NIGHTLY = "scheduled.health.recompute"
 SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
 SCHED_MARKETING_READOUT = "scheduled.marketing.readout"
+SCHED_PAYMENTS_SYNC = "scheduled.finance.payments_sync"
 SCHED_SALES_STALL = "scheduled.sales.stall"
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
@@ -272,6 +274,37 @@ def _due_campaign_readouts(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_payment_syncs(db: Session, now: datetime) -> list[Due]:
+    """One sync per `active` payment connection per local hour (disconnected and
+    needs_attention connections are never synced)."""
+    local = _local(now)
+    period = f"{local.date().isoformat()}T{local.hour:02d}"
+    claimed = {
+        r[0]
+        for r in db.query(ScheduledRun.scope_key).filter(
+            ScheduledRun.task_key == "payments.sync", ScheduledRun.period_key == period
+        )
+    }
+    rows = (
+        db.query(FinanceConnection.id, FinanceConnection.startup_id)
+        .join(Startup, Startup.id == FinanceConnection.startup_id)
+        .filter(FinanceConnection.status == "active", Startup.deleted_at.is_(None))
+        .all()
+    )
+    return [
+        Due(
+            "payments.sync",
+            str(cid),
+            period,
+            SCHED_PAYMENTS_SYNC,
+            sid,
+            {"connection_id": str(cid), "startup_id": str(sid)},
+        )
+        for cid, sid in rows
+        if str(cid) not in claimed
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -392,6 +425,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_health_nightly(db, now),
         *_due_marketing_posts(db, now),
         *_due_campaign_readouts(db, now),
+        *_due_payment_syncs(db, now),
         *_due_sales_stalls(db, now),
     ]
     enqueued = 0

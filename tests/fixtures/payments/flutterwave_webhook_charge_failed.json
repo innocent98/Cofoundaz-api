@@ -1,0 +1,1 @@
+{"event": "charge.completed", "data": {"id": 2002, "tx_ref": "tx_failed", "amount": 1000, "currency": "NGN", "app_fee": 0, "status": "failed", "created_at": "2026-10-01T10:00:00.000Z"}}

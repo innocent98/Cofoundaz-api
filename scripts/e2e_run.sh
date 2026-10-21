@@ -53,6 +53,16 @@ export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cr
 # journal writes work in e2e. (A real deployment MUST set a persistent JOURNAL_ENCRYPTION_KEY.)
 export JOURNAL_ENCRYPTION_KEY="${JOURNAL_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 
+# Finance payments (Paystack / Flutterwave): founder secrets are Fernet-encrypted at rest, so the
+# run needs a key (an existing env value is respected). PAYMENT_PROVIDER_STUB serves canned
+# provider HTTP inside the server, and is IGNORED when ENVIRONMENT=production (http.py); this
+# script is local-only. The sync interval is 0 so the journey can sync twice back to back, and
+# API_PUBLIC_URL makes the webhook_url the API returns point at this e2e server.
+export FINANCE_CONNECTIONS_ENCRYPTION_KEY="${FINANCE_CONNECTIONS_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+export PAYMENT_PROVIDER_STUB="true"
+export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
+export API_PUBLIC_URL="${E2E_BASE_URL}"
+
 SERVER_PID=""
 SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"
 

@@ -57,7 +57,11 @@ def list_transactions(
     return q.order_by(Transaction.date.desc(), Transaction.created_at.desc()).all()
 
 
-def _reject_managed(row: Transaction) -> None:
+_PROVIDER_SOURCES = (TransactionSource.paystack, TransactionSource.flutterwave)
+
+
+def _reject_managed(row: Transaction, *, changed: set[str] | None = None) -> None:
+    """`changed` is the set of fields a PATCH sets; None means a DELETE."""
     # Inflows created by invoice mark-paid and outflows created by expenses are owned by their
     # parent record; editing or deleting them directly would leave the parent claiming a ledger
     # entry that no longer matches.
@@ -71,14 +75,17 @@ def _reject_managed(row: Transaction) -> None:
             "source",
             "This transaction is managed by an expense; edit or delete the expense instead.",
         )
+    if row.source in _PROVIDER_SOURCES and (changed is None or changed - {"category"}):
+        raise _validation("source", "Imported transactions are read-only except the category.")
 
 
 def update_transaction(
     db: Session, *, startup_id: uuid.UUID, transaction_id: uuid.UUID, data: TransactionUpdate
 ) -> Transaction:
     row = get_transaction(db, startup_id=startup_id, transaction_id=transaction_id)
-    _reject_managed(row)
-    for name, value in data.model_dump(exclude_unset=True).items():
+    fields = data.model_dump(exclude_unset=True)
+    _reject_managed(row, changed=set(fields))
+    for name, value in fields.items():
         setattr(row, name, value)
     db.flush()
     return row

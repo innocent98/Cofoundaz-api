@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Only a sent invoice can have a pay link."
+      }
+    ]
+  }
+}

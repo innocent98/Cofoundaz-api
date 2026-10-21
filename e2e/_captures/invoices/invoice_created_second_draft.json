@@ -1,9 +1,9 @@
 {
   "data": {
-    "id": "f1f7f149-47f7-4d5f-8c03-d15adbbe944f",
+    "id": "739fb635-6d37-43e3-a9d9-0ccfd34be652",
     "number": "INV-2026-002",
     "client_name": "Beta Foods",
-    "client_email": "delivered+inv-3d8de01d7cc1@resend.dev",
+    "client_email": "delivered+inv-48eb44fadeaf@resend.dev",
     "line_items": [
       {
         "description": "Consulting",
@@ -24,8 +24,11 @@
     "paid_at": null,
     "auto_remind": false,
     "transaction_id": null,
-    "created_at": "2026-09-30T08:32:55.611065Z",
-    "updated_at": "2026-09-30T08:32:55.611065Z"
+    "pay_url": null,
+    "pay_provider": null,
+    "paid_via": null,
+    "created_at": "2026-10-21T13:02:20.003918Z",
+    "updated_at": "2026-10-21T13:02:20.003918Z"
   },
   "meta": null
 }

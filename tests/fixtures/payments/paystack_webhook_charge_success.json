@@ -1,0 +1,1 @@
+{"event": "charge.success", "data": {"id": 1001, "reference": "ref_alpha", "amount": 500000, "currency": "NGN", "status": "success", "paid_at": "2026-10-01T09:30:00.000Z", "fees": 7500}}

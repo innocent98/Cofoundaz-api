@@ -8,22 +8,16 @@
     "currency": "NGN",
     "by_month": [
       {
-        "month": "2026-04",
+        "month": "2026-05",
         "inflow": 0,
         "outflow": 0,
         "net": 0
-      },
-      {
-        "month": "2026-05",
-        "inflow": 100000000,
-        "outflow": 0,
-        "net": 100000000
       },
       {
         "month": "2026-06",
-        "inflow": 0,
+        "inflow": 100000000,
         "outflow": 0,
-        "net": 0
+        "net": 100000000
       },
       {
         "month": "2026-07",
@@ -39,6 +33,12 @@
       },
       {
         "month": "2026-09",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0
+      },
+      {
+        "month": "2026-10",
         "inflow": 0,
         "outflow": 12000000,
         "net": -12000000

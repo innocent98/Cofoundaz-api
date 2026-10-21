@@ -1,0 +1,4 @@
+{"status": "success", "message": "Refunds fetched", "meta": {"page_info": {"total": 2, "current_page": 1, "total_pages": 1}}, "data": [
+ {"id": 9001, "tx_ref": "tx_alpha", "flw_ref": "FLW-MOCK-001", "amount_refunded": 2000, "currency": "NGN", "status": "completed", "created_at": "2026-10-03T08:00:00.000Z"},
+ {"id": 9002, "tx_ref": "tx_alpha", "flw_ref": "FLW-MOCK-001", "amount_refunded": 1000, "currency": "NGN", "status": "failed", "created_at": "2026-10-03T09:00:00.000Z"}
+]}

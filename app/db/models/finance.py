@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 
-from sqlalchemy import Date, Enum, ForeignKey, Index, Integer, String
+from sqlalchemy import Date, Enum, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,5 +46,20 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
         default=TransactionSource.manual,
     )
     external_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("finance_connections.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
-    __table_args__ = (Index("ix_transactions_startup_date", "startup_id", "date"),)
+    __table_args__ = (
+        Index("ix_transactions_startup_date", "startup_id", "date"),
+        # Idempotent provider import: one row per (connection, provider reference).
+        Index(
+            "uq_transactions_connection_ref",
+            "connection_id",
+            "external_ref",
+            unique=True,
+            postgresql_where=text("connection_id IS NOT NULL"),
+        ),
+    )

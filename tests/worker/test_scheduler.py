@@ -151,3 +151,40 @@ def test_tick_enqueues_due_jobs_once(db):
     # a second tick the same period enqueues nothing new
     assert scheduler_tick(db, now=now) == 0
     assert db.query(Job).filter(Job.type == "scheduled.mission.generate").count() == 1
+
+
+def _payment_conn(db, status="active", provider="paystack"):
+    from tests.services.finance.payments_helpers import make_connection
+
+    _u, s = _ws(db)
+    return s, make_connection(db, s, status=status, provider=provider)
+
+
+def test_due_payment_syncs_one_per_active_connection_per_local_hour(db):
+    s, conn = _payment_conn(db)
+    _s2, off = _payment_conn(db, status="disconnected")
+    _s3, attn = _payment_conn(db, status="needs_attention")
+    now = datetime(2026, 10, 21, 9, 5, tzinfo=UTC)
+    due = scheduler._due_payment_syncs(db, now)
+    mine = [d for d in due if d.scope_key == str(conn.id)]
+    assert len(mine) == 1
+    d = mine[0]
+    assert d.task_key == "payments.sync" and d.job_type == scheduler.SCHED_PAYMENTS_SYNC
+    assert d.period_key.startswith("2026-10-21T")
+    assert d.payload == {"connection_id": str(conn.id), "startup_id": str(s.id)}
+    assert str(off.id) not in {x.scope_key for x in due}
+    assert str(attn.id) not in {x.scope_key for x in due}
+
+
+def test_scheduler_tick_enqueues_payment_sync_once_per_hour(db):
+    _s, conn = _payment_conn(db)
+    t1 = datetime(2026, 10, 21, 9, 5, tzinfo=UTC)
+
+    def n():
+        return db.query(Job).filter(Job.type == scheduler.SCHED_PAYMENTS_SYNC).count()
+
+    scheduler_tick(db, now=t1)
+    scheduler_tick(db, now=t1 + timedelta(minutes=10))  # same local hour
+    assert n() == 1
+    scheduler_tick(db, now=t1 + timedelta(hours=1))
+    assert n() == 2

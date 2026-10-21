@@ -46,6 +46,7 @@ e2e-captured.
 | 6 | `POST /finance/invoices/{id}/mark-paid` | sent/overdue → paid, books the inflow |
 | 7 | `POST /finance/invoices/{id}/mark-unpaid` | paid → sent, reverses the inflow |
 | 8 | `DELETE /finance/invoices/{id}` | delete (draft only) |
+| 9 | `POST /finance/invoices/{id}/pay-link` | create or retry the provider pay link (see below) |
 
 ---
 
@@ -119,7 +120,7 @@ PDF" has no server endpoint** — it is FE-only.
 ## The invoice object
 
 Every invoice endpoint (except list, which wraps an array, and delete) returns exactly this shape,
-all 19 fields always present (nullable ones are present-as-`null`, never omitted):
+all 22 fields always present (19 + the three payment fields below) (nullable ones are present-as-`null`, never omitted):
 
 | Field | Type | Notes |
 |---|---|---|
@@ -140,6 +141,9 @@ all 19 fields always present (nullable ones are present-as-`null`, never omitted
 | `paid_at` | ISO datetime \| null | set on mark-paid; back to `null` on mark-unpaid |
 | `auto_remind` | bool | stored flag only — no reminder is sent yet (see limitations) |
 | `transaction_id` | uuid \| null | the ledger inflow this invoice produced; non-null exactly while `paid` |
+| `pay_url` | string \| null | hosted checkout link, set when the invoice was sent (or the pay-link route was called) while a Paystack or Flutterwave connection was active. `null` otherwise. **Added by the payments work** |
+| `pay_provider` | `"paystack"` \| `"flutterwave"` \| null | which provider issued `pay_url`. **Added by the payments work** |
+| `paid_via` | `"paystack"` \| `"flutterwave"` \| null | set only when the provider's webhook marked the invoice paid; `null` for manual mark-paid. **Added by the payments work** |
 | `created_at` / `updated_at` | ISO datetime | |
 
 **Field-nesting traps.** (a) The list is at `data.invoices`, **not** `data` — every other invoice
@@ -164,7 +168,7 @@ request take exactly three fields. (d) `tax_percent` is a JSON number (`0.0`), n
 | `draft` | ✅ any field | ✅ | ✅ | ❌ 422 | ❌ 422 |
 | `sent` | only `auto_remind` | ❌ 422 | ❌ 422 | ✅ | ❌ 422 |
 | `overdue` (sent, past due) | only `auto_remind` | ❌ 422 | ❌ 422 | ✅ | ❌ 422 |
-| `paid` | only `auto_remind` | ❌ 422 | ❌ 422 | ✅ **no-op** (200, unchanged) | ✅ → `sent` |
+| `paid` | only `auto_remind` | ❌ 422 | ❌ 422 | ✅ **no-op** (200, unchanged) | ✅ → `sent`; **❌ 422 when `paid_via` is set** |
 
 Every ❌ is a **422 `VALIDATION_ERROR`** with `field_errors[0].field == "status"` and a specific message
 (see Errors). `mark-unpaid` returns the invoice to **`sent`** (not `draft`) and does **not** touch
@@ -1315,6 +1319,193 @@ per-field text lives in `field_errors[].message`. `NOT_FOUND` uses `"Not found."
 
 ---
 
+## Payments update: `pay_url`, `pay_provider`, `paid_via`, pay-link, and the mark-unpaid rule
+
+> Source: `e2e/test_finance_payments.py` (live app, provider HTTP stubbed inside the server; see
+> `docs/fe-integration-guide-finance-payments.md` for the full provider/connection contract and the
+> verification table). The invoice bodies in the sections above were captured **before** these three
+> fields existed; the invoices journey was re-run afterwards and every invoice object in
+> `e2e/_captures/invoices/` now carries all three as `null`, for example
+> `capture: invoices/invoice_created.json` (re-captured):
+
+```json
+{
+  "data": {
+    "id": "8f5a3ee8-cf17-4535-9b2a-51f4d4a3c218",
+    "number": "INV-2026-001",
+    "client_name": "Acme Traders Ltd",
+    "client_email": "delivered+inv-1c5397959668@resend.dev",
+    "line_items": [
+      {
+        "description": "Design retainer",
+        "quantity": 1,
+        "unit_price_minor": 100000,
+        "amount_minor": 100000
+      },
+      {
+        "description": "Hosting setup",
+        "quantity": 5,
+        "unit_price_minor": 5000,
+        "amount_minor": 25000
+      }
+    ],
+    "subtotal_minor": 125000,
+    "tax_percent": 7.5,
+    "tax_minor": 9375,
+    "total_minor": 134375,
+    "currency": "NGN",
+    "terms": "net_30",
+    "status": "draft",
+    "issued_on": null,
+    "due_on": null,
+    "paid_at": null,
+    "auto_remind": false,
+    "transaction_id": null,
+    "pay_url": null,
+    "pay_provider": null,
+    "paid_via": null,
+    "created_at": "2026-10-21T13:02:19.965326Z",
+    "updated_at": "2026-10-21T13:02:19.965326Z"
+  },
+  "meta": null
+}
+```
+
+**What changed for the FE**
+
+- Every invoice object has `pay_url`, `pay_provider` and `paid_via` (present, `null` when unused).
+  Values in the older example bodies above that omit them are stale by exactly these three keys.
+- `POST …/send` creates the pay link when the invoice is NGN and a payment connection is `active`.
+  A failure to create it never fails the send: the invoice is `sent` with `pay_url: null`.
+  `capture: finance_payments/invoice_sent_with_pay_link.json`
+
+```json
+{
+  "data": {
+    "id": "ccf760dc-4b4f-4807-affb-c995df34303d",
+    "number": "INV-2026-001",
+    "client_name": "Acme Traders Ltd",
+    "client_email": "delivered+pay-da3a1aced2c5@resend.dev",
+    "line_items": [
+      {
+        "description": "Retainer",
+        "quantity": 1,
+        "unit_price_minor": 100000,
+        "amount_minor": 100000
+      }
+    ],
+    "subtotal_minor": 100000,
+    "tax_percent": 0.0,
+    "tax_minor": 0,
+    "total_minor": 100000,
+    "currency": "NGN",
+    "terms": "net_30",
+    "status": "sent",
+    "issued_on": "2026-10-21",
+    "due_on": "2026-11-20",
+    "paid_at": null,
+    "auto_remind": false,
+    "transaction_id": null,
+    "pay_url": "https://checkout.paystack.com/stub-INV-2026-001-bfc32f9c",
+    "pay_provider": "paystack",
+    "paid_via": null,
+    "created_at": "2026-10-21T13:06:58.857359Z",
+    "updated_at": "2026-10-21T13:06:58.883725Z"
+  },
+  "meta": null
+}
+```
+
+- `POST /finance/invoices/{id}/pay-link` (founder, team_member, accountant) creates the link if it is
+  missing and otherwise returns the existing one. Returns the invoice. `capture: finance_payments/pay_link_reused.json`
+  and, for a retry that created one, `capture: finance_payments/pay_link_retry_flutterwave.json`
+  (see the payments guide for both bodies). Errors: draft invoice 422
+  (`capture: finance_payments/error_pay_link_on_draft.json`), no connection 422
+  (`capture: finance_payments/error_pay_link_no_connection.json`), mentor 403.
+
+```json
+{
+  "error": {
+    "code": "NO_PAYMENT_CONNECTION",
+    "message": "Connect Paystack or Flutterwave before creating a pay link.",
+    "field_errors": []
+  }
+}
+```
+
+- When the provider's webhook pays the invoice: `status: "paid"`, `paid_via` set, and one income row with
+  `source: "invoice"`. `capture: finance_payments/invoice_paid_via_paystack.json`
+
+```json
+{
+  "data": {
+    "id": "ccf760dc-4b4f-4807-affb-c995df34303d",
+    "number": "INV-2026-001",
+    "client_name": "Acme Traders Ltd",
+    "client_email": "delivered+pay-da3a1aced2c5@resend.dev",
+    "line_items": [
+      {
+        "description": "Retainer",
+        "quantity": 1,
+        "unit_price_minor": 100000,
+        "amount_minor": 100000
+      }
+    ],
+    "subtotal_minor": 100000,
+    "tax_percent": 0.0,
+    "tax_minor": 0,
+    "total_minor": 100000,
+    "currency": "NGN",
+    "terms": "net_30",
+    "status": "paid",
+    "issued_on": "2026-10-21",
+    "due_on": "2026-11-20",
+    "paid_at": "2026-10-21T13:06:59Z",
+    "auto_remind": false,
+    "transaction_id": "87ea0a9c-6246-4deb-a10b-26bf4c1facb1",
+    "pay_url": "https://checkout.paystack.com/stub-INV-2026-001-bfc32f9c",
+    "pay_provider": "paystack",
+    "paid_via": "paystack",
+    "created_at": "2026-10-21T13:06:58.857359Z",
+    "updated_at": "2026-10-21T13:07:00.012653Z"
+  },
+  "meta": null
+}
+```
+
+- **Mark unpaid is refused on a provider-paid invoice** (otherwise the next sync would pay it again).
+  Hide the action when `paid_via` is set. `capture: finance_payments/error_mark_unpaid_provider_paid.json`
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This invoice was paid through Paystack and cannot be marked unpaid.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "This invoice was paid through Paystack and cannot be marked unpaid."
+      }
+    ]
+  }
+}
+```
+
+  Same rule for Flutterwave with its own name in the message (`error_mark_unpaid_provider_paid_flutterwave.json`).
+  A manual **mark-paid** on a provider-paid invoice stays an idempotent no-op (200).
+
+- The client email now contains a **Pay now** button with the link when `pay_url` is set
+  (`capture: finance_payments/invoice_email_with_pay_link.json`, file mailbox, not real Resend).
+
+**Trap:** `paid_via` is set only by the provider path. Manual `mark-paid` leaves it `null`, so a paid
+invoice with `paid_via: null` was marked paid by hand.
+
+**Not verified live:** real Paystack/Flutterwave checkout pages and real webhook delivery (the provider side
+was stubbed); the non-NGN pay-link 422 message and the 502 `PAYMENT_PROVIDER_UNAVAILABLE`
+(source only). See the payments guide's verification table.
+
+---
+
 ## UX consequences the FE must surface
 
 - **Live-preview, then trust the server.** Re-render totals from every response. A rounding
@@ -1358,7 +1549,7 @@ in `e2e/_captures/invoices/`. ⚠️ **unit-only** = asserted by the named unit 
 
 | Claim | Status | Source |
 |---|---|---|
-| `POST /invoices` → 200, 19-field body, `number` `INV-<year>-001`, status `draft`, server-computed subtotal/tax/total (125,000 / 9,375 / 134,375) | ✅ verified live | `invoice_created.json` |
+| `POST /invoices` → 200, 22-field body (19 + `pay_url`, `pay_provider`, `paid_via`, all `null` on a draft), `number` `INV-<year>-001`, status `draft`, server-computed subtotal/tax/total (125,000 / 9,375 / 134,375) | ✅ verified live | `invoice_created.json` |
 | Client-supplied `total_minor` (=1) ignored | ✅ verified live | `invoice_created.json` (request carried `total_minor: 1`) |
 | Second invoice gets `INV-<year>-002` | ✅ verified live | `invoice_created_second_draft.json` |
 | `PATCH` draft line items → totals recompute (150,000 / 11,250 / 161,250) | ✅ verified live | `invoice_edited.json` |

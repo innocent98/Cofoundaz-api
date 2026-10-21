@@ -12,7 +12,8 @@ def test_direction_source_values():
         "manual",
         "bank",
         "accounting",
-        "stripe",
+        "paystack",
+        "flutterwave",
         "invoice",
         "expense",
     }

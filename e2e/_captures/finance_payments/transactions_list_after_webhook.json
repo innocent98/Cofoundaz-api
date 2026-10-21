@@ -1,0 +1,55 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "160d987f-8230-46b5-bab3-770528ccffc5",
+        "date": "2026-10-21",
+        "description": "Paystack fee INV-2026-001-bfc32f9c",
+        "category": "Payment fees",
+        "amount_minor": 2420,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "paystack",
+        "created_at": "2026-10-21T13:07:00.012653Z",
+        "updated_at": "2026-10-21T13:07:00.012653Z"
+      },
+      {
+        "id": "87ea0a9c-6246-4deb-a10b-26bf4c1facb1",
+        "date": "2026-10-21",
+        "description": "Invoice INV-2026-001: Acme Traders Ltd",
+        "category": "Revenue",
+        "amount_minor": 100000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "invoice",
+        "created_at": "2026-10-21T13:07:00.012653Z",
+        "updated_at": "2026-10-21T13:07:00.012653Z"
+      },
+      {
+        "id": "1035851e-65a3-4a53-906e-88f60285e308",
+        "date": "2026-10-01",
+        "description": "Paystack fee for stub_ps_charge_1",
+        "category": "Payment fees",
+        "amount_minor": 7500,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "paystack",
+        "created_at": "2026-10-21T13:06:58.752026Z",
+        "updated_at": "2026-10-21T13:06:58.752026Z"
+      },
+      {
+        "id": "2f45d406-fc1c-450d-9c8c-430d5f15c287",
+        "date": "2026-10-01",
+        "description": "Paystack payment stub_ps_charge_1",
+        "category": "Sales",
+        "amount_minor": 500000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "paystack",
+        "created_at": "2026-10-21T13:06:58.752026Z",
+        "updated_at": "2026-10-21T13:06:58.824096Z"
+      }
+    ]
+  },
+  "meta": null
+}

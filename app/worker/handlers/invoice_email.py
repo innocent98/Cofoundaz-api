@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.db.models.enums import InvoiceStatus
 from app.db.models.invoice import Invoice
 from app.db.models.job import Job
 from app.db.models.startup import Startup
@@ -14,6 +15,19 @@ from app.worker.runner import register_handler
 def _fmt_money(minor: int, currency: str) -> str:
     # minor units -> major, e.g. 134375, "NGN" -> "1,343.75 NGN"
     return f"{Decimal(minor) / 100:,.2f} {html.escape(currency)}"
+
+
+def _pay_button(inv: Invoice) -> str:
+    # The link comes from a third-party API response: allow only absolute http(s) URLs (never
+    # javascript:, data:, protocol-relative) and escape it for the attribute context.
+    url = inv.pay_url
+    if not url or inv.status != InvoiceStatus.sent or not url.startswith(("https://", "http://")):
+        return ""
+    return (
+        f'<p><a href="{html.escape(url, quote=True)}" '
+        "style='display:inline-block;padding:10px 18px;background:#0b6b3a;color:#fff;"
+        "text-decoration:none;border-radius:6px'>Pay now</a></p>"
+    )
 
 
 def render_invoice_email(inv: Invoice, startup_name: str) -> str:
@@ -34,7 +48,7 @@ def render_invoice_email(inv: Invoice, startup_name: str) -> str:
         f"<p>Subtotal: {_fmt_money(inv.subtotal_minor, inv.currency)}<br>"
         f"Tax: {_fmt_money(inv.tax_minor, inv.currency)}<br>"
         f"<strong>Total: {_fmt_money(inv.total_minor, inv.currency)}</strong></p>"
-        f"<p>Due: {due}</p></div>"
+        f"<p>Due: {due}</p>{_pay_button(inv)}</div>"
     )
 
 
