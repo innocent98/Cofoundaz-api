@@ -42,11 +42,24 @@ from app.services.sales import activities as activities_svc
 from app.services.sales import csv_import as csv_svc
 from app.services.sales import deals as deals_svc
 from app.services.sales import leads as leads_svc
+from app.services.sales import overview as overview_svc
 from app.services.sales import people as people_svc
 from app.services.sales import stages as stages_svc
 
 router = APIRouter()
 _sales = require_role(*SALES_ROLES)
+
+
+# ---- Overview ----
+@router.get("", response_model=dict[str, Any])
+def sales_overview(
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    out = overview_svc.overview(db, membership.startup_id)
+    db.commit()  # lazy-seed persists
+    return success_response(out)
 
 
 # ---- Pipeline stages ----

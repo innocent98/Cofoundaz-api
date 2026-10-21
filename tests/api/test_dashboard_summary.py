@@ -85,7 +85,7 @@ def test_summary_kpi_metrics_for_founder(client, db):
     kpis = client.get("/api/v1/dashboard/summary", headers=h).json()["data"]["kpis"]
     assert kpis["metrics"]["revenue"]["status"] == "ok"
     assert kpis["metrics"]["revenue"]["value_minor"] == 1_000_000
-    assert kpis["metrics"]["pipeline"]["status"] == "not_built"
+    assert kpis["metrics"]["pipeline"]["status"] == "no_data"
 
 
 def test_summary_kpi_metrics_restricted_for_investor(client, db):

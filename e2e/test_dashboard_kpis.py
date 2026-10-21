@@ -4,7 +4,7 @@ A founder onboards and, while onboarding is still a draft, invites an investor a
 (`onboarding/invites` 409s once `/complete` has run). The founder's workspace is then walked
 through every KPI state, capturing the summary after each step:
 
-  empty          -> revenue/runway/campaign_ctr `no_data`, pipeline `not_built`
+  empty          -> revenue/runway/campaign_ctr/pipeline `no_data`
   burning        -> revenue `ok`, runway `ok` (27.0 mo), campaign_ctr `ok` (2.5%)
   out_of_cash    -> one huge outflow drives cash on hand negative
   not_burning    -> one huge inflow makes the trailing window profitable
@@ -109,7 +109,7 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
         assert m["revenue"]["status"] == "no_data"
         assert m["runway"]["status"] == "no_data"
         assert m["campaign_ctr"]["status"] == "no_data"
-        assert m["pipeline"]["status"] == "not_built"
+        assert m["pipeline"]["status"] == "no_data"
 
         # 2. Burning: an old raise, this month's revenue and costs, plus campaign metrics.
         _txn(c, wh, "in", 60_000_000, days_ago=200)
@@ -146,7 +146,7 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
         assert {k: v["status"] for k, v in mi.items()} == {
             "revenue": "restricted",
             "runway": "restricted",
-            "pipeline": "not_built",
+            "pipeline": "restricted",
             "campaign_ctr": "restricted",
         }
         assert mi["runway"]["cash_on_hand_minor"] is None
@@ -164,6 +164,7 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
         assert ma["revenue"]["status"] == "ok"
         assert ma["runway"]["status"] == "ok"
         assert ma["campaign_ctr"]["status"] == "restricted"
+        assert ma["pipeline"]["status"] == "restricted"
 
         # 4. Out of cash: burning with cash on hand below zero.
         _txn(c, wh, "out", 100_000_000)

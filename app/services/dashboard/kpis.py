@@ -4,7 +4,9 @@ Every metric carries a `status` so the FE never has to infer meaning from a null
   ok          -- a real figure (which may legitimately be 0)
   no_data     -- the module exists but this workspace hasn't recorded anything yet
   restricted  -- the caller's role can't read the source module (mirrors the module's route gate)
-  not_built   -- the source module has no backend yet (Sales -> pipeline)
+  not_built   -- the source module has no backend yet (no tile uses it today; kept in the contract)
+`pipeline` is the open-stage deal value from Sales (`value_minor`, `currency` "NGN"): `restricted`
+outside founder + team member, `no_data` until the workspace has a deal, else `ok`.
 Runway adds `not_burning` (break-even/profitable: no runway to count down) and `out_of_cash`.
 
 Each metric is computed in its own SAVEPOINT, so one failing source degrades
@@ -21,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.db.models.enums import (
     FINANCE_ROLES,
     MARKETING_ROLES,
+    SALES_ROLES,
     MarketingMetricName,
     MembershipRole,
 )
@@ -30,6 +33,8 @@ from app.db.models.startup import Startup
 from app.services.dashboard.kpi_history import trend
 from app.services.finance.cashflow import cash_flow_summary
 from app.services.marketing.analytics import _rate
+from app.services.sales.overview import CURRENCY as SALES_CURRENCY
+from app.services.sales.overview import pipeline_kpi
 
 CTR_RANGE_DAYS = 30
 
@@ -130,13 +135,23 @@ def _campaign_ctr(db: Session, startup: Startup, role: MembershipRole) -> dict[s
     }
 
 
-def _pipeline() -> dict[str, Any]:
-    # Sales has no backend yet; keep the shape stable so the FE wiring won't change when it lands.
-    return {"status": "not_built", "value_minor": None, "currency": None}
+def _pipeline(db: Session, startup: Startup, role: MembershipRole) -> dict[str, Any]:
+    out: dict[str, Any] = {"status": "no_data", "value_minor": None, "currency": None}
+    if role not in SALES_ROLES:
+        return {**out, "status": "restricted"}
+    value = pipeline_kpi(db, startup.id)
+    if value is None:
+        return out
+    return {"status": "ok", "value_minor": value, "currency": SALES_CURRENCY}
 
 
 # Which field of each tile holds its number (for the snapshot trend).
-_TREND_FIELD = {"revenue": "value_minor", "runway": "months", "campaign_ctr": "ctr_percent"}
+_TREND_FIELD = {
+    "revenue": "value_minor",
+    "runway": "months",
+    "pipeline": "value_minor",
+    "campaign_ctr": "ctr_percent",
+}
 
 
 def _with_trend(db: Session, startup: Startup, metric: str, tile: dict[str, Any]) -> dict[str, Any]:
@@ -152,11 +167,12 @@ def kpi_metrics(db: Session, startup: Startup, role: MembershipRole) -> dict[str
     run = _savepoint(db)
     revenue = run(lambda: _revenue(db, startup, role))
     runway = run(lambda: _runway(db, startup, role))
+    pipeline = run(lambda: _pipeline(db, startup, role))
     ctr = run(lambda: _campaign_ctr(db, startup, role))
     return {
         "revenue": run(lambda: _with_trend(db, startup, "revenue", revenue)),
         "runway": run(lambda: _with_trend(db, startup, "runway", runway)),
-        "pipeline": _pipeline(),
+        "pipeline": run(lambda: _with_trend(db, startup, "pipeline", pipeline)),
         "campaign_ctr": run(lambda: _with_trend(db, startup, "campaign_ctr", ctr)),
     }
 

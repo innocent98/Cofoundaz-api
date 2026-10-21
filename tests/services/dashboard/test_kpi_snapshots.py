@@ -106,7 +106,7 @@ def test_tiles_carry_trend_only_when_visible(db, ws):
     assert founder["revenue"]["trend"]["delta"] == 1_000_000 - 400_000
     investor = kpi_metrics(db, s, MembershipRole.investor)
     assert "trend" not in investor["revenue"]  # history must not leak a restricted value
-    assert "trend" not in investor["pipeline"]
+    assert "trend" not in investor["pipeline"]  # restricted for non-sales roles
 
 
 @pytest.mark.parametrize(
@@ -217,3 +217,36 @@ def test_copy_formatting():
     assert _fmt("revenue", 10_000_000) == "₦100K"
     assert _fmt("campaign_ctr", 0.8) == "0.8%"
     assert _fmt("runway", 2.5) == "2.5 months"
+
+
+def test_current_values_includes_pipeline_only_when_ok():
+    ok = {"pipeline": {"status": "ok", "value_minor": 4_200}}
+    assert current_values(ok, 0)["pipeline"] == 4_200
+    for status in ("no_data", "restricted", "not_built"):
+        assert "pipeline" not in current_values({"pipeline": {"status": status}}, 0)
+
+
+def test_capture_stores_integer_pipeline_snapshot(db, ws):
+    from app.db.models.sales import Deal
+    from app.services.sales.stages import ensure_stages
+
+    _u, s = ws
+    first = ensure_stages(db, s.id)[0]
+    db.add(
+        Deal(
+            startup_id=s.id,
+            name="D",
+            value_minor=12_345,
+            currency="NGN",
+            stage_id=first.id,
+            last_activity_at=datetime.now(UTC),
+        )
+    )
+    db.flush()
+    out = capture_snapshots(db, s, tasks_done_week=0)
+    assert "pipeline" in out["captured"]
+    row = db.query(KpiSnapshot).filter_by(startup_id=s.id, metric="pipeline").one()
+    assert row.value == Decimal("12345")
+    _snap(db, s, "pipeline", 10_000, days_ago=7)
+    assert trend(db, s.id, "pipeline", 12_345)["delta"] == 2_345
+    assert isinstance(trend(db, s.id, "pipeline", 12_345)["series"][0]["value"], int)
