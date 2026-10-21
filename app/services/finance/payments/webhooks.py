@@ -26,7 +26,9 @@ from app.services.finance.payments.registry import get_provider
 
 MAX_BODY_BYTES = 256 * 1024
 _EVENT_ID_MAX = 200
-_RECEIVABLE = (ConnectionStatus.active.value, ConnectionStatus.needs_attention.value)
+# needs_attention means the provider rejected the stored key (possibly revoked or leaked), so
+# events signed with it are not trusted; sync catches the money up once the key is replaced.
+_RECEIVABLE = (ConnectionStatus.active.value,)
 
 
 def _invalid_signature() -> AppError:

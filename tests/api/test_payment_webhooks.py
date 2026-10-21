@@ -445,13 +445,14 @@ def test_disconnected_connection_is_404(client, db):
     assert post_ps(client, conn, ps_body()).status_code == 404
 
 
-def test_needs_attention_connection_still_accepts_verified_events(client, db):
+def test_needs_attention_connection_ignores_even_validly_signed_events(client, db):
+    # The key was rejected by the provider (maybe revoked or leaked): do not pay invoices on it.
     _u, s, _h = _member(db)
     conn = make_connection(db, s, status="needs_attention")
     inv = make_invoice(db, s, reference="inv_ref_1")
-    assert post_ps(client, conn, ps_body()).status_code == 200
+    assert post_ps(client, conn, ps_body()).status_code == 404
     db.refresh(inv)
-    assert inv.status == InvoiceStatus.paid
+    assert inv.status == InvoiceStatus.sent
 
 
 def test_unconfigured_encryption_key_is_503(client, db, monkeypatch):

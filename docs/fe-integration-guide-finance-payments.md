@@ -867,7 +867,7 @@ accountant: 403 (`capture: error_disconnect_accountant_forbidden.json`).
 |---|---|---|---|
 | (none) | `connection` is `null` | Connect form for each provider | Connect (founder) |
 | `active` | working | name, mode badge, `••••last4`, last synced, webhook URL | Sync (all finance roles), Replace key, Disconnect (founder) |
-| `needs_attention` | the provider rejected the saved key during a sync; syncing is paused | **Warning banner** with `last_error` | Replace key (founder). Sync returns 404 |
+| `needs_attention` | the provider rejected the saved key during a sync; syncing is paused | **Warning banner** with `last_error` | Replace key (founder). Sync returns 404, and incoming webhooks are ignored (404) until the key is replaced, so tell the founder invoices will not auto-mark as paid meanwhile (unit-tested, not captured live) |
 | `disconnected` | founder disconnected | looks like "none" (the API returns `connection: null`) | Connect again |
 
 `needs_attention` set by the real sync worker on a provider auth failure, with

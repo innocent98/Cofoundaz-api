@@ -36,4 +36,6 @@
 ## Follow-ups
 - The webhook shares the default 120/min per-IP rate limit; providers send from few IPs, so consider a higher limit for that route.
 - A manual `mark-paid` before the webhook leaves `paid_via` empty, so it can still be marked unpaid.
+- Flutterwave webhooks trust the signed body after the `verif-hash` check (amount and currency are still matched to the invoice). Re-verify each event with `GET /v3/transactions/{id}/verify` (Flutterwave's recommendation) once the real response shape is confirmed in the sandbox walk.
+- Webhooks are accepted only for `active` connections: a `needs_attention` key may be revoked or leaked, so sync (after key replacement) recovers anything missed.
 - `needs_attention` banner and notification (row 7), widen `amount_minor`, KMS key custody, live sandbox verification.
