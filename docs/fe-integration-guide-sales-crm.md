@@ -1647,7 +1647,7 @@ query-string deep link). Neither is captured: **not exercised live**, unit-teste
 rows with `action` values `sales.activity.created`, `sales.activity.updated`, `sales.activity.deleted`, `sales.deal.created`,
 `sales.deal.updated`, `sales.deal.stage_changed`, `sales.deal.won`, `sales.deal.lost` (all seen in the capture) and further
 `sales.*` actions that the unit tests cover (account, contact, lead, stage and settings changes, imports). The summary text for activities
-is fixed server copy: **`Logged a email`** is what the server writes for an e-mail activity; expect that wording.
+is fixed server copy: **`Logged an email`** is what the server writes for an e-mail activity; expect that wording.
 ```json
 {
   "data": {
@@ -1657,7 +1657,7 @@ is fixed server copy: **`Logged a email`** is what the server writes for an e-ma
         "action": "sales.activity.created",
         "entity_type": "sales_activity",
         "entity_id": "bb5265c7-3a8d-4fdf-917f-2d690c9b2d86",
-        "summary": "Logged a email",
+        "summary": "Logged an email",
         "meta": null,
         "actor": {
           "id": "6d491050-3918-40c1-a09e-f4f6145278e6",

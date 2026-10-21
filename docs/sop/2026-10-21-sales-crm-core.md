@@ -80,5 +80,4 @@ accounts, contacts, leads, deals, activities CRUD; `POST /sales/leads/import/pre
 - **Health Score signal (D-SAL-10)**: Health Score does not read sales data; needs per-stage targets, like D-HEA-2.
 - **Roles**: investor and legal advisor are 403 today. Whether investors should get read-only pipeline access is an open product question.
 - CSV `source` column is accepted but ignored (every imported lead is `source: "csv"`); either honour it or drop it from the mapping.
-- Activity-feed copy reads `Logged a email` (article is fixed server text).
 - Final whole-feature Opus review requested for the permission sweep and the stall scheduler.

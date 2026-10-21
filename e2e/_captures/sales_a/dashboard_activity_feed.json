@@ -6,7 +6,7 @@
         "action": "sales.activity.created",
         "entity_type": "sales_activity",
         "entity_id": "bb5265c7-3a8d-4fdf-917f-2d690c9b2d86",
-        "summary": "Logged a email",
+        "summary": "Logged an email",
         "meta": null,
         "actor": {
           "id": "6d491050-3918-40c1-a09e-f4f6145278e6",

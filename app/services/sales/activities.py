@@ -114,7 +114,7 @@ def create_activity(
         db,
         startup_id=startup_id,
         action="sales.activity.created",
-        summary=f"Logged a {row.kind.value}",
+        summary=f"Logged {'an' if row.kind.value == 'email' else 'a'} {row.kind.value}",
         actor_user_id=author_id,
         entity_type="sales_activity",
         entity_id=row.id,
