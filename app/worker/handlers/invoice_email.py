@@ -8,7 +8,8 @@ from app.db.models.enums import InvoiceStatus
 from app.db.models.invoice import Invoice
 from app.db.models.job import Job
 from app.db.models.startup import Startup
-from app.platform.email import EmailMessage, get_email_sender
+from app.platform.email import EmailAttachment, EmailMessage, get_email_sender
+from app.services.finance.invoice_pdf import render_invoice_pdf
 from app.worker.runner import register_handler
 
 
@@ -60,8 +61,18 @@ def handle_invoice_email(db: Session, job: Job) -> None:
     name = startup.name if startup and startup.name else "Cofoundaz"
     # Strip CR/LF to prevent header injection in the SMTP backend.
     subject = f"Invoice {inv.number} from {name}".replace("\r", " ").replace("\n", " ")
+    pdf = EmailAttachment(
+        filename=f"invoice-{inv.number}.pdf",
+        content=render_invoice_pdf(inv, name),
+        content_type="application/pdf",
+    )
     get_email_sender().send(
-        EmailMessage(to=inv.client_email, subject=subject, html=render_invoice_email(inv, name))
+        EmailMessage(
+            to=inv.client_email,
+            subject=subject,
+            html=render_invoice_email(inv, name),
+            attachments=[pdf],
+        )
     )
 
 

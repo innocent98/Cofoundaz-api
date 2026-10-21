@@ -331,6 +331,9 @@ def serialize_invoice(inv: Invoice, *, today: dt.date) -> InvoiceResponse:
         pay_url=inv.pay_url,
         pay_provider=inv.pay_provider,
         paid_via=inv.paid_via,
+        last_reminded_at=inv.last_reminded_at,
+        reminder_count=inv.reminder_count,
+        overdue_notified_at=inv.overdue_notified_at,
         created_at=inv.created_at,
         updated_at=inv.updated_at,
     )

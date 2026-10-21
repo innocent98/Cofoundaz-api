@@ -126,7 +126,11 @@ def test_inactive_connection_gets_no_link(client, db, provider, status):
 def test_non_ngn_invoice_gets_no_link(client, db, provider):
     _u, s, h = _member(db)
     make_connection(db, s)
-    _iid, resp = _send(client, h, currency="USD")
+    iid = _create(client, h)
+    # NGN-only at the API (D-FIN-6); a legacy non-NGN row is forced in directly.
+    db.query(Invoice).filter_by(id=iid).update({"currency": "USD"})
+    db.flush()
+    resp = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
     assert resp.status_code == 200
     assert resp.json()["data"]["pay_url"] is None
     assert provider.calls == []

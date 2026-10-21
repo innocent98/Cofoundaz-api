@@ -77,5 +77,16 @@ class Invoice(UUIDMixin, TimestampMixin, Base):
     pay_reference: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     pay_provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
     paid_via: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Reminder automation bookkeeping: when the last reminder (auto or manual) went out, how many
+    # have gone out, and when the one-shot overdue event fired.
+    last_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reminder_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (UniqueConstraint("startup_id", "number", name="uq_invoices_startup_number"),)

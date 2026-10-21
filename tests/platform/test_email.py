@@ -1,7 +1,13 @@
 import json
 
 from app.core.errors import EmailDeliveryFailed
-from app.platform.email import ConsoleEmailSender, EmailMessage, FileEmailSender, get_email_sender
+from app.platform.email import (
+    ConsoleEmailSender,
+    EmailAttachment,
+    EmailMessage,
+    FileEmailSender,
+    get_email_sender,
+)
 
 
 def test_console_sender_records():
@@ -253,3 +259,109 @@ def test_resend_sender_refuses_without_api_key(monkeypatch):
     monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
     with pytest.raises(RuntimeError, match="RESEND_API_KEY is not set"):
         ResendEmailSender().send(EmailMessage(to="user@x.com", subject="Hi", html="<p>x</p>"))
+
+
+# --------------------------------------------------------------------------- #
+# Attachments across all four senders.
+# --------------------------------------------------------------------------- #
+
+_ATT = EmailAttachment(
+    filename="invoice-INV-1.pdf", content=b"%PDF-1.4 x", content_type="application/pdf"
+)
+
+
+def _with_att() -> EmailMessage:
+    return EmailMessage(to="u@x.com", subject="Hi", html="<p>x</p>", attachments=[_ATT])
+
+
+def test_message_defaults_to_no_attachments():
+    assert EmailMessage(to="u@x.com", subject="s", html="h").attachments == []
+
+
+def test_console_sender_keeps_attachments():
+    s = ConsoleEmailSender()
+    s.send(_with_att())
+    assert s.sent[0].attachments == [_ATT]
+
+
+def test_file_sender_writes_attachment_beside_message(tmp_path):
+    FileEmailSender(mail_dir=str(tmp_path)).send(_with_att())
+    msg_file = next(tmp_path.glob("*.json"))
+    payload = json.loads(msg_file.read_text())
+    assert payload["attachments"] == ["invoice-INV-1.pdf"]
+    written = tmp_path / f"{msg_file.stem}.attachments" / "invoice-INV-1.pdf"
+    assert written.read_bytes() == b"%PDF-1.4 x"
+
+
+def test_file_sender_sanitises_attachment_filename(tmp_path):
+    hostile = EmailAttachment(
+        filename="../../evil.pdf", content=b"x", content_type="application/pdf"
+    )
+    FileEmailSender(mail_dir=str(tmp_path)).send(
+        EmailMessage(to="u@x.com", subject="s", html="h", attachments=[hostile])
+    )
+    assert not (tmp_path.parent / "evil.pdf").exists()
+    assert [p.name for p in tmp_path.rglob("*.pdf")] == ["evil.pdf"]
+
+
+def test_smtp_sender_attaches_file(monkeypatch):
+    import emails
+
+    from app.core.config import settings
+    from app.platform.email import SMTPEmailSender
+
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    seen: dict[str, object] = {}
+
+    def fake_send(self, **kwargs):
+        seen["raw"] = self.as_string()
+
+    monkeypatch.setattr(emails.Message, "send", fake_send)
+    SMTPEmailSender().send(_with_att())
+    assert "invoice-INV-1.pdf" in str(seen["raw"])
+    assert "application/pdf" in str(seen["raw"])
+
+
+def test_resend_sender_sends_base64_attachments(monkeypatch):
+    import base64
+
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    captured: dict[str, object] = {}
+
+    def fake_post(url, *, headers, json, timeout):
+        captured["json"] = json
+        return _FakeResponse(200)
+
+    monkeypatch.setattr(email_mod.httpx, "post", fake_post)
+    ResendEmailSender().send(_with_att())
+    body = captured["json"]
+    assert body["attachments"] == [
+        {
+            "filename": "invoice-INV-1.pdf",
+            "content": base64.b64encode(b"%PDF-1.4 x").decode(),
+            "content_type": "application/pdf",
+        }
+    ]
+
+
+def test_resend_sender_omits_attachments_key_when_none(monkeypatch):
+    from app.core.config import settings
+    from app.platform import email as email_mod
+    from app.platform.email import ResendEmailSender
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", "re_test_key")
+    monkeypatch.setattr(settings, "EMAILS_FROM_EMAIL", "no-reply@cofoundaz.com")
+    captured: dict[str, object] = {}
+
+    def fake_post(url, *, headers, json, timeout):
+        captured["json"] = json
+        return _FakeResponse(200)
+
+    monkeypatch.setattr(email_mod.httpx, "post", fake_post)
+    ResendEmailSender().send(EmailMessage(to="u@x.com", subject="s", html="h"))
+    assert "attachments" not in captured["json"]

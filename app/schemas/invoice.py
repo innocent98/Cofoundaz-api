@@ -8,6 +8,13 @@ from app.db.models.enums import InvoiceTerms
 INT32 = 2_147_483_647
 
 
+def _ngn_only(v: str | None) -> str | None:
+    # D-FIN-6: invoices are NGN only. Normalise case so "ngn" is accepted and stored as "NGN".
+    if v is not None and v.upper() != "NGN":
+        raise ValueError("Only NGN invoices are supported.")
+    return None if v is None else "NGN"
+
+
 # `dt.` alias: see app/schemas/finance.py (Py3.14 deferred-annotation shadowing).
 class LineItem(BaseModel):
     description: str = Field(min_length=1, max_length=300)
@@ -25,6 +32,11 @@ class InvoiceCreate(BaseModel):
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     terms: str = Field(default=InvoiceTerms.net_30.value)
 
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        return str(_ngn_only(v))
+
     @field_validator("terms")
     @classmethod
     def _terms(cls, v: str) -> str:
@@ -41,6 +53,11 @@ class InvoiceUpdate(BaseModel):
     currency: str | None = Field(default=None, min_length=1, max_length=3)
     terms: str | None = None
     auto_remind: bool | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str | None) -> str | None:
+        return _ngn_only(v)
 
     @field_validator("terms")
     @classmethod
@@ -95,5 +112,8 @@ class InvoiceResponse(BaseModel):
     pay_url: str | None = None
     pay_provider: str | None = None
     paid_via: str | None = None
+    last_reminded_at: dt.datetime | None = None
+    reminder_count: int = 0
+    overdue_notified_at: dt.datetime | None = None
     created_at: dt.datetime
     updated_at: dt.datetime

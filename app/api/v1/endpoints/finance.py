@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -10,6 +10,7 @@ from app.core.envelope import success_response
 from app.core.errors import AppError
 from app.db.models.enums import FINANCE_ROLES, InvoiceStatus, TransactionDirection
 from app.db.models.membership import Membership
+from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
@@ -25,6 +26,7 @@ from app.services.finance import invoices as invoice_svc
 from app.services.finance import model_service as model_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
+from app.services.finance.invoice_pdf import render_invoice_pdf
 from app.services.finance.payments import connections as conn_svc
 from app.services.finance.payments import paylinks
 
@@ -181,6 +183,25 @@ def get_invoice(
     inv = invoice_svc.get_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.get("/invoices/{invoice_id}/pdf", response_class=Response)
+def get_invoice_pdf(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    inv = invoice_svc.get_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    startup = db.get(Startup, inv.startup_id)
+    name = startup.name if startup and startup.name else "Cofoundaz"
+    # The number is server-generated (INV-YYYY-NNN), but keep the header value strictly safe.
+    filename = "".join(c for c in inv.number if c.isalnum() or c in "-_.")
+    return Response(
+        content=render_invoice_pdf(inv, name),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="invoice-{filename}.pdf"'},
+    )
 
 
 @router.patch("/invoices/{invoice_id}", response_model=dict[str, Any])
