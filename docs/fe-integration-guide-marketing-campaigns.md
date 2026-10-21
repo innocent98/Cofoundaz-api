@@ -78,13 +78,13 @@ assume the response type matches whatever numeric type you sent.
 **Request** (from the e2e journey — this exact body produced `segment_created.json` below):
 
 ```json
-{ "name": "SMB founders", "est_size": 1200, "definition": { "rules": [] } }
+{ "name": "SMB founders", "est_size": 1200, "definition": { "business_type": "SMB" } }
 ```
 
 | Field | Type | Rules |
 |---|---|---|
 | `name` | string, 1–200 chars | Required. Blank/whitespace-only → 422 |
-| `definition` | object | Optional, defaults to `{}`. Opaque rule-set container — **rule execution against real user/customer data is not built in this slice** (see Follow-ups); today it's just stored and returned as-is |
+| `definition` | object | Optional, defaults to `{}`. **Validated since the Marketing PRD build (b)**: only `location`, `business_type`, `company_size`, `income_band`, `channel_acquired`, `behaviour_tags`; anything else is 422 (see `docs/fe-integration-guide-marketing-prd.md` §13). Rule execution against real user data is not built |
 | `est_size` | integer ≥ 0 \| null | Optional. A manually-entered estimate, not computed |
 | `persona_id` | UUID \| null | Optional. Must reference a `persona`-kind Business Builder record (Module 08) in **this** workspace — see the 422 below |
 
@@ -93,14 +93,16 @@ assume the response type matches whatever numeric type you sent.
 ```json
 {
   "data": {
-    "id": "3e13fc2c-7333-46e6-8fb2-6f357a12fe0c",
-    "startup_id": "9a9862f5-7446-4761-8a3b-04f5294d245e",
+    "id": "07507691-4dae-4b39-bccc-e716dfa9cd6c",
+    "startup_id": "87536b53-3446-4eb3-9310-4fc08f3da229",
     "name": "SMB founders",
-    "definition": { "rules": [] },
+    "definition": {
+      "business_type": "SMB"
+    },
     "est_size": 1200,
     "persona_id": null,
-    "created_at": "2026-09-24T18:15:44.253023Z",
-    "updated_at": "2026-09-24T18:15:44.253023Z"
+    "created_at": "2026-10-20T18:33:43.362656Z",
+    "updated_at": "2026-10-20T18:33:43.362656Z"
   },
   "meta": null
 }

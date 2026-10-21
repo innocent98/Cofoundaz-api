@@ -296,6 +296,25 @@ class CampaignStatus(enum.StrEnum):
     completed = "completed"
 
 
+class CopyPlatform(enum.StrEnum):
+    """Where a piece of copy will run; picks the length limit (see services/marketing/platforms)."""
+
+    x = "x"
+    instagram = "instagram"
+    linkedin = "linkedin"
+    facebook = "facebook"
+    whatsapp = "whatsapp"
+    google_ads_headline = "google_ads_headline"
+    google_ads_description = "google_ads_description"
+    email_subject = "email_subject"
+
+
+class FitLevel(enum.StrEnum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
 class MarketingGenerationKind(enum.StrEnum):
     copy = "copy"
     plan_week = "plan_week"

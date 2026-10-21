@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
-from app.db.models.enums import CampaignStatus
+from app.db.models.enums import CampaignStatus, ChannelStatus
 from app.db.models.marketing import AudienceSegment, Campaign, CampaignSegment
 from app.platform.events import event_bus
 from app.schemas.marketing import CampaignCreate, CampaignResponse, CampaignUpdate
 from app.services.marketing import analytics as analytics_svc
-from app.services.marketing.service import _validation
+from app.services.marketing.service import _validation, list_channels
 
 # legal (from, to) status transitions -> the event to emit (or None)
 _TRANSITIONS: dict[tuple[CampaignStatus, CampaignStatus], str | None] = {
@@ -159,6 +159,8 @@ def update_campaign(
     if segment_ids is not None:
         _set_segments(db, campaign, segment_ids)
     db.flush()
+    if status_changing and event == "marketing.campaign.launched":
+        _start_launched_channels(db, campaign)
     if event:
         event_bus.publish(
             db,
@@ -172,6 +174,24 @@ def update_campaign(
             },
         )
     return campaign
+
+
+def _start_launched_channels(db: Session, campaign: Campaign) -> None:
+    """D-MKT-4: launching a campaign moves the channels it puts effort into (a share above 0)
+    from Not started to Testing. A status the founder set by hand is never changed."""
+    shares = {}
+    for key, pct in (campaign.channel_mix or {}).items():
+        try:
+            if float(pct) > 0:
+                shares[key] = pct
+        except (TypeError, ValueError):
+            continue
+    if not shares:
+        return
+    for ch in list_channels(db, startup_id=campaign.startup_id):
+        if ch.key.value in shares and ch.status == ChannelStatus.not_started:
+            ch.status = ChannelStatus.testing
+    db.flush()
 
 
 def delete_campaign(db: Session, *, startup_id: uuid.UUID, campaign_id: uuid.UUID) -> None:

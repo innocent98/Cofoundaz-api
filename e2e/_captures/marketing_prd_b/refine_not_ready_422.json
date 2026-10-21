@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a finished generation can be refined.",
+    "field_errors": [
+      {
+        "field": "generation_id",
+        "message": "Only a finished generation can be refined."
+      }
+    ]
+  }
+}

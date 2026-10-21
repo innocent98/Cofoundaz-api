@@ -11,7 +11,9 @@ from app.db.models.enums import (
     ChannelKey,
     ChannelStatus,
     ContentStatus,
+    CopyPlatform,
     CopyTone,
+    FitLevel,
     MarketingGenerationKind,
     MarketingGenerationStatus,
     MarketingMetricName,
@@ -86,13 +88,26 @@ class ChannelUpdate(BaseModel):
     notes: str | None = None
 
 
+class ChannelStats(BaseModel):
+    """Last 30 days of numbers recorded against this channel (channel-scoped points only)."""
+
+    visits: int = 0
+    impressions: int = 0
+    clicks: int = 0
+    conversions: int = 0
+    spend: int = 0
+    has_data: bool = False
+
+
 class ChannelResponse(BaseModel):
     id: uuid.UUID
     key: ChannelKey
     status: ChannelStatus
     notes: str | None
     ai_fit_note: str | None = None
+    fit_level: FitLevel | None = None
     fit_note_generated_at: datetime | None = None
+    stats_30d: ChannelStats | None = None
 
 
 class OverviewResponse(BaseModel):
@@ -103,9 +118,49 @@ class OverviewResponse(BaseModel):
     ai_content_ideas: int | None = None
 
 
+SEGMENT_TEXT_ATTRIBUTES = ("location", "business_type", "company_size", "income_band")
+SEGMENT_ATTRIBUTES = (*SEGMENT_TEXT_ATTRIBUTES, "channel_acquired", "behaviour_tags")
+
+
+def validate_segment_definition(v: dict[str, Any]) -> dict[str, Any]:
+    """D-MKT-5: a segment is a few known attributes, shown as chips. Unknown keys and wrong shapes
+    are rejected, blanks dropped, so the FE can render every definition it reads back."""
+    clean: dict[str, Any] = {}
+    for key, value in v.items():
+        if key not in SEGMENT_ATTRIBUTES:
+            raise ValueError(
+                f"Unknown attribute '{key}'. Use one of: {', '.join(SEGMENT_ATTRIBUTES)}."
+            )
+        if key == "behaviour_tags":
+            if not isinstance(value, list) or len(value) > 10:
+                raise ValueError("behaviour_tags must be a list of at most 10 tags.")
+            tags = []
+            for t in value:
+                if not isinstance(t, str) or len(t.strip()) > 40:
+                    raise ValueError("Each behaviour tag must be text of at most 40 characters.")
+                if t.strip():
+                    tags.append(t.strip())
+            if tags:
+                clean[key] = list(dict.fromkeys(tags))
+            continue
+        if not isinstance(value, str) or len(value.strip()) > 100:
+            raise ValueError(f"{key} must be text of at most 100 characters.")
+        if key == "channel_acquired" and value.strip() not in {c.value for c in ChannelKey}:
+            raise ValueError("channel_acquired must be one of the marketing channels.")
+        if value.strip():
+            clean[key] = value.strip()
+    return clean
+
+
 class SegmentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     definition: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("definition")
+    @classmethod
+    def _valid_definition(cls, v: dict[str, Any]) -> dict[str, Any]:
+        return validate_segment_definition(v)
+
     est_size: int | None = Field(default=None, ge=0)
     persona_id: uuid.UUID | None = None
 
@@ -120,6 +175,12 @@ class SegmentCreate(BaseModel):
 class SegmentUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=200)
     definition: dict[str, Any] | None = None
+
+    @field_validator("definition")
+    @classmethod
+    def _valid_definition(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return None if v is None else validate_segment_definition(v)
+
     est_size: int | None = Field(default=None, ge=0)
     persona_id: uuid.UUID | None = None
 
@@ -220,6 +281,26 @@ class CopyGenerateRequest(BaseModel):
     key_message: str = Field(min_length=1, max_length=2000)
     cta: str | None = Field(default=None, max_length=200)
     campaign_id: uuid.UUID | None = None
+    platform: CopyPlatform | None = None
+
+
+class RefineRequest(BaseModel):
+    variant_index: int = Field(ge=0, le=2)
+    instruction: str = Field(min_length=1, max_length=500)
+
+    @field_validator("instruction")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Instruction cannot be blank.")
+        return v
+
+
+class PlatformInfo(BaseModel):
+    key: CopyPlatform
+    label: str
+    limit: int
+    kind: str
 
 
 class GenerationResponse(BaseModel):
@@ -265,6 +346,9 @@ class KeywordResponse(BaseModel):
     difficulty: int | None
     current_rank: int | None
     target_page: str | None
+    # volume / difficulty / rank are typed in by hand (no SEO data provider): say so, and when.
+    source: str = "manual"
+    metrics_updated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -415,3 +499,13 @@ class CampaignPerformance(BaseModel):
     totals: CampaignStats
     series: list[PerformancePoint]
     by_channel: list[PerformanceChannel]
+
+
+class ReadoutResponse(BaseModel):
+    id: uuid.UUID
+    campaign_id: uuid.UUID
+    week_start: date
+    status: MarketingGenerationStatus
+    output: dict[str, Any]
+    error: str | None
+    created_at: datetime

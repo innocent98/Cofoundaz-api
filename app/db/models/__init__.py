@@ -38,6 +38,7 @@ from app.db.models.llm_usage import LlmUsageDaily  # noqa: F401
 from app.db.models.marketing import (  # noqa: F401
     AudienceSegment,
     Campaign,
+    CampaignReadout,
     CampaignSegment,
     ContentCalendarEntry,
     MarketingAiGeneration,

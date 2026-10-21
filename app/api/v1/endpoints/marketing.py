@@ -19,6 +19,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.schemas.marketing import (
+    SEGMENT_TEXT_ATTRIBUTES,
     AnalyticsResponse,
     CalendarEntryCreate,
     CalendarEntryUpdate,
@@ -27,6 +28,7 @@ from app.schemas.marketing import (
     CampaignUpdate,
     ChannelPlanRequest,
     ChannelResponse,
+    ChannelStats,
     ChannelUpdate,
     CopyGenerateRequest,
     KeywordCreate,
@@ -34,7 +36,9 @@ from app.schemas.marketing import (
     MetricRow,
     MetricsIngest,
     OverviewResponse,
+    PlatformInfo,
     PositioningUpsert,
+    RefineRequest,
     SegmentCreate,
     SegmentUpdate,
     TrackedPageCreate,
@@ -44,9 +48,11 @@ from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import analytics as analytics_svc
 from app.services.marketing import campaigns as campaigns_svc
 from app.services.marketing import media as media_svc
+from app.services.marketing import readouts as readouts_svc
 from app.services.marketing import segments as segments_svc
 from app.services.marketing import seo as seo_svc
 from app.services.marketing import service as svc
+from app.services.marketing.platforms import PLATFORM_LIMITS
 
 router = APIRouter()
 _marketing = require_role(*MARKETING_ROLES)
@@ -139,6 +145,12 @@ def delete_entry(
     return success_response({"deleted": True})
 
 
+def _channel_body(row: Any, stats: dict[ChannelKey, dict]) -> dict[str, Any]:
+    body = ChannelResponse.model_validate(row, from_attributes=True)
+    body.stats_30d = ChannelStats(**stats.get(row.key, {}))
+    return body.model_dump()
+
+
 @router.get("/channels", response_model=dict[str, Any])
 def list_channels(
     membership: Membership = Depends(_marketing),  # noqa: B008
@@ -147,9 +159,8 @@ def list_channels(
 ) -> dict[str, Any]:
     rows = svc.list_channels(db, startup_id=membership.startup_id)
     db.commit()  # lazy-seed persists
-    return success_response(
-        [ChannelResponse.model_validate(r, from_attributes=True).model_dump() for r in rows]
-    )
+    stats = analytics_svc.channel_stats(db, startup_id=membership.startup_id)
+    return success_response([_channel_body(r, stats) for r in rows])
 
 
 @router.patch("/channels/{key}", response_model=dict[str, Any])
@@ -162,7 +173,8 @@ def update_channel(
 ) -> dict[str, Any]:
     row = svc.update_channel(db, startup_id=membership.startup_id, key=key, data=payload)
     db.commit()
-    return success_response(ChannelResponse.model_validate(row, from_attributes=True).model_dump())
+    stats = analytics_svc.channel_stats(db, startup_id=membership.startup_id)
+    return success_response(_channel_body(row, stats))
 
 
 # ---- Audience segments ----
@@ -187,6 +199,21 @@ def list_segments(
     rows = segments_svc.list_segments(db, startup_id=membership.startup_id)
     return success_response(
         {"segments": [segments_svc.serialize_segment(s).model_dump() for s in rows]}
+    )
+
+
+@router.get("/segments/attributes", response_model=dict[str, Any])
+def segment_attributes(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+) -> dict[str, Any]:
+    """The fixed attributes a segment `definition` may use (D-MKT-5)."""
+    return success_response(
+        {
+            "text": list(SEGMENT_TEXT_ATTRIBUTES),
+            "channel_acquired": [c.value for c in ChannelKey],
+            "behaviour_tags": {"max_tags": 10, "max_length": 40},
+        }
     )
 
 
@@ -757,3 +784,59 @@ def delete_media(
     media_svc.delete_media(db, startup_id=membership.startup_id, media_id=media_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+# ---- Copy: platform limits + refine; campaign readouts ----
+@router.get("/copy/platforms", response_model=dict[str, Any])
+def copy_platforms(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+) -> dict[str, Any]:
+    """The fixed table of platform length limits behind the `platform` field of copy generation."""
+    return success_response(
+        {
+            "platforms": [
+                PlatformInfo(key=p.key, label=p.label, limit=p.limit, kind=p.kind).model_dump(
+                    mode="json"
+                )
+                for p in PLATFORM_LIMITS.values()
+            ]
+        }
+    )
+
+
+@router.post(
+    "/copy/generations/{generation_id}/refine",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dict[str, Any],
+)
+def refine_copy(
+    generation_id: uuid.UUID,
+    payload: RefineRequest,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    g = ai_content_svc.refine_copy_generation(
+        db,
+        startup_id=membership.startup_id,
+        created_by=user.id,
+        generation_id=generation_id,
+        data=payload,
+    )
+    db.commit()
+    return success_response({"id": str(g.id), "status": g.status.value})
+
+
+@router.get("/campaigns/{campaign_id}/readouts", response_model=dict[str, Any])
+def list_campaign_readouts(
+    campaign_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    campaigns_svc.get_campaign(db, startup_id=membership.startup_id, campaign_id=campaign_id)
+    rows = readouts_svc.list_readouts(db, startup_id=membership.startup_id, campaign_id=campaign_id)
+    return success_response(
+        {"readouts": [readouts_svc.serialize_readout(r).model_dump(mode="json") for r in rows]}
+    )

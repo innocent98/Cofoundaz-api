@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "platform",
+        "message": "Input should be 'x', 'instagram', 'linkedin', 'facebook', 'whatsapp', 'google_ads_headline', 'google_ads_description' or 'email_subject'"
+      }
+    ]
+  }
+}

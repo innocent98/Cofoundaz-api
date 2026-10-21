@@ -1,15 +1,15 @@
 {
   "data": {
-    "id": "cae793ce-890c-47bc-9952-501b8f7cd4c4",
-    "startup_id": "6e6ad325-212b-4bae-83cc-de61d79fd0a6",
+    "id": "07507691-4dae-4b39-bccc-e716dfa9cd6c",
+    "startup_id": "87536b53-3446-4eb3-9310-4fc08f3da229",
     "name": "SMB founders",
     "definition": {
-      "rules": []
+      "business_type": "SMB"
     },
     "est_size": 1200,
     "persona_id": null,
-    "created_at": "2026-09-30T08:33:04.906447Z",
-    "updated_at": "2026-09-30T08:33:04.906447Z"
+    "created_at": "2026-10-20T18:33:43.362656Z",
+    "updated_at": "2026-10-20T18:33:43.362656Z"
   },
   "meta": null
 }

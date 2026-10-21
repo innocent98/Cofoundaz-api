@@ -248,6 +248,29 @@ def _stats(totals: dict[MarketingMetricName, int]) -> dict:
     }
 
 
+def channel_stats(db: Session, *, startup_id: uuid.UUID, days: int = 30) -> dict[ChannelKey, dict]:
+    """Per-channel totals for the last `days` days from channel-scoped points only."""
+    cutoff = datetime.now(UTC).date() - timedelta(days=days)
+    out: dict[ChannelKey, dict] = {}
+    for channel, metric, total in (
+        db.query(MarketingMetric.channel, MarketingMetric.metric, func.sum(MarketingMetric.value))
+        .filter(
+            MarketingMetric.startup_id == startup_id,
+            MarketingMetric.channel.isnot(None),
+            MarketingMetric.ts >= cutoff,
+        )
+        .group_by(MarketingMetric.channel, MarketingMetric.metric)
+        .all()
+    ):
+        row = out.setdefault(
+            channel,
+            {"visits": 0, "impressions": 0, "clicks": 0, "conversions": 0, "spend": 0},
+        )
+        row[metric.value] = int(total or 0)
+        row["has_data"] = True
+    return out
+
+
 def campaign_stats_empty() -> dict:
     return _stats({})
 

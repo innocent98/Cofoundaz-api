@@ -1,0 +1,26 @@
+{
+  "data": {
+    "readouts": [
+      {
+        "id": "50d8a1e9-ddcc-47a2-8f02-ea3222a914b8",
+        "campaign_id": "56e3de5a-c3d3-411f-aecf-afa46b32c369",
+        "week_start": "2026-10-19",
+        "status": "ready",
+        "output": {
+          "wins": [
+            "[stub-llm] wins"
+          ],
+          "watch": [
+            "[stub-llm] watch"
+          ],
+          "summary": "[stub-llm] summary",
+          "headline": "[stub-llm] headline",
+          "next_step": "[stub-llm] next_step"
+        },
+        "error": null,
+        "created_at": "2026-10-20T18:32:44.580169Z"
+      }
+    ]
+  },
+  "meta": null
+}
