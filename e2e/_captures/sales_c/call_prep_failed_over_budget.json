@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": "42949237-ba1c-4051-8240-c5ea5cc6be20",
+    "deal_id": "75dacf34-13a8-4443-bad7-7d1156873ade",
+    "status": "failed",
+    "output": null,
+    "error": "over_budget",
+    "created_at": "2026-10-21T12:30:36.273048+00:00"
+  },
+  "meta": null
+}

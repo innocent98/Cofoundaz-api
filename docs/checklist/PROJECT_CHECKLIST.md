@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Sales Hub slice C (2026-10-21): branch `feature/sales-coach-analytics` — AI role-play coach + scorecard, call prep, Sales analytics BE; migration `0064_sales_coach`; mentor 403 + over-budget states live-verified with the stub LLM (real model not yet checked). SOP `docs/sop/2026-10-21-sales-coach-analytics.md`; FE guide `docs/fe-integration-guide-sales-coach-analytics.md`. Built, awaiting review and merge._
+
 _Sales Hub slice A (2026-10-21): branch `feature/sales-crm-core` — CRM core BE (stages, settings, accounts, contacts, leads + CSV import + convert, deals + stage moves, activities, stall scheduler + won/stalled notifications, overview, live Dashboard `pipeline` KPI, search, activity feed), migration `0063_sales_crm_core`, mentor 403 live-verified. SOP `docs/sop/2026-10-21-sales-crm-core.md`; FE guide `docs/fe-integration-guide-sales-crm.md`. Built, awaiting review and merge (PR to `develop` pending). Module 11 is now 🟡 open: FE-A, slice B, slice C planned._
 
 _Marketing re-walk BE fixes (2026-10-21): branch `fix/marketing-rewalk-be` — overview idea count = newest ready run, plan-week `scheduled_at` never in the past, search hrefs to the item, content-gap `stale` flag, `GET /marketing/media/{id}/file`. SOP `docs/sop/2026-10-21-marketing-rewalk-be.md`; FE guide §15. PR to `develop` pending._
@@ -811,7 +813,8 @@ Slice A (BE, CRM core), branch `feature/sales-crm-core` — **built, awaiting re
 Planned:
 - [ ] **FE-A**: Pipeline board, deal drawer, stage editor, Leads (+ CSV import), Accounts (+ account page, contact drawer, timeline)
 - [ ] **Slice B (BE)**: sequences + sending through a separate outreach provider, guardrails/auto-pause, suppression, unsubscribe, provider webhook (D-SAL-1, D-SAL-8); waits on the provider decision
-- [ ] **Slice C (BE)**: role-play coach, scorecard, call prep, Sales analytics (D-SAL-9)
+- [x] **Slice C (BE)**, branch `feature/sales-coach-analytics` (2026-10-21), **built, awaiting review and merge**: role-play coach (co-founder chat protocol: 202 + `generating` + poll, 409 while replying), end-session scorecard job (discovery / objection handling / next-step close, each /10 + feedback), call prep job (one in flight per deal, regenerate), `GET /sales/analytics` (funnel by stage position, avg cycle days, win/loss reasons, activity leaderboard, 12-month closed-won revenue); migration `0064_sales_coach` (3 tables; rechain if Finance's `0064` merges first); live e2e `e2e/test_sales_c.py` (36 captures, stub LLM); SOP `docs/sop/2026-10-21-sales-coach-analytics.md` · FE guide `docs/fe-integration-guide-sales-coach-analytics.md`
+  - [ ] Real-model walk (buyer realism, scorecard calibration, latency): stub only so far
 - [ ] **FE-BC**: Sequences, Coach, Analytics, unsubscribe page
 - [ ] Health Score sales signal (D-SAL-10, follow-up; needs per-stage targets)
 - [ ] CSV import honours the mapped `source` column (today every imported lead is `csv`)

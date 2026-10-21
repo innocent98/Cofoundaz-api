@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CALL_PREP_IN_PROGRESS",
+    "message": "A call prep is already being written for this deal.",
+    "field_errors": []
+  }
+}

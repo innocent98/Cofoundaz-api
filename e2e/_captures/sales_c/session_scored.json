@@ -1,0 +1,57 @@
+{
+  "data": {
+    "id": "c023d44e-4c1f-4dfa-b72b-5e1c662fd4b5",
+    "mode": "roleplay",
+    "deal_id": "75dacf34-13a8-4443-bad7-7d1156873ade",
+    "deal_name": "Acme fleet payments",
+    "scenario": null,
+    "persona": "Skeptical CFO",
+    "difficulty": "tough",
+    "status": "ended",
+    "scorecard": {
+      "scores": {
+        "discovery": 0,
+        "next_step_close": 0,
+        "objection_handling": 0
+      },
+      "overall": 0.0,
+      "feedback": [
+        "[stub-llm] feedback"
+      ]
+    },
+    "scorecard_error": null,
+    "created_at": "2026-10-21T12:30:33.243880+00:00",
+    "ended_at": "2026-10-21T12:30:34.054821+00:00",
+    "messages": [
+      {
+        "id": "97bf724e-a7b8-4380-8f2f-db225f0831ec",
+        "role": "user",
+        "status": "ready",
+        "content": "Hi Tunde, thanks for making time.",
+        "created_at": "2026-10-21T12:30:33.257655+00:00"
+      },
+      {
+        "id": "5f5a0ad4-a472-4477-b2de-705a0171d21e",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "created_at": "2026-10-21T12:30:33.258655+00:00"
+      },
+      {
+        "id": "e292cff4-a1ba-4261-8786-b198dc4ecb79",
+        "role": "user",
+        "status": "ready",
+        "content": "What does switching cost you today?",
+        "created_at": "2026-10-21T12:30:34.002413+00:00"
+      },
+      {
+        "id": "e8df4e6d-593f-4926-9223-f86fa6852a91",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "created_at": "2026-10-21T12:30:34.003413+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOTHING_TO_SCORE",
+    "message": "Say something to the buyer before ending the session.",
+    "field_errors": []
+  }
+}

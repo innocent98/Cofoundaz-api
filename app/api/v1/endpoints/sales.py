@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
@@ -6,10 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.core.errors import AppError
+from app.core.errors import AppError, NotFound
 from app.core.redis import get_redis
 from app.db.models.enums import SALES_ROLES, LeadSource, LeadStatus
 from app.db.models.membership import Membership
+from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
@@ -38,7 +40,11 @@ from app.schemas.sales import (
     StageOut,
     StagesReplace,
 )
+from app.schemas.sales_coach import CoachMessagePost, CoachSessionCreate
 from app.services.sales import activities as activities_svc
+from app.services.sales import analytics as analytics_svc
+from app.services.sales import call_prep as call_prep_svc
+from app.services.sales import coach as coach_svc
 from app.services.sales import csv_import as csv_svc
 from app.services.sales import deals as deals_svc
 from app.services.sales import leads as leads_svc
@@ -587,3 +593,114 @@ def delete_activity(
     activities_svc.delete_activity(db, membership.startup_id, activity_id, actor_id=user.id)
     db.commit()
     return success_response({"deleted": True})
+
+
+# ---- Coach: role-play ----
+def _startup(db: Session, membership: Membership) -> Startup:
+    row = db.get(Startup, membership.startup_id)
+    if row is None:
+        raise NotFound()
+    return row
+
+
+@router.post("/coach/sessions", status_code=201, response_model=dict[str, Any])
+def create_coach_session(
+    payload: CoachSessionCreate,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = coach_svc.create_session(db, _startup(db, membership), user.id, payload)
+    db.commit()
+    return success_response(coach_svc.serialize_session(row, coach_svc.messages_for(db, row)))
+
+
+@router.get("/coach/sessions", response_model=dict[str, Any])
+def list_coach_sessions(
+    limit: int = Query(default=20, ge=1, le=100),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = coach_svc.list_sessions(db, membership.startup_id, user.id, limit=limit, offset=offset)
+    return success_response([coach_svc.serialize_session(r) for r in rows])
+
+
+@router.get("/coach/sessions/{session_id}", response_model=dict[str, Any])
+def get_coach_session(
+    session_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = coach_svc.get_session(db, membership.startup_id, user.id, session_id)
+    return success_response(coach_svc.serialize_session(row, coach_svc.messages_for(db, row)))
+
+
+@router.post(
+    "/coach/sessions/{session_id}/messages", status_code=202, response_model=dict[str, Any]
+)
+def post_coach_message(
+    session_id: uuid.UUID,
+    payload: CoachMessagePost,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = coach_svc.get_session(db, membership.startup_id, user.id, session_id, lock=True)
+    buyer = coach_svc.post_message(db, row, payload.content)
+    db.commit()
+    return success_response(coach_svc.serialize_message(buyer))
+
+
+@router.post("/coach/sessions/{session_id}/end", status_code=202, response_model=dict[str, Any])
+def end_coach_session(
+    session_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = coach_svc.get_session(db, membership.startup_id, user.id, session_id, lock=True)
+    row = coach_svc.end_session(db, row)
+    db.commit()
+    return success_response(coach_svc.serialize_session(row, coach_svc.messages_for(db, row)))
+
+
+# ---- Coach: call prep ----
+@router.post("/deals/{deal_id}/call-prep", status_code=202, response_model=dict[str, Any])
+def request_call_prep(
+    deal_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    prep = call_prep_svc.request_prep(db, membership.startup_id, user.id, deal_id)
+    db.commit()
+    return success_response(call_prep_svc.serialize_prep(prep))
+
+
+@router.get("/deals/{deal_id}/call-prep", response_model=dict[str, Any])
+def get_call_prep(
+    deal_id: uuid.UUID,
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    deals_svc.get_deal(db, membership.startup_id, deal_id)  # 404 for another workspace's deal
+    prep = call_prep_svc.latest_prep(db, membership.startup_id, deal_id)
+    return success_response(call_prep_svc.serialize_prep(prep) if prep else None)
+
+
+# ---- Analytics ----
+@router.get("/analytics", response_model=dict[str, Any])
+def sales_analytics(
+    from_: date | None = Query(default=None, alias="from"),  # noqa: B008
+    to: date | None = Query(default=None),  # noqa: B008
+    membership: Membership = Depends(_sales),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    out = analytics_svc.analytics(db, membership.startup_id, from_, to)
+    db.commit()  # the lazy stage seed persists
+    return success_response(out)

@@ -1,0 +1,145 @@
+{
+  "data": {
+    "from": "2026-09-22",
+    "to": "2026-10-21",
+    "currency": "NGN",
+    "funnel": {
+      "deals_created": 3,
+      "stages": [
+        {
+          "stage_id": "1fd941b2-85ed-4b51-b5de-ac8c40ea2463",
+          "name": "New",
+          "kind": "open",
+          "reached": 3,
+          "conversion_from_previous_pct": null
+        },
+        {
+          "stage_id": "a809a14b-d7ef-4211-bf28-9a422032318d",
+          "name": "Contacted",
+          "kind": "open",
+          "reached": 3,
+          "conversion_from_previous_pct": 100.0
+        },
+        {
+          "stage_id": "2acaf14b-5d70-4c54-9747-ce7f27cc02c3",
+          "name": "Qualified",
+          "kind": "open",
+          "reached": 3,
+          "conversion_from_previous_pct": 100.0
+        },
+        {
+          "stage_id": "6433582d-6519-4a7e-89d7-5c5e94b5f870",
+          "name": "Proposal",
+          "kind": "open",
+          "reached": 3,
+          "conversion_from_previous_pct": 100.0
+        },
+        {
+          "stage_id": "c1cef1a9-aade-4e3b-b58c-1445ee7c79b1",
+          "name": "Negotiation",
+          "kind": "open",
+          "reached": 2,
+          "conversion_from_previous_pct": 66.7
+        },
+        {
+          "stage_id": "8050ffca-f3cb-445a-8cdd-b881eb79aec6",
+          "name": "Closed Won",
+          "kind": "won",
+          "reached": 1,
+          "conversion_from_previous_pct": 50.0
+        }
+      ]
+    },
+    "avg_cycle_days": 12.0,
+    "won": {
+      "count": 1,
+      "value_minor": 40000000
+    },
+    "win_loss": {
+      "won": 1,
+      "lost": 1,
+      "win_rate_pct": 50.0,
+      "loss_reasons": [
+        {
+          "reason": "price",
+          "count": 1,
+          "value_minor": 9000000
+        }
+      ]
+    },
+    "leaderboard": [
+      {
+        "user_id": "05f1601a-cd1e-4f71-8d2b-b72f5909d697",
+        "name": "Ada Founder",
+        "total": 3,
+        "calls": 2,
+        "emails": 1,
+        "meetings": 0,
+        "notes": 0
+      }
+    ],
+    "monthly_revenue": [
+      {
+        "month": "2025-11",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2025-12",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-01",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-02",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-03",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-04",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-05",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-06",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-07",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-08",
+        "value_minor": 0,
+        "deal_count": 0
+      },
+      {
+        "month": "2026-09",
+        "value_minor": 15000000,
+        "deal_count": 1
+      },
+      {
+        "month": "2026-10",
+        "value_minor": 40000000,
+        "deal_count": 1
+      }
+    ]
+  },
+  "meta": null
+}
