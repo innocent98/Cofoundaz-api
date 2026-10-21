@@ -17,7 +17,10 @@ def touch_deal(db: Session, deal: Deal, *, at: datetime | None = None) -> None:
     Clearing `stalled_notified_at` is what lets the stall scan notify again after the next quiet
     period (the new `last_activity_at` also yields a new idempotency period key).
     """
-    deal.last_activity_at = at or datetime.now(UTC)
+    at = at or datetime.now(UTC)
+    # Never move backwards: logging a call that happened last week must not re-open a stall.
+    if deal.last_activity_at is None or at > deal.last_activity_at:
+        deal.last_activity_at = at
     deal.stalled_notified_at = None
     db.flush()
 

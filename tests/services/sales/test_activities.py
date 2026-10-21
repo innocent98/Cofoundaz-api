@@ -78,12 +78,22 @@ def test_future_occurred_at_caps_touch_at_now(db):
     assert d.last_activity_at <= datetime.now(UTC)
 
 
-def test_past_occurred_at_used_for_touch(db):
+def test_past_occurred_at_moves_a_staler_deal_forward(db):
     u, s = _ws(db)
     d = _deal(db, u, s)
+    d.last_activity_at = datetime.now(UTC) - timedelta(days=30)
+    db.flush()
     past = datetime.now(UTC) - timedelta(days=3)
     _mk(db, u, s, deal_id=d.id, occurred_at=past)
     assert d.last_activity_at == past
+
+
+def test_past_occurred_at_never_moves_last_activity_backwards(db):
+    u, s = _ws(db)
+    d = _deal(db, u, s)
+    before = d.last_activity_at
+    _mk(db, u, s, deal_id=d.id, occurred_at=datetime.now(UTC) - timedelta(days=3))
+    assert d.last_activity_at == before
 
 
 def test_edit_and_delete_never_touch_deal(db):
