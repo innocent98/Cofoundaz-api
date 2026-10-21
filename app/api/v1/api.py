@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     mission,
     notifications,
     roadmap,
+    sales,
     search,
     team,
     validation,
@@ -48,6 +49,7 @@ api_router.include_router(documents.router, tags=["documents"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
 api_router.include_router(marketing.router, prefix="/marketing", tags=["marketing"])
+api_router.include_router(sales.router, prefix="/sales", tags=["sales"])
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(validation.router, prefix="/validation", tags=["validation"])

@@ -5,7 +5,13 @@ from sqlalchemy import ColumnElement, and_, func, or_, true
 from sqlalchemy.orm import Session
 
 from app.db.models.activity import ActivityLog
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MISSION_ROLES, MembershipRole
+from app.db.models.enums import (
+    FINANCE_ROLES,
+    MARKETING_ROLES,
+    MISSION_ROLES,
+    SALES_ROLES,
+    MembershipRole,
+)
 from app.db.models.user import UserProfile
 
 # Who may read an activity row (D-MIS-8 + #153). An action's namespace is its first dotted
@@ -15,6 +21,7 @@ _RESTRICTED_NAMESPACES: dict[str, frozenset[MembershipRole]] = {
     "mission": MISSION_ROLES,
     "finance": FINANCE_ROLES,
     "marketing": MARKETING_ROLES,
+    "sales": SALES_ROLES,
 }
 _RESTRICTED_ENTITIES: dict[str, frozenset[MembershipRole]] = {
     "mission_task": MISSION_ROLES,
@@ -26,6 +33,8 @@ _RESTRICTED_ENTITIES: dict[str, frozenset[MembershipRole]] = {
     "post": MARKETING_ROLES,
     "keyword": MARKETING_ROLES,
     "segment": MARKETING_ROLES,
+    "sales_stage": SALES_ROLES,
+    "sales_settings": SALES_ROLES,
 }
 # Open to every role: #153 kept health score, roadmap, business and document data open;
 # assessment.completed is already shown to every role as a health-score history marker, and
