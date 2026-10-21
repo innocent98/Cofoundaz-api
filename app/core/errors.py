@@ -89,6 +89,17 @@ class JournalContentUnreadable(AppError):  # noqa: N818
     message = "That entry could not be read."
 
 
+class FinanceConnectionsNotConfigured(AppError):  # noqa: N818
+    code, http_status = "FINANCE_CONNECTIONS_NOT_CONFIGURED", 503
+    message = "Payment connections are not configured on the server."
+
+
+class FinanceConnectionUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor the secret may appear in an error.
+    code, http_status = "FINANCE_CONNECTION_UNREADABLE", 500
+    message = "That payment connection could not be read."
+
+
 class FeatureNotEnabled(AppError):  # noqa: N818
     code, http_status = "FEATURE_NOT_ENABLED", 501
     message = "This feature isn't available yet."

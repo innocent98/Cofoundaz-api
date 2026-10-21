@@ -22,6 +22,7 @@ from app.services.finance.errors import _validation
 
 _INT32 = 2_147_483_647
 _NUMBER_RETRIES = 5
+_PROVIDER_LABELS = {"paystack": "Paystack", "flutterwave": "Flutterwave"}
 _TERM_DAYS = {
     InvoiceTerms.net_15: 15,
     InvoiceTerms.net_30: 30,
@@ -112,7 +113,7 @@ def get_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) ->
     return inv
 
 
-def _get_invoice_locked(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+def get_invoice_locked(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
     # Row lock (+ populate_existing to bypass the identity-map cache) so two concurrent
     # mark-paid / mark-unpaid calls serialise on the invoice and cannot both move money.
     inv = (
@@ -203,7 +204,7 @@ def mark_paid(
     invoice_id: uuid.UUID,
     now: dt.datetime | None = None,
 ) -> Invoice:
-    inv = _get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
     if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
         return inv  # idempotent no-op: never create a second inflow
     if inv.status != InvoiceStatus.sent:
@@ -228,10 +229,45 @@ def mark_paid(
     return inv
 
 
+def mark_paid_via_provider(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    provider: str,
+    now: dt.datetime | None = None,
+) -> Invoice | None:
+    """Mark a sent invoice paid because a payment provider confirmed the charge.
+
+    Reuses the locked mark_paid path (one inflow, row lock), then records which provider paid it.
+    Idempotent: an already-paid invoice is returned untouched (its original `paid_via` is kept).
+    Returns None when the invoice does not exist in this workspace or is not payable (a draft);
+    a provider confirmation must never raise into the importer or a webhook.
+    """
+    try:
+        inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    except NotFound:
+        return None
+    if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
+        return inv
+    if inv.status != InvoiceStatus.sent:
+        return None
+    inv = mark_paid(db, startup_id=startup_id, invoice_id=invoice_id, now=now)
+    inv.paid_via = provider
+    db.flush()
+    return inv
+
+
 def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
-    inv = _get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
     if inv.status != InvoiceStatus.paid:
         raise _validation("status", "Only a paid invoice can be marked unpaid.")
+    if inv.paid_via:
+        # Provider-paid: the sync/webhook would simply pay it again, so the ledger row is final.
+        label = _PROVIDER_LABELS.get(inv.paid_via, inv.paid_via.capitalize())
+        raise _validation(
+            "status", f"This invoice was paid through {label} and cannot be marked unpaid."
+        )
     txn_id = inv.transaction_id
     inv.transaction_id = None
     inv.paid_at = None
@@ -292,6 +328,9 @@ def serialize_invoice(inv: Invoice, *, today: dt.date) -> InvoiceResponse:
         paid_at=inv.paid_at,
         auto_remind=inv.auto_remind,
         transaction_id=inv.transaction_id,
+        pay_url=inv.pay_url,
+        pay_provider=inv.pay_provider,
+        paid_via=inv.paid_via,
         created_at=inv.created_at,
         updated_at=inv.updated_at,
     )

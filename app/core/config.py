@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     # MFA_ENCRYPTION_KEY so the app still boots without it; the journal service raises
     # JournalNotConfigured at use time rather than failing startup for every deployment.
     JOURNAL_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Encrypts founders' payment-provider secrets at rest. Optional so the app boots without
+    # it; connect/replace/webhook/sync raise FinanceConnectionsNotConfigured at use time.
+    FINANCE_CONNECTIONS_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Public base URL of this API, used to build per-connection webhook URLs.
+    API_PUBLIC_URL: str = ""
+    # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.
+    PAYMENT_PROVIDER_STUB: bool = False
+    FINANCE_SYNC_BACKFILL_DAYS: int = 90
+    FINANCE_SYNC_MAX_PAGES: int = 20
+    FINANCE_SYNC_MIN_INTERVAL_SECONDS: int = 30
 
     # Providers
     EMAIL_BACKEND: str = "console"  # console | smtp | file

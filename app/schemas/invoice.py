@@ -92,5 +92,8 @@ class InvoiceResponse(BaseModel):
     paid_at: dt.datetime | None
     auto_remind: bool
     transaction_id: uuid.UUID | None
+    pay_url: str | None = None
+    pay_provider: str | None = None
+    paid_via: str | None = None
     created_at: dt.datetime
     updated_at: dt.datetime

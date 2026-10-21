@@ -402,9 +402,21 @@ class TransactionSource(enum.StrEnum):
     manual = "manual"
     bank = "bank"
     accounting = "accounting"
-    stripe = "stripe"
+    paystack = "paystack"
+    flutterwave = "flutterwave"
     invoice = "invoice"
     expense = "expense"
+
+
+class ConnectionStatus(enum.StrEnum):
+    active = "active"
+    needs_attention = "needs_attention"
+    disconnected = "disconnected"
+
+
+class PaymentProvider(enum.StrEnum):
+    paystack = "paystack"
+    flutterwave = "flutterwave"
 
 
 class InvoiceStatus(enum.StrEnum):

@@ -8,6 +8,7 @@ from app.api.v1.endpoints import (
     dashboard,
     documents,
     finance,
+    finance_integrations,
     health,
     health_score,
     invitations,
@@ -17,6 +18,7 @@ from app.api.v1.endpoints import (
     marketing,
     mission,
     notifications,
+    payment_webhooks,
     roadmap,
     sales,
     search,
@@ -51,6 +53,8 @@ api_router.include_router(learning.router, prefix="/learning", tags=["learning"]
 api_router.include_router(marketing.router, prefix="/marketing", tags=["marketing"])
 api_router.include_router(sales.router, prefix="/sales", tags=["sales"])
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
+api_router.include_router(finance_integrations.router, prefix="/finance", tags=["finance"])
+api_router.include_router(payment_webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(validation.router, prefix="/validation", tags=["validation"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])

@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -71,5 +72,10 @@ class Invoice(UUIDMixin, TimestampMixin, Base):
         nullable=True,
         unique=True,
     )
+    # Provider pay link (Paystack/Flutterwave) and how the invoice was settled.
+    pay_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pay_reference: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    pay_provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    paid_via: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     __table_args__ = (UniqueConstraint("startup_id", "number", name="uq_invoices_startup_number"),)

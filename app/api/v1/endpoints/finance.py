@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import FINANCE_ROLES, TransactionDirection
+from app.core.errors import AppError
+from app.db.models.enums import FINANCE_ROLES, InvoiceStatus, TransactionDirection
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
@@ -24,6 +25,8 @@ from app.services.finance import invoices as invoice_svc
 from app.services.finance import model_service as model_svc
 from app.services.finance import runway as runway_svc
 from app.services.finance import service as finance_svc
+from app.services.finance.payments import connections as conn_svc
+from app.services.finance.payments import paylinks
 
 router = APIRouter()
 
@@ -219,7 +222,49 @@ def send_invoice(
     inv = invoice_svc.send_invoice(
         db, startup_id=membership.startup_id, invoice_id=invoice_id, today=today
     )
+    # Best effort: a provider outage leaves pay_url null and never fails the send.
+    paylinks.ensure_pay_link(db, invoice=inv)
     db.commit()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+def _pay_link_validation(message: str) -> AppError:
+    return AppError(
+        "VALIDATION_ERROR",
+        "Please check the highlighted fields.",
+        422,
+        field_errors=[{"field": "status", "message": message}],
+    )
+
+
+@router.post("/invoices/{invoice_id}/pay-link", response_model=dict[str, Any])
+def create_invoice_pay_link(
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    inv = invoice_svc.get_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.sent:
+        raise _pay_link_validation("Only a sent invoice can have a pay link.")
+    if inv.currency != paylinks.LINK_CURRENCY:
+        raise _pay_link_validation("Pay links are only available for NGN invoices.")
+    if inv.pay_url is None:
+        live = conn_svc.get_active(db, membership.startup_id)
+        if live is None or live.status != "active":
+            raise AppError(
+                "NO_PAYMENT_CONNECTION",
+                "Connect Paystack or Flutterwave before creating a pay link.",
+                422,
+            )
+        if not paylinks.ensure_pay_link(db, invoice=inv):
+            raise AppError(
+                "PAYMENT_PROVIDER_UNAVAILABLE",
+                "We could not create a pay link right now. Try again in a few minutes.",
+                502,
+            )
+        db.commit()
+    today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
 
 
