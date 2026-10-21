@@ -1,0 +1,16 @@
+{
+  "id": "c2c6c4a9-ead9-49b5-9e45-35ca6ab6908e",
+  "type": "marketing.post.published",
+  "title": "Scheduled post published: Waitlist teaser",
+  "body": "See results",
+  "data": {
+    "href": "/marketing/calendar?entry=3eb508f6-15b8-4959-a0a1-06a8bea034e5",
+    "title": "Waitlist teaser",
+    "channel": "organic_social",
+    "entry_id": "3eb508f6-15b8-4959-a0a1-06a8bea034e5",
+    "startup_id": "57829571-0f6c-4298-8e87-5cbc70631b58",
+    "was_scheduled": true
+  },
+  "read": false,
+  "created_at": "2026-10-20T18:14:38.719632+00:00"
+}

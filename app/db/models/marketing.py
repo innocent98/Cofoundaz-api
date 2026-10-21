@@ -57,8 +57,45 @@ class ContentCalendarEntry(UUIDMixin, TimestampMixin, Base):
     )
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Marketing-scoped upload (`marketing_media`), never the all-roles Documents storage.
+    media_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketing_media.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MarketingMedia(UUIDMixin, TimestampMixin, Base):
+    """An image attached to a calendar post. Kept apart from `document_files` on purpose:
+    Documents are readable by every role, unpublished campaign assets must not be."""
+
+    __tablename__ = "marketing_media"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    url: Mapped[str] = mapped_column(String(1000), nullable=False)
 
 
 class MarketingChannel(UUIDMixin, TimestampMixin, Base):
@@ -167,6 +204,12 @@ class MarketingAiGeneration(UUIDMixin, TimestampMixin, Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

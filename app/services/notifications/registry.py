@@ -260,18 +260,22 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "marketing.post.published": NotifSpec(
         _roles_minus_actor(MARKETING_ROLES),
-        lambda p: f"Scheduled post published: {p.get('title', 'a post')}",
-        lambda _p: "",
+        lambda p: (
+            f"Scheduled post published: {p.get('title', 'a post')}"
+            if p.get("was_scheduled", True)
+            else f"Post published: {p.get('title', 'a post')}"
+        ),
+        lambda _p: "See results",  # CTA; the deep link is the payload's `href`
     ),
     "marketing.campaign.launched": NotifSpec(
         _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Campaign launched: {p.get('name', 'a campaign')}",
-        lambda _p: "",
+        lambda _p: "See results",
     ),
     "marketing.campaign.completed": NotifSpec(
         _roles_minus_actor(MARKETING_ROLES),
         lambda p: f"Campaign completed: {p.get('name', 'a campaign')}",
-        lambda _p: "",
+        lambda _p: "See results",
     ),
 }
 

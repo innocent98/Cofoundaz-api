@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "content-type": "text/csv; charset=utf-8",
+  "content-disposition": "attachment; filename=\"marketing-metrics-30d.csv\"",
+  "body": "date,scope,channel,campaign,metric,value\n2026-10-20,workspace,,,visits,300\n2026-10-20,channel,email,,conversions,5\n2026-10-20,campaign,,Waitlist push,conversions,10\n2026-10-20,channel,email,,spend,5000\n2026-10-20,campaign,,Waitlist push,impressions,2000\n2026-10-20,campaign,,Waitlist push,clicks,100\n2026-10-20,campaign,,Waitlist push,spend,20000\n"
+}

@@ -2,11 +2,12 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
+from app.core.errors import AppError
 from app.db.models.enums import (
     MARKETING_ROLES,
     ChannelKey,
@@ -22,6 +23,7 @@ from app.schemas.marketing import (
     CalendarEntryCreate,
     CalendarEntryUpdate,
     CampaignCreate,
+    CampaignPerformance,
     CampaignUpdate,
     ChannelPlanRequest,
     ChannelResponse,
@@ -29,6 +31,7 @@ from app.schemas.marketing import (
     CopyGenerateRequest,
     KeywordCreate,
     KeywordUpdate,
+    MetricRow,
     MetricsIngest,
     OverviewResponse,
     PositioningUpsert,
@@ -40,6 +43,7 @@ from app.schemas.marketing import (
 from app.services.marketing import ai_content as ai_content_svc
 from app.services.marketing import analytics as analytics_svc
 from app.services.marketing import campaigns as campaigns_svc
+from app.services.marketing import media as media_svc
 from app.services.marketing import segments as segments_svc
 from app.services.marketing import seo as seo_svc
 from app.services.marketing import service as svc
@@ -68,7 +72,7 @@ def create_entry(
 ) -> dict[str, Any]:
     entry = svc.create_entry(db, startup_id=membership.startup_id, created_by=user.id, data=payload)
     db.commit()
-    return success_response(svc.serialize_entry(entry).model_dump())
+    return success_response(svc.serialize_entry(db, entry).model_dump())
 
 
 @router.get("/calendar-entries", response_model=dict[str, Any])
@@ -80,6 +84,7 @@ def list_entries(
     date_to: datetime | None = Query(default=None, alias="to"),  # noqa: B008
     channel: ChannelKey | None = Query(default=None),  # noqa: B008
     status: ContentStatus | None = Query(default=None),  # noqa: B008
+    campaign_id: uuid.UUID | None = Query(default=None),  # noqa: B008
 ) -> dict[str, Any]:
     rows = svc.list_entries(
         db,
@@ -88,8 +93,9 @@ def list_entries(
         date_to=date_to,
         channel=channel,
         status=status,
+        campaign_id=campaign_id,
     )
-    return success_response({"entries": [svc.serialize_entry(e).model_dump() for e in rows]})
+    return success_response({"entries": [e.model_dump() for e in svc.serialize_entries(db, rows)]})
 
 
 @router.get("/calendar-entries/{entry_id}", response_model=dict[str, Any])
@@ -101,7 +107,7 @@ def get_entry(
 ) -> dict[str, Any]:
     return success_response(
         svc.serialize_entry(
-            svc.get_entry(db, startup_id=membership.startup_id, entry_id=entry_id)
+            db, svc.get_entry(db, startup_id=membership.startup_id, entry_id=entry_id)
         ).model_dump()
     )
 
@@ -118,7 +124,7 @@ def update_entry(
         db, startup_id=membership.startup_id, entry_id=entry_id, actor_id=user.id, data=payload
     )
     db.commit()
-    return success_response(svc.serialize_entry(entry).model_dump())
+    return success_response(svc.serialize_entry(db, entry).model_dump())
 
 
 @router.delete("/calendar-entries/{entry_id}", response_model=dict[str, Any])
@@ -232,20 +238,12 @@ def segment_campaigns(
     rows = segments_svc.segment_campaigns(
         db, startup_id=membership.startup_id, segment_id=segment_id
     )
-    data = [
-        campaigns_svc.serialize_campaign(
-            c, campaigns_svc.campaign_segment_ids(db, c.id)
-        ).model_dump()
-        for c in rows
-    ]
-    return success_response({"campaigns": data})
+    return success_response({"campaigns": campaigns_svc.serialize_many(db, rows)})
 
 
 # ---- Campaigns ----
 def _campaign_body(db: Session, c: Any) -> dict[str, Any]:
-    return campaigns_svc.serialize_campaign(
-        c, campaigns_svc.campaign_segment_ids(db, c.id)
-    ).model_dump()
+    return campaigns_svc.serialize_many(db, [c])[0]
 
 
 @router.post("/campaigns", response_model=dict[str, Any])
@@ -267,7 +265,7 @@ def list_campaigns(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     rows = campaigns_svc.list_campaigns(db, startup_id=membership.startup_id)
-    return success_response({"campaigns": [_campaign_body(db, c) for c in rows]})
+    return success_response({"campaigns": campaigns_svc.serialize_many(db, rows)})
 
 
 @router.get("/campaigns/{campaign_id}", response_model=dict[str, Any])
@@ -329,11 +327,14 @@ def generate_copy(
 
 @router.get("/copy/generations", response_model=dict[str, Any])
 def list_copy_generations(
+    campaign_id: uuid.UUID | None = Query(default=None),  # noqa: B008
     membership: Membership = Depends(_marketing),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = ai_content_svc.list_copy_generations(db, startup_id=membership.startup_id)
+    rows = ai_content_svc.list_copy_generations(
+        db, startup_id=membership.startup_id, campaign_id=campaign_id
+    )
     return success_response(
         {"generations": [ai_content_svc.serialize_generation(g).model_dump() for g in rows]}
     )
@@ -637,3 +638,122 @@ def get_analytics(
 ) -> dict[str, Any]:
     data = analytics_svc.get_analytics(db, startup_id=membership.startup_id, range_key=range)
     return success_response(AnalyticsResponse(**data).model_dump(mode="json"))
+
+
+@router.get("/analytics/export")
+def export_analytics(
+    range: str = "30d",
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """Interim CSV of every recorded metric in the range (D-MKT-6). Not the JSON envelope."""
+    body = analytics_svc.export_csv(db, startup_id=membership.startup_id, range_key=range)
+    return Response(
+        content=body,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="marketing-metrics-{range}.csv"'},
+    )
+
+
+@router.get("/metrics", response_model=dict[str, Any])
+def list_metrics(
+    range: str = "30d",
+    limit: int = Query(default=100, ge=1, le=500),  # noqa: B008
+    offset: int = Query(default=0, ge=0),  # noqa: B008
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows, total = analytics_svc.list_metrics(
+        db, startup_id=membership.startup_id, range_key=range, limit=limit, offset=offset
+    )
+    return success_response(
+        {
+            "metrics": [MetricRow(**r).model_dump(mode="json") for r in rows],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
+
+
+@router.delete("/metrics/{metric_id}", response_model=dict[str, Any])
+def delete_metric(
+    metric_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    analytics_svc.delete_metric(db, startup_id=membership.startup_id, metric_id=metric_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+@router.get("/campaigns/{campaign_id}/performance", response_model=dict[str, Any])
+def campaign_performance(
+    campaign_id: uuid.UUID,
+    range: str = "all",
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    c = campaigns_svc.get_campaign(db, startup_id=membership.startup_id, campaign_id=campaign_id)
+    data = analytics_svc.campaign_performance(
+        db, startup_id=membership.startup_id, campaign=c, range_key=range
+    )
+    return success_response(CampaignPerformance(**data).model_dump(mode="json"))
+
+
+# ---- Media (marketing-scoped; never the all-roles Documents storage) ----
+_CHUNK_BYTES = 64 * 1024
+
+
+@router.post("/media", status_code=status.HTTP_201_CREATED, response_model=dict[str, Any])
+async def upload_media(
+    file: UploadFile = File(...),  # noqa: B008
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    if file.content_type not in media_svc.ALLOWED_CONTENT_TYPES:
+        raise AppError("VALIDATION_ERROR", "Upload a PNG, JPEG, GIF or WebP image.", 422)
+    content = b""
+    while chunk := await file.read(_CHUNK_BYTES):
+        content += chunk
+        if len(content) > media_svc.MAX_MEDIA_BYTES:
+            raise AppError("VALIDATION_ERROR", "Image must be 5 MB or smaller.", 422)
+    row = media_svc.upload_media(
+        db,
+        startup_id=membership.startup_id,
+        uploaded_by=user.id,
+        filename=file.filename or "image",
+        content_type=file.content_type or "",
+        content=content,
+    )
+    db.commit()
+    return success_response(media_svc.serialize_media(row).model_dump(mode="json"))
+
+
+@router.get("/media", response_model=dict[str, Any])
+def list_media(
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = media_svc.list_media(db, startup_id=membership.startup_id)
+    return success_response(
+        {"media": [media_svc.serialize_media(m).model_dump(mode="json") for m in rows]}
+    )
+
+
+@router.delete("/media/{media_id}", response_model=dict[str, Any])
+def delete_media(
+    media_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    media_svc.delete_media(db, startup_id=membership.startup_id, media_id=media_id)
+    db.commit()
+    return success_response({"deleted": True})

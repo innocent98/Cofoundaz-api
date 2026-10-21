@@ -42,6 +42,7 @@ from app.db.models.marketing import (  # noqa: F401
     ContentCalendarEntry,
     MarketingAiGeneration,
     MarketingChannel,
+    MarketingMedia,
 )
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401

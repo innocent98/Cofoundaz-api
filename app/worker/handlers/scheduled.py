@@ -1,22 +1,25 @@
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import RoadmapStatus
 from app.db.models.job import Job
+from app.db.models.marketing import ContentCalendarEntry
 from app.db.models.mission import MissionTask
 from app.db.models.roadmap import RoadmapMilestone
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.dashboard.kpi_snapshots import capture_snapshots
 from app.services.dashboard.service import tasks_done_this_week
+from app.services.marketing.service import publish_due_entry
 from app.services.mission.service import get_or_generate_today
 from app.worker.runner import register_handler
 from app.worker.scheduler import (
     SCHED_DUE_SOON,
     SCHED_HEALTH_NIGHTLY,
     SCHED_KPI_SNAPSHOT,
+    SCHED_MARKETING_PUBLISH,
     SCHED_MISSION,
     SCHED_OVERDUE,
     SCHED_QUARTERLY,
@@ -103,9 +106,23 @@ def handle_health_nightly(db: Session, job: Job) -> None:
         refresh_health_score(db, startup, trigger="nightly", force=True)
 
 
+def handle_marketing_publish(db: Session, job: Job) -> None:
+    """Flip one due scheduled post to published (status only; nothing is sent to a platform).
+    Re-checks the post under a row lock, so an edit made after the scan wins."""
+    entry_id = uuid.UUID(str(job.payload["entry_id"]))
+    startup_id = str(job.payload["startup_id"])
+    # The job payload is only a hint: the post must still belong to the workspace it was
+    # scanned under before anything is written.
+    entry = db.get(ContentCalendarEntry, entry_id)
+    if entry is None or str(entry.startup_id) != startup_id:
+        return
+    publish_due_entry(db, entry_id=entry_id, now=datetime.now(UTC))
+
+
 register_handler(SCHED_MISSION, handle_mission_generate)
 register_handler(SCHED_OVERDUE, handle_roadmap_overdue)
 register_handler(SCHED_DUE_SOON, handle_roadmap_due_soon)
 register_handler(SCHED_QUARTERLY, handle_assessment_quarterly)
 register_handler(SCHED_KPI_SNAPSHOT, handle_kpi_snapshot)
 register_handler(SCHED_HEALTH_NIGHTLY, handle_health_nightly)
+register_handler(SCHED_MARKETING_PUBLISH, handle_marketing_publish)

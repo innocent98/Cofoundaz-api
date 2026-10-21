@@ -40,7 +40,9 @@ def test_publishing_notifies_workspace_except_actor(db, monkeypatch):
     recipients = {n.user_id for n in notifs}
     assert other.id in recipients  # workspace member notified
     assert founder.id not in recipients  # the actor (publisher) excluded
-    assert all(n.title == "Scheduled post published: Big launch" for n in notifs)
+    # a draft marked published by hand was never scheduled: "Post published", not "Scheduled post"
+    assert all(n.title == "Post published: Big launch" for n in notifs)
+    assert all(n.body == "See results" for n in notifs)
 
 
 def test_non_publish_update_creates_no_notification(db, monkeypatch):

@@ -1,0 +1,40 @@
+{
+  "data": {
+    "metrics": [
+      {
+        "id": "14c80ebe-848d-4eb6-acfb-b59a6fb555c7",
+        "ts": "2026-10-20",
+        "metric": "visits",
+        "value": 999,
+        "channel": null,
+        "campaign_id": null,
+        "campaign_name": null,
+        "created_at": "2026-10-20T18:14:39.358900Z"
+      },
+      {
+        "id": "2740e09f-aefa-43bb-9254-99e8ef008412",
+        "ts": "2026-10-20",
+        "metric": "visits",
+        "value": 300,
+        "channel": null,
+        "campaign_id": null,
+        "campaign_name": null,
+        "created_at": "2026-10-20T18:14:39.358900Z"
+      },
+      {
+        "id": "5d6be119-2540-448e-880a-a1c3fdd2563d",
+        "ts": "2026-10-20",
+        "metric": "conversions",
+        "value": 5,
+        "channel": "email",
+        "campaign_id": null,
+        "campaign_name": null,
+        "created_at": "2026-10-20T18:14:39.358900Z"
+      }
+    ],
+    "total": 8,
+    "limit": 3,
+    "offset": 0
+  },
+  "meta": null
+}

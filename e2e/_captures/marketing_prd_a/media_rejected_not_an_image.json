@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That file is not a valid image of the type it claims to be.",
+    "field_errors": [
+      {
+        "field": "file",
+        "message": "That file is not a valid image of the type it claims to be."
+      }
+    ]
+  }
+}

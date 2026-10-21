@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "range must be one of 7d, 30d, 90d.",
+    "field_errors": [
+      {
+        "field": "range",
+        "message": "range must be one of 7d, 30d, 90d."
+      }
+    ]
+  }
+}
