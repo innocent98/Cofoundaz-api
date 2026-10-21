@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import NotFound
 from app.db.models.enums import MarketingGenerationKind, MarketingGenerationStatus
 from app.db.models.marketing import AudienceSegment, Campaign, MarketingAiGeneration
+from app.db.models.startup import Startup
 from app.platform.jobs import job_dispatcher
 from app.schemas.marketing import (
     ChannelPlanRequest,
@@ -12,11 +13,26 @@ from app.schemas.marketing import (
     GenerationResponse,
     RefineRequest,
 )
+from app.services.marketing.ai_context import build_marketing_context, context_hash
 from app.services.marketing.service import _validation
 
 
-def serialize_generation(g: MarketingAiGeneration) -> GenerationResponse:
-    return GenerationResponse.model_validate(g, from_attributes=True)
+def serialize_generation(
+    g: MarketingAiGeneration, *, stale: bool | None = None
+) -> GenerationResponse:
+    resp = GenerationResponse.model_validate(g, from_attributes=True)
+    resp.inputs = {k: v for k, v in resp.inputs.items() if k != "context_hash"}
+    resp.stale = stale
+    return resp
+
+
+def content_gap_stale(db: Session, g: MarketingAiGeneration) -> bool | None:
+    """True when the brand context changed since this run was written (or the run predates the
+    stored fingerprint), so the FE can offer a regenerate. Never regenerates by itself."""
+    startup = db.get(Startup, g.startup_id)
+    if g.status != MarketingGenerationStatus.ready or startup is None:
+        return None
+    return g.inputs.get("context_hash") != context_hash(build_marketing_context(db, startup))
 
 
 def create_copy_generation(

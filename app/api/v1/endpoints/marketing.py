@@ -504,7 +504,14 @@ def list_content_gaps(
 ) -> dict[str, Any]:
     rows = ai_content_svc.list_content_gap_generations(db, startup_id=membership.startup_id)
     return success_response(
-        {"generations": [ai_content_svc.serialize_generation(g).model_dump() for g in rows]}
+        {
+            "generations": [
+                ai_content_svc.serialize_generation(
+                    g, stale=ai_content_svc.content_gap_stale(db, g)
+                ).model_dump()
+                for g in rows
+            ]
+        }
     )
 
 
@@ -521,7 +528,8 @@ def get_content_gap(
         generation_id=generation_id,
         kind=MarketingGenerationKind.content_gap,
     )
-    return success_response(ai_content_svc.serialize_generation(g).model_dump())
+    stale = ai_content_svc.content_gap_stale(db, g)
+    return success_response(ai_content_svc.serialize_generation(g, stale=stale).model_dump())
 
 
 @router.post("/keywords", response_model=dict[str, Any])
@@ -784,6 +792,18 @@ def delete_media(
     media_svc.delete_media(db, startup_id=membership.startup_id, media_id=media_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.get("/media/{media_id}/file")
+def media_file(
+    media_id: uuid.UUID,
+    membership: Membership = Depends(_marketing),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """The image itself, for an authenticated `fetch` (an <img> tag cannot send the token, so the
+    FE loads it as a blob). Marketing roles of the owning workspace only."""
+    return media_svc.media_file_response(db, startup_id=membership.startup_id, media_id=media_id)
 
 
 # ---- Copy: platform limits + refine; campaign readouts ----

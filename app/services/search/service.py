@@ -265,8 +265,12 @@ SOURCES: tuple[Source, ...] = (
     Source("survey", "Validation", CORE_ROLES, _fixed("/validation/surveys"), _surveys),
     Source("transaction", "Finance", FINANCE_ROLES, _fixed("/finance"), _transactions),
     Source("invoice", "Finance", FINANCE_ROLES, _fixed("/finance/invoices"), _invoices),
-    Source("campaign", "Marketing", MARKETING_ROLES, _fixed("/marketing/campaigns"), _campaigns),
-    Source("post", "Marketing", MARKETING_ROLES, _fixed("/marketing/calendar"), _posts),
+    Source(
+        "campaign", "Marketing", MARKETING_ROLES, lambda i: f"/marketing/campaigns/{i}", _campaigns
+    ),
+    Source(
+        "post", "Marketing", MARKETING_ROLES, lambda i: f"/marketing/calendar?entry={i}", _posts
+    ),
     Source("keyword", "Marketing", MARKETING_ROLES, _fixed("/marketing/seo"), _keywords),
     Source("segment", "Marketing", MARKETING_ROLES, _fixed("/marketing/segments"), _segments),
 )

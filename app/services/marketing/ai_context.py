@@ -10,6 +10,7 @@ All of it is user-written text, so it goes in as a JSON block inside `<context>`
 escaped, and the system prompt says to treat it as data (same treatment as Validation's evidence).
 """
 
+import hashlib
 import json
 import re
 from typing import Any
@@ -122,3 +123,10 @@ def fence(ctx: dict[str, Any]) -> str:
     """The context as a fenced JSON block. `<` is escaped so text inside can't close the fence."""
     body = json.dumps(ctx, ensure_ascii=False, indent=1).replace("<", "\\u003c")
     return "<context>\n" + body + "\n</context>"
+
+
+def context_hash(ctx: dict[str, Any]) -> str:
+    """Fingerprint of the brand context a generation was written from. Channel statuses are left
+    out: they change whenever a campaign launches and say nothing about the brand."""
+    brand = {k: v for k, v in ctx.items() if k != "channels"}
+    return hashlib.sha256(json.dumps(brand, sort_keys=True, default=str).encode()).hexdigest()[:16]
