@@ -48,6 +48,7 @@ class FakeMailbox:
 
     messages: list[tuple[int, bytes]] = field(default_factory=list)
     uidvalidity: int = 1
+    uidnext: int = 1  # 1 = an empty history, so every message in `messages` is new
     processed: list[int] = field(default_factory=list)
     closed: bool = False
 
@@ -90,7 +91,7 @@ def dsn(
 
 
 class _Handler(socketserver.StreamRequestHandler):
-    def handle(self) -> None:  # a tiny plain SMTP dialogue: enough for smtplib
+    def handle(self) -> None:  # noqa: C901 - a tiny plain SMTP dialogue: enough for smtplib
         srv: FakeSmtpServer = self.server  # type: ignore[assignment]
         self.wfile.write(b"220 fake ESMTP\r\n")
         rcpts: list[str] = []
@@ -105,7 +106,7 @@ class _Handler(socketserver.StreamRequestHandler):
             elif up.startswith("AUTH"):
                 self.wfile.write(b"235 ok\r\n")
             elif up.startswith("MAIL FROM"):
-                self.wfile.write(b"250 ok\r\n")
+                self.wfile.write(srv.mail_reply + b"\r\n")
             elif up.startswith("RCPT TO"):
                 addr = cmd.split("<", 1)[1].split(">", 1)[0].lower()
                 if addr in srv.reject:
@@ -122,8 +123,14 @@ class _Handler(socketserver.StreamRequestHandler):
                         break
                     data += chunk
                 srv.received.append((list(rcpts), message_from_bytes(data, policy=default_policy)))
-                self.wfile.write(b"250 queued\r\n")
+                if (
+                    srv.drop_after_data
+                ):  # accepted the mail but never answers: ambiguous for the client
+                    return
+                self.wfile.write(srv.data_reply + b"\r\n")
             elif up == "QUIT":
+                if srv.drop_on_quit:
+                    return
                 self.wfile.write(b"221 bye\r\n")
                 return
             else:
@@ -138,6 +145,10 @@ class FakeSmtpServer(socketserver.ThreadingTCPServer):
         super().__init__(("127.0.0.1", port), _Handler)
         self.received: list[tuple[list[str], Message]] = []
         self.reject: dict[str, bytes] = {}  # recipient -> full SMTP reply line to RCPT TO
+        self.mail_reply = b"250 ok"  # reply to MAIL FROM
+        self.data_reply = b"250 queued"  # final reply after the message body
+        self.drop_after_data = False  # read the body, then hang up without a final reply
+        self.drop_on_quit = False
         self._thread = threading.Thread(target=self.serve_forever, daemon=True)
 
     @property

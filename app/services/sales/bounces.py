@@ -166,6 +166,21 @@ def poll_bounces(db: Session, mailbox: BounceMailbox | None = None) -> PollResul
         mailbox = get_bounce_mailbox()
     out = PollResult()
     try:
+        known = db.scalar(
+            select(func.count())
+            .select_from(ImapProcessed)
+            .where(ImapProcessed.uidvalidity == mailbox.uidvalidity)
+        )
+        if not known:
+            # First run for this UIDVALIDITY on a possibly shared inbox: start at "now". Old mail
+            # was never ours to read; a baseline ledger row records where we began.
+            baseline = max(mailbox.uidnext - 1, 0)
+            db.execute(
+                pg_insert(ImapProcessed)
+                .values(uidvalidity=mailbox.uidvalidity, uid=baseline, outcome="baseline")
+                .on_conflict_do_nothing(constraint="uq_imap_uidvalidity_uid")
+            )
+            db.commit()
         last_uid = (
             db.scalar(
                 select(func.max(ImapProcessed.uid)).where(

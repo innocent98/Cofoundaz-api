@@ -7,11 +7,13 @@ at import time, and every connection is made from the worker or a request that a
 """
 
 import imaplib
+import re
 import smtplib
 import ssl
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.message import EmailMessage as MimeMessage
+from email.parser import BytesHeaderParser
 from email.policy import SMTP as SMTP_POLICY
 from email.utils import format_datetime, formataddr
 from typing import Protocol
@@ -38,6 +40,11 @@ class OutreachRejectedError(Exception):
 
 class OutreachUnavailableError(Exception):
     """A transient failure (connect, timeout, 4xx): worth a retry later."""
+
+
+class OutreachAmbiguousError(Exception):
+    """Failure after DATA started (timeout/disconnect awaiting the final reply): the mail MAY have
+    been accepted. Never retried; the step is settled as `unknown`."""
 
 
 @dataclass
@@ -68,8 +75,8 @@ def _one_line(value: str) -> str:
 def build_mime(msg: OutreachMessage) -> MimeMessage:
     mime = MimeMessage(policy=SMTP_POLICY)
     mime["From"] = formataddr((_one_line(msg.from_name), msg.from_email))
-    mime["To"] = msg.to
-    mime["Reply-To"] = msg.reply_to
+    mime["To"] = _one_line(msg.to)
+    mime["Reply-To"] = _one_line(msg.reply_to)
     mime["Subject"] = _one_line(msg.subject)
     mime["Date"] = format_datetime(datetime.now(UTC))
     mime["Message-ID"] = msg.message_id
@@ -126,42 +133,94 @@ class ConsoleOutreachSender:
 
 
 class SmtpOutreachSender:
-    """Sends through the cPanel mailbox. Reads its settings at call time, never at import."""
+    """Sends through the cPanel mailbox. Reads its settings at call time, never at import.
+
+    The dialogue is driven phase by phase so failures classify exactly:
+    * before the recipient is accepted (connect, TLS, AUTH, MAIL, RCPT): nothing was sent, so a
+      failure is transient, except a 5xx on RCPT (not 530/535/554), which is a bad address;
+    * once DATA has started, a missing final reply (timeout, disconnect) is AMBIGUOUS: the server
+      may have accepted the mail, so it must never be retried;
+    * a final DATA reply that is not 250 is a definite refusal (policy/spam/quota): transient,
+      never a reason to suppress the contact;
+    * after DATA returns 250 the mail is sent, so a failing QUIT/close is ignored.
+    """
 
     def send(self, msg: OutreachMessage) -> str:
+        security = settings.SALES_OUTREACH_SMTP_SECURITY.strip().lower()
+        mime_bytes = build_mime(msg).as_bytes()
+        client = self._open(security)
+        try:
+            self._envelope(client, msg)
+            self._data(client, mime_bytes)
+        finally:
+            self._close(client)
+        return msg.message_id
+
+    @staticmethod
+    def _open(security: str) -> smtplib.SMTP:
         host = settings.SALES_OUTREACH_SMTP_HOST
         port = settings.SALES_OUTREACH_SMTP_PORT
-        security = settings.SALES_OUTREACH_SMTP_SECURITY.strip().lower()
-        mime = build_mime(msg)
+        client: smtplib.SMTP | None = None
         try:
             if security == "ssl":
-                client: smtplib.SMTP = smtplib.SMTP_SSL(
+                client = smtplib.SMTP_SSL(
                     host, port, timeout=SMTP_TIMEOUT_SECONDS, context=ssl.create_default_context()
                 )
             else:
                 client = smtplib.SMTP(host, port, timeout=SMTP_TIMEOUT_SECONDS)
-            with client:
+            client.ehlo()
+            if security == "starttls":
+                client.starttls(context=ssl.create_default_context())
                 client.ehlo()
-                if security == "starttls":
-                    client.starttls(context=ssl.create_default_context())
-                    client.ehlo()
-                if settings.SALES_OUTREACH_SMTP_USERNAME:
-                    client.login(
-                        settings.SALES_OUTREACH_SMTP_USERNAME,
-                        settings.SALES_OUTREACH_SMTP_PASSWORD,
-                    )
-                client.send_message(mime, from_addr=msg.from_email, to_addrs=[msg.to])
-        except smtplib.SMTPRecipientsRefused as exc:
-            code, detail = next(iter(exc.recipients.values()), (550, b"recipient refused"))
-            self._classify(int(code), detail)
-        except smtplib.SMTPResponseException as exc:
-            self._classify(int(exc.smtp_code), exc.smtp_error)
+            if settings.SALES_OUTREACH_SMTP_USERNAME:
+                client.login(
+                    settings.SALES_OUTREACH_SMTP_USERNAME, settings.SALES_OUTREACH_SMTP_PASSWORD
+                )
         except (smtplib.SMTPException, OSError, ssl.SSLError) as exc:
+            if client is not None:
+                SmtpOutreachSender._close(client)
             raise OutreachUnavailableError(type(exc).__name__) from exc
-        return msg.message_id
+        return client
 
     @staticmethod
-    def _classify(code: int, detail: bytes | str) -> None:
+    def _envelope(client: smtplib.SMTP, msg: OutreachMessage) -> None:
+        try:
+            code, resp = client.mail(msg.from_email)
+            if code != 250:
+                raise smtplib.SMTPSenderRefused(code, resp, msg.from_email)
+            code, resp = client.rcpt(msg.to)
+        except (smtplib.SMTPException, OSError, ssl.SSLError) as exc:
+            raise OutreachUnavailableError(type(exc).__name__) from exc
+        if code in (250, 251):
+            return
+        SmtpOutreachSender._classify_rcpt(code, resp)
+
+    @staticmethod
+    def _data(client: smtplib.SMTP, payload: bytes) -> None:
+        try:
+            code, resp = client.data(payload)
+        except (smtplib.SMTPServerDisconnected, TimeoutError, OSError, ssl.SSLError) as exc:
+            raise OutreachAmbiguousError(type(exc).__name__) from exc
+        except smtplib.SMTPException as exc:
+            raise OutreachAmbiguousError(type(exc).__name__) from exc
+        if code != 250:
+            # A definite refusal of the message itself (spam/policy/quota): not the recipient's fault.
+            raise OutreachUnavailableError(f"data {code} {resp.decode('utf-8', 'replace')[:120]}")
+
+    @staticmethod
+    def _close(client: smtplib.SMTP) -> None:
+        try:
+            client.quit()
+        except (
+            Exception
+        ):  # noqa: BLE001 - the mail is already decided; a failing QUIT changes nothing
+            try:
+                client.close()
+            except Exception as exc:  # noqa: BLE001
+                log.debug(f"[outreach] smtp close failed: {type(exc).__name__}")
+
+    @staticmethod
+    def _classify_rcpt(code: int, detail: bytes | str) -> None:
         text = detail.decode("utf-8", "replace") if isinstance(detail, bytes) else str(detail)
         if 500 <= code < 600 and code not in (530, 535, 554):
             # 530/535 are our own login being refused and 554 is often a policy block on the
@@ -185,6 +244,7 @@ class BounceMailbox(Protocol):
     """Read side of the outreach mailbox. UIDs are only meaningful within one UIDVALIDITY."""
 
     uidvalidity: int
+    uidnext: int
 
     def fetch_after(self, last_uid: int) -> list[tuple[int, bytes]]: ...
 
@@ -216,6 +276,9 @@ class ImapBounceMailbox:
             self._conn.select("INBOX")
             _, data = self._conn.response("UIDVALIDITY")
             self.uidvalidity = int(data[0]) if data and data[0] else 0
+            typ, st = self._conn.status("INBOX", "(UIDNEXT)")
+            m = re.search(rb"UIDNEXT\s+(\d+)", st[0] if st and st[0] else b"")
+            self.uidnext = int(m.group(1)) if typ == "OK" and m else 1
         except (imaplib.IMAP4.error, OSError, ssl.SSLError, ValueError) as exc:
             raise OutreachUnavailableError(type(exc).__name__) from exc
 
@@ -227,11 +290,26 @@ class ImapBounceMailbox:
         uids = sorted(int(u) for u in data[0].split() if int(u) > last_uid)[:IMAP_FETCH_LIMIT]
         out: list[tuple[int, bytes]] = []
         for uid in uids:
-            typ, parts = self._conn.uid("FETCH", str(uid), "(BODY.PEEK[])")
-            if typ != "OK" or not parts or not isinstance(parts[0], tuple):
+            # Shared inbox: peek at the headers first and only pull the full body of delivery
+            # reports; everything else is handed back as headers only (it parses as "not a bounce").
+            head = self._fetch(uid, "(BODY.PEEK[HEADER])")
+            if head is None:
                 break  # stop here: later UIDs must not be ledgered past a message we failed to read
-            out.append((uid, bytes(parts[0][1])))
+            parsed = BytesHeaderParser().parsebytes(head)
+            is_report = parsed.get_content_type() == "multipart/report" and (
+                str(parsed.get_param("report-type") or "").lower() == "delivery-status"
+            )
+            body = self._fetch(uid, "(BODY.PEEK[])") if is_report else head
+            if body is None:
+                break
+            out.append((uid, body))
         return out
+
+    def _fetch(self, uid: int, what: str) -> bytes | None:
+        typ, parts = self._conn.uid("FETCH", str(uid), what)
+        if typ != "OK" or not parts or not isinstance(parts[0], tuple):
+            return None
+        return bytes(parts[0][1])
 
     def mark_processed(self, uid: int) -> None:
         """Mark a handled bounce. NEVER deletes: the mailbox may be a shared inbox. The message is

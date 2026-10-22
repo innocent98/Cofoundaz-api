@@ -1,4 +1,4 @@
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -105,6 +105,22 @@ class Settings(BaseSettings):
                 f"SALES_OUTREACH_*_HOST must be a bare hostname such as mail.example.com (got {v!r})"
             )
         return host
+
+    @model_validator(mode="after")
+    def require_unsubscribe_key_in_production(self) -> "Settings":
+        """Unsubscribe links live in recipients' inboxes for years. Signing them with SECRET_KEY
+        alone would break every one of them the day SECRET_KEY rotates, so a production
+        deployment that sends outreach must set its own key (dev falls back to SECRET_KEY)."""
+        if (
+            self.ENVIRONMENT == "production"
+            and self.SALES_OUTREACH_PROVIDER.strip()
+            and not self.SALES_OUTREACH_UNSUBSCRIBE_KEY.strip()
+        ):
+            raise ValueError(
+                "SALES_OUTREACH_UNSUBSCRIBE_KEY must be set in production when "
+                "SALES_OUTREACH_PROVIDER is set"
+            )
+        return self
 
     @field_validator("SALES_OUTREACH_SMTP_SECURITY")
     @classmethod

@@ -395,3 +395,27 @@ def test_send_tick_job_handler_runs_the_tick(db, monkeypatch):
     sender = FakeSender()
     monkeypatch.setattr(sending_svc, "get_outreach_sender", lambda: sender)
     handle_send_tick(db, Job(type="x", payload={}))  # nothing due: must not raise
+
+
+def test_list_unsubscribe_get_from_a_mail_client_redirects_to_the_fe_page(client, db, monkeypatch):
+    from app.services.sales.tokens import sign_send
+
+    monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
+    token = sign_send(uuid.uuid4())
+    r = client.get(
+        f"{PUBLIC}/{token}",
+        headers={"Accept": "text/html,application/xhtml+xml"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == f"https://app.example.test/unsubscribe/{token}"
+    # a forged token never redirects, and the FE's own JSON fetch is untouched
+    assert (
+        client.get(
+            f"{PUBLIC}/forged", headers={"Accept": "text/html"}, follow_redirects=False
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(f"{PUBLIC}/{token}", headers={"Accept": "application/json"}).status_code == 404
+    )  # unknown send

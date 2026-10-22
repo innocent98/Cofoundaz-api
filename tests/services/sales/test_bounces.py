@@ -77,7 +77,7 @@ def test_poll_applies_a_bounce_suppresses_stops_and_marks_the_mail(db, cfg):
     db.refresh(sends[0])
     assert sends[0].status == SendStatus.bounced and sends[0].bounce_code == "5.1.1"
     assert db.scalar(select(SalesSuppression.email)) == rows[0].email
-    assert db.scalar(select(ImapProcessed.outcome)) == "bounced"
+    assert db.scalar(select(ImapProcessed.outcome).where(ImapProcessed.uid == 7)) == "bounced"
 
 
 def test_poll_is_idempotent_across_repeats_and_restarts(db, cfg):
@@ -91,7 +91,7 @@ def test_poll_is_idempotent_across_repeats_and_restarts(db, cfg):
     second = bounce_svc.poll_bounces(db, FakeMailbox(messages=list(msgs)))  # same mail, new poller
     assert (first.bounced, first.ignored) == (1, 1)
     assert (second.seen, second.bounced) == (0, 0)  # both UIDs are in the ledger already
-    assert db.query(ImapProcessed).count() == 2
+    assert db.query(ImapProcessed).count() == 3  # the two messages + the first-run baseline
     assert box.processed == [3]  # only real bounces are moved; other mail is left alone
 
 
@@ -182,3 +182,16 @@ def test_poll_reports_not_configured_without_touching_anything(db, monkeypatch):
 
     monkeypatch.setattr(settings, "SALES_OUTREACH_PROVIDER", "")
     assert bounce_svc.poll_bounces(db).configured is False
+
+
+def test_first_run_starts_at_uidnext_and_never_backfills_a_shared_inbox(db, cfg):
+    s, rows, sends = _sent(db)
+    old = dsn(send_id=sends[0].id, recipient=rows[0].email)
+    box = FakeMailbox(messages=[(3, old)], uidnext=50)  # 49 messages already existed
+    res = bounce_svc.poll_bounces(db, box)
+    assert res.seen == 0 and box.processed == []
+    assert db.get(SequenceEnrollment, rows[0].id).status == EnrollmentStatus.active
+    assert db.scalar(select(ImapProcessed.outcome)) == "baseline"
+    # mail that arrives after the baseline is read
+    box.messages.append((50, old))
+    assert bounce_svc.poll_bounces(db, box).bounced == 1

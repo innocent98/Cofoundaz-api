@@ -182,12 +182,12 @@ The email is masked. POST is idempotent. Bad/forged token → 404 (`public_unsub
   }
 }
 ```
-Page flow: GET on load (if `unsubscribed:true` show "You're already unsubscribed"), button → POST, then "You won't hear from {sender} again". The POST must not require a body (mail clients one-click it with a form body).
+A browser/mail client opening the API GET URL with `Accept: text/html` is `303`-redirected to this FE page, so always call the API with `Accept: application/json` (or `*/*`). Page flow: GET on load (if `unsubscribed:true` show "You're already unsubscribed"), button → POST, then "You won't hear from {sender} again". The POST must not require a body (mail clients one-click it with a form body).
 
 ## 7. "Write with AI" and deal follow-up
 Step draft: `POST /sales/sequences/{id}/steps/{i}/write` body `{instructions?}` → **202** (`draft_requested_202`), poll `GET /sales/drafts/{id}` until `status` is `ready|failed` (`draft_ready`; the stub LLM wording is placeholder text). It appends nothing: drop `subject`/`body` into the step yourself. `failed` has `error` (`over_budget|generation_failed|bad_output|target_missing`).
 Follow-up: `POST /sales/deals/{id}/follow-up` (202, `follow_up_requested_202`; second call while generating → 409 `DRAFT_IN_PROGRESS`), `GET /sales/deals/{id}/follow-up` → latest draft or `null` (`follow_up_latest_ready`).
-`POST /sales/deals/{id}/follow-up/send` body `{draft_id, subject, body}` sends **once** to the deal contact. Errors: `SENDING_NOT_CONFIGURED` 409 (live: `follow_up_send_not_configured`), `SENDING_PAUSED` 409, `RECIPIENT_SUPPRESSED` 409, `DRAFT_NOT_READY` 409, `DRAFT_ALREADY_SENT` 409, `SEND_LIMIT_REACHED` 429 (hourly mailbox cap, 100/day, or 1 per contact per day), `SEND_FAILED` 503 (draft stays sendable), `RECIPIENT_REJECTED` 422, 422 if the contact has no email.
+`POST /sales/deals/{id}/follow-up/send` body `{draft_id, subject, body}` sends **once** to the deal contact. Errors: `SENDING_NOT_CONFIGURED` 409 (live: `follow_up_send_not_configured`), `SENDING_PAUSED` 409, `RECIPIENT_SUPPRESSED` 409, `DRAFT_NOT_READY` 409, `DRAFT_ALREADY_SENT` 409, `SEND_LIMIT_REACHED` 429 (hourly mailbox cap, 100/day, or 1 per contact per day), `SEND_FAILED` 503 (draft stays sendable), `SEND_UNCERTAIN` 503 (the mail may have been delivered: tell the member to check their mailbox/the contact before trying again; the draft stays marked sent; **unit-tested only**), `RECIPIENT_REJECTED` 422, 422 if the contact has no email.
 ```json
 {
   "error": {

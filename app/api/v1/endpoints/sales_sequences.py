@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -39,6 +40,8 @@ from app.services.sales import sending as sending_svc
 from app.services.sales import sequences as seq_svc
 from app.services.sales import unsubscribe as unsub_svc
 from app.services.sales.activities import create_activity
+from app.services.sales.outreach_render import unsubscribe_page_url
+from app.services.sales.tokens import verify_token
 
 router = APIRouter()
 public_router = APIRouter()
@@ -316,13 +319,17 @@ def send_follow_up(
 
 
 # ---- public unsubscribe (no auth: the signed token is the credential) ----
-@public_router.get("/unsubscribe/{token}", response_model=dict[str, Any])
+@public_router.get("/unsubscribe/{token}", response_model=None)
 @limiter.limit("30/minute")
 def unsubscribe_status(
-    request: Request,  # noqa: ARG001 - required by the rate limiter
+    request: Request,
     token: str,
     db: Session = Depends(get_db),  # noqa: B008
-) -> dict[str, Any]:
+) -> Any:
+    # A mail client or browser that opens the List-Unsubscribe URL asks for HTML: send it to the
+    # FE page (only for a token we signed). The FE's own fetch asks for JSON and gets the status.
+    if "text/html" in request.headers.get("accept", "") and verify_token(token) is not None:
+        return RedirectResponse(unsubscribe_page_url(token), status_code=303)
     return success_response(unsub_svc.unsubscribe_status(db, token))
 
 

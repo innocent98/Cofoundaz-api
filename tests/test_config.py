@@ -44,3 +44,19 @@ def test_outreach_hosts_are_normalised_and_validated():
         Settings(**base, SALES_OUTREACH_SMTP_HOST="mail example.com:465/x")
     with pytest.raises(ValidationError):
         Settings(**base, SALES_OUTREACH_SMTP_SECURITY="tls")
+
+
+def test_production_outreach_requires_its_own_unsubscribe_key():
+    import pytest
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    base = {"DATABASE_URL": "postgresql://u:p@h/d", "SECRET_KEY": "k", "ENVIRONMENT": "production"}
+    Settings(**base)  # outreach not in use: no key needed
+    Settings(**base, SALES_OUTREACH_PROVIDER="smtp", SALES_OUTREACH_UNSUBSCRIBE_KEY="own-key")
+    with pytest.raises(ValidationError):
+        Settings(**base, SALES_OUTREACH_PROVIDER="smtp")
+    Settings(
+        DATABASE_URL="postgresql://u:p@h/d", SECRET_KEY="k", SALES_OUTREACH_PROVIDER="smtp"
+    )  # dev

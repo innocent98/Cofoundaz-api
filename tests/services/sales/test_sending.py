@@ -25,6 +25,7 @@ from app.db.models.sales_sequences import (
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform import events as events_mod
+from app.platform.outreach import OutreachAmbiguousError
 from app.services.sales import sending as sending_svc
 from app.services.sales.stages import get_settings
 from app.services.sales.suppression import suppress
@@ -481,3 +482,89 @@ def test_two_workers_never_send_the_same_step_twice(engine, cfg):
                 cleanup.delete(usr)
             cleanup.commit()
     assert EmailSequence  # (import kept for the cascade on cleanup)
+
+
+def test_ambiguous_failure_after_data_is_never_retried_and_advances(db, cfg):
+    _, _, _, rows = _setup(db)
+    fake = FakeSender()
+    fake.fail[rows[0].email] = OutreachAmbiguousError("TimeoutError")
+    res = sending_svc.run_send_tick(db, now=NOW, sender=fake)
+    assert res.unknown == 1 and res.failed == 0
+    send = db.scalar(select(SequenceSend))
+    e = db.get(SequenceEnrollment, rows[0].id)
+    assert send.status == SendStatus.unknown and "ambiguous" in send.error
+    assert (send.attempts, e.current_step) == (1, 1)  # moved on, not retried
+    assert e.next_send_at - send.sent_at == timedelta(days=3)
+    sending_svc.run_send_tick(db, now=NOW + timedelta(minutes=30), sender=fake)
+    assert db.scalar(select(SequenceSend.attempts)) == 1 and fake.sent == []
+    # it still counts toward the caps: the mail may really have gone out
+    assert sending_svc.sending_status(db, e.startup_id, NOW)["sent_today"] == 1
+
+
+def test_suppression_that_lands_during_the_gap_before_smtp_wins(db, cfg):
+    _, s, _, rows = _setup(db)
+    fake = FakeSender()
+
+    def unsubscribe_now(_msg):  # not reached: the re-check happens before the sender is called
+        raise AssertionError("must not send")
+
+    fake.before_send = unsubscribe_now
+    reservation = sending_svc.reserve_step(db, rows[0].id, NOW)
+    suppress(db, s.id, rows[0].email, SuppressionReason.unsubscribed)
+    db.commit()
+    assert sending_svc.deliver(db, reservation, fake) == "skipped"
+    send = db.scalar(select(SequenceSend))
+    assert (send.status, send.error) == (SendStatus.failed, "suppressed")
+    assert db.get(SequenceEnrollment, rows[0].id).status == EnrollmentStatus.unsubscribed
+    assert fake.sent == []
+
+
+def test_a_member_stop_between_reserve_and_send_wins_too(db, cfg):
+    from app.services.sales import sequences as seq_svc
+
+    u, s, _, rows = _setup(db)
+    reservation = sending_svc.reserve_step(db, rows[0].id, NOW)
+    seq_svc.stop_enrollment(db, s.id, rows[0].id, actor_id=u.id)
+    db.commit()
+    fake = FakeSender()
+    assert sending_svc.deliver(db, reservation, fake) == "skipped" and fake.sent == []
+
+
+def test_fair_order_interleaves_and_splits_the_hourly_cap(monkeypatch):
+    import uuid
+
+    monkeypatch.setattr(settings, "SALES_OUTREACH_HOURLY_LIMIT", 30)
+    a, b = uuid.uuid4(), uuid.uuid4()
+    items = [(uuid.uuid4(), a) for _ in range(4)] + [(uuid.uuid4(), b) for _ in range(2)]
+    ordered, share = sending_svc.fair_order(items)
+    owners = dict(items)
+    assert [owners[i] for i in ordered] == [a, b, a, b, a, a]
+    assert share == 15
+    assert sending_svc.fair_order(items[:4])[1] is None  # one workspace waiting: the whole cap
+
+
+def test_one_busy_workspace_cannot_starve_a_small_one(db, monkeypatch):
+    configure(monkeypatch, hourly=4)
+    _, _, _, big = _setup(db, n=10)
+    _, small_s, _, small = _setup(db, n=2)
+    for e in big:  # the big workspace's backlog is the OLDEST: strict FIFO would give it every slot
+        e.next_send_at = NOW - timedelta(hours=2)
+    db.commit()
+    fake = FakeSender()
+    sending_svc.run_send_tick(db, now=NOW, sender=fake)
+    to = [m.to for m in fake.sent]
+    assert len(to) == 4
+    assert sum(1 for e in small if e.email in to) == 2  # the small workspace got its slice
+    assert sum(1 for e in big if e.email in to) == 2  # and the big one was held to its own
+
+
+def test_follow_up_ambiguous_send_keeps_the_draft_claimed(db, cfg):
+    u, s, d, c, draft = _follow_up_setup(db)
+    fake = FakeSender()
+    fake.fail["buyer@prospect.test"] = OutreachAmbiguousError("TimeoutError")
+    with pytest.raises(AppError) as e:
+        _send_follow_up(db, u, s, d, draft, fake)
+    assert e.value.code == "SEND_UNCERTAIN"
+    db.refresh(draft)
+    assert draft.sent_at is not None  # no blind retry
+    assert db.scalar(select(SequenceSend.status)) == SendStatus.unknown
