@@ -70,13 +70,25 @@ def test_one_certificate_per_course_per_person_per_workspace(db):
     now = datetime.now(UTC)
     db.add(
         Certificate(
-            startup_id=s.id, user_id=u.id, course_id="c", credential_code="a", issued_at=now
+            startup_id=s.id,
+            user_id=u.id,
+            course_id="c",
+            credential_code="a",
+            issued_at=now,
+            holder_name="A",
+            verify_code="CFZ-AAAA-AAAA",
         )
     )
     db.flush()
     db.add(
         Certificate(
-            startup_id=s.id, user_id=u.id, course_id="c", credential_code="b", issued_at=now
+            startup_id=s.id,
+            user_id=u.id,
+            course_id="c",
+            credential_code="b",
+            issued_at=now,
+            holder_name="A",
+            verify_code="CFZ-BBBB-BBBB",
         )
     )
     with pytest.raises(IntegrityError):
@@ -90,6 +102,8 @@ def test_learning_recommendation_persists(db):
     s = create_startup(db, owner=create_user(db))
     row = LearningRecommendation(
         startup_id=s.id,
+        course_id="build-scope-the-mvp",
+        context_key="abc123",
         stage=StartupStage.build.value,
         reason="Recommended for your build stage.",
         status=EnrichmentStatus.generating,
@@ -106,14 +120,78 @@ def test_credential_codes_are_unique(db):
     now = datetime.now(UTC)
     db.add(
         Certificate(
-            startup_id=s.id, user_id=u.id, course_id="c1", credential_code="same", issued_at=now
+            startup_id=s.id,
+            user_id=u.id,
+            course_id="c1",
+            credential_code="same",
+            issued_at=now,
+            holder_name="A",
+            verify_code="CFZ-CCCC-CCCC",
         )
     )
     db.flush()
     db.add(
         Certificate(
-            startup_id=s.id, user_id=u.id, course_id="c2", credential_code="same", issued_at=now
+            startup_id=s.id,
+            user_id=u.id,
+            course_id="c2",
+            credential_code="same",
+            issued_at=now,
+            holder_name="A",
+            verify_code="CFZ-DDDD-DDDD",
         )
+    )
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_verify_codes_are_unique(db):
+    u, s = _ctx(db)
+    now = datetime.now(UTC)
+    for n, course in enumerate(("c1", "c2")):
+        db.add(
+            Certificate(
+                startup_id=s.id,
+                user_id=u.id,
+                course_id=course,
+                credential_code=f"code-{n}",
+                issued_at=now,
+                holder_name="A",
+                verify_code="CFZ-SAME-SAME",
+            )
+        )
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_one_reason_per_hero_course_per_workspace(db):
+    from app.db.models.learning import LearningRecommendation
+
+    s = create_startup(db, owner=create_user(db))
+    for course in ("a", "a"):
+        db.add(LearningRecommendation(startup_id=s.id, course_id=course, context_key="k"))
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_a_note_and_a_position_are_unique_per_user_and_lesson(db):
+    from app.db.models.learning import LessonNote
+
+    u, s = _ctx(db)
+    db.add(LessonNote(startup_id=s.id, user_id=u.id, lesson_id="c-1", body="a"))
+    db.flush()
+    db.add(LessonNote(startup_id=s.id, user_id=u.id, lesson_id="c-1", body="b"))
+    with pytest.raises(IntegrityError):
+        db.flush()
+    db.rollback()
+
+
+def test_a_playback_position_cannot_be_negative(db):
+    from app.db.models.learning import LessonPosition
+
+    u, s = _ctx(db)
+    db.add(
+        LessonPosition(startup_id=s.id, user_id=u.id, course_id="c", lesson_id="c-1", position_s=-1)
     )
     with pytest.raises(IntegrityError):
         db.flush()

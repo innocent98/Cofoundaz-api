@@ -28,6 +28,7 @@ from app.db.models.enums import (
 )
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
+from app.db.models.learning import AcademyArticle, AcademyCourse
 from app.db.models.marketing import AudienceSegment, Campaign, ContentCalendarEntry, SeoKeyword
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
@@ -308,11 +309,43 @@ def _sales_leads(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
     )
 
 
+def _academy_courses(db: Session, _s: Startup, _u: User, p: str) -> Query[Any]:
+    # Catalog content is the same for every workspace; the source's role gate (CORE_ROLES) is the
+    # access rule. Private lesson notes are deliberately not a source.
+    return (
+        db.query(AcademyCourse.id, AcademyCourse.title, AcademyCourse.summary)
+        .filter(_has(AcademyCourse.title, p) | _has(AcademyCourse.summary, p))
+        .order_by(AcademyCourse.position)
+    )
+
+
+def _academy_articles(db: Session, _s: Startup, _u: User, p: str) -> Query[Any]:
+    return (
+        db.query(AcademyArticle.id, AcademyArticle.title, AcademyArticle.summary)
+        .filter(_has(AcademyArticle.title, p) | _has(AcademyArticle.summary, p))
+        .order_by(AcademyArticle.position)
+    )
+
+
 def _fixed(href: str) -> Callable[[Any], str]:
     return lambda _id: href
 
 
 SOURCES: tuple[Source, ...] = (
+    Source(
+        "course",
+        "Learning Academy",
+        CORE_ROLES,
+        lambda i: f"/academy/courses/{i}",
+        _academy_courses,
+    ),
+    Source(
+        "article",
+        "Learning Academy",
+        CORE_ROLES,
+        lambda i: f"/academy/articles/{i}",
+        _academy_articles,
+    ),
     Source("milestone", "Roadmap", ALL_ROLES, _fixed("/roadmap/milestones"), _milestones),
     Source("roadmap_task", "Roadmap", ALL_ROLES, _fixed("/roadmap"), _roadmap_tasks),
     Source("mission_task", "Mission", MISSION_ROLES, _fixed("/mission"), _mission_tasks),
@@ -350,6 +383,8 @@ _SUBTITLE: dict[str, Callable[[Any], str | None]] = {
     "milestone": lambda v: f"Milestone · due {v.isoformat()}" if v else "Milestone",
     "roadmap_task": lambda v: f"Task in {v}" if v else "Roadmap task",
     "mission_task": lambda v: f"Mission task · {v.isoformat()}",
+    "course": lambda _v: "Course",
+    "article": lambda _v: "Article",
     "document": lambda _v: "Document",
     "conversation": lambda _v: "AI conversation",
     "calendar_event": lambda v: f"Event · {v.isoformat()}" if v else "Event",

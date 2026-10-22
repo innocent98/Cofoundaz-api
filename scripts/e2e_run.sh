@@ -127,6 +127,11 @@ docker compose exec -T db psql -U "${PG_USER}" -d "${ADMIN_DB}" \
 echo "==> [sanity] alembic upgrade head on ${E2E_DB}"
 poetry run alembic upgrade head >/dev/null
 
+# The Academy catalog lives in content/academy/*.md and reaches the database through this loader
+# (the deploy `migrate` step runs the same command); the learning journey reads it back over HTTP.
+echo "==> [sanity] load Academy content into ${E2E_DB}"
+poetry run python -m app.services.learning.content
+
 echo "==> [sanity] app imports"
 poetry run python -c "import app.main" >/dev/null
 

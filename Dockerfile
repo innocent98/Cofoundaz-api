@@ -162,6 +162,8 @@ COPY --from=builder --chown=root:root /opt/venv /opt/venv
 COPY --chown=root:root alembic.ini /app/alembic.ini
 COPY --chown=root:root alembic/ /app/alembic/
 COPY --chown=root:root app/ /app/app/
+# Academy course, article and path markdown; the migrate step loads it into the database.
+COPY --chown=root:root content/ /app/content/
 
 # The only writable paths in the image. LOCAL_STORAGE_DIR and EMAIL_FILE_DIR
 # default under ./var, so these must exist and be owned by appuser for the

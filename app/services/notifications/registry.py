@@ -118,6 +118,17 @@ def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
     return _with_roles(db, payload["startup_id"], kpi_roles(payload))
 
 
+def _learner(event: str) -> Callable[[Session, dict], list[uuid.UUID]]:
+    """The learner the event is about, while they still hold an Academy role (F or TM)."""
+    roles = AUDIENCE[event]
+
+    def _recipients(db: Session, payload: dict) -> list[uuid.UUID]:
+        learner = payload.get("user_id")
+        return [u for u in _with_roles(db, payload["startup_id"], roles) if str(u) == str(learner)]
+
+    return _recipients
+
+
 def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
@@ -316,6 +327,21 @@ SPECS: dict[str, NotifSpec] = {
         _deal_won_once_a_day,
         lambda p: f"Deal moved to Closed Won: {p.get('name', 'a deal')} 🎉",
         lambda _p: "",
+    ),
+    # PRD 17 notifications copy: CTA "Download it" / "Start course".
+    "learning.course.completed": NotifSpec(
+        _learner("learning.course.completed"),
+        lambda p: f"Certificate earned: {p.get('course_title') or 'your course'} \U0001f393",
+        lambda _p: "Download it",
+    ),
+    "learning.course.recommended": NotifSpec(
+        _learner("learning.course.recommended"),
+        lambda p: (
+            f"New course recommended for your stage: {p['course_title']}"
+            if p.get("course_title")
+            else "New course recommended for your stage"
+        ),
+        lambda _p: "Start course",
     ),
     "sales.deal.stalled": NotifSpec(
         _deal_stalled_recipients,

@@ -30,6 +30,8 @@ SOURCE_GATES = {
     "sales_account": CORE,
     "sales_contact": CORE,
     "sales_lead": CORE,
+    "course": CORE,
+    "article": CORE,
 }
 PAGE_GATES = {
     "/mission": CORE,

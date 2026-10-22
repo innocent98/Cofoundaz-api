@@ -24,6 +24,7 @@ from app.api.v1.endpoints import (
     search,
     team,
     validation,
+    verify,
 )
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.onboarding import router as onboarding_router
@@ -50,6 +51,7 @@ api_router.include_router(journal.router, prefix="/journal", tags=["journal"])
 api_router.include_router(documents.router, tags=["documents"])
 api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(learning.router, prefix="/learning", tags=["learning"])
+api_router.include_router(verify.router, prefix="/verify", tags=["verify"])
 api_router.include_router(marketing.router, prefix="/marketing", tags=["marketing"])
 api_router.include_router(sales.router, prefix="/sales", tags=["sales"])
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])

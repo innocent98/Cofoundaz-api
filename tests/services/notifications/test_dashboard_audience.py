@@ -63,7 +63,12 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
 }
 # Addressed to named users, not to a whole role audience (stalled: the deal owner, else the
 # founders; always inside the Sales hub audience, covered in test_sales_notifications.py).
-DIRECT = {"team.comment.mentioned", "sales.deal.stalled"}
+DIRECT = {
+    "team.comment.mentioned",
+    "sales.deal.stalled",
+    "learning.course.completed",  # the learner, covered in test_learning_notifications.py
+    "learning.course.recommended",
+}
 
 
 def _team(db):

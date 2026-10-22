@@ -120,7 +120,11 @@ services:
     # both concurrently and fail with `image ... already exists`. The api service
     # owns the build; this service consumes the resulting tag.
     image: ${API_IMAGE:-ghcr.io/innocent98/cofoundaz-api:latest}
-    command: ["alembic", "upgrade", "head"]
+    # Then load the Academy content (content/academy/*.md) into the database. It is an idempotent
+    # upsert by slug, so every deploy converges the catalog to what shipped in the image. A
+    # content file that fails validation exits non-zero and blocks the deploy, like a bad
+    # migration would.
+    command: ["sh", "-c", "alembic upgrade head && python -m app.services.learning.content"]
     env_file:
       # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
       # only value ever used in a real deploy.
