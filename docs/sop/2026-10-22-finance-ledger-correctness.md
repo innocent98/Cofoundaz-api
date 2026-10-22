@@ -27,7 +27,7 @@
 - Config: none new. `API_PUBLIC_URL` is used to build absolute local links (relative when empty).
 
 ## Verification
-- Full unit suite on scratch Postgres: 3587 passed at 97.45%). Lint (black, isort, ruff, mypy, bandit, pylint 9.88 clean; migrations: single head, fresh upgrade, `alembic check`, downgrade to base and up again.
+- Full unit suite on scratch Postgres: 3587 passed at 97.45% coverage (gate 95). Lint (black, isort, ruff, mypy, bandit, pylint 9.88 clean; migrations: single head, fresh upgrade, `alembic check`, downgrade to base and up again.
 - Live e2e (own server, scratch DB): finance journeys pass, including receipts per role, legacy local row, tampered link, budgets, pagination, 409. One unrelated e2e (`test_marketing_prd_a`, a UTC-vs-local-time assertion) fails on this host only.
 - **Not live-verified**: anything against real Cloudinary (authenticated upload, signed download URL, legacy rename), link expiry over real time (unit test with a controlled clock), two simultaneous generate calls over HTTP (unit test with two real sessions), investor 403 (investors cannot be invited yet; unit test).
 
