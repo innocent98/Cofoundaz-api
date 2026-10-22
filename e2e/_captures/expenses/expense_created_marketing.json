@@ -1,19 +1,19 @@
 {
   "data": {
-    "id": "8a6bb79b-f826-49a3-90cb-768d002209cb",
+    "id": "68afed88-3a67-42fe-a77a-5e7320a3c226",
     "vendor": "Google Ads",
     "category": "Marketing",
-    "expense_date": "2026-09-30",
+    "expense_date": "2026-10-22",
     "amount_minor": 8000000,
     "currency": "NGN",
     "recurring": false,
     "notes": null,
     "has_receipt": false,
     "receipt_url": null,
-    "transaction_id": "9ca46658-6d4c-4f3e-a07d-9debb28fc18b",
-    "created_by": "6bd91cb4-d31a-449d-a75a-9a89a464bbf1",
-    "created_at": "2026-09-30T11:03:57.313714Z",
-    "updated_at": "2026-09-30T11:03:57.313714Z"
+    "transaction_id": "dc78bd85-d4f8-4441-b709-9218d6e08b07",
+    "created_by": "c2a03334-d73d-4864-8eb0-92bae45399ef",
+    "created_at": "2026-10-22T13:26:44.778293+01:00",
+    "updated_at": "2026-10-22T13:26:44.778293+01:00"
   },
   "meta": null
 }

@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "0275d6b0-8a5a-4428-9263-234cf8c71714",
+    "vendor": "Cloud host",
+    "category": "Hosting",
+    "expense_date": "2026-10-22",
+    "amount_minor": 5000,
+    "currency": "NGN",
+    "recurring": false,
+    "notes": null,
+    "has_receipt": false,
+    "receipt_url": null,
+    "transaction_id": "9bd1876f-c042-4ff8-8965-dbd8345197b3",
+    "created_by": "3c60b4f8-7568-4354-8e4c-9c26e1c47720",
+    "created_at": "2026-10-22T13:26:38.199194+01:00",
+    "updated_at": "2026-10-22T13:26:38.199194+01:00"
+  },
+  "meta": null
+}

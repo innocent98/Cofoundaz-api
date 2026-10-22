@@ -9,7 +9,7 @@
       },
       {
         "field": "amount_minor",
-        "message": "Input should be greater than or equal to 0"
+        "message": "Input should be greater than 0"
       }
     ]
   }

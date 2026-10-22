@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid pagination cursor.",
+    "field_errors": [
+      {
+        "field": "cursor",
+        "message": "This page link is no longer valid."
+      }
+    ]
+  }
+}

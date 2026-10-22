@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Invoices (Module 12, Slice 3)
 
+> **Superseded in part (slice c, ledger correctness):** `GET /finance/invoices` is paginated (`limit` default 100, `cursor`, `meta.next_cursor`, `meta.total_estimate`). See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_invoices.py::test_finance_invoices_journey` was run against the live
 > app (`bash scripts/e2e_run.sh`, **61 e2e passed**, no Resend-429 flake) and every **response
 > body** below is pasted **verbatim** from the 40 captures it wrote to

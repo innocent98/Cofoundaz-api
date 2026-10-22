@@ -3,17 +3,22 @@ from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
-from app.core.envelope import success_response
-from app.core.errors import AppError
+from app.core.config import settings
+from app.core.envelope import Meta, success_response
+from app.core.errors import AppError, NotFound
+from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT
 from app.db.models.enums import FINANCE_ROLES, InvoiceStatus, TransactionDirection
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.platform.signed_urls import InvalidSignedToken, verify_key
+from app.platform.storage import LocalStorage, get_storage
 from app.schemas.budget import BudgetCreate, BudgetUpdate, SeedRequest
 from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
@@ -21,6 +26,7 @@ from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 from app.services.finance import budgets as budget_svc
 from app.services.finance import cashflow as cashflow_svc
+from app.services.finance import categories as category_svc
 from app.services.finance import expenses as expense_svc
 from app.services.finance import invoices as invoice_svc
 from app.services.finance import model_service as model_svc
@@ -57,11 +63,13 @@ def list_transactions(
     direction: TransactionDirection | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),  # noqa: B008
+    cursor: str | None = None,
     membership: Membership = Depends(_finance),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = finance_svc.list_transactions(
+    rows, next_cursor, total = finance_svc.list_transactions(
         db,
         startup_id=membership.startup_id,
         category=category,
@@ -69,9 +77,23 @@ def list_transactions(
         direction=direction,
         date_from=date_from,
         date_to=date_to,
+        limit=limit,
+        cursor=cursor,
     )
     return success_response(
-        {"transactions": [finance_svc.serialize_transaction(r).model_dump() for r in rows]}
+        {"transactions": [finance_svc.serialize_transaction(r).model_dump() for r in rows]},
+        Meta(next_cursor=next_cursor, total_estimate=total),
+    )
+
+
+@router.get("/categories", response_model=dict[str, Any])
+def list_categories(
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        {"categories": category_svc.list_categories(db, startup_id=membership.startup_id)}
     )
 
 
@@ -157,20 +179,28 @@ def create_invoice(
 @router.get("/invoices", response_model=dict[str, Any])
 def list_invoices(
     status: Literal["draft", "sent", "paid", "overdue"] | None = None,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),  # noqa: B008
+    cursor: str | None = None,
     membership: Membership = Depends(_finance),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     today = datetime.now(UTC).date()
-    rows = invoice_svc.list_invoices(
-        db, startup_id=membership.startup_id, status=status, today=today
+    rows, next_cursor, total = invoice_svc.list_invoices(
+        db,
+        startup_id=membership.startup_id,
+        status=status,
+        today=today,
+        limit=limit,
+        cursor=cursor,
     )
     return success_response(
         {
             "invoices": [
                 invoice_svc.serialize_invoice(r, today=today).model_dump(mode="json") for r in rows
             ]
-        }
+        },
+        Meta(next_cursor=next_cursor, total_estimate=total),
     )
 
 
@@ -362,11 +392,13 @@ def list_expenses(
     date_from: date | None = None,
     date_to: date | None = None,
     recurring: bool | None = None,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),  # noqa: B008
+    cursor: str | None = None,
     membership: Membership = Depends(_finance),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = expense_svc.list_expenses(
+    rows, next_cursor, total = expense_svc.list_expenses(
         db,
         startup_id=membership.startup_id,
         category=category,
@@ -374,9 +406,12 @@ def list_expenses(
         date_from=date_from,
         date_to=date_to,
         recurring=recurring,
+        limit=limit,
+        cursor=cursor,
     )
     return success_response(
-        {"expenses": [expense_svc.serialize_expense(r).model_dump(mode="json") for r in rows]}
+        {"expenses": [expense_svc.serialize_expense(r).model_dump(mode="json") for r in rows]},
+        Meta(next_cursor=next_cursor, total_estimate=total),
     )
 
 
@@ -461,6 +496,52 @@ async def upload_expense_receipt(
     return success_response(expense_svc.serialize_expense(exp).model_dump(mode="json"))
 
 
+@router.get("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
+def get_expense_receipt(
+    expense_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The only way to read a receipt: a signed link that expires in a few minutes."""
+    link = expense_svc.receipt_link(
+        db,
+        startup_id=membership.startup_id,
+        expense_id=expense_id,
+        api_public_url=settings.API_PUBLIC_URL,
+    )
+    db.commit()  # persists a legacy receipt's move behind authentication
+    return success_response({**link, "expires_at": link["expires_at"].isoformat()})
+
+
+@router.get("/receipts/download", response_class=FileResponse)
+def download_receipt(
+    token: str = Query(..., min_length=1, max_length=2000)
+) -> FileResponse:  # noqa: B008
+    """Serves a locally stored receipt to the holder of a valid, unexpired signed link.
+
+    The link is the credential (it is only ever issued by `GET /expenses/{id}/receipt` after the
+    role and workspace checks). Expired, tampered or unknown tokens are all the same 404.
+    """
+    try:
+        key = verify_key(token)
+    except InvalidSignedToken:
+        raise NotFound() from None
+    storage = get_storage()
+    path = storage.open_private(key) if isinstance(storage, LocalStorage) else None
+    if path is None or not key.startswith("receipts/"):
+        raise NotFound()
+    return FileResponse(
+        path,
+        media_type=expense_svc.receipt_content_type(key),
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'inline; filename="receipt{path.suffix}"',
+        },
+    )
+
+
 @router.delete("/expenses/{expense_id}/receipt", response_model=dict[str, Any])
 def delete_expense_receipt(
     expense_id: uuid.UUID,
@@ -498,13 +579,17 @@ def list_budgets(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     rows = budget_svc.list_budgets(db, startup_id=membership.startup_id, month=month)
+    unbudgeted = budget_svc.unbudgeted_rows(
+        db, startup_id=membership.startup_id, month=month, budgeted=[b for b, _ in rows]
+    )
     return success_response(
         {
             "month": month,
             "budgets": [
                 budget_svc.serialize_budget(b, spent_minor=spent).model_dump(mode="json")
                 for b, spent in rows
-            ],
+            ]
+            + [u.model_dump(mode="json") for u in unbudgeted],
         }
     )
 

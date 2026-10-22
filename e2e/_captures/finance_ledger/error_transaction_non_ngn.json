@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "currency",
+        "message": "Only NGN is supported for now."
+      }
+    ]
+  }
+}

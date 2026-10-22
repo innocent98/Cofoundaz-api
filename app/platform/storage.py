@@ -1,9 +1,11 @@
 import io
+import time
 from pathlib import Path
 from typing import Protocol
 
 import cloudinary
 import cloudinary.uploader
+import cloudinary.utils
 
 from app.core.config import settings
 
@@ -11,6 +13,18 @@ from app.core.config import settings
 class Storage(Protocol):
     def save(self, key: str, content: bytes, content_type: str) -> str: ...
     def delete(self, key: str) -> None: ...
+
+    # Private files (receipts): never addressable by a stable public URL. The caller keeps only
+    # the key and asks for a short-lived link when an authorised user wants to read the file.
+    def save_private(self, key: str, content: bytes, content_type: str) -> None: ...
+    def delete_private(self, key: str) -> None: ...
+    def private_url(self, key: str, ttl_seconds: int) -> str | None:
+        """A provider-signed, expiring URL, or None when we must serve (and sign) it ourselves."""
+        ...
+
+    def make_private(self, key: str) -> None:
+        """Move a legacy publicly-reachable asset behind authentication (idempotent)."""
+        ...
 
 
 class LocalStorage:
@@ -25,6 +39,27 @@ class LocalStorage:
 
     def delete(self, key: str) -> None:
         Path(self.base_dir).joinpath(key).unlink(missing_ok=True)
+
+    # Local files are never mounted or served statically, so every local file is already private.
+    def save_private(self, key: str, content: bytes, content_type: str) -> None:
+        self.save(key, content, content_type)
+
+    def delete_private(self, key: str) -> None:
+        self.delete(key)
+
+    def private_url(self, key: str, ttl_seconds: int) -> str | None:
+        return None
+
+    def make_private(self, key: str) -> None:
+        return None
+
+    def open_private(self, key: str) -> Path | None:
+        """The file for `key`, or None when it is missing or escapes the storage root."""
+        root = Path(self.base_dir).resolve()
+        path = (root / key).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            return None
+        return path
 
 
 class CloudinaryStorage:
@@ -51,6 +86,39 @@ class CloudinaryStorage:
 
     def delete(self, key: str) -> None:
         cloudinary.uploader.destroy(key, resource_type="raw")
+
+    # Private assets use delivery type "authenticated": there is no public URL at all, and the
+    # only way to read one is an API-signed download link that expires.
+    def save_private(self, key: str, content: bytes, content_type: str) -> None:
+        cloudinary.uploader.upload(
+            io.BytesIO(content),
+            public_id=key,
+            resource_type="raw",
+            type="authenticated",
+            overwrite=True,
+        )
+
+    def delete_private(self, key: str) -> None:
+        cloudinary.uploader.destroy(key, resource_type="raw", type="authenticated")
+
+    def private_url(self, key: str, ttl_seconds: int) -> str | None:
+        return str(
+            cloudinary.utils.private_download_url(
+                key,
+                "",
+                resource_type="raw",
+                type="authenticated",
+                expires_at=int(time.time()) + ttl_seconds,
+            )
+        )
+
+    def make_private(self, key: str) -> None:
+        # Legacy receipts were uploaded with the default delivery type ("upload"), which is
+        # public to anyone holding the URL. Renaming to the same id with `to_type` moves the
+        # asset behind authentication, so the old public URL stops working.
+        cloudinary.uploader.rename(
+            key, key, resource_type="raw", type="upload", to_type="authenticated", overwrite=True
+        )
 
 
 def get_storage() -> Storage:

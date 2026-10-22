@@ -31,6 +31,13 @@ class Expense(UUIDMixin, TimestampMixin, Base):
     recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     receipt_url: Mapped[str | None] = mapped_column(String(600), nullable=True)
     receipt_key: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    # True once the asset sits behind authentication (Cloudinary type "authenticated", or local
+    # storage, which is never served statically). False only for receipts uploaded before
+    # private receipts; they are moved on first access. `receipt_url` is legacy and no longer
+    # written or returned.
+    receipt_private: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     transaction_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),

@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "image/png",
+    "x-content-type-options": "nosniff",
+    "cache-control": "private, no-store",
+    "content-disposition": "inline; filename=\"receipt.png\""
+  },
+  "bytes": 37,
+  "url_shape": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=<signed token>"
+}

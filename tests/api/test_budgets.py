@@ -115,13 +115,16 @@ def test_variance_over_budget_percent(client, db, limit, spent, variance, over, 
     assert data["percent_used"] == pct
 
 
-def test_category_with_expenses_but_no_budget_is_not_listed(client, db):
+def test_category_with_expenses_but_no_budget_is_listed_as_unbudgeted(client, db):
+    # Gap row 19: spend in a category with no budget is visible, as a row with a null limit.
     _u, _s, h = _member(db)
     _expense(client, h, amount=70_000, category="Marketing")
     _post(client, h, category="Infrastructure")
     listed = _list(client, h)
-    assert [b["category"] for b in listed["budgets"]] == ["Infrastructure"]
+    assert [b["category"] for b in listed["budgets"]] == ["Infrastructure", "Marketing"]
     assert listed["budgets"][0]["spent_minor"] == 0
+    assert listed["budgets"][1]["limit_minor"] is None
+    assert listed["budgets"][1]["spent_minor"] == 70_000
 
 
 def test_list_computes_each_cards_actuals(client, db):
@@ -142,7 +145,7 @@ def test_list_computes_each_cards_actuals(client, db):
     assert listed["month"] == "2026-03"
 
 
-def test_manual_outflow_does_not_change_spent(client, db):
+def test_manual_outflow_counts_toward_spent_dfin3(client, db):
     _u, _s, h = _member(db)
     _expense(client, h, amount=100_000)
     created = _post(client, h)
@@ -159,7 +162,8 @@ def test_manual_outflow_does_not_change_spent(client, db):
     )
     assert txn.status_code == 200, txn.text
     fetched = client.get(f"{BASE}/budgets/{created['id']}", headers=h)
-    assert fetched.json()["data"]["spent_minor"] == 100_000
+    # D-FIN-3: budget actuals are every money-out ledger row, so the manual outflow counts.
+    assert fetched.json()["data"]["spent_minor"] == 877_000
 
 
 def test_patch_updates_limit_and_notes_with_actuals(client, db):

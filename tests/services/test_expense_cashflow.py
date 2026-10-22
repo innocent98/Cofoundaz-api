@@ -81,18 +81,24 @@ def test_serialize_has_receipt_flag(db):
     u, s = _startup(db)
     exp = svc.create_expense(db, startup_id=s.id, created_by=u.id, data=_data())
     assert svc.serialize_expense(exp).has_receipt is False
-    exp.receipt_url = "https://example.com/r.pdf"
+    exp.receipt_key = "receipts/x/r.pdf"
     assert svc.serialize_expense(exp).has_receipt is True
 
 
 def test_summary_guards_zero_total(db):
     u, s = _startup(db)
-    svc.create_expense(
-        db,
-        startup_id=s.id,
-        created_by=u.id,
-        data=_data(amount_minor=0, expense_date=dt.date(2026, 2, 1)),
+    # amount 0 cannot come through the schema any more; a legacy row can still exist.
+    db.add(
+        Expense(
+            startup_id=s.id,
+            vendor="Legacy",
+            category="Ops",
+            expense_date=dt.date(2026, 2, 1),
+            amount_minor=0,
+            currency="NGN",
+        )
     )
+    db.flush()
     out = svc.category_summary(db, startup_id=s.id, month="2026-02")
     assert out["rows"] == [] and out["total_minor"] == 0
 
@@ -106,7 +112,6 @@ def test_update_syncs_same_transaction(db):
         expense_date=dt.date(2026, 1, 2),
         category="Ops",
         vendor="GCP",
-        currency="USD",
     )
     updated = svc.update_expense(db, startup_id=s.id, expense_id=exp.id, data=patch)
     assert updated.transaction_id == original_txn_id
@@ -117,7 +122,7 @@ def test_update_syncs_same_transaction(db):
     assert txn.amount_minor == 400_000
     assert txn.date == dt.date(2026, 1, 2)
     assert txn.category == "Ops"
-    assert txn.currency == "USD"
+    assert txn.currency == "NGN"
     assert txn.description == "Expense: GCP"
     assert txn.source == TransactionSource.expense
     assert txn.direction == TransactionDirection.outflow

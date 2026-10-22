@@ -1,9 +1,10 @@
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.db.models.enums import TransactionDirection
+from app.schemas.finance_rules import ngn_only, tidy_category
 
 
 # `dt.` alias: a bare `date` annotation would resolve to the field's own default
@@ -12,18 +13,38 @@ class TransactionCreate(BaseModel):
     date: dt.date
     description: str = Field(min_length=1, max_length=300)
     category: str | None = Field(default=None, max_length=120)
-    amount_minor: int = Field(ge=0, le=2_147_483_647)
+    amount_minor: int = Field(gt=0, le=2_147_483_647)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     direction: TransactionDirection
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        return str(ngn_only(v))
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str | None) -> str | None:
+        return tidy_category(v)
 
 
 class TransactionUpdate(BaseModel):
     date: dt.date | None = None
     description: str | None = Field(default=None, min_length=1, max_length=300)
     category: str | None = Field(default=None, max_length=120)
-    amount_minor: int | None = Field(default=None, ge=0, le=2_147_483_647)
+    amount_minor: int | None = Field(default=None, gt=0, le=2_147_483_647)
     currency: str | None = Field(default=None, min_length=1, max_length=3)
     direction: TransactionDirection | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str | None) -> str | None:
+        return ngn_only(v)
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str | None) -> str | None:
+        return tidy_category(v)
 
     @model_validator(mode="after")
     def _no_explicit_null_on_required(self) -> "TransactionUpdate":
