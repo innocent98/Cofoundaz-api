@@ -152,6 +152,10 @@ def test_issuing_twice_returns_the_existing_certificate_not_an_error(db):
     assert again.id == cert.id
 
 
+def test_printed_text_is_capped_before_any_measuring():
+    assert len(certs._printable("W" * 100_000)) == 120
+
+
 def test_a_long_name_is_shrunk_to_fit():
     pdf = certs.render_pdf(
         holder="A" * 140,

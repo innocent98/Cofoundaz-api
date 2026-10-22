@@ -37,6 +37,8 @@ ISSUER = "Cofoundaz"
 _ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 VERIFY_CODE_RE = re.compile(r"^CFZ-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$")
 _FALLBACK_HOLDER = "Cofoundaz member"
+# Bounds the work in _printable/_fit whatever length a profile name has; longer text is cut anyway.
+_MAX_PRINTED_CHARS = 120
 _BRAND = HexColor("#9C5B34")
 _INK = HexColor("#2B2118")
 _MUTED = HexColor("#6B5E52")
@@ -112,7 +114,7 @@ def _printable(name: str) -> str:
     printing a blank box.
     """
     out: list[str] = []
-    for char in name:
+    for char in name[:_MAX_PRINTED_CHARS]:
         try:
             char.encode("cp1252")
             out.append(char)
