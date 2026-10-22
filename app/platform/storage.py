@@ -1,4 +1,5 @@
 import io
+import os
 import time
 from pathlib import Path
 from typing import Protocol
@@ -16,15 +17,17 @@ class Storage(Protocol):
 
     # Private files (receipts): never addressable by a stable public URL. The caller keeps only
     # the key and asks for a short-lived link when an authorised user wants to read the file.
-    def save_private(self, key: str, content: bytes, content_type: str) -> None: ...
-    def delete_private(self, key: str) -> None: ...
+    def save_private(self, key: str, content: bytes, content_type: str) -> None:
+        """Store `content` as an authenticated asset; no URL is ever returned."""
+
+    def delete_private(self, key: str) -> None:
+        """Remove a private asset (idempotent)."""
+
     def private_url(self, key: str, ttl_seconds: int) -> str | None:
         """A provider-signed, expiring URL, or None when we must serve (and sign) it ourselves."""
-        ...
 
     def make_private(self, key: str) -> None:
         """Move a legacy publicly-reachable asset behind authentication (idempotent)."""
-        ...
 
 
 class LocalStorage:
@@ -55,11 +58,11 @@ class LocalStorage:
 
     def open_private(self, key: str) -> Path | None:
         """The file for `key`, or None when it is missing or escapes the storage root."""
-        root = Path(self.base_dir).resolve()
-        path = (root / key).resolve()
-        if not path.is_relative_to(root) or not path.is_file():
+        root = os.path.realpath(self.base_dir)
+        full = os.path.realpath(os.path.join(root, key))
+        if not full.startswith(root + os.sep) or not os.path.isfile(full):
             return None
-        return path
+        return Path(full)
 
 
 class CloudinaryStorage:

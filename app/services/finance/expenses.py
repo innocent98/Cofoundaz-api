@@ -1,5 +1,6 @@
 import calendar
 import datetime as dt
+import re
 import uuid
 from collections import Counter
 from typing import Any
@@ -113,6 +114,10 @@ def delete_expense(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID)
 
 
 MAX_RECEIPT_BYTES = 10 * 1024 * 1024
+
+# The exact shape of every key `attach_receipt` mints. The download route refuses anything else
+# before it reaches the filesystem, whatever a (validly signed) token claims.
+RECEIPT_KEY_PATTERN = re.compile(r"receipts/[0-9a-f-]{36}/[0-9a-f]{32}\.(?:png|jpg|pdf)")
 
 # Receipts are classified by their leading bytes, never by the client's Content-Type or filename:
 # an HTML file labelled image/png must not be stored (or later served) as an image.

@@ -160,6 +160,13 @@ def test_validly_signed_traversal_key_is_404(client, db):
     assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
 
 
+def test_validly_signed_key_of_the_wrong_shape_is_404_even_if_the_file_exists(client, db, tmp_path):
+    (tmp_path / "receipts").mkdir()
+    (tmp_path / "receipts" / "note.png").write_bytes(PNG)
+    token, _ = signed_urls.sign_key("receipts/note.png", ttl_seconds=300)
+    assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
+
+
 def test_token_signed_with_another_secret_is_404(client, db, monkeypatch):
     token, _ = signed_urls.sign_key("receipts/x/a.png", ttl_seconds=300)
     monkeypatch.setattr(settings, "SECRET_KEY", "a-different-secret-key-for-this-test")

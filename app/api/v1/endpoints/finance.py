@@ -527,9 +527,11 @@ def download_receipt(
         key = verify_key(token)
     except InvalidSignedToken:
         raise NotFound() from None
+    if not expense_svc.RECEIPT_KEY_PATTERN.fullmatch(key):
+        raise NotFound()
     storage = get_storage()
     path = storage.open_private(key) if isinstance(storage, LocalStorage) else None
-    if path is None or not key.startswith("receipts/"):
+    if path is None:
         raise NotFound()
     return FileResponse(
         path,
