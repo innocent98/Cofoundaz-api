@@ -37,6 +37,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.readout.ready": CORE,
     # Sales hub: founder + team member
     "sales.deal.won": CORE,
+    "sales.sending.paused": FOUNDER,  # bounce auto-pause: founders resume it
     # Assessment / Validation / KPI strip (earlier PRs, kept honest here)
     "assessment.completed": CORE,
     "assessment.quarterly.due": FOUNDER,

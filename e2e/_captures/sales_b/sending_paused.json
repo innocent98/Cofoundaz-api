@@ -1,0 +1,14 @@
+{
+  "data": {
+    "configured": false,
+    "reason": "not_configured",
+    "domain": null,
+    "sent_today": 4,
+    "daily_cap": 100,
+    "hourly_cap": null,
+    "paused": true,
+    "paused_reason": "bounces",
+    "paused_at": "2026-10-22T13:00:20.568715+00:00"
+  },
+  "meta": null
+}

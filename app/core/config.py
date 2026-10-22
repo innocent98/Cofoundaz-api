@@ -91,6 +91,31 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
+    @field_validator("SALES_OUTREACH_SMTP_HOST", "SALES_OUTREACH_IMAP_HOST")
+    @classmethod
+    def normalize_outreach_host(cls, v: str) -> str:
+        """Accept `mail.example.com`, `smtps://mail.example.com/` or padded values; keep the bare
+        host. Anything that still is not a hostname fails at boot with a clear message."""
+        host = v.strip()
+        if "://" in host:
+            host = host.split("://", 1)[1]
+        host = host.rstrip("/")
+        if host and not all(c.isalnum() or c in ".-" for c in host):
+            raise ValueError(
+                f"SALES_OUTREACH_*_HOST must be a bare hostname such as mail.example.com (got {v!r})"
+            )
+        return host
+
+    @field_validator("SALES_OUTREACH_SMTP_SECURITY")
+    @classmethod
+    def validate_outreach_security(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"ssl", "starttls", "none"}:
+            raise ValueError(
+                "SALES_OUTREACH_SMTP_SECURITY must be one of 'ssl', 'starttls', 'none'"
+            )
+        return v
+
     @field_validator("REFRESH_COOKIE_SAMESITE")
     @classmethod
     def validate_refresh_cookie_samesite(cls, v: str) -> str:
@@ -123,6 +148,26 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: EmailStr | None = None
     EMAILS_FROM_NAME: str | None = None
     RESEND_API_KEY: str | None = None  # used only when EMAIL_BACKEND == "resend"
+
+    # --- Sales outreach mailbox (D-SAL-1, slice B) ---------------------------
+    # A cPanel mailbox, deliberately NOT Resend (Resend carries the app's auth email, so outreach
+    # reputation must never touch it). SMTP sends, IMAP reads bounce notices. Unset = sequences
+    # save and enroll but nothing sends (the API reports "not configured", never a 500).
+    SALES_OUTREACH_PROVIDER: str = ""  # smtp | console (console logs only, never in production)
+    SALES_OUTREACH_SMTP_HOST: str = ""
+    SALES_OUTREACH_SMTP_PORT: int = 465
+    SALES_OUTREACH_SMTP_SECURITY: str = "ssl"  # ssl (465) | starttls (587) | none (local/e2e only)
+    SALES_OUTREACH_SMTP_USERNAME: str = ""
+    SALES_OUTREACH_SMTP_PASSWORD: str = ""
+    SALES_OUTREACH_FROM_EMAIL: str = ""
+    SALES_OUTREACH_IMAP_HOST: str = ""
+    SALES_OUTREACH_IMAP_PORT: int = 993  # 993 = TLS from the start; anything else uses STARTTLS
+    SALES_OUTREACH_IMAP_PROCESSED_FOLDER: str = "Cofoundaz-Processed"
+    # Global cap for the one shared mailbox, across every workspace.
+    SALES_OUTREACH_HOURLY_LIMIT: int = 30
+    # Signs the public unsubscribe links. Falls back to SECRET_KEY; set it so rotating SECRET_KEY
+    # cannot break links already sitting in recipients' inboxes.
+    SALES_OUTREACH_UNSUBSCRIBE_KEY: str = ""
 
     # --- LLM seam (Module 03) ---------------------------------------------
     LLM_PROVIDER: str = "openai"  # openai | stub

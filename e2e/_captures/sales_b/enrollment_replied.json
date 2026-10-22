@@ -1,0 +1,20 @@
+{
+  "data": {
+    "id": "401b1871-0703-4b6b-9401-86f249ef982f",
+    "sequence_id": "482c8701-2c1d-460f-99ca-4bf6e325053d",
+    "lead_id": null,
+    "contact_id": "9ed80334-3d18-483f-b663-70573f595bcc",
+    "email": "chi-7f18d79c@prospect.example",
+    "first_name": "Chi",
+    "last_name": "Test",
+    "company": "",
+    "sender_name": "delivered+team_member-5c02089ea29f",
+    "sender_email": "delivered+team_member-5c02089ea29f@resend.dev",
+    "status": "replied",
+    "stopped_reason": "marked_replied",
+    "current_step": 1,
+    "next_send_at": null,
+    "created_at": "2026-10-22T13:00:18.470940Z"
+  },
+  "meta": null
+}

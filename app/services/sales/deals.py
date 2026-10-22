@@ -433,4 +433,8 @@ def move_stage(
         meta={"from_stage_id": str(from_stage_id), "to_stage_id": str(stage.id)},
     )
     _publish_stage_event(db, deal, from_stage_id=from_stage_id, to_stage=stage, actor_id=actor_id)
+    # Lead call 5: sequences that opted in stop when their contact's deal changes stage.
+    from app.services.sales.sequences import stop_for_contact_stage_change
+
+    stop_for_contact_stage_change(db, startup_id, deal.contact_id)
     return deal

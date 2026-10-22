@@ -22,3 +22,25 @@ def test_refresh_cookie_samesite_lowercases_valid_value():
 def test_refresh_cookie_samesite_rejects_invalid_value(bad):
     with pytest.raises(ValidationError):
         Settings(REFRESH_COOKIE_SAMESITE=bad)  # type: ignore[call-arg]
+
+
+def test_outreach_hosts_are_normalised_and_validated():
+    import pytest
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    base = {"DATABASE_URL": "postgresql://u:p@h/d", "SECRET_KEY": "k"}
+    s = Settings(
+        **base,
+        SALES_OUTREACH_SMTP_HOST=" smtps://mail.example.com/ ",
+        SALES_OUTREACH_IMAP_HOST="mail.example.com/",
+    )
+    assert (
+        s.SALES_OUTREACH_SMTP_HOST == "mail.example.com"
+        and s.SALES_OUTREACH_IMAP_HOST == "mail.example.com"
+    )
+    with pytest.raises(ValidationError):
+        Settings(**base, SALES_OUTREACH_SMTP_HOST="mail example.com:465/x")
+    with pytest.raises(ValidationError):
+        Settings(**base, SALES_OUTREACH_SMTP_SECURITY="tls")

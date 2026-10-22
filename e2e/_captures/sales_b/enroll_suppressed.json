@@ -1,0 +1,13 @@
+{
+  "data": {
+    "enrolled": 0,
+    "enrollments": [],
+    "skipped": [
+      {
+        "id": "2c642f17-4843-4e83-aaaf-7325b18c1c22",
+        "reason": "suppressed"
+      }
+    ]
+  },
+  "meta": null
+}

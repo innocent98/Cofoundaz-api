@@ -1,0 +1,27 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "0c282745-5e09-48d1-9844-4fb0984d5cf8",
+        "sequence_id": "482c8701-2c1d-460f-99ca-4bf6e325053d",
+        "lead_id": null,
+        "contact_id": "2f7459b3-0d01-4fde-ad39-c02dd946465b",
+        "email": "bayo-7f18d79c@prospect.example",
+        "first_name": "Bayo",
+        "last_name": "Test",
+        "company": "",
+        "sender_name": "delivered+team_member-5c02089ea29f",
+        "sender_email": "delivered+team_member-5c02089ea29f@resend.dev",
+        "status": "bounced",
+        "stopped_reason": "bounced",
+        "current_step": 1,
+        "next_send_at": null,
+        "created_at": "2026-10-22T13:00:18.470940Z"
+      }
+    ],
+    "total": 1,
+    "limit": 50,
+    "offset": 0
+  },
+  "meta": null
+}

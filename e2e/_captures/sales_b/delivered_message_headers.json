@@ -1,0 +1,12 @@
+{
+  "note": "Headers of the message the fake SMTP server received from SmtpOutreachSender; recipient is a placeholder",
+  "From": "delivered+team_member-5c02089ea29f at NovaPay <outreach@mail.example.test>",
+  "To": "ada-PLACEHOLDER@prospect.example",
+  "Reply-To": "<the sending member's account email>",
+  "Subject": "Quick idea for",
+  "Message-ID": "<send-id@mail.example.test>",
+  "X-Cofoundaz-Step": "<send-id>",
+  "List-Unsubscribe": "<http://127.0.0.1:8010/api/v1/public/sales/unsubscribe/<signed-token>>",
+  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  "body_text": "Hi Ada,\r\n\r\nWe help teams like  get paid faster.\r\n\r\ndelivered+team_member-5c02089ea29f\r\n\r\n--\r\nNovaPay\r\nUnsubscribe: http://localhost:3000/unsubscribe/<signed-token>\r\n"
+}

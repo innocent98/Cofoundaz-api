@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Unknown merge tag {{nope}}. Use first_name, last_name, company, sender_name.",
+    "field_errors": [
+      {
+        "field": "steps.0.subject",
+        "message": "Unknown merge tag {{nope}}. Use first_name, last_name, company, sender_name."
+      }
+    ]
+  }
+}

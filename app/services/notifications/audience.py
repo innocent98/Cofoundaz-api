@@ -46,6 +46,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.completed": MARKETING_ROLES,
     "sales.deal.won": SALES_ROLES,
     "sales.deal.stalled": SALES_ROLES,
+    "sales.sending.paused": FOUNDER_ROLES,
 }
 
 # The audience of this type depends on its payload: payload["audience"] == "finance" opens it to
