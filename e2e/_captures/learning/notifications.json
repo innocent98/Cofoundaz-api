@@ -1,0 +1,23 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "c58d81f2-97ae-42a5-8da2-775dd8763d28",
+        "type": "learning.course.completed",
+        "title": "Certificate earned: Scope the MVP \ud83c\udf93",
+        "body": "Download it",
+        "data": {
+          "user_id": "b16d07e4-c772-4ce0-81b8-0924815b2763",
+          "course_id": "build-scope-the-mvp",
+          "startup_id": "7f528f9c-c683-475c-8dad-d02fa81da86b",
+          "course_title": "Scope the MVP",
+          "certificate_id": "49c45db2-5315-4f81-a308-e9d7ed2f2612"
+        },
+        "read": false,
+        "created_at": "2026-10-22T13:31:53.161804+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

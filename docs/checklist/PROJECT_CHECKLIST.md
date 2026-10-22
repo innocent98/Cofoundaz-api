@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Academy BE (2026-10-22): branch `feature/academy-be` (migration `0069_academy_content`, chained on `0066`; re-chains onto 0067/0068 before merge) — Module 17 BE gaps 1, 2, 4 to 10, 13, 14, 16, 17, 20, 23, 24: real content in `content/academy/` (8 courses, 24 lessons, 6 paths, 10 articles, all `draft`) loaded by `python -m app.services.learning.content`, YouTube video object, certificate PDF + `CFZ-XXXX-XXXX` + public `GET /verify/{code}` + LinkedIn URL, private notes, resume position, per-hero-course AI reasons, notifications, search. Live e2e + FE guide `docs/fe-integration-guide-academy.md`; SOP `docs/sop/2026-10-22-academy-be.md`. PR: see below. FE slice and re-walk next._
+
 _Sales Hub slice C (2026-10-21): branch `feature/sales-coach-analytics` — AI role-play coach + scorecard, call prep, Sales analytics BE; migration `0064_sales_coach`; mentor 403 + over-budget states live-verified with the stub LLM (real model not yet checked). SOP `docs/sop/2026-10-21-sales-coach-analytics.md`; FE guide `docs/fe-integration-guide-sales-coach-analytics.md`. Built, awaiting review and merge._
 
 _Finance invoice automation (2026-10-21): branch `feature/finance-invoice-automation` (migration `0066_finance_invoice_automation`, stacked on `feature/finance-payments-core`) — Finance BE slice (b), closes gap rows 8, 9, 10 and 24 of `cofoundaz/docs/checklist/finance-prd-gaps.md` (BE; FE parts open): invoice PDF (`GET /finance/invoices/{id}/pdf`, also attached to the invoice and reminder emails), daily overdue scan (one-shot `finance.invoice.overdue` notification, automatic client reminders every 7 days up to 8, `POST /finance/invoices/{id}/remind` with a 24 hour gap), `finance.invoice.paid` and `finance.runway.updated` events with in-app notifications for founder, team member and accountant, NGN-only invoices (D-FIN-6; D-FIN-5 recurring stays a label). Live e2e (`e2e/test_invoice_automation.py`, 36 captures; 87 e2e passed) and full unit suite 3468 passed at 97.41% coverage; the 7 day spacing, the cap of 8 and real attachment delivery are not live-verified. SOP `docs/sop/2026-10-21-finance-invoice-automation.md`; FE guide `docs/fe-integration-guide-finance-invoices-automation.md`. PR pending. Slices (c) ledger correctness and (d) model still ahead._
@@ -2065,6 +2067,23 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
       `ai.learning.recommendations` worker). Struck through above; see its own reconcile entry
       under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
       and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
+
+**Academy BE gaps (2026-10-22, branch `feature/academy-be`, migration `0069_academy_content`; PR pending):**
+- [x] D-ACA-1 content: `content/academy/` markdown (8 courses x 3 lessons covering all 6 stages, 6 stage paths, 10 articles; every file `review_status: draft`, exposed by the API) + idempotent loader `python -m app.services.learning.content` (validates, upserts by slug, prunes; wired into the prod `migrate` step; `content/` copied into the image) — gap 6
+- [x] Catalog moved to the DB (`academy_courses`, `academy_lessons`, `academy_paths`, `academy_articles`); `[Placeholder]` titles gone; course `description` + `outcomes` (gap 4); paths embed ordered courses with progress (gap 13)
+- [x] D-ACA-2 video: strict 11-character YouTube id, `video: {provider, id, embed_url}` or `null`, never `placeholder://` — gap 5 (BE half)
+- [x] D-ACA-5 certificates: `learning.certificate.generate` handler registered (jobs no longer fail "no handler"), reportlab PDF with QR, `GET /learning/certificates/{id}/pdf` owner only (404 for anyone else, 409 until rendered), `holder_name` + `CFZ-XXXX-XXXX` credential ID, public rate-limited `GET /verify/{code}` (minimal fields), LinkedIn add-to-profile URL (`ACADEMY_LINKEDIN_ORG_ID` hook) — gaps 1, 7, 17
+- [x] Articles: `GET /learning/articles/{id}` reader with `related`, `?q=&tag=` filters — gap 8
+- [x] Private lesson notes `GET/PUT /learning/lessons/{id}/notes` (per user, never searched, never in prompts) — gaps 2, 14
+- [x] D-ACA-4 progress: optional `position_s`; course summary `last_lesson_id`, `next_lesson_id`, `position_s`; `continue_watching` only started courses — gap 16
+- [x] D-ACA-3 recommendations: stage + Assessment/Validation gaps, one reason per hero course, regenerated on stage or gap change, strict-schema walker test, fenced prompt inputs — gap 9
+- [x] Notifications `learning.course.completed` and `learning.course.recommended` (F + TM, in-app) — gap 10
+- [x] Global search indexes courses and articles (F + TM), never notes — gap 20
+- [x] Live e2e `e2e/test_learning.py` (captures + a real PDF), FE guide `docs/fe-integration-guide-academy.md`, SOP — gap 23
+- [x] Gap 24 decided: `learning.course.completed` stays an audit event + notification; no Roadmap or Health coupling
+- [ ] FE slice (rows 3, 11, 12, 15, 18, 19, 21, 22 and the FE halves of 4 to 8, 10, 13, 14, 17), then the live re-walk with a real video, a downloaded PDF and a LinkedIn link that opens
+- [ ] Adebayo's review of the 8 courses and 10 articles (flip `review_status`), real videos (`video:` front-matter), the LinkedIn company id (`ACADEMY_LINKEDIN_ORG_ID`)
+- [ ] _Deferred:_ team-progress view, CMS (Module 25.4), embedded PDF font for non-Latin names, a revoke endpoint
 
 ## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, in review (PR #103)*
 
