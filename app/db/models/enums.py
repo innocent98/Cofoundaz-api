@@ -73,6 +73,12 @@ CAP_TABLE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
 SALES_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
+# D1/D4: the legal module's reader set. A legal advisor reads all three Slice 1 surfaces and
+# writes none of them. One definition, shared by the routes and the notification AUDIENCE map, so
+# a reminder naming a filing can never reach a role the route itself would 403.
+LEGAL_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member, MembershipRole.legal_advisor}
+)
 # D-MIS-8: Today's Mission reads (and the AI briefing, which is built from the same workspace
 # data) are founder + team member only. One definition, shared by routes, search and notifications.
 MISSION_ROLES: frozenset[MembershipRole] = frozenset(
@@ -767,3 +773,29 @@ class ListingStatus(enum.StrEnum):
 class AvailabilityKind(enum.StrEnum):
     blocked = "blocked"
     extra = "extra"
+class IpAssetType(enum.StrEnum):
+    trademark = "trademark"
+    patent = "patent"
+    copyright = "copyright"
+    domain = "domain"
+
+
+class IpAssetStatus(enum.StrEnum):
+    # Three values, not four. The FE table displays "Expired", but its add drawer cannot create
+    # it: expiry is a consequence of renewal_on passing, so it is derived, never stored (D9).
+    drafting = "drafting"
+    filed = "filed"
+    registered = "registered"
+
+
+class ComplianceStatus(enum.StrEnum):
+    # Stored. `upcoming`, `due_soon` and `overdue` are derived from due_on against today (D12).
+    open = "open"
+    done = "done"
+
+
+class Recurrence(enum.StrEnum):
+    none = "none"
+    monthly = "monthly"
+    quarterly = "quarterly"
+    annually = "annually"
