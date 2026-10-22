@@ -143,8 +143,9 @@ def apply_bounce(db: Session, parsed: ParsedBounce) -> str:
     )
     if send is None:
         return "unmatched"
-    if parsed.recipient and parsed.recipient != send.recipient_email:
-        # Mail that bounced for a different address than we sent to is not ours to act on.
+    if parsed.recipient != send.recipient_email:
+        # Fail closed: a report with no recipient, or one for a different address than we mailed,
+        # is not ours to act on (it also stops a forged report from suppressing someone else).
         return "unmatched"
     if send.status in (SendStatus.sent, SendStatus.pending, SendStatus.unknown):
         send.status = SendStatus.bounced

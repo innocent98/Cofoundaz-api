@@ -139,6 +139,16 @@ def test_unmatched_and_wrong_recipient_reports_change_nothing(db, cfg):
     assert db.query(SalesSuppression).count() == 0
 
 
+def test_report_without_a_recipient_fails_closed(db, cfg):
+    s, rows, sends = _sent(db)
+    raw = dsn(send_id=sends[0].id, recipient="x@y.test").replace(
+        b"Final-Recipient: rfc822; x@y.test\n", b""
+    )
+    res = bounce_svc.poll_bounces(db, FakeMailbox(messages=[(1, raw)]))
+    assert (res.bounced, res.unmatched) == (0, 1)
+    assert db.get(SequenceEnrollment, rows[0].id).status == EnrollmentStatus.active
+
+
 def test_bounce_never_crosses_workspaces(db, cfg):
     s1, rows1, sends1 = _sent(db)
     s2, rows2, _ = _sent(db)
