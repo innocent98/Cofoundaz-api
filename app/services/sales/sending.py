@@ -19,6 +19,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import TypeVar
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -59,6 +60,7 @@ from app.services.sales.suppression import (
 )
 
 log = logging.getLogger(__name__)
+_T = TypeVar("_T")
 
 # Arbitrary constant key for pg_advisory_xact_lock: one lock serializes every reservation, which is
 # the right granularity for ONE shared mailbox (the hourly cap is global).
@@ -90,6 +92,14 @@ class TickResult:
     failed: int = 0
     deferred: int = 0
     hourly_capped: bool = False
+
+
+def _present(row: _T | None) -> _T:
+    """A row we just wrote or locked must exist; a missing one is a bug, surfaced loudly (an
+    `assert` would vanish under `python -O`)."""
+    if row is None:
+        raise LookupError("expected row is missing")
+    return row
 
 
 def hourly_limit() -> int:
@@ -265,9 +275,9 @@ def _settle_existing(
 # ---- deliver (phase 2) ----
 def _render_for(db: Session, res: Reservation, send: SequenceSend):  # type: ignore[no-untyped-def]
     e = db.get(SequenceEnrollment, res.enrollment_id) if res.enrollment_id else None
-    assert e is not None
+    e = _present(e)
     seq = db.get(EmailSequence, e.sequence_id)
-    assert seq is not None
+    seq = _present(seq)
     step = seq.steps_json[send.step_index or 0]
     return render_message(
         RenderInput(
@@ -289,7 +299,7 @@ def _render_for(db: Session, res: Reservation, send: SequenceSend):  # type: ign
 def deliver(db: Session, res: Reservation, sender: OutreachSender) -> str:
     """Send a reserved step and settle the ledger. Returns 'sent' | 'rejected' | 'failed'."""
     send = db.get(SequenceSend, res.send_id)
-    assert send is not None
+    send = _present(send)
     msg = _render_for(db, res, send)
     db.rollback()  # no transaction is held open across the network call
     try:
@@ -315,7 +325,7 @@ def _locked_pair(db: Session, res: Reservation) -> tuple[SequenceSend, SequenceE
         .with_for_update()
         .execution_options(populate_existing=True)
     )
-    assert send is not None
+    send = _present(send)
     e = None
     if res.enrollment_id is not None:
         e = db.scalar(
@@ -476,7 +486,7 @@ def send_follow_up(
         .with_for_update()
         .execution_options(populate_existing=True)
     )
-    assert locked is not None
+    locked = _present(locked)
     if locked.sent_at is not None:
         raise AppError("DRAFT_ALREADY_SENT", "This follow-up was already sent.", 409)
     blocker = cap_blocker(db, startup_id, addr, now)
@@ -528,7 +538,7 @@ def send_follow_up(
         raise AppError("SENDING_NOT_CONFIGURED", "Sending isn't set up yet.", 409) from exc
     except OutreachRejectedError as exc:
         row = db.get(SequenceSend, send_id)
-        assert row is not None
+        row = _present(row)
         row.status, row.bounce_code, row.error = SendStatus.bounced, exc.code[:20], exc.detail[:300]
         suppress(db, startup_id, addr, SuppressionReason.bounced)
         locked_draft = db.get(SalesDraft, draft.id)
@@ -540,7 +550,7 @@ def send_follow_up(
         _release_follow_up(db, send_id, draft.id, str(exc))
         raise AppError("SEND_FAILED", "The email could not be sent. Try again.", 503) from exc
     row = db.get(SequenceSend, send_id)
-    assert row is not None
+    row = _present(row)
     row.status, row.sent_at = SendStatus.sent, datetime.now(UTC)
     row.provider_message_id = msg.message_id
     db.flush()

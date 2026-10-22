@@ -252,7 +252,7 @@ class ImapBounceMailbox:
         try:
             self._conn.logout()
         except (imaplib.IMAP4.error, OSError):
-            pass
+            pass  # closing a connection that is already gone is fine
 
 
 def get_bounce_mailbox() -> BounceMailbox:

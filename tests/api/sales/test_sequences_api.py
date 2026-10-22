@@ -69,7 +69,8 @@ def test_create_list_get_update_archive(client, db):
         client.patch(f"{BASE}/sequences/{sid}", headers=h, json={"status": "archived"}).status_code
         == 422
     )
-    assert client.delete(f"{BASE}/sequences/{sid}", headers=h).json()["data"]["archived"] is True
+    archived = client.delete(f"{BASE}/sequences/{sid}", headers=h)
+    assert archived.json()["data"]["archived"] is True
     assert client.get(f"{BASE}/sequences", headers=h).json()["data"]["total"] == 0
     assert (
         client.get(f"{BASE}/sequences?include_archived=true", headers=h).json()["data"]["total"]

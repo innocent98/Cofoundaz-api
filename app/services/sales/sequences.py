@@ -27,13 +27,6 @@ from app.services.sales.suppression import is_suppressed
 
 MERGE_TAGS = ("first_name", "last_name", "company", "sender_name")
 _TAG_RE = re.compile(r"\{\{\s*([A-Za-z0-9_]*)\s*\}\}")
-_TERMINAL = (
-    EnrollmentStatus.completed,
-    EnrollmentStatus.replied,
-    EnrollmentStatus.unsubscribed,
-    EnrollmentStatus.bounced,
-    EnrollmentStatus.stopped,
-)
 
 
 def render_tags(template: str, values: dict[str, str]) -> str:
