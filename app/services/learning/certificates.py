@@ -4,7 +4,7 @@ Access rules, in one place:
 
 - The owner-only reads (the list and the PDF) filter by ``startup_id`` AND ``user_id`` on every
   query, so another member, a mentor or a stranger who guesses a certificate id gets a 404.
-- The public verify takes only the short credential ID (``CFZ-XXXX-XXXX``, 32 ** 8 possible
+- The public verify takes only the short credential ID (``CFZ-XXXX-XXXX-XXXX``, 32 ** 12 = 2 ** 60 possible
   values, rate limited at the route) and returns holder name, course, date, issuer and validity.
   Nothing else about the learner or the workspace is reachable from it.
 """
@@ -35,7 +35,7 @@ from app.db.models.user import UserProfile
 ISSUER = "Cofoundaz"
 # No 0, O, 1 or I: a code is read aloud and typed from a printout.
 _ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-VERIFY_CODE_RE = re.compile(r"^CFZ-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$")
+VERIFY_CODE_RE = re.compile(r"^CFZ-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$")
 _FALLBACK_HOLDER = "Cofoundaz member"
 _BRAND = HexColor("#9C5B34")
 _INK = HexColor("#2B2118")
@@ -48,9 +48,8 @@ class CertificateNotReady(AppError):  # noqa: N818
 
 
 def new_verify_code() -> str:
-    left = "".join(secrets.choice(_ALPHABET) for _ in range(4))
-    right = "".join(secrets.choice(_ALPHABET) for _ in range(4))
-    return f"CFZ-{left}-{right}"
+    parts = ["".join(secrets.choice(_ALPHABET) for _ in range(4)) for _ in range(3)]
+    return "CFZ-" + "-".join(parts)
 
 
 def normalize_verify_code(raw: str) -> str | None:
@@ -79,13 +78,15 @@ def issue_certificate(
 ) -> Certificate:
     """Create the certificate row with a unique credential ID. Retries on the (rare) code clash."""
     holder = holder_name_for(db, user_id)
+    scope = {"startup_id": startup_id, "user_id": user_id, "course_id": course_id}
+    existing = db.query(Certificate).filter_by(**scope).first()
+    if existing is not None:
+        return existing
     for _ in range(5):
         try:
             with db.begin_nested():
                 cert = Certificate(
-                    startup_id=startup_id,
-                    user_id=user_id,
-                    course_id=course_id,
+                    **scope,
                     credential_code=secrets.token_urlsafe(16),
                     verify_code=new_verify_code(),
                     holder_name=holder,
@@ -95,7 +96,11 @@ def issue_certificate(
                 db.flush()
             return cert
         except IntegrityError:
-            continue
+            # Either a concurrent issue for this learner and course won (return theirs, never a
+            # 500), or the random credential ID clashed (draw another).
+            winner = db.query(Certificate).filter_by(**scope).first()
+            if winner is not None:
+                return winner
     raise RuntimeError("could not allocate a unique credential ID")
 
 
@@ -119,10 +124,17 @@ def _printable(name: str) -> str:
     return " ".join("".join(out).split()) or _FALLBACK_HOLDER
 
 
-def _fit(c: canvas.Canvas, text: str, font: str, size: float, max_width: float) -> float:
+def _fit(
+    c: canvas.Canvas, text: str, font: str, size: float, max_width: float
+) -> tuple[str, float]:
+    """Shrink to a 14pt floor, then truncate with an ellipsis so text never overruns the border."""
     while size > 14 and c.stringWidth(text, font, size) > max_width:
         size -= 1
-    return size
+    if c.stringWidth(text, font, size) > max_width:
+        while text and c.stringWidth(text + "...", font, size) > max_width:
+            text = text[:-1]
+        text = text.rstrip() + "..."
+    return text, size
 
 
 def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> bytes:
@@ -152,7 +164,7 @@ def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> b
     c.drawCentredString(centre, height - 190, "This certifies that")
 
     name = _printable(holder)
-    size = _fit(c, name, "Helvetica-Bold", 36, width - 140)
+    name, size = _fit(c, name, "Helvetica-Bold", 36, width - 140)
     c.setFillColor(_INK)
     c.setFont("Helvetica-Bold", size)
     c.drawCentredString(centre, height - 240, name)
@@ -162,7 +174,7 @@ def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> b
     c.drawCentredString(centre, height - 280, "has completed the Cofoundaz Academy course")
 
     title = _printable(course)
-    size = _fit(c, title, "Helvetica-Bold", 24, width - 140)
+    title, size = _fit(c, title, "Helvetica-Bold", 24, width - 140)
     c.setFillColor(_BRAND)
     c.setFont("Helvetica-Bold", size)
     c.drawCentredString(centre, height - 318, title)

@@ -38,17 +38,19 @@ def _issue(db, name="Ada Founder"):
 def test_codes_are_short_unique_and_unambiguous():
     codes = {certs.new_verify_code() for _ in range(500)}
     assert len(codes) == 500
-    assert all(re.fullmatch(r"CFZ-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}", c) for c in codes)
+    assert all(
+        re.fullmatch(r"CFZ-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}", c) for c in codes
+    )
     assert not any(ch in "".join(codes) for ch in "01OI")
 
 
 def test_normalize_accepts_only_credential_shaped_input():
-    assert certs.normalize_verify_code("  cfz-abcd-ef23 ") == "CFZ-ABCD-EF23"
+    assert certs.normalize_verify_code("  cfz-abcd-ef23-gh45 ") == "CFZ-ABCD-EF23-GH45"
     for bad in (
         "",
         "CFZ-ABCD-EF2",
-        "CFZ-ABCD-EF230",
-        "CFZ-0BCD-EF23",
+        "CFZ-ABCD-EF23-GH450",
+        "CFZ-0BCD-EF23-GH45",
         "abc",
         "' OR 1=1 --",
         "../x",
@@ -67,10 +69,10 @@ def test_issue_retries_a_code_clash(db, monkeypatch):
     _u, startup, first = _issue(db)
     other = create_user(db)
     other.profile.full_name = "Other Person"
-    codes = iter([first.verify_code, first.verify_code, "CFZ-ZZZZ-2222"])
+    codes = iter([first.verify_code, first.verify_code, "CFZ-ZZZZ-2222-3333"])
     monkeypatch.setattr(certs, "new_verify_code", lambda: next(codes))
     cert = certs.issue_certificate(db, startup.id, other.id, "idea-shape-the-problem")
-    assert cert.verify_code == "CFZ-ZZZZ-2222"
+    assert cert.verify_code == "CFZ-ZZZZ-2222-3333"
 
 
 def test_issue_gives_up_after_repeated_clashes(db, monkeypatch):
@@ -125,12 +127,37 @@ def test_names_the_font_cannot_draw_are_folded_not_dropped_to_boxes():
     assert certs._printable("中文") == "Cofoundaz member"  # nothing drawable left
 
 
+def test_a_200_character_name_is_truncated_with_an_ellipsis_inside_the_border():
+    import io
+
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+
+    c = canvas.Canvas(io.BytesIO(), pagesize=landscape(A4))
+    limit = landscape(A4)[0] - 140
+    text, size = certs._fit(c, "Wolfeschlegelstein " * 11, "Helvetica-Bold", 36, limit)
+    assert size == 14 and text.endswith("...")
+    assert c.stringWidth(text, "Helvetica-Bold", size) <= limit
+    short, short_size = certs._fit(c, "Ada Founder", "Helvetica-Bold", 36, limit)
+    assert (short, short_size) == ("Ada Founder", 36)
+    pdf = certs.render_pdf(
+        holder="W" * 200, course="C" * 200, issued_at=datetime.now(UTC), code="CFZ-ABCD-EF23-GH45"
+    )
+    assert pdf.startswith(b"%PDF")
+
+
+def test_issuing_twice_returns_the_existing_certificate_not_an_error(db):
+    user, startup, cert = _issue(db)
+    again = certs.issue_certificate(db, startup.id, user.id, cert.course_id)
+    assert again.id == cert.id
+
+
 def test_a_long_name_is_shrunk_to_fit():
     pdf = certs.render_pdf(
         holder="A" * 140,
         course="B" * 140,
         issued_at=datetime.now(UTC),
-        code="CFZ-ABCD-EF23",
+        code="CFZ-ABCD-EF23-GH45",
     )
     assert pdf.startswith(b"%PDF")
 
@@ -140,7 +167,7 @@ def test_linkedin_url_carries_every_field_and_uses_the_org_name_by_default(monke
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.cofoundaz.com/")
     issued = datetime(2026, 10, 22, 9, 0, tzinfo=UTC)
     url = certs.linkedin_url(
-        course_title="Price & test: it", issued_at=issued, code="CFZ-ABCD-EF23"
+        course_title="Price & test: it", issued_at=issued, code="CFZ-ABCD-EF23-GH45"
     )
     parsed = urlparse(url)
     assert (parsed.scheme, parsed.netloc, parsed.path) == (
@@ -155,8 +182,8 @@ def test_linkedin_url_carries_every_field_and_uses_the_org_name_by_default(monke
         "organizationName": "Cofoundaz",
         "issueYear": "2026",
         "issueMonth": "10",
-        "certId": "CFZ-ABCD-EF23",
-        "certUrl": "https://app.cofoundaz.com/verify/CFZ-ABCD-EF23",
+        "certId": "CFZ-ABCD-EF23-GH45",
+        "certUrl": "https://app.cofoundaz.com/verify/CFZ-ABCD-EF23-GH45",
     }
 
 
@@ -220,7 +247,7 @@ def test_public_verify_returns_the_minimum_and_nothing_else(db):
 
 
 @pytest.mark.parametrize(
-    "code", ["CFZ-ABCD-EF23", "nonsense", "", "CFZ-ABCD-EF2%", str(uuid.uuid4())]
+    "code", ["CFZ-ABCD-EF23-GH45", "nonsense", "", "CFZ-ABCD-EF23-GH4%", str(uuid.uuid4())]
 )
 def test_public_verify_404s_unknown_and_malformed_codes(db, code):
     with pytest.raises(NotFound):

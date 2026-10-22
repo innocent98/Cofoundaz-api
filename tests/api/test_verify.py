@@ -37,7 +37,7 @@ def test_codes_are_case_insensitive_unknown_ones_404(client, db):
     _u, _s, h = _member(db)
     cert = _earn(client, h)
     assert client.get(f"/api/v1/verify/{cert['credential_id'].lower()}").status_code == 200
-    for code in ("CFZ-ABCD-EF23", "nope", "CFZ-ABCD", cert["id"], "%27%20OR%201%3D1"):
+    for code in ("CFZ-ABCD-EF23-GH45", "nope", "CFZ-ABCD-EF23", cert["id"], "%27%20OR%201%3D1"):
         r = client.get(f"/api/v1/verify/{code}")
         assert r.status_code == 404 and r.json()["error"]["code"] == "NOT_FOUND", code
 
@@ -60,7 +60,7 @@ def test_the_public_route_is_rate_limited(client, db):
     app.state.limiter.enabled = True
     limiter.reset()
     try:
-        codes = [client.get("/api/v1/verify/CFZ-ABCD-EF23").status_code for _ in range(31)]
+        codes = [client.get("/api/v1/verify/CFZ-ABCD-EF23-GH45").status_code for _ in range(31)]
     finally:
         app.state.limiter.enabled = False
         limiter.reset()

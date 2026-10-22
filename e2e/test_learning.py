@@ -247,7 +247,7 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         capture("learning", "verify_valid", verify)
         for leak in (cert["id"], "startup", "user_id", "email"):
             assert leak not in verify.text
-        unknown = c.get("/api/v1/verify/CFZ-ABCD-EF23")
+        unknown = c.get("/api/v1/verify/CFZ-ABCD-EF23-GH45")
         assert unknown.status_code == 404, unknown.text
         capture("learning", "verify_unknown", unknown)
         malformed = c.get("/api/v1/verify/not-a-code")
@@ -287,8 +287,8 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         capture("learning", "search", search)
 
         # 12. Last, because it fills this caller's window: the verify route is rate limited.
-        statuses = [c.get("/api/v1/verify/CFZ-ABCD-EF23").status_code for _ in range(35)]
+        statuses = [c.get("/api/v1/verify/CFZ-ABCD-EF23-GH45").status_code for _ in range(35)]
         assert 429 in statuses, statuses
-        limited = c.get("/api/v1/verify/CFZ-ABCD-EF23")
+        limited = c.get("/api/v1/verify/CFZ-ABCD-EF23-GH45")
         assert limited.status_code == 429
         capture("learning", "verify_rate_limited", limited)

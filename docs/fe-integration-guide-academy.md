@@ -21,7 +21,7 @@ every route except `GET /verify/{code}`.
 A learning hub with **8 founder-stage courses** (3 lessons each), **6 stage paths** and **10 articles**, all
 written by us and loaded from `content/academy/` into the database. Lessons are transcript (markdown text) for
 now: **no lesson has a video yet** (`video` is `null`). Finishing every lesson of a course earns a
-**certificate**: a real PDF, a short public credential ID (`CFZ-XXXX-XXXX`), a public verify link and a prefilled
+**certificate**: a real PDF, a short public credential ID (`CFZ-XXXX-XXXX-XXXX`), a public verify link and a prefilled
 LinkedIn "add to profile" link.
 
 **Who can use it:** founder and team member only (reads included). Every other role gets
@@ -51,7 +51,11 @@ a teammate never sees yours.
 8. **The verify page is public and must be built by the FE** at `/verify/[code]` (the QR code and LinkedIn
    link point there: `verify_url`). It calls `GET /api/v1/verify/{code}` with no token. Handle 404 (not found) and 429
    (rate limited, 30 per minute per visitor) with plain copy.
-9. **LinkedIn:** open `linkedin_url` in a new tab (`target="_blank" rel="noopener"`). It is a link to LinkedIn's own
+9. **Render markdown safely (security).** `transcript`, `description` and article `body` are **raw markdown text
+   written by us, not HTML**. Render them with a sanitising markdown renderer with **raw HTML disabled** (no
+   `dangerouslySetInnerHTML` on the raw string, no inline HTML pass-through). `holder_name`, `course_title`, titles and
+   the note `body` are **plain text only**: render as text, never as HTML or markdown.
+10. **LinkedIn:** open `linkedin_url` in a new tab (`target="_blank" rel="noopener"`). It is a link to LinkedIn's own
    add-certification form, prefilled; the user confirms it there. No LinkedIn app or login on our side.
 
 ---
@@ -470,20 +474,20 @@ nesting: `progress`, `completed_at` and `position_s` are at the top of `data`; t
     "lesson_id": "build-scope-the-mvp-3",
     "course_id": "build-scope-the-mvp",
     "progress": 100,
-    "completed_at": "2026-10-22T13:31:53.178562+00:00",
+    "completed_at": "2026-10-22T13:45:07.805976+00:00",
     "position_s": 480,
     "certificate": {
-      "id": "49c45db2-5315-4f81-a308-e9d7ed2f2612",
+      "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
       "course_id": "build-scope-the-mvp",
       "course_title": "Scope the MVP",
       "holder_name": "Ada Founder",
-      "credential_id": "CFZ-HN35-H2FX",
+      "credential_id": "CFZ-YHLS-DYNM-NZYA",
       "issuer": "Cofoundaz",
-      "issued_at": "2026-10-22T13:31:53.180619+00:00",
-      "verify_url": "http://localhost:3000/verify/CFZ-HN35-H2FX",
+      "issued_at": "2026-10-22T13:45:07.810980+00:00",
+      "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
       "pdf_ready": false,
       "pdf_url": null,
-      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-HN35-H2FX&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-HN35-H2FX"
+      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
     }
   },
   "meta": null
@@ -499,7 +503,7 @@ carries the new certificate; list `GET /learning/certificates` for it later):
     "lesson_id": "build-scope-the-mvp-3",
     "course_id": "build-scope-the-mvp",
     "progress": 100,
-    "completed_at": "2026-10-22T13:31:53.178562+00:00",
+    "completed_at": "2026-10-22T13:45:07.805976+00:00",
     "position_s": null,
     "certificate": null
   },
@@ -550,7 +554,7 @@ Saved (PUT returns the same shape as GET):
   "data": {
     "lesson_id": "build-scope-the-mvp-2",
     "body": "Ask the pilot customers about WhatsApp.",
-    "updated_at": "2026-10-22T13:31:53.111351+00:00"
+    "updated_at": "2026-10-22T13:45:07.706660+00:00"
   },
   "meta": null
 }
@@ -588,17 +592,17 @@ Right after completion (PDF not yet rendered): `pdf_ready` is `false` and `pdf_u
   "data": {
     "certificates": [
       {
-        "id": "49c45db2-5315-4f81-a308-e9d7ed2f2612",
+        "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
         "course_id": "build-scope-the-mvp",
         "course_title": "Scope the MVP",
         "holder_name": "Ada Founder",
-        "credential_id": "CFZ-HN35-H2FX",
+        "credential_id": "CFZ-YHLS-DYNM-NZYA",
         "issuer": "Cofoundaz",
-        "issued_at": "2026-10-22T13:31:53.180619+00:00",
-        "verify_url": "http://localhost:3000/verify/CFZ-HN35-H2FX",
+        "issued_at": "2026-10-22T13:45:07.810980+00:00",
+        "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
         "pdf_ready": false,
         "pdf_url": null,
-        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-HN35-H2FX&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-HN35-H2FX"
+        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
       }
     ]
   },
@@ -613,17 +617,17 @@ After the worker has rendered the PDF (usually a few seconds):
   "data": {
     "certificates": [
       {
-        "id": "49c45db2-5315-4f81-a308-e9d7ed2f2612",
+        "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
         "course_id": "build-scope-the-mvp",
         "course_title": "Scope the MVP",
         "holder_name": "Ada Founder",
-        "credential_id": "CFZ-HN35-H2FX",
+        "credential_id": "CFZ-YHLS-DYNM-NZYA",
         "issuer": "Cofoundaz",
-        "issued_at": "2026-10-22T13:31:53.180619+00:00",
-        "verify_url": "http://localhost:3000/verify/CFZ-HN35-H2FX",
+        "issued_at": "2026-10-22T13:45:07.810980+00:00",
+        "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
         "pdf_ready": true,
-        "pdf_url": "/api/v1/learning/certificates/49c45db2-5315-4f81-a308-e9d7ed2f2612/pdf",
-        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-HN35-H2FX&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-HN35-H2FX"
+        "pdf_url": "/api/v1/learning/certificates/8434d809-122b-48a7-8ce0-cb33bd790577/pdf",
+        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
       }
     ]
   },
@@ -649,9 +653,9 @@ Owner only. Returns `application/pdf` with these headers (captured; the file is 
 {
   "status": 200,
   "content-type": "application/pdf",
-  "content-disposition": "attachment; filename=\"cofoundaz-certificate-CFZ-HN35-H2FX.pdf\"",
+  "content-disposition": "attachment; filename=\"cofoundaz-certificate-CFZ-YHLS-DYNM-NZYA.pdf\"",
   "cache-control": "private, no-store",
-  "bytes": 3844
+  "bytes": 3857
 }
 ```
 
@@ -979,19 +983,19 @@ completed-type item as captured from `GET /notifications`:
 
 ```json
 {
-  "id": "c58d81f2-97ae-42a5-8da2-775dd8763d28",
+  "id": "08205740-b2d8-4bef-b4a5-fded09cc01ae",
   "type": "learning.course.completed",
   "title": "Certificate earned: Scope the MVP \ud83c\udf93",
   "body": "Download it",
   "data": {
-    "user_id": "b16d07e4-c772-4ce0-81b8-0924815b2763",
+    "user_id": "228dfe20-6b6a-47fc-82e5-000288f8d8f5",
     "course_id": "build-scope-the-mvp",
-    "startup_id": "7f528f9c-c683-475c-8dad-d02fa81da86b",
+    "startup_id": "b55fc383-3f95-4cb0-a4ee-81771190f126",
     "course_title": "Scope the MVP",
-    "certificate_id": "49c45db2-5315-4f81-a308-e9d7ed2f2612"
+    "certificate_id": "8434d809-122b-48a7-8ce0-cb33bd790577"
   },
   "read": false,
-  "created_at": "2026-10-22T13:31:53.161804+00:00"
+  "created_at": "2026-10-22T13:45:07.787938+00:00"
 }
 ```
 

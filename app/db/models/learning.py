@@ -170,8 +170,8 @@ class Certificate(UUIDMixin, TimestampMixin, Base):
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # The holder's name as printed on the PDF, frozen at issue time.
     holder_name: Mapped[str] = mapped_column(Text, nullable=False)
-    # Short public credential ID, ``CFZ-XXXX-XXXX``. The only handle the public verify route takes.
-    verify_code: Mapped[str] = mapped_column(String(14), nullable=False, unique=True)
+    # Short public credential ID, ``CFZ-XXXX-XXXX-XXXX``. The only handle the public verify route takes.
+    verify_code: Mapped[str] = mapped_column(String(18), nullable=False, unique=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (

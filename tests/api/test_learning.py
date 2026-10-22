@@ -147,7 +147,7 @@ def test_finishing_a_course_over_http(client, db):
     cert = last["certificate"]
     assert cert["course_id"] == "build-scope-the-mvp" and cert["course_title"] == "Scope the MVP"
     assert cert["holder_name"] == "Cofoundaz member"  # no profile name set
-    assert re.fullmatch(r"CFZ-[A-Z2-9]{4}-[A-Z2-9]{4}", cert["credential_id"])
+    assert re.fullmatch(r"CFZ-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}", cert["credential_id"])
     assert cert["pdf_ready"] is False and cert["pdf_url"] is None
     assert cert["linkedin_url"].startswith("https://www.linkedin.com/profile/add?")
 

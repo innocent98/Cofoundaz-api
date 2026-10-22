@@ -9,7 +9,7 @@ upserted by slug from ``content/academy/``), and adds:
 
 - ``lesson_notes`` (private, one row per user and lesson) and ``lesson_positions`` (resume point),
 - ``certificate_files`` (the rendered PDF) and, on ``certificates``, ``holder_name``,
-  ``verify_code`` (``CFZ-XXXX-XXXX``, unique) and ``revoked_at``. Existing certificates are
+  ``verify_code`` (``CFZ-XXXX-XXXX-XXXX``, unique) and ``revoked_at``. Existing certificates are
   backfilled with a holder name and a code.
 - ``learning_recommendations`` becomes one row per (startup, hero course) with a ``context_key``.
   It only caches reasons, so existing rows are dropped and regenerate on the next read.
@@ -33,9 +33,8 @@ _ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I: a code is read alo
 
 
 def _code() -> str:
-    a = "".join(secrets.choice(_ALPHABET) for _ in range(4))
-    b = "".join(secrets.choice(_ALPHABET) for _ in range(4))
-    return f"CFZ-{a}-{b}"
+    parts = ["".join(secrets.choice(_ALPHABET) for _ in range(4)) for _ in range(3)]
+    return "CFZ-" + "-".join(parts)
 
 
 def _timestamps() -> list[sa.Column]:
@@ -184,12 +183,12 @@ def upgrade() -> None:
 
     # certificates: add nullable, backfill, then tighten.
     op.add_column("certificates", sa.Column("holder_name", sa.Text(), nullable=True))
-    op.add_column("certificates", sa.Column("verify_code", sa.String(length=14), nullable=True))
+    op.add_column("certificates", sa.Column("verify_code", sa.String(length=18), nullable=True))
     op.add_column("certificates", sa.Column("revoked_at", sa.DateTime(timezone=True)))
     bind = op.get_bind()
     rows = bind.execute(
         sa.text(
-            "SELECT c.id, COALESCE(NULLIF(p.full_name, ''), 'Cofoundaz founder') "
+            "SELECT c.id, COALESCE(NULLIF(p.full_name, ''), 'Cofoundaz member') "
             "FROM certificates c LEFT JOIN user_profiles p ON p.user_id = c.user_id"
         )
     ).fetchall()

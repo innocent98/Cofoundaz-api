@@ -90,7 +90,7 @@ def test_lessons_complete_in_any_order_and_the_last_one_issues_one_certificate(d
     enrollment, cert, _ = _done(db, user, startup, L2)
     assert enrollment.progress == 100 and enrollment.completed_at is not None
     assert cert is not None and cert.holder_name == "Ada Founder"
-    assert cert.verify_code.startswith("CFZ-") and len(cert.verify_code) == 13
+    assert cert.verify_code.startswith("CFZ-") and len(cert.verify_code) == 18
     # repeating changes nothing and issues nothing
     enrollment, again, _ = _done(db, user, startup, L2)
     assert again is None and db.query(Certificate).count() == 1

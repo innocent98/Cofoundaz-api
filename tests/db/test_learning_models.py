@@ -76,7 +76,7 @@ def test_one_certificate_per_course_per_person_per_workspace(db):
             credential_code="a",
             issued_at=now,
             holder_name="A",
-            verify_code="CFZ-AAAA-AAAA",
+            verify_code="CFZ-AAAA-AAAA-AAAA",
         )
     )
     db.flush()
@@ -88,7 +88,7 @@ def test_one_certificate_per_course_per_person_per_workspace(db):
             credential_code="b",
             issued_at=now,
             holder_name="A",
-            verify_code="CFZ-BBBB-BBBB",
+            verify_code="CFZ-BBBB-BBBB-BBBB",
         )
     )
     with pytest.raises(IntegrityError):
@@ -126,7 +126,7 @@ def test_credential_codes_are_unique(db):
             credential_code="same",
             issued_at=now,
             holder_name="A",
-            verify_code="CFZ-CCCC-CCCC",
+            verify_code="CFZ-CCCC-CCCC-CCCC",
         )
     )
     db.flush()
@@ -138,7 +138,7 @@ def test_credential_codes_are_unique(db):
             credential_code="same",
             issued_at=now,
             holder_name="A",
-            verify_code="CFZ-DDDD-DDDD",
+            verify_code="CFZ-DDDD-DDDD-DDDD",
         )
     )
     with pytest.raises(IntegrityError):
@@ -157,7 +157,7 @@ def test_verify_codes_are_unique(db):
                 credential_code=f"code-{n}",
                 issued_at=now,
                 holder_name="A",
-                verify_code="CFZ-SAME-SAME",
+                verify_code="CFZ-SAME-SAME-SAME",
             )
         )
     with pytest.raises(IntegrityError):

@@ -125,10 +125,10 @@ def test_existing_certificates_are_backfilled_and_the_round_trip_is_clean():
                 ),
                 {"s": startup_id},
             ).fetchall()
-            assert [r[0] for r in rows] == ["Ada Founder", "Cofoundaz founder"]
+            assert [r[0] for r in rows] == ["Ada Founder", "Cofoundaz member"]
             codes = [r[1] for r in rows]
             assert len(set(codes)) == 2 and all(
-                c.startswith("CFZ-") and len(c) == 13 for c in codes
+                c.startswith("CFZ-") and len(c) == 18 for c in codes
             )
             # the reason cache was reset (it regenerates per hero course on the next read)
             left = conn.execute(
