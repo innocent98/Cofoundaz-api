@@ -1,7 +1,7 @@
 {
   "data": {
-    "url": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=eyJrIjoicmVjZWlwdHMvODQzMDFjMjgtYTc2Ny00MmY4LTg1MjgtMDc4YTU0ODZmZTExL2MyMmY3OGNhNTE0OTQzNGViNjAwYTRjMjZkYTY2ZGEwLnBuZyIsImUiOjE3OTI2NzIyOTd9.tU0yw7GgZwC_ItebxejrvGBpuqrCXC03elDpCj4nOuk",
-    "expires_at": "2026-10-22T12:31:37+00:00",
+    "url": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=<signed token>",
+    "expires_at": "2026-10-22T12:41:14+00:00",
     "content_type": "image/png"
   },
   "meta": null

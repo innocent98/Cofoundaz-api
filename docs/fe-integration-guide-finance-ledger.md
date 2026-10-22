@@ -35,7 +35,7 @@ send are ignored; the server reads the first bytes. Captured with a PNG sent as 
 ```json
 {
   "data": {
-    "id": "c66963f3-686f-4aec-9bde-7f4e48239858",
+    "id": "aaa73a02-55a9-48b8-8932-722e9aa99a92",
     "vendor": "AWS",
     "category": "Infrastructure",
     "expense_date": "2026-10-22",
@@ -44,11 +44,11 @@ send are ignored; the server reads the first bytes. Captured with a PNG sent as 
     "recurring": false,
     "notes": null,
     "has_receipt": true,
-    "receipt_url": "/api/v1/finance/expenses/c66963f3-686f-4aec-9bde-7f4e48239858/receipt",
-    "transaction_id": "39dc4151-83bd-4228-a2e0-cf6ad4f5db6f",
-    "created_by": "3c60b4f8-7568-4354-8e4c-9c26e1c47720",
-    "created_at": "2026-10-22T13:26:35.955912+01:00",
-    "updated_at": "2026-10-22T13:26:36.127130+01:00"
+    "receipt_url": "/api/v1/finance/expenses/aaa73a02-55a9-48b8-8932-722e9aa99a92/receipt",
+    "transaction_id": "8e1fc90b-e2ce-4a20-b912-748ffb5270e1",
+    "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
+    "created_at": "2026-10-22T13:36:13.987668+01:00",
+    "updated_at": "2026-10-22T13:36:14.037678+01:00"
   },
   "meta": null
 }
@@ -77,8 +77,8 @@ Getting a link (founder; team member and accountant return the same shape):
 ```json
 {
   "data": {
-    "url": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=eyJrIjoicmVjZWlwdHMvODQzMDFjMjgtYTc2Ny00MmY4LTg1MjgtMDc4YTU0ODZmZTExLzI4NmEyZmRkZmE4ODQ3ODQ5ZDE4OTI5NzcyNTYwMmNmLnBuZyIsImUiOjE3OTI2NzIyOTZ9.n9-xbqSyNrleu4jntBVux3c9xfjPvy6gGDXMeOBLwfg",
-    "expires_at": "2026-10-22T12:31:36+00:00",
+    "url": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=<signed token>",
+    "expires_at": "2026-10-22T12:41:14+00:00",
     "content_type": "image/png"
   },
   "meta": null
@@ -162,7 +162,7 @@ A receipt row written by the old code (legacy), captured as the API now returns 
 ```json
 {
   "data": {
-    "id": "0a2778c5-2041-46d5-aca3-cd10517974ba",
+    "id": "cc098479-d0b3-4929-aa1a-05fe3143c217",
     "vendor": "Legacy Vendor",
     "category": "Software",
     "expense_date": "2026-01-05",
@@ -171,11 +171,11 @@ A receipt row written by the old code (legacy), captured as the API now returns 
     "recurring": false,
     "notes": null,
     "has_receipt": true,
-    "receipt_url": "/api/v1/finance/expenses/0a2778c5-2041-46d5-aca3-cd10517974ba/receipt",
+    "receipt_url": "/api/v1/finance/expenses/cc098479-d0b3-4929-aa1a-05fe3143c217/receipt",
     "transaction_id": null,
     "created_by": null,
-    "created_at": "2026-10-22T13:26:37.782469+01:00",
-    "updated_at": "2026-10-22T13:26:37.782469+01:00"
+    "created_at": "2026-10-22T13:36:14.769778+01:00",
+    "updated_at": "2026-10-22T13:36:14.769778+01:00"
   },
   "meta": null
 }
@@ -316,7 +316,7 @@ kept as typed. So typing `  hosting ` after `Hosting` exists stores `Hosting`:
 ```json
 {
   "data": {
-    "id": "0275d6b0-8a5a-4428-9263-234cf8c71714",
+    "id": "1f3f6832-66d6-4b4a-8b14-8e7ad5d4f55d",
     "vendor": "Cloud host",
     "category": "Hosting",
     "expense_date": "2026-10-22",
@@ -326,10 +326,10 @@ kept as typed. So typing `  hosting ` after `Hosting` exists stores `Hosting`:
     "notes": null,
     "has_receipt": false,
     "receipt_url": null,
-    "transaction_id": "9bd1876f-c042-4ff8-8965-dbd8345197b3",
-    "created_by": "3c60b4f8-7568-4354-8e4c-9c26e1c47720",
-    "created_at": "2026-10-22T13:26:38.199194+01:00",
-    "updated_at": "2026-10-22T13:26:38.199194+01:00"
+    "transaction_id": "4221a21c-65ef-4d72-9124-39cd08c86259",
+    "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
+    "created_at": "2026-10-22T13:36:14.912654+01:00",
+    "updated_at": "2026-10-22T13:36:14.912654+01:00"
   },
   "meta": null
 }
@@ -348,7 +348,7 @@ entries, the outflow an expense posts, and imported rows. Do not add expenses on
 ```json
 {
   "data": {
-    "id": "9cfde7a8-b805-4cbc-965e-0dd6a2dc22d1",
+    "id": "47727311-3024-4340-8a79-96bc59711cfe",
     "category": "Equipment",
     "period_month": "2026-10",
     "limit_minor": 10000000,
@@ -361,8 +361,8 @@ entries, the outflow an expense posts, and imported rows. Do not add expenses on
     "percent_used": 45.0,
     "status": "under",
     "unbudgeted": false,
-    "created_at": "2026-10-22T13:26:38.302944+01:00",
-    "updated_at": "2026-10-22T13:26:38.302944+01:00"
+    "created_at": "2026-10-22T13:36:14.952163+01:00",
+    "updated_at": "2026-10-22T13:36:14.952163+01:00"
   },
   "meta": null
 }
@@ -379,7 +379,7 @@ Spend with no category appears as the category `"Uncategorized"`.
     "month": "2026-10",
     "budgets": [
       {
-        "id": "9cfde7a8-b805-4cbc-965e-0dd6a2dc22d1",
+        "id": "47727311-3024-4340-8a79-96bc59711cfe",
         "category": "Equipment",
         "period_month": "2026-10",
         "limit_minor": 10000000,
@@ -392,8 +392,8 @@ Spend with no category appears as the category `"Uncategorized"`.
         "percent_used": 45.0,
         "status": "under",
         "unbudgeted": false,
-        "created_at": "2026-10-22T13:26:38.302944+01:00",
-        "updated_at": "2026-10-22T13:26:38.302944+01:00"
+        "created_at": "2026-10-22T13:36:14.952163+01:00",
+        "updated_at": "2026-10-22T13:36:14.952163+01:00"
       },
       {
         "id": null,
@@ -470,7 +470,7 @@ that spend was always real, it just was not counted before. Say so once in the U
   "data": {
     "transactions": [
       {
-        "id": "9617667e-b1fb-42e5-962f-acf5ef50b111",
+        "id": "7e27ac18-7488-40d6-919c-34e889e3cb44",
         "date": "2026-10-22",
         "description": "Sale 4",
         "category": null,
@@ -478,11 +478,11 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:26:38.535907+01:00",
-        "updated_at": "2026-10-22T13:26:38.535907+01:00"
+        "created_at": "2026-10-22T13:36:15.023706+01:00",
+        "updated_at": "2026-10-22T13:36:15.023706+01:00"
       },
       {
-        "id": "c56c27de-ee34-48f3-9464-d5e331a088c5",
+        "id": "f84a196a-b957-468b-b374-6885dcfd884a",
         "date": "2026-10-22",
         "description": "Sale 3",
         "category": null,
@@ -490,13 +490,13 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:26:38.488654+01:00",
-        "updated_at": "2026-10-22T13:26:38.488654+01:00"
+        "created_at": "2026-10-22T13:36:15.011336+01:00",
+        "updated_at": "2026-10-22T13:36:15.011336+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MjY6MzguNDg4NjU0KzAxOjAwIiwgImM1NmMyN2RlLWVlMzQtNDhmMy05NDY0LWQ1ZTMzMWEwODhjNSJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTUuMDExMzM2KzAxOjAwIiwgImY4NGExOTZhLWI5NTctNDY4Yi1iMzc0LTY4ODVkY2ZkODg0YSJd",
     "total_estimate": 10
   }
 }
@@ -506,7 +506,7 @@ that spend was always real, it just was not counted before. Say so once in the U
   "data": {
     "transactions": [
       {
-        "id": "f2c0ae1f-10ad-4557-ae29-0a0ac07c6b67",
+        "id": "38de8c7d-feb3-4728-9fc7-611de30da0f3",
         "date": "2026-10-22",
         "description": "Sale 2",
         "category": null,
@@ -514,11 +514,11 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:26:38.445410+01:00",
-        "updated_at": "2026-10-22T13:26:38.445410+01:00"
+        "created_at": "2026-10-22T13:36:15.001088+01:00",
+        "updated_at": "2026-10-22T13:36:15.001088+01:00"
       },
       {
-        "id": "83c1c513-7cf7-4105-8163-7fc386d53ac4",
+        "id": "3d79e651-f603-4f99-8a56-cce5d23705aa",
         "date": "2026-10-22",
         "description": "Sale 1",
         "category": null,
@@ -526,13 +526,13 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:26:38.404537+01:00",
-        "updated_at": "2026-10-22T13:26:38.404537+01:00"
+        "created_at": "2026-10-22T13:36:14.989899+01:00",
+        "updated_at": "2026-10-22T13:36:14.989899+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MjY6MzguNDA0NTM3KzAxOjAwIiwgIjgzYzFjNTEzLTdjZjctNDEwNS04MTYzLTdmYzM4NmQ1M2FjNCJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTQuOTg5ODk5KzAxOjAwIiwgIjNkNzllNjUxLWY2MDMtNGY5OS04YTU2LWNjZTVkMjM3MDVhYSJd",
     "total_estimate": 10
   }
 }
@@ -545,7 +545,7 @@ Filtered total (`direction=in&limit=1`; note `meta.total_estimate` counts all ma
   "data": {
     "transactions": [
       {
-        "id": "9617667e-b1fb-42e5-962f-acf5ef50b111",
+        "id": "7e27ac18-7488-40d6-919c-34e889e3cb44",
         "date": "2026-10-22",
         "description": "Sale 4",
         "category": null,
@@ -553,13 +553,13 @@ Filtered total (`direction=in&limit=1`; note `meta.total_estimate` counts all ma
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:26:38.535907+01:00",
-        "updated_at": "2026-10-22T13:26:38.535907+01:00"
+        "created_at": "2026-10-22T13:36:15.023706+01:00",
+        "updated_at": "2026-10-22T13:36:15.023706+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MjY6MzguNTM1OTA3KzAxOjAwIiwgIjk2MTc2NjdlLWIxZmItNDJlNS05NjJmLWFjZjVlZjUwYjExMSJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTUuMDIzNzA2KzAxOjAwIiwgIjdlMjdhYzE4LTc0ODgtNDBkNi05MTljLTM0ZTg4OWUzY2I0NCJd",
     "total_estimate": 5
   }
 }
@@ -607,7 +607,7 @@ Expenses and invoices pages (first page of each; same envelope):
   "data": {
     "expenses": [
       {
-        "id": "0275d6b0-8a5a-4428-9263-234cf8c71714",
+        "id": "1f3f6832-66d6-4b4a-8b14-8e7ad5d4f55d",
         "vendor": "Cloud host",
         "category": "Hosting",
         "expense_date": "2026-10-22",
@@ -617,15 +617,15 @@ Expenses and invoices pages (first page of each; same envelope):
         "notes": null,
         "has_receipt": false,
         "receipt_url": null,
-        "transaction_id": "9bd1876f-c042-4ff8-8965-dbd8345197b3",
-        "created_by": "3c60b4f8-7568-4354-8e4c-9c26e1c47720",
-        "created_at": "2026-10-22T13:26:38.199194+01:00",
-        "updated_at": "2026-10-22T13:26:38.199194+01:00"
+        "transaction_id": "4221a21c-65ef-4d72-9124-39cd08c86259",
+        "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
+        "created_at": "2026-10-22T13:36:14.912654+01:00",
+        "updated_at": "2026-10-22T13:36:14.912654+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MjY6MzguMTk5MTk0KzAxOjAwIiwgIjAyNzVkNmIwLThhNWEtNDQyOC05MjYzLTIzNGNmOGM3MTcxNCJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTQuOTEyNjU0KzAxOjAwIiwgIjFmM2Y2ODMyLTY2ZDYtNGI0YS04YjE0LThlN2FkNWQ0ZjU1ZCJd",
     "total_estimate": 3
   }
 }
@@ -635,7 +635,7 @@ Expenses and invoices pages (first page of each; same envelope):
   "data": {
     "invoices": [
       {
-        "id": "361fbcaa-c797-4c4e-90c9-e689616f66a7",
+        "id": "89c3f57c-276e-4235-9c97-7a7e7e45b6b3",
         "number": "INV-2026-003",
         "client_name": "Client 2",
         "client_email": "client@example.com",
@@ -665,11 +665,11 @@ Expenses and invoices pages (first page of each; same envelope):
         "last_reminded_at": null,
         "reminder_count": 0,
         "overdue_notified_at": null,
-        "created_at": "2026-10-22T13:26:38.900124+01:00",
-        "updated_at": "2026-10-22T13:26:38.900124+01:00"
+        "created_at": "2026-10-22T13:36:15.103452+01:00",
+        "updated_at": "2026-10-22T13:36:15.103452+01:00"
       },
       {
-        "id": "d4e628c9-53d0-4c12-9b65-0236df7a9e0c",
+        "id": "86e2d981-32bd-4d0b-b92d-f6f1a7b459bc",
         "number": "INV-2026-002",
         "client_name": "Client 1",
         "client_email": "client@example.com",
@@ -699,13 +699,13 @@ Expenses and invoices pages (first page of each; same envelope):
         "last_reminded_at": null,
         "reminder_count": 0,
         "overdue_notified_at": null,
-        "created_at": "2026-10-22T13:26:38.877055+01:00",
-        "updated_at": "2026-10-22T13:26:38.877055+01:00"
+        "created_at": "2026-10-22T13:36:15.093361+01:00",
+        "updated_at": "2026-10-22T13:36:15.093361+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyVDEzOjI2OjM4Ljg3NzA1NSswMTowMCIsICJJTlYtMjAyNi0wMDIiXQ==",
+    "next_cursor": "WyIyMDI2LTEwLTIyVDEzOjM2OjE1LjA5MzM2MSswMTowMCIsICJJTlYtMjAyNi0wMDIiXQ==",
     "total_estimate": 3
   }
 }
@@ -719,7 +719,7 @@ any further call (by anyone on the team) answers 409 and starts nothing:
 ```json
 {
   "data": {
-    "id": "56e272e1-bd58-426a-b8f3-dc395391f5aa",
+    "id": "7707e6ff-b632-44a1-956e-eafe65a48b22",
     "status": "generating"
   },
   "meta": null
@@ -741,7 +741,7 @@ After it completes or fails the next call works:
 ```json
 {
   "data": {
-    "id": "cf664b44-9126-4ac2-b702-8365b068cf37",
+    "id": "077aba2f-273d-48ce-9572-5f61e1957d6b",
     "status": "generating"
   },
   "meta": null

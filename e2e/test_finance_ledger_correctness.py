@@ -18,7 +18,9 @@ credentials are never used), and the 5 minute link expiry (covered by unit tests
 controllable clock).
 """
 
+import json
 import os
+import re
 import uuid
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -131,7 +133,13 @@ def _receipt_private_flag(expense_id: str) -> bool:
 def test_finance_ledger_correctness_journey(
     base_url, make_verified_user, unique_email, mailbox, capture, capture_json
 ):
-    cap = capture
+    token_re = re.compile(r"token=[A-Za-z0-9_\-.]{20,}")
+
+    def cap(group: str, name: str, resp: httpx.Response) -> None:
+        """Capture the body with the signed token redacted (the shape is kept)."""
+        body = token_re.sub("token=<signed token>", json.dumps(resp.json(), indent=2))
+        capture_json(group, name, json.loads(body))
+
     month = datetime.now(UTC).strftime("%Y-%m")
     today = datetime.now(UTC).date()
     with httpx.Client(base_url=base_url, timeout=20.0) as c:
