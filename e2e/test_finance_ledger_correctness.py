@@ -273,6 +273,7 @@ def test_finance_ledger_correctness_journey(
                         "content-type",
                         "x-content-type-options",
                         "cache-control",
+                        "content-security-policy",
                         "content-disposition",
                     )
                 },

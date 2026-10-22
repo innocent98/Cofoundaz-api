@@ -110,6 +110,7 @@ def test_signed_link_serves_the_file_with_safe_headers(client, db):
     assert got.headers["content-type"] == "application/pdf"
     assert got.headers["x-content-type-options"] == "nosniff"
     assert got.headers["cache-control"] == "private, no-store"
+    assert got.headers["content-security-policy"] == "sandbox; default-src 'none'"
 
 
 def test_link_is_short_lived(client, db):
@@ -119,7 +120,7 @@ def test_link_is_short_lived(client, db):
     before = time.time()
     data = client.get(f"{BASE}/expenses/{eid}/receipt", headers=h).json()["data"]
     token = _token(data["url"])
-    assert signed_urls.verify_key(token, now=before + 10)  # valid now
+    assert signed_urls.verify_key(token, now=before + 10).key  # valid now
     with pytest.raises(signed_urls.InvalidSignedToken):
         signed_urls.verify_key(token, now=before + expense_svc.RECEIPT_LINK_TTL_SECONDS + 5)
     assert expense_svc.RECEIPT_LINK_TTL_SECONDS <= 600
@@ -130,7 +131,9 @@ def test_expired_link_is_404(client, db):
     eid = _expense(client, h)
     _upload(client, h, eid)
     key = db.query(Expense).filter_by(startup_id=s.id).one().receipt_key
-    expired, _ = signed_urls.sign_key(key, ttl_seconds=60, now=time.time() - 3600)
+    expired, _ = signed_urls.sign_key(
+        key, startup_id=str(s.id), ttl_seconds=60, now=time.time() - 3600
+    )
     assert client.get(f"{BASE}/receipts/download", params={"token": expired}).status_code == 404
 
 
@@ -139,9 +142,11 @@ def test_tampered_link_is_404(client, db):
     eid = _expense(client, h)
     _upload(client, h, eid)
     key = db.query(Expense).filter_by(startup_id=s.id).one().receipt_key
-    token, _ = signed_urls.sign_key(key, ttl_seconds=300)
+    token, _ = signed_urls.sign_key(key, startup_id=str(s.id), ttl_seconds=300)
     body, mac = token.split(".")
-    other_body, _ = signed_urls.sign_key("receipts/other/x.png", ttl_seconds=300)
+    other_body, _ = signed_urls.sign_key(
+        "receipts/other/x.png", startup_id=str(s.id), ttl_seconds=300
+    )
     flipped_mac = mac[:-2] + ("AA" if not mac.endswith("AA") else "BB")
     for bad in (
         f"{body}.{flipped_mac}",  # signature altered
@@ -156,19 +161,19 @@ def test_tampered_link_is_404(client, db):
 
 
 def test_validly_signed_traversal_key_is_404(client, db):
-    token, _ = signed_urls.sign_key("receipts/../../../etc/passwd", ttl_seconds=300)
+    token, _ = signed_urls.sign_key("receipts/../../../etc/passwd", startup_id="x", ttl_seconds=300)
     assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
 
 
 def test_validly_signed_key_of_the_wrong_shape_is_404_even_if_the_file_exists(client, db, tmp_path):
     (tmp_path / "receipts").mkdir()
     (tmp_path / "receipts" / "note.png").write_bytes(PNG)
-    token, _ = signed_urls.sign_key("receipts/note.png", ttl_seconds=300)
+    token, _ = signed_urls.sign_key("receipts/note.png", startup_id="x", ttl_seconds=300)
     assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
 
 
 def test_token_signed_with_another_secret_is_404(client, db, monkeypatch):
-    token, _ = signed_urls.sign_key("receipts/x/a.png", ttl_seconds=300)
+    token, _ = signed_urls.sign_key("receipts/x/a.png", startup_id="x", ttl_seconds=300)
     monkeypatch.setattr(settings, "SECRET_KEY", "a-different-secret-key-for-this-test")
     assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
 
@@ -389,3 +394,34 @@ def test_sniff_receipt_unit():
     assert expense_svc.sniff_receipt(PDF) == ("application/pdf", ".pdf")
     assert expense_svc.sniff_receipt(b"<svg/>") is None
     assert expense_svc.receipt_content_type("receipts/x/y.bin") == "application/octet-stream"
+
+
+# ---- the token is bound to the workspace and to the expense's current receipt ------------------ #
+
+
+def test_token_for_another_workspace_is_404(client, db):
+    _u, s, h = _member(db)
+    eid = _expense(client, h)
+    _upload(client, h, eid)
+    key = db.query(Expense).filter_by(startup_id=s.id).one().receipt_key
+    _x, other, _oh = _member(db)
+    token, _ = signed_urls.sign_key(key, startup_id=str(other.id), ttl_seconds=300)
+    assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
+    ok, _ = signed_urls.sign_key(key, startup_id=str(s.id), ttl_seconds=300)
+    assert client.get(f"{BASE}/receipts/download", params={"token": ok}).status_code == 200
+
+
+def test_token_with_a_malformed_workspace_claim_is_404(client, db):
+    token, _ = signed_urls.sign_key("receipts/x/a.png", startup_id="not-a-uuid", ttl_seconds=300)
+    assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404
+
+
+def test_link_dies_when_the_receipt_is_removed(client, db):
+    _u, _s, h = _member(db)
+    eid = _expense(client, h)
+    _upload(client, h, eid)
+    url = client.get(f"{BASE}/expenses/{eid}/receipt", headers=h).json()["data"]["url"]
+    token = _token(url)
+    assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 200
+    client.delete(f"{BASE}/expenses/{eid}/receipt", headers=h)
+    assert client.get(f"{BASE}/receipts/download", params={"token": token}).status_code == 404

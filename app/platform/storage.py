@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 import cloudinary
+import cloudinary.exceptions
 import cloudinary.uploader
 import cloudinary.utils
 
@@ -119,9 +120,20 @@ class CloudinaryStorage:
         # Legacy receipts were uploaded with the default delivery type ("upload"), which is
         # public to anyone holding the URL. Renaming to the same id with `to_type` moves the
         # asset behind authentication, so the old public URL stops working.
-        cloudinary.uploader.rename(
-            key, key, resource_type="raw", type="upload", to_type="authenticated", overwrite=True
-        )
+        try:
+            cloudinary.uploader.rename(
+                key,
+                key,
+                resource_type="raw",
+                type="upload",
+                to_type="authenticated",
+                overwrite=True,
+            )
+        except cloudinary.exceptions.NotFound:
+            # No `upload` asset under this id: an earlier attempt already moved it (the rename
+            # succeeded but our commit did not). Treat it as already authenticated so the retry
+            # succeeds instead of failing forever.
+            return
 
 
 def get_storage() -> Storage:

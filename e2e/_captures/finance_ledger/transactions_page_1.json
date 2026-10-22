@@ -2,7 +2,7 @@
   "data": {
     "transactions": [
       {
-        "id": "7e27ac18-7488-40d6-919c-34e889e3cb44",
+        "id": "69fb4461-cd8a-45c1-a173-94942352e87b",
         "date": "2026-10-22",
         "description": "Sale 4",
         "category": null,
@@ -10,11 +10,11 @@
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.023706+01:00",
-        "updated_at": "2026-10-22T13:36:15.023706+01:00"
+        "created_at": "2026-10-22T14:44:41.676138+01:00",
+        "updated_at": "2026-10-22T14:44:41.676138+01:00"
       },
       {
-        "id": "f84a196a-b957-468b-b374-6885dcfd884a",
+        "id": "2bb06feb-6f83-43f5-919a-2752ca784815",
         "date": "2026-10-22",
         "description": "Sale 3",
         "category": null,
@@ -22,13 +22,13 @@
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.011336+01:00",
-        "updated_at": "2026-10-22T13:36:15.011336+01:00"
+        "created_at": "2026-10-22T14:44:41.663774+01:00",
+        "updated_at": "2026-10-22T14:44:41.663774+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTUuMDExMzM2KzAxOjAwIiwgImY4NGExOTZhLWI5NTctNDY4Yi1iMzc0LTY4ODVkY2ZkODg0YSJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNjYzNzc0KzAxOjAwIiwgIjJiYjA2ZmViLTZmODMtNDNmNS05MTlhLTI3NTJjYTc4NDgxNSJd",
     "total_estimate": 10
   }
 }

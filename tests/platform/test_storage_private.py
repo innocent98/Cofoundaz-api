@@ -76,8 +76,8 @@ def test_local_private_roundtrip_and_containment(tmp_path):
 
 
 def test_signed_token_roundtrip_and_failures():
-    token, expires = signed_urls.sign_key("receipts/s/a.png", ttl_seconds=300)
-    assert signed_urls.verify_key(token) == "receipts/s/a.png"
+    token, expires = signed_urls.sign_key("receipts/s/a.png", startup_id="ws-1", ttl_seconds=300)
+    assert signed_urls.verify_key(token) == ("receipts/s/a.png", "ws-1")
     assert expires > time.time()
     with pytest.raises(signed_urls.InvalidSignedToken):
         signed_urls.verify_key(token, now=expires + 1)
@@ -91,7 +91,27 @@ def test_signed_token_with_garbage_claims_is_rejected():
     import base64
     import json
 
-    body = base64.urlsafe_b64encode(json.dumps({"k": "x"}).encode()).decode().rstrip("=")
+    body = base64.urlsafe_b64encode(json.dumps({"k": "x", "s": "w"}).encode()).decode().rstrip("=")
     forged = f"{body}.{signed_urls._b64(signed_urls._mac(body))}"  # correctly signed, no expiry
     with pytest.raises(signed_urls.InvalidSignedToken):
         signed_urls.verify_key(forged)
+
+
+def test_cloudinary_make_private_tolerates_an_already_moved_asset():
+    """The rename succeeded earlier but the DB commit failed: the retry finds no `upload` asset."""
+    from cloudinary.exceptions import NotFound
+
+    s = CloudinaryStorage()
+    with patch("app.platform.storage.cloudinary.uploader.rename", side_effect=NotFound("gone")):
+        s.make_private("receipts/s/k.pdf")  # no exception
+
+
+def test_cloudinary_make_private_still_raises_other_errors():
+    from cloudinary.exceptions import Error
+
+    s = CloudinaryStorage()
+    with (
+        patch("app.platform.storage.cloudinary.uploader.rename", side_effect=Error("boom")),
+        pytest.raises(Error),
+    ):
+        s.make_private("receipts/s/k.pdf")

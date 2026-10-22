@@ -186,6 +186,18 @@ def remove_receipt(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID)
     return exp
 
 
+def receipt_belongs_to(db: Session, *, startup_id: str, key: str) -> bool:
+    """True when `key` is the current receipt of an expense in the workspace `startup_id`."""
+    try:
+        sid = uuid.UUID(startup_id)
+    except ValueError:
+        return False
+    return (
+        db.query(Expense.id).filter(Expense.startup_id == sid, Expense.receipt_key == key).first()
+        is not None
+    )
+
+
 def receipt_link(
     db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID, api_public_url: str
 ) -> dict[str, Any]:
@@ -206,7 +218,9 @@ def receipt_link(
         db.flush()
     url = storage.private_url(exp.receipt_key, RECEIPT_LINK_TTL_SECONDS)
     if url is None:
-        token, expires = sign_key(exp.receipt_key, ttl_seconds=RECEIPT_LINK_TTL_SECONDS)
+        token, expires = sign_key(
+            exp.receipt_key, startup_id=str(startup_id), ttl_seconds=RECEIPT_LINK_TTL_SECONDS
+        )
         url = f"{api_public_url.rstrip('/')}{LOCAL_DOWNLOAD_PATH}?token={token}"
     else:
         expires = int(dt.datetime.now(dt.UTC).timestamp()) + RECEIPT_LINK_TTL_SECONDS

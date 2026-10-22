@@ -4,6 +4,7 @@
     "content-type": "image/png",
     "x-content-type-options": "nosniff",
     "cache-control": "private, no-store",
+    "content-security-policy": "sandbox; default-src 'none'",
     "content-disposition": "inline; filename=\"receipt.png\""
   },
   "bytes": 37,

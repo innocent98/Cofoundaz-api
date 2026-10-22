@@ -516,18 +516,24 @@ def get_expense_receipt(
 
 @router.get("/receipts/download", response_class=FileResponse)
 def download_receipt(
-    token: str = Query(..., min_length=1, max_length=2000)
-) -> FileResponse:  # noqa: B008
+    token: str = Query(..., min_length=1, max_length=2000),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> FileResponse:
     """Serves a locally stored receipt to the holder of a valid, unexpired signed link.
 
     The link is the credential (it is only ever issued by `GET /expenses/{id}/receipt` after the
     role and workspace checks). Expired, tampered or unknown tokens are all the same 404.
     """
     try:
-        key = verify_key(token)
+        claim = verify_key(token)
     except InvalidSignedToken:
         raise NotFound() from None
+    key = claim.key
     if not expense_svc.RECEIPT_KEY_PATTERN.fullmatch(key):
+        raise NotFound()
+    # The token names the workspace it was minted for; the file must still belong to an expense
+    # of that workspace (a deleted or replaced receipt, or a key from elsewhere, is a 404).
+    if not expense_svc.receipt_belongs_to(db, startup_id=claim.startup_id, key=key):
         raise NotFound()
     storage = get_storage()
     path = storage.open_private(key) if isinstance(storage, LocalStorage) else None
@@ -539,6 +545,7 @@ def download_receipt(
         headers={
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
             "Content-Disposition": f'inline; filename="receipt{path.suffix}"',
         },
     )

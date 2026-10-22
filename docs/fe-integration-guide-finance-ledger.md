@@ -35,7 +35,7 @@ send are ignored; the server reads the first bytes. Captured with a PNG sent as 
 ```json
 {
   "data": {
-    "id": "aaa73a02-55a9-48b8-8932-722e9aa99a92",
+    "id": "749a761f-2597-4d7f-a67a-375b126631bf",
     "vendor": "AWS",
     "category": "Infrastructure",
     "expense_date": "2026-10-22",
@@ -44,11 +44,11 @@ send are ignored; the server reads the first bytes. Captured with a PNG sent as 
     "recurring": false,
     "notes": null,
     "has_receipt": true,
-    "receipt_url": "/api/v1/finance/expenses/aaa73a02-55a9-48b8-8932-722e9aa99a92/receipt",
-    "transaction_id": "8e1fc90b-e2ce-4a20-b912-748ffb5270e1",
-    "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
-    "created_at": "2026-10-22T13:36:13.987668+01:00",
-    "updated_at": "2026-10-22T13:36:14.037678+01:00"
+    "receipt_url": "/api/v1/finance/expenses/749a761f-2597-4d7f-a67a-375b126631bf/receipt",
+    "transaction_id": "767498a2-8530-48d3-9058-32ca1289adc6",
+    "created_by": "d96a18a1-494a-444d-b21d-4b60b97a16b1",
+    "created_at": "2026-10-22T14:44:40.752370+01:00",
+    "updated_at": "2026-10-22T14:44:40.816821+01:00"
   },
   "meta": null
 }
@@ -78,7 +78,7 @@ Getting a link (founder; team member and accountant return the same shape):
 {
   "data": {
     "url": "http://127.0.0.1:8010/api/v1/finance/receipts/download?token=<signed token>",
-    "expires_at": "2026-10-22T12:41:14+00:00",
+    "expires_at": "2026-10-22T13:49:40+00:00",
     "content_type": "image/png"
   },
   "meta": null
@@ -99,6 +99,7 @@ What the link serves (captured headers; the body is the file bytes):
     "content-type": "image/png",
     "x-content-type-options": "nosniff",
     "cache-control": "private, no-store",
+    "content-security-policy": "sandbox; default-src 'none'",
     "content-disposition": "inline; filename=\"receipt.png\""
   },
   "bytes": 37,
@@ -155,6 +156,7 @@ Errors the FE must handle:
 **UX consequences to surface**
 - If the file link answers 404 after you obtained it, request a new link instead of showing "not found" (the 5 minutes ran out).
 - Receipts uploaded before this change keep working: the first time one is opened the server moves it behind authentication. Nothing to do on the FE except use the route in `receipt_url`.
+- The link only works for the workspace it was issued for, and stops working if the receipt is replaced or removed.
 - A receipt can no longer be shared by copying its address; tell users to download the file if they need to send it.
 
 A receipt row written by the old code (legacy), captured as the API now returns it. There is no raw URL or path anywhere:
@@ -162,7 +164,7 @@ A receipt row written by the old code (legacy), captured as the API now returns 
 ```json
 {
   "data": {
-    "id": "cc098479-d0b3-4929-aa1a-05fe3143c217",
+    "id": "6493131d-0938-42a1-b7ea-7c84aef92222",
     "vendor": "Legacy Vendor",
     "category": "Software",
     "expense_date": "2026-01-05",
@@ -171,11 +173,11 @@ A receipt row written by the old code (legacy), captured as the API now returns 
     "recurring": false,
     "notes": null,
     "has_receipt": true,
-    "receipt_url": "/api/v1/finance/expenses/cc098479-d0b3-4929-aa1a-05fe3143c217/receipt",
+    "receipt_url": "/api/v1/finance/expenses/6493131d-0938-42a1-b7ea-7c84aef92222/receipt",
     "transaction_id": null,
     "created_by": null,
-    "created_at": "2026-10-22T13:36:14.769778+01:00",
-    "updated_at": "2026-10-22T13:36:14.769778+01:00"
+    "created_at": "2026-10-22T14:44:41.467623+01:00",
+    "updated_at": "2026-10-22T14:44:41.467623+01:00"
   },
   "meta": null
 }
@@ -316,7 +318,7 @@ kept as typed. So typing `  hosting ` after `Hosting` exists stores `Hosting`:
 ```json
 {
   "data": {
-    "id": "1f3f6832-66d6-4b4a-8b14-8e7ad5d4f55d",
+    "id": "25a04ceb-4c02-4a43-9ca6-1dd73e11541a",
     "vendor": "Cloud host",
     "category": "Hosting",
     "expense_date": "2026-10-22",
@@ -326,10 +328,10 @@ kept as typed. So typing `  hosting ` after `Hosting` exists stores `Hosting`:
     "notes": null,
     "has_receipt": false,
     "receipt_url": null,
-    "transaction_id": "4221a21c-65ef-4d72-9124-39cd08c86259",
-    "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
-    "created_at": "2026-10-22T13:36:14.912654+01:00",
-    "updated_at": "2026-10-22T13:36:14.912654+01:00"
+    "transaction_id": "a86e4cd9-901a-4d29-b9e8-8082c181c976",
+    "created_by": "d96a18a1-494a-444d-b21d-4b60b97a16b1",
+    "created_at": "2026-10-22T14:44:41.561430+01:00",
+    "updated_at": "2026-10-22T14:44:41.561430+01:00"
   },
   "meta": null
 }
@@ -348,7 +350,7 @@ entries, the outflow an expense posts, and imported rows. Do not add expenses on
 ```json
 {
   "data": {
-    "id": "47727311-3024-4340-8a79-96bc59711cfe",
+    "id": "7b9f00ab-85b1-4dc6-a251-a67e74dce1d8",
     "category": "Equipment",
     "period_month": "2026-10",
     "limit_minor": 10000000,
@@ -361,8 +363,8 @@ entries, the outflow an expense posts, and imported rows. Do not add expenses on
     "percent_used": 45.0,
     "status": "under",
     "unbudgeted": false,
-    "created_at": "2026-10-22T13:36:14.952163+01:00",
-    "updated_at": "2026-10-22T13:36:14.952163+01:00"
+    "created_at": "2026-10-22T14:44:41.593649+01:00",
+    "updated_at": "2026-10-22T14:44:41.593649+01:00"
   },
   "meta": null
 }
@@ -379,7 +381,7 @@ Spend with no category appears as the category `"Uncategorized"`.
     "month": "2026-10",
     "budgets": [
       {
-        "id": "47727311-3024-4340-8a79-96bc59711cfe",
+        "id": "7b9f00ab-85b1-4dc6-a251-a67e74dce1d8",
         "category": "Equipment",
         "period_month": "2026-10",
         "limit_minor": 10000000,
@@ -392,8 +394,8 @@ Spend with no category appears as the category `"Uncategorized"`.
         "percent_used": 45.0,
         "status": "under",
         "unbudgeted": false,
-        "created_at": "2026-10-22T13:36:14.952163+01:00",
-        "updated_at": "2026-10-22T13:36:14.952163+01:00"
+        "created_at": "2026-10-22T14:44:41.593649+01:00",
+        "updated_at": "2026-10-22T14:44:41.593649+01:00"
       },
       {
         "id": null,
@@ -470,7 +472,7 @@ that spend was always real, it just was not counted before. Say so once in the U
   "data": {
     "transactions": [
       {
-        "id": "7e27ac18-7488-40d6-919c-34e889e3cb44",
+        "id": "69fb4461-cd8a-45c1-a173-94942352e87b",
         "date": "2026-10-22",
         "description": "Sale 4",
         "category": null,
@@ -478,11 +480,11 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.023706+01:00",
-        "updated_at": "2026-10-22T13:36:15.023706+01:00"
+        "created_at": "2026-10-22T14:44:41.676138+01:00",
+        "updated_at": "2026-10-22T14:44:41.676138+01:00"
       },
       {
-        "id": "f84a196a-b957-468b-b374-6885dcfd884a",
+        "id": "2bb06feb-6f83-43f5-919a-2752ca784815",
         "date": "2026-10-22",
         "description": "Sale 3",
         "category": null,
@@ -490,13 +492,13 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.011336+01:00",
-        "updated_at": "2026-10-22T13:36:15.011336+01:00"
+        "created_at": "2026-10-22T14:44:41.663774+01:00",
+        "updated_at": "2026-10-22T14:44:41.663774+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTUuMDExMzM2KzAxOjAwIiwgImY4NGExOTZhLWI5NTctNDY4Yi1iMzc0LTY4ODVkY2ZkODg0YSJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNjYzNzc0KzAxOjAwIiwgIjJiYjA2ZmViLTZmODMtNDNmNS05MTlhLTI3NTJjYTc4NDgxNSJd",
     "total_estimate": 10
   }
 }
@@ -506,7 +508,7 @@ that spend was always real, it just was not counted before. Say so once in the U
   "data": {
     "transactions": [
       {
-        "id": "38de8c7d-feb3-4728-9fc7-611de30da0f3",
+        "id": "6b24e7db-0778-4490-ade9-31870db729d5",
         "date": "2026-10-22",
         "description": "Sale 2",
         "category": null,
@@ -514,11 +516,11 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.001088+01:00",
-        "updated_at": "2026-10-22T13:36:15.001088+01:00"
+        "created_at": "2026-10-22T14:44:41.650480+01:00",
+        "updated_at": "2026-10-22T14:44:41.650480+01:00"
       },
       {
-        "id": "3d79e651-f603-4f99-8a56-cce5d23705aa",
+        "id": "91900448-b152-44fe-a84d-851e1296474b",
         "date": "2026-10-22",
         "description": "Sale 1",
         "category": null,
@@ -526,13 +528,13 @@ that spend was always real, it just was not counted before. Say so once in the U
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:14.989899+01:00",
-        "updated_at": "2026-10-22T13:36:14.989899+01:00"
+        "created_at": "2026-10-22T14:44:41.634409+01:00",
+        "updated_at": "2026-10-22T14:44:41.634409+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTQuOTg5ODk5KzAxOjAwIiwgIjNkNzllNjUxLWY2MDMtNGY5OS04YTU2LWNjZTVkMjM3MDVhYSJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNjM0NDA5KzAxOjAwIiwgIjkxOTAwNDQ4LWIxNTItNDRmZS1hODRkLTg1MWUxMjk2NDc0YiJd",
     "total_estimate": 10
   }
 }
@@ -545,7 +547,7 @@ Filtered total (`direction=in&limit=1`; note `meta.total_estimate` counts all ma
   "data": {
     "transactions": [
       {
-        "id": "7e27ac18-7488-40d6-919c-34e889e3cb44",
+        "id": "69fb4461-cd8a-45c1-a173-94942352e87b",
         "date": "2026-10-22",
         "description": "Sale 4",
         "category": null,
@@ -553,13 +555,13 @@ Filtered total (`direction=in&limit=1`; note `meta.total_estimate` counts all ma
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-10-22T13:36:15.023706+01:00",
-        "updated_at": "2026-10-22T13:36:15.023706+01:00"
+        "created_at": "2026-10-22T14:44:41.676138+01:00",
+        "updated_at": "2026-10-22T14:44:41.676138+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTUuMDIzNzA2KzAxOjAwIiwgIjdlMjdhYzE4LTc0ODgtNDBkNi05MTljLTM0ZTg4OWUzY2I0NCJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNjc2MTM4KzAxOjAwIiwgIjY5ZmI0NDYxLWNkOGEtNDVjMS1hMTczLTk0OTQyMzUyZTg3YiJd",
     "total_estimate": 5
   }
 }
@@ -607,7 +609,7 @@ Expenses and invoices pages (first page of each; same envelope):
   "data": {
     "expenses": [
       {
-        "id": "1f3f6832-66d6-4b4a-8b14-8e7ad5d4f55d",
+        "id": "25a04ceb-4c02-4a43-9ca6-1dd73e11541a",
         "vendor": "Cloud host",
         "category": "Hosting",
         "expense_date": "2026-10-22",
@@ -617,15 +619,15 @@ Expenses and invoices pages (first page of each; same envelope):
         "notes": null,
         "has_receipt": false,
         "receipt_url": null,
-        "transaction_id": "4221a21c-65ef-4d72-9124-39cd08c86259",
-        "created_by": "ab53ba68-024b-4403-9c76-44f40dd18cdf",
-        "created_at": "2026-10-22T13:36:14.912654+01:00",
-        "updated_at": "2026-10-22T13:36:14.912654+01:00"
+        "transaction_id": "a86e4cd9-901a-4d29-b9e8-8082c181c976",
+        "created_by": "d96a18a1-494a-444d-b21d-4b60b97a16b1",
+        "created_at": "2026-10-22T14:44:41.561430+01:00",
+        "updated_at": "2026-10-22T14:44:41.561430+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTM6MzY6MTQuOTEyNjU0KzAxOjAwIiwgIjFmM2Y2ODMyLTY2ZDYtNGI0YS04YjE0LThlN2FkNWQ0ZjU1ZCJd",
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNTYxNDMwKzAxOjAwIiwgIjI1YTA0Y2ViLTRjMDItNGE0My05Y2E2LTFkZDczZTExNTQxYSJd",
     "total_estimate": 3
   }
 }
@@ -635,7 +637,7 @@ Expenses and invoices pages (first page of each; same envelope):
   "data": {
     "invoices": [
       {
-        "id": "89c3f57c-276e-4235-9c97-7a7e7e45b6b3",
+        "id": "d1967e05-87d6-4913-8156-9415d2fbb2b1",
         "number": "INV-2026-003",
         "client_name": "Client 2",
         "client_email": "client@example.com",
@@ -665,11 +667,11 @@ Expenses and invoices pages (first page of each; same envelope):
         "last_reminded_at": null,
         "reminder_count": 0,
         "overdue_notified_at": null,
-        "created_at": "2026-10-22T13:36:15.103452+01:00",
-        "updated_at": "2026-10-22T13:36:15.103452+01:00"
+        "created_at": "2026-10-22T14:44:41.815219+01:00",
+        "updated_at": "2026-10-22T14:44:41.815219+01:00"
       },
       {
-        "id": "86e2d981-32bd-4d0b-b92d-f6f1a7b459bc",
+        "id": "f36c6092-5ed7-4fb7-819f-d904b20c4596",
         "number": "INV-2026-002",
         "client_name": "Client 1",
         "client_email": "client@example.com",
@@ -699,13 +701,13 @@ Expenses and invoices pages (first page of each; same envelope):
         "last_reminded_at": null,
         "reminder_count": 0,
         "overdue_notified_at": null,
-        "created_at": "2026-10-22T13:36:15.093361+01:00",
-        "updated_at": "2026-10-22T13:36:15.093361+01:00"
+        "created_at": "2026-10-22T14:44:41.804729+01:00",
+        "updated_at": "2026-10-22T14:44:41.804729+01:00"
       }
     ]
   },
   "meta": {
-    "next_cursor": "WyIyMDI2LTEwLTIyVDEzOjM2OjE1LjA5MzM2MSswMTowMCIsICJJTlYtMjAyNi0wMDIiXQ==",
+    "next_cursor": "WyIyMDI2LTEwLTIyVDE0OjQ0OjQxLjgwNDcyOSswMTowMCIsICJJTlYtMjAyNi0wMDIiXQ==",
     "total_estimate": 3
   }
 }
@@ -719,7 +721,7 @@ any further call (by anyone on the team) answers 409 and starts nothing:
 ```json
 {
   "data": {
-    "id": "7707e6ff-b632-44a1-956e-eafe65a48b22",
+    "id": "77b5b508-b2cc-4665-91ea-c1824d5d5f9b",
     "status": "generating"
   },
   "meta": null
@@ -741,7 +743,7 @@ After it completes or fails the next call works:
 ```json
 {
   "data": {
-    "id": "077aba2f-273d-48ce-9572-5f61e1957d6b",
+    "id": "26f15280-8a98-4fa8-a31d-423fa079ed89",
     "status": "generating"
   },
   "meta": null
