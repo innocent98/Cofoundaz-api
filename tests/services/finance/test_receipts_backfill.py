@@ -82,3 +82,17 @@ def test_rerun_is_a_no_op_and_a_failed_row_is_retried(db):
 
 def test_empty_database_is_fine(db):
     assert privatise_legacy_receipts(db, _Store()).scanned == 0
+
+
+def test_main_prints_counts_and_exits_nonzero_on_failure(db, monkeypatch, capsys):
+    from app.services.finance import receipts_backfill
+
+    s = _setup(db)
+    _expense(db, s, "ok", key="r/ok", private=False)
+    _expense(db, s, "bad", key="r/bad", private=False)
+    monkeypatch.setattr(receipts_backfill, "SessionLocal", lambda: db)
+    monkeypatch.setattr(db, "close", lambda: None)
+    monkeypatch.setattr(receipts_backfill, "get_storage", lambda: _Store(fail_on={"r/bad"}))
+
+    assert receipts_backfill.main() == 1
+    assert capsys.readouterr().out.strip() == "moved=1 failed=1"

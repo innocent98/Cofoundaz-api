@@ -35,8 +35,10 @@
 - Deploy: `alembic upgrade head`, then run the backfill once per environment (it needs that environment's Cloudinary credentials when `STORAGE_BACKEND=cloudinary`):
 
   ```bash
-  python -m scripts.privatise_legacy_receipts
+  docker compose exec api python -m app.services.finance.receipts_backfill
   ```
+
+  (The image does not ship `scripts/`, so the old `python -m scripts.privatise_legacy_receipts` only works from a source checkout. Ran 2026-10-24: local `moved=1 failed=0`, staging `moved=0 failed=0`.)
 
   It prints `moved=N failed=M` (exit 1 when `M > 0`; re-run until `failed=0`). It is idempotent: it only selects `receipt_key IS NOT NULL AND receipt_private = false`, commits per batch of 100, and logs counts. **Until it has run (or a legacy receipt is opened) the old public Cloudinary URL still works**, so run it straight after deploy.
 - Verify on staging with Cloudinary credentials: upload, fetch link, fetch file, open a legacy receipt, confirm the old `res.cloudinary.com/.../upload/...` URL stops working.

@@ -3,7 +3,7 @@
 Receipts uploaded before private receipts keep working through the API, but their old public
 Cloudinary URL stays live until the asset is moved, which otherwise only happens the first time a
 receipt is opened. Run this once per environment after deploying migration 0067
-(`python -m scripts.privatise_legacy_receipts`). It is idempotent and safe to re-run: rows already
+(`python -m app.services.finance.receipts_backfill`, which works inside the deployed image). It is idempotent and safe to re-run: rows already
 private are never selected, a Cloudinary asset that was already moved is accepted, and a failure
 on one receipt is counted and skipped without stopping the batch.
 """
@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.core.logger import log
 from app.db.models.expense import Expense
-from app.platform.storage import Storage
+from app.db.session import SessionLocal
+from app.platform.storage import Storage, get_storage
 
 DEFAULT_BATCH = 100
 
@@ -66,3 +67,18 @@ def privatise_legacy_receipts(
         result.moved += moved
         result.failed += failed
         log.info("receipt backfill batch: moved={} failed={}", moved, failed)
+
+
+def main() -> int:
+    """Run the backfill against the configured database and storage; exit 1 if any receipt failed."""
+    db = SessionLocal()
+    try:
+        result = privatise_legacy_receipts(db, get_storage())
+    finally:
+        db.close()
+    print(f"moved={result.moved} failed={result.failed}")  # noqa: T201
+    return 1 if result.failed else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
