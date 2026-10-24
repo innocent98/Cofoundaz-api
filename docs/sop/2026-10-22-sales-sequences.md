@@ -92,6 +92,12 @@ Roll back: set `SALES_OUTREACH_PROVIDER` empty (sending stops, everything else k
   real bounce mail over IMAP (the e2e DSN is synthetic and goes through a stub mailbox). Both need the real env on
   staging and one test send + one bounce to a dead address.
 
+## Fix 2026-10-24: worker transactions (`fix/outreach-worker-transactions`)
+- **Bug:** the worker runs every handler inside `db.begin_nested()`, but the send tick (`reserve_step` commits before each send) and the bounce poll (commits per message and the first-run baseline) commit for themselves. That raised `Can't operate on closed transaction inside context manager`, so **no sequence email could ever send** and the bounce poll failed every minute (seen on the local stack; unit tests called the services directly, never through `run_once`).
+- **Fix:** `register_handler(..., manages_transactions=True)` (`app/worker/runner.py`) runs such a handler outside the SAVEPOINT and rolls back only its uncommitted tail on failure; both outreach handlers use it. Rejected: a separate Session inside the handler (bypasses the test fixture's per-test rollback).
+- **Also:** an unreachable mailbox at connect time (e.g. DNS `gaierror`) is now logged by `poll_bounces` instead of failing the job.
+- **Tests:** `tests/worker/test_sales_outreach_scheduler.py` runs both real handlers through `run_once` (they failed before the fix); `tests/worker/test_runner.py` covers the flag.
+
 ## Follow-ups
 
 - Real-mailbox smoke on staging once the env is set: one send to a test inbox, one to a nonexistent address, confirm

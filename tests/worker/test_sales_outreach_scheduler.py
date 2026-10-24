@@ -77,3 +77,60 @@ def test_sending_paused_notifies_founders_only(db):
     assert rows[0].title == "Sales emails paused: too many bounces"
     assert AUDIENCE["sales.sending.paused"] == frozenset({MembershipRole.founder})
     assert suppression_svc.AUTO_PAUSE_RATE == 0.10 and datetime.now(UTC)
+
+
+def test_bounce_poll_job_succeeds_through_the_runner(db, monkeypatch):
+    # The handler commits per message; it must not run inside the runner's SAVEPOINT.
+    from app.platform import outreach as outreach_platform
+    from app.worker import runner
+    from tests.outreach_fakes import FakeMailbox
+
+    configure(monkeypatch, provider="smtp")
+    box = FakeMailbox(uidnext=5)
+    monkeypatch.setattr(outreach_platform, "get_bounce_mailbox", lambda: box)
+    sys.modules.pop("app.worker.handlers.sales_outreach", None)
+    importlib.import_module("app.worker.handlers.sales_outreach")
+    job = Job(type=SCHED_SALES_BOUNCES, payload={})
+    db.add(job)
+    db.flush()
+    runner.run_once(db)
+    db.refresh(job)
+    assert job.status.value == "succeeded", job.error
+    assert box.closed
+
+
+def test_send_tick_job_sends_through_the_runner(db, monkeypatch):
+    from app.services.sales import sending as sending_svc
+    from app.worker import runner
+    from tests.outreach_fakes import FakeSender
+    from tests.sales_outreach_helpers import contact, enroll_contacts, sequence, workspace
+
+    configure(monkeypatch)
+    fake = FakeSender()
+    monkeypatch.setattr(sending_svc, "get_outreach_sender", lambda: fake)
+    u, s = workspace(db)
+    seq = sequence(db, s, u, waits=(0,))
+    enroll_contacts(db, seq, u, contact(db, s))
+    sys.modules.pop("app.worker.handlers.sales_outreach", None)
+    importlib.import_module("app.worker.handlers.sales_outreach")
+    job = Job(type=SCHED_SALES_SEND, payload={})
+    db.add(job)
+    db.flush()
+    runner.run_once(db)
+    db.refresh(job)
+    assert job.status.value == "succeeded", job.error
+    assert len(fake.sent) == 1
+
+
+def test_unreachable_mailbox_is_logged_not_a_job_failure(db, monkeypatch):
+    from app.platform import outreach as outreach_platform
+    from app.services.sales import bounces as bounce_svc
+
+    configure(monkeypatch, provider="smtp")
+
+    def down():
+        raise outreach_platform.OutreachUnavailableError("gaierror")
+
+    monkeypatch.setattr(outreach_platform, "get_bounce_mailbox", down)
+    res = bounce_svc.poll_bounces(db)
+    assert res.configured and res.seen == 0

@@ -163,7 +163,11 @@ def poll_bounces(db: Session, mailbox: BounceMailbox | None = None) -> PollResul
             return PollResult(configured=False)
         from app.platform.outreach import get_bounce_mailbox
 
-        mailbox = get_bounce_mailbox()
+        try:
+            mailbox = get_bounce_mailbox()
+        except OutreachUnavailableError as exc:
+            log.warning(f"[outreach] bounce poll could not reach the mailbox: {exc}")
+            return PollResult()
     out = PollResult()
     try:
         known = db.scalar(
