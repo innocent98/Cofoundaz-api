@@ -90,7 +90,8 @@ def _cause(resp: httpx.Response) -> str:
         if isinstance(body, dict):
             message = str(body.get("message") or body.get("error") or "")
     except ValueError:
-        pass
+        # Not JSON: there is no Mono message to show, and the status alone is enough for the log.
+        message = ""
     message = "".join(ch for ch in message if ch.isprintable())[:200]
     return f"{resp.status_code} {message}".strip()
 

@@ -231,7 +231,9 @@ def delete_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID)
 def send_invoice(
     db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, today: dt.date | None = None
 ) -> Invoice:
-    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    # Row lock: two concurrent sends of one draft serialise here, so the second sees `sent`
+    # and is refused instead of emailing the client twice.
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
     if inv.status != InvoiceStatus.draft:
         raise _validation("status", "Only a draft invoice can be sent.")
     issued_on = today or dt.datetime.now(dt.UTC).date()

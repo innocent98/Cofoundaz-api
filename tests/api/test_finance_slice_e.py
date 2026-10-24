@@ -550,3 +550,71 @@ def test_receipt_with_a_missing_file_answers_410_and_clears_has_receipt(client, 
         headers=h,
     )
     assert again.status_code == 200 and again.json()["data"]["has_receipt"] is True
+
+
+# ------------------------------------------------------------------ review fixes
+
+
+def test_send_takes_the_row_lock(client, db, monkeypatch):
+    calls = []
+    real = invoice_svc.get_invoice_locked
+
+    def spy(*a, **k):
+        calls.append(1)
+        return real(*a, **k)
+
+    monkeypatch.setattr(invoice_svc, "get_invoice_locked", spy)
+    _u, _s, h = _member(db)
+    iid = _create(client, h)
+    assert client.post(f"{BASE}/invoices/{iid}/send", headers=h).status_code == 200
+    assert calls
+    again = client.post(f"{BASE}/invoices/{iid}/send", headers=h)
+    assert again.status_code == 422  # the second send sees `sent`
+
+
+def test_send_has_a_rate_limit(client, db):
+    from app.core import rate_limit
+    from app.main import app
+
+    _u, _s, h = _member(db)
+    ids = [_create(client, h) for _ in range(12)]
+    app.state.limiter.enabled = True
+    rate_limit.limiter.reset()
+    try:
+        codes = [client.post(f"{BASE}/invoices/{i}/send", headers=h).status_code for i in ids]
+    finally:
+        app.state.limiter.enabled = False
+        rate_limit.limiter.reset()
+    assert codes[:10] == [200] * 10 and 429 in codes[10:]
+
+
+def test_queued_invoice_email_is_dropped_once_the_invoice_is_paid(client, db):
+    from app.platform.email import ConsoleEmailSender
+    from app.worker import runner
+    from app.worker.handlers import invoice_email  # noqa: F401
+
+    sender = ConsoleEmailSender()
+    _u, _s, h = _member(db)
+    iid = _create_sent(client, h)
+    inv = db.get(Invoice, iid)
+    inv.last_sent_at = None
+    db.flush()
+    assert client.post(f"{BASE}/invoices/{iid}/resend", headers=h).status_code == 200
+    assert client.post(f"{BASE}/invoices/{iid}/mark-paid", headers=h).status_code == 200
+    from unittest import mock
+
+    with mock.patch("app.worker.handlers.invoice_email.get_email_sender", lambda: sender):
+        while runner.run_once(db):
+            pass
+    assert sender.sent == []  # neither the send nor the resend mailed a paid invoice
+
+
+def test_formula_looking_text_cells_carry_the_quote_prefix_style():
+    book = build_xlsx([("S", [["h"], ["=1+1"], ["+x"], ["-x"], ["@x"], ["\tx"], ["plain"]])])
+    with zipfile.ZipFile(io.BytesIO(book)) as z:
+        sheet = z.read("xl/worksheets/sheet1.xml").decode()
+        styles = z.read("xl/styles.xml").decode()
+    assert sheet.count(' s="3"') == 5
+    assert 'quotePrefix="1"' in styles and '<cellXfs count="4">' in styles
+    plain = sheet.split("plain")[0].rsplit("<c ", 1)[1]
+    assert 's="3"' not in plain
