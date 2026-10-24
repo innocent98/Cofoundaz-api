@@ -1,0 +1,38 @@
+{
+  "data": {
+    "survey_id": "ba53d44a-a5fa-468c-b6db-43534fcb286b",
+    "title": "Pricing check",
+    "status": "open",
+    "responses": 1,
+    "completion_rate": 100,
+    "questions": [
+      {
+        "id": "185ce840-8f3d-49ab-b065-06b63b5897db",
+        "type": "choice",
+        "prompt": "Would you pay for this?",
+        "answered": 1,
+        "counts": {
+          "Yes": 1,
+          "No": 0
+        }
+      },
+      {
+        "id": "758336c6-2ca0-422d-a7bb-7a29daa7b330",
+        "type": "nps",
+        "prompt": "How likely are you to recommend it?",
+        "answered": 1,
+        "counts": {
+          "9": 1
+        },
+        "average": 9.0
+      },
+      {
+        "id": "6a09bae3-ca48-48cb-809e-cc4ad8d9969f",
+        "type": "open",
+        "prompt": "What would make it a must-have?",
+        "answered": 1
+      }
+    ]
+  },
+  "meta": null
+}

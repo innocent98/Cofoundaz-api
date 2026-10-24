@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "59edfc55-942a-4d31-a934-583111eda32a",
+    "statement": "Founders will pay for validation tooling",
+    "risk": "high",
+    "status": "untested",
+    "evidence_count": 0,
+    "linked_experiments": [],
+    "created_at": "2026-10-24T20:34:57.164949+00:00",
+    "updated_at": "2026-10-24T20:34:57.164949+00:00"
+  },
+  "meta": null
+}

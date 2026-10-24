@@ -21,6 +21,7 @@ _BAD_SHEET_CHARS = re.compile(r"[\[\]:*?/\\]")
 # XML 1.0 forbids most control characters; one of them in a cell would corrupt the whole file.
 _BAD_XML_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
 _MAX_CELL_CHARS = 32767
+_FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 
 _CONTENT_TYPES = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -40,7 +41,8 @@ _ROOT_RELS = (
     'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
     'Target="xl/workbook.xml"/></Relationships>'
 )
-# cellXfs: 0 = default, 1 = bold (header), 2 = number with thousands separator and 2 decimals.
+# cellXfs: 0 = default, 1 = bold (header), 2 = number with thousands separator and 2 decimals,
+# 3 = text with quotePrefix (a leading apostrophe in Excel), for cells that start like a formula.
 _STYLES = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
@@ -51,9 +53,11 @@ _STYLES = (
     '<fill><patternFill patternType="gray125"/></fill></fills>'
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-    '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+    '<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
     '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
     '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+    '<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" quotePrefix="1" '
+    'applyNumberFormat="1"/>'
     "</cellXfs></styleSheet>"
 )
 
@@ -86,7 +90,14 @@ def _cell(ref: str, value: Cell, *, header: bool) -> str:
     if isinstance(value, (int, float, Decimal)):
         return f'<c r="{ref}" s="2"><v>{value}</v></c>'
     text = _BAD_XML_CHARS.sub("", value)[:_MAX_CELL_CHARS]
-    style = ' s="1"' if header else ""
+    # A text cell that starts like a formula keeps the quote prefix, so it stays text even after
+    # the user edits it or re-saves the sheet as CSV.
+    if header:
+        style = ' s="1"'
+    elif text.startswith(_FORMULA_STARTS):
+        style = ' s="3"'
+    else:
+        style = ""
     return (
         f'<c r="{ref}" t="inlineStr"{style}><is><t xml:space="preserve">{escape(text)}</t></is></c>'
     )

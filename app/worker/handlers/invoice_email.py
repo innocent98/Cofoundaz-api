@@ -77,6 +77,8 @@ def handle_invoice_email(db: Session, job: Job) -> None:
     inv = db.get(Invoice, uuid.UUID(str(job.payload["invoice_id"])))
     if inv is None or not inv.client_email:
         return  # deleted since enqueue / no recipient — nothing to send
+    if inv.status != InvoiceStatus.sent:
+        return  # paid (or otherwise settled) between queueing and sending: stay silent
     startup = db.get(Startup, inv.startup_id)
     name = startup.name if startup and startup.name else "Cofoundaz"
     # Strip CR/LF to prevent header injection in the SMTP backend.

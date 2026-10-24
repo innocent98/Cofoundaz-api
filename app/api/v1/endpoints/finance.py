@@ -301,7 +301,11 @@ def delete_invoice(
 
 
 @router.post("/invoices/{invoice_id}/send", response_model=dict[str, Any])
+# One bucket per user across every invoice (a plain `limit` is keyed per URL, and the URL carries
+# the invoice id), so a script cannot dodge it by walking a list of invoices.
+@limiter.shared_limit("10/minute", scope="finance-invoice-email")
 def send_invoice(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
     invoice_id: uuid.UUID,
     membership: Membership = Depends(_finance),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
@@ -358,7 +362,7 @@ def create_invoice_pay_link(
 
 
 @router.post("/invoices/{invoice_id}/resend", response_model=dict[str, Any])
-@limiter.limit("10/minute")
+@limiter.shared_limit("10/minute", scope="finance-invoice-email")
 def resend_invoice(
     request: Request,  # noqa: ARG001 - required by the rate limiter
     invoice_id: uuid.UUID,
