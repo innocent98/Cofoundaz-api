@@ -114,7 +114,7 @@ def test_list_shows_both_providers(client, db):
     _connect_ps(client, h)
     body = client.get(URL, headers=h).json()["data"]
     by = {p["provider"]: p for p in body["providers"]}
-    assert set(by) == {"paystack", "flutterwave"}
+    assert set(by) == {"paystack", "flutterwave", "mono"}
     assert by["paystack"]["connection"]["key_last4"] == PS_KEY[-4:]
     assert by["flutterwave"]["connection"] is None
     assert by["paystack"]["label"] == "Paystack"

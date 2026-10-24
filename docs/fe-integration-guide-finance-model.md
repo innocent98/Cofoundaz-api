@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Financial Model (Module 12, Slice 5)
 
+> **Superseded in part 2026-10-24:** the model is now 36 months with a yearly rollup, new statement rows (Depreciation, Capex, Fixed assets, totals, Balance check) and editable assumptions with Recalculate. See `fe-integration-guide-finance-model-mono.md`; the bodies below are the 12-month shape.
+
 > **Superseded in part (slice c, ledger correctness):** `POST /finance/model/generate` returns `409 MODEL_ALREADY_GENERATING` while a generation is running for the workspace. See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
 
 > **Provenance.** `e2e/test_financial_model.py::test_financial_model_journey` was run against the live app

@@ -1,16 +1,15 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import FinancialModelStatus
-from app.db.models.finance_runway import FinanceRunwaySettings
 from app.db.models.financial_model import FinancialModel
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.platform.llm_budget import metered_complete_json
-from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
 from app.services.finance.model_engine import project_three_statements
+from app.services.finance.model_inputs import build_starting
 from app.services.finance.model_prompt import (
     ASSUMPTIONS_SCHEMA,
     build_model_messages,
@@ -29,23 +28,7 @@ def handle_finance_model(db: Session, job: Job) -> None:
     startup = db.get(Startup, model.startup_id)
     if startup is None:
         return
-    summary = cash_flow_summary(db, startup_id=startup.id)
-    revenue, costs = trailing_monthly_flows(db, startup_id=startup.id)
-    starting = {
-        "revenue_0": int(revenue),
-        "monthly_costs_0": int(costs),
-        "cash_on_hand": int(summary["cash_on_hand"]),
-        "currency": summary["currency"],
-    }
-    # PRD 12.6: revenue drivers pulled from the Business Builder revenue model ("Send to
-    # financial model", PRD 08.8). Real actuals always win; the plan only fills a pre-revenue gap.
-    revenue_source = "actuals"
-    settings_row = db.query(FinanceRunwaySettings).filter_by(startup_id=startup.id).first()
-    drivers = (settings_row.revenue_drivers or {}) if settings_row else {}
-    if starting["revenue_0"] <= 0 and int(drivers.get("total_monthly_minor") or 0) > 0:
-        starting["revenue_0"] = int(drivers["total_monthly_minor"])
-        starting["revenue_plan"] = [s.get("name") for s in drivers.get("streams") or []]
-        revenue_source = "business_builder"
+    starting, revenue_source = build_starting(db, startup_id=startup.id)
     raw = metered_complete_json(
         db,
         startup.id,
@@ -66,13 +49,14 @@ def handle_finance_model(db: Session, job: Job) -> None:
     stmts = project_three_statements(
         starting,
         assumptions,
-        today=datetime.now(UTC).date(),
+        today=date.fromisoformat(starting["as_of"]),
         horizon=model.horizon_months,
     )
     # `months` lives inside each stored statement: serialize_model reads it from there.
     # Only the display statements are stored, never the *_raw arrays.
     months = stmts["months"]
     model.assumptions = assumptions
+    model.starting = starting
     model.pnl = {"months": months, **stmts["pnl"]}
     model.cash_flow = {"months": months, **stmts["cash_flow"]}
     model.balance_sheet = {"months": months, **stmts["balance_sheet"]}

@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     API_PUBLIC_URL: str = ""
     # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.
     PAYMENT_PROVIDER_STUB: bool = False
+    # Mono bank link (Finance integrations). The secret key and webhook secret belong to the
+    # Cofoundaz Mono app, not to a founder: only the linked account id is per-founder (and is
+    # encrypted with FINANCE_CONNECTIONS_ENCRYPTION_KEY). Sandbox only unless MONO_ALLOW_LIVE.
+    MONO_SECRET_KEY: str | None = None
+    MONO_PUBLIC_KEY: str | None = None
+    MONO_WEBHOOK_SECRET: str | None = None
+    MONO_ALLOW_LIVE: bool = False
     FINANCE_SYNC_BACKFILL_DAYS: int = 90
     FINANCE_SYNC_MAX_PAGES: int = 20
     FINANCE_SYNC_MIN_INTERVAL_SECONDS: int = 30

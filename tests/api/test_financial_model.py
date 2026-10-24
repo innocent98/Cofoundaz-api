@@ -47,7 +47,7 @@ def test_generate_returns_202_and_enqueues_job(client, db):
     assert len(rows) == 1
     assert str(rows[0].id) == data["id"]
     assert rows[0].status == FinancialModelStatus.generating
-    assert rows[0].horizon_months == 12
+    assert rows[0].horizon_months == 36
     assert rows[0].currency == "NGN"
 
     jobs = db.query(Job).filter_by(type="ai.finance.model", startup_id=startup.id).all()

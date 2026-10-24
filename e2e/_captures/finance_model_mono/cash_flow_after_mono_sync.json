@@ -1,0 +1,49 @@
+{
+  "data": {
+    "cash_on_hand": 75742500,
+    "monthly_burn": 8085833,
+    "monthly_revenue": 2666667,
+    "runway_months": 9.4,
+    "runway_low": false,
+    "currency": "NGN",
+    "by_month": [
+      {
+        "month": "2026-05",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0
+      },
+      {
+        "month": "2026-06",
+        "inflow": 100000000,
+        "outflow": 0,
+        "net": 100000000
+      },
+      {
+        "month": "2026-07",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0
+      },
+      {
+        "month": "2026-08",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0
+      },
+      {
+        "month": "2026-09",
+        "inflow": 0,
+        "outflow": 0,
+        "net": 0
+      },
+      {
+        "month": "2026-10",
+        "inflow": 8000000,
+        "outflow": 32257500,
+        "net": -24257500
+      }
+    ]
+  },
+  "meta": null
+}

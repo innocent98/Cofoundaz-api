@@ -12,6 +12,7 @@ import httpx
 
 _PAYSTACK_HOST = "api.paystack.co"
 _FLUTTERWAVE_HOST = "api.flutterwave.com"
+_MONO_HOST = "api.withmono.com"
 
 _STUB_WHEN = "2026-10-01T09:30:00.000Z"
 
@@ -181,12 +182,62 @@ def _flutterwave(request: httpx.Request) -> httpx.Response:
     return _json(404, {"status": "error", "message": "Not found", "data": None})
 
 
+def _mono(request: httpx.Request) -> httpx.Response:
+    if "bad" in request.headers.get("mono-sec-key", ""):
+        return _json(401, {"status": "failed", "message": "Invalid secret key"})
+    path = request.url.path
+    if path == "/v2/accounts/auth":
+        body = json.loads(request.content or b"{}")
+        if "bad" in str(body.get("code") or ""):
+            return _json(400, {"status": "failed", "message": "Invalid code"})
+        return _json(
+            200, {"status": "successful", "message": "Success", "data": {"id": "stubmonoacct0001"}}
+        )
+    parts = path.strip("/").split("/")
+    if parts[:2] == ["v2", "accounts"] and len(parts) == 3:
+        return _json(
+            200,
+            {
+                "status": "successful",
+                "data": {
+                    "account": {
+                        "id": parts[2],
+                        "name": "NovaPay Ltd",
+                        "accountNumber": "0123456789",
+                        "currency": "NGN",
+                        "institution": {"name": "Stub Bank", "bankCode": "000", "type": "BUSINESS"},
+                    }
+                },
+            },
+        )
+    if parts[:2] == ["v2", "accounts"] and len(parts) == 4 and parts[3] == "transactions":
+        rows = [
+            ("stub_mono_tx_1", "PAYSTACK TRANSFER SETTLEMENT", 492500, "credit"),
+            ("stub_mono_tx_2", "NIP transfer from ACME Ltd", 1500000, "credit"),
+            ("stub_mono_tx_3", "POS purchase office supplies", 250000, "debit"),
+        ]
+        return _json(
+            200,
+            {
+                "status": "successful",
+                "data": [
+                    {"id": i, "narration": n, "amount": a, "type": t, "date": _STUB_WHEN}
+                    for i, n, a, t in rows
+                ],
+                "meta": {"total": 3, "page": 1, "previous": None, "next": None},
+            },
+        )
+    return _json(404, {"status": "failed", "message": "Not found"})
+
+
 def _handler(request: httpx.Request) -> httpx.Response:
     host = request.url.host
     if host == _PAYSTACK_HOST:
         return _paystack(request)
     if host == _FLUTTERWAVE_HOST:
         return _flutterwave(request)
+    if host == _MONO_HOST:
+        return _mono(request)
     return _json(404, {"message": "Unknown stub host"})
 
 
