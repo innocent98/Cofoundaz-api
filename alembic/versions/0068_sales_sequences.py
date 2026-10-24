@@ -1,11 +1,11 @@
 """Sales slice B (sequences): sequences, enrollments, sends, suppressions, drafts, IMAP ledger
 
 Revision ID: 0068_sales_sequences
-Revises: 0066_finance_invoice_automation
+Revises: 0067_finance_ledger_correctness
 Create Date: 2026-10-22
 
-Six new tables, all additive. `down_revision` is 0066 because Finance slice (c) builds 0067 in
-parallel; whichever PR merges second re-chains onto the other.
+Six new tables, all additive. Built in parallel with Finance slice (c) on 0066 and re-chained
+onto 0067 after both merged (they touch disjoint tables).
 """
 
 import sqlalchemy as sa
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0068_sales_sequences"
-down_revision = "0066_finance_invoice_automation"
+down_revision = "0067_finance_ledger_correctness"
 branch_labels = None
 depends_on = None
 
