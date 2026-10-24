@@ -63,7 +63,8 @@ def test_mentor_cannot_upload_403(client, db, tmp_path, monkeypatch):
 def test_delete_removes(client, db, tmp_path, monkeypatch):
     _u, _s, h = _member(db, tmp_path, monkeypatch)
     fid = _upload(client, h).json()["data"]["id"]
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 200
+    resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"/api/v1/documents/files/{fid}", headers=h).status_code == 404
 
 

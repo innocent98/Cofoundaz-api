@@ -77,7 +77,8 @@ def test_documents_access_journey(
             json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "validation"},
         )
         c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
-        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        onboarded = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert onboarded.status_code == 200
         ws = c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]
         founder = {**auth, "X-Workspace-Id": ws}
         team = _join(c, founder, ws, "team_member", unique_email, mailbox)
@@ -215,7 +216,9 @@ def test_documents_access_journey(
         cap("file_download_link", link)
         served = c.get(link.json()["data"]["url"])  # no auth header: the signed token
         assert served.status_code == 200 and served.content.startswith(b"%PDF-")
-        assert c.get(f"/api/v1/documents/files/{file_id}/download", headers=mentor).status_code == 403
+        assert (
+            c.get(f"/api/v1/documents/files/{file_id}/download", headers=mentor).status_code == 403
+        )
         assert c.get(link.json()["data"]["url"] + "x").status_code == 404
 
         # --- delete refused while a request exists ---------------------------------------------

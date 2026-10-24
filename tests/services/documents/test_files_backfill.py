@@ -1,5 +1,6 @@
 import pytest
 
+import app.services.documents.files_backfill as mod
 from app.core.config import settings
 from app.db.models.document import DocumentFile
 from app.db.models.enums import ScanStatus
@@ -92,8 +93,6 @@ def test_one_failure_does_not_stop_the_batch_and_rerun_is_a_noop(db, world):
 
 
 def test_main_exit_code(db, world, monkeypatch, capsys):
-    import app.services.documents.files_backfill as mod
-
     class S:
         def close(self):
             pass

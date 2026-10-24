@@ -71,7 +71,7 @@ def test_noop_scanner_warns_outside_dev_and_test(monkeypatch):
         assert seen == []
         scanner.warn_if_noop_scanner("production")
         assert len(seen) == 1 and "no-op placeholder" in seen[0]
-        monkeypatch.setattr(scanner, "get_scanner", lambda: object())
+        monkeypatch.setattr(scanner, "get_scanner", object)
         scanner.warn_if_noop_scanner("production")  # a real scanner: silent
         assert len(seen) == 1
     finally:

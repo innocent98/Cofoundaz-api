@@ -128,7 +128,8 @@ def test_file_blocked_after_the_request_went_out_stops_the_signer_page(client, d
     db.query(DocumentFile).filter_by(id=fid).update({"scan_status": ScanStatus.blocked})
     db.flush()
     assert client.get(f"/api/v1/sign/{token}").status_code == 404
-    assert client.post(f"/api/v1/sign/{token}", json={"typed_name": "A"}).status_code == 404
+    resp = client.post(f"/api/v1/sign/{token}", json={"typed_name": "A"})
+    assert resp.status_code == 404
 
 
 # ---- row 6: delete never cascades ---------------------------------------------------------

@@ -131,7 +131,8 @@ def test_deleted_file_link_is_404(client, db, ws):
     url = _path(
         client.get(f"/api/v1/documents/files/{fid}/download", headers=h).json()["data"]["url"]
     )
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 200
+    resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert resp.status_code == 200
     assert client.get(url).status_code == 404
 
 
@@ -219,7 +220,8 @@ def test_signer_file_link_dies_on_expiry_signing_and_block(client, db, ws):
     assert client.get(f"/api/v1/sign/{token}/file").status_code == 404  # blocked
     db.query(DocumentFile).update({"scan_status": ScanStatus.clean})
     db.flush()
-    assert client.post(f"/api/v1/sign/{token}", json={"typed_name": "S"}).status_code == 200
+    resp = client.post(f"/api/v1/sign/{token}", json={"typed_name": "S"})
+    assert resp.status_code == 200
     assert client.get(f"/api/v1/sign/{token}/file").status_code == 404  # signed
     assert client.get("/api/v1/sign/nope/file").status_code == 404
 
@@ -316,7 +318,8 @@ def test_delete_and_request_create_lock_the_file_row(client, db, ws):
         seen.clear()
         other = _upload(client, h)
         seen.clear()
-        assert client.delete(f"/api/v1/documents/files/{other}", headers=h).status_code == 200
+        resp = client.delete(f"/api/v1/documents/files/{other}", headers=h)
+        assert resp.status_code == 200
         locked_on_delete = [s for s in seen if "FROM document_files" in s and "FOR UPDATE" in s]
     finally:
         stop()
@@ -334,7 +337,8 @@ def test_stored_object_is_removed_only_after_the_commit(client, db, ws, monkeypa
         type(db), "commit", lambda self: (order.append("commit"), real_commit(self))[1]
     )
     monkeypatch.setattr(ep, "purge_object", lambda target: order.append("purge"))
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 200
+    resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert resp.status_code == 200
     assert order == ["commit", "purge"]
 
 
