@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.core.logger import log
+from app.core.pagination import DEFAULT_LIMIT, decode_keyset, encode_keyset
 from app.db.models.enums import (
     InvoiceStatus,
     InvoiceTerms,
@@ -301,18 +302,37 @@ def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) ->
 
 
 def list_invoices(
-    db: Session, *, startup_id: uuid.UUID, status: str | None = None, today: dt.date | None = None
-) -> list[Invoice]:
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    status: str | None = None,
+    today: dt.date | None = None,
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Invoice], str | None, int]:
+    """One page, newest first: (rows, next_cursor, total matching the status filter).
+
+    `status` is derived (overdue depends on today), so the filter and the cursor are applied in
+    Python over the workspace's invoices, which stay small.
+    """
     rows = (
         db.query(Invoice)
         .filter_by(startup_id=startup_id)
         .order_by(Invoice.created_at.desc(), Invoice.number.desc())
         .all()
     )
-    if status is None:
-        return rows
-    as_of = today or dt.datetime.now(dt.UTC).date()
-    return [r for r in rows if _derived_status(r, today=as_of) == status]
+    if status is not None:
+        as_of = today or dt.datetime.now(dt.UTC).date()
+        rows = [r for r in rows if _derived_status(r, today=as_of) == status]
+    total = len(rows)
+    if cursor:
+        created, number = decode_keyset(cursor, dt.datetime.fromisoformat, str)
+        rows = [r for r in rows if (r.created_at, r.number) < (created, number)]
+    next_cursor = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_cursor = encode_keyset(rows[-1].created_at.isoformat(), rows[-1].number)
+    return rows, next_cursor, total
 
 
 def serialize_invoice(inv: Invoice, *, today: dt.date) -> InvoiceResponse:

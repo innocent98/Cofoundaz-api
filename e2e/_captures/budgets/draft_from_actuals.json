@@ -1,48 +1,57 @@
 {
   "data": {
-    "month": "2026-09",
+    "month": "2026-10",
     "budgets": [
       {
-        "id": "5b3d4f6e-feeb-4966-9925-04cb166ddf81",
+        "id": "08aea73f-aba6-4870-95e3-8cf547af2b5f",
         "category": "Infrastructure",
-        "period_month": "2026-09",
+        "period_month": "2026-10",
         "limit_minor": 8000000,
         "currency": "NGN",
         "notes": null,
         "spent_minor": 0,
         "variance_minor": -8000000,
+        "variance_percent": -100.0,
         "over_budget": false,
         "percent_used": 0.0,
-        "created_at": "2026-09-30T13:53:42.094190Z",
-        "updated_at": "2026-09-30T13:53:42.094190Z"
+        "status": "under",
+        "unbudgeted": false,
+        "created_at": "2026-10-22T13:26:49.730499+01:00",
+        "updated_at": "2026-10-22T13:26:49.730499+01:00"
       },
       {
-        "id": "78e67809-cbd3-43d2-b3ee-e4b7f61a5111",
+        "id": "5146184f-6675-4dac-b78e-cb204eabde54",
         "category": "Marketing",
-        "period_month": "2026-09",
+        "period_month": "2026-10",
         "limit_minor": 5000000,
         "currency": "NGN",
         "notes": null,
         "spent_minor": 0,
         "variance_minor": -5000000,
+        "variance_percent": -100.0,
         "over_budget": false,
         "percent_used": 0.0,
-        "created_at": "2026-09-30T13:53:42.094190Z",
-        "updated_at": "2026-09-30T13:53:42.094190Z"
+        "status": "under",
+        "unbudgeted": false,
+        "created_at": "2026-10-22T13:26:49.730499+01:00",
+        "updated_at": "2026-10-22T13:26:49.730499+01:00"
       },
       {
-        "id": "15cd0863-f301-438b-ae90-4d47d293acf6",
+        "id": "688b256d-0b95-4718-bdc6-4c018bfab9cf",
         "category": "Software",
-        "period_month": "2026-09",
+        "period_month": "2026-10",
         "limit_minor": 1500000,
         "currency": "NGN",
         "notes": null,
         "spent_minor": 0,
         "variance_minor": -1500000,
+        "variance_percent": -100.0,
         "over_budget": false,
         "percent_used": 0.0,
-        "created_at": "2026-09-30T13:53:42.094190Z",
-        "updated_at": "2026-09-30T13:53:42.094190Z"
+        "status": "under",
+        "unbudgeted": false,
+        "created_at": "2026-10-22T13:26:49.730499+01:00",
+        "updated_at": "2026-10-22T13:26:49.730499+01:00"
       }
     ]
   },

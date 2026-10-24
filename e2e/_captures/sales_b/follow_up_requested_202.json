@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "d994ae81-e666-41e7-bffa-5cd1ecd00564",
+    "kind": "follow_up",
+    "status": "generating",
+    "sequence_id": null,
+    "step_index": null,
+    "deal_id": "8efe764c-410f-4230-af95-8de82c5fb961",
+    "subject": null,
+    "body": null,
+    "error": null,
+    "sent_at": null,
+    "created_at": "2026-10-22T13:56:51.684261+00:00"
+  },
+  "meta": null
+}

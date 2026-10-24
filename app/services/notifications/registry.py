@@ -351,6 +351,12 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "Suggest a follow-up",
     ),
+    # D-SAL-8: auto-pause after a bounce spike. Founders only; the payload `href` opens Sequences.
+    "sales.sending.paused": NotifSpec(
+        _audience("sales.sending.paused", minus_actor=False),
+        lambda p: f"Sales emails paused: too many {p.get('reason', 'bounces')}",
+        lambda _p: "Review",
+    ),
 }
 
 

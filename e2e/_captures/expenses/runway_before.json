@@ -19,11 +19,6 @@
         "avg_net_burn_minor": 0,
         "by_month": [
           {
-            "month": "2026-10",
-            "cash_balance": 100000000,
-            "net": 0
-          },
-          {
             "month": "2026-11",
             "cash_balance": 100000000,
             "net": 0
@@ -75,6 +70,11 @@
           },
           {
             "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-10",
             "cash_balance": 100000000,
             "net": 0
           }
@@ -86,11 +86,6 @@
         "avg_net_burn_minor": 0,
         "by_month": [
           {
-            "month": "2026-10",
-            "cash_balance": 100000000,
-            "net": 0
-          },
-          {
             "month": "2026-11",
             "cash_balance": 100000000,
             "net": 0
@@ -142,6 +137,11 @@
           },
           {
             "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-10",
             "cash_balance": 100000000,
             "net": 0
           }
@@ -153,11 +153,6 @@
         "avg_net_burn_minor": 0,
         "by_month": [
           {
-            "month": "2026-10",
-            "cash_balance": 100000000,
-            "net": 0
-          },
-          {
             "month": "2026-11",
             "cash_balance": 100000000,
             "net": 0
@@ -209,6 +204,11 @@
           },
           {
             "month": "2027-09",
+            "cash_balance": 100000000,
+            "net": 0
+          },
+          {
+            "month": "2027-10",
             "cash_balance": 100000000,
             "net": 0
           }

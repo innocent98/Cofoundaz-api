@@ -16,6 +16,9 @@ def _local_storage(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "LOCAL_STORAGE_DIR", str(tmp_path))
 
 
+PNG = b"\x89PNG\r\n\x1a\n" + b"-bytes"
+
+
 def _make(client, h):
     resp = client.post(
         f"{BASE}/expenses",
@@ -31,7 +34,7 @@ def _make(client, h):
     return resp.json()["data"]["id"]
 
 
-def _upload(client, h, expense_id, *, name="r.png", ct="image/png", body=b"\x89PNG-bytes"):
+def _upload(client, h, expense_id, *, name="r.png", ct="image/png", body=PNG):
     return client.post(
         f"{BASE}/expenses/{expense_id}/receipt",
         files={"file": (name, io.BytesIO(body), ct)},
@@ -50,11 +53,11 @@ def test_upload_png_sets_receipt_and_stores_file(client, db, tmp_path):
     assert resp.status_code == 200, resp.text
     data = resp.json()["data"]
     assert data["has_receipt"] is True
-    assert data["receipt_url"]
+    assert data["receipt_url"] == f"/api/v1/finance/expenses/{eid}/receipt"
     stored = _files(tmp_path)
     assert len(stored) == 1
     assert stored[0].suffix == ".png"
-    assert stored[0].read_bytes() == b"\x89PNG-bytes"
+    assert stored[0].read_bytes() == PNG
 
 
 def test_upload_pdf_accepted(client, db, tmp_path):
@@ -96,7 +99,7 @@ def test_oversize_422_and_no_receipt(client, db, tmp_path, monkeypatch):
 def test_replace_deletes_old_file(client, db, tmp_path):
     _u, s, h = _member(db)
     eid = _make(client, h)
-    first = _upload(client, h, eid, body=b"first")
+    first = _upload(client, h, eid, body=PNG + b"first")
     assert first.status_code == 200, first.text
     exp = db.query(Expense).filter_by(startup_id=s.id).one()
     db.refresh(exp)
@@ -104,7 +107,7 @@ def test_replace_deletes_old_file(client, db, tmp_path):
     assert old_key is not None
     assert (Path(tmp_path) / old_key).is_file()
 
-    second = _upload(client, h, eid, name="r.pdf", ct="application/pdf", body=b"second")
+    second = _upload(client, h, eid, name="r.pdf", ct="application/pdf", body=b"%PDF-1.4 second")
     assert second.status_code == 200, second.text
     db.refresh(exp)
     assert exp.receipt_key != old_key

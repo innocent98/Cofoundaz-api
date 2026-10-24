@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -44,3 +44,13 @@ class FinancialModel(UUIDMixin, TimestampMixin, Base):
     balance_sheet: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     error: Mapped[str | None] = mapped_column(String(300), nullable=True)
     generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        # At most one in-flight generation per workspace (POST /finance/model/generate -> 409).
+        Index(
+            "uq_financial_models_one_generating",
+            "startup_id",
+            unique=True,
+            postgresql_where=text("status = 'generating'"),
+        ),
+    )

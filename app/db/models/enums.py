@@ -508,3 +508,50 @@ class CallPrepStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
+
+
+class SequenceStatus(enum.StrEnum):
+    active = "active"
+    paused = "paused"
+    archived = "archived"
+
+
+class EnrollmentStatus(enum.StrEnum):
+    active = "active"
+    completed = "completed"
+    replied = "replied"
+    unsubscribed = "unsubscribed"
+    bounced = "bounced"
+    stopped = "stopped"
+
+
+class SendStatus(enum.StrEnum):
+    # `pending` is a reservation made BEFORE the SMTP call (at-most-once); `unknown` is a
+    # reservation that was never confirmed (the worker died mid-send): never resent.
+    pending = "pending"
+    sent = "sent"
+    failed = "failed"
+    bounced = "bounced"
+    unknown = "unknown"
+
+
+class SendKind(enum.StrEnum):
+    sequence = "sequence"
+    follow_up = "follow_up"
+
+
+class SuppressionReason(enum.StrEnum):
+    unsubscribed = "unsubscribed"
+    bounced = "bounced"
+    complained = "complained"
+
+
+class DraftKind(enum.StrEnum):
+    sequence_step = "sequence_step"
+    follow_up = "follow_up"
+
+
+class DraftStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"

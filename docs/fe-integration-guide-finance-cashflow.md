@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Transactions + Cash Flow (Module 12, Slice 1)
 
+> **Superseded in part (slice c, ledger correctness):** `GET /finance/transactions` is paginated (`limit` default 100, `cursor`, `meta.next_cursor`, `meta.total_estimate`); `amount_minor` must be greater than 0; currency is NGN only; categories are case-normalised. See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_finance.py::test_finance_cash_flow_journey` was run against the live
 > app (`bash scripts/e2e_run.sh`, 59 e2e passed) and every **success response body** below is
 > pasted **verbatim** from the captures it wrote to `e2e/_captures/finance/`:

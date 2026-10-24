@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **What shipped** | Academy BE gaps from `cofoundaz/docs/checklist/academy-prd-gaps.md`: every row marked BE or both: **1, 2, 4, 5, 6, 7, 8, 9, 10, 13, 14, 16, 17, 20, 23**, and **24** (decided: `learning.course.completed` stays an audit event, see Follow-ups). Rows marked FE (3, 11, 12, 15, 18, 19, 21, 22) are untouched. Branch `feature/academy-be`, migration `0069_academy_content` (chained on `0066_finance_invoice_automation`; it re-chains onto whichever of 0067 / 0068 lands first before merge). PR: see the checklist entry. |
+| **What shipped** | Academy BE gaps from `cofoundaz/docs/checklist/academy-prd-gaps.md`: every row marked BE or both: **1, 2, 4, 5, 6, 7, 8, 9, 10, 13, 14, 16, 17, 20, 23**, and **24** (decided: `learning.course.completed` stays an audit event, see Follow-ups). Rows marked FE (3, 11, 12, 15, 18, 19, 21, 22) are untouched. Branch `feature/academy-be`, migration `0069_academy_content` (chained on `0068_sales_sequences`, re-chained 2026-10-24 after #171 and #172 merged). PR: see the checklist entry. |
 | **Why** | The catalog was placeholder code, Download PDF and Share were fake, no handler existed for `learning.certificate.generate` (every job failed "no handler"), notes had no storage, "AI-picked" meant the same stage list for everyone, and search could not find a course. |
 
 ## How (decisions)
@@ -41,7 +41,7 @@
 - Deploy needs nothing extra: the `migrate` service now also runs the loader. Locally and in the dev stack run `python -m app.services.learning.content` after `alembic upgrade head` (the dev compose does not run it for you).
 - Editing content: change the markdown, deploy (or run the loader). To go live with a video: put the YouTube URL or id in the lesson's `video:` front-matter. To mark reviewed: set `review_status: reviewed` on the course and every lesson.
 - Optional env: `ACADEMY_LINKEDIN_ORG_ID` (LinkedIn company page id), `APP_BASE_URL` (the verify link and QR use it; required in staging and prod).
-- Roll back: `alembic downgrade 0066_finance_invoice_automation` (or the revision it re-chains onto) drops the new tables and columns; certificates keep their rows. Old code reads `catalog.py` placeholders again only if redeployed, which is not recommended. Certificate PDFs live in the DB and go with the downgrade.
+- Roll back: `alembic downgrade 0068_sales_sequences` drops the new tables and columns; certificates keep their rows. Old code reads `catalog.py` placeholders again only if redeployed, which is not recommended. Certificate PDFs live in the DB and go with the downgrade.
 - To revoke a credential today: `UPDATE certificates SET revoked_at = now() WHERE verify_code = 'CFZ-...'` (the verify route then answers `valid: false`, and the owner's list and PDF stop).
 
 ## Follow-ups

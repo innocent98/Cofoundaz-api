@@ -249,6 +249,10 @@ def convert_lead(
     lead.converted_contact_id = contact.id
     lead.converted_account_id = account.id if account else None
     db.flush()
+    # Lead call 5: a running sequence follows the lead to its new contact.
+    from app.services.sales.sequences import move_lead_enrollments
+
+    move_lead_enrollments(db, startup_id, lead.id, contact.id)
     write_activity(
         db,
         startup_id=startup_id,

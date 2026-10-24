@@ -194,7 +194,7 @@ def test_summary_empty_month_is_zeroed(client, db):
 
 def test_summary_all_zero_amounts_no_divide_by_zero(client, db):
     _u, _s, h = _member(db)
-    _post(client, h, amount_minor=0, expense_date="2026-02-03")
+    # Zero-amount expenses can no longer be created (row 30); an empty month must still be safe.
     resp = client.get(f"{BASE}/expenses/summary?month=2026-02", headers=h)
     assert resp.status_code == 200, resp.text
     d = resp.json()["data"]

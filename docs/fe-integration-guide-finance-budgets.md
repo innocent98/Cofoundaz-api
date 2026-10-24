@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Budgets (Module 12, Slice 4b)
 
+> **Superseded in part (slice c, ledger correctness):** budget actuals now count every money-out ledger row (manual, expense, imported), not only expenses; `GET /budgets` also returns unbudgeted categories with spend (`limit_minor: null`) and has new fields `variance_percent`, `status`, `unbudgeted`; categories are case-folded (a lower-case duplicate is now a 422 duplicate, not a separate budget); NGN only. See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_budgets.py::test_finance_budgets_journey` was run against the live app
 > (`bash scripts/e2e_run.sh`, **64 e2e passed**, no Resend-429 flake) and every **response body** below
 > is pasted **verbatim** from the 29 captures it wrote to `e2e/_captures/budgets/` (named inline as

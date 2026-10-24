@@ -1,7 +1,7 @@
 """Academy content tables, private notes, resume positions, certificate PDFs and credential IDs
 
 Revision ID: 0069_academy_content
-Revises: 0066_finance_invoice_automation
+Revises: 0068_sales_sequences
 Create Date: 2026-10-22
 
 Moves the Academy catalog from code into the database (courses, lessons, paths, articles are
@@ -14,7 +14,7 @@ upserted by slug from ``content/academy/``), and adds:
 - ``learning_recommendations`` becomes one row per (startup, hero course) with a ``context_key``.
   It only caches reasons, so existing rows are dropped and regenerate on the next read.
 
-NOTE: chained on 0066 for now; it re-chains onto whichever of 0067 / 0068 lands first.
+Chained on 0068 after Finance (c) 0067 and Sales B 0068 merged.
 """
 
 import secrets
@@ -25,7 +25,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0069_academy_content"
-down_revision = "0066_finance_invoice_automation"
+down_revision = "0068_sales_sequences"
 branch_labels = None
 depends_on = None
 

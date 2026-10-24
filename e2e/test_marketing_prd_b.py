@@ -42,9 +42,9 @@ def _drain() -> None:
     from app.db.session import SessionLocal
     from app.services.notifications.registry import register as register_notifications
     from app.worker import runner
-    from app.worker.handlers import scheduled  # noqa: F401
     from app.worker.handlers import (  # noqa: F401  (registers ai.marketing.* and the readout job)
         marketing_ai,
+        scheduled,  # noqa: F401
     )
 
     register_notifications()

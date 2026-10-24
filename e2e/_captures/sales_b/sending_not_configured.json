@@ -1,0 +1,14 @@
+{
+  "data": {
+    "configured": false,
+    "reason": "not_configured",
+    "domain": null,
+    "sent_today": 0,
+    "daily_cap": 100,
+    "hourly_cap": null,
+    "paused": false,
+    "paused_reason": null,
+    "paused_at": null
+  },
+  "meta": null
+}

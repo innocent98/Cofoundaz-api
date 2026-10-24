@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "MODEL_ALREADY_GENERATING",
+    "message": "A financial model is already being generated. Wait for it to finish.",
+    "field_errors": []
+  }
+}

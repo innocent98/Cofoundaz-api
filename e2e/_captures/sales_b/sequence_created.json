@@ -1,0 +1,27 @@
+{
+  "data": {
+    "id": "d963c6b9-7624-40f6-892b-8ada260ddba5",
+    "name": "Cold intro",
+    "steps": [
+      {
+        "body": "Hi {{first_name}},\n\nWe help teams like {{company}} get paid faster.\n\n{{sender_name}}",
+        "subject": "Quick idea for {{company}}",
+        "wait_days": 0
+      },
+      {
+        "body": "Hi {{first_name}}, bumping this in case it got buried.\n\n{{sender_name}}",
+        "subject": "Re: Quick idea for {{company}}",
+        "wait_days": 3
+      }
+    ],
+    "step_count": 2,
+    "stop_on_stage_change": false,
+    "status": "active",
+    "active_enrollments": 0,
+    "total_enrollments": 0,
+    "reply_rate": 0.0,
+    "created_at": "2026-10-22T13:56:49.402315+00:00",
+    "updated_at": "2026-10-22T13:56:49.402315+00:00"
+  },
+  "meta": null
+}

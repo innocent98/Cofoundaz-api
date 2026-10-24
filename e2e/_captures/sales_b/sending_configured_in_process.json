@@ -1,0 +1,14 @@
+{
+  "data": {
+    "configured": true,
+    "reason": null,
+    "domain": "mail.example.test",
+    "sent_today": 4,
+    "daily_cap": 100,
+    "hourly_cap": 30,
+    "paused": false,
+    "paused_reason": null,
+    "paused_at": null
+  },
+  "meta": null
+}

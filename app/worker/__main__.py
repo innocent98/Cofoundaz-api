@@ -22,6 +22,7 @@ def register() -> None:
     import app.worker.handlers.marketing_ai  # noqa: F401
     import app.worker.handlers.plan  # noqa: F401
     import app.worker.handlers.sales_ai  # noqa: F401
+    import app.worker.handlers.sales_outreach  # noqa: F401
     import app.worker.handlers.scheduled  # noqa: F401
     import app.worker.handlers.validation  # noqa: F401
     from app.services.health_score.triggers import register as register_health_triggers

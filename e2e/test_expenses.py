@@ -23,9 +23,10 @@ source for docs/fe-integration-guide-finance-expenses.md. They must be REAL bodi
 run, complete and untrimmed.
 
 Finance is founder/team_member/accountant RBAC, so this needs nothing but a freshly onboarded
-founder + workspace. The e2e runner boots the server on STORAGE_BACKEND=local, so `receipt_url` is a
-local filesystem path (staging/prod use Cloudinary and return an https URL). The on-disk existence
-checks below only run for a local path.
+founder + workspace. Receipts are private: `receipt_url` is the API route
+(`/api/v1/finance/expenses/{id}/receipt`), which returns a short-lived signed link. The e2e runner
+boots the server on STORAGE_BACKEND=local, so the link points at our own download route and the
+checks below read the stored bytes through it (staging/prod use Cloudinary "authenticated" assets).
 
 Dates are computed relative to today (UTC, matching the server's cash-flow clock): the burn window
 is "this month and the two before it".
@@ -34,7 +35,6 @@ is "this month and the two before it".
 import io
 import uuid
 from datetime import UTC, date, datetime
-from pathlib import Path
 
 import httpx
 
@@ -77,9 +77,17 @@ def _mid_month(today: date, months_back: int) -> date:
     return date(y, m, 15)
 
 
-def _local_path(url: str) -> Path | None:
-    """The receipt's on-disk path when the server runs on LocalStorage, else None (Cloudinary)."""
-    return None if url.startswith(("http://", "https://")) else Path(url)
+def _link(c: httpx.Client, wh: dict, expense_id: str) -> str:
+    """The signed download URL for the expense's receipt (founder token)."""
+    r = c.get(f"/api/v1/finance/expenses/{expense_id}/receipt", headers=wh)
+    assert r.status_code == 200, r.text
+    return r.json()["data"]["url"]
+
+
+def _fetch(url: str) -> httpx.Response:
+    """Follow a signed link the way a browser would: no bearer token."""
+    with httpx.Client(timeout=10.0) as anon:
+        return anon.get(url)
 
 
 def test_finance_expenses_journey(base_url, make_verified_user, capture):
@@ -311,13 +319,12 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
         assert uploaded.status_code == 200, uploaded.text
         up = uploaded.json()["data"]
         assert up["has_receipt"] is True
-        assert up["receipt_url"]
+        assert up["receipt_url"] == f"/api/v1/finance/expenses/{hosting_id}/receipt"
         assert up["id"] == hosting_id
         assert up["transaction_id"] == hosting["transaction_id"]  # the link is untouched
         capture("expenses", "receipt_uploaded", uploaded)
-        first_path = _local_path(up["receipt_url"])
-        if first_path is not None:
-            assert first_path.read_bytes() == _PNG_1X1
+        first_url = _link(c, wh, hosting_id)
+        assert _fetch(first_url).content == _PNG_1X1
 
         # 7b. Replace it with a PDF: new url, and the OLD file is deleted from storage.
         replaced = c.post(
@@ -328,12 +335,10 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
         assert replaced.status_code == 200, replaced.text
         rep = replaced.json()["data"]
         assert rep["has_receipt"] is True
-        assert rep["receipt_url"] != up["receipt_url"]
-        assert rep["receipt_url"].endswith(".pdf")
+        assert rep["receipt_url"] == up["receipt_url"]  # the route is stable; the file behind it moved
         capture("expenses", "receipt_replaced", replaced)
-        if first_path is not None:
-            assert not first_path.exists(), "replace must delete the old receipt file"
-            assert Path(rep["receipt_url"]).read_bytes() == _PDF
+        assert _fetch(first_url).status_code == 404, "replace must delete the old receipt file"
+        assert _fetch(_link(c, wh, hosting_id)).content == _PDF
 
         # 7c. A disallowed content-type -> 422 and the expense is unchanged.
         bad_type = c.post(
@@ -354,16 +359,14 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
             files={"file": ("ads.jpg", io.BytesIO(_PNG_1X1), "image/jpeg")},
         )
         assert ads_up.status_code == 200, ads_up.text
-        ads_path = _local_path(ads_up.json()["data"]["receipt_url"])
-        if ads_path is not None:
-            assert ads_path.exists()
+        ads_url = _link(c, wh, ads_id)
+        assert _fetch(ads_url).status_code == 200
         removed = c.delete(f"/api/v1/finance/expenses/{ads_id}/receipt", headers=wh)
         assert removed.status_code == 200, removed.text
         assert removed.json()["data"]["has_receipt"] is False
         assert removed.json()["data"]["receipt_url"] is None
         capture("expenses", "receipt_removed", removed)
-        if ads_path is not None:
-            assert not ads_path.exists(), "DELETE /receipt must remove the stored file"
+        assert _fetch(ads_url).status_code == 404, "DELETE /receipt must remove the stored file"
 
         # 8. PATCH the hosting amount 12M -> 10M: the linked outflow is edited in place.
         # cash = 58M ; burn window out 42M -> 14,000,000 ; runway = 58/14 = 4.1.
@@ -415,16 +418,14 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
             files={"file": ("payslips.pdf", io.BytesIO(_PDF), "application/pdf")},
         )
         assert pay_up.status_code == 200, pay_up.text
-        pay_path = _local_path(pay_up.json()["data"]["receipt_url"])
-        if pay_path is not None:
-            assert pay_path.exists()
+        pay_url = _link(c, wh, payroll_id)
+        assert _fetch(pay_url).status_code == 200
 
         deleted = c.delete(f"/api/v1/finance/expenses/{payroll_id}", headers=wh)
         assert deleted.status_code == 200, deleted.text
         assert deleted.json()["data"] == {"deleted": True}
         capture("expenses", "expense_deleted", deleted)
-        if pay_path is not None:
-            assert not pay_path.exists(), "deleting an expense must remove its receipt file"
+        assert _fetch(pay_url).status_code == 404, "deleting an expense must remove its receipt file"
 
         gone = c.get(f"/api/v1/finance/expenses/{payroll_id}", headers=wh)
         assert gone.status_code == 404, gone.text

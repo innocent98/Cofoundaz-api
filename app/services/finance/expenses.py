@@ -1,19 +1,29 @@
 import calendar
 import datetime as dt
+import re
 import uuid
 from collections import Counter
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, tuple_
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
+from app.core.pagination import DEFAULT_LIMIT, decode_keyset, encode_keyset
 from app.db.models.enums import TransactionDirection, TransactionSource
 from app.db.models.expense import Expense
 from app.db.models.finance import Transaction
+from app.platform.signed_urls import sign_key
 from app.platform.storage import get_storage
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
+from app.services.finance.categories import normalize_category
 from app.services.finance.errors import _validation
+
+# The only route a client ever gets for a receipt; it returns a short-lived signed link.
+RECEIPT_ROUTE = "/api/v1/finance/expenses/{expense_id}/receipt"
+RECEIPT_LINK_TTL_SECONDS = 300
+# Where our own signed links point (local storage); Cloudinary links come from Cloudinary.
+LOCAL_DOWNLOAD_PATH = "/api/v1/finance/receipts/download"
 
 
 def _month_range(month: str) -> tuple[dt.date, dt.date]:
@@ -47,7 +57,9 @@ def _post_outflow(db: Session, exp: Expense) -> Transaction:
 def create_expense(
     db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID | None, data: ExpenseCreate
 ) -> Expense:
-    exp = Expense(startup_id=startup_id, created_by=created_by, **data.model_dump())
+    fields = data.model_dump()
+    fields["category"] = normalize_category(db, startup_id=startup_id, raw=fields["category"])
+    exp = Expense(startup_id=startup_id, created_by=created_by, **fields)
     db.add(exp)
     db.flush()
     txn = _post_outflow(db, exp)
@@ -72,6 +84,8 @@ def update_expense(
 ) -> Expense:
     exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
     fields = data.model_dump(exclude_unset=True)
+    if "category" in fields:
+        fields["category"] = normalize_category(db, startup_id=startup_id, raw=fields["category"])
     for name, value in fields.items():
         setattr(exp, name, value)
     if _LEDGER_FIELDS & fields.keys() and exp.transaction_id is not None:
@@ -94,13 +108,38 @@ def delete_expense(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID)
         if txn is not None:
             db.delete(txn)
     if exp.receipt_key:
-        get_storage().delete(exp.receipt_key)
+        _delete_asset(exp.receipt_key, exp.receipt_private)
     db.delete(exp)
     db.flush()
 
 
-_RECEIPT_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "application/pdf": ".pdf"}
 MAX_RECEIPT_BYTES = 10 * 1024 * 1024
+
+# The exact shape of every key `attach_receipt` mints. The download route refuses anything else
+# before it reaches the filesystem, whatever a (validly signed) token claims.
+RECEIPT_KEY_PATTERN = re.compile(r"receipts/[0-9a-f-]{36}/[0-9a-f]{32}\.(?:png|jpg|pdf)")
+
+# Receipts are classified by their leading bytes, never by the client's Content-Type or filename:
+# an HTML file labelled image/png must not be stored (or later served) as an image.
+_RECEIPT_TYPES: tuple[tuple[bytes, str, str], ...] = (
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"%PDF-", "application/pdf", ".pdf"),
+)
+_EXT_TO_TYPE = {ext: ctype for _magic, ctype, ext in _RECEIPT_TYPES}
+
+
+def sniff_receipt(content: bytes) -> tuple[str, str] | None:
+    """(content_type, extension) for a PNG, JPEG or PDF by magic bytes, else None."""
+    for magic, ctype, ext in _RECEIPT_TYPES:
+        if content.startswith(magic):
+            return ctype, ext
+    return None
+
+
+def receipt_content_type(key: str) -> str:
+    """Content type for a stored receipt key (the extension was chosen from the sniffed bytes)."""
+    return _EXT_TO_TYPE.get("." + key.rsplit(".", 1)[-1], "application/octet-stream")
 
 
 def attach_receipt(
@@ -113,30 +152,83 @@ def attach_receipt(
     size_bytes: int,
     content: bytes,
 ) -> Expense:
+    """`filename` and `content_type` are client-supplied and deliberately ignored."""
     exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
-    ext = _RECEIPT_EXT.get(content_type or "")
-    if ext is None:
-        raise _validation("receipt", "Receipt must be a PNG, JPEG, or PDF.")
     if size_bytes > MAX_RECEIPT_BYTES:
         raise _validation("receipt", "Receipt exceeds the 10 MB limit.")
-    old_key = exp.receipt_key
+    sniffed = sniff_receipt(content)
+    if sniffed is None:
+        raise _validation("receipt", "Receipt must be a PNG, JPEG, or PDF.")
+    ctype, ext = sniffed
+    old = (exp.receipt_key, exp.receipt_private) if exp.receipt_key else None
     key = f"receipts/{startup_id}/{uuid.uuid4().hex}{ext}"
     # Save the new asset before dropping the old one so a failed upload never orphans the row.
-    url = get_storage().save(key, content, content_type or "")
-    exp.receipt_url, exp.receipt_key = url, key
-    if old_key:
-        get_storage().delete(old_key)
+    get_storage().save_private(key, content, ctype)
+    exp.receipt_key, exp.receipt_private, exp.receipt_url = key, True, None
+    if old is not None:
+        _delete_asset(*old)
     db.flush()
     return exp
+
+
+def _delete_asset(key: str, private: bool) -> None:
+    storage = get_storage()
+    (storage.delete_private if private else storage.delete)(key)
 
 
 def remove_receipt(db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID) -> Expense:
     exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
     if exp.receipt_key:
-        get_storage().delete(exp.receipt_key)
+        _delete_asset(exp.receipt_key, exp.receipt_private)
     exp.receipt_url = exp.receipt_key = None
+    exp.receipt_private = False
     db.flush()
     return exp
+
+
+def receipt_belongs_to(db: Session, *, startup_id: str, key: str) -> bool:
+    """True when `key` is the current receipt of an expense in the workspace `startup_id`."""
+    try:
+        sid = uuid.UUID(startup_id)
+    except ValueError:
+        return False
+    return (
+        db.query(Expense.id).filter(Expense.startup_id == sid, Expense.receipt_key == key).first()
+        is not None
+    )
+
+
+def receipt_link(
+    db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID, api_public_url: str
+) -> dict[str, Any]:
+    """A short-lived signed link to the expense's receipt (workspace-scoped, 404 otherwise).
+
+    Legacy rows (uploaded before receipts were private) are moved behind authentication the first
+    time they are opened; if that move fails the link is refused rather than handing out a public
+    URL.
+    """
+    exp = get_expense(db, startup_id=startup_id, expense_id=expense_id)
+    if not exp.receipt_key:
+        raise NotFound()
+    storage = get_storage()
+    if not exp.receipt_private:
+        storage.make_private(exp.receipt_key)
+        exp.receipt_private = True
+        exp.receipt_url = None
+        db.flush()
+    url = storage.private_url(exp.receipt_key, RECEIPT_LINK_TTL_SECONDS)
+    if url is None:
+        token, expires = sign_key(
+            exp.receipt_key, startup_id=str(startup_id), ttl_seconds=RECEIPT_LINK_TTL_SECONDS
+        )
+        url = f"{api_public_url.rstrip('/')}{LOCAL_DOWNLOAD_PATH}?token={token}"
+    else:
+        expires = int(dt.datetime.now(dt.UTC).timestamp()) + RECEIPT_LINK_TTL_SECONDS
+    return {
+        "url": url,
+        "expires_at": dt.datetime.fromtimestamp(expires, dt.UTC),
+        "content_type": receipt_content_type(exp.receipt_key),
+    }
 
 
 def list_expenses(
@@ -148,10 +240,13 @@ def list_expenses(
     date_from: dt.date | None = None,
     date_to: dt.date | None = None,
     recurring: bool | None = None,
-) -> list[Expense]:
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Expense], str | None, int]:
+    """One page, newest first: (rows, next_cursor, total matching the filters)."""
     q = db.query(Expense).filter_by(startup_id=startup_id)
     if category is not None:
-        q = q.filter(Expense.category == category)
+        q = q.filter(func.lower(Expense.category) == category.strip().casefold())
     if month is not None:
         first, last = _month_range(month)
         q = q.filter(Expense.expense_date >= first, Expense.expense_date <= last)
@@ -161,7 +256,23 @@ def list_expenses(
         q = q.filter(Expense.expense_date <= date_to)
     if recurring is not None:
         q = q.filter(Expense.recurring == recurring)
-    return q.order_by(Expense.expense_date.desc(), Expense.created_at.desc()).all()
+    total = q.count()
+    if cursor:
+        after = decode_keyset(cursor, dt.date.fromisoformat, dt.datetime.fromisoformat, uuid.UUID)
+        q = q.filter(tuple_(Expense.expense_date, Expense.created_at, Expense.id) < tuple_(*after))
+    rows = (
+        q.order_by(Expense.expense_date.desc(), Expense.created_at.desc(), Expense.id.desc())
+        .limit(limit + 1)
+        .all()
+    )
+    next_cursor = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        last_row = rows[-1]
+        next_cursor = encode_keyset(
+            last_row.expense_date.isoformat(), last_row.created_at.isoformat(), str(last_row.id)
+        )
+    return rows, next_cursor, total
 
 
 def serialize_expense(exp: Expense) -> ExpenseResponse:
@@ -174,8 +285,8 @@ def serialize_expense(exp: Expense) -> ExpenseResponse:
         currency=exp.currency,
         recurring=exp.recurring,
         notes=exp.notes,
-        has_receipt=exp.receipt_url is not None,
-        receipt_url=exp.receipt_url,
+        has_receipt=exp.receipt_key is not None,
+        receipt_url=RECEIPT_ROUTE.format(expense_id=exp.id) if exp.receipt_key else None,
         transaction_id=exp.transaction_id,
         created_by=exp.created_by,
         created_at=exp.created_at,
@@ -186,8 +297,8 @@ def serialize_expense(exp: Expense) -> ExpenseResponse:
 def expense_category_totals(db: Session, *, startup_id: uuid.UUID, month: str) -> dict[str, int]:
     """category -> summed amount_minor of that category's expenses in `month` ("YYYY-MM").
 
-    Single source of truth for per-category month spend: the expenses summary and budget
-    actuals both build on it so they can never diverge.
+    Backs the Expenses page summary (expenses only). Budget actuals use the ledger instead
+    (`budgets.ledger_outflow_totals`, D-FIN-3).
     """
     first, last = _month_range(month)
     rows = (

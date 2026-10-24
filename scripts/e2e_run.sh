@@ -63,6 +63,16 @@ export PAYMENT_PROVIDER_STUB="true"
 export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
 export API_PUBLIC_URL="${E2E_BASE_URL}"
 
+# Sales outreach: the e2e server and test process must NEVER reach a real mailbox, even when a
+# developer's .env holds the cPanel settings. Blank values win over .env (process env beats the
+# env file in pydantic-settings). The journey points the in-process worker at an in-process fake
+# SMTP server by itself.
+for _v in SALES_OUTREACH_PROVIDER SALES_OUTREACH_SMTP_HOST SALES_OUTREACH_SMTP_USERNAME \
+  SALES_OUTREACH_SMTP_PASSWORD SALES_OUTREACH_FROM_EMAIL SALES_OUTREACH_IMAP_HOST \
+  SALES_OUTREACH_UNSUBSCRIBE_KEY; do
+  export "${_v}="
+done
+
 SERVER_PID=""
 SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"
 
