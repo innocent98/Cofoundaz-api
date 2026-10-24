@@ -5,7 +5,7 @@
 | **Shipped** | Branch `feature/sales-sequences` → PR to `develop` (link in the PR; built, awaiting review and merge) |
 | **Date** | 2026-10-22 |
 | **Area** | Sales: `app/db/models/sales_sequences.py`, `app/platform/outreach.py`, `app/schemas/sales_sequences.py`, `app/services/sales/{sequences,sending,suppression,bounces,unsubscribe,tokens,outreach_render,drafts,draft_prompts}.py`, `app/worker/handlers/sales_outreach.py`, `app/api/v1/endpoints/sales_sequences.py` |
-| **Migration** | `0068_sales_sequences` (6 new tables, additive), `down_revision = 0066_finance_invoice_automation`. **Re-chain before merge:** Finance slice (c) builds `0067` in parallel; whichever PR lands second sets its `down_revision` to the other and re-runs the round-trip test. |
+| **Migration** | `0068_sales_sequences` (6 new tables, additive), `down_revision = 0067_finance_ledger_correctness`. **2026-10-24:** #172 merged right after #171 without the re-chain, so develop had two heads and the staging deploy of `40f9f4a6` failed at the migrate step (staging rolled back to #171, DB at 0067, nothing lost). Fixed by `fix/sales-migration-chain`: 0068 now revises 0067 (disjoint tables). |
 | **Spec** | `docs/superpowers/specs/2026-10-21-sales-design.md` (FE repo): §4 sequences, §5 sending, D-SAL-1, D-SAL-8, §11 lead calls. Provider decided 2026-10-22 (below). |
 | **FE guide** | `docs/fe-integration-guide-sales-sequences.md` (from `e2e/_captures/sales_b/`) |
 
@@ -77,7 +77,7 @@ Also needed in production for correct links: `API_PUBLIC_URL` (List-Unsubscribe 
 Deliverability is DNS work on the mailbox domain (SPF, DKIM, DMARC) and is outside this code.
 
 Roll back: set `SALES_OUTREACH_PROVIDER` empty (sending stops, everything else keeps working). Schema:
-`alembic downgrade 0066_finance_invoice_automation` drops the six tables (data loss for sequences/ledger).
+`alembic downgrade 0067_finance_ledger_correctness` drops the six tables (data loss for sequences/ledger).
 
 ## Verification
 
