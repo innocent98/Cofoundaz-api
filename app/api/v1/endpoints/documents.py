@@ -20,7 +20,6 @@ from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.signed_urls import InvalidSignedToken, verify_key
-from app.platform.storage import get_storage
 from app.schemas.document import (
     DocumentCreate,
     DocumentSave,
@@ -29,7 +28,9 @@ from app.schemas.document import (
     SignatureRequestCreate,
 )
 from app.services.documents.files import (
+    FILE_LINK_TTL_SECONDS,
     delete_file,
+    ensure_private,
     file_by_key,
     file_link,
     get_file,
@@ -315,7 +316,11 @@ def download_document_file_link(
 ) -> dict[str, Any]:
     """The only way to read an uploaded file: a signed link that expires in a few minutes.
     Founder / team member only, and only for a `clean` file."""
-    link = file_link(get_file(db, membership, file_id, lock=True), api_public_url=_api_public_url())
+    file = get_file(db, membership, file_id)
+    if not file.is_private:
+        # Only a legacy file needs the move (and so the lock); a normal request never locks.
+        db.refresh(file, with_for_update=True)
+    link = file_link(file, api_public_url=_api_public_url())
     db.commit()  # persists a legacy file's move behind authentication
     return success_response(link)
 
@@ -542,13 +547,11 @@ def sign_file_endpoint(
     signer = open_for_signing(db, token)
     sign_request = get_request_by_id(db, signer.request_id)
     file = db.query(DocumentFile).filter_by(id=sign_request.file_id).one()
-    storage = get_storage()
-    if not file.is_private:
-        storage.make_private(file.storage_key)
-        file.is_private = True
-        file.url = None
+    was_private = file.is_private
+    storage = ensure_private(file)
+    if not was_private:
         db.commit()
-    remote = storage.private_url(file.storage_key, 300)
+    remote = storage.private_url(file.storage_key, FILE_LINK_TTL_SECONDS)
     if remote is not None:
         return RedirectResponse(remote, status_code=307)
     return _file_response(file)

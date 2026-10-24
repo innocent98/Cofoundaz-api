@@ -102,3 +102,60 @@ def test_main_exit_code(db, world, monkeypatch, capsys):
     assert main() == 1 and "failed=1" in capsys.readouterr().out
     monkeypatch.setattr(mod, "backfill_files", lambda d, st: mod.BackfillResult())
     assert main() == 0
+
+
+def test_a_row_that_fails_midway_rolls_back_alone(db, world, monkeypatch):
+    """The failing row's partial writes (is_private flipped before the scan blew up) are undone by
+    its savepoint; the rest of the same batch still commits."""
+    u, s, p = world
+    bad = _legacy(db, s, u, p, "a.pdf", b"%PDF-1")
+    good = _legacy(db, s, u, p, "b.pdf", b"%PDF-2")
+    real = mod.scan_file
+
+    def boom(d, f, content):
+        if f.id == bad.id:
+            raise RuntimeError("scanner down")
+        real(d, f, content)
+
+    monkeypatch.setattr(mod, "scan_file", boom)
+    res = backfill_files(db, LocalStorage(str(p)))  # one batch holds both rows
+    db.expire_all()
+    db.refresh(bad)
+    db.refresh(good)
+    assert res.failed == 1
+    assert bad.is_private is False and bad.url and bad.scan_status == ScanStatus.pending
+    assert good.is_private is True and good.scan_status == ScanStatus.clean
+
+
+def test_remote_read_stops_at_the_size_cap(monkeypatch):
+    class Remote:
+        def private_url(self, key, ttl):
+            return "https://cdn.example/x"
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def raise_for_status(self):
+            pass
+
+        def iter_bytes(self):
+            self.pulled = 0
+            for _ in range(100):
+                self.pulled += 1
+                yield b"x" * (mod._MAX_BYTES // 4)
+
+    resp = Resp()
+    monkeypatch.setattr(mod.httpx, "stream", lambda *a, **k: resp)
+    assert mod._read(Remote(), "k") is None
+    assert resp.pulled == 5  # 4 chunks fit, the 5th crosses the cap and ends the read
+
+    class Small(Resp):
+        def iter_bytes(self):
+            yield b"%PDF-1"
+
+    monkeypatch.setattr(mod.httpx, "stream", lambda *a, **k: Small())
+    assert mod._read(Remote(), "k") == b"%PDF-1"

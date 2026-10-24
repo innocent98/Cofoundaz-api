@@ -178,9 +178,6 @@ def test_remote_backend_returns_provider_link_and_signers_are_redirected(
     _s, _m, h = ws
     fake = _CloudStorage()
     monkeypatch.setattr(files_svc, "get_storage", lambda: fake)
-    from app.api.v1.endpoints import documents as ep
-
-    monkeypatch.setattr(ep, "get_storage", lambda: fake)
     fid = _upload(client, h)
     link = client.get(f"/api/v1/documents/files/{fid}/download", headers=h).json()["data"]
     assert link["url"].startswith("https://cdn.example/signed/documents/")
@@ -368,3 +365,20 @@ def test_dumped_file_json_never_carries_a_storage_location(client, db, ws):
     _upload(client, h)
     text = json.dumps(client.get("/api/v1/documents/files", headers=h).json())
     assert "storage_key" not in text and "var/storage" not in text and "documents/" not in text
+
+
+def test_normal_download_link_takes_no_row_lock_but_a_legacy_file_does(client, db, ws):
+    _s, _m, h = ws
+    fid = _upload(client, h)
+    seen, stop = _statements(db)
+    try:
+        assert client.get(f"/api/v1/documents/files/{fid}/download", headers=h).status_code == 200
+        normal = [s for s in seen if "FOR UPDATE" in s]
+        db.query(DocumentFile).update({"is_private": False, "url": "https://public.example/x"})
+        db.flush()
+        seen.clear()
+        assert client.get(f"/api/v1/documents/files/{fid}/download", headers=h).status_code == 200
+        legacy = [s for s in seen if "FOR UPDATE" in s]
+    finally:
+        stop()
+    assert normal == [] and legacy

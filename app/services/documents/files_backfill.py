@@ -50,9 +50,14 @@ def _read(storage: Storage, key: str) -> bytes | None:
     url = storage.private_url(key, 120)
     if url is None:
         return None
-    resp = httpx.get(url, timeout=_FETCH_TIMEOUT)
-    resp.raise_for_status()
-    return resp.content if len(resp.content) <= _MAX_BYTES else None
+    buf = bytearray()
+    with httpx.stream("GET", url, timeout=_FETCH_TIMEOUT) as resp:
+        resp.raise_for_status()
+        for chunk in resp.iter_bytes():
+            buf += chunk
+            if len(buf) > _MAX_BYTES:
+                return None  # never read past the cap; the file stays pending
+    return bytes(buf)
 
 
 def _process(db: Session, storage: Storage, f: DocumentFile, result: BackfillResult) -> None:
@@ -91,7 +96,8 @@ def backfill_files(
         for f in rows:
             last_id = f.id
             try:
-                _process(db, storage, f, result)
+                with db.begin_nested():  # a failed row rolls back alone, not the whole batch
+                    _process(db, storage, f, result)
             except Exception:  # noqa: BLE001  (one bad asset must not stop the run)
                 log.exception("document file backfill failed for {}", f.id)
                 result.failed += 1

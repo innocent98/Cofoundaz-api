@@ -12,7 +12,7 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.signed_urls import sign_key
-from app.platform.storage import LocalStorage, get_storage
+from app.platform.storage import LocalStorage, Storage, get_storage
 from app.services.documents.scanner import scan_file
 from app.services.documents.sniff import ALLOWED_TYPES, MARKDOWN
 
@@ -133,6 +133,16 @@ def purge_object(target: tuple[str, bool]) -> None:
         log.exception("document object {} was not removed after its row was deleted", key)
 
 
+def ensure_private(file: DocumentFile) -> Storage:
+    """Move a legacy public file behind authentication (idempotent) and return the storage."""
+    storage = get_storage()
+    if not file.is_private:
+        storage.make_private(file.storage_key)
+        file.is_private = True
+        file.url = None
+    return storage
+
+
 def file_link(file: DocumentFile, *, api_public_url: str) -> dict[str, Any]:
     """A short-lived signed download link for `file` (caller has already authorised the reader).
 
@@ -140,11 +150,7 @@ def file_link(file: DocumentFile, *, api_public_url: str) -> dict[str, Any]:
     first; if that fails the link is refused rather than handing out the public URL.
     """
     assert_clean(file)
-    storage = get_storage()
-    if not file.is_private:
-        storage.make_private(file.storage_key)
-        file.is_private = True
-        file.url = None
+    storage = ensure_private(file)
     url = storage.private_url(file.storage_key, FILE_LINK_TTL_SECONDS)
     if url is None:
         token, expires = sign_key(
