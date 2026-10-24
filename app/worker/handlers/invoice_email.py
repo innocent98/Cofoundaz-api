@@ -33,6 +33,24 @@ def _pay_button(inv: Invoice) -> str:
     )
 
 
+def _extras(inv: Invoice) -> str:
+    """Bank transfer details and the founder's note. Both are user-controlled: escape everything."""
+    out = ""
+    pd = inv.payment_details
+    if pd:
+        lines = [
+            f"Bank: {html.escape(str(pd.get('bank_name', '')))}",
+            f"Account name: {html.escape(str(pd.get('account_name', '')))}",
+            f"Account number: {html.escape(str(pd.get('account_number', '')))}",
+        ]
+        if pd.get("instructions"):
+            lines.append(html.escape(str(pd["instructions"])))
+        out += "<p><strong>Pay by bank transfer</strong><br>" + "<br>".join(lines) + "</p>"
+    if inv.notes:
+        out += f"<p>{html.escape(inv.notes).replace(chr(10), '<br>')}</p>"
+    return out
+
+
 def render_invoice_email(inv: Invoice, startup_name: str) -> str:
     # Line-item descriptions and client_name are user-controlled: escape everything interpolated.
     rows = "".join(
@@ -51,7 +69,7 @@ def render_invoice_email(inv: Invoice, startup_name: str) -> str:
         f"<p>Subtotal: {_fmt_money(inv.subtotal_minor, inv.currency)}<br>"
         f"Tax: {_fmt_money(inv.tax_minor, inv.currency)}<br>"
         f"<strong>Total: {_fmt_money(inv.total_minor, inv.currency)}</strong></p>"
-        f"<p>Due: {due}</p>{_pay_button(inv)}</div>"
+        f"<p>Due: {due}</p>{_pay_button(inv)}{_extras(inv)}</div>"
     )
 
 
@@ -59,6 +77,8 @@ def handle_invoice_email(db: Session, job: Job) -> None:
     inv = db.get(Invoice, uuid.UUID(str(job.payload["invoice_id"])))
     if inv is None or not inv.client_email:
         return  # deleted since enqueue / no recipient — nothing to send
+    if inv.status != InvoiceStatus.sent:
+        return  # paid (or otherwise settled) between queueing and sending: stay silent
     startup = db.get(Startup, inv.startup_id)
     name = startup.name if startup and startup.name else "Cofoundaz"
     # Strip CR/LF to prevent header injection in the SMTP backend.

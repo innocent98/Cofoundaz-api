@@ -55,8 +55,9 @@ def _handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(503, json={})
         return httpx.Response(200, json={"data": {"id": _handler.account_id}})
     if path.endswith("/transactions"):
+        _handler.requests.append(dict(request.url.params))
         if _handler.sync_status != 200:
-            return httpx.Response(_handler.sync_status, json={})
+            return httpx.Response(_handler.sync_status, json=_handler.sync_body)
         return httpx.Response(200, json={"data": TXNS, "meta": {"next": None}})
     return httpx.Response(
         200,
@@ -68,7 +69,8 @@ def _handler(request: httpx.Request) -> httpx.Response:
                     "accountNumber": "0123456789",
                     "currency": "NGN",
                     "institution": {"name": "Test Bank"},
-                }
+                },
+                "meta": {"data_status": _handler.data_status},
             }
         },
     )
@@ -78,6 +80,9 @@ def _handler(request: httpx.Request) -> httpx.Response:
 def _mono_env(monkeypatch):
     _handler.account_id = ACCOUNT_ID
     _handler.sync_status = 200
+    _handler.sync_body = {}
+    _handler.data_status = "AVAILABLE"
+    _handler.requests = []
     monkeypatch.setattr(
         mono, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(_handler))
     )
@@ -475,3 +480,125 @@ def test_adapter_edge_cases():
     ok = p._transaction({"id": "1", "amount": 100.0, "type": "debit", "date": "2026-10-01"}, "NGN")
     assert ok is not None and ok.amount_minor == 100 and ok.description == "Bank transaction"
     assert ok.occurred_at.tzinfo is not None and datetime.now(UTC) > ok.occurred_at
+
+
+def _logged(fn):
+    from app.core.logger import log
+
+    lines: list[str] = []
+    sink = log.add(lambda m: lines.append(str(m)), level="WARNING")
+    try:
+        fn()
+    finally:
+        log.remove(sink)
+    return "\n".join(lines)
+
+
+def test_a_rejected_request_says_so_and_logs_the_real_cause(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    _handler.sync_status = 400
+    _handler.sync_body = {"status": "failed", "message": "Invalid start date"}
+    out = {}
+    logged = _logged(
+        lambda: out.update(client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"])
+    )
+    assert out["status"] == "active"
+    assert out["last_error"] == (
+        "Mono did not accept our request. We have logged the reason and will retry automatically."
+    )
+    assert "Mono returned 400 Invalid start date" in logged
+    assert SECRET not in logged and ACCOUNT_ID not in logged and "0123456789" not in logged
+
+
+def test_a_network_failure_keeps_the_could_not_reach_message_and_is_logged(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    _handler.sync_status = 503
+    _handler.sync_body = {"message": "upstream down"}
+    out = {}
+    logged = _logged(
+        lambda: out.update(client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"])
+    )
+    assert out["last_error"] == "We could not reach Mono. We will retry automatically."
+    assert "503 upstream down" in logged
+
+
+def test_platform_key_refusal_has_its_own_message_and_is_logged(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    _handler.sync_status = 401
+    _handler.sync_body = {"message": "Invalid secret key"}
+    out = {}
+    logged = _logged(
+        lambda: out.update(client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"])
+    )
+    assert out["status"] == "active"
+    assert out["last_error"].startswith("Mono bank syncing is unavailable on our side")
+    assert "401 Invalid secret key" in logged and SECRET not in logged
+
+
+@pytest.mark.parametrize(
+    "status,expected",
+    [
+        ("PROCESSING", "Mono is still collecting your bank data."),
+        ("UNAVAILABLE", "Your bank has not shared any data yet."),
+        ("FAILED", "Mono could not read your bank data. Reconnect your bank to try again."),
+    ],
+)
+def test_data_not_ready_gets_a_message_that_says_why_and_no_transactions_call(
+    client, db, status, expected
+):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    _handler.data_status = status
+    conn = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"]
+    assert conn["status"] == "active" and conn["last_error"].startswith(expected)
+    assert _handler.requests == []  # never asked for transactions that cannot exist yet
+
+
+def test_partial_data_still_syncs_and_no_server_side_date_filter_is_sent(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    _handler.data_status = "PARTIAL"
+    conn = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"]
+    assert conn["last_error"] is None
+    assert _handler.requests and "start" not in _handler.requests[0]
+
+
+def test_rows_older_than_the_window_are_dropped_client_side():
+    from datetime import UTC, datetime
+
+    from app.services.finance.payments.base import Credentials
+
+    class _P(mono.MonoProvider):
+        def account_info(self, creds):
+            return mono.MonoAccount(name=None, institution=None, last4=None, currency="NGN")
+
+        def _request(self, creds, method, path, **kw):
+            old = {"id": "o", "amount": 1, "type": "credit", "date": "2020-01-01T00:00:00Z"}
+            new = {"id": "n", "amount": 2, "type": "credit", "date": "2026-10-01T00:00:00Z"}
+            return {"data": [old, new], "meta": {"next": None}}
+
+    got = _P().list_transactions(
+        Credentials(secret_key="k", account_id="a"),
+        since=datetime(2026, 1, 1, tzinfo=UTC),
+        max_pages=1,
+    )
+    assert [t.reference for t in got] == ["n"]
+
+
+def test_account_number_is_read_in_either_spelling():
+    class _P(mono.MonoProvider):
+        def _request(self, creds, method, path, **kw):
+            return {
+                "data": {
+                    "account": {"account_number": "0123456789", "currency": "NGN"},
+                    "meta": {"data_status": "available"},
+                }
+            }
+
+    from app.services.finance.payments.base import Credentials
+
+    info = _P().account_info(Credentials(secret_key="k", account_id="a"))
+    assert info.last4 == "6789" and info.data_status == "AVAILABLE"

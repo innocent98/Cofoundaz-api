@@ -16,11 +16,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
 from app.db.models.enums import InvoiceStatus, InvoiceTerms
+from app.db.models.sales import SalesAccount
 
 
 class Invoice(UUIDMixin, TimestampMixin, Base):
@@ -88,5 +89,22 @@ class Invoice(UUIDMixin, TimestampMixin, Base):
     overdue_notified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Client picker: the Sales account this invoice bills (SET NULL so deleting the account never
+    # deletes an invoice), plus what the client sees beyond the line items.
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("sales_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # selectin (a second query), never a join: get_invoice_locked takes FOR UPDATE, which Postgres
+    # refuses on the nullable side of an outer join.
+    account: Mapped[SalesAccount | None] = relationship(
+        SalesAccount, lazy="selectin", viewonly=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # When the invoice email last went out (first send or a resend); drives the resend cooldown.
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (UniqueConstraint("startup_id", "number", name="uq_invoices_startup_number"),)

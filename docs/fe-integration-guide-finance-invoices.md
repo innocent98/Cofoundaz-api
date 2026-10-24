@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Invoices (Module 12, Slice 3)
 
+> **Superseded in part (slice e):** invoices gain `account_id` / `account_name`, `notes`, `payment_details` and `last_sent_at`, and a `POST /finance/invoices/{id}/resend` route. See `docs/fe-integration-guide-finance-slice-e.md` §2; where this guide disagrees, that guide wins.
+
 > **Superseded in part (slice c, ledger correctness):** `GET /finance/invoices` is paginated (`limit` default 100, `cursor`, `meta.next_cursor`, `meta.total_estimate`). See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
 
 > **Provenance.** `e2e/test_invoices.py::test_finance_invoices_journey` was run against the live

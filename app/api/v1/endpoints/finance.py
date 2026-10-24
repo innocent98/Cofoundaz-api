@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.envelope import Meta, success_response
 from app.core.errors import AppError, NotFound
 from app.core.pagination import DEFAULT_LIMIT, MAX_LIMIT
+from app.core.rate_limit import limiter
 from app.db.models.enums import FINANCE_ROLES, InvoiceStatus, TransactionDirection
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -29,6 +30,7 @@ from app.services.finance import budgets as budget_svc
 from app.services.finance import cashflow as cashflow_svc
 from app.services.finance import categories as category_svc
 from app.services.finance import expenses as expense_svc
+from app.services.finance import exports as export_svc
 from app.services.finance import invoices as invoice_svc
 from app.services.finance import model_service as model_svc
 from app.services.finance import reminders as reminder_svc
@@ -84,6 +86,40 @@ def list_transactions(
     return success_response(
         {"transactions": [finance_svc.serialize_transaction(r).model_dump() for r in rows]},
         Meta(next_cursor=next_cursor, total_estimate=total),
+    )
+
+
+@router.get("/transactions/export.xlsx", response_class=Response)
+@limiter.limit("10/minute")
+def export_transactions_xlsx(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
+    category: str | None = None,
+    uncategorized: bool = False,
+    direction: TransactionDirection | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """The ledger as a spreadsheet, with the same filters as `GET /finance/transactions`."""
+    content = export_svc.transactions_xlsx(
+        db,
+        startup_id=membership.startup_id,
+        category=category,
+        uncategorized=uncategorized,
+        direction=direction,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return Response(
+        content=content,
+        media_type=export_svc.XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": 'attachment; filename="transactions.xlsx"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -265,7 +301,11 @@ def delete_invoice(
 
 
 @router.post("/invoices/{invoice_id}/send", response_model=dict[str, Any])
+# One bucket per user across every invoice (a plain `limit` is keyed per URL, and the URL carries
+# the invoice id), so a script cannot dodge it by walking a list of invoices.
+@limiter.shared_limit("10/minute", scope="finance-invoice-email")
 def send_invoice(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
     invoice_id: uuid.UUID,
     membership: Membership = Depends(_finance),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
@@ -317,6 +357,22 @@ def create_invoice_pay_link(
                 502,
             )
         db.commit()
+    today = datetime.now(UTC).date()
+    return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
+
+
+@router.post("/invoices/{invoice_id}/resend", response_model=dict[str, Any])
+@limiter.shared_limit("10/minute", scope="finance-invoice-email")
+def resend_invoice(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
+    invoice_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Email a sent, unpaid invoice to the client again (PDF and pay link included)."""
+    inv = invoice_svc.resend_invoice(db, startup_id=membership.startup_id, invoice_id=invoice_id)
+    db.commit()
     today = datetime.now(UTC).date()
     return success_response(invoice_svc.serialize_invoice(inv, today=today).model_dump(mode="json"))
 
@@ -505,12 +561,16 @@ def get_expense_receipt(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """The only way to read a receipt: a signed link that expires in a few minutes."""
-    link = expense_svc.receipt_link(
-        db,
-        startup_id=membership.startup_id,
-        expense_id=expense_id,
-        api_public_url=settings.API_PUBLIC_URL,
-    )
+    try:
+        link = expense_svc.receipt_link(
+            db,
+            startup_id=membership.startup_id,
+            expense_id=expense_id,
+            api_public_url=settings.API_PUBLIC_URL,
+        )
+    except expense_svc.ReceiptFileMissing:
+        db.commit()  # keep the self-heal: the expense no longer claims a receipt
+        raise
     db.commit()  # persists a legacy receipt's move behind authentication
     return success_response({**link, "expires_at": link["expires_at"].isoformat()})
 
@@ -730,6 +790,28 @@ def get_model(
 ) -> dict[str, Any]:
     row = model_svc.get_model(db, startup_id=membership.startup_id, model_id=model_id)
     return success_response(model_svc.serialize_model(row))
+
+
+@router.get("/model/{model_id}/export.xlsx", response_class=Response)
+@limiter.limit("10/minute")
+def export_model_xlsx(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
+    model_id: uuid.UUID,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """The three statements of a completed model as a spreadsheet (one sheet each)."""
+    row = model_svc.get_model(db, startup_id=membership.startup_id, model_id=model_id)
+    return Response(
+        content=export_svc.model_xlsx(row),
+        media_type=export_svc.XLSX_MEDIA_TYPE,
+        headers={
+            "Content-Disposition": 'attachment; filename="financial-model.xlsx"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.patch("/model/{model_id}/assumptions", response_model=dict[str, Any])

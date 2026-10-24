@@ -22,6 +22,15 @@ class ProviderBadResponse(Exception):  # noqa: N818
     """The provider answered with something we cannot interpret."""
 
 
+class ProviderNotReady(Exception):  # noqa: N818
+    """The provider has not produced the data yet (Mono: the linked account is still being
+    processed, or the bank shared nothing). `state` is the provider's own status word."""
+
+    def __init__(self, message: str = "", state: str = "") -> None:
+        super().__init__(message)
+        self.state = state
+
+
 @dataclass(frozen=True)
 class Credentials:
     secret_key: str

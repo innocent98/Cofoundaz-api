@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "hiring_plan",
+        "message": "Value error, The runway reads hiring and one-off rows from the Financial Model; edit them there (PATCH /finance/model/{model_id}/assumptions)."
+      },
+      {
+        "field": "one_offs",
+        "message": "Value error, The runway reads hiring and one-off rows from the Financial Model; edit them there (PATCH /finance/model/{model_id}/assumptions)."
+      }
+    ]
+  }
+}
