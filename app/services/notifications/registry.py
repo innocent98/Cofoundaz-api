@@ -13,7 +13,7 @@ from app.db.models.membership import Membership
 from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
-from app.services.notifications.audience import AUDIENCE, kpi_roles
+from app.services.notifications.audience import AUDIENCE, FOUNDER_ROLES, kpi_roles
 from app.services.notifications.categories import category_for
 from app.services.notifications.preferences import email_enabled
 from app.services.notifications.service import create_notifications
@@ -113,6 +113,36 @@ def _deal_stalled_recipients(db: Session, payload: dict) -> list[uuid.UUID]:
     return _with_roles(db, startup_id, frozenset({MembershipRole.founder}))
 
 
+def _document_owner_recipients(db: Session, payload: dict, *, minus_actor: bool) -> list[uuid.UUID]:
+    """The founder or team member who owns the document (or sent the signature request) while
+    they still hold a Documents role, else every active founder. Never a mentor, consultant or
+    any other role (D-DOC-1), and never the workspace at large."""
+    startup_id = payload["startup_id"]
+    members = _with_roles(db, startup_id, AUDIENCE["document.shared"])
+    actor = _actor(payload) if minus_actor else None
+    owner: uuid.UUID | None = None
+    try:
+        owner = uuid.UUID(str(payload["owner_id"])) if payload.get("owner_id") else None
+    except ValueError:
+        owner = None
+    chosen = [owner] if owner in members else _with_roles(db, startup_id, FOUNDER_ROLES)
+    return [u for u in chosen if u is not None and u != actor]
+
+
+def _document_shared(db: Session, payload: dict) -> list[uuid.UUID]:
+    return _document_owner_recipients(db, payload, minus_actor=True)
+
+
+def _document_signed(db: Session, payload: dict) -> list[uuid.UUID]:
+    return _document_owner_recipients(db, payload, minus_actor=False)
+
+
+def _nobody(_db: Session, _payload: dict) -> list[uuid.UUID]:
+    """`document.signature.requested`: the signers are external and get the email; no member
+    has anything to sign, so there is nobody to tell in-app."""
+    return []
+
+
 def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
     """Only members whose role can see the metric (same sets as the KPI tiles' gate)."""
     return _with_roles(db, payload["startup_id"], kpi_roles(payload))
@@ -154,10 +184,10 @@ def _s(
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
 SPECS: dict[str, NotifSpec] = {
-    "document.shared": _s(_members_minus_actor, "A document was shared in your workspace"),
-    "document.signature.requested": _s(_members_minus_actor, "A document needs a signature"),
-    "document.signature.signed": _s(_members_minus_actor, "A signer signed a document"),
-    "document.signature.completed": _s(_members_minus_actor, "A document is fully signed"),
+    "document.shared": _s(_document_shared, "A document was shared"),
+    "document.signature.requested": _s(_nobody, "A document needs a signature"),
+    "document.signature.signed": _s(_document_signed, "A signer signed a document"),
+    "document.signature.completed": _s(_document_signed, "A document is fully signed"),
     # PRD 08 notifications copy: to the founder, CTA "Review suggestions".
     "business.suggestion.created": NotifSpec(
         _audience("business.suggestion.created", minus_actor=False),

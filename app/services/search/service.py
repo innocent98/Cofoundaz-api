@@ -20,6 +20,7 @@ from app.db.models.ai_chat import AiConversation
 from app.db.models.calendar import CalendarEvent
 from app.db.models.document import Document
 from app.db.models.enums import (
+    DOCUMENT_ROLES,
     FINANCE_ROLES,
     MARKETING_ROLES,
     MISSION_ROLES,
@@ -93,7 +94,7 @@ PAGES: tuple[Page, ...] = (
     Page("Budgets", "/finance/budgets", FINANCE_ROLES, "finance"),
     Page("Financial Model", "/finance/model", FINANCE_ROLES, "finance forecast"),
     Page("Learning Academy", "/academy", CORE_ROLES, "courses learn"),
-    Page("Documents", "/documents", ALL_ROLES, "files docs"),
+    Page("Documents", "/documents", DOCUMENT_ROLES, "files docs"),
     Page("Calendar", "/calendar", CORE_ROLES, "events schedule"),
     Page("AI Co-Founder", "/ai", CORE_ROLES, "chat assistant ask"),
     Page("Journal", "/journal", frozenset({MembershipRole.founder}), "private notes"),
@@ -349,7 +350,7 @@ SOURCES: tuple[Source, ...] = (
     Source("milestone", "Roadmap", ALL_ROLES, _fixed("/roadmap/milestones"), _milestones),
     Source("roadmap_task", "Roadmap", ALL_ROLES, _fixed("/roadmap"), _roadmap_tasks),
     Source("mission_task", "Mission", MISSION_ROLES, _fixed("/mission"), _mission_tasks),
-    Source("document", "Documents", ALL_ROLES, lambda i: f"/documents/{i}", _documents),
+    Source("document", "Documents", DOCUMENT_ROLES, lambda i: f"/documents/{i}", _documents),
     Source("conversation", "AI Co-Founder", CORE_ROLES, lambda i: f"/ai?c={i}", _conversations),
     Source("calendar_event", "Calendar", CORE_ROLES, _fixed("/calendar"), _events),
     Source("assumption", "Validation", CORE_ROLES, _fixed("/validation/assumptions"), _assumptions),

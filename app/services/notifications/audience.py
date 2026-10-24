@@ -13,6 +13,7 @@ from sqlalchemy import ColumnElement, and_, false, or_, true
 
 from app.db.models.enums import (
     BRIEFING_ROLES,
+    DOCUMENT_ROLES,
     FINANCE_ROLES,
     MARKETING_ROLES,
     MISSION_ROLES,
@@ -34,6 +35,11 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "assessment.completed": CORE_ROLES,  # D-ASM-1
     "learning.course.completed": CORE_ROLES,  # the Academy is F + TM (PRD 17)
     "learning.course.recommended": CORE_ROLES,
+    # D-DOC-1: Documents is F + TM until grants land; the read filter hides rows stored before.
+    "document.shared": DOCUMENT_ROLES,
+    "document.signature.requested": DOCUMENT_ROLES,
+    "document.signature.signed": DOCUMENT_ROLES,
+    "document.signature.completed": DOCUMENT_ROLES,
     "assessment.quarterly.due": FOUNDER_ROLES,
     "business.suggestion.created": FOUNDER_ROLES,  # PRD 08: the founder approves
     "validation.smoke_test.milestone": CORE_ROLES,

@@ -8,13 +8,13 @@ CORE = frozenset({MembershipRole.founder, MembershipRole.team_member})
 FINANCE = frozenset({*CORE, MembershipRole.accountant})
 
 # Read gates, taken from the route dependencies of the module each result opens
-# (roadmap/documents/health/business: any member; mission, assessment, validation, calendar,
+# (roadmap/health/business: any member; documents: founder + team member, D-DOC-1; mission, assessment, validation, calendar,
 # academy, AI chat, marketing: founder + team member; finance: + accountant; journal: founder).
 SOURCE_GATES = {
     "milestone": ALL,
     "roadmap_task": ALL,
     "mission_task": CORE,
-    "document": ALL,
+    "document": CORE,
     "conversation": CORE,
     "calendar_event": CORE,
     "assumption": CORE,
@@ -48,7 +48,7 @@ PAGE_GATES = {
     "/health": ALL,
     "/roadmap": ALL,
     "/business-builder": ALL,
-    "/documents": ALL,
+    "/documents": CORE,
     "/notifications": ALL,
 }
 

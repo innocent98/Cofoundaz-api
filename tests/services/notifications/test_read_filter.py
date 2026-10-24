@@ -29,6 +29,10 @@ NARROWER_THAN_AUDIENCE = {
     "sales.deal.stalled",
     "learning.course.completed",  # only the learner named in the payload
     "learning.course.recommended",
+    "document.shared",  # the document owner (D-DOC-1), see test_document_notifications.py
+    "document.signature.requested",  # nobody in-app: the signers get the email
+    "document.signature.signed",
+    "document.signature.completed",
 }
 
 
@@ -93,7 +97,7 @@ def test_pagination_counts_only_visible_rows(db):
     m = users[MembershipRole.mentor]
     for _ in range(3):
         _seed(db, s, m, "mission.ready")
-    visible = [_seed(db, s, m, "document.shared") for _ in range(3)]
+    visible = [_seed(db, s, m, "roadmap.replanned") for _ in range(3)]
     kw = {"user_id": m.id, "startup_id": s.id, "role": MembershipRole.mentor}
     page1, cur = list_notifications(db, unread=False, limit=2, cursor=None, **kw)
     page2, cur2 = list_notifications(db, unread=False, limit=2, cursor=cur, **kw)

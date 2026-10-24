@@ -1,0 +1,16 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "cfa198ac-fdc2-4773-81f5-c3956edd00fb",
+      "filename": "notes.md",
+      "content_type": "text/markdown",
+      "size_bytes": 8,
+      "folder": null,
+      "url": "var/storage/documents/99498b16-af4d-406c-8181-29c432ff8d3e/31b99081024a407580f8b61a7ddae9bb.md",
+      "scan_status": "clean",
+      "uploaded_at": "2026-10-24T20:44:34.942026+00:00"
+    },
+    "meta": null
+  }
+}

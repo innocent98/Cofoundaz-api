@@ -109,8 +109,8 @@ def test_bad_kind_filter_404(client, db):
 def test_mentor_cannot_write_403(client, db):
     _u, _s, h = _member(db, role=MembershipRole.mentor)
     assert client.post("/api/v1/documents", json={"title": "x"}, headers=h).status_code == 403
-    # but a member can read
-    assert client.get("/api/v1/documents", headers=h).status_code == 200
+    # and, since D-DOC-1, cannot read either (full matrix in test_documents_access.py)
+    assert client.get("/api/v1/documents", headers=h).status_code == 403
 
 
 def test_cross_tenant_get_404(client, db):

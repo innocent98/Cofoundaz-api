@@ -44,6 +44,7 @@ def create_share(
             "document_id": str(document.id),
             "share_id": str(row.id),
             "shared_by_id": str(shared_by_id),
+            "owner_id": str(document.created_by_id) if document.created_by_id else None,
         },
     )
     return row, raw

@@ -10,12 +10,12 @@ from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
 from app.core.logger import log
 from app.db.models.document import Document, DocumentFile, SignatureRequest
-from app.db.models.enums import DocumentKind, DocumentStatus, MembershipRole
+from app.db.models.enums import DOCUMENT_ROLES, DocumentKind, DocumentStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_role, require_workspace
+from app.db.tenancy import require_role
 from app.platform.email import EmailMessage, get_email_sender
 from app.schemas.document import (
     DocumentCreate,
@@ -25,7 +25,6 @@ from app.schemas.document import (
     SignatureRequestCreate,
 )
 from app.services.documents.files import (
-    EXT_BY_CONTENT_TYPE,
     delete_file,
     get_file,
     list_files,
@@ -62,10 +61,14 @@ from app.services.documents.signatures import (
     reissue_unsigned,
     serialize_request,
 )
+from app.services.documents.sniff import declared_type, sniff_content_type
 from app.services.documents.template_defs import catalog, instantiate, template_view
 
 router = APIRouter()
-_editor = require_role(MembershipRole.founder, MembershipRole.team_member)
+# D-DOC-1: every authenticated Documents route is founder + team member only (reads included)
+# until per-person grants land. The two public token routes (/shared/{token}, /sign/{token}) are
+# the only ones outside this gate: the token is the credential.
+_editor = require_role(*DOCUMENT_ROLES)
 _MAX_FILE_BYTES = 15 * 1024 * 1024
 _CHUNK_BYTES = 64 * 1024
 
@@ -123,7 +126,7 @@ def _parse_status(value: str | None) -> DocumentStatus | None:
 
 @router.get("/document-templates")
 def list_templates(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
 ) -> dict[str, Any]:
     return success_response({"templates": catalog()})
@@ -132,7 +135,7 @@ def list_templates(
 @router.get("/document-templates/{key}")
 def get_template(
     key: str,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
 ) -> dict[str, Any]:
     return success_response(template_view(key))
@@ -143,7 +146,7 @@ def list_documents_endpoint(
     kind: str | None = None,
     folder: str | None = None,
     status: str | None = None,  # noqa: A002 - query name is part of the FE contract
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -194,10 +197,12 @@ async def upload_document_file(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    if file.content_type not in EXT_BY_CONTENT_TYPE:
+    filename = file.filename or "file"
+    declared = declared_type(file.content_type, filename)
+    if declared is None:
         raise AppError(
             "VALIDATION_ERROR",
-            "That file type isn't allowed. Upload a PDF, Office doc, image, text, or CSV.",
+            "That file type isn't allowed. Upload a PDF, Office doc, image, text, Markdown, or CSV.",
             422,
         )
     content = b""
@@ -208,12 +213,21 @@ async def upload_document_file(
         content += chunk
         if len(content) > _MAX_FILE_BYTES:
             raise AppError("VALIDATION_ERROR", "File must be 15 MB or smaller.", 422)
+    # The header is a claim; the bytes decide. A mismatch (an .exe sent as application/pdf) is
+    # refused before anything reaches storage.
+    content_type = sniff_content_type(content, declared)
+    if content_type is None:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "That file's contents don't match its type, or the file is empty.",
+            422,
+        )
     row = upload_file(
         db,
         _startup(db, membership),
         uploaded_by_id=membership.user_id,
-        filename=file.filename or "file",
-        content_type=file.content_type,
+        filename=filename,
+        content_type=content_type,
         size_bytes=len(content),
         content=content,
         folder=folder,
@@ -225,7 +239,7 @@ async def upload_document_file(
 @router.get("/documents/files")
 def list_document_files(
     folder: str | None = None,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -236,7 +250,7 @@ def list_document_files(
 @router.get("/documents/files/{file_id}")
 def get_document_file(
     file_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -257,7 +271,7 @@ def delete_document_file(
 
 @router.get("/documents/shares")
 def list_workspace_shares_endpoint(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -304,7 +318,7 @@ def create_share_endpoint(
 @router.get("/documents/{document_id}/shares")
 def list_shares_endpoint(
     document_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -344,7 +358,7 @@ def open_shared_endpoint(
 
 @router.get("/documents/signature-requests")
 def list_signature_requests_endpoint(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -380,7 +394,7 @@ def create_signature_request_endpoint(
 @router.get("/documents/signature-requests/{request_id}")
 def get_signature_request_endpoint(
     request_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -460,7 +474,7 @@ def sign_endpoint(
 @router.get("/documents/{document_id}")
 def get_document_endpoint(
     document_id: uuid.UUID,
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:

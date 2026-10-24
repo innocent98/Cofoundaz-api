@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "request": {
+        "title": "NDA",
+        "status": "awaiting"
+      },
+      "file": {
+        "id": "67c5a60a-00b9-44b7-9d6c-f7cfdd0a8a85",
+        "filename": "nda.pdf",
+        "content_type": "application/pdf",
+        "size_bytes": 19,
+        "folder": null,
+        "url": "var/storage/documents/99498b16-af4d-406c-8181-29c432ff8d3e/b6ee90687e354f87b75b0cc15227bae1.pdf",
+        "scan_status": "clean",
+        "uploaded_at": "2026-10-24T20:44:34.960786+00:00"
+      },
+      "signer": {
+        "email": "delivered+signer-20a9a40b908d@resend.dev",
+        "name": "Sam Signer"
+      }
+    },
+    "meta": null
+  }
+}

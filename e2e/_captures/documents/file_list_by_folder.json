@@ -2,13 +2,14 @@
   "data": {
     "files": [
       {
-        "id": "9abd1057-5093-4043-b525-22b403f2f8b6",
+        "id": "e899dee4-2878-46ca-ab02-e47f419ff04a",
         "filename": "nda.pdf",
         "content_type": "application/pdf",
         "size_bytes": 46,
         "folder": "Legal",
-        "url": "var/storage/documents/f82cc647-9e44-434f-a79f-6d687ed094e6/819c1d949e02413785f4300f63dbb974.pdf",
-        "uploaded_at": "2026-09-30T08:32:49.537151+00:00"
+        "url": "var/storage/documents/778efba2-d685-4d7f-a844-96e73e7acef1/93355101244a4a06b771810a8af46cea.pdf",
+        "scan_status": "clean",
+        "uploaded_at": "2026-10-24T20:44:26.447241+00:00"
       }
     ]
   },

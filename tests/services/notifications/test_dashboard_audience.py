@@ -45,7 +45,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "validation.insight.detected": CORE,
     "kpi.threshold.crossed": CORE,  # the test payload's audience is marketing
     "business.suggestion.created": FOUNDER,
-    # Pages every member can open (Health, Roadmap, Business Builder, Documents, Team)
+    # Pages every member can open (Health, Roadmap, Business Builder, Team)
     "healthscore.dropped": ALL,
     "healthscore.record": ALL,
     "roadmap.replanned": ALL,
@@ -56,10 +56,6 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "business.suggestion.rejected": ALL,
     "business.artifact.completed": ALL,
     "business.plan.generated": ALL,
-    "document.shared": ALL,
-    "document.signature.requested": ALL,
-    "document.signature.signed": ALL,
-    "document.signature.completed": ALL,
     "workspace.member.joined": ALL,
 }
 # Addressed to named users, not to a whole role audience (stalled: the deal owner, else the
@@ -69,6 +65,11 @@ DIRECT = {
     "sales.deal.stalled",
     "learning.course.completed",  # the learner, covered in test_learning_notifications.py
     "learning.course.recommended",
+    # Documents (D-DOC-1): the owner or sender, never the workspace; see test_document_notifications.py
+    "document.shared",
+    "document.signature.requested",
+    "document.signature.signed",
+    "document.signature.completed",
 }
 
 

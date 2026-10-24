@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.document import DocumentFile
-from app.db.models.enums import MembershipRole, StartupStage
+from app.db.models.enums import MembershipRole, ScanStatus, StartupStage
 from app.platform.email import ConsoleEmailSender
 from tests.factories import create_membership, create_startup, create_user
 
@@ -20,6 +20,7 @@ def _member(db, *, role=MembershipRole.founder):
         size_bytes=10,
         storage_key=f"documents/{s.id}/x.pdf",
         url="file:///x.pdf",
+        scan_status=ScanStatus.clean,
     )
     db.add(f)
     db.flush()

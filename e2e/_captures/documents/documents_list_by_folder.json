@@ -2,7 +2,7 @@
   "data": {
     "documents": [
       {
-        "id": "ef122c9b-6b3d-40b4-bf22-0f0058246bf6",
+        "id": "579327b9-c550-4942-9a78-ed0a44abd55d",
         "kind": "business_plan",
         "title": "Cofoundaz Business Plan",
         "status": "final",
@@ -10,7 +10,7 @@
         "folder": "Investor Docs",
         "template_key": "business_plan",
         "version": 2,
-        "updated_at": "2026-09-30T08:32:48.895160+00:00"
+        "updated_at": "2026-10-24T20:44:24.584860+00:00"
       }
     ]
   },

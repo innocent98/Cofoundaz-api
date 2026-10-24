@@ -1593,6 +1593,23 @@ Plan Generator (§08.11, now shipped) calls — see that module's entry above. S
       table/folder management UI · no user-authored templates (registry is read-only, in-code) —
       see SOP Follow-ups
 
+**Post-launch hardening — Documents BE-A (access + integrity)** — *built 2026-10-24 on
+`fix/documents-access`, PR to `develop` open (merge after `feature/finance-slice-e`; migration
+`0072_documents_scan_status`)* — SOP `docs/sop/2026-10-24-documents-be-a-access-integrity.md`; closes
+gap-list rows 1–6, 25, 37 (D-DOC-1..4)
+- [x] Every authenticated Documents route (documents, files, shares, signature requests, templates)
+      founder + team member only, reads included (`DOCUMENT_ROLES`); search + activity gated the same
+- [x] `document.shared` / `document.signature.*` audience = sender/owner; nothing in-app for `requested`
+- [x] Magic-byte sniffing, `text/markdown` allowed, 15 MB unchanged; `scan_status` + no-op scanner hook;
+      signing gated on `clean`
+- [x] File delete refused (409) while any signature request exists; FK no longer cascades
+- [x] `signed_ip` / `signed_user_agent` returned to editors
+- [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
+      `e2e/test_documents_access.py`; four FE guides updated from live captures
+- [ ] _Next (BE-B):_ versions, trash, rename/move/tag, folders, search, per-person grants + "Shared with me"
+      (gap rows 7–9, 11, 14, 20–22, 28) · _BE-C:_ export + templates · _BE-D:_ e-sign v2
+- [ ] _Deferred:_ a real malware scanner behind `get_scanner()` · FE: hide Documents for non-F/TM roles (row 27)
+
 **Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
       `documents` · `Storage` protocol extended with `delete` · Cloudinary behind that protocol,

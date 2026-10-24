@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "That file's contents don't match its type, or the file is empty.",
+      "field_errors": []
+    }
+  }
+}

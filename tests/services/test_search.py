@@ -66,9 +66,9 @@ def test_founder_finds_every_source(db, ws):
 @pytest.mark.parametrize(
     ("role", "expected"),
     [
-        (MembershipRole.accountant, ["document", "page", "transaction"]),
-        (MembershipRole.investor, ["document", "page"]),
-        (MembershipRole.mentor, ["document", "page"]),
+        (MembershipRole.accountant, ["page", "transaction"]),
+        (MembershipRole.investor, ["page"]),
+        (MembershipRole.mentor, ["page"]),
         (MembershipRole.team_member, ["assumption", "campaign", "document", "page", "transaction"]),
     ],
 )

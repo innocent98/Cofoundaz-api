@@ -566,11 +566,7 @@ def test_marketing_media_never_appears_in_documents_or_to_other_roles(client, db
     # not in the all-roles Documents storage
     assert db.query(DocumentFile).filter_by(startup_id=s.id).count() == 0
     docs = client.get("/api/v1/documents/files", headers=hm)
-    assert (
-        docs.status_code == 200
-        and docs.json()["data"] == []
-        or docs.json()["data"].get("files", []) == []
-    )
+    assert docs.status_code == 403  # D-DOC-1: Documents is F + TM only
     # and the mentor cannot reach the marketing routes at all
     assert client.get(f"{BASE}/media", headers=hm).status_code == 403
     resp = client.delete(f"{BASE}/media/{m['id']}", headers=hm)

@@ -3,15 +3,18 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
-from app.db.models.document import DocumentFile
+from app.core.errors import FileHasSignatureRequests, FileNotClean, NotFound
+from app.db.models.document import DocumentFile, SignatureRequest
+from app.db.models.enums import ScanStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.storage import get_storage
+from app.services.documents.scanner import scan_file
+from app.services.documents.sniff import ALLOWED_TYPES, MARKDOWN
 
-# content-type -> file extension. Also the upload allowlist (endpoint rejects
-# anything not a key here).
+# content-type -> file extension. Also the upload allowlist; `sniff.ALLOWED_TYPES` must list
+# exactly the same types (asserted below).
 EXT_BY_CONTENT_TYPE: dict[str, str] = {
     "application/pdf": ".pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
@@ -21,7 +24,9 @@ EXT_BY_CONTENT_TYPE: dict[str, str] = {
     "image/jpeg": ".jpg",
     "text/plain": ".txt",
     "text/csv": ".csv",
+    MARKDOWN: ".md",
 }
+assert set(EXT_BY_CONTENT_TYPE) == ALLOWED_TYPES  # nosec B101 - import-time invariant
 
 
 def upload_file(
@@ -47,9 +52,11 @@ def upload_file(
         size_bytes=size_bytes,
         storage_key=storage_key,
         url=url,
+        scan_status=ScanStatus.pending,
     )
     db.add(row)
     db.flush()
+    scan_file(db, row, content)
     event_bus.publish(
         db,
         "document.file.uploaded",
@@ -72,7 +79,18 @@ def get_file(db: Session, membership: Membership, file_id: Any) -> DocumentFile:
     return row
 
 
+def assert_clean(file: DocumentFile) -> None:
+    """409 unless the file has passed the scan. Gate for sending a file to signers (and for
+    sharing, when files become shareable)."""
+    if file.scan_status != ScanStatus.clean:
+        raise FileNotClean()
+
+
 def delete_file(db: Session, file: DocumentFile) -> None:
+    """Refuse (409) while any signature request references the file: the request, and above
+    all a completed one, is the signed record and must outlive the upload."""
+    if db.query(SignatureRequest.id).filter_by(file_id=file.id).first() is not None:
+        raise FileHasSignatureRequests()
     get_storage().delete(file.storage_key)
     db.delete(file)
     db.flush()
@@ -91,5 +109,6 @@ def serialize_file(f: DocumentFile) -> dict[str, Any]:
         "size_bytes": f.size_bytes,
         "folder": f.folder,
         "url": f.url,
+        "scan_status": f.scan_status.value,
         "uploaded_at": f.created_at.isoformat(),
     }
