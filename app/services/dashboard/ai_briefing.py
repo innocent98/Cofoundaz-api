@@ -111,6 +111,6 @@ def build_dashboard_briefing_messages(
         f"Deadlines in the next 7 days: {upcoming_count}.\n"
         f"Tasks completed this week: {tasks_done_week}.\n"
         f"{finance}"
-        f"Average monthly money in (last 3 months): {monthly_revenue or 'not tracked'}."
+        f"Average monthly revenue, funding excluded (last 3 months): {monthly_revenue or 'not tracked'}."
     )
     return [LLMMessage(role="system", content=system), LLMMessage(role="user", content=user)]

@@ -281,3 +281,26 @@ def test_trailing_monthly_flows_unclamped_for_profitable_startup(client, db):
     # The summary clamps burn at 0 for a profitable startup; the helper keeps the true costs.
     summary = cash_flow_summary(db, startup_id=s.id)
     assert summary["monthly_burn"] == 0 and summary["monthly_revenue"] == revenue
+
+
+def test_funding_is_cash_but_not_revenue_or_burn_offset(client, db):
+    # D-FIN-11: a raise is cash on hand and paid-in capital, never revenue, and it must not
+    # cancel the burn (which would hide runway right after a raise).
+    from app.services.finance.cashflow import trailing_monthly_flows
+    from app.services.finance.model_inputs import build_starting
+
+    _u, s, h = _member(db)
+    today = _today_utc()
+    raise_in = {**_txn(today, 6_000_000, "in", "Seed round"), "category": "funding"}
+    _seed(client, h, [raise_in, _txn(today, 300_000, "in", "sales"), _txn(today, 900_000, "out")])
+    d = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
+    assert d["cash_on_hand"] == 6_000_000 + 300_000 - 900_000
+    assert d["monthly_revenue"] == 100_000  # 300_000 / 3; the raise is not revenue
+    assert d["monthly_burn"] == 200_000  # (900_000 - 300_000) / 3; the raise does not offset it
+    assert d["runway_months"] == 27.0 and d["runway_low"] is False
+    # The cash-flow chart is money moving, so the raise still shows as money in.
+    assert d["by_month"][-1]["inflow"] == 6_300_000
+    assert trailing_monthly_flows(db, startup_id=s.id) == (100_000, 300_000)
+    starting, source = build_starting(db, startup_id=s.id)
+    assert (starting["revenue_0"], starting["monthly_costs_0"]) == (100_000, 300_000)
+    assert starting["funding_total"] == 6_000_000 and source == "actuals"

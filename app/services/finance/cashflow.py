@@ -2,12 +2,12 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import case, func, or_
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Query, Session
 
 from app.db.models.enums import TransactionDirection
 from app.db.models.finance import Transaction
-from app.services.finance.categories import PAYSTACK_PAYOUT_CATEGORY
+from app.services.finance.categories import FUNDING_CATEGORY, PAYSTACK_PAYOUT_CATEGORY
 from app.services.finance.runway_math import _runway_is_low
 
 _IN = TransactionDirection.inflow
@@ -48,13 +48,32 @@ def _inflow_outflow_sums() -> tuple[Any, Any]:
     return inflow, outflow
 
 
+def _revenue_inflow_sum() -> Any:
+    # Funding (a raise, a founder top-up) is cash and paid-in capital, never revenue, and it must
+    # not offset burn either, or runway vanishes right after a raise (D-FIN-11).
+    not_funding = or_(
+        Transaction.category.is_(None),
+        func.lower(Transaction.category) != FUNDING_CATEGORY.casefold(),
+    )
+    return func.coalesce(
+        func.sum(
+            case(
+                (and_(Transaction.direction == _IN, not_funding), Transaction.amount_minor), else_=0
+            )
+        ),
+        0,
+    )
+
+
 def _trailing_3mo_totals(base: Query[Transaction], today: date) -> tuple[int, int]:
-    """(inflow, outflow) over the trailing window: first day of the month 2 months ago .. today.
+    """(revenue inflow, outflow) over the trailing window: first day of the month 2 months ago ..
+    today. Funding inflows are left out (D-FIN-11); cash on hand and by_month still count them.
 
     Single source for the 3-month window so cash_flow_summary and trailing_monthly_flows
     can never diverge.
     """
-    inflow, outflow = _inflow_outflow_sums()
+    _inflow, outflow = _inflow_outflow_sums()
+    inflow = _revenue_inflow_sum()
     since_3mo = _months_back(today, 2)
     win_in, win_out = (
         base.filter(Transaction.date >= since_3mo).with_entities(inflow, outflow).one()
