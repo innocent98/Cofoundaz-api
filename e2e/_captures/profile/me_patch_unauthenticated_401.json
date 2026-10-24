@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/auth/me",
+    "body": {
+      "full_name": "Ada"
+    },
+    "auth": "none"
+  },
+  "status": 401,
+  "response": {
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Not authenticated.",
+      "field_errors": []
+    }
+  }
+}

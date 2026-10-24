@@ -1,6 +1,9 @@
+import re
 from typing import Any
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core import PydanticCustomError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -13,12 +16,51 @@ from app.services.onboarding.workspace import is_untouched_draft
 
 router = APIRouter()
 
+_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+
+
+class MePatch(BaseModel):
+    """What a member may change about themselves. Only the display name for now (certificates,
+    comments and invitations print it); unknown fields are ignored, never applied."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def _clean_name(cls, v: str) -> str:
+        # PydanticCustomError, not ValueError: pydantic prefixes ValueError text with "Value error, ".
+        if _CONTROL.search(v):
+            raise PydanticCustomError("name_chars", "Use letters, spaces and punctuation only.")
+        v = " ".join(v.split())
+        if not v:
+            raise PydanticCustomError("name_required", "Tell us your name.")
+        if len(v) > 120:
+            raise PydanticCustomError("name_too_long", "Keep it to 120 characters.")
+        return v
+
 
 @router.get("/me")
 def me(
     user: User = Depends(get_current_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    return success_response(_me_payload(db, user))
+
+
+@router.patch("/me")
+def update_me(
+    body: MePatch,
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    user.profile.full_name = body.full_name
+    db.commit()
+    return success_response(_me_payload(db, user))
+
+
+def _me_payload(db: Session, user: User) -> dict[str, Any]:
     rows = (
         db.query(Membership, Startup)
         .join(Startup, Startup.id == Membership.startup_id)
@@ -39,20 +81,18 @@ def me(
         {"startup_id": str(s.id), "name": s.name, "role": m.role.value} for m, s in pairs
     ]
     profile = user.profile
-    return success_response(
-        {
-            "user": {"id": str(user.id), "email": user.email, "status": user.status.value},
-            "profile": (
-                None
-                if profile is None
-                else {
-                    "full_name": profile.full_name,
-                    "role_title": profile.role_title,
-                    "country": profile.country,
-                    "avatar_url": profile.avatar_url,
-                }
-            ),
-            "memberships": memberships,
-            "active_workspace_id": memberships[0]["startup_id"] if memberships else None,
-        }
-    )
+    return {
+        "user": {"id": str(user.id), "email": user.email, "status": user.status.value},
+        "profile": (
+            None
+            if profile is None
+            else {
+                "full_name": profile.full_name,
+                "role_title": profile.role_title,
+                "country": profile.country,
+                "avatar_url": profile.avatar_url,
+            }
+        ),
+        "memberships": memberships,
+        "active_workspace_id": memberships[0]["startup_id"] if memberships else None,
+    }

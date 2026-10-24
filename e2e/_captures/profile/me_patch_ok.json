@@ -1,0 +1,34 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/auth/me",
+    "body": {
+      "full_name": "  Rewalk   Teammate  "
+    }
+  },
+  "status": 200,
+  "response": {
+    "data": {
+      "user": {
+        "id": "6087acf5-f674-447f-88a2-cd46baffe39a",
+        "email": "rewalk-tm@example.com",
+        "status": "active"
+      },
+      "profile": {
+        "full_name": "Rewalk Teammate",
+        "role_title": "Founder & CEO",
+        "country": null,
+        "avatar_url": null
+      },
+      "memberships": [
+        {
+          "startup_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44",
+          "name": "NovaPay",
+          "role": "team_member"
+        }
+      ],
+      "active_workspace_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44"
+    },
+    "meta": null
+  }
+}

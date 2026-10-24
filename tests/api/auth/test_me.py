@@ -66,3 +66,38 @@ def test_me_active_workspace_id_is_deterministic_across_calls(client, db):
         r = client.get("/api/v1/auth/me", headers=headers)
         assert r.status_code == 200, r.text
         assert r.json()["data"]["active_workspace_id"] == str(s1.id)
+
+
+def _auth(u):
+    return {"Authorization": f"Bearer {create_access_token(str(u.id))}"}
+
+
+def test_patch_me_sets_the_profile_name_and_returns_me(client, db):
+    u = create_user(db, status=UserStatus.active)
+    u.profile.full_name = None
+    db.flush()
+    r = client.patch("/api/v1/auth/me", json={"full_name": "  Ada   Obi  "}, headers=_auth(u))
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["profile"]["full_name"] == "Ada Obi"
+    db.refresh(u.profile)
+    assert u.profile.full_name == "Ada Obi"
+
+
+def test_patch_me_rejects_blank_long_or_control_character_names(client, db):
+    u = create_user(db, status=UserStatus.active)
+    db.flush()
+    for bad in ("", "   ", "x" * 121, "Ada\nObi", "Ada\x00"):
+        r = client.patch("/api/v1/auth/me", json={"full_name": bad}, headers=_auth(u))
+        assert r.status_code == 422, (bad, r.text)
+        err = r.json()["error"]["field_errors"][0]
+        assert err["field"].endswith("full_name") and not err["message"].startswith("Value error")
+
+
+def test_patch_me_ignores_unknown_fields_and_requires_auth(client, db):
+    assert client.patch("/api/v1/auth/me", json={"full_name": "A"}).status_code == 401
+    u = create_user(db, status=UserStatus.active)
+    db.flush()
+    r = client.patch(
+        "/api/v1/auth/me", json={"full_name": "Ada", "email": "evil@x.com"}, headers=_auth(u)
+    )
+    assert r.status_code == 200 and r.json()["data"]["user"]["email"] == u.email
