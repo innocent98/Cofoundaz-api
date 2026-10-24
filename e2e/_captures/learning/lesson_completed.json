@@ -1,9 +1,10 @@
 {
   "data": {
-    "lesson_id": "build-scope-the-mvp-1",
+    "lesson_id": "build-scope-the-mvp-2",
     "course_id": "build-scope-the-mvp",
-    "progress": 50,
+    "progress": 33,
     "completed_at": null,
+    "position_s": null,
     "certificate": null
   },
   "meta": null

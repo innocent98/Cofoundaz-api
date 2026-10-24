@@ -103,6 +103,8 @@ slowapi = "^0.1.9"
 pyotp = "^2.10.0"
 cryptography = "^50.0.0"
 cloudinary = "^1.40"
+pyyaml = "^6.0"
+reportlab = "^4.4"
 
 [tool.poetry.group.dev.dependencies]
 # Floors are the versions actually verified on this tree, not the superseded ones

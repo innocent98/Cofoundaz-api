@@ -32,6 +32,8 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "mission.streak.milestone": MISSION_ROLES,
     "dashboard.briefing.ready": BRIEFING_ROLES,
     "assessment.completed": CORE_ROLES,  # D-ASM-1
+    "learning.course.completed": CORE_ROLES,  # the Academy is F + TM (PRD 17)
+    "learning.course.recommended": CORE_ROLES,
     "assessment.quarterly.due": FOUNDER_ROLES,
     "business.suggestion.created": FOUNDER_ROLES,  # PRD 08: the founder approves
     "validation.smoke_test.milestone": CORE_ROLES,

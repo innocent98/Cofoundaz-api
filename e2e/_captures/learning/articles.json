@@ -3,21 +3,122 @@
     "articles": [
       {
         "id": "article-interview-questions",
-        "title": "[Placeholder] Questions that get honest answers",
+        "title": "Questions that get honest answers",
+        "summary": "Seven questions that make people describe what really happened, plus the ones that waste your time.",
         "tags": [
           "validation",
           "customers"
         ],
-        "body": "Placeholder article body."
+        "read_min": 1,
+        "review_status": "draft"
       },
       {
         "id": "article-pricing-basics",
-        "title": "[Placeholder] Pricing basics",
+        "title": "Pricing your first product in naira",
+        "summary": "A short method to set a first price: start from the customer's alternative, then test with real money.",
         "tags": [
           "pricing",
-          "validation"
+          "validation",
+          "money"
         ],
-        "body": "Placeholder article body."
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-painkiller-or-vitamin",
+        "title": "Painkiller or vitamin: a quick test for your idea",
+        "summary": "Painkillers solve urgent problems people already spend effort on. Vitamins are nice to have. Check which one you are building.",
+        "tags": [
+          "idea",
+          "validation",
+          "product"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-first-ten-customers",
+        "title": "Your first ten customers come from conversations",
+        "summary": "Why the first customers rarely come from ads, and a weekly routine to win them.",
+        "tags": [
+          "launch",
+          "customers",
+          "sales"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-accepting-first-payments",
+        "title": "Accepting your first payments without a big setup",
+        "summary": "Start with simple, trusted ways to get paid and add complexity only when volume demands it.",
+        "tags": [
+          "payments",
+          "launch",
+          "money"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-read-your-runway",
+        "title": "How to read your runway without a finance degree",
+        "summary": "Three figures, one division and a weekly check, so cash never surprises you.",
+        "tags": [
+          "money",
+          "runway",
+          "growth"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-one-page-mvp-scope",
+        "title": "A one page MVP scope you can actually finish",
+        "summary": "Use one page to keep the first version small, clear and shippable.",
+        "tags": [
+          "build",
+          "product",
+          "mvp"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-cofounder-equity-talk",
+        "title": "The equity conversation to have before you write code",
+        "summary": "Agree roles, ownership and what happens if someone leaves, while everyone still gets along.",
+        "tags": [
+          "team",
+          "legal",
+          "equity"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-weekly-founder-review",
+        "title": "A thirty minute weekly review for busy founders",
+        "summary": "A short weekly routine to see what moved, what stalled and what to do next.",
+        "tags": [
+          "habits",
+          "focus",
+          "build"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      },
+      {
+        "id": "article-first-hire",
+        "title": "Before your first hire: what to write down",
+        "summary": "Five short documents that make your first hire easier, cheaper and more likely to succeed.",
+        "tags": [
+          "team",
+          "scale",
+          "hiring"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
       }
     ]
   },

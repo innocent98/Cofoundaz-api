@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CERTIFICATE_NOT_READY",
+    "message": "Your certificate is still being prepared. Try again in a moment.",
+    "field_errors": []
+  }
+}

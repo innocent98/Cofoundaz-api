@@ -2,10 +2,17 @@
   "data": {
     "certificates": [
       {
-        "id": "ecbb3c6d-e2cc-4fa4-9447-9c3f8ccb188d",
+        "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
         "course_id": "build-scope-the-mvp",
-        "credential_code": "b4NyoQ2gm4mS13pELCiMzw",
-        "issued_at": "2026-09-30T08:33:03.622491+00:00"
+        "course_title": "Scope the MVP",
+        "holder_name": "Ada Founder",
+        "credential_id": "CFZ-YHLS-DYNM-NZYA",
+        "issuer": "Cofoundaz",
+        "issued_at": "2026-10-22T13:45:07.810980+00:00",
+        "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
+        "pdf_ready": true,
+        "pdf_url": "/api/v1/learning/certificates/8434d809-122b-48a7-8ce0-cb33bd790577/pdf",
+        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
       }
     ]
   },
