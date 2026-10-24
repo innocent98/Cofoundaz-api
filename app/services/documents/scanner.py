@@ -25,7 +25,7 @@ from app.platform.events import event_bus
 class Scanner(Protocol):
     def scan(self, content: bytes, filename: str) -> ScanStatus:
         """`clean`, `blocked`, or `pending` (the verdict arrives later via `apply_verdict`)."""
-        ...
+        raise NotImplementedError
 
 
 class NoopScanner:

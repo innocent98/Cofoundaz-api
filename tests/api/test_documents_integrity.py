@@ -149,8 +149,10 @@ def test_completed_request_survives_a_delete_attempt(client, db, ws):
     fid = _upload(client, h).json()["data"]["id"]
     created = _sign_req(client, h, fid).json()["data"]
     token = created["signer_links"][0].rsplit("/", 1)[-1]
-    assert client.post(f"/api/v1/sign/{token}", json={"typed_name": "A"}).status_code == 200
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 409
+    signed = client.post(f"/api/v1/sign/{token}", json={"typed_name": "A"})
+    assert signed.status_code == 200
+    refused = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert refused.status_code == 409
     got = client.get(f"/api/v1/documents/signature-requests/{created['id']}", headers=h)
     assert got.json()["data"]["status"] == "complete"
     assert (
@@ -166,14 +168,17 @@ def test_cancelled_request_still_blocks_delete(client, db, ws):
     fid = _upload(client, h).json()["data"]["id"]
     rid = _sign_req(client, h, fid).json()["data"]["id"]
     client.post(f"/api/v1/documents/signature-requests/{rid}/cancel", headers=h)
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 409
+    refused = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert refused.status_code == 409
 
 
 def test_file_without_requests_still_deletes(client, db, ws):
     _s, h = ws
     fid = _upload(client, h).json()["data"]["id"]
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 200
-    assert client.get(f"/api/v1/documents/files/{fid}", headers=h).status_code == 404
+    deleted = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert deleted.status_code == 200
+    gone = client.get(f"/api/v1/documents/files/{fid}", headers=h)
+    assert gone.status_code == 404
 
 
 # ---- row 37: audit fields -----------------------------------------------------------------
