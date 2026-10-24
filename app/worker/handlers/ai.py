@@ -21,7 +21,7 @@ from app.db.models.enums import (
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
 from app.db.models.journal import JournalPrompt
-from app.db.models.learning import LearningRecommendation
+from app.db.models.learning import AcademyCourse, LearningRecommendation
 from app.db.models.mission import Mission, MissionTask
 from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
@@ -61,8 +61,8 @@ from app.services.journal.ai_prompt import (
     gather_prompt_context,
     journal_prompt_schema,
 )
+from app.services.learning import recommendations as learning_recommendations
 from app.services.learning.ai_reason import build_learning_reason_messages, learning_reason_schema
-from app.services.learning.service import recommended_courses
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
 from app.services.onboarding.ai_panel import build_onboarding_panel_messages
 from app.services.roadmap.ai_rationale import build_roadmap_rationale_messages
@@ -424,32 +424,52 @@ register_handler("ai.onboarding.panel", handle_onboarding_panel)
 
 
 def handle_learning_recommendations(db: Session, job: Job) -> None:
-    """Write the shelf-level recommendation reason via the LLM. No commit.
+    """Write the hero course's recommendation reason via the LLM. No commit.
 
-    Idempotent: no-ops unless the row is still `generating`. Keeps the templated fallback when the
-    startup has no stage, no recommendable courses, or the workspace is over budget.
+    Idempotent and stale-safe: no-ops unless the row for ``(startup_id, course_id)`` is still
+    `generating` for the ``context_key`` this job was queued for (a newer stage or gap change
+    supersedes it). Keeps the templated fallback when the startup has no stage or the workspace
+    is over budget.
     """
     startup = db.get(Startup, job.payload["startup_id"])
-    if startup is None:
+    course_id = job.payload.get("course_id")
+    if startup is None or not course_id:  # a job queued before reasons were per course
         return
-    row = db.query(LearningRecommendation).filter_by(startup_id=startup.id).one_or_none()
-    if row is None or row.status != EnrichmentStatus.generating:
+    row = (
+        db.query(LearningRecommendation)
+        .filter_by(startup_id=startup.id, course_id=course_id)
+        .one_or_none()
+    )
+    if (
+        row is None
+        or row.status != EnrichmentStatus.generating
+        or row.context_key != job.payload.get("context_key")
+    ):
         return
-    stage = startup.stage
-    titles = [c.title for c in recommended_courses(stage, set())] if stage is not None else []
-    if stage is None or not titles:  # nothing to personalize -> keep fallback, no LLM call
+    course = db.get(AcademyCourse, course_id)
+    if startup.stage is None or course is None:  # nothing to personalize -> keep fallback
         row.status = EnrichmentStatus.ready
         db.flush()
         return
+    gaps = learning_recommendations.gather_gaps(db, startup.id)
+    phrases = [
+        learning_recommendations.gap_phrase(tag)
+        for tag in learning_recommendations.matched_gaps(course, gaps)
+    ]
     result = metered_complete_json(
         db,
         startup.id,
-        build_learning_reason_messages(stage=stage, course_titles=titles),
+        build_learning_reason_messages(
+            stage=startup.stage,
+            course_title=course.title,
+            course_summary=course.summary,
+            gap_phrases=phrases,
+        ),
         schema=learning_reason_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     if result is None:
-        return  # over budget — keep the templated reason, stay generating
+        return  # over budget -- keep the templated reason, stay generating
     row.reason = str(result["reason"])[:300]
     row.status = EnrichmentStatus.ready
     db.flush()

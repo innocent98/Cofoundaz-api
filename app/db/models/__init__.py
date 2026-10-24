@@ -30,9 +30,16 @@ from app.db.models.job import Job  # noqa: F401
 from app.db.models.journal import JournalEntry, JournalPrompt, MoodLog  # noqa: F401
 from app.db.models.kpi_snapshot import KpiSnapshot  # noqa: F401
 from app.db.models.learning import (  # noqa: F401
+    AcademyArticle,
+    AcademyCourse,
+    AcademyLesson,
+    AcademyPath,
     Certificate,
+    CertificateFile,
     Enrollment,
     LearningRecommendation,
+    LessonNote,
+    LessonPosition,
     LessonProgress,
 )
 from app.db.models.llm_usage import LlmUsageDaily  # noqa: F401

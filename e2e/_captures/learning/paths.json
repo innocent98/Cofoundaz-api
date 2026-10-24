@@ -2,29 +2,228 @@
   "data": {
     "paths": [
       {
+        "id": "path-idea-foundations",
+        "title": "Idea foundations",
+        "summary": "Sharpen the problem you want to solve, then check it with real people before you build anything.",
+        "stage": "idea",
+        "review_status": "draft",
+        "course_ids": [
+          "idea-shape-the-problem",
+          "validation-talk-to-customers"
+        ],
+        "course_count": 2,
+        "duration_min": 64,
+        "progress": 0,
+        "courses": [
+          {
+            "id": "idea-shape-the-problem",
+            "title": "Shape the problem",
+            "level": "beginner",
+            "duration_min": 30,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "idea-shape-the-problem-1"
+          },
+          {
+            "id": "validation-talk-to-customers",
+            "title": "Talk to customers",
+            "level": "beginner",
+            "duration_min": 34,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "validation-talk-to-customers-1"
+          }
+        ]
+      },
+      {
         "id": "path-validation-foundations",
-        "title": "[Placeholder] Validation foundations",
+        "title": "Validation foundations",
+        "summary": "Prove that people have the problem, will pay and want your first version.",
         "stage": "validation",
+        "review_status": "draft",
         "course_ids": [
           "idea-shape-the-problem",
           "validation-talk-to-customers",
+          "validation-price-your-product",
           "build-scope-the-mvp"
         ],
-        "course_count": 3,
-        "duration_min": 86,
-        "progress": 33
+        "course_count": 4,
+        "duration_min": 123,
+        "progress": 25,
+        "courses": [
+          {
+            "id": "idea-shape-the-problem",
+            "title": "Shape the problem",
+            "level": "beginner",
+            "duration_min": 30,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "idea-shape-the-problem-1"
+          },
+          {
+            "id": "validation-talk-to-customers",
+            "title": "Talk to customers",
+            "level": "beginner",
+            "duration_min": 34,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "validation-talk-to-customers-1"
+          },
+          {
+            "id": "validation-price-your-product",
+            "title": "Price your product",
+            "level": "intermediate",
+            "duration_min": 29,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "validation-price-your-product-1"
+          },
+          {
+            "id": "build-scope-the-mvp",
+            "title": "Scope the MVP",
+            "level": "intermediate",
+            "duration_min": 30,
+            "progress": 100,
+            "completed": true,
+            "next_lesson_id": null
+          }
+        ]
       },
       {
-        "id": "path-launch-to-growth",
-        "title": "[Placeholder] From launch to growth",
-        "stage": "launch",
+        "id": "path-build-the-product",
+        "title": "Build the first version",
+        "summary": "Scope a version one you can finish, and settle the price you will launch with.",
+        "stage": "build",
+        "review_status": "draft",
         "course_ids": [
-          "launch-plan-go-to-market",
-          "growth-find-a-channel"
+          "build-scope-the-mvp",
+          "validation-price-your-product"
         ],
         "course_count": 2,
-        "duration_min": 43,
-        "progress": 0
+        "duration_min": 59,
+        "progress": 50,
+        "courses": [
+          {
+            "id": "build-scope-the-mvp",
+            "title": "Scope the MVP",
+            "level": "intermediate",
+            "duration_min": 30,
+            "progress": 100,
+            "completed": true,
+            "next_lesson_id": null
+          },
+          {
+            "id": "validation-price-your-product",
+            "title": "Price your product",
+            "level": "intermediate",
+            "duration_min": 29,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "validation-price-your-product-1"
+          }
+        ]
+      },
+      {
+        "id": "path-launch-well",
+        "title": "Launch well",
+        "summary": "Set a price, choose two channels and run a launch week that teaches you something.",
+        "stage": "launch",
+        "review_status": "draft",
+        "course_ids": [
+          "validation-price-your-product",
+          "launch-plan-go-to-market"
+        ],
+        "course_count": 2,
+        "duration_min": 59,
+        "progress": 0,
+        "courses": [
+          {
+            "id": "validation-price-your-product",
+            "title": "Price your product",
+            "level": "intermediate",
+            "duration_min": 29,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "validation-price-your-product-1"
+          },
+          {
+            "id": "launch-plan-go-to-market",
+            "title": "Plan your go-to-market",
+            "level": "intermediate",
+            "duration_min": 30,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "launch-plan-go-to-market-1"
+          }
+        ]
+      },
+      {
+        "id": "path-grow-repeatably",
+        "title": "Grow repeatably",
+        "summary": "Find a channel that works every month and understand what each customer costs you.",
+        "stage": "growth",
+        "review_status": "draft",
+        "course_ids": [
+          "growth-find-a-channel",
+          "growth-know-your-numbers"
+        ],
+        "course_count": 2,
+        "duration_min": 62,
+        "progress": 0,
+        "courses": [
+          {
+            "id": "growth-find-a-channel",
+            "title": "Find a repeatable channel",
+            "level": "advanced",
+            "duration_min": 32,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "growth-find-a-channel-1"
+          },
+          {
+            "id": "growth-know-your-numbers",
+            "title": "Know your numbers",
+            "level": "advanced",
+            "duration_min": 30,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "growth-know-your-numbers-1"
+          }
+        ]
+      },
+      {
+        "id": "path-scale-the-team",
+        "title": "Scale the team",
+        "summary": "Keep the numbers healthy while you document processes, hire and set clear terms.",
+        "stage": "scale",
+        "review_status": "draft",
+        "course_ids": [
+          "growth-know-your-numbers",
+          "scale-build-the-org"
+        ],
+        "course_count": 2,
+        "duration_min": 66,
+        "progress": 0,
+        "courses": [
+          {
+            "id": "growth-know-your-numbers",
+            "title": "Know your numbers",
+            "level": "advanced",
+            "duration_min": 30,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "growth-know-your-numbers-1"
+          },
+          {
+            "id": "scale-build-the-org",
+            "title": "Build the org",
+            "level": "advanced",
+            "duration_min": 36,
+            "progress": 0,
+            "completed": false,
+            "next_lesson_id": "scale-build-the-org-1"
+          }
+        ]
       }
     ]
   },

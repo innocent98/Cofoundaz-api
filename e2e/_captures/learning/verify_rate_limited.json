@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Slow down a moment.",
+    "field_errors": []
+  }
+}

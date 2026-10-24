@@ -1,3 +1,4 @@
+import functools
 from collections.abc import Iterator
 
 import pytest
@@ -11,6 +12,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.services.learning.content import load_content, sync_content
 
 # Local-only fallback for developers without TEST_DATABASE_URL set; not a real secret.
 TEST_URL = (
@@ -66,3 +68,16 @@ def client(db: Session) -> Iterator[TestClient]:
         yield c
     app.state.limiter.enabled = True
     app.dependency_overrides.clear()
+
+
+@functools.cache
+def _academy_bundle():  # type: ignore[no-untyped-def]
+    return load_content()
+
+
+@pytest.fixture()
+def academy(db: Session) -> Session:
+    """The real Academy content (content/academy) loaded into the test transaction."""
+    sync_content(db, _academy_bundle())
+    db.flush()
+    return db

@@ -139,3 +139,22 @@ def test_endpoint(client, db):
     assert "Dashboard" in [x["title"] for x in results if x["type"] == "page"]  # substring match
     assert client.get("/api/v1/search", params={"q": "x" * 201}, headers=h).status_code == 422
     assert client.get("/api/v1/search", params={"q": "board"}).status_code == 401
+
+
+def test_courses_and_articles_are_searchable_but_notes_never_are(db, academy):
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    from app.services.learning.service import put_note
+
+    put_note(db, s.id, u.id, "build-scope-the-mvp-1", "zebrafish secret note")
+    founder = search(db, s, u, MembershipRole.founder, "runway")
+    by_type = {r["type"]: r for r in founder["results"] if r["type"] in {"course", "article"}}
+    assert by_type["article"]["href"] == "/academy/articles/article-read-your-runway"
+    course = search(db, s, u, MembershipRole.founder, "Scope the MVP")
+    hit = next(r for r in course["results"] if r["type"] == "course")
+    assert hit["href"] == "/academy/courses/build-scope-the-mvp"
+    # private notes are not an index source, for anyone
+    assert search(db, s, u, MembershipRole.founder, "zebrafish")["results"] == []
+    # a role outside the Academy never sees catalog hits
+    mentor = search(db, s, u, MembershipRole.mentor, "runway")
+    assert not [r for r in mentor["results"] if r["type"] in {"course", "article"}]

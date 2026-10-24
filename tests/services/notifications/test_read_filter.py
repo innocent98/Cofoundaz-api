@@ -25,7 +25,11 @@ from tests.factories import create_membership, create_startup, create_user
 
 CORE = {MembershipRole.founder, MembershipRole.team_member}
 # Recipients are a payload-driven subset of the audience (stalled: owner, else founders).
-NARROWER_THAN_AUDIENCE = {"sales.deal.stalled"}
+NARROWER_THAN_AUDIENCE = {
+    "sales.deal.stalled",
+    "learning.course.completed",  # only the learner named in the payload
+    "learning.course.recommended",
+}
 
 
 def _team(db):

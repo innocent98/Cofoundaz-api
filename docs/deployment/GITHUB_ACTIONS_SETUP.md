@@ -39,7 +39,7 @@ the file it sits in.
 | Environments `staging` **and** `production` | `VPS_HOST` | secret |
 | Environments `staging` **and** `production` | `VPS_USERNAME` | secret |
 | Environments `staging` **and** `production` | `VPS_SSH_KEY` | secret |
-| Environments `staging` **and** `production` | `VPS_PORT` | secret (optional — defaults to 22) |
+| Environments `staging` **and** `production` | `VPS_PORT` | **variable**, not a secret (optional — defaults to 22) |
 | Environments `staging` **and** `production` | `DEPLOY_PATH` | secret |
 | Environments `staging` **and** `production` | `ENV_ENCRYPTION_KEY` | secret |
 | Environments `staging` **and** `production` | `APP_URL` | **variable, not secret** |
@@ -235,8 +235,13 @@ The **private** key from §3, complete with header, footer, and trailing newline
 
 ### `VPS_PORT` *(optional)*
 
-The SSH port. Every workflow that SSHes uses `${{ secrets.VPS_PORT || 22 }}`, so omit it
-entirely if sshd is on 22. Set it if you moved sshd.
+The SSH port. Every workflow that SSHes uses `${{ vars.VPS_PORT || 22 }}`, so omit it
+entirely if sshd is on 22. Set it (as an environment **variable**) if you moved sshd.
+
+**Never store the port as a secret.** GitHub masks every secret value in logs and drops any job
+output that contains one. A short value like `22` appears in roughly one image digest in five, and
+then the digest handed from the deploy job to the "staging-verified" proof job arrives empty and the
+run fails (2026-10-24, `940340e0`: deploy and live E2E passed, proof minting failed).
 
 ### `DEPLOY_PATH`
 

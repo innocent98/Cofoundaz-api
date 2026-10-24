@@ -230,6 +230,13 @@ class CourseLevel(enum.StrEnum):
     advanced = "advanced"
 
 
+class ReviewStatus(enum.StrEnum):
+    """Editorial state of Academy content: everything starts as a draft until it is reviewed."""
+
+    draft = "draft"
+    reviewed = "reviewed"
+
+
 class BusinessPlanStatus(enum.StrEnum):
     generating = "generating"
     complete = "complete"

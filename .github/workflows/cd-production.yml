@@ -317,7 +317,7 @@ jobs:
           vps_host: ${{ secrets.VPS_HOST }}
           vps_username: ${{ secrets.VPS_USERNAME }}
           vps_ssh_key: ${{ secrets.VPS_SSH_KEY }}
-          vps_port: ${{ secrets.VPS_PORT || 22 }}
+          vps_port: ${{ vars.VPS_PORT || 22 }}
           deploy_path: ${{ secrets.DEPLOY_PATH }}
           env_encryption_key: ${{ secrets.ENV_ENCRYPTION_KEY }}
           # NOT secrets.GHCR_PULL_USERNAME/_TOKEN. Those were removed when the

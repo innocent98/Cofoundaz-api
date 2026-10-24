@@ -1,7 +1,7 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -12,23 +12,30 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.learning import EnrollmentCreate, LessonProgressUpdate
-from app.services.learning.catalog import ALL_ARTICLES, ALL_COURSES, ALL_PATHS, get_course
+from app.schemas.learning import EnrollmentCreate, LessonNoteUpdate, LessonProgressUpdate
+from app.services.learning import certificates
+from app.services.learning.catalog import (
+    get_article,
+    get_course,
+    list_articles,
+    list_courses,
+    list_paths,
+)
 from app.services.learning.service import (
+    article_detail,
     article_view,
-    complete_lesson,
-    completed_lesson_ids,
-    continue_watching,
+    build_recommendations,
+    certificate_view,
+    certificate_views,
     course_detail,
     course_summary,
-    enrollments_by_course,
+    get_note,
     get_or_create_enrollment,
-    get_or_create_recommendation_reason,
-    list_certificates,
+    load_state,
     path_view,
-    recommended_courses,
-    serialize_certificate,
+    put_note,
     serialize_enrollment,
+    update_lesson_progress,
 )
 
 router = APIRouter()
@@ -47,32 +54,20 @@ def get_recommendations(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    enrollments = enrollments_by_course(db, startup.id, membership.user_id)
-    completed = {cid for cid, e in enrollments.items() if e.completed_at is not None}
-    shelf = recommended_courses(startup.stage, completed)
-    watching = continue_watching(db, startup.id, membership.user_id)
-    reason_row = get_or_create_recommendation_reason(db, startup.id, startup.stage)
+    state = load_state(db, startup.id, membership.user_id)
+    payload = build_recommendations(db, startup, membership.user_id, state)
     db.commit()  # lazy-create persists (mirrors GET /canvases/{type})
-    return success_response(
-        {
-            "stage": startup.stage.value if startup.stage is not None else None,
-            "recommendation_reason": reason_row.reason,
-            "recommended": [course_summary(c, enrollments.get(c.id)) for c in shelf],
-            "continue_watching": [course_summary(c, e) for c, e in watching],
-        }
-    )
+    return success_response(payload)
 
 
 @router.get("/courses")
-def list_courses(
+def list_all_courses(
     membership: Membership = Depends(_academy),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    enrollments = enrollments_by_course(db, membership.startup_id, membership.user_id)
-    return success_response(
-        {"courses": [course_summary(c, enrollments.get(c.id)) for c in ALL_COURSES]}
-    )
+    state = load_state(db, membership.startup_id, membership.user_id)
+    return success_response({"courses": [course_summary(c, state) for c in list_courses(db)]})
 
 
 @router.get("/courses/{course_id}")
@@ -82,29 +77,43 @@ def get_course_detail(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    course = get_course(course_id)  # 404 if unknown
-    enrollments = enrollments_by_course(db, membership.startup_id, membership.user_id)
-    done = completed_lesson_ids(db, membership.startup_id, membership.user_id, course.id)
-    return success_response(course_detail(course, enrollments.get(course.id), done))
+    course = get_course(db, course_id)  # 404 if unknown
+    state = load_state(db, membership.startup_id, membership.user_id)
+    return success_response(course_detail(course, state))
 
 
 @router.get("/paths")
-def list_paths(
+def list_all_paths(
     membership: Membership = Depends(_academy),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    enrollments = enrollments_by_course(db, membership.startup_id, membership.user_id)
-    progress = {course_id: e.progress for course_id, e in enrollments.items()}
-    return success_response({"paths": [path_view(p, progress) for p in ALL_PATHS]})
+    state = load_state(db, membership.startup_id, membership.user_id)
+    courses = {c.id: c for c in list_courses(db)}
+    return success_response({"paths": [path_view(p, courses, state) for p in list_paths(db)]})
 
 
 @router.get("/articles")
-def list_articles(
+def list_all_articles(
+    q: str | None = Query(default=None, max_length=100),
+    tag: str | None = Query(default=None, max_length=40),
     membership: Membership = Depends(_academy),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response({"articles": [article_view(a) for a in ALL_ARTICLES]})
+    return success_response(
+        {"articles": [article_view(a) for a in list_articles(db, q=q, tag=tag)]}
+    )
+
+
+@router.get("/articles/{article_id}")
+def get_article_detail(
+    article_id: str,
+    membership: Membership = Depends(_academy),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(article_detail(db, get_article(db, article_id)))
 
 
 @router.post("/enrollments", status_code=201)
@@ -125,24 +134,54 @@ def create_enrollment(
 
 
 @router.patch("/lessons/{lesson_id}/progress")
-def update_lesson_progress(
+def update_progress(
     lesson_id: str,
     body: LessonProgressUpdate,
     membership: Membership = Depends(_academy),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    enrollment, certificate = complete_lesson(
-        db, membership.startup_id, membership.user_id, lesson_id
+    enrollment, certificate, position_s = update_lesson_progress(
+        db,
+        membership.startup_id,
+        membership.user_id,
+        lesson_id,
+        completed=body.completed is True,
+        position_s=body.position_s,
     )
+    certificate_payload = certificate_view(db, certificate) if certificate else None
     db.commit()
     return success_response(
         {
             "lesson_id": lesson_id,
             **serialize_enrollment(enrollment),
-            "certificate": serialize_certificate(certificate) if certificate else None,
+            "position_s": position_s,
+            "certificate": certificate_payload,
         }
     )
+
+
+@router.get("/lessons/{lesson_id}/notes")
+def read_note(
+    lesson_id: str,
+    membership: Membership = Depends(_academy),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(get_note(db, membership.startup_id, membership.user_id, lesson_id))
+
+
+@router.put("/lessons/{lesson_id}/notes")
+def write_note(
+    lesson_id: str,
+    body: LessonNoteUpdate,
+    membership: Membership = Depends(_academy),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    note = put_note(db, membership.startup_id, membership.user_id, lesson_id, body.body)
+    db.commit()
+    return success_response(note)
 
 
 @router.get("/certificates")
@@ -151,5 +190,27 @@ def list_my_certificates(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = list_certificates(db, membership.startup_id, membership.user_id)
-    return success_response({"certificates": [serialize_certificate(c) for c in rows]})
+    return success_response(
+        {"certificates": certificate_views(db, membership.startup_id, membership.user_id)}
+    )
+
+
+@router.get("/certificates/{certificate_id}/pdf")
+def download_certificate_pdf(
+    certificate_id: str,
+    membership: Membership = Depends(_academy),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """The owner's certificate as a PDF. Scoped by workspace and user: any other id is a 404."""
+    cert, pdf = certificates.owned_pdf(
+        db, membership.startup_id, membership.user_id, certificate_id
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="cofoundaz-certificate-{cert.verify_code}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )
