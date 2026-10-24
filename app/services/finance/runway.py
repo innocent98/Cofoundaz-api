@@ -12,12 +12,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.models.enums import FinancialModelStatus
 from app.db.models.finance_runway import FinanceRunwaySettings
+from app.db.models.financial_model import FinancialModel
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.schemas.finance_runway import AssumptionsUpdate
 from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
-from app.services.finance.runway_math import _runway_is_low, project_scenarios
+from app.services.finance.model_service import _effective_assumptions
+from app.services.finance.runway_math import _runway_is_low, monthly_rows, project_scenarios
 from app.services.finance.scenario_config import RUNWAY_HORIZON_MONTHS
 
 
@@ -54,6 +57,25 @@ def upsert_assumptions(
     return row
 
 
+def _model_rows(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
+    """Hiring and one-off rows of the newest COMPLETE financial model, with the founder's edits on
+    top (D-FIN-12: the runway has no rows of its own). A generating or failed model is skipped so
+    a regeneration in flight never blanks the runway."""
+    row = (
+        db.query(FinancialModel)
+        .filter_by(startup_id=startup_id, status=FinancialModelStatus.complete)
+        .order_by(FinancialModel.created_at.desc(), FinancialModel.id.desc())
+        .first()
+    )
+    merged = (_effective_assumptions(row) or {}) if row is not None else {}
+    return {
+        "model_id": row.id if row is not None else None,
+        "href": "/finance/model",
+        "hiring_plan": list(merged.get("hiring_plan") or []),
+        "one_offs": list(merged.get("one_offs") or []),
+    }
+
+
 def runway_payload(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
     row = get_or_default_settings(db, startup_id=startup_id)
     assumptions = {
@@ -65,6 +87,9 @@ def runway_payload(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
     # The projection needs the true (unclamped) monthly costs; summary's monthly_burn is clamped
     # at 0 for profitable startups and is display-only.
     monthly_revenue, monthly_costs = trailing_monthly_flows(db, startup_id=startup_id)
+    model_rows = _model_rows(db, startup_id=startup_id)
+    today = datetime.now(UTC).date()
+    hires, one_offs = monthly_rows(model_rows["hiring_plan"], model_rows["one_offs"], today=today)
     scenarios = project_scenarios(
         {
             "cash_on_hand": summary["cash_on_hand"],
@@ -73,10 +98,13 @@ def runway_payload(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
             "currency": summary["currency"],
         },
         assumptions,
-        today=datetime.now(UTC).date(),
+        today=today,
+        model_hires=hires,
+        model_one_offs=one_offs,
     )
     return {
         "assumptions": assumptions,
+        "model_rows": model_rows,
         "baseline": {
             "cash_on_hand": summary["cash_on_hand"],
             "monthly_burn": summary["monthly_burn"],

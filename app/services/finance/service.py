@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import func, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from app.core.errors import NotFound
 from app.core.pagination import DEFAULT_LIMIT, decode_keyset, encode_keyset
@@ -38,6 +38,35 @@ def get_transaction(
     return row
 
 
+def filtered_query(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    category: str | None = None,
+    uncategorized: bool = False,
+    direction: TransactionDirection | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> Query[Transaction]:
+    """The ledger filters shared by the list endpoint and the exports."""
+    q = db.query(Transaction).filter_by(startup_id=startup_id)
+    if uncategorized:
+        q = q.filter(Transaction.category.is_(None))
+    elif category is not None:
+        q = q.filter(func.lower(Transaction.category) == category.strip().casefold())
+    if direction is not None:
+        q = q.filter(Transaction.direction == direction)
+    if date_from is not None:
+        q = q.filter(Transaction.date >= date_from)
+    if date_to is not None:
+        q = q.filter(Transaction.date <= date_to)
+    return q
+
+
+def ordered(q: Query[Transaction]) -> Query[Transaction]:
+    return q.order_by(Transaction.date.desc(), Transaction.created_at.desc(), Transaction.id.desc())
+
+
 def list_transactions(
     db: Session,
     *,
@@ -51,28 +80,22 @@ def list_transactions(
     cursor: str | None = None,
 ) -> tuple[list[Transaction], str | None, int]:
     """One page, newest first: (rows, next_cursor, total matching the filters)."""
-    q = db.query(Transaction).filter_by(startup_id=startup_id)
-    if uncategorized:
-        q = q.filter(Transaction.category.is_(None))
-    elif category is not None:
-        q = q.filter(func.lower(Transaction.category) == category.strip().casefold())
-    if direction is not None:
-        q = q.filter(Transaction.direction == direction)
-    if date_from is not None:
-        q = q.filter(Transaction.date >= date_from)
-    if date_to is not None:
-        q = q.filter(Transaction.date <= date_to)
+    q = filtered_query(
+        db,
+        startup_id=startup_id,
+        category=category,
+        uncategorized=uncategorized,
+        direction=direction,
+        date_from=date_from,
+        date_to=date_to,
+    )
     total = q.count()
     if cursor:
         after = decode_keyset(cursor, date.fromisoformat, datetime.fromisoformat, uuid.UUID)
         q = q.filter(
             tuple_(Transaction.date, Transaction.created_at, Transaction.id) < tuple_(*after)
         )
-    rows = (
-        q.order_by(Transaction.date.desc(), Transaction.created_at.desc(), Transaction.id.desc())
-        .limit(limit + 1)
-        .all()
-    )
+    rows = ordered(q).limit(limit + 1).all()
     next_cursor = None
     if len(rows) > limit:
         rows = rows[:limit]

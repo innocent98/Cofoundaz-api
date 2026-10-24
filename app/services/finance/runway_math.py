@@ -34,6 +34,8 @@ def _project_one(
     hire: int,
     cost_mult: float,
     horizon: int,
+    model_hires: list[int] | None = None,
+    model_one_offs: list[int] | None = None,
 ) -> tuple[list[dict], float | None, int]:
     """Returns (balances, UNROUNDED fractional runway or None, avg net burn)."""
     balances: list[dict] = []
@@ -45,6 +47,10 @@ def _project_one(
     for i in range(1, horizon + 1):
         rev_i = round(monthly_rev * ((1 + growth_pct / 100) ** i))
         cost_i = round(monthly_costs * cost_mult + hire)
+        if model_hires is not None:
+            cost_i += model_hires[i - 1]  # Financial Model hiring rows (D-FIN-12), not scaled
+        if model_one_offs is not None:
+            cost_i += model_one_offs[i - 1]  # Financial Model one-off rows, in their month
         net_i = rev_i - cost_i
         net_sum += cost_i - rev_i  # burn = costs - revenue
         cur = prev + net_i
@@ -57,7 +63,39 @@ def _project_one(
     return balances, runway, avg_net_burn
 
 
-def project_scenarios(baseline: dict, assumptions: dict, *, today: date) -> dict[str, dict]:
+def monthly_rows(
+    hiring_plan: list[dict], one_offs: list[dict], *, today: date
+) -> tuple[list[int], list[int]]:
+    """Spread Financial Model rows over the runway horizon: (hiring cost, one-off cost) per month.
+
+    Same placement rules as the model engine: a hire costs its monthly cost from `start_month`
+    onwards (a start before the window applies from month 1), a one-off lands in its own month and
+    is ignored outside the window.
+    """
+    months = [_add_months(today, i) for i in range(1, RUNWAY_HORIZON_MONTHS + 1)]
+    index = {m: i for i, m in enumerate(months)}
+    hires = [0] * RUNWAY_HORIZON_MONTHS
+    for hire in hiring_plan:
+        start = index.get(hire["start_month"], 0 if hire["start_month"] < months[0] else None)
+        if start is None:
+            continue
+        for i in range(start, RUNWAY_HORIZON_MONTHS):
+            hires[i] += int(hire["monthly_cost_minor"])
+    spend = [0] * RUNWAY_HORIZON_MONTHS
+    for item in one_offs:
+        if item["month"] in index:
+            spend[index[item["month"]]] += int(item["amount_minor"])
+    return hires, spend
+
+
+def project_scenarios(
+    baseline: dict,
+    assumptions: dict,
+    *,
+    today: date,
+    model_hires: list[int] | None = None,
+    model_one_offs: list[int] | None = None,
+) -> dict[str, dict]:
     """Project base/best/worst cash over RUNWAY_HORIZON_MONTHS.
 
     `baseline` keys: cash_on_hand, monthly_revenue, monthly_costs (actual, unclamped), currency.
@@ -76,7 +114,15 @@ def project_scenarios(baseline: dict, assumptions: dict, *, today: date) -> dict
     for name, (delta_pp, cost_mult) in SCENARIOS.items():
         growth = max(0, g + delta_pp)
         balances, runway, avg_burn = _project_one(
-            cash0, monthly_rev, monthly_costs, growth, hire, cost_mult, RUNWAY_HORIZON_MONTHS
+            cash0,
+            monthly_rev,
+            monthly_costs,
+            growth,
+            hire,
+            cost_mult,
+            RUNWAY_HORIZON_MONTHS,
+            model_hires,
+            model_one_offs,
         )
         for idx, b in enumerate(balances, start=1):
             b["month"] = _add_months(today, idx)

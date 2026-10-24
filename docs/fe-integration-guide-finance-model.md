@@ -552,9 +552,8 @@ POST /generate ──► generating ──► complete   (statements + assumptio
 - **Regenerating replaces the latest model** (a new row); the previous model remains reachable by id only.
 - **Sensitivity is client-side.** The revenue "what-if" slider is computed **by the FE** from the returned
   numbers/assumptions; there is **no** server endpoint for sensitivity in v1.
-- **XLSX export is DEFERRED.** There is no export endpoint; the **Export** button is FE-only for now
-  (e.g. build a CSV from `months` × `rows` client-side, or hide/disable the button). Do not wait for a backend
-  export route.
+- **XLSX export now exists (slice e):** `GET /finance/model/{id}/export.xlsx` (three sheets). See
+  `docs/fe-integration-guide-finance-slice-e.md` §4. The client-side CSV can stay.
 
 ---
 
@@ -617,4 +616,5 @@ source; not exercised live.
 | Cross-workspace id → 404; latest scoped to own workspace | ⚠️ unit-only | `test_cross_tenant_get_is_404`, `test_latest_is_scoped_to_own_startup` |
 | Error bodies (401 / 403 / 404 / 422) for these routes | ⚠️ not captured | `app/core/errors.py` |
 | Real-LLM (non-stub) numbers | ⚠️ not exercised live (e2e is stub-only) | — |
-| Sensitivity is client-side; XLSX export deferred | ⚠️ by design — no backend route | — |
+| Sensitivity is client-side | ⚠️ by design — no backend route | — |
+| XLSX export | ✅ added in slice e | `docs/fe-integration-guide-finance-slice-e.md` §4 |

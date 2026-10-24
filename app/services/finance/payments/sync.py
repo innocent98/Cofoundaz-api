@@ -18,6 +18,7 @@ from app.services.finance.payments import connections as conn_svc
 from app.services.finance.payments.base import (
     ProviderAuthError,
     ProviderBadResponse,
+    ProviderNotReady,
     ProviderUnavailable,
 )
 from app.services.finance.payments.importer import import_items
@@ -42,6 +43,26 @@ class SyncOutcome:
 
 def _unavailable_message(provider: str) -> str:
     return f"We could not reach {conn_svc.LABELS[provider]}. We will retry automatically."
+
+
+def _rejected_message(provider: str) -> str:
+    return (
+        f"{conn_svc.LABELS[provider]} did not accept our request. "
+        "We have logged the reason and will retry automatically."
+    )
+
+
+_NOT_READY_MESSAGES = {
+    "UNAVAILABLE": "Your bank has not shared any data yet. Try again later, or reconnect your bank.",
+    "FAILED": "Mono could not read your bank data. Reconnect your bank to try again.",
+}
+_PROCESSING_MESSAGE = (
+    "Mono is still collecting your bank data. This can take a few minutes; "
+    "we will retry automatically."
+)
+_PLATFORM_KEY_MESSAGE = (
+    "Mono bank syncing is unavailable on our side right now. We are looking into it."
+)
 
 
 def sync_connection(
@@ -90,15 +111,27 @@ def sync_connection(
         if conn.provider == "mono" and exc.status_code == 401:
             # 401 means Mono refused OUR platform key (a server misconfiguration), not this
             # founder's link: never flag every founder, tell operators instead.
-            log.error("[mono] platform key rejected (401); check MONO_SECRET_KEY")
-            conn.last_error = _unavailable_message(conn.provider)
+            log.error(f"[mono] platform key rejected: {exc}; check MONO_SECRET_KEY")
+            conn.last_error = _PLATFORM_KEY_MESSAGE
             db.flush()
             return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
+        log.warning(f"[{conn.provider}] sync auth rejected, connection {conn.id}: {exc}")
         conn.status = ConnectionStatus.needs_attention.value
         conn.last_error = auth_error_message(conn.provider)
         db.flush()
         return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
-    except (ProviderUnavailable, ProviderBadResponse):
+    except ProviderNotReady as exc:
+        log.warning(f"[{conn.provider}] sync waiting for data, connection {conn.id}: {exc}")
+        conn.last_error = _NOT_READY_MESSAGES.get(exc.state, _PROCESSING_MESSAGE)
+        db.flush()
+        return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
+    except ProviderBadResponse as exc:
+        log.warning(f"[{conn.provider}] sync rejected, connection {conn.id}: {exc}")
+        conn.last_error = _rejected_message(conn.provider)
+        db.flush()
+        return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
+    except ProviderUnavailable as exc:
+        log.warning(f"[{conn.provider}] sync could not reach provider, connection {conn.id}: {exc}")
         conn.last_error = _unavailable_message(conn.provider)
         db.flush()
         return SyncOutcome(conn, dict(conn.last_sync_summary or {}))

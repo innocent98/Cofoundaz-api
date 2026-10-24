@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Runway & Scenarios (Module 12, Slice 2)
 
+> **Superseded in part (slice e):** the response gains a top-level `model_rows` block (the Financial Model's hiring and one-off rows, which the projection now reads; D-FIN-12), and `PUT /finance/runway/assumptions` now answers **422** to `hiring_plan`, `one_offs`, `capex` and any unknown field instead of silently dropping them. See `docs/fe-integration-guide-finance-slice-e.md` §1; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_finance_runway.py::test_finance_runway_journey` was run against the
 > live app (`bash scripts/e2e_run.sh`, 60 e2e passed) and every **response body** below is pasted
 > **verbatim** from the captures it wrote to `e2e/_captures/finance_runway/`. Nothing was written

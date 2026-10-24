@@ -29,6 +29,7 @@ from app.db.models.user import User
 from app.platform.activity import write_activity
 from app.platform.events import event_bus
 from app.platform.llm_budget import metered_complete, metered_complete_json
+from app.services.ai_cofounder.finance_context import finance_context_for
 from app.services.ai_cofounder.prompts import build_cofounder_messages
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
@@ -563,6 +564,10 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
         description=startup.description,
         goals=(list(profile.goals) if profile and profile.goals else []),
         history=[(m.role.value, m.content) for m in prior if m.content],
+        # Role-gated: only a member who may read Finance gets the money figures.
+        finance_context=finance_context_for(
+            db, startup_id=startup.id, user_id=conversation.created_by
+        ),
     )
     text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_MAX_TOKENS)
     if text is None:

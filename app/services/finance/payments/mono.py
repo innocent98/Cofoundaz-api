@@ -23,6 +23,7 @@ from app.services.finance.payments.base import (
     Credentials,
     ProviderAuthError,
     ProviderBadResponse,
+    ProviderNotReady,
     ProviderTransaction,
     ProviderUnavailable,
 )
@@ -38,8 +39,15 @@ class MonoAccount:
     """What the account lookup tells us (never the full account number)."""
 
     def __init__(
-        self, *, name: str | None, institution: str | None, last4: str | None, currency: str
+        self,
+        *,
+        name: str | None,
+        institution: str | None,
+        last4: str | None,
+        currency: str,
+        data_status: str | None = None,
     ) -> None:
+        self.data_status = data_status
         self.name = name
         self.institution = institution
         self.last4 = last4
@@ -70,6 +78,22 @@ def _minor(value: Any) -> int | None:
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return None
+
+
+def _cause(resp: httpx.Response) -> str:
+    """HTTP status plus Mono's own error message, for the operator log only. Mono's message is
+    free text (never a key), but it is length-capped and stripped of control characters, and the
+    request (which carries the key and the account id) is never included."""
+    message = ""
+    try:
+        body = resp.json()
+        if isinstance(body, dict):
+            message = str(body.get("message") or body.get("error") or "")
+    except ValueError:
+        # Not JSON: there is no Mono message to show, and the status alone is enough for the log.
+        message = ""
+    message = "".join(ch for ch in message if ch.isprintable())[:200]
+    return f"{resp.status_code} {message}".strip()
 
 
 def _str(value: Any) -> str | None:
@@ -110,11 +134,13 @@ class MonoProvider:
             if self._client is None:
                 client.close()
         if resp.status_code in (401, 403):
-            raise ProviderAuthError("Mono rejected the request credentials.", resp.status_code)
+            raise ProviderAuthError(
+                f"Mono rejected the request credentials ({_cause(resp)}).", resp.status_code
+            )
         if resp.status_code >= 500:
-            raise ProviderUnavailable(f"Mono returned {resp.status_code}.")
+            raise ProviderUnavailable(f"Mono returned {_cause(resp)}.")
         if resp.status_code >= 400:
-            raise ProviderBadResponse(f"Mono returned {resp.status_code}.")
+            raise ProviderBadResponse(f"Mono returned {_cause(resp)}.")
         try:
             data = resp.json()
         except ValueError:
@@ -141,21 +167,34 @@ class MonoProvider:
         if not isinstance(account, dict):
             raise ProviderBadResponse("Mono returned an unexpected account body.")
         institution = account.get("institution")
-        number = _str(account.get("accountNumber"))
+        # Mono's docs show snake_case here; accept both spellings.
+        number = _str(account.get("account_number")) or _str(account.get("accountNumber"))
+        meta = data.get("meta") if isinstance(data, dict) else None
+        status = _str(meta.get("data_status")) if isinstance(meta, dict) else None
         return MonoAccount(
             name=_str(account.get("name")),
             institution=_str(institution.get("name")) if isinstance(institution, dict) else None,
             last4=number[-4:] if number and len(number) >= 4 else None,
             currency=_str(account.get("currency")) or "NGN",
+            data_status=status.upper() if status else None,
         )
 
     def list_transactions(
         self, creds: Credentials, *, since: datetime | None, max_pages: int
     ) -> list[ProviderTransaction]:
-        currency = self.account_info(creds).currency
+        info = self.account_info(creds)
+        # Mono produces the data after linking; its docs say to wait while it is processing and
+        # that UNAVAILABLE / FAILED mean no transactions will come (bank or Mono side). PARTIAL
+        # and AVAILABLE may carry transactions.
+        if info.data_status and info.data_status not in ("AVAILABLE", "PARTIAL"):
+            raise ProviderNotReady(
+                f"Mono account data_status={info.data_status}.", state=info.data_status
+            )
+        currency = info.currency
+        # No server-side date filter: the `start` date format of Mono's v2 transactions endpoint
+        # is not documented, and a wrong format is answered with a 400 that would fail every sync.
+        # Rows older than `since` are dropped here instead; the importer is idempotent anyway.
         params: dict[str, Any] = {"paginate": "true", "limit": PER_PAGE}
-        if since is not None:
-            params["start"] = since.astimezone(UTC).strftime("%d-%m-%Y")
         out: list[ProviderTransaction] = []
         page = 1
         while page <= max_pages:
@@ -170,7 +209,7 @@ class MonoProvider:
                 raise ProviderBadResponse("Mono returned an unexpected list body.")
             for row in data:
                 item = self._transaction(row, currency)
-                if item is not None:
+                if item is not None and (since is None or item.occurred_at >= since):
                     out.append(item)
             meta = body.get("meta")
             if not data or not (isinstance(meta, dict) and meta.get("next")):

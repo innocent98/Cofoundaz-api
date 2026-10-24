@@ -8,13 +8,13 @@ from typing import Any
 from sqlalchemy import func, tuple_
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.core.pagination import DEFAULT_LIMIT, decode_keyset, encode_keyset
 from app.db.models.enums import TransactionDirection, TransactionSource
 from app.db.models.expense import Expense
 from app.db.models.finance import Transaction
 from app.platform.signed_urls import sign_key
-from app.platform.storage import get_storage
+from app.platform.storage import LocalStorage, get_storage
 from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
 from app.services.finance.categories import normalize_category
 from app.services.finance.errors import _validation
@@ -198,6 +198,11 @@ def receipt_belongs_to(db: Session, *, startup_id: str, key: str) -> bool:
     )
 
 
+class ReceiptFileMissing(AppError):  # noqa: N818
+    code, http_status = "RECEIPT_FILE_MISSING", 410
+    message = "This receipt file is no longer available. Upload it again."
+
+
 def receipt_link(
     db: Session, *, startup_id: uuid.UUID, expense_id: uuid.UUID, api_public_url: str
 ) -> dict[str, Any]:
@@ -211,6 +216,14 @@ def receipt_link(
     if not exp.receipt_key:
         raise NotFound()
     storage = get_storage()
+    if isinstance(storage, LocalStorage) and storage.open_private(exp.receipt_key) is None:
+        # The file is gone (a legacy upload, a wiped volume). Self-heal: drop the dangling pointer
+        # so the expense stops claiming a receipt, then tell the caller plainly (410) instead of
+        # handing out a signed link that 404s. The caller must commit before re-raising.
+        exp.receipt_url = exp.receipt_key = None
+        exp.receipt_private = False
+        db.flush()
+        raise ReceiptFileMissing()
     if not exp.receipt_private:
         storage.make_private(exp.receipt_key)
         exp.receipt_private = True
