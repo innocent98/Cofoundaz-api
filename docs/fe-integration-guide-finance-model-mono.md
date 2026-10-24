@@ -1264,6 +1264,26 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
 ```
 *capture: `cash_flow_after_mono_sync.json`*
 
+## Sync failure messages (slice e, D7)
+`POST /finance/integrations/mono/sync` returns 200 with the connection even when the sync did not
+import anything; read `connection.last_error` (null when it worked). The status stays `active`
+for every row below except the last. Show `last_error` as-is; it says why. **These strings come
+from unit tests against mocked Mono responses, not from a live capture; the real sandbox was not
+called.**
+
+| Cause | `last_error` | Meaning for the FE |
+|---|---|---|
+| Network failure or Mono 5xx | `We could not reach Mono. We will retry automatically.` | Nothing to do. |
+| Mono answered 4xx to our request | `Mono did not accept our request. We have logged the reason and will retry automatically.` | Nothing to do; operators see the Mono status and message in the API log (WARNING). |
+| Mono refused our platform key (401) | `Mono bank syncing is unavailable on our side right now. We are looking into it.` | Not the founder's fault; do not ask them to reconnect. |
+| Account `data_status` is `PROCESSING` (or any status we do not know) | `Mono is still collecting your bank data. This can take a few minutes; we will retry automatically.` | Offer "Sync now" again later. |
+| `data_status` is `UNAVAILABLE` | `Your bank has not shared any data yet. Try again later, or reconnect your bank.` | |
+| `data_status` is `FAILED` | `Mono could not read your bank data. Reconnect your bank to try again.` | Offer Connect again. |
+| Mono refused the saved link (403) | `Your bank link needs attention. Reconnect your bank to resume syncing.` | Status becomes `needs_attention`. |
+
+The sync no longer sends a `start` date to Mono (its v2 date format is undocumented and a wrong
+one is answered with a 400, the likeliest cause of the walk's D7); old rows are filtered on our side.
+
 ## Status, errors and webhooks
 A bank link can become **`needs_attention`** (Mono says the founder must re-authorise, or rejects the saved link). `last_error`
 carries the sentence to show, and the fix is **Connect again** (founder only). Journey capture after a
