@@ -12,7 +12,8 @@ router = APIRouter()
 
 
 @router.get("/{code}")
-@limiter.limit("30/minute")
+# One bucket per caller across every code (a per-URL bucket would let a caller guess codes freely).
+@limiter.shared_limit("30/minute", scope="public-verify")
 def verify_certificate(
     request: Request,
     code: str,

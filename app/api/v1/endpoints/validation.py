@@ -386,7 +386,8 @@ def rotate_share_link_endpoint(
 
 
 @router.get("/surveys/{token}")
-@limiter.limit("20/minute")
+# Token routes share one bucket per caller across every token, so tokens cannot be guessed freely.
+@limiter.shared_limit("20/minute", scope="public-survey-read")
 def public_survey_endpoint(
     request: Request,
     token: str,
@@ -397,7 +398,7 @@ def public_survey_endpoint(
 
 
 @router.post("/surveys/{token}/responses", status_code=status.HTTP_201_CREATED)
-@limiter.limit("20/minute")
+@limiter.shared_limit("20/minute", scope="public-survey-respond")
 def submit_survey_response_endpoint(
     request: Request,
     token: str,

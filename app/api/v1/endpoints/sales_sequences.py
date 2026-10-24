@@ -320,7 +320,8 @@ def send_follow_up(
 
 # ---- public unsubscribe (no auth: the signed token is the credential) ----
 @public_router.get("/unsubscribe/{token}", response_model=None)
-@limiter.limit("30/minute")
+# One bucket per caller across every token (see verify.py).
+@limiter.shared_limit("30/minute", scope="public-unsubscribe-read")
 def unsubscribe_status(
     request: Request,
     token: str,
@@ -334,7 +335,7 @@ def unsubscribe_status(
 
 
 @public_router.post("/unsubscribe/{token}", response_model=dict[str, Any])
-@limiter.limit("30/minute")
+@limiter.shared_limit("30/minute", scope="public-unsubscribe")
 def unsubscribe(
     request: Request,  # noqa: ARG001 - required by the rate limiter
     token: str,
