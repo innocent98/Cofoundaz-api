@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ENROLLMENT_NOT_ACTIVE",
+    "message": "This enrollment has already ended.",
+    "field_errors": []
+  }
+}

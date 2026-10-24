@@ -28,6 +28,7 @@ from app.db.models.sales import Deal, PipelineStage, SalesSettings
 from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
 from app.platform.jobs import job_dispatcher
+from app.platform.outreach import imap_configured, outreach_configured
 from app.services.finance.reminders import MAX_AUTO_REMINDERS, REMINDER_INTERVAL_DAYS
 
 SCHED_MISSION = "scheduled.mission.generate"
@@ -41,6 +42,9 @@ SCHED_MARKETING_PUBLISH = "scheduled.marketing.publish"
 SCHED_MARKETING_READOUT = "scheduled.marketing.readout"
 SCHED_PAYMENTS_SYNC = "scheduled.finance.payments_sync"
 SCHED_SALES_STALL = "scheduled.sales.stall"
+SCHED_SALES_SEND = "scheduled.sales.outreach_send"
+SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
+OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
@@ -472,6 +476,19 @@ def _due_quarterly(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_sales_outreach(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
+    """One send job and one bounce-poll job per 5-minute bucket, for the ONE shared mailbox (so
+    no startup scope). Nothing is enqueued while the mailbox env is unset: an unconfigured
+    deployment pays no cost and logs no noise."""
+    bucket = str(int(now.timestamp()) // OUTREACH_BUCKET_SECONDS)
+    due: list[Due] = []
+    if outreach_configured():
+        due.append(Due("sales.outreach.send", "mailbox", bucket, SCHED_SALES_SEND, None, {}))
+    if imap_configured():
+        due.append(Due("sales.outreach.bounces", "mailbox", bucket, SCHED_SALES_BOUNCES, None, {}))
+    return due
+
+
 def scheduler_tick(db: Session, *, now: datetime) -> int:
     """Claim + enqueue every due scheduled task. Returns the count enqueued.
 
@@ -490,6 +507,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_payment_syncs(db, now),
         *_due_sales_stalls(db, now),
         *_due_invoice_overdue(db, now),
+        *_due_sales_outreach(db, now),
     ]
     enqueued = 0
     for item in due:

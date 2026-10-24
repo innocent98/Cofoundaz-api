@@ -19,6 +19,17 @@ TEST_URL = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_the_real_outreach_mailbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A developer's .env may hold the real cPanel mailbox settings. No test may ever reach it:
+    blank every SALES_OUTREACH_* value so tests start unconfigured and opt in with fakes."""
+    keep = {"SALES_OUTREACH_SMTP_SECURITY", "SALES_OUTREACH_IMAP_PROCESSED_FOLDER"}
+    for name in type(settings).model_fields:
+        if name.startswith("SALES_OUTREACH_") and name not in keep:
+            if isinstance(getattr(settings, name), str):
+                monkeypatch.setattr(settings, name, "")
+
+
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
     eng = create_engine(TEST_URL, pool_pre_ping=True)
