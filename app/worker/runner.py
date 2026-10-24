@@ -10,10 +10,19 @@ from app.db.models.job import Job
 
 Handler = Callable[[Session, Job], None]
 JOB_HANDLERS: dict[str, Handler] = {}
+# Job types whose handler commits as it goes (e.g. one transaction per email sent), so it cannot
+# run inside the runner's SAVEPOINT: committing there raises "closed transaction".
+SELF_MANAGED: set[str] = set()
 
 
-def register_handler(job_type: str, handler: Handler) -> None:
+def register_handler(
+    job_type: str, handler: Handler, *, manages_transactions: bool = False
+) -> None:
     JOB_HANDLERS[job_type] = handler
+    if manages_transactions:
+        SELF_MANAGED.add(job_type)
+    else:
+        SELF_MANAGED.discard(job_type)
 
 
 def backoff_seconds(attempts: int) -> int:
@@ -96,6 +105,9 @@ def run_once(db: Session) -> int:
     more than the failing handler's writes. A per-job begin_nested() confines a
     handler failure to that job alone in both environments, and leaves the
     already-committed claim (and any prior/later jobs in the batch) untouched.
+
+    A handler registered with manages_transactions=True runs outside that SAVEPOINT and commits
+    its own units of work; on failure only its uncommitted tail is rolled back.
     """
     jobs = claim_batch(
         db, batch=settings.WORKER_BATCH_SIZE, stale_seconds=settings.WORKER_STALE_SECONDS
@@ -105,11 +117,17 @@ def run_once(db: Session) -> int:
         if handler is None:
             _finalize_terminal_failure(db, job, RuntimeError(f"no handler for {job.type!r}"))
             continue
+        self_managed = job.type in SELF_MANAGED
         try:
-            with db.begin_nested():
+            if self_managed:
                 handler(db, job)
+            else:
+                with db.begin_nested():
+                    handler(db, job)
         except Exception as exc:  # noqa: BLE001 - one bad job must not kill the loop
             log.warning(f"[worker] job {job.id} ({job.type}) failed: {exc}")
+            if self_managed:
+                db.rollback()
             _finalize_failure(db, job, exc)
         else:
             _finalize_success(db, job)

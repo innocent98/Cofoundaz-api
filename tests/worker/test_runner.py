@@ -70,3 +70,46 @@ def test_reap_stale_requeues_running(db):
     assert runner.reap_stale(db, stale_seconds=300) == 1
     db.refresh(job)
     assert job.status == JobStatus.queued
+
+
+def test_self_managed_handler_may_commit(db):
+    """Handlers registered with manages_transactions=True run outside the runner's SAVEPOINT, so
+    they can commit as they go (the outreach send tick and bounce poll; see
+    tests/worker/test_sales_outreach_scheduler.py for the real-handler regression)."""
+    runner.JOB_HANDLERS.clear()
+
+    def commits(d, j):
+        d.add(Job(type="t.side", payload={}))
+        d.commit()
+
+    runner.register_handler("t.own", commits, manages_transactions=True)
+    own = _job(db, type="t.own")
+    runner.run_once(db)
+    db.refresh(own)
+    assert own.status == JobStatus.succeeded
+
+
+def test_self_managed_handler_failure_discards_uncommitted_work_and_retries(db):
+    runner.JOB_HANDLERS.clear()
+
+    def half_then_boom(d, j):
+        d.add(Job(type="t.committed", payload={}))
+        d.commit()
+        d.add(Job(type="t.uncommitted", payload={}))
+        d.flush()
+        raise RuntimeError("mid-run")
+
+    runner.register_handler("t.own", half_then_boom, manages_transactions=True)
+    job = _job(db, type="t.own")
+    runner.run_once(db)
+    db.refresh(job)
+    assert job.status == JobStatus.queued and "mid-run" in (job.error or "")
+    types = {t for (t,) in db.query(Job.type).all()}
+    assert "t.committed" in types and "t.uncommitted" not in types
+
+
+def test_reregistering_without_the_flag_clears_it(db):
+    runner.JOB_HANDLERS.clear()
+    runner.register_handler("t.x", lambda d, j: None, manages_transactions=True)
+    runner.register_handler("t.x", lambda d, j: None)
+    assert "t.x" not in runner.SELF_MANAGED

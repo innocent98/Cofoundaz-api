@@ -135,5 +135,6 @@ def handle_bounce_poll(db: Session, job: Job) -> None:
 
 
 register_handler(DRAFT_JOB, handle_draft)
-register_handler(SCHED_SALES_SEND, handle_send_tick)
-register_handler(SCHED_SALES_BOUNCES, handle_bounce_poll)
+# Both commit per step / per message, so they manage their own transactions.
+register_handler(SCHED_SALES_SEND, handle_send_tick, manages_transactions=True)
+register_handler(SCHED_SALES_BOUNCES, handle_bounce_poll, manages_transactions=True)
