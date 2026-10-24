@@ -3,20 +3,20 @@
     "lesson_id": "build-scope-the-mvp-3",
     "course_id": "build-scope-the-mvp",
     "progress": 100,
-    "completed_at": "2026-10-22T13:45:07.805976+00:00",
+    "completed_at": "2026-10-24T16:58:00.889753+00:00",
     "position_s": 480,
     "certificate": {
-      "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
+      "id": "6bca0f64-0109-4318-bb33-9cc6a99350f7",
       "course_id": "build-scope-the-mvp",
       "course_title": "Scope the MVP",
       "holder_name": "Ada Founder",
-      "credential_id": "CFZ-YHLS-DYNM-NZYA",
+      "credential_id": "CFZ-BZ2Y-ABYY-MFMR",
       "issuer": "Cofoundaz",
-      "issued_at": "2026-10-22T13:45:07.810980+00:00",
-      "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
+      "issued_at": "2026-10-24T16:58:00.896135+00:00",
+      "verify_url": "http://localhost:3000/verify/CFZ-BZ2Y-ABYY-MFMR",
       "pdf_ready": false,
       "pdf_url": null,
-      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
+      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationId=146743971&issueYear=2026&issueMonth=10&certId=CFZ-BZ2Y-ABYY-MFMR&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-BZ2Y-ABYY-MFMR"
     }
   },
   "meta": null

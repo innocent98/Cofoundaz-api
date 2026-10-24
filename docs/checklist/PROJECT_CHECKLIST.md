@@ -2096,7 +2096,8 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
 - [x] Live e2e `e2e/test_learning.py` (captures + a real PDF), FE guide `docs/fe-integration-guide-academy.md`, SOP — gap 23
 - [x] Gap 24 decided: `learning.course.completed` stays an audit event + notification; no Roadmap or Health coupling
 - [ ] FE slice (rows 3, 11, 12, 15, 18, 19, 21, 22 and the FE halves of 4 to 8, 10, 13, 14, 17), then the live re-walk with a real video, a downloaded PDF and a LinkedIn link that opens
-- [ ] Adebayo's review of the 8 courses and 10 articles (flip `review_status`), real videos (`video:` front-matter), the LinkedIn company id (`ACADEMY_LINKEDIN_ORG_ID`)
+- [x] LinkedIn company id `146743971` is the `ACADEMY_LINKEDIN_ORG_ID` default (2026-10-24, branch `chore/academy-linkedin-org-id`); certificates link the Cofoundaz page
+- [ ] Adebayo's review of the 8 courses and 10 articles (flip `review_status`), real videos (`video:` front-matter)
 - [ ] _Deferred:_ team-progress view, CMS (Module 25.4), embedded PDF font for non-Latin names, a revoke endpoint
 
 ## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, in review (PR #103)*

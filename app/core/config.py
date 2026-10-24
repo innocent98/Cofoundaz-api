@@ -65,9 +65,10 @@ class Settings(BaseSettings):
     WORKER_MAX_ATTEMPTS: int = 5
     WORKER_STALE_SECONDS: int = 300
     APP_BASE_URL: str = ""  # frontend origin for email deep links; falls back to SERVER_HOST
-    # Academy certificates: the Cofoundaz LinkedIn page id. Optional; unset, the add-to-profile
-    # link names the organisation (organizationName) instead of linking the page.
-    ACADEMY_LINKEDIN_ORG_ID: str = ""
+    # Academy certificates: the Cofoundaz LinkedIn company page id (public, so it is the default
+    # everywhere; an env value overrides it). Blank, the add-to-profile link names the
+    # organisation (organizationName) instead of linking the page.
+    ACADEMY_LINKEDIN_ORG_ID: str = "146743971"
 
     # Scheduler (Module 20 Slice 3)
     SCHEDULER_TIMEZONE: str = "UTC"  # IANA name for the 06:00 check

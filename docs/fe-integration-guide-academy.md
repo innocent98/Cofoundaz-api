@@ -56,7 +56,9 @@ a teammate never sees yours.
    `dangerouslySetInnerHTML` on the raw string, no inline HTML pass-through). `holder_name`, `course_title`, titles and
    the note `body` are **plain text only**: render as text, never as HTML or markdown.
 10. **LinkedIn:** open `linkedin_url` in a new tab (`target="_blank" rel="noopener"`). It is a link to LinkedIn's own
-   add-certification form, prefilled; the user confirms it there. No LinkedIn app or login on our side.
+   add-certification form, prefilled; the user confirms it there. No LinkedIn app or login on our side. Since 2026-10-24 it
+   carries `organizationId=146743971` (the Cofoundaz LinkedIn company page, the default of `ACADEMY_LINKEDIN_ORG_ID`), so the
+   entry links the page; the completion and certificate blocks below were re-captured live that day.
 
 ---
 
@@ -474,20 +476,20 @@ nesting: `progress`, `completed_at` and `position_s` are at the top of `data`; t
     "lesson_id": "build-scope-the-mvp-3",
     "course_id": "build-scope-the-mvp",
     "progress": 100,
-    "completed_at": "2026-10-22T13:45:07.805976+00:00",
+    "completed_at": "2026-10-24T16:58:00.889753+00:00",
     "position_s": 480,
     "certificate": {
-      "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
+      "id": "6bca0f64-0109-4318-bb33-9cc6a99350f7",
       "course_id": "build-scope-the-mvp",
       "course_title": "Scope the MVP",
       "holder_name": "Ada Founder",
-      "credential_id": "CFZ-YHLS-DYNM-NZYA",
+      "credential_id": "CFZ-BZ2Y-ABYY-MFMR",
       "issuer": "Cofoundaz",
-      "issued_at": "2026-10-22T13:45:07.810980+00:00",
-      "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
+      "issued_at": "2026-10-24T16:58:00.896135+00:00",
+      "verify_url": "http://localhost:3000/verify/CFZ-BZ2Y-ABYY-MFMR",
       "pdf_ready": false,
       "pdf_url": null,
-      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
+      "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationId=146743971&issueYear=2026&issueMonth=10&certId=CFZ-BZ2Y-ABYY-MFMR&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-BZ2Y-ABYY-MFMR"
     }
   },
   "meta": null
@@ -592,17 +594,17 @@ Right after completion (PDF not yet rendered): `pdf_ready` is `false` and `pdf_u
   "data": {
     "certificates": [
       {
-        "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
+        "id": "6bca0f64-0109-4318-bb33-9cc6a99350f7",
         "course_id": "build-scope-the-mvp",
         "course_title": "Scope the MVP",
         "holder_name": "Ada Founder",
-        "credential_id": "CFZ-YHLS-DYNM-NZYA",
+        "credential_id": "CFZ-BZ2Y-ABYY-MFMR",
         "issuer": "Cofoundaz",
-        "issued_at": "2026-10-22T13:45:07.810980+00:00",
-        "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
+        "issued_at": "2026-10-24T16:58:00.896135+00:00",
+        "verify_url": "http://localhost:3000/verify/CFZ-BZ2Y-ABYY-MFMR",
         "pdf_ready": false,
         "pdf_url": null,
-        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
+        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationId=146743971&issueYear=2026&issueMonth=10&certId=CFZ-BZ2Y-ABYY-MFMR&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-BZ2Y-ABYY-MFMR"
       }
     ]
   },
@@ -617,17 +619,17 @@ After the worker has rendered the PDF (usually a few seconds):
   "data": {
     "certificates": [
       {
-        "id": "8434d809-122b-48a7-8ce0-cb33bd790577",
+        "id": "6bca0f64-0109-4318-bb33-9cc6a99350f7",
         "course_id": "build-scope-the-mvp",
         "course_title": "Scope the MVP",
         "holder_name": "Ada Founder",
-        "credential_id": "CFZ-YHLS-DYNM-NZYA",
+        "credential_id": "CFZ-BZ2Y-ABYY-MFMR",
         "issuer": "Cofoundaz",
-        "issued_at": "2026-10-22T13:45:07.810980+00:00",
-        "verify_url": "http://localhost:3000/verify/CFZ-YHLS-DYNM-NZYA",
+        "issued_at": "2026-10-24T16:58:00.896135+00:00",
+        "verify_url": "http://localhost:3000/verify/CFZ-BZ2Y-ABYY-MFMR",
         "pdf_ready": true,
-        "pdf_url": "/api/v1/learning/certificates/8434d809-122b-48a7-8ce0-cb33bd790577/pdf",
-        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationName=Cofoundaz&issueYear=2026&issueMonth=10&certId=CFZ-YHLS-DYNM-NZYA&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-YHLS-DYNM-NZYA"
+        "pdf_url": "/api/v1/learning/certificates/6bca0f64-0109-4318-bb33-9cc6a99350f7/pdf",
+        "linkedin_url": "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=Scope%20the%20MVP&organizationId=146743971&issueYear=2026&issueMonth=10&certId=CFZ-BZ2Y-ABYY-MFMR&certUrl=http%3A%2F%2Flocalhost%3A3000%2Fverify%2FCFZ-BZ2Y-ABYY-MFMR"
       }
     ]
   },
