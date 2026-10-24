@@ -59,12 +59,14 @@ live capture only has the "7.0" case.
 
 **(4) Burn and revenue are a trailing-3-calendar-month average (÷ 3), so young startups are
 diluted.** The window runs from the **first day of the month two months ago through today**
-(i.e. this month + the two before it). `monthly_burn = max(0, round((outflow − inflow) / 3))` over
-that window and `monthly_revenue = round(inflow / 3)`. The divisor is **always 3**, even if the
+(i.e. this month + the two before it). `monthly_burn = max(0, round((outflow − revenue inflow) / 3))`
+over that window and `monthly_revenue = round(revenue inflow / 3)`, where *revenue inflow* is every
+inflow **except rows in the `Funding` category** (D-FIN-11, 2026-10-24; see
+`fe-integration-guide-finance-funding.md`). The divisor is **always 3**, even if the
 workspace only has a few weeks of data — so a startup younger than 3 months shows a *lower* burn and
 *lower* revenue than its real recent run-rate, and a *longer* runway. Consider a small "based on
-last 3 months" caption. Note that `monthly_burn` is **net** burn (outflow minus inflow); an
-inflow such as a fundraise inside the window reduces it.
+last 3 months" caption. Note that `monthly_burn` is **net** burn (outflow minus revenue inflow);
+customer money inside the window reduces it, a `Funding` row does not.
 
 **(5) Future-dated transactions are excluded from the cash-flow summary; multi-currency is NOT
 converted.**
@@ -394,7 +396,7 @@ five transactions in §2, run on 2026-09-29):
 |---|---|---|
 | `cash_on_hand` | integer (minor units, **can be negative**) | all-time `Σ in − Σ out`, `date <= today` only |
 | `monthly_burn` | integer (minor units, `≥ 0`) | **net** burn: `max(0, round((out − in) / 3))` over the trailing 3 calendar months (this month + 2 prior). `0` when not burning |
-| `monthly_revenue` | integer (minor units, `≥ 0`) | `round(Σ in / 3)` over the same window. **All inflows count as "revenue"**, including a fundraise, if it falls in the window |
+| `monthly_revenue` | integer (minor units, `≥ 0`) | `round(Σ in / 3)` over the same window, **excluding `Funding`-category rows** (D-FIN-11). Uncategorized inflows still count until the founder categorises them |
 | `runway_months` | **float \| `null`** | `round(cash_on_hand / monthly_burn, 1)` when `monthly_burn > 0` and `cash_on_hand > 0`, otherwise **`null`** — see "Read this first" (3). One decimal place |
 | `runway_low` | boolean | `true` iff burning AND (`runway_months < 6` OR `runway_months` is null because cash ≤ 0). Use this for the danger banner |
 | `currency` | string | ISO code of the most common currency among counted transactions; `"NGN"` when there are none. **Not converted** — see (5) |
@@ -471,9 +473,9 @@ vary per failure — do not string-match them):
   currencies until conversion ships; the summary would silently add unlike units.
 - **Money display:** always `amount_minor / 100` with the symbol mapped from `currency`. Never
   display or send a float amount.
-- **"Revenue" is all inflow.** A fundraise inside the 3-month window inflates `monthly_revenue` and
-  reduces `monthly_burn`. If the UI labels it "Revenue", be aware of this; a revenue-vs-financing
-  split is a later slice.
+- **"Revenue" is every inflow except `Funding`** (D-FIN-11). A raise must be categorised `Funding`
+  to stay out of `monthly_revenue` and `monthly_burn`; an uncategorized raise still counts as revenue.
+  It still adds to `cash_on_hand` and shows as inflow in `by_month`.
 - **Deletes are immediate and hard**; confirm before calling DELETE.
 
 ## Scope of this slice
