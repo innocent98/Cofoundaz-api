@@ -177,7 +177,7 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         cert = finished["certificate"]
         assert cert["holder_name"] == "Ada Founder" and cert["pdf_ready"] is False
         assert cert["issuer"] == "Cofoundaz" and cert["credential_id"].startswith("CFZ-")
-        assert "organizationName=Cofoundaz" in cert["linkedin_url"]
+        assert "organizationId=146743971" in cert["linkedin_url"]
         capture("learning", "course_completed", last)
         repeat = c.patch(
             f"/api/v1/learning/lessons/{LESSONS[2]}/progress", headers=wh, json={"completed": True}

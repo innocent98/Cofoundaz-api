@@ -268,3 +268,9 @@ def test_serialize_reflects_pdf_readiness(db):
     assert after["credential_id"] == cert.verify_code and after["issuer"] == "Cofoundaz"
     assert after["course_title"] == "Scope the MVP" and "credential_code" not in after
     assert svc.certificate_views(db, startup.id, create_user(db).id) == []
+
+
+def test_linkedin_org_id_defaults_to_the_cofoundaz_company_page():
+    # Public id of linkedin.com/company/146743971, so certificates link the page in every
+    # environment without an env change (an env value still overrides it).
+    assert type(settings).model_fields["ACADEMY_LINKEDIN_ORG_ID"].default == "146743971"

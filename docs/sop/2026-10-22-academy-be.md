@@ -40,7 +40,7 @@
 ## Operate / roll back
 - Deploy needs nothing extra: the `migrate` service now also runs the loader. Locally and in the dev stack run `python -m app.services.learning.content` after `alembic upgrade head` (the dev compose does not run it for you).
 - Editing content: change the markdown, deploy (or run the loader). To go live with a video: put the YouTube URL or id in the lesson's `video:` front-matter. To mark reviewed: set `review_status: reviewed` on the course and every lesson.
-- Optional env: `ACADEMY_LINKEDIN_ORG_ID` (LinkedIn company page id), `APP_BASE_URL` (the verify link and QR use it; required in staging and prod).
+- `ACADEMY_LINKEDIN_ORG_ID` defaults to `146743971` (the Cofoundaz LinkedIn company page, given by Adebayo 2026-10-24; public, so no env change is needed, and an env value overrides it). `APP_BASE_URL` (the verify link and QR use it; required in staging and prod).
 - Roll back: `alembic downgrade 0068_sales_sequences` drops the new tables and columns; certificates keep their rows. Old code reads `catalog.py` placeholders again only if redeployed, which is not recommended. Certificate PDFs live in the DB and go with the downgrade.
 - To revoke a credential today: `UPDATE certificates SET revoked_at = now() WHERE verify_code = 'CFZ-...'` (the verify route then answers `valid: false`, and the owner's list and PDF stop).
 
