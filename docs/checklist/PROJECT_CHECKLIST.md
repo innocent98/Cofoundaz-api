@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Profile name (2026-10-24): branch `feature/profile-name-update` — `PATCH /auth/me` `{full_name}` (trimmed, 1-120 chars, no control chars, unknown fields ignored) returns the `GET /auth/me` shape; invited members had no way to set a name (Academy re-walk D2). Live captures `e2e/_captures/profile/`; FE guide `docs/fe-integration-guide-profile.md`; SOP `docs/sop/2026-10-24-profile-name-update.md`._
+
 _Academy BE (2026-10-22): branch `feature/academy-be` (migration `0069_academy_content`, chained on `0068_sales_sequences` after #171/#172 merged) — Module 17 BE gaps 1, 2, 4 to 10, 13, 14, 16, 17, 20, 23, 24: real content in `content/academy/` (8 courses, 24 lessons, 6 paths, 10 articles, all `draft`) loaded by `python -m app.services.learning.content`, YouTube video object, certificate PDF + `CFZ-XXXX-XXXX-XXXX` + public `GET /verify/{code}` + LinkedIn URL, private notes, resume position, per-hero-course AI reasons, notifications, search. Live e2e + FE guide `docs/fe-integration-guide-academy.md`; SOP `docs/sop/2026-10-22-academy-be.md`. PR: see below. FE slice and re-walk next._
 
 _Sales Hub slice B (2026-10-22): branch `feature/sales-sequences` — sequences + real SMTP sending (cPanel mailbox), IMAP bounce poller, signed unsubscribe, suppression, caps, auto-pause, AI step drafts, deal follow-up send; migration `0068_sales_sequences`; live-verified against a fake SMTP server and a synthetic DSN, **real mailbox delivery and real bounce reading NOT verified live**. SOP `docs/sop/2026-10-22-sales-sequences.md`; FE guide `docs/fe-integration-guide-sales-sequences.md`. PR open, not merged._
