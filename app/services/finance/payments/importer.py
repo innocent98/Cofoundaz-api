@@ -13,15 +13,21 @@ from app.db.models.finance import Transaction
 from app.db.models.finance_connection import FinanceConnection
 from app.db.models.invoice import Invoice
 from app.services.finance import invoices as invoices_svc
+from app.services.finance.categories import PAYSTACK_PAYOUT_CATEGORY
+from app.services.finance.payments import payouts
 from app.services.finance.payments.base import ProviderTransaction
 
 INT32_MAX = 2_147_483_647
 CURRENCY = "NGN"
 
-_KIND_SHAPE = {
+_KIND_SHAPE: dict[str, tuple[TransactionDirection, str | None]] = {
     "charge": (TransactionDirection.inflow, "Revenue"),
     "fee": (TransactionDirection.outflow, "Payment fees"),
     "refund": (TransactionDirection.outflow, "Refunds"),
+    # Bank-feed lines carry no category of their own: the founder files them (the ledger's
+    # "Needs a category" chip), except a Paystack payout, which is tagged below.
+    "credit": (TransactionDirection.inflow, None),
+    "debit": (TransactionDirection.outflow, None),
 }
 
 
@@ -34,19 +40,43 @@ class ImportResult:
     skipped_oversize: int = 0
     fees: int = 0
     refunds: int = 0
+    credits: int = 0
+    debits: int = 0
+    paystack_payouts: int = 0
 
     def as_dict(self) -> dict[str, int]:
         return asdict(self)
 
     @property
     def changed(self) -> bool:
-        return bool(self.imported or self.invoice_matched or self.fees or self.refunds)
+        return bool(
+            self.imported
+            or self.invoice_matched
+            or self.fees
+            or self.refunds
+            or self.credits
+            or self.debits
+        )
 
 
 def _matching_invoice(db: Session, *, startup_id: object, reference: str) -> Invoice | None:
     return db.execute(
         select(Invoice).where(Invoice.startup_id == startup_id, Invoice.pay_reference == reference)
     ).scalar_one_or_none()
+
+
+def _tally(result: ImportResult, item: ProviderTransaction, is_payout: bool) -> None:
+    if item.kind == "charge":
+        result.imported += 1
+    elif item.kind == "credit":
+        result.credits += 1
+        result.paystack_payouts += int(is_payout)
+    elif item.kind == "debit":
+        result.debits += 1
+    elif item.kind == "fee":
+        result.fees += 1
+    else:
+        result.refunds += 1
 
 
 def import_items(
@@ -58,7 +88,15 @@ def import_items(
     Safe under autoflush=False: every insert flushes itself inside its own SAVEPOINT.
     """
     result = ImportResult()
-    source = TransactionSource(connection.provider)
+    # A bank link is a feed of raw lines, not a payment provider: its rows are `bank` rows.
+    source = (
+        TransactionSource.bank
+        if connection.provider == "mono"
+        else TransactionSource(connection.provider)
+    )
+    tag_payouts = connection.provider == "mono" and payouts.has_paystack(
+        db, startup_id=connection.startup_id
+    )
     for item in items:
         if item.currency != CURRENCY:
             result.skipped_currency += 1
@@ -94,6 +132,13 @@ def import_items(
                 # Not payable (a draft): fall through and record the money as a normal inflow.
 
         direction, category = _KIND_SHAPE[item.kind]
+        is_payout = (
+            tag_payouts
+            and item.kind == "credit"
+            and payouts.narration_names_paystack(item.description)
+        )
+        if is_payout:
+            category = PAYSTACK_PAYOUT_CATEGORY
         try:
             # add() INSIDE the savepoint so a unique violation rolls the pending row back with it.
             with db.begin_nested():
@@ -114,10 +159,5 @@ def import_items(
         except IntegrityError:
             result.duplicates += 1
             continue
-        if item.kind == "charge":
-            result.imported += 1
-        elif item.kind == "fee":
-            result.fees += 1
-        else:
-            result.refunds += 1
+        _tally(result, item, is_payout)
     return result

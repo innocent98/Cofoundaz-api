@@ -55,8 +55,8 @@ def _drain() -> None:
     """Drains the in-process job queue (same pattern as e2e/test_marketing.py)."""
     from app.db.session import SessionLocal
     from app.worker import runner
-    from app.worker.handlers import (
-        finance_model as _finance_model,  # noqa: F401  (registers ai.finance.model)
+    from app.worker.handlers import (  # noqa: F401  (registers ai.finance.model)
+        finance_model as _finance_model,
     )
 
     db = SessionLocal()
@@ -149,8 +149,8 @@ def test_financial_model_journey(base_url, make_verified_user, capture):
         assert model["id"] == model_id
         assert model["status"] == "complete", model
         assert model["error"] is None
-        assert model["horizon_months"] == 12
-        assert len(model["months"]) == 12
+        assert model["horizon_months"] == 36
+        assert len(model["months"]) == 36
         assert model["assumptions"] is not None
         capture("financial_model", "latest_complete", latest)
 
@@ -161,22 +161,18 @@ def test_financial_model_journey(base_url, make_verified_user, capture):
             assert list(stmt.keys()) == ["rows"], key
             assert stmt["rows"], key
             for row in stmt["rows"]:
-                assert len(row["values"]) == 12
+                assert len(row["values"]) == 36
                 assert all(isinstance(v, int) for v in row["values"])
 
-        # 7. THE invariant, read from the captured balance sheet: every month,
-        #    Cash + AR == AP + Retained earnings + Paid-in capital.
+        # 7. THE invariant, read from the captured balance sheet: every month total assets ==
+        #    total liabilities + equity, and the API says so itself.
         bs = model["balance_sheet"]
         cash = _row(bs, "Cash")
-        ar = _row(bs, "Accounts receivable")
-        ap = _row(bs, "Accounts payable")
-        retained = _row(bs, "Retained earnings")
-        paid_in = _row(bs, "Paid-in capital")
-        for i in range(12):
-            assert cash[i] + ar[i] == ap[i] + retained[i] + paid_in[i], (
-                f"balance sheet does not balance in month {model['months'][i]}: "
-                f"{cash[i]} + {ar[i]} != {ap[i]} + {retained[i]} + {paid_in[i]}"
-            )
+        assets, le = _row(bs, "Total assets"), _row(bs, "Total liabilities + equity")
+        for i in range(36):
+            assert assets[i] == le[i], f"out of balance in month {model['months'][i]}"
+        assert _row(bs, "Balance check") == [0] * 36
+        assert model["balance_check"] == {"balanced": True, "max_abs_difference_minor": 0}
 
         # Cash flow ties to the balance sheet: closing cash == balance-sheet cash.
         assert _row(model["cash_flow"], "Closing cash") == cash

@@ -36,12 +36,24 @@ class FinancialModel(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         default=FinancialModelStatus.generating,
     )
-    horizon_months: Mapped[int] = mapped_column(Integer, nullable=False, default=12)
+    horizon_months: Mapped[int] = mapped_column(Integer, nullable=False, default=36)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="NGN")
     assumptions: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     pnl: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     cash_flow: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     balance_sheet: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Ledger figures the projection starts from (captured at generation so a recalculation is
+    # reproducible), the founder's edits on top of `assumptions`, and the revision counters that
+    # tell "edited since last calculated" (overrides_rev != calculated_rev).
+    starting: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    overrides: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    overrides_rev: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    calculated_rev: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    recalculated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error: Mapped[str | None] = mapped_column(String(300), nullable=True)
     generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

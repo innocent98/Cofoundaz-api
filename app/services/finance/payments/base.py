@@ -22,6 +22,9 @@ class ProviderBadResponse(Exception):  # noqa: N818
 class Credentials:
     secret_key: str
     secret_hash: str | None = None
+    # Mono: the linked bank account the platform key is being used for (decrypted from the
+    # connection). Empty for Paystack and Flutterwave, whose key identifies the account.
+    account_id: str | None = None
 
     def __repr__(self) -> str:
         return "Credentials(<redacted>)"
@@ -34,7 +37,8 @@ class AccountInfo:
 
 @dataclass(frozen=True)
 class ProviderTransaction:
-    kind: Literal["charge", "fee", "refund"]
+    # charge / fee / refund come from a payment provider; credit / debit are bank-feed lines.
+    kind: Literal["charge", "fee", "refund", "credit", "debit"]
     reference: str
     amount_minor: int
     currency: str
@@ -59,6 +63,16 @@ class WebhookEvent:
     fee_minor: int | None
     occurred_at: datetime | None
     transaction_id: str | None = None
+
+
+class SyncSource(Protocol):
+    """Anything the ledger sync can pull transactions from (payment providers and the bank)."""
+
+    name: str
+
+    def list_transactions(
+        self, creds: Credentials, *, since: datetime | None, max_pages: int
+    ) -> list[ProviderTransaction]: ...
 
 
 class PaymentProvider(Protocol):

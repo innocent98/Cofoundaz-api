@@ -60,7 +60,7 @@ def _major(minor: Any) -> str:
 
 def build_model_messages(starting: dict[str, Any]) -> list[LLMMessage]:
     system = (
-        "You are a startup CFO building a 12-month 3-statement financial model. Given the "
+        "You are a startup CFO building a 36-month 3-statement financial model. Given the "
         "company's actuals, return ONLY forward-looking assumptions: monthly revenue growth, "
         "COGS as a share of revenue, monthly operating-expense growth, and receivable / payable "
         "collection timing in days. Use realistic, conservative values for an early-stage "

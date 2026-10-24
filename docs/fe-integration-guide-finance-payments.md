@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Payments (Paystack and Flutterwave)
 
+> **Update 2026-10-24 (Mono slice):** `GET /finance/integrations` now returns a third entry `mono` (and `kind`, `connect_config` on every entry), and sync summaries gained `credits`, `debits`, `paystack_payouts`. See `fe-integration-guide-finance-model-mono.md`. The captures below predate these additive fields.
+
 > **Provenance.** `e2e/test_finance_payments.py::test_finance_payments_journey` was run against the
 > live app (`bash scripts/e2e_run.sh` equivalent, scratch DB and port; **84 e2e passed**, 83 existing
 > plus this journey). Every **response body** below is pasted **verbatim** from the captures it

@@ -1,0 +1,47 @@
+# SOP: Finance model (editable assumptions, 36 months, real balance sheet) and the Mono bank link
+
+| | |
+|---|---|
+| **What shipped** | Finance BE slice (d): gap rows 11, 12, 13 of `cofoundaz/docs/checklist/finance-prd-gaps.md`, plus the Mono bank adapter (sandbox only) with D-FIN-10. Branch `feature/finance-model-mono`, migration `0070_finance_model_mono` (parent `0069_academy_content`, so this PR merges after Academy #173). PR: see the checklist entry. |
+| **Why** | The model could not be edited (AI-picked, read-only), covered 12 months with no yearly view, and its balance sheet was a plug (paid-in capital = first month's cash, balanced only by construction). Banks were not connectable, and a Paystack payout landing in the bank would have been counted a second time as revenue and cash. |
+
+## How (decisions)
+| Decision | Why | Rejected |
+|---|---|---|
+| Edits are stored apart from the AI's values: `financial_models.overrides` over `assumptions`. `PATCH /finance/model/{id}/assumptions` only saves (and marks `stale`); `POST .../recalculate` re-runs the pure engine. Response `assumptions` = what the engine used, `ai_assumptions` = the baseline, `overrides` = the founder's edits | the founder can always see and revert to the AI's value (`null` clears an edit); saving without recalculating lets the FE batch edits | overwriting `assumptions`; recalculating inside the PATCH |
+| Recalculate reads the stored `starting` snapshot (cash, revenue, costs, funding, `as_of`), not the live ledger, so the same edits always give the same numbers and the month labels never drift. `{"refresh_actuals": true}` re-reads the ledger on purpose. Legacy models (no snapshot) are rebuilt on first recalculation, keeping their original month labels | reproducibility; a model must not silently change because a transaction was added | always re-reading the ledger |
+| No AI anywhere in edit/recalculate (a test makes the LLM call raise). Only `generate` costs budget | the point of row 11 | an AI "re-fit" |
+| Editable: growth, COGS %, opex growth, AR/AP days, start revenue and start monthly costs, `hiring_plan` (recurring from `start_month`), `one_offs`, `capex` (cash out, straight-line depreciation from the next month over `depreciation_months`, default 36). Strict ranges: out of range is 422, unlike the AI path which clamps. Month fields must fall inside the projection window (422 with a `capex[1].month` style field path) | investor-grade inputs; bad input is the founder's to fix | clamping silently |
+| 36 months (`MODEL_HORIZON_MONTHS`, D-FIN-8); yearly rollup is computed at read time from the stored monthly rows (`yearly`: Year 1..3 = projection months 1-12, 13-24, 25-36): flows add, opening cash takes the first month, balances take the last. Older 12-month models roll up as one partial year until recalculated | no extra storage, works for old rows | storing a second copy |
+| Balance sheet: opening equity from actuals. Paid-in capital = ledger inflows in category `Funding`; retained earnings = the rest of opening equity (history of profit and burn). Rows: Cash, AR, Fixed assets (net), Total assets, AP, Total liabilities, Paid-in capital, Retained earnings, Total equity, Total liabilities + equity, Balance check. Cash rolls through the cash-flow statement, retained earnings through the P&L, so the check is a real test. The engine reports the check (`balance_check.balanced`, `max_abs_difference_minor`) instead of asserting | an assert would 500 the worker; the API tells the FE | keeping the old assert; deriving equity as a plug |
+| Mono: the platform key `MONO_SECRET_KEY` authenticates calls; the founder links their bank in Mono Connect and sends the one-time `code` to `POST /finance/integrations/mono/connect` (founder only, D-FIN-2). The exchanged **account id** is the per-founder credential, stored Fernet-encrypted with `FINANCE_CONNECTIONS_ENCRYPTION_KEY` (D-FIN-9) and never returned; `key_last4` is the account number's last 4 | Mono's model differs from Paystack's pasted key | storing the code (single use) |
+| Mono rows are `source: bank`, category empty ("Needs a category"). Sync reuses the Paystack path (`sync_connection`: row lock, hourly scheduler, manual Sync now, `needs_attention` when Mono rejects the link) | one pattern | a separate sync engine |
+| Webhooks: one URL for the Mono app, `POST /api/v1/webhooks/mono`, authenticated by the `mono-webhook-secret` header against `MONO_WEBHOOK_SECRET` (constant-time, fails closed when unset). The connection is found by `provider_account_hash` (SHA-256 of the account id) because the id itself is encrypted. `account_updated` + `AVAILABLE` queues a sync job; `reauthorisation_required` flags `needs_attention`; anything else is acknowledged | Mono's secret is app-wide; the sync must not run inside the webhook request | per-connection URLs (Mono has one URL per app) |
+| Sandbox only: a `MONO_SECRET_KEY` not starting `test_sk_` is refused (`503 MONO_LIVE_DISABLED`) unless `MONO_ALLOW_LIVE=true` | "never call Mono with real keys" | trusting the operator |
+| One bank account serves one workspace (`409 BANK_ACCOUNT_ALREADY_LINKED`), because the account id routes webhooks | stops cross-tenant misrouting | |
+| D-FIN-10: when the workspace has ever connected Paystack, a bank **credit** whose narration names Paystack (`paystack` / `pstk`) is filed under category **Paystack payout**. That category is left out of every cash-flow total: revenue, money in, cash on hand, the 6 month chart, runway (`cashflow._base_query`). The row stays visible in the ledger and the founder can re-categorise a false positive | the payout is the same money as the charges already imported; leaving it in doubles revenue **and cash**. This goes one step past "excluded from revenue" on purpose (see follow-ups) | tagging only (cash would double); a settlement-level reconciliation (Paystack settlements are not imported) |
+| The bank link sits beside the payment provider: the one-live-connection index now excludes `mono`; `get_active` returns payment providers only | D-FIN-10 needs both at once | a second table |
+
+## What's involved
+- Migration `alembic/versions/0070_finance_model_mono.py` (5 columns on `financial_models`, `provider_account_hash` + replaced partial unique index on `finance_connections`; downgrade deletes Mono connections, imported rows stay).
+- Model: `app/services/finance/{model_engine,model_config,model_inputs,model_service,model_prompt}.py`, `app/schemas/financial_model.py`, `app/db/models/financial_model.py`, `app/worker/handlers/finance_model.py`, `app/api/v1/endpoints/finance.py` (`PATCH /model/{id}/assumptions`, `POST /model/{id}/recalculate`).
+- Mono: `app/services/finance/payments/{mono,mono_webhook,payouts,connections,importer,sync,registry,base,stub_transport}.py`, `app/api/v1/endpoints/{finance_integrations,payment_webhooks}.py`, `app/schemas/finance_connection.py`, `app/services/finance/{cashflow,categories}.py`, `app/core/{config,errors}.py`.
+- Config (new, all optional so the app boots without them): `MONO_SECRET_KEY`, `MONO_PUBLIC_KEY`, `MONO_WEBHOOK_SECRET`, `MONO_ALLOW_LIVE` (default false). `scripts/e2e_run.sh` sets fake values so no run can reach Mono.
+- Tests: `tests/services/test_model_engine.py`, `tests/api/test_finance_model_edit.py`, `tests/api/test_finance_mono.py`; e2e `e2e/test_finance_model_mono.py`; `e2e/test_financial_model.py` updated for 36 months.
+- Docs: `docs/fe-integration-guide-finance-model-mono.md` (live captures in `e2e/_captures/finance_model_mono/`).
+
+## Verification
+See the PR description for the exact numbers of the final run. Unit tests cover the engine identity across growth, funding, hires, one-offs, capex and depreciation; the edit cycle (stale flag, determinism, refresh, legacy upgrade, 422s, roles, cross-workspace 404); Mono connect/sync/payout tagging/webhook paths with mocked HTTP. The live e2e drives the same flows over HTTP against the stub transport.
+**Not live-verified**: the real Mono sandbox (needs the real keys; the lead's FE walk does it), Mono's real response shapes and the unit of `amount` (assumed kobo, as documented for v2), real webhook delivery, the Mono Connect widget.
+
+## Operate / roll back
+- Set `MONO_SECRET_KEY` (`test_sk_...`), `MONO_PUBLIC_KEY`, `MONO_WEBHOOK_SECRET` and register `https://<api>/api/v1/webhooks/mono` in the Mono dashboard with the same secret. Without them the Mono card reports `connect_config.configured: false` and connect returns `503 MONO_NOT_CONFIGURED`.
+- Roll back: `alembic downgrade 0069_academy_content` (removes Mono connections; the model columns are dropped, edits are lost). Old code reading `financial_models` ignores the new columns.
+
+## Follow-ups
+- Re-tag already-imported bank credits when Paystack is connected after Mono.
+- Unlink the account at Mono on disconnect (we only forget it locally).
+- Payout match is a narration heuristic, not settlement reconciliation; consider importing Paystack settlements.
+- Confirm Mono `amount` units and webhook payloads in the live sandbox; adjust `mono.py` if they differ.
+- Existing behaviour found, not changed: starting revenue is the trailing 3 months of **all** money in, so a recent `Funding` inflow inflates it (the editor's `revenue_0_minor` corrects it). Excluding `Funding` from revenue would also change runway and the dashboard, so it needs its own decision.
+- FE: model editor, yearly toggle, Mono Connect widget, `Paystack payout` chip; XLSX export (row 14).

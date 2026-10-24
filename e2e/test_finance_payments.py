@@ -194,7 +194,7 @@ def test_finance_payments_journey(
         assert empty.status_code == 200, empty.text
         d = empty.json()["data"]
         assert d["encryption_configured"] is True
-        assert [p["provider"] for p in d["providers"]] == ["paystack", "flutterwave"]
+        assert [p["provider"] for p in d["providers"]] == ["paystack", "flutterwave", "mono"]
         assert all(p["connection"] is None for p in d["providers"])
         cap("integrations_empty", empty)
         assert c.get(base, headers=accountant).status_code == 200

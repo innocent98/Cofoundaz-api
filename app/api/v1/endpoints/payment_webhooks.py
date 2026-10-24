@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.envelope import success_response
 from app.core.errors import AppError
 from app.db.session import get_db
-from app.services.finance.payments import webhooks
+from app.services.finance.payments import mono_webhook, webhooks
 
 router = APIRouter()
 
@@ -50,6 +50,24 @@ async def receive_payment_webhook(
             raw_body=raw_body,
             headers=headers,
         )
+        db.commit()
+        return out
+
+    return success_response(await run_in_threadpool(handle))
+
+
+# Public on purpose, like the route above: authenticity is the shared secret Mono sends in the
+# `mono-webhook-secret` header (checked in constant time, fails closed when unset).
+@router.post("/mono", response_model=dict[str, Any])
+async def receive_mono_webhook(
+    request: Request,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    raw_body = await _read_capped(request)
+    headers = dict(request.headers)
+
+    def handle() -> dict[str, bool]:
+        out = mono_webhook.process(db, raw_body=raw_body, headers=headers)
         db.commit()
         return out
 

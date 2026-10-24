@@ -1,0 +1,94 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "fc8bb0f1-80ab-4b56-b70d-e6dd1e21f89f",
+        "date": "2026-10-24",
+        "description": "Cloud hosting",
+        "category": "Infrastructure",
+        "amount_minor": 12000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "manual",
+        "created_at": "2026-10-24T11:18:53.049618Z",
+        "updated_at": "2026-10-24T11:18:53.049618Z"
+      },
+      {
+        "id": "63fdd9b5-98d4-49e4-96ab-90a4ad646ed5",
+        "date": "2026-10-24",
+        "description": "Team salaries",
+        "category": "Payroll",
+        "amount_minor": 20000000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "manual",
+        "created_at": "2026-10-24T11:18:53.024548Z",
+        "updated_at": "2026-10-24T11:18:53.024548Z"
+      },
+      {
+        "id": "f8c8f886-0c0c-4569-93f7-bd6ac52dae05",
+        "date": "2026-10-24",
+        "description": "Customer payments",
+        "category": "Revenue",
+        "amount_minor": 6000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-10-24T11:18:52.998381Z",
+        "updated_at": "2026-10-24T11:18:52.998381Z"
+      },
+      {
+        "id": "b4505eba-3d6a-4b5a-a742-83d7cd5d7d45",
+        "date": "2026-10-01",
+        "description": "PAYSTACK TRANSFER SETTLEMENT",
+        "category": "Paystack payout",
+        "amount_minor": 492500,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "bank",
+        "created_at": "2026-10-24T11:18:53.341716Z",
+        "updated_at": "2026-10-24T11:18:53.341716Z"
+      },
+      {
+        "id": "35ca8823-7b06-4aab-97c0-69e8790c0d03",
+        "date": "2026-10-01",
+        "description": "POS purchase office supplies",
+        "category": null,
+        "amount_minor": 250000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "bank",
+        "created_at": "2026-10-24T11:18:53.341716Z",
+        "updated_at": "2026-10-24T11:18:53.341716Z"
+      },
+      {
+        "id": "224b8909-3848-4522-969b-8853f9d0de33",
+        "date": "2026-10-01",
+        "description": "NIP transfer from ACME Ltd",
+        "category": null,
+        "amount_minor": 1500000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "bank",
+        "created_at": "2026-10-24T11:18:53.341716Z",
+        "updated_at": "2026-10-24T11:18:53.341716Z"
+      },
+      {
+        "id": "0337689e-6609-4f78-abd3-f0c832372696",
+        "date": "2026-06-15",
+        "description": "Pre-seed round",
+        "category": "Funding",
+        "amount_minor": 100000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-10-24T11:18:52.974455Z",
+        "updated_at": "2026-10-24T11:18:52.974455Z"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": 7
+  }
+}

@@ -20,9 +20,16 @@ from app.services.finance.payments.base import (
     ProviderUnavailable,
 )
 from app.services.finance.payments.importer import import_items
-from app.services.finance.payments.registry import get_provider
+from app.services.finance.payments.registry import get_sync_source
 
 AUTH_ERROR_MESSAGE = "The provider rejected the saved key. Replace it to resume syncing."
+BANK_AUTH_ERROR_MESSAGE = "Your bank link needs attention. Reconnect your bank to resume syncing."
+
+
+def auth_error_message(provider: str) -> str:
+    return BANK_AUTH_ERROR_MESSAGE if provider == "mono" else AUTH_ERROR_MESSAGE
+
+
 CURSOR_OVERLAP = timedelta(days=1)
 
 
@@ -75,12 +82,12 @@ def sync_connection(
         else now - timedelta(days=settings.FINANCE_SYNC_BACKFILL_DAYS)
     )
     try:
-        items = get_provider(conn.provider).list_transactions(
+        items = get_sync_source(conn.provider).list_transactions(
             creds, since=since, max_pages=settings.FINANCE_SYNC_MAX_PAGES
         )
     except ProviderAuthError:
         conn.status = ConnectionStatus.needs_attention.value
-        conn.last_error = AUTH_ERROR_MESSAGE
+        conn.last_error = auth_error_message(conn.provider)
         db.flush()
         return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
     except (ProviderUnavailable, ProviderBadResponse):

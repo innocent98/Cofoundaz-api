@@ -1,0 +1,72 @@
+{
+  "data": {
+    "encryption_configured": true,
+    "providers": [
+      {
+        "provider": "paystack",
+        "label": "Paystack",
+        "key_hint": "Starts with sk_test_ or sk_live_",
+        "kind": "payments",
+        "connection": {
+          "id": "99e1016d-ba9c-4305-aa1b-450f53e1f838",
+          "provider": "paystack",
+          "status": "active",
+          "mode": "test",
+          "key_last4": "1234",
+          "account_name": null,
+          "last_sync_at": null,
+          "last_error": null,
+          "last_sync_summary": null,
+          "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/payments/paystack/<public_id_placeholder>",
+          "created_at": "2026-10-24T11:18:53.294604Z"
+        },
+        "connect_config": null
+      },
+      {
+        "provider": "flutterwave",
+        "label": "Flutterwave",
+        "key_hint": "Starts with FLWSECK_TEST- or FLWSECK-",
+        "kind": "payments",
+        "connection": null,
+        "connect_config": null
+      },
+      {
+        "provider": "mono",
+        "label": "Bank (Mono)",
+        "key_hint": "Link your bank account with Mono Connect",
+        "kind": "bank",
+        "connection": {
+          "id": "34a45518-abff-4523-9149-bc5857aca4e4",
+          "provider": "mono",
+          "status": "needs_attention",
+          "mode": "test",
+          "key_last4": "6789",
+          "account_name": "Stub Bank \u00b7 NovaPay Ltd",
+          "last_sync_at": "2026-10-24T11:18:53.423235Z",
+          "last_error": "Your bank needs you to re-authorise access. Reconnect your bank to resume syncing.",
+          "last_sync_summary": {
+            "fees": 0,
+            "debits": 0,
+            "credits": 0,
+            "fetched": 3,
+            "refunds": 0,
+            "imported": 0,
+            "duplicates": 3,
+            "invoice_matched": 0,
+            "paystack_payouts": 0,
+            "skipped_currency": 0,
+            "skipped_oversize": 0
+          },
+          "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
+          "created_at": "2026-10-24T11:18:53.318209Z"
+        },
+        "connect_config": {
+          "configured": true,
+          "public_key": "test_pk_e2e_stub_key",
+          "sandbox": true
+        }
+      }
+    ]
+  },
+  "meta": null
+}

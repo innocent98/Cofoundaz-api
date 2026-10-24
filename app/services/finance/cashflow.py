@@ -2,11 +2,12 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import case, func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Query, Session
 
 from app.db.models.enums import TransactionDirection
 from app.db.models.finance import Transaction
+from app.services.finance.categories import PAYSTACK_PAYOUT_CATEGORY
 from app.services.finance.runway_math import _runway_is_low
 
 _IN = TransactionDirection.inflow
@@ -25,8 +26,15 @@ def _months_back(today: date, n: int) -> date:
 def _base_query(db: Session, *, startup_id: uuid.UUID, today: date) -> Query[Transaction]:
     # `date <= today` so future-dated transactions never count toward cash-on-hand / burn /
     # the monthly series (keeps the totals and by_month consistent).
+    # A Paystack payout seen in the bank (D-FIN-10) is the same money as the Paystack charges
+    # already in the ledger, so it is out of every total here: revenue, money in and cash.
     return db.query(Transaction).filter(
-        Transaction.startup_id == startup_id, Transaction.date <= today
+        Transaction.startup_id == startup_id,
+        Transaction.date <= today,
+        or_(
+            Transaction.category.is_(None),
+            func.lower(Transaction.category) != PAYSTACK_PAYOUT_CATEGORY.casefold(),
+        ),
     )
 
 

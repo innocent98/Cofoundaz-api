@@ -23,6 +23,7 @@ from app.schemas.budget import BudgetCreate, BudgetUpdate, SeedRequest
 from app.schemas.expense import CategorySummary, ExpenseCreate, ExpenseUpdate
 from app.schemas.finance import CashFlowResponse, TransactionCreate, TransactionUpdate
 from app.schemas.finance_runway import AssumptionsUpdate, RunwayResponse
+from app.schemas.financial_model import ModelAssumptionsPatch, RecalculateRequest
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 from app.services.finance import budgets as budget_svc
 from app.services.finance import cashflow as cashflow_svc
@@ -728,4 +729,39 @@ def get_model(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     row = model_svc.get_model(db, startup_id=membership.startup_id, model_id=model_id)
+    return success_response(model_svc.serialize_model(row))
+
+
+@router.patch("/model/{model_id}/assumptions", response_model=dict[str, Any])
+def update_model_assumptions(
+    model_id: uuid.UUID,
+    payload: ModelAssumptionsPatch,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Save edits to the model's assumptions. Statements are unchanged until Recalculate."""
+    row = model_svc.update_assumptions(
+        db, startup_id=membership.startup_id, model_id=model_id, patch=payload
+    )
+    db.commit()
+    return success_response(model_svc.serialize_model(row))
+
+
+@router.post("/model/{model_id}/recalculate", response_model=dict[str, Any])
+def recalculate_model(
+    model_id: uuid.UUID,
+    payload: RecalculateRequest | None = None,
+    membership: Membership = Depends(_finance),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Re-run the deterministic engine with the saved edits: instant, no AI call, no budget."""
+    row = model_svc.recalculate(
+        db,
+        startup_id=membership.startup_id,
+        model_id=model_id,
+        refresh_actuals=bool(payload and payload.refresh_actuals),
+    )
+    db.commit()
     return success_response(model_svc.serialize_model(row))

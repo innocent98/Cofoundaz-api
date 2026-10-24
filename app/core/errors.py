@@ -94,6 +94,11 @@ class FinanceConnectionsNotConfigured(AppError):  # noqa: N818
     message = "Payment connections are not configured on the server."
 
 
+class MonoNotConfigured(AppError):  # noqa: N818
+    code, http_status = "MONO_NOT_CONFIGURED", 503
+    message = "Bank connections are not configured on the server."
+
+
 class FinanceConnectionUnreadable(AppError):  # noqa: N818
     # Deliberately vague: neither the ciphertext nor the secret may appear in an error.
     code, http_status = "FINANCE_CONNECTION_UNREADABLE", 500

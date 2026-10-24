@@ -21,6 +21,8 @@ from app.db.models.finance import Transaction
 # Spellings the product itself writes (the payments importer) plus the usual startup cost heads.
 DEFAULT_CATEGORIES: tuple[str, ...] = (
     "Revenue",
+    "Funding",
+    "Paystack payout",
     "Payment fees",
     "Refunds",
     "Payroll",
@@ -37,6 +39,13 @@ DEFAULT_CATEGORIES: tuple[str, ...] = (
 )
 
 UNCATEGORIZED = "Uncategorized"
+
+# Money the founders put in or investors wired: it seeds paid-in capital in the financial model.
+FUNDING_CATEGORY = "Funding"
+# A bank credit that is Paystack paying out money the ledger already counted as the original
+# charges (D-FIN-10). It is a transfer between the founder's own accounts, so it is kept out of
+# revenue, money in and cash on hand (see cashflow._base_query).
+PAYSTACK_PAYOUT_CATEGORY = "Paystack payout"
 
 
 def fold(name: str) -> str:

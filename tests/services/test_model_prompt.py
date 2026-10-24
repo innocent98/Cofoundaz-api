@@ -136,11 +136,7 @@ def test_stub_llm_shape_validates_to_all_zero():
 def test_validated_output_is_engine_safe(raw):
     assumptions = validate_assumptions(raw)
     model = project_three_statements(_start(), assumptions, today=date(2026, 4, 1))
-    bs = model["balance_sheet_raw"]
-    for i in range(12):
-        assets = bs["cash"][i] + bs["accounts_receivable"][i]
-        liab_equity = bs["accounts_payable"][i] + bs["paid_in_capital"] + bs["retained_earnings"][i]
-        assert assets == liab_equity
+    assert model["balance_check"] == {"balanced": True, "max_abs_difference_minor": 0}
 
 
 def test_schema_shape():

@@ -62,6 +62,13 @@ export FINANCE_CONNECTIONS_ENCRYPTION_KEY="${FINANCE_CONNECTIONS_ENCRYPTION_KEY:
 export PAYMENT_PROVIDER_STUB="true"
 export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
 export API_PUBLIC_URL="${E2E_BASE_URL}"
+# Mono bank link: fake sandbox-shaped values, set explicitly so a developer's real sandbox keys
+# in .env are never used (process env beats the env file) and no run can reach Mono. The
+# stubbed HTTP above answers api.withmono.com; the webhook secret is what the journey signs with.
+export MONO_SECRET_KEY="test_sk_e2e_stub_key"
+export MONO_PUBLIC_KEY="test_pk_e2e_stub_key"
+export MONO_WEBHOOK_SECRET="e2e-mono-webhook-secret"
+export MONO_ALLOW_LIVE="false"
 
 # Sales outreach: the e2e server and test process must NEVER reach a real mailbox, even when a
 # developer's .env holds the cPanel settings. Blank values win over .env (process env beats the

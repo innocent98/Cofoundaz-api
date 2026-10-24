@@ -48,7 +48,7 @@ def _enc(monkeypatch):
 
 
 def _use(monkeypatch, fake):
-    monkeypatch.setattr(sync_mod, "get_provider", lambda name: fake)
+    monkeypatch.setattr(sync_mod, "get_sync_source", lambda name: fake)
     return fake
 
 

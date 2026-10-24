@@ -16,7 +16,7 @@ def test_financial_model_persists_with_defaults(db):
     got = db.get(FinancialModel, row.id)
     assert got is not None
     assert got.status == FinancialModelStatus.generating
-    assert got.horizon_months == 12
+    assert got.horizon_months == 36
     assert got.currency == "NGN"
     assert got.created_by is None
     assert got.assumptions is None

@@ -14,11 +14,12 @@ from app.db.tenancy import require_role
 from app.schemas.finance_connection import (
     ConnectRequest,
     IntegrationsResponse,
+    MonoConnectRequest,
     ProviderEntry,
 )
 from app.services.finance.payments import connections as conn_svc
 from app.services.finance.payments.crypto import encryption_configured
-from app.services.finance.payments.registry import get_provider
+from app.services.finance.payments.registry import get_sync_source
 from app.services.finance.payments.sync import sync_connection
 
 router = APIRouter()
@@ -43,8 +44,34 @@ def list_integrations(
         )
         for name in conn_svc.PROVIDER_NAMES
     ]
+    bank = conn_svc.get_for_provider(db, membership.startup_id, conn_svc.BANK_PROVIDER)
+    entries.append(
+        ProviderEntry(
+            provider=conn_svc.BANK_PROVIDER,
+            label="Bank (Mono)",
+            key_hint="Link your bank account with Mono Connect",
+            kind="bank",
+            connection=conn_svc.serialize(bank) if bank else None,
+            connect_config=conn_svc.mono_connect_config(),
+        )
+    )
     body = IntegrationsResponse(encryption_configured=encryption_configured(), providers=entries)
     return success_response(body.model_dump(mode="json"))
+
+
+# Declared before the generic /{provider}/connect so "mono" is never read as a pasted key.
+@router.post("/integrations/mono/connect", response_model=dict[str, Any])
+def connect_mono(
+    payload: MonoConnectRequest,
+    membership: Membership = Depends(_founder),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = conn_svc.connect_mono(
+        db, startup_id=membership.startup_id, user_id=user.id, code=payload.code
+    )
+    db.commit()
+    return success_response(conn_svc.serialize(row).model_dump(mode="json"))
 
 
 @router.post("/integrations/{provider}/connect", response_model=dict[str, Any])
@@ -88,7 +115,7 @@ def sync_integration(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    get_provider(provider)
+    get_sync_source(provider)
     conn = conn_svc.get_for_provider(db, membership.startup_id, provider)
     if conn is None or conn.status != "active":
         raise NotFound()
