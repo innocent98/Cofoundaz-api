@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A budget for this category and month already exists.",
+    "field_errors": [
+      {
+        "field": "category",
+        "message": "A budget for this category and month already exists."
+      }
+    ]
+  }
+}

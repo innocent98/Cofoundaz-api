@@ -1,7 +1,9 @@
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.schemas.finance_rules import ngn_only, tidy_category
 
 INT32 = 2_147_483_647
 
@@ -11,20 +13,48 @@ class ExpenseCreate(BaseModel):
     vendor: str = Field(min_length=1, max_length=200)
     category: str = Field(min_length=1, max_length=120)
     expense_date: dt.date
-    amount_minor: int = Field(ge=0, le=INT32)
+    amount_minor: int = Field(gt=0, le=INT32)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     recurring: bool = False
     notes: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        return str(ngn_only(v))
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str) -> str:
+        cleaned = tidy_category(v)
+        if cleaned is None:
+            raise ValueError("category may not be blank")
+        return cleaned
 
 
 class ExpenseUpdate(BaseModel):
     vendor: str | None = Field(default=None, min_length=1, max_length=200)
     category: str | None = Field(default=None, min_length=1, max_length=120)
     expense_date: dt.date | None = None
-    amount_minor: int | None = Field(default=None, ge=0, le=INT32)
+    amount_minor: int | None = Field(default=None, gt=0, le=INT32)
     currency: str | None = Field(default=None, min_length=1, max_length=3)
     recurring: bool | None = None
     notes: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str | None) -> str | None:
+        return ngn_only(v)
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cleaned = tidy_category(v)
+        if cleaned is None:
+            raise ValueError("category may not be blank")
+        return cleaned
 
     @model_validator(mode="after")
     def _no_explicit_null_on_required(self) -> "ExpenseUpdate":
@@ -47,6 +77,7 @@ class ExpenseResponse(BaseModel):
     recurring: bool
     notes: str | None
     has_receipt: bool
+    # The API route that returns a short-lived signed link, never a storage URL or path.
     receipt_url: str | None
     transaction_id: uuid.UUID | None
     created_by: uuid.UUID | None

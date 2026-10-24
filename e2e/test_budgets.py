@@ -5,9 +5,11 @@ month, and then walks the whole budgets lifecycle:
 
   draft-from-actuals for THIS month (one budget per last-month category, limit == that category's
   last-month expense total) -> re-running it is a no-op (skip-existing)
-  -> log expenses THIS month (incl. a lower-case category variant and a manual outflow that must
-     NOT count) -> GET the month: spent / variance / over_budget / percent_used are DERIVED from
-     this month's expenses on every read
+  -> log expenses THIS month (incl. a lower-case category variant, which is resolved to the same
+     category, and a manual outflow, which COUNTS: D-FIN-3 budget actuals are every money-out
+     ledger row) -> GET the month: spent / variance / over_budget / percent_used are DERIVED
+     from the ledger on every read, and spend in a category with no budget shows as an
+     unbudgeted row (`limit_minor: null`)
   -> create a budget (spent already reflects existing expenses) -> PATCH the limit so
      `over_budget` flips -> GET one to confirm -> a zero-limit budget (`percent_used: null`)
      -> a limit above the int32 range (budgets are aggregates: 64-bit)
@@ -152,9 +154,9 @@ def test_finance_budgets_journey(base_url, make_verified_user, capture):
         _expense("AWS", "Infrastructure", today, 9_000_000)
         _expense("Google Ads", "Marketing", today, 2_000_000)
         _expense("Team salaries", "Payroll", today, 3_000_000)
-        # A LOWER-CASE category is a different string: it does NOT count toward "Infrastructure".
+        # A LOWER-CASE category resolves to the existing spelling, so it counts toward "Infrastructure".
         _expense("Hetzner", "infrastructure", today, 1_000_000)
-        # A manual outflow transaction that is NOT logged as an expense does NOT count either.
+        # D-FIN-3: a manual outflow transaction that is NOT logged as an expense counts too.
         manual = c.post(
             "/api/v1/finance/transactions",
             headers=wh,
@@ -176,21 +178,25 @@ def test_finance_budgets_journey(base_url, make_verified_user, capture):
         rows = listed.json()["data"]["budgets"]
         assert listed.json()["data"]["month"] == this_month
         by_cat = {r["category"]: r for r in rows}
-        assert list(by_cat) == ["Infrastructure", "Marketing", "Software"]  # sorted, Payroll absent
+        # budgeted rows first (sorted), then categories with spend but no budget
+        assert list(by_cat) == ["Infrastructure", "Marketing", "Software", "Payroll"]
+        assert by_cat["Payroll"]["unbudgeted"] is True
+        assert by_cat["Payroll"]["limit_minor"] is None
+        assert by_cat["Payroll"]["spent_minor"] == 3_000_000
 
         infra = by_cat["Infrastructure"]
         assert infra["id"] == infra_id
-        assert infra["spent_minor"] == 9_000_000  # the lower-case 1M is NOT included
-        assert infra["variance_minor"] == 1_000_000
+        assert infra["spent_minor"] == 10_000_000  # 9M + the lower-case 1M (same category)
+        assert infra["variance_minor"] == 2_000_000
         assert infra["over_budget"] is True
-        assert infra["percent_used"] == 112.5
+        assert infra["percent_used"] == 125.0
 
         mkt = by_cat["Marketing"]
         assert mkt["id"] == marketing_id
-        assert mkt["spent_minor"] == 2_000_000  # the 10M manual outflow is NOT included
-        assert mkt["variance_minor"] == -3_000_000
-        assert mkt["over_budget"] is False
-        assert mkt["percent_used"] == 40.0
+        assert mkt["spent_minor"] == 12_000_000  # 2M expense + the 10M manual outflow
+        assert mkt["variance_minor"] == 7_000_000
+        assert mkt["over_budget"] is True
+        assert mkt["percent_used"] == 240.0
 
         soft = by_cat["Software"]
         assert soft["id"] == software_id
@@ -312,9 +318,9 @@ def test_finance_budgets_journey(base_url, make_verified_user, capture):
         after_expense = c.get(f"/api/v1/finance/budgets/{marketing_id}", headers=wh)
         assert after_expense.status_code == 200, after_expense.text
         ae = after_expense.json()["data"]
-        assert ae["spent_minor"] == 3_000_000
-        assert ae["variance_minor"] == -2_000_000
-        assert ae["percent_used"] == 60.0
+        assert ae["spent_minor"] == 13_000_000
+        assert ae["variance_minor"] == 8_000_000
+        assert ae["percent_used"] == 260.0
         capture("budgets", "budget_get_after_new_expense", after_expense)
 
         # 6. Copy this month's budgets into NEXT month. Pre-create Marketing there with a
@@ -391,15 +397,14 @@ def test_finance_budgets_journey(base_url, make_verified_user, capture):
         # ... and the session survived the duplicate: a normal read still works.
         assert c.get(f"/api/v1/finance/budgets/{marketing_id}", headers=wh).status_code == 200
 
-        # Case-exact: "marketing" is a DIFFERENT category, so it is a separate, allowed budget.
+        # Categories are case-folded: "marketing" is the SAME category, so it is a duplicate too.
         lower = c.post(
             "/api/v1/finance/budgets",
             headers=wh,
             json={"category": "marketing", "period_month": this_month, "limit_minor": 1_000},
         )
-        assert lower.status_code == 200, lower.text
-        assert lower.json()["data"]["spent_minor"] == 0
-        capture("budgets", "budget_created_lowercase_category_is_distinct", lower)
+        assert lower.status_code == 422, lower.text
+        capture("budgets", "error_duplicate_category_case_insensitive", lower)
 
         bad_create = c.post(
             "/api/v1/finance/budgets",

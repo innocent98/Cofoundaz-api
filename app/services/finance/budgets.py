@@ -1,13 +1,50 @@
 import uuid
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import NotFound
 from app.db.models.budget import Budget
+from app.db.models.enums import TransactionDirection
+from app.db.models.finance import Transaction
 from app.schemas.budget import BudgetCreate, BudgetResponse, BudgetUpdate
+from app.services.finance.categories import UNCATEGORIZED, fold, normalize_category
 from app.services.finance.errors import _validation
-from app.services.finance.expenses import expense_category_totals
+from app.services.finance.expenses import _month_range
+
+# At or above this share of the limit a budget reads "near" (the worded status, not colour alone).
+NEAR_LIMIT_PERCENT = 80.0
+
+
+def ledger_outflow_totals(
+    db: Session, *, startup_id: uuid.UUID, month: str
+) -> dict[str, tuple[str, int]]:
+    """casefolded category -> (display name, summed money out) for the month's ledger (D-FIN-3).
+
+    Budget actuals are EVERY money-out ledger row of the month, whatever created it (a manual
+    entry, an expense's posted outflow, or a provider import), so the ledger and budgets can
+    never disagree and a founder logs spend once. Uncategorised outflows are reported under
+    "Uncategorized". Categories are matched case-insensitively.
+    """
+    first, last = _month_range(month)
+    folded = func.lower(func.coalesce(Transaction.category, UNCATEGORIZED))
+    rows = (
+        db.query(
+            folded,
+            func.min(func.coalesce(Transaction.category, UNCATEGORIZED)),
+            func.sum(Transaction.amount_minor),
+        )
+        .filter(
+            Transaction.startup_id == startup_id,
+            Transaction.direction == TransactionDirection.outflow,
+            Transaction.date >= first,
+            Transaction.date <= last,
+        )
+        .group_by(folded)
+        .all()
+    )
+    return {key: (name, int(total)) for key, name, total in rows}
 
 
 def create_budget(
@@ -15,9 +52,11 @@ def create_budget(
 ) -> Budget:
     # add() INSIDE begin_nested: a duplicate (category, month) rolls back only the savepoint, so
     # the outer session stays usable and the caller gets a 422 instead of a poisoned-session 500.
+    fields = data.model_dump()
+    fields["category"] = normalize_category(db, startup_id=startup_id, raw=fields["category"])
     try:
         with db.begin_nested():
-            budget = Budget(startup_id=startup_id, created_by=created_by, **data.model_dump())
+            budget = Budget(startup_id=startup_id, created_by=created_by, **fields)
             db.add(budget)
     except IntegrityError:
         raise _validation(
@@ -50,21 +89,58 @@ def delete_budget(db: Session, *, startup_id: uuid.UUID, budget_id: uuid.UUID) -
 
 
 def spent_for(db: Session, *, startup_id: uuid.UUID, budget: Budget) -> int:
-    """Actual spend for one budget: its category's expense total in its month."""
-    totals = expense_category_totals(db, startup_id=startup_id, month=budget.period_month)
-    return totals.get(budget.category, 0)
+    """Actual spend for one budget: its category's ledger outflow in its month."""
+    totals = ledger_outflow_totals(db, startup_id=startup_id, month=budget.period_month)
+    return totals.get(fold(budget.category), ("", 0))[1]
 
 
 def list_budgets(db: Session, *, startup_id: uuid.UUID, month: str) -> list[tuple[Budget, int]]:
-    """The month's budgets paired with actuals; the expense totals are queried once for all."""
+    """The month's budgets paired with actuals; the ledger totals are queried once for all."""
     budgets = (
         db.query(Budget)
         .filter_by(startup_id=startup_id, period_month=month)
         .order_by(Budget.category)
         .all()
     )
-    totals = expense_category_totals(db, startup_id=startup_id, month=month)
-    return [(b, totals.get(b.category, 0)) for b in budgets]
+    totals = ledger_outflow_totals(db, startup_id=startup_id, month=month)
+    return [(b, totals.get(fold(b.category), ("", 0))[1]) for b in budgets]
+
+
+def unbudgeted_rows(
+    db: Session, *, startup_id: uuid.UUID, month: str, budgeted: list[Budget]
+) -> list[BudgetResponse]:
+    """Rows for categories with spend this month but no budget, biggest spend first."""
+    covered = {fold(b.category) for b in budgeted}
+    totals = ledger_outflow_totals(db, startup_id=startup_id, month=month)
+    extra = [(name, total) for key, (name, total) in totals.items() if key not in covered]
+    return [
+        BudgetResponse(
+            id=None,
+            category=name,
+            period_month=month,
+            limit_minor=None,
+            currency="NGN",
+            notes=None,
+            spent_minor=total,
+            variance_minor=None,
+            variance_percent=None,
+            over_budget=False,
+            percent_used=None,
+            status="unbudgeted",
+            unbudgeted=True,
+            created_at=None,
+            updated_at=None,
+        )
+        for name, total in sorted(extra, key=lambda r: (-r[1], r[0]))
+    ]
+
+
+def _status(spent: int, limit: int) -> str:
+    if spent > limit:
+        return "over"
+    if limit > 0 and 100 * spent / limit >= NEAR_LIMIT_PERCENT:
+        return "near"
+    return "under"
 
 
 def serialize_budget(budget: Budget, *, spent_minor: int) -> BudgetResponse:
@@ -78,8 +154,11 @@ def serialize_budget(budget: Budget, *, spent_minor: int) -> BudgetResponse:
         notes=budget.notes,
         spent_minor=spent_minor,
         variance_minor=spent_minor - limit,
+        variance_percent=round(100 * (spent_minor - limit) / limit, 1) if limit > 0 else None,
         over_budget=spent_minor > limit,
         percent_used=round(100 * spent_minor / limit, 1) if limit > 0 else None,
+        status=_status(spent_minor, limit),
+        unbudgeted=False,
         created_at=budget.created_at,
         updated_at=budget.updated_at,
     )
@@ -108,11 +187,14 @@ def _seed_missing(
 ) -> list[Budget]:
     """Insert (category, limit, currency) candidates for the month, skipping categories that
     already have a budget. Never overwrites."""
-    existing = _existing_categories(db, startup_id=startup_id, period_month=period_month)
+    existing = {
+        fold(c) for c in _existing_categories(db, startup_id=startup_id, period_month=period_month)
+    }
     created: list[Budget] = []
     for category, limit_minor, currency in sorted(candidates):
-        if category in existing:
+        if fold(category) in existing:
             continue
+        existing.add(fold(category))
         # add() INSIDE begin_nested: if a concurrent request inserted the same (category, month)
         # after our read, only the savepoint rolls back and we skip it instead of a 500.
         try:
@@ -136,9 +218,16 @@ def _seed_missing(
 def draft_from_actuals(
     db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID | None, period_month: str
 ) -> list[Budget]:
-    """Seed the month with one budget per category that had spend last month (limit = that spend)."""
-    totals = expense_category_totals(db, startup_id=startup_id, month=_prev_month(period_month))
-    candidates = [(cat, total, "NGN") for cat, total in totals.items() if total > 0]
+    """Seed the month with one budget per category that had ledger spend last month (limit = that
+    spend). Uncategorised spend is seeded under "Other"."""
+    totals = ledger_outflow_totals(db, startup_id=startup_id, month=_prev_month(period_month))
+    merged: dict[str, tuple[str, int]] = {}
+    for key, (name, total) in totals.items():
+        if key == fold(UNCATEGORIZED):  # no category to budget against: fold into "Other"
+            name, key = "Other", fold("Other")
+        prior = merged.get(key, (name, 0))[1]
+        merged[key] = (name, prior + total)
+    candidates = [(name, total, "NGN") for name, total in merged.values() if total > 0]
     return _seed_missing(
         db,
         startup_id=startup_id,

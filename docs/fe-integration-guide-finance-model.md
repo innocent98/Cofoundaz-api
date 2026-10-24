@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Financial Model (Module 12, Slice 5)
 
+> **Superseded in part (slice c, ledger correctness):** `POST /finance/model/generate` returns `409 MODEL_ALREADY_GENERATING` while a generation is running for the workspace. See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_financial_model.py::test_financial_model_journey` was run against the live app
 > (`bash scripts/e2e_run.sh`, **65 e2e passed**, no Resend-429 flake on the final run) with `LLM_PROVIDER=stub`, and every
 > **response body** below is pasted **verbatim** from the 5 captures it wrote to

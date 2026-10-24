@@ -1,0 +1,22 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "69fb4461-cd8a-45c1-a173-94942352e87b",
+        "date": "2026-10-22",
+        "description": "Sale 4",
+        "category": null,
+        "amount_minor": 1004,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-10-22T14:44:41.676138+01:00",
+        "updated_at": "2026-10-22T14:44:41.676138+01:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": "WyIyMDI2LTEwLTIyIiwgIjIwMjYtMTAtMjJUMTQ6NDQ6NDEuNjc2MTM4KzAxOjAwIiwgIjY5ZmI0NDYxLWNkOGEtNDVjMS1hMTczLTk0OTQyMzUyZTg3YiJd",
+    "total_estimate": 5
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "data": {
+    "categories": [
+      {
+        "name": "Equipment",
+        "is_default": true,
+        "in_use": true
+      },
+      {
+        "name": "Infrastructure",
+        "is_default": true,
+        "in_use": true
+      },
+      {
+        "name": "Legal",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Marketing",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Other",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Payment fees",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Payroll",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Refunds",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Rent",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Revenue",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Software",
+        "is_default": true,
+        "in_use": true
+      },
+      {
+        "name": "Taxes",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Travel",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Utilities",
+        "is_default": true,
+        "in_use": false
+      },
+      {
+        "name": "Hosting",
+        "is_default": false,
+        "in_use": true
+      }
+    ]
+  },
+  "meta": null
+}

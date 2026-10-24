@@ -1,5 +1,7 @@
 # FE Integration Guide — Finance Hub: Expenses (Module 12, Slice 4a)
 
+> **Superseded in part (slice c, ledger correctness):** `receipt_url` is no longer a storage URL or file path: it is the API route `/finance/expenses/{id}/receipt`, which returns a 5 minute signed link; receipt type is read from the file bytes; `amount_minor` must be greater than 0; currency is NGN only; categories are case-normalised; `GET /expenses` is paginated (`limit`, `cursor`, `meta`). See `docs/fe-integration-guide-finance-ledger.md` for the current shapes; where this guide disagrees, that guide wins.
+
 > **Provenance.** `e2e/test_expenses.py::test_finance_expenses_journey` was run against the live
 > app (`bash scripts/e2e_run.sh`, **63 e2e passed**, no Resend-429 flake) and every **response
 > body** below is pasted **verbatim** from the 39 captures it wrote to

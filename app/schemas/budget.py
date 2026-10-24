@@ -1,7 +1,9 @@
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.schemas.finance_rules import ngn_only, tidy_category
 
 INT64 = 9_223_372_036_854_775_807
 MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
@@ -14,6 +16,19 @@ class BudgetCreate(BaseModel):
     limit_minor: int = Field(ge=0, le=INT64)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     notes: str | None = None
+
+    @field_validator("currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        return str(ngn_only(v))
+
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v: str) -> str:
+        cleaned = tidy_category(v)
+        if cleaned is None:
+            raise ValueError("category may not be blank")
+        return cleaned
 
 
 class BudgetUpdate(BaseModel):
@@ -34,15 +49,20 @@ class SeedRequest(BaseModel):
 
 
 class BudgetResponse(BaseModel):
-    id: uuid.UUID
+    # An unbudgeted row (spend in a category with no budget) has id/limit_minor/variance_*/
+    # created_at/updated_at null and `unbudgeted: true`.
+    id: uuid.UUID | None
     category: str
     period_month: str
-    limit_minor: int
+    limit_minor: int | None
     currency: str
     notes: str | None
     spent_minor: int
-    variance_minor: int
+    variance_minor: int | None
+    variance_percent: float | None
     over_budget: bool
     percent_used: float | None
-    created_at: dt.datetime
-    updated_at: dt.datetime
+    status: str  # "under" | "near" | "over" | "unbudgeted" (worded, never colour alone)
+    unbudgeted: bool
+    created_at: dt.datetime | None
+    updated_at: dt.datetime | None

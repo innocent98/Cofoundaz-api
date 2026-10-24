@@ -1,18 +1,48 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.enums import FinancialModelStatus
 from app.db.models.financial_model import FinancialModel
 from app.platform.jobs import job_dispatcher
 from app.schemas.financial_model import FinancialModelResponse, ModelStatement
 
 MODEL_JOB_TYPE = "ai.finance.model"
+# A `generating` row older than this is a lost job (worker down, payload dropped), not a running
+# one; it is failed so the workspace is never stuck unable to generate.
+STALE_AFTER = timedelta(minutes=15)
+
+
+class ModelAlreadyGenerating(AppError):  # noqa: N818
+    code, http_status = "MODEL_ALREADY_GENERATING", 409
+    message = "A financial model is already being generated. Wait for it to finish."
 
 
 def create_model(db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID) -> FinancialModel:
+    """Start a generation, or raise 409 while one is `generating` for the workspace.
+
+    Two layers: the row lock serialises concurrent callers through the check, and the partial
+    unique index `uq_financial_models_one_generating` is the backstop that makes a second
+    `generating` row impossible even if a caller bypasses this function.
+    """
+    running = (
+        db.query(FinancialModel)
+        .filter_by(startup_id=startup_id, status=FinancialModelStatus.generating)
+        .with_for_update()
+        .all()
+    )
+    now = datetime.now(UTC)
+    for old in running:
+        if now - old.created_at > STALE_AFTER:
+            old.status = FinancialModelStatus.failed
+            old.error = "Generation timed out"
+        else:
+            raise ModelAlreadyGenerating()
+    db.flush()
     row = FinancialModel(
         startup_id=startup_id,
         created_by=created_by,
@@ -20,7 +50,11 @@ def create_model(db: Session, *, startup_id: uuid.UUID, created_by: uuid.UUID) -
         horizon_months=12,
         currency="NGN",
     )
-    db.add(row)
+    try:
+        with db.begin_nested():
+            db.add(row)
+    except IntegrityError:
+        raise ModelAlreadyGenerating() from None
     db.flush()
     job_dispatcher.enqueue(db, MODEL_JOB_TYPE, {"model_id": str(row.id)}, startup_id)
     return row

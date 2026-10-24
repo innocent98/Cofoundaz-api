@@ -3,6 +3,8 @@ import datetime as dt
 import pytest
 
 from app.db.models.budget import Budget
+from app.db.models.enums import TransactionDirection, TransactionSource
+from app.db.models.finance import Transaction
 from app.schemas.budget import BudgetCreate
 from app.schemas.expense import ExpenseCreate
 from app.services.finance import budgets as budget_svc
@@ -69,7 +71,18 @@ def test_draft_seeds_per_category_from_prev_month_actuals(db):
 
 def test_draft_skips_zero_spend_categories(db):
     u, s = _startup(db)
-    _exp(db, u, s, amount=0, category="Free", date=dt.date(2026, 2, 5))
+    db.add(  # a zero-amount outflow can only exist as legacy data now
+        Transaction(
+            startup_id=s.id,
+            date=dt.date(2026, 2, 5),
+            description="Free",
+            category="Free",
+            amount_minor=0,
+            currency="NGN",
+            direction=TransactionDirection.outflow,
+            source=TransactionSource.manual,
+        )
+    )
     _exp(db, u, s, amount=10, category="Paid", date=dt.date(2026, 2, 5))
     created = budget_svc.draft_from_actuals(
         db, startup_id=s.id, created_by=u.id, period_month="2026-03"
@@ -136,14 +149,14 @@ def test_draft_twice_is_idempotent(db):
 
 def test_copy_last_month_copies_category_limit_currency(db):
     u, s = _startup(db)
-    _budget(db, u, s, category="Infra", month="2026-02", limit=100, currency="USD")
+    _budget(db, u, s, category="Infra", month="2026-02", limit=100)
     _budget(db, u, s, category="Ops", month="2026-02", limit=70)
     _budget(db, u, s, category="Legal", month="2026-01", limit=9)  # not last month
     created = budget_svc.copy_last_month(
         db, startup_id=s.id, created_by=u.id, period_month="2026-03"
     )
     assert [(b.category, b.limit_minor, b.currency) for b in created] == [
-        ("Infra", 100, "USD"),
+        ("Infra", 100, "NGN"),
         ("Ops", 70, "NGN"),
     ]
     assert all(b.period_month == "2026-03" for b in created)
