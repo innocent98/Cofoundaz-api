@@ -9,6 +9,7 @@ def build_cofounder_messages(
     description: str | None,
     goals: list[str],
     history: list[tuple[str, str]],
+    finance_context: str | None = None,
 ) -> list[LLMMessage]:
     """Prompt for an AI Co-Founder chat turn.
 
@@ -25,6 +26,8 @@ def build_cofounder_messages(
         f"Stage: {stage or 'unspecified'}. One-liner: {description or 'unspecified'}. "
         f"Current focus goals: {goal_lines}."
     )
+    if finance_context:
+        system += "\n" + finance_context
     messages = [LLMMessage(role="system", content=system)]
     for role, content in history:
         if role in ("user", "assistant") and content:

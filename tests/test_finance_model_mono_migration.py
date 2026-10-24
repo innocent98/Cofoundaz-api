@@ -20,7 +20,10 @@ def _alembic(*args: str) -> subprocess.CompletedProcess:
 def test_single_head_and_revision_in_history():
     heads = _alembic("heads")
     assert heads.returncode == 0, heads.stderr
-    assert heads.stdout.count("(head)") == 1 and REV in heads.stdout
+    assert heads.stdout.count("(head)") == 1
+    history = _alembic("history")
+    assert history.returncode == 0, history.stderr
+    assert REV in history.stdout
 
 
 def test_upgrade_downgrade_upgrade_round_trips():

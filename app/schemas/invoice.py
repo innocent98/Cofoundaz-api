@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.db.models.enums import InvoiceTerms
 
@@ -22,6 +22,25 @@ class LineItem(BaseModel):
     unit_price_minor: int = Field(ge=0, le=INT32)
 
 
+class PaymentDetails(BaseModel):
+    """Where the client pays by bank transfer. Plain text only; shown on the PDF and the email."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    bank_name: str = Field(min_length=1, max_length=100)
+    account_name: str = Field(min_length=1, max_length=200)
+    account_number: str = Field(min_length=1, max_length=34)
+    instructions: str | None = Field(default=None, max_length=500)
+
+
+def _clean_notes(v: str | None) -> str | None:
+    # Blank notes are "no notes" (stored NULL), never an empty string.
+    if v is None:
+        return None
+    v = v.strip()
+    return v or None
+
+
 class InvoiceCreate(BaseModel):
     # Deliberately no subtotal/tax/total fields: the server computes every amount, so any
     # client-supplied total is dropped by Pydantic and can never influence what is stored.
@@ -31,6 +50,14 @@ class InvoiceCreate(BaseModel):
     tax_percent: float = Field(default=0, ge=0, le=100)
     currency: str = Field(default="NGN", min_length=1, max_length=3)
     terms: str = Field(default=InvoiceTerms.net_30.value)
+    account_id: uuid.UUID | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+    payment_details: PaymentDetails | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, v: str | None) -> str | None:
+        return _clean_notes(v)
 
     @field_validator("currency")
     @classmethod
@@ -53,6 +80,15 @@ class InvoiceUpdate(BaseModel):
     currency: str | None = Field(default=None, min_length=1, max_length=3)
     terms: str | None = None
     auto_remind: bool | None = None
+    # Unlike the NOT NULL columns below, these three accept an explicit null: it clears them.
+    account_id: uuid.UUID | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+    payment_details: PaymentDetails | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def _notes(cls, v: str | None) -> str | None:
+        return _clean_notes(v)
 
     @field_validator("currency")
     @classmethod
@@ -109,6 +145,11 @@ class InvoiceResponse(BaseModel):
     paid_at: dt.datetime | None
     auto_remind: bool
     transaction_id: uuid.UUID | None
+    account_id: uuid.UUID | None = None
+    account_name: str | None = None
+    notes: str | None = None
+    payment_details: PaymentDetails | None = None
+    last_sent_at: dt.datetime | None = None
     pay_url: str | None = None
     pay_provider: str | None = None
     paid_via: str | None = None

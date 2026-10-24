@@ -1,0 +1,238 @@
+{
+  "data": {
+    "assumptions": {
+      "mom_growth_percent": 5,
+      "hiring_spend_minor": 0,
+      "one_off_costs_minor": 0
+    },
+    "model_rows": {
+      "model_id": "d90b5f09-f5d8-4083-84c5-14f51059ce0a",
+      "href": "/finance/model",
+      "hiring_plan": [
+        {
+          "role": "Backend engineer",
+          "start_month": "2026-11",
+          "monthly_cost_minor": 400000
+        }
+      ],
+      "one_offs": [
+        {
+          "label": "Laptops",
+          "month": "2026-12",
+          "amount_minor": 250000
+        }
+      ]
+    },
+    "baseline": {
+      "cash_on_hand": 74000000,
+      "monthly_burn": 8666667,
+      "monthly_revenue": 2000000,
+      "currency": "NGN"
+    },
+    "horizon_months": 12,
+    "scenarios": {
+      "base": {
+        "runway_months": 8.7,
+        "cash_out_date": "2027-06",
+        "avg_net_burn_minor": 8302003,
+        "by_month": [
+          {
+            "month": "2026-11",
+            "cash_balance": 65033333,
+            "net": -8966667
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 55921666,
+            "net": -9111667
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 47170249,
+            "net": -8751417
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 38534595,
+            "net": -8635654
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 30020491,
+            "net": -8514104
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 21634015,
+            "net": -8386476
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": 13381549,
+            "net": -8252466
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": 5269793,
+            "net": -8111756
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": -2694218,
+            "net": -7964011
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": -10503096,
+            "net": -7808878
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": -18149084,
+            "net": -7645988
+          },
+          {
+            "month": "2027-10",
+            "cash_balance": -25624038,
+            "net": -7474954
+          }
+        ]
+      },
+      "best": {
+        "runway_months": null,
+        "cash_out_date": null,
+        "avg_net_burn_minor": 4462180,
+        "by_month": [
+          {
+            "month": "2026-11",
+            "cash_balance": 66300000,
+            "net": -7700000
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 58695000,
+            "net": -7605000
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 51736750,
+            "net": -6958250
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 45234762,
+            "net": -6501988
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 39257476,
+            "net": -5977286
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 33883598,
+            "net": -5373878
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": 29203638,
+            "net": -4679960
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": 25321684,
+            "net": -3881954
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": 22357437,
+            "net": -2964247
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": 20448552,
+            "net": -1908885
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": 19753335,
+            "net": -695217
+          },
+          {
+            "month": "2027-10",
+            "cash_balance": 20453835,
+            "net": 700500
+          }
+        ]
+      },
+      "worst": {
+        "runway_months": 6.9,
+        "cash_out_date": "2027-04",
+        "avg_net_burn_minor": 10687500,
+        "by_month": [
+          {
+            "month": "2026-11",
+            "cash_balance": 63333333,
+            "net": -10666667
+          },
+          {
+            "month": "2026-12",
+            "cash_balance": 52416666,
+            "net": -10916667
+          },
+          {
+            "month": "2027-01",
+            "cash_balance": 41749999,
+            "net": -10666667
+          },
+          {
+            "month": "2027-02",
+            "cash_balance": 31083332,
+            "net": -10666667
+          },
+          {
+            "month": "2027-03",
+            "cash_balance": 20416665,
+            "net": -10666667
+          },
+          {
+            "month": "2027-04",
+            "cash_balance": 9749998,
+            "net": -10666667
+          },
+          {
+            "month": "2027-05",
+            "cash_balance": -916669,
+            "net": -10666667
+          },
+          {
+            "month": "2027-06",
+            "cash_balance": -11583336,
+            "net": -10666667
+          },
+          {
+            "month": "2027-07",
+            "cash_balance": -22250003,
+            "net": -10666667
+          },
+          {
+            "month": "2027-08",
+            "cash_balance": -32916670,
+            "net": -10666667
+          },
+          {
+            "month": "2027-09",
+            "cash_balance": -43583337,
+            "net": -10666667
+          },
+          {
+            "month": "2027-10",
+            "cash_balance": -54250004,
+            "net": -10666667
+          }
+        ]
+      }
+    }
+  },
+  "meta": null
+}

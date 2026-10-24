@@ -39,6 +39,21 @@ def _money(minor: int, currency: str) -> str:
     return f"{currency} {Decimal(minor) / 100:,.2f}"
 
 
+def _wrapped(text: str, width: int = 90) -> list[_Line]:
+    """Free text as PDF lines (the writer has no wrapping): split on newlines, then on width."""
+    lines: list[_Line] = []
+    for para in text.splitlines() or [""]:
+        words, row = para.split(), ""
+        for word in words:
+            if row and len(row) + 1 + len(word) > width:
+                lines.append([(_MARGIN_X, row, False)])
+                row = word
+            else:
+                row = f"{row} {word}".strip()
+        lines.append([(_MARGIN_X, row, False)])
+    return lines
+
+
 def _lines(inv: Invoice, startup_name: str) -> list[_Line]:
     out: list[_Line] = []
     out.append([(_MARGIN_X, f"Invoice {inv.number}", True)])
@@ -77,6 +92,21 @@ def _lines(inv: Invoice, startup_name: str) -> list[_Line]:
         ]
     )
     out.append([(_QTY_X, "Total", True), (_AMOUNT_X, _money(inv.total_minor, inv.currency), True)])
+    pd = inv.payment_details
+    if pd:
+        out.append([])
+        out.append([(_MARGIN_X, "Pay by bank transfer", True)])
+        out.append([(_MARGIN_X, f"Bank: {str(pd.get('bank_name', ''))[:60]}", False)])
+        out.append([(_MARGIN_X, f"Account name: {str(pd.get('account_name', ''))[:60]}", False)])
+        out.append(
+            [(_MARGIN_X, f"Account number: {str(pd.get('account_number', ''))[:40]}", False)]
+        )
+        if pd.get("instructions"):
+            out.extend(_wrapped(str(pd["instructions"])))
+    if inv.notes:
+        out.append([])
+        out.append([(_MARGIN_X, "Notes", True)])
+        out.extend(_wrapped(inv.notes))
     if inv.status == InvoiceStatus.paid and inv.paid_at is not None:
         out.append([])
         out.append([(_MARGIN_X, f"Paid on {inv.paid_at.date().isoformat()}", False)])
