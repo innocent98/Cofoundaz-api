@@ -43,6 +43,8 @@ class ImportResult:
     credits: int = 0
     debits: int = 0
     paystack_payouts: int = 0
+    # Credits that name Paystack but that no recent Paystack charges explain: kept as income.
+    paystack_unmatched: int = 0
 
     def as_dict(self) -> dict[str, int]:
         return asdict(self)
@@ -97,6 +99,7 @@ def import_items(
     tag_payouts = connection.provider == "mono" and payouts.has_paystack(
         db, startup_id=connection.startup_id
     )
+    unmatched: list[str] = []
     for item in items:
         if item.currency != CURRENCY:
             result.skipped_currency += 1
@@ -132,11 +135,20 @@ def import_items(
                 # Not payable (a draft): fall through and record the money as a normal inflow.
 
         direction, category = _KIND_SHAPE[item.kind]
-        is_payout = (
+        is_payout = False
+        if (
             tag_payouts
             and item.kind == "credit"
             and payouts.narration_names_paystack(item.description)
-        )
+        ):
+            is_payout = payouts.charges_cover(
+                db,
+                startup_id=connection.startup_id,
+                on=item.occurred_at.astimezone(UTC).date(),
+                amount_minor=item.amount_minor,
+            )
+            if not is_payout:
+                unmatched.append(item.reference)
         if is_payout:
             category = PAYSTACK_PAYOUT_CATEGORY
         try:
@@ -160,4 +172,5 @@ def import_items(
             result.duplicates += 1
             continue
         _tally(result, item, is_payout)
+        result.paystack_unmatched += int(item.reference in unmatched)
     return result

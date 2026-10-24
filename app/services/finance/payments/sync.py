@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.logger import log
 from app.db.models.enums import ConnectionStatus
 from app.db.models.finance_connection import FinanceConnection
 from app.services.finance import runway as runway_svc
@@ -85,7 +86,14 @@ def sync_connection(
         items = get_sync_source(conn.provider).list_transactions(
             creds, since=since, max_pages=settings.FINANCE_SYNC_MAX_PAGES
         )
-    except ProviderAuthError:
+    except ProviderAuthError as exc:
+        if conn.provider == "mono" and exc.status_code == 401:
+            # 401 means Mono refused OUR platform key (a server misconfiguration), not this
+            # founder's link: never flag every founder, tell operators instead.
+            log.error("[mono] platform key rejected (401); check MONO_SECRET_KEY")
+            conn.last_error = _unavailable_message(conn.provider)
+            db.flush()
+            return SyncOutcome(conn, dict(conn.last_sync_summary or {}))
         conn.status = ConnectionStatus.needs_attention.value
         conn.last_error = auth_error_message(conn.provider)
         db.flush()

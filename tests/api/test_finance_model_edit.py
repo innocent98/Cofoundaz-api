@@ -292,3 +292,32 @@ def test_unauthenticated_is_401(client):
     assert (
         client.post(f"{MODEL}/00000000-0000-0000-0000-000000000000/recalculate").status_code == 401
     )
+
+
+def test_refresh_actuals_warns_about_edits_that_fall_out_of_the_window(client, db, monkeypatch):
+    from datetime import date
+
+    _u, _s, h, m = _complete_model(db, monkeypatch)
+    months = client.get(f"{MODEL}/{m.id}", headers=h).json()["data"]["months"]
+    client.patch(
+        f"{MODEL}/{m.id}/assumptions",
+        json={"one_offs": [{"label": "Audit", "month": months[0], "amount_minor": 5}]},
+        headers=h,
+    )
+    row = db.get(FinancialModel, m.id)
+    assert row.starting is not None
+    # age the model: its window started long ago, so a refresh moves the window forward
+    row.starting = {**row.starting, "as_of": date(2025, 1, 1).isoformat()}
+    row.overrides = {
+        "one_offs": [{"label": "Audit", "month": "2025-03", "amount_minor": 5}],
+        "capex": [{"label": "Far", "month": "2090-01", "amount_minor": 5}],
+        "hiring_plan": [{"role": "Early", "start_month": "2025-02", "monthly_cost_minor": 5}],
+    }
+    db.flush()
+    plain = client.post(f"{MODEL}/{m.id}/recalculate", headers=h).json()["data"]
+    assert [w.split(" (")[0] for w in plain["warnings"]] == ["Capex 'Far'"]
+    fresh = client.post(f"{MODEL}/{m.id}/recalculate", json={"refresh_actuals": True}, headers=h)
+    warnings = fresh.json()["data"]["warnings"]
+    assert len(warnings) == 2 and "not included" in warnings[0]
+    assert fresh.json()["data"]["overrides"]["one_offs"][0]["label"] == "Audit"  # still saved
+    assert client.get(f"{MODEL}/{m.id}", headers=h).json()["data"]["warnings"] == []

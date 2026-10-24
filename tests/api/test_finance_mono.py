@@ -97,7 +97,7 @@ def _connect(client, h, code="good-code"):
 
 def _hook(client, event, *, secret=WEBHOOK_SECRET, account=ACCOUNT_ID, status="AVAILABLE"):
     body = json.dumps(
-        {"event": event, "data": {"account": {"id": account}, "meta": {"data_status": status}}}
+        {"event": event, "data": {"account": {"_id": account}, "meta": {"data_status": status}}}
     )
     headers = {"content-type": "application/json"}
     if secret is not None:
@@ -105,7 +105,10 @@ def _hook(client, event, *, secret=WEBHOOK_SECRET, account=ACCOUNT_ID, status="A
     return client.post(HOOK, content=body, headers=headers)
 
 
-def _paystack_row(db, startup):
+def _paystack_row(db, startup, *, charges=600_000, days_before=0):
+    """A Paystack connection, plus (by default) the Paystack charges that explain the payout."""
+    from datetime import date, timedelta
+
     from app.services.finance.payments import connections
 
     row = FinanceConnection(
@@ -118,6 +121,18 @@ def _paystack_row(db, startup):
         mode="test",
     )
     db.add(row)
+    if charges:
+        db.add(
+            Transaction(
+                startup_id=startup.id,
+                date=date(2026, 10, 1) - timedelta(days=days_before),
+                description="Paystack payment",
+                amount_minor=charges,
+                currency="NGN",
+                direction=TransactionDirection.inflow,
+                source=TransactionSource.paystack,
+            )
+        )
     db.flush()
 
 
@@ -241,6 +256,7 @@ def test_sync_imports_bank_lines_idempotently(client, db):
     assert first.status_code == 200, first.text
     summary = first.json()["data"]["summary"]
     assert summary["credits"] == 2 and summary["debits"] == 1 and summary["paystack_payouts"] == 0
+    assert summary["paystack_unmatched"] == 0
     rows = {t.external_ref: t for t in db.query(Transaction).filter_by(startup_id=s.id)}
     assert set(rows) == {"m1", "m2", "m3"}  # the line with no amount is dropped
     assert rows["m3"].direction == TransactionDirection.outflow
@@ -263,9 +279,9 @@ def test_paystack_payout_is_tagged_and_kept_out_of_revenue_and_cash(client, db):
     assert rows["m2"].category is None
     cash = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]
     # 1,500,000 credit - 250,000 debit; the 492,500 payout is the same money as the charges
-    assert cash["cash_on_hand"] == 1500000 - 250000
+    assert cash["cash_on_hand"] == 600000 + 1500000 - 250000
     this_month = [m for m in cash["by_month"] if m["inflow"] or m["outflow"]]
-    assert sum(m["inflow"] for m in this_month) == 1500000
+    assert sum(m["inflow"] for m in this_month) == 600000 + 1500000
     # still visible in the ledger
     ledger = client.get(f"{BASE}/transactions", headers=h).json()["data"]["transactions"]
     assert any(t["category"] == "Paystack payout" for t in ledger)
@@ -280,22 +296,65 @@ def test_payout_can_be_recategorised_back_into_the_totals(client, db):
     resp = client.patch(f"{BASE}/transactions/{tx.id}", json={"category": "Revenue"}, headers=h)
     assert resp.status_code == 200, resp.text
     assert client.get(f"{BASE}/cash-flow", headers=h).json()["data"]["cash_on_hand"] == (
-        492500 + 1500000 - 250000
+        600000 + 492500 + 1500000 - 250000
     )
 
 
-def test_sync_when_mono_rejects_the_link_flags_the_connection(client, db):
+def test_sync_when_mono_refuses_the_account_flags_the_connection(client, db):
     _u, s, h = _member(db)
     _connect(client, h)
-    _handler.sync_status = 401
-    resp = client.post(f"{URL}/mono/sync", headers=h)
-    assert resp.status_code == 200
-    conn = resp.json()["data"]["connection"]
+    _handler.sync_status = 403
+    conn = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"]
     assert conn["status"] == "needs_attention"
     assert (
         conn["last_error"]
         == "Your bank link needs attention. Reconnect your bank to resume syncing."
     )
+
+
+def test_platform_key_rejection_does_not_flag_the_founder(client, db, caplog):
+    _u, s, h = _member(db)
+    _connect(client, h)
+    _handler.sync_status = 401  # Mono refusing OUR key, not this founder's link
+    conn = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["connection"]
+    assert conn["status"] == "active" and "Mono" in conn["last_error"]
+
+
+def test_unexplained_paystack_credit_stays_income(client, db):
+    _u, s, h = _member(db)
+    _paystack_row(db, s, charges=100_000)  # charges that cannot cover a 492,500 payout
+    _connect(client, h)
+    summary = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["summary"]
+    assert summary["paystack_payouts"] == 0 and summary["paystack_unmatched"] == 1
+    row = db.query(Transaction).filter_by(startup_id=s.id, external_ref="m1").one()
+    assert row.category is None
+    cash = client.get(f"{BASE}/cash-flow", headers=h).json()["data"]["cash_on_hand"]
+    assert cash == 100_000 + 492_500 + 1_500_000 - 250_000  # the client's money is counted
+
+
+def test_charges_outside_the_window_do_not_explain_a_payout(client, db):
+    _u, s, h = _member(db)
+    _paystack_row(db, s, charges=600_000, days_before=11)
+    _connect(client, h)
+    summary = client.post(f"{URL}/mono/sync", headers=h).json()["data"]["summary"]
+    assert summary["paystack_payouts"] == 0 and summary["paystack_unmatched"] == 1
+
+
+def test_connect_race_is_a_409_not_a_500(client, db, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy.orm import Session
+
+    _u, _s, h = _member(db)
+    real = Session.flush
+
+    def flush(self, *a, **k):
+        if any(isinstance(o, FinanceConnection) for o in self.new):
+            raise IntegrityError("insert", {}, Exception("duplicate"))
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(Session, "flush", flush)
+    resp = _connect(client, h)
+    assert resp.status_code == 409 and resp.json()["error"]["code"] == "BANK_LINK_CONFLICT"
 
 
 def test_sync_when_mono_is_down_keeps_the_link_and_reports(client, db):
@@ -344,6 +403,28 @@ def test_webhook_account_updated_queues_a_sync(client, db):
     assert job.payload == {"connection_id": conn_id, "startup_id": str(s.id)}
     # data still processing: nothing to pull yet
     _hook(client, "mono.events.account_updated", status="PROCESSING")
+    assert db.query(Job).count() == 1
+
+
+def test_webhook_replay_does_not_queue_a_second_sync(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    for _ in range(3):
+        assert _hook(client, "mono.events.account_updated").status_code == 200
+    assert db.query(Job).count() == 1
+
+
+def test_webhook_still_reads_the_plain_id_shape(client, db):
+    _u, _s, h = _member(db)
+    _connect(client, h)
+    body = json.dumps(
+        {
+            "event": "mono.events.account_updated",
+            "data": {"account": {"id": ACCOUNT_ID}, "meta": {"data_status": "AVAILABLE"}},
+        }
+    )
+    hdr = {"mono-webhook-secret": WEBHOOK_SECRET, "content-type": "application/json"}
+    assert client.post(HOOK, content=body, headers=hdr).status_code == 200
     assert db.query(Job).count() == 1
 
 

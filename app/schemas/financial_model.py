@@ -57,6 +57,9 @@ class FinancialModelResponse(BaseModel):
     months: list[str] | None = None
     yearly: YearlyRollup | None = None
     balance_check: BalanceCheck | None = None
+    # Only on a Recalculate: edits that no longer fall inside the projection (never dropped
+    # silently; they stay saved and apply again if the window moves back).
+    warnings: list[str] = []
     error: str | None = None
     generated_at: dt.datetime | None = None
     recalculated_at: dt.datetime | None = None

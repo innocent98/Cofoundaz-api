@@ -110,7 +110,7 @@ class MonoProvider:
             if self._client is None:
                 client.close()
         if resp.status_code in (401, 403):
-            raise ProviderAuthError("Mono rejected the request credentials.")
+            raise ProviderAuthError("Mono rejected the request credentials.", resp.status_code)
         if resp.status_code >= 500:
             raise ProviderUnavailable(f"Mono returned {resp.status_code}.")
         if resp.status_code >= 400:

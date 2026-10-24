@@ -757,11 +757,11 @@ def recalculate_model(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """Re-run the deterministic engine with the saved edits: instant, no AI call, no budget."""
-    row = model_svc.recalculate(
+    row, warnings = model_svc.recalculate(
         db,
         startup_id=membership.startup_id,
         model_id=model_id,
         refresh_actuals=bool(payload and payload.refresh_actuals),
     )
     db.commit()
-    return success_response(model_svc.serialize_model(row))
+    return success_response(model_svc.serialize_model(row, warnings))

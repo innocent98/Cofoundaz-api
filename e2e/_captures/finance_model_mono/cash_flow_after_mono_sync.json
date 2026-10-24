@@ -1,9 +1,9 @@
 {
   "data": {
-    "cash_on_hand": 75250000,
-    "monthly_burn": 8250000,
-    "monthly_revenue": 2500000,
-    "runway_months": 9.1,
+    "cash_on_hand": 75742500,
+    "monthly_burn": 8085833,
+    "monthly_revenue": 2666667,
+    "runway_months": 9.4,
     "runway_low": false,
     "currency": "NGN",
     "by_month": [
@@ -39,9 +39,9 @@
       },
       {
         "month": "2026-10",
-        "inflow": 7500000,
-        "outflow": 32250000,
-        "net": -24750000
+        "inflow": 8000000,
+        "outflow": 32257500,
+        "net": -24257500
       }
     ]
   },

@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "b229cbb0-f291-42bb-9672-1fe64c95bce3",
+    "id": "28138a69-3c83-4a7c-8de1-78a64cef2172",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -1239,10 +1239,11 @@
       "balanced": true,
       "max_abs_difference_minor": 0
     },
+    "warnings": [],
     "error": null,
-    "generated_at": "2026-10-24T11:53:39.434329Z",
+    "generated_at": "2026-10-24T12:15:14.365307Z",
     "recalculated_at": null,
-    "created_at": "2026-10-24T11:53:39.305842Z"
+    "created_at": "2026-10-24T12:15:14.005011Z"
   },
   "meta": null
 }

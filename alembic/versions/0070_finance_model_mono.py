@@ -10,7 +10,7 @@ Create Date: 2026-10-24
    calculated is overrides_rev <> calculated_rev) and `recalculated_at`. Existing models keep
    NULL starting figures; the first recalculation rebuilds them from the ledger.
 2. finance_connections gains `provider_account_hash` (SHA-256 of the Mono account id, so an
-   inbound webhook finds its connection while the id itself stays encrypted) and the
+   inbound webhook finds its connection while the id itself stays encrypted; unique among live connections, so one bank account serves one workspace) and the
    one-live-connection index now only covers payment providers, because the Mono bank link has
    to coexist with Paystack/Flutterwave (D-FIN-10).
 
@@ -48,9 +48,11 @@ def upgrade() -> None:
 
     op.add_column("finance_connections", sa.Column("provider_account_hash", sa.String(length=64)))
     op.create_index(
-        "ix_finance_connections_provider_account_hash",
+        "uq_finance_connections_live_account",
         "finance_connections",
         ["provider_account_hash"],
+        unique=True,
+        postgresql_where=sa.text("status <> 'disconnected'"),
     )
     op.drop_index("uq_finance_connections_one_live", table_name="finance_connections")
     op.create_index(
@@ -72,7 +74,7 @@ def downgrade() -> None:
         unique=True,
         postgresql_where=sa.text("status <> 'disconnected'"),
     )
-    op.drop_index("ix_finance_connections_provider_account_hash", table_name="finance_connections")
+    op.drop_index("uq_finance_connections_live_account", table_name="finance_connections")
     op.drop_column("finance_connections", "provider_account_hash")
 
     op.drop_column("financial_models", "recalculated_at")

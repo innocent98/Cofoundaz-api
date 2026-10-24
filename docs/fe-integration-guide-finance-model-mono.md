@@ -45,7 +45,7 @@ Fresh model, before any edit (cut to the non-statement keys):
 ```json
 {
   "data": {
-    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
+    "id": "4d76f19e-629e-41e8-ad71-ce225fddea4e",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -598,7 +598,7 @@ Response `200` (cut to the non-statement keys; **statements are unchanged and `s
 ```json
 {
   "data": {
-    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
+    "id": "4d76f19e-629e-41e8-ad71-ce225fddea4e",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -749,7 +749,7 @@ generated: **adding a transaction later does not move the model.** `{"refresh_ac
 ```json
 {
   "data": {
-    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
+    "id": "4d76f19e-629e-41e8-ad71-ce225fddea4e",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -782,7 +782,7 @@ generated: **adding a transaction later does not move the model.** `{"refresh_ac
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:53:26.613733Z",
+    "recalculated_at": "2026-10-24T12:15:04.909417Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -841,7 +841,7 @@ With `refresh_actuals`:
 ```json
 {
   "data": {
-    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
+    "id": "4d76f19e-629e-41e8-ad71-ce225fddea4e",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -874,7 +874,7 @@ With `refresh_actuals`:
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:53:26.725443Z",
+    "recalculated_at": "2026-10-24T12:15:04.948123Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -934,7 +934,7 @@ edits and `stale` is true again:
 ```json
 {
   "data": {
-    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
+    "id": "4d76f19e-629e-41e8-ad71-ce225fddea4e",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -946,7 +946,7 @@ edits and `stale` is true again:
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:53:26.725443Z",
+    "recalculated_at": "2026-10-24T12:15:04.948123Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -978,6 +978,8 @@ edits and `stale` is true again:
 }
 ```
 *capture: `assumptions_cleared_edits.json`*
+
+**`warnings`** (array of strings, empty by default, present on the Recalculate response only): saved edits whose month is outside the projection, which matters after `refresh_actuals` moves the window (for example `"One-off 'Audit' (2025-03) is outside the projection 2026-11 to 2029-10 and is not included."`). Show them next to the editor; the edits stay saved. Unit-tested, not captured live.
 
 **A model generated before this release** (12 months, no stored starting figures): the first Recalculate upgrades it to 36
 months, keeping its original month labels (unit-tested, not captured live).
@@ -1056,7 +1058,7 @@ Request: `{"code": "code_ok"}` (placeholder; a real code comes from the widget).
 ```json
 {
   "data": {
-    "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
+    "id": "e3afbff2-e973-40d9-8d1c-25da6650340b",
     "provider": "mono",
     "status": "active",
     "mode": "test",
@@ -1066,7 +1068,7 @@ Request: `{"code": "code_ok"}` (placeholder; a real code comes from the widget).
     "last_error": null,
     "last_sync_summary": null,
     "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-    "created_at": "2026-10-24T11:53:27.188338Z"
+    "created_at": "2026-10-24T12:15:05.096448Z"
   },
   "meta": null
 }
@@ -1116,14 +1118,14 @@ Errors:
 Other codes (unit-tested, **not captured live**): `503 MONO_NOT_CONFIGURED` (server has no Mono key),
 `503 MONO_LIVE_DISABLED` (a non-sandbox key without `MONO_ALLOW_LIVE`), `503 FINANCE_CONNECTIONS_NOT_CONFIGURED`
 (no encryption key), `502 PAYMENT_PROVIDER_UNAVAILABLE` (Mono down), `409 BANK_ACCOUNT_ALREADY_LINKED` (that bank account
-belongs to another workspace). Connecting again replaces the link (audit action `replaced`); **one bank account per workspace**.
+belongs to another workspace), `409 BANK_LINK_CONFLICT` (a double-submit or simultaneous link; refresh and read the status). Connecting again replaces the link (audit action `replaced`); **one bank account per workspace**.
 
 **Connecting does not import anything.** Mono prepares the data asynchronously, then sends our webhook, which queues a sync.
 The FE should call **Sync now** once after connecting, and otherwise rely on the hourly sync.
 
 ## Sync
-Same envelope as Paystack's: `{connection, summary}`. The summary has three new counters, `credits`, `debits`,
-`paystack_payouts` (always present, on every provider; zero when not applicable). First sync:
+Same envelope as Paystack's: `{connection, summary}`. The summary has four new counters, `credits`, `debits`,
+`paystack_payouts`, `paystack_unmatched` (always present, on every provider; zero when not applicable). First sync:
 
 ```json
 {
@@ -1139,6 +1141,7 @@ Same envelope as Paystack's: `{connection, summary}`. The summary has three new 
       "credits": 2,
       "debits": 1,
       "paystack_payouts": 1,
+      "paystack_unmatched": 0,
       "fetched": 3
     }
   }
@@ -1162,6 +1165,7 @@ Second sync is idempotent (`duplicates` counts what was already there; `credits`
       "credits": 0,
       "debits": 0,
       "paystack_payouts": 0,
+      "paystack_unmatched": 0,
       "fetched": 3
     }
   }
@@ -1177,7 +1181,7 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
   "data": {
     "transactions": [
       {
-        "id": "dd83054e-54e6-43c1-ac45-39611854cac0",
+        "id": "552a07c6-15a4-44ba-8e73-500dc0b0243c",
         "date": "2026-10-01",
         "description": "PAYSTACK TRANSFER SETTLEMENT",
         "category": "Paystack payout",
@@ -1185,23 +1189,11 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
         "currency": "NGN",
         "direction": "in",
         "source": "bank",
-        "created_at": "2026-10-24T11:53:27.299778Z",
-        "updated_at": "2026-10-24T11:53:27.299778Z"
+        "created_at": "2026-10-24T12:15:05.126118Z",
+        "updated_at": "2026-10-24T12:15:05.126118Z"
       },
       {
-        "id": "a16d1acb-d14c-4093-8b77-16644d021882",
-        "date": "2026-10-01",
-        "description": "NIP transfer from ACME Ltd",
-        "category": null,
-        "amount_minor": 1500000,
-        "currency": "NGN",
-        "direction": "in",
-        "source": "bank",
-        "created_at": "2026-10-24T11:53:27.299778Z",
-        "updated_at": "2026-10-24T11:53:27.299778Z"
-      },
-      {
-        "id": "2054f3fd-466a-40cf-af09-03e3a26c9d60",
+        "id": "45d2abf7-9d8c-4f42-b771-b36353458e78",
         "date": "2026-10-01",
         "description": "POS purchase office supplies",
         "category": null,
@@ -1209,36 +1201,47 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
         "currency": "NGN",
         "direction": "out",
         "source": "bank",
-        "created_at": "2026-10-24T11:53:27.299778Z",
-        "updated_at": "2026-10-24T11:53:27.299778Z"
+        "created_at": "2026-10-24T12:15:05.126118Z",
+        "updated_at": "2026-10-24T12:15:05.126118Z"
+      },
+      {
+        "id": "321cc631-b4fc-47f8-a521-5f83152683ff",
+        "date": "2026-10-01",
+        "description": "NIP transfer from ACME Ltd",
+        "category": null,
+        "amount_minor": 1500000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "bank",
+        "created_at": "2026-10-24T12:15:05.126118Z",
+        "updated_at": "2026-10-24T12:15:05.126118Z"
       }
     ]
   },
   "meta": {
     "next_cursor": null,
-    "total_estimate": 7
+    "total_estimate": 9
   }
 }
 ```
 *capture: `ledger_after_mono_sync.json`*
 
 - `source: "bank"`, `category: null` for ordinary lines. **The ledger API does not return `external_ref`** (same as before).
-- The credit whose narration names Paystack has `category: "Paystack payout"`. It is shown in the ledger, but it is **left out
+- The credit has `category: "Paystack payout"` only when **both** its narration names Paystack **and** the ledger's Paystack charges of the 10 days before it add up to at least its amount (the journey syncs Paystack first so they do). A Paystack-narrated credit the charges cannot explain (a client paying by Paystack Transfer) stays ordinary income and is counted in the sync summary as `paystack_unmatched`; you may show "n bank credits mention Paystack but were counted as income". It is shown in the ledger, but it is **left out
   of cash on hand, money in, revenue and runway**, because the original Paystack charges are already counted. The founder
   can change its category to put it back (the only edit allowed on an imported row). **Show a "Paystack payout, not counted
   as income" note on those rows and add a "Paystack payout" option to the category Select.**
-- The tagging only happens for a workspace that has connected Paystack at some point. Without Paystack, a "Paystack" bank
-  credit is an ordinary inflow.
+- Without Paystack charges in the ledger, nothing is tagged.
 - After the sync the journey's cash on hand moved by exactly +1,500,000 −250,000 kobo; the 492,500 payout did not move it.
   Cash flow after sync (cut to the last two months):
 
 ```json
 {
   "data": {
-    "cash_on_hand": 75250000,
-    "monthly_burn": 8250000,
-    "monthly_revenue": 2500000,
-    "runway_months": 9.1,
+    "cash_on_hand": 75742500,
+    "monthly_burn": 8085833,
+    "monthly_revenue": 2666667,
+    "runway_months": 9.4,
     "runway_low": false,
     "currency": "NGN",
     "by_month": [
@@ -1250,9 +1253,9 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
       },
       {
         "month": "2026-10",
-        "inflow": 7500000,
-        "outflow": 32250000,
-        "net": -24750000
+        "inflow": 8000000,
+        "outflow": 32257500,
+        "net": -24257500
       }
     ]
   },
@@ -1276,13 +1279,13 @@ carries the sentence to show, and the fix is **Connect again** (founder only). J
         "key_hint": "Link your bank account with Mono Connect",
         "kind": "bank",
         "connection": {
-          "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
+          "id": "e3afbff2-e973-40d9-8d1c-25da6650340b",
           "provider": "mono",
           "status": "needs_attention",
           "mode": "test",
           "key_last4": "6789",
           "account_name": "Stub Bank · NovaPay Ltd",
-          "last_sync_at": "2026-10-24T11:53:27.761052Z",
+          "last_sync_at": "2026-10-24T12:15:05.292422Z",
           "last_error": "Your bank needs you to re-authorise access. Reconnect your bank to resume syncing.",
           "last_sync_summary": {
             "fees": 0,
@@ -1295,10 +1298,11 @@ carries the sentence to show, and the fix is **Connect again** (founder only). J
             "invoice_matched": 0,
             "paystack_payouts": 0,
             "skipped_currency": 0,
-            "skipped_oversize": 0
+            "skipped_oversize": 0,
+            "paystack_unmatched": 0
           },
           "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-          "created_at": "2026-10-24T11:53:27.188338Z"
+          "created_at": "2026-10-24T12:15:05.096448Z"
         },
         "connect_config": {
           "configured": true,
@@ -1312,6 +1316,8 @@ carries the sentence to show, and the fix is **Connect again** (founder only). J
 ```
 *capture: `integrations_needs_attention.json`*
 
+A Mono `401` during a sync means Mono refused **our platform key**, not the founder's link: the connection stays `active` with the "could not reach Mono" message (operators are alerted in logs). A `403` marks the link `needs_attention`.
+
 Mono's own outage during a sync leaves the status `active` and sets `last_error` to "We could not reach Mono. We will retry
 automatically." (unit-tested). Reconnect after `needs_attention`: `mono_reconnected.json` (same shape as connect).
 
@@ -1320,13 +1326,13 @@ Disconnect (founder only; forgets the account, imported rows stay, a later Sync 
 ```json
 {
   "data": {
-    "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
+    "id": "e3afbff2-e973-40d9-8d1c-25da6650340b",
     "provider": "mono",
     "status": "disconnected",
     "mode": "test",
     "key_last4": "6789",
     "account_name": "Stub Bank · NovaPay Ltd",
-    "last_sync_at": "2026-10-24T11:53:27.761052Z",
+    "last_sync_at": "2026-10-24T12:15:05.292422Z",
     "last_error": null,
     "last_sync_summary": {
       "fees": 0,
@@ -1339,17 +1345,18 @@ Disconnect (founder only; forgets the account, imported rows stay, a later Sync 
       "invoice_matched": 0,
       "paystack_payouts": 0,
       "skipped_currency": 0,
-      "skipped_oversize": 0
+      "skipped_oversize": 0,
+      "paystack_unmatched": 0
     },
     "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-    "created_at": "2026-10-24T11:53:27.188338Z"
+    "created_at": "2026-10-24T12:15:05.096448Z"
   },
   "meta": null
 }
 ```
 *capture: `mono_disconnected.json`*
 
-Webhook (for reference; **Mono calls this, the FE never does**). Missing or wrong `mono-webhook-secret` header:
+Webhook (for reference; **Mono calls this, the FE never does**). The inbound body we read carries the account as `data.account._id` (and `data.meta.data_status`); **that payload shape is from Mono's docs, not captured live** (the journey posts a body of that shape itself). Missing or wrong `mono-webhook-secret` header:
 
 ```json
 {
@@ -1387,6 +1394,7 @@ A valid event is acknowledged with `{"received": true}` and any unknown account 
 | Mono: connect, encrypted at rest, last4, sandbox mode, founder-only 403 | **verified live** against the **stub** (the DB ciphertext check is unit-tested) |
 | Mono: sync, idempotency, `bank` rows, Paystack payout tagging, cash exclusion | **verified live** against the **stub** |
 | Mono: webhook secret check (401), reauthorisation flag, account-updated acknowledged | **verified live** (account-updated's queued sync ran in the worker) |
-| Mono: error codes `MONO_NOT_CONFIGURED`, `MONO_LIVE_DISABLED`, `BANK_ACCOUNT_ALREADY_LINKED`, outage handling | unit-tested only |
+| Mono: error codes `MONO_NOT_CONFIGURED`, `MONO_LIVE_DISABLED`, `BANK_ACCOUNT_ALREADY_LINKED`, `BANK_LINK_CONFLICT`, outage and 401-vs-403 handling, payouts unexplained by charges, webhook replay, recalculate `warnings` | unit-tested only |
+| Mono webhook body shape (`data.account._id`) | **from Mono's docs, not captured live** |
 | **Real Mono sandbox** (code exchange, account lookup, transactions, `amount` unit, pagination, webhook payload and header) | **NOT verified**: needs the real sandbox keys; shapes follow Mono's v2 docs and are untested against Mono. Check in the FE walk and tell BE if any differ |
 | Mono Connect widget handoff | not verified (FE) |

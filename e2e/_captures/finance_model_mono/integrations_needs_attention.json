@@ -8,17 +8,30 @@
         "key_hint": "Starts with sk_test_ or sk_live_",
         "kind": "payments",
         "connection": {
-          "id": "99eb16f4-76a2-41a8-aaf8-ded632f8882a",
+          "id": "7817739c-9d12-45cd-880e-bd26e4896f17",
           "provider": "paystack",
           "status": "active",
           "mode": "test",
-          "key_last4": "d19c",
+          "key_last4": "b7c3",
           "account_name": null,
-          "last_sync_at": null,
+          "last_sync_at": "2026-10-24T12:15:05.078550Z",
           "last_error": null,
-          "last_sync_summary": null,
+          "last_sync_summary": {
+            "fees": 1,
+            "debits": 0,
+            "credits": 0,
+            "fetched": 2,
+            "refunds": 0,
+            "imported": 1,
+            "duplicates": 0,
+            "invoice_matched": 0,
+            "paystack_payouts": 0,
+            "skipped_currency": 0,
+            "skipped_oversize": 0,
+            "paystack_unmatched": 0
+          },
           "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/payments/paystack/<public_id_placeholder>",
-          "created_at": "2026-10-24T11:53:27.115849Z"
+          "created_at": "2026-10-24T12:15:05.052588Z"
         },
         "connect_config": null
       },
@@ -36,13 +49,13 @@
         "key_hint": "Link your bank account with Mono Connect",
         "kind": "bank",
         "connection": {
-          "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
+          "id": "e3afbff2-e973-40d9-8d1c-25da6650340b",
           "provider": "mono",
           "status": "needs_attention",
           "mode": "test",
           "key_last4": "6789",
           "account_name": "Stub Bank \u00b7 NovaPay Ltd",
-          "last_sync_at": "2026-10-24T11:53:27.761052Z",
+          "last_sync_at": "2026-10-24T12:15:05.292422Z",
           "last_error": "Your bank needs you to re-authorise access. Reconnect your bank to resume syncing.",
           "last_sync_summary": {
             "fees": 0,
@@ -55,10 +68,11 @@
             "invoice_matched": 0,
             "paystack_payouts": 0,
             "skipped_currency": 0,
-            "skipped_oversize": 0
+            "skipped_oversize": 0,
+            "paystack_unmatched": 0
           },
           "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-          "created_at": "2026-10-24T11:53:27.188338Z"
+          "created_at": "2026-10-24T12:15:05.096448Z"
         },
         "connect_config": {
           "configured": true,

@@ -90,3 +90,38 @@ def test_bank_link_coexists_with_one_payment_provider_only():
                 trans.rollback()
     finally:
         engine.dispose()
+
+
+def test_one_live_connection_per_bank_account():
+    assert _alembic("upgrade", "head").returncode == 0
+    engine = sa.create_engine(settings.DATABASE_URL)
+    try:
+        with engine.connect() as conn:
+            trans = conn.begin()
+            try:
+                conn.execute(sa.text("SET LOCAL session_replication_role = replica"))
+
+                def add(status: str) -> None:
+                    conn.execute(
+                        sa.text(
+                            "INSERT INTO finance_connections (id, startup_id, public_id, provider, "
+                            "status, key_last4, mode, provider_account_hash) "
+                            "VALUES (:id, :sid, :pid, 'mono', :st, 'abcd', 'test', 'hash1')"
+                        ),
+                        {
+                            "id": uuid.uuid4(),
+                            "sid": uuid.uuid4(),
+                            "pid": uuid.uuid4().hex,
+                            "st": status,
+                        },
+                    )
+
+                add("disconnected")
+                add("active")
+                with pytest.raises(IntegrityError):
+                    with conn.begin_nested():
+                        add("needs_attention")
+            finally:
+                trans.rollback()
+    finally:
+        engine.dispose()

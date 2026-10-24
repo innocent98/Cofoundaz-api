@@ -329,22 +329,32 @@ def connect_mono(
         "last_error": None,
         "connected_by_user_id": user_id,
     }
-    if row is None:
-        row = FinanceConnection(
-            startup_id=startup_id,
-            provider=BANK_PROVIDER,
-            public_id=secrets.token_urlsafe(32),
-            **fields,
-        )
-        db.add(row)
-    else:
-        if row.status == _DISCONNECTED:
-            row.public_id = secrets.token_urlsafe(32)
-            row.last_sync_at = None
-            row.last_sync_summary = None
-        for k, v in fields.items():
-            setattr(row, k, v)
-    db.flush()
+    try:
+        with db.begin_nested():
+            if row is None:
+                row = FinanceConnection(
+                    startup_id=startup_id,
+                    provider=BANK_PROVIDER,
+                    public_id=secrets.token_urlsafe(32),
+                    **fields,
+                )
+                db.add(row)
+            else:
+                if row.status == _DISCONNECTED:
+                    row.public_id = secrets.token_urlsafe(32)
+                    row.last_sync_at = None
+                    row.last_sync_summary = None
+                for k, v in fields.items():
+                    setattr(row, k, v)
+            db.flush()
+    except IntegrityError:
+        # A double-submit (same workspace) or another workspace linking the same account at the
+        # same moment: the unique indexes decide, we answer 409 instead of a 500.
+        raise _bank_error(
+            "BANK_LINK_CONFLICT",
+            "That bank link is already being saved. Refresh and check the status.",
+            409,
+        ) from None
     write_audit(
         db,
         f"finance.connection.{action}",

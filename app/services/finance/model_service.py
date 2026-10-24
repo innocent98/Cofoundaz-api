@@ -140,7 +140,7 @@ def effective_starting(row: FinancialModel) -> dict[str, Any] | None:
     return out
 
 
-def serialize_model(row: FinancialModel) -> dict[str, Any]:
+def serialize_model(row: FinancialModel, warnings: list[str] | None = None) -> dict[str, Any]:
     months = _months_of(row)
     pnl, cash_flow, balance_sheet = row.pnl, row.cash_flow, row.balance_sheet
     yearly = None
@@ -166,6 +166,7 @@ def serialize_model(row: FinancialModel) -> dict[str, Any]:
         months=months,
         yearly=yearly,
         balance_check=_balance_check(row),
+        warnings=warnings or [],
         error=row.error,
         generated_at=row.generated_at,
         recalculated_at=row.recalculated_at,
@@ -245,9 +246,30 @@ def _anchor(row: FinancialModel, starting: dict[str, Any]) -> date:
     return datetime.now(UTC).date()
 
 
+def _outside_window(overrides: dict[str, Any] | None, months: list[str]) -> list[str]:
+    """Saved edits whose month is not inside the projection (hires only if they start after it)."""
+    lo, hi = months[0], months[-1]
+    out: list[str] = []
+    for name, key, noun in (
+        ("hiring_plan", "start_month", "Hire"),
+        ("one_offs", "month", "One-off"),
+        ("capex", "month", "Capex"),
+    ):
+        for item in (overrides or {}).get(name) or []:
+            month = item[key]
+            too_early = month < lo and name != "hiring_plan"  # an earlier hire still applies
+            if too_early or month > hi:
+                label = item.get("role") or item.get("label")
+                out.append(
+                    f"{noun} '{label}' ({month}) is outside the projection {lo} to {hi} "
+                    "and is not included."
+                )
+    return out
+
+
 def recalculate(
     db: Session, *, startup_id: uuid.UUID, model_id: uuid.UUID, refresh_actuals: bool = False
-) -> FinancialModel:
+) -> tuple[FinancialModel, list[str]]:
     """Re-run the deterministic engine with the founder's edits. Never calls the AI."""
     row = _locked_complete(db, startup_id=startup_id, model_id=model_id)
     if refresh_actuals or row.starting is None:
@@ -277,4 +299,4 @@ def recalculate(
     row.calculated_rev = row.overrides_rev
     row.recalculated_at = datetime.now(UTC)
     db.flush()
-    return row
+    return row, _outside_window(row.overrides, months)

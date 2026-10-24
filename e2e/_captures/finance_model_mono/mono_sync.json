@@ -1,13 +1,13 @@
 {
   "data": {
     "connection": {
-      "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
+      "id": "e3afbff2-e973-40d9-8d1c-25da6650340b",
       "provider": "mono",
       "status": "active",
       "mode": "test",
       "key_last4": "6789",
       "account_name": "Stub Bank \u00b7 NovaPay Ltd",
-      "last_sync_at": "2026-10-24T11:53:27.319730Z",
+      "last_sync_at": "2026-10-24T12:15:05.131505Z",
       "last_error": null,
       "last_sync_summary": {
         "fees": 0,
@@ -20,10 +20,11 @@
         "invoice_matched": 0,
         "paystack_payouts": 1,
         "skipped_currency": 0,
-        "skipped_oversize": 0
+        "skipped_oversize": 0,
+        "paystack_unmatched": 0
       },
       "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-      "created_at": "2026-10-24T11:53:27.188338Z"
+      "created_at": "2026-10-24T12:15:05.096448Z"
     },
     "summary": {
       "imported": 0,
@@ -36,6 +37,7 @@
       "credits": 2,
       "debits": 1,
       "paystack_payouts": 1,
+      "paystack_unmatched": 0,
       "fetched": 3
     }
   },

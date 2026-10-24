@@ -38,7 +38,7 @@ class FinanceConnection(UUIDMixin, TimestampMixin, Base):
     # Mono only: SHA-256 of the linked bank account id, so an inbound webhook can find its
     # connection without decrypting every row (the id itself stays Fernet-encrypted in
     # key_ciphertext).
-    provider_account_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    provider_account_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sync_cursor: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_sync_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -49,6 +49,13 @@ class FinanceConnection(UUIDMixin, TimestampMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("startup_id", "provider", name="uq_finance_connections_startup_provider"),
+        # One bank account serves one workspace, and a webhook finds exactly one connection.
+        Index(
+            "uq_finance_connections_live_account",
+            "provider_account_hash",
+            unique=True,
+            postgresql_where=text("status <> 'disconnected'"),
+        ),
         # One live PAYMENT provider per workspace (Paystack or Flutterwave). The bank link (Mono)
         # sits beside it: D-FIN-10 needs both at once to tell a payout from other deposits.
         Index(

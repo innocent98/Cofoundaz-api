@@ -15,6 +15,7 @@ from app.core.errors import AppError
 from app.core.logger import log
 from app.db.models.enums import ConnectionStatus
 from app.db.models.finance_connection import FinanceConnection
+from app.db.models.job import Job, JobStatus
 from app.platform.jobs import job_dispatcher
 from app.services.finance.payments.mono import MonoProvider
 
@@ -30,10 +31,26 @@ def _account_id(data: Any) -> str | None:
         return None
     account = data.get("account")
     if isinstance(account, dict):
-        account = account.get("id")
+        # Mono's webhook bodies carry the account as `data.account._id`.
+        account = account.get("_id") or account.get("id")
     if not isinstance(account, str):
         account = data.get("id")
     return account if isinstance(account, str) and account else None
+
+
+def _sync_pending(db: Session, conn: FinanceConnection, job_type: str) -> bool:
+    return (
+        db.execute(
+            select(Job.id)
+            .where(
+                Job.type == job_type,
+                Job.status.in_((JobStatus.queued, JobStatus.running)),
+                Job.payload["connection_id"].astext == str(conn.id),
+            )
+            .limit(1)
+        ).first()
+        is not None
+    )
 
 
 def process(db: Session, *, raw_body: bytes, headers: Mapping[str, str]) -> dict[str, bool]:
@@ -79,6 +96,8 @@ def process(db: Session, *, raw_body: bytes, headers: Mapping[str, str]) -> dict
             # Imported by the worker, not in this request: Mono expects a quick 200.
             from app.worker.scheduler import SCHED_PAYMENTS_SYNC  # avoid a service->worker cycle
 
+            if _sync_pending(db, conn, SCHED_PAYMENTS_SYNC):
+                return {"received": True}  # a replay or burst: the queued sync covers it
             job_dispatcher.enqueue(
                 db,
                 SCHED_PAYMENTS_SYNC,

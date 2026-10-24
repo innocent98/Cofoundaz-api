@@ -260,6 +260,10 @@ def test_finance_model_and_mono_journey(
             json={"secret_key": f"sk_test_{uuid.uuid4().hex}"},
         )
         assert ps.status_code == 200, ps.text
+        # ...and its charges must be in the ledger for a payout to be explained.
+        ps_sync = c.post(f"{API}/finance/integrations/paystack/sync", headers=wh)
+        assert ps_sync.status_code == 200, ps_sync.text
+        assert ps_sync.json()["data"]["summary"]["imported"] == 1
 
         connected = c.post(
             f"{API}/finance/integrations/mono/connect", headers=wh, json={"code": "code_ok"}
@@ -276,6 +280,7 @@ def test_finance_model_and_mono_journey(
         capture(G, "mono_sync", synced)
         summary = synced.json()["data"]["summary"]
         assert (summary["credits"], summary["debits"], summary["paystack_payouts"]) == (2, 1, 1)
+        assert summary["paystack_unmatched"] == 0
 
         ledger = c.get(f"{API}/finance/transactions", headers=wh)
         capture(G, "ledger_after_mono_sync", ledger)
@@ -299,7 +304,7 @@ def test_finance_model_and_mono_journey(
             {
                 "event": "mono.events.account_updated",
                 "data": {
-                    "account": {"id": "stubmonoacct0001"},
+                    "account": {"_id": "stubmonoacct0001"},
                     "meta": {"data_status": "AVAILABLE"},
                 },
             }
@@ -332,7 +337,7 @@ def test_finance_model_and_mono_journey(
         reauth = json.dumps(
             {
                 "event": "mono.events.reauthorisation_required",
-                "data": {"account": {"id": "stubmonoacct0001"}},
+                "data": {"account": {"_id": "stubmonoacct0001"}},
             }
         )
         r = c.post(
