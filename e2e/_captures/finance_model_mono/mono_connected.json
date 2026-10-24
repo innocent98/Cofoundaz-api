@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "34a45518-abff-4523-9149-bc5857aca4e4",
+    "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
     "provider": "mono",
     "status": "active",
     "mode": "test",
@@ -10,7 +10,7 @@
     "last_error": null,
     "last_sync_summary": null,
     "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-    "created_at": "2026-10-24T11:18:53.318209Z"
+    "created_at": "2026-10-24T11:53:27.188338Z"
   },
   "meta": null
 }

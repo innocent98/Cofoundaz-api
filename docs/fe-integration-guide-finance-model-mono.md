@@ -45,7 +45,7 @@ Fresh model, before any edit (cut to the non-statement keys):
 ```json
 {
   "data": {
-    "id": "866216e2-b867-4527-831c-43716566fdef",
+    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -598,7 +598,7 @@ Response `200` (cut to the non-statement keys; **statements are unchanged and `s
 ```json
 {
   "data": {
-    "id": "866216e2-b867-4527-831c-43716566fdef",
+    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -749,7 +749,7 @@ generated: **adding a transaction later does not move the model.** `{"refresh_ac
 ```json
 {
   "data": {
-    "id": "866216e2-b867-4527-831c-43716566fdef",
+    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -782,7 +782,7 @@ generated: **adding a transaction later does not move the model.** `{"refresh_ac
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:18:53.183953Z",
+    "recalculated_at": "2026-10-24T11:53:26.613733Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -841,7 +841,7 @@ With `refresh_actuals`:
 ```json
 {
   "data": {
-    "id": "866216e2-b867-4527-831c-43716566fdef",
+    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -874,7 +874,7 @@ With `refresh_actuals`:
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:18:53.214751Z",
+    "recalculated_at": "2026-10-24T11:53:26.725443Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -934,7 +934,7 @@ edits and `stale` is true again:
 ```json
 {
   "data": {
-    "id": "866216e2-b867-4527-831c-43716566fdef",
+    "id": "5cfb559a-836c-4868-b6cf-b77f141a2a4d",
     "status": "complete",
     "horizon_months": 36,
     "currency": "NGN",
@@ -946,7 +946,7 @@ edits and `stale` is true again:
       "depreciation_months": 24,
       "monthly_revenue_growth_pct": 6.0
     },
-    "recalculated_at": "2026-10-24T11:18:53.214751Z",
+    "recalculated_at": "2026-10-24T11:53:26.725443Z",
     "balance_check": {
       "balanced": true,
       "max_abs_difference_minor": 0
@@ -1056,7 +1056,7 @@ Request: `{"code": "code_ok"}` (placeholder; a real code comes from the widget).
 ```json
 {
   "data": {
-    "id": "34a45518-abff-4523-9149-bc5857aca4e4",
+    "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
     "provider": "mono",
     "status": "active",
     "mode": "test",
@@ -1066,7 +1066,7 @@ Request: `{"code": "code_ok"}` (placeholder; a real code comes from the widget).
     "last_error": null,
     "last_sync_summary": null,
     "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-    "created_at": "2026-10-24T11:18:53.318209Z"
+    "created_at": "2026-10-24T11:53:27.188338Z"
   },
   "meta": null
 }
@@ -1177,7 +1177,7 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
   "data": {
     "transactions": [
       {
-        "id": "b4505eba-3d6a-4b5a-a742-83d7cd5d7d45",
+        "id": "dd83054e-54e6-43c1-ac45-39611854cac0",
         "date": "2026-10-01",
         "description": "PAYSTACK TRANSFER SETTLEMENT",
         "category": "Paystack payout",
@@ -1185,23 +1185,11 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
         "currency": "NGN",
         "direction": "in",
         "source": "bank",
-        "created_at": "2026-10-24T11:18:53.341716Z",
-        "updated_at": "2026-10-24T11:18:53.341716Z"
+        "created_at": "2026-10-24T11:53:27.299778Z",
+        "updated_at": "2026-10-24T11:53:27.299778Z"
       },
       {
-        "id": "35ca8823-7b06-4aab-97c0-69e8790c0d03",
-        "date": "2026-10-01",
-        "description": "POS purchase office supplies",
-        "category": null,
-        "amount_minor": 250000,
-        "currency": "NGN",
-        "direction": "out",
-        "source": "bank",
-        "created_at": "2026-10-24T11:18:53.341716Z",
-        "updated_at": "2026-10-24T11:18:53.341716Z"
-      },
-      {
-        "id": "224b8909-3848-4522-969b-8853f9d0de33",
+        "id": "a16d1acb-d14c-4093-8b77-16644d021882",
         "date": "2026-10-01",
         "description": "NIP transfer from ACME Ltd",
         "category": null,
@@ -1209,8 +1197,20 @@ Ledger rows after the first sync, bank rows only (the journey had connected Pays
         "currency": "NGN",
         "direction": "in",
         "source": "bank",
-        "created_at": "2026-10-24T11:18:53.341716Z",
-        "updated_at": "2026-10-24T11:18:53.341716Z"
+        "created_at": "2026-10-24T11:53:27.299778Z",
+        "updated_at": "2026-10-24T11:53:27.299778Z"
+      },
+      {
+        "id": "2054f3fd-466a-40cf-af09-03e3a26c9d60",
+        "date": "2026-10-01",
+        "description": "POS purchase office supplies",
+        "category": null,
+        "amount_minor": 250000,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "bank",
+        "created_at": "2026-10-24T11:53:27.299778Z",
+        "updated_at": "2026-10-24T11:53:27.299778Z"
       }
     ]
   },
@@ -1276,13 +1276,13 @@ carries the sentence to show, and the fix is **Connect again** (founder only). J
         "key_hint": "Link your bank account with Mono Connect",
         "kind": "bank",
         "connection": {
-          "id": "34a45518-abff-4523-9149-bc5857aca4e4",
+          "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
           "provider": "mono",
           "status": "needs_attention",
           "mode": "test",
           "key_last4": "6789",
           "account_name": "Stub Bank · NovaPay Ltd",
-          "last_sync_at": "2026-10-24T11:18:53.423235Z",
+          "last_sync_at": "2026-10-24T11:53:27.761052Z",
           "last_error": "Your bank needs you to re-authorise access. Reconnect your bank to resume syncing.",
           "last_sync_summary": {
             "fees": 0,
@@ -1298,7 +1298,7 @@ carries the sentence to show, and the fix is **Connect again** (founder only). J
             "skipped_oversize": 0
           },
           "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-          "created_at": "2026-10-24T11:18:53.318209Z"
+          "created_at": "2026-10-24T11:53:27.188338Z"
         },
         "connect_config": {
           "configured": true,
@@ -1320,13 +1320,13 @@ Disconnect (founder only; forgets the account, imported rows stay, a later Sync 
 ```json
 {
   "data": {
-    "id": "34a45518-abff-4523-9149-bc5857aca4e4",
+    "id": "90bb5bb3-edfc-4830-b94c-1413853887cd",
     "provider": "mono",
     "status": "disconnected",
     "mode": "test",
     "key_last4": "6789",
     "account_name": "Stub Bank · NovaPay Ltd",
-    "last_sync_at": "2026-10-24T11:18:53.423235Z",
+    "last_sync_at": "2026-10-24T11:53:27.761052Z",
     "last_error": null,
     "last_sync_summary": {
       "fees": 0,
@@ -1342,7 +1342,7 @@ Disconnect (founder only; forgets the account, imported rows stay, a later Sync 
       "skipped_oversize": 0
     },
     "webhook_url": "http://127.0.0.1:8011/api/v1/webhooks/mono",
-    "created_at": "2026-10-24T11:18:53.318209Z"
+    "created_at": "2026-10-24T11:53:27.188338Z"
   },
   "meta": null
 }
