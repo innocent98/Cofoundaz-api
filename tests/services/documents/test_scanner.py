@@ -58,3 +58,21 @@ def test_pending_verdict_leaves_the_file_unscanned(db, monkeypatch):
     f = _file(db)
     scan_file(db, f, b"x")
     assert f.scan_status == ScanStatus.pending and f.scanned_at is None
+
+
+def test_noop_scanner_warns_outside_dev_and_test(monkeypatch):
+    from app.core.logger import log
+
+    seen: list[str] = []
+    sink = log.add(lambda m: seen.append(str(m)), level="WARNING")
+    try:
+        scanner.warn_if_noop_scanner("development")
+        scanner.warn_if_noop_scanner("test")
+        assert seen == []
+        scanner.warn_if_noop_scanner("production")
+        assert len(seen) == 1 and "no-op placeholder" in seen[0]
+        monkeypatch.setattr(scanner, "get_scanner", lambda: object())
+        scanner.warn_if_noop_scanner("production")  # a real scanner: silent
+        assert len(seen) == 1
+    finally:
+        log.remove(sink)

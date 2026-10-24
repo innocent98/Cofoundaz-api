@@ -135,6 +135,12 @@ def test_documents_access_journey(
         token = req.json()["data"]["signer_links"][0].rsplit("/", 1)[-1]
         cap("signature_request_create", req)
 
+        shared = c.get("/api/v1/shared/" + share.json()["data"]["link"].rsplit("/", 1)[-1])
+        assert shared.status_code == 200, shared.text
+        assert "id" not in shared.json()["data"]["document"]
+        assert "folder" not in shared.json()["data"]["document"]
+        cap("shared_open", shared)
+
         # --- every route, every role ----------------------------------------------------------
         reads = [
             "/api/v1/document-templates",
@@ -202,6 +208,16 @@ def test_documents_access_journey(
         assert c.get("/api/v1/documents", headers=mentor).status_code == 403
         assert c.get("/api/v1/documents", headers=team).status_code == 200
 
+        # --- editors read files through a short-lived signed link only ----------------------------
+        assert "url" not in pdf.json()["data"]
+        link = c.get(f"/api/v1/documents/files/{file_id}/download", headers=founder)
+        assert link.status_code == 200, link.text
+        cap("file_download_link", link)
+        served = c.get(link.json()["data"]["url"])  # no auth header: the signed token
+        assert served.status_code == 200 and served.content.startswith(b"%PDF-")
+        assert c.get(f"/api/v1/documents/files/{file_id}/download", headers=mentor).status_code == 403
+        assert c.get(link.json()["data"]["url"] + "x").status_code == 404
+
         # --- delete refused while a request exists ---------------------------------------------
         blocked = c.delete(f"/api/v1/documents/files/{file_id}", headers=founder)
         assert blocked.status_code == 409, blocked.text
@@ -211,8 +227,12 @@ def test_documents_access_journey(
         # --- signer signs; audit fields reach editors only -------------------------------------
         view = c.get(f"/api/v1/sign/{token}")
         assert view.status_code == 200, view.text
-        assert view.json()["data"]["file"]["scan_status"] == "clean"
+        sfile = view.json()["data"]["file"]
+        assert set(sfile) == {"filename", "content_type", "size_bytes", "download_url"}
         cap("sign_view", view)
+        # the signer's file link is live while the token is, and serves the bytes
+        got_file = c.get(sfile["download_url"])
+        assert got_file.status_code == 200 and got_file.content.startswith(b"%PDF-")
         signed = c.post(
             f"/api/v1/sign/{token}",
             json={"typed_name": "Sam Signer"},
@@ -221,6 +241,9 @@ def test_documents_access_journey(
         assert signed.status_code == 200, signed.text
         assert "signers" not in signed.json()["data"] and "e2e-ua" not in signed.text
         cap("sign_public_response", signed)
+        assert c.get(sfile["download_url"]).status_code == 404  # signed: the file link is dead too
+        gone = c.get(f"/api/v1/sign/{token}")
+        assert gone.status_code == 404
         detail = c.get(f"/api/v1/documents/signature-requests/{req_id}", headers=founder)
         s0 = detail.json()["data"]["signers"][0]
         assert s0["signed_user_agent"] == "e2e-ua" and s0["signed_ip"]

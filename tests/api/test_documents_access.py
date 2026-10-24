@@ -83,6 +83,7 @@ ROUTES = [
     ("GET", "/documents/files", None, False),
     ("POST", "/documents/files", None, True),
     ("GET", "/documents/files/{file}", None, False),
+    ("GET", "/documents/files/{file}/download", None, False),
     ("GET", "/documents/shares", None, False),
     ("GET", "/documents/{doc}/shares", None, False),
     ("POST", "/documents/{doc}/shares", {"email": "z@example.com", "access_level": "view"}, False),
@@ -134,7 +135,12 @@ def test_founder_and_team_member_reach_every_documents_route(client, world, role
 
 
 def test_matrix_covers_every_documents_route():
-    public = {"/api/v1/shared/{token}", "/api/v1/sign/{token}"}
+    public = {  # the token (or signed link) is the credential
+        "/api/v1/shared/{token}",
+        "/api/v1/sign/{token}",
+        "/api/v1/sign/{token}/file",
+        "/api/v1/documents/files/download",
+    }
     path_names = {  # the matrix spells path params with its own names
         "{document_id}": "{doc}",
         "{file_id}": "{file}",

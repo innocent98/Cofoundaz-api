@@ -40,6 +40,7 @@ unchanged: the token is the credential.
 | `/documents/{id}` | GET, PUT, DELETE | `_editor` |
 | `/documents/files` | GET, POST | `_editor` |
 | `/documents/files/{id}` | GET, DELETE | `_editor` |
+| `/documents/files/{id}/download` | GET | `_editor` |
 | `/documents/shares` | GET | `_editor` |
 | `/documents/{id}/shares` | GET, POST | `_editor` |
 | `/documents/{id}/shares/{share_id}` | DELETE | `_editor` |
@@ -81,12 +82,33 @@ mark the file gone — needs a tombstone model and an executed-PDF story that BE
 `app/api/v1/endpoints/documents.py` · `app/services/documents/{files,signatures,shares,sniff,scanner}.py`
 · `app/db/models/{document,enums}.py` · `app/core/errors.py` (`FileHasSignatureRequests`,
 `FileNotClean`) · `app/services/notifications/{audience,registry}.py` · `app/platform/activity.py` ·
-`app/services/search/service.py` · `alembic/versions/0072_documents_scan_status.py`.
+`app/services/search/service.py` · `app/services/documents/files_backfill.py` ·
+`alembic/versions/0072_documents_scan_status.py`.
 
 Migration `0072` (down_revision `0071_finance_slice_e`): adds `scan_status` (server default
-`pending`) and `scanned_at`; **grandfathers existing rows to `clean`** (they predate any scan hook, and
-live signature requests must keep working); replaces the `signature_requests.file_id` FK with
-`NO ACTION`. Downgrade restores `CASCADE` and drops the columns.
+`pending`), `scanned_at` and `is_private`; makes `url` nullable; marks **only files already referenced
+by a signature request `clean`** (live requests keep working, every other pre-existing file stays
+`pending`); replaces the `signature_requests.file_id` FK with `NO ACTION`. Downgrade restores
+`CASCADE`, backfills empty `url`s and drops the columns.
+
+## Security-review follow-up (same PR)
+
+An Opus review of the first cut found these; all fixed in this PR:
+
+| Finding | Fix |
+|---|---|
+| HIGH: files were stored publicly and `url` was returned everywhere (incl. `/sign/{token}`), so the role/scan gates only hid the link | New uploads use `save_private` (Cloudinary `authenticated`). `url` is gone from every response. Editors: `GET /documents/files/{id}/download` (F+TM, `clean` only) → 5-minute signed link (provider-signed, or `GET /documents/files/download?token=` on local storage, HMAC via `app/platform/signed_urls.py`). Signers: `GET /sign/{token}/file`, valid only while the token is active (404 after signing/cancel/expiry/block). Same pattern as receipts |
+| HIGH (ops): legacy public files | `python -m app.services.documents.files_backfill` (in `app/`, ships in the image): `make_private` for every non-private file and re-sniff stored bytes of `pending` ones (mismatch → `blocked`, else scanner hook). Idempotent; unreadable bytes stay `pending`. Lazy fallback: the first download of a legacy file moves it |
+| MED: migration blanket-trusted old files | See migration above |
+| MED: public token routes unthrottled | `shared_limit` per caller across tokens: `/shared/{token}` 30/min (`public-doc-share`), `GET /sign/{token}` and `/sign/{token}/file` 30/min (`public-sign-read`), `POST /sign/{token}` 10/min (`public-sign`), `/documents/files/download` 30/min (`public-doc-file`) |
+| LOW/MED: delete vs create-request race (500 + orphan) | `SELECT … FOR UPDATE` on the file row in `delete_file`'s caller and the request create; the stored object is deleted only after the commit (`purge_object`, failure logged) |
+| LOW: no-op scanner silent in prod | `warn_if_noop_scanner(settings.ENVIRONMENT)` at import of `app/main.py` logs a WARNING outside development/test |
+| LOW: public responses leaked internals | `/shared/{token}` drops `id`/`folder`; `/sign/{token}` `file` is `{filename, content_type, size_bytes, download_url}` |
+
+**Deploy order:** deploy → `alembic upgrade head` → run `python -m app.services.documents.files_backfill`
+(until it has run, legacy files that are not referenced by a signature request cannot be sent for
+signing). **Known limit:** a signed link already issued stays valid until its 5-minute expiry even if the
+user's access is revoked meanwhile.
 
 ## Verification
 

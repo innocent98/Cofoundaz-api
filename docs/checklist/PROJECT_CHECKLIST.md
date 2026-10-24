@@ -1604,6 +1604,11 @@ gap-list rows 1–6, 25, 37 (D-DOC-1..4)
       signing gated on `clean`
 - [x] File delete refused (409) while any signature request exists; FK no longer cascades
 - [x] `signed_ip` / `signed_user_agent` returned to editors
+- [x] Security review fixes: files stored private, no `url` anywhere, 5-minute signed download links
+      (editors `GET .../{id}/download`; signers `GET /sign/{token}/file` only while the token is
+      active), `files_backfill` job, migration trusts only signature-referenced files, rate limits on
+      all public Documents routes, row lock + post-commit object delete, no-op scanner warning,
+      public responses trimmed
 - [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
       `e2e/test_documents_access.py`; four FE guides updated from live captures
 - [ ] _Next (BE-B):_ versions, trash, rename/move/tag, folders, search, per-person grants + "Shared with me"

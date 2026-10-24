@@ -1,6 +1,6 @@
 {
-  "to": "delivered+shared-with-045032374707@resend.dev",
+  "to": "delivered+shared-with-32d53484daef@resend.dev",
   "subject": "A document was shared with you on Cofoundaz",
   "html": "<p>You can view the document here: <a href=\"http://localhost:3000/shared/REDACTED_TOKEN\">http://localhost:3000/shared/REDACTED_TOKEN</a></p>",
-  "sent_at": "2026-10-24T20:44:27.692162+00:00"
+  "sent_at": "2026-10-24T21:30:15.251014+00:00"
 }

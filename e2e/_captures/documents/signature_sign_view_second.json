@@ -5,17 +5,13 @@
       "status": "awaiting"
     },
     "file": {
-      "id": "90769775-57af-4249-8904-30e3185acb52",
       "filename": "investor-agreement.pdf",
       "content_type": "application/pdf",
       "size_bytes": 47,
-      "folder": null,
-      "url": "var/storage/documents/030f1b8b-54bd-4100-8697-e820cc0f382f/9a5ebd5163824fa5b9fa607b4c78886b.pdf",
-      "scan_status": "clean",
-      "uploaded_at": "2026-10-24T20:44:30.281515+00:00"
+      "download_url": "http://127.0.0.1:8073/api/v1/sign/REDACTED_TOKEN/file"
     },
     "signer": {
-      "email": "delivered+signer-two-505eb5e01d76@resend.dev",
+      "email": "delivered+signer-two-83dc9fdfe49c@resend.dev",
       "name": "Bello Legal"
     }
   },

@@ -1,65 +1,63 @@
 {
   "data": {
     "document": {
-      "id": "17bcbead-e560-4604-b06e-8819ca51cb3f",
       "kind": "business_plan",
       "title": "Business Plan",
       "status": "draft",
       "ai_generated": false,
-      "folder": null,
       "template_key": "business_plan",
       "version": 1,
-      "updated_at": "2026-10-24T20:44:27.656019+00:00",
+      "updated_at": "2026-10-24T21:30:15.213314+00:00",
       "sections": [
         {
-          "id": "c89b9f2f-6890-4e8c-9c8a-56572152ac00",
+          "id": "2aea4f5e-5857-438d-891b-d142ccaacf73",
           "body": "",
           "heading": "Executive Summary"
         },
         {
-          "id": "797fb42d-32f4-4f31-9b3b-7c4e2ccec3cf",
+          "id": "3a979388-a8e9-4182-9263-e079c45d467f",
           "body": "",
           "heading": "Problem"
         },
         {
-          "id": "a00390b6-4325-4941-aa38-728d1f636ea2",
+          "id": "adbb7783-3eec-40d1-b952-171947f5ae93",
           "body": "",
           "heading": "Solution"
         },
         {
-          "id": "98f1cd2b-60b4-4ddb-8fcd-17382c9faab9",
+          "id": "b80a7edb-c9a3-4db1-bd07-60454e17db0a",
           "body": "",
           "heading": "Market & Customer"
         },
         {
-          "id": "616db284-e505-414d-8094-1d0a80d7476f",
+          "id": "22c049e3-5fb4-4a70-b244-f3211d83cf20",
           "body": "",
           "heading": "Business Model"
         },
         {
-          "id": "98a0d44c-3921-4a7e-9ff6-0c79b8fb8c44",
+          "id": "43b7a022-4a82-4328-95ca-0247589120a4",
           "body": "",
           "heading": "Go-to-Market"
         },
         {
-          "id": "9fccbd3e-6646-4e96-b943-042315cbf28c",
+          "id": "25c299a7-72fc-48a8-a5be-8ca9c38859d0",
           "body": "",
           "heading": "Team"
         },
         {
-          "id": "35cf147b-eb1e-44a7-9eb8-45bc28523959",
+          "id": "678951c1-2e46-4a15-9f3f-fa28a7c7046c",
           "body": "",
           "heading": "Financials"
         },
         {
-          "id": "d7427707-1e2b-42f5-8379-d40cc6fac66a",
+          "id": "5f77d2f7-4acf-46ae-9288-eb551abc9cb8",
           "body": "",
           "heading": "The Ask"
         }
       ]
     },
     "access_level": "view",
-    "expires_at": "2026-11-23T20:44:27.684270+00:00"
+    "expires_at": "2026-11-23T21:30:15.245276+00:00"
   },
   "meta": null
 }

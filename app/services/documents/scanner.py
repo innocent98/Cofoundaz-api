@@ -17,6 +17,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
+from app.core.logger import log
 from app.db.models.document import DocumentFile
 from app.db.models.enums import ScanStatus
 from app.platform.events import event_bus
@@ -37,6 +38,17 @@ class NoopScanner:
 
 def get_scanner() -> Scanner:
     return NoopScanner()
+
+
+def warn_if_noop_scanner(environment: str) -> None:
+    """Shout (WARNING) when the placeholder scanner is live outside dev/test: every upload is then
+    waved through as `clean` after the magic-byte check alone."""
+    if isinstance(get_scanner(), NoopScanner) and environment not in ("development", "test"):
+        log.warning(
+            "Documents scanner is the no-op placeholder in environment={}: uploaded files are "
+            "marked clean without a malware scan. Wire a real scanner in get_scanner().",
+            environment,
+        )
 
 
 def apply_verdict(db: Session, file: DocumentFile, verdict: ScanStatus) -> None:

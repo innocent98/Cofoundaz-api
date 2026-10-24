@@ -1,7 +1,8 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -9,14 +10,17 @@ from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import AppError, NotFound
 from app.core.logger import log
+from app.core.rate_limit import limiter
 from app.db.models.document import Document, DocumentFile, SignatureRequest
-from app.db.models.enums import DOCUMENT_ROLES, DocumentKind, DocumentStatus
+from app.db.models.enums import DOCUMENT_ROLES, DocumentKind, DocumentStatus, ScanStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.platform.email import EmailMessage, get_email_sender
+from app.platform.signed_urls import InvalidSignedToken, verify_key
+from app.platform.storage import get_storage
 from app.schemas.document import (
     DocumentCreate,
     DocumentSave,
@@ -26,8 +30,12 @@ from app.schemas.document import (
 )
 from app.services.documents.files import (
     delete_file,
+    file_by_key,
+    file_link,
     get_file,
     list_files,
+    local_path,
+    purge_object,
     serialize_file,
     upload_file,
 )
@@ -82,6 +90,27 @@ def _fe_base_url() -> str:
     app/services/auth/emails.py::_base_url so both flows resolve links the same way.
     """
     return (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
+
+
+def _api_public_url() -> str:
+    return settings.API_PUBLIC_URL or settings.SERVER_HOST
+
+
+def _file_response(file: DocumentFile) -> FileResponse:
+    path = local_path(file)
+    if path is None:
+        raise NotFound()
+    safe = file.filename.replace('"', "").replace("\r", "").replace("\n", "")
+    return FileResponse(
+        path,
+        media_type=file.content_type,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "Content-Disposition": f'attachment; filename="{safe}"',
+        },
+    )
 
 
 def _startup(db: Session, membership: Membership) -> Startup:
@@ -247,6 +276,26 @@ def list_document_files(
     return success_response({"files": [serialize_file(r) for r in rows]})
 
 
+@router.get("/documents/files/download", response_class=FileResponse)
+@limiter.shared_limit("30/minute", scope="public-doc-file")
+def download_document_file(
+    request: Request,
+    token: str = Query(..., min_length=1, max_length=2000),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> FileResponse:
+    """Serves a locally stored file to the holder of a valid, unexpired signed link. The link is
+    only issued by `GET /documents/files/{id}/download` after the role and scan checks; expired,
+    tampered, unknown, or no-longer-clean is the same 404."""
+    try:
+        claim = verify_key(token)
+    except InvalidSignedToken:
+        raise NotFound() from None
+    file = file_by_key(db, startup_id=claim.startup_id, key=claim.key)
+    if file is None or file.scan_status != ScanStatus.clean:
+        raise NotFound()
+    return _file_response(file)
+
+
 @router.get("/documents/files/{file_id}")
 def get_document_file(
     file_id: uuid.UUID,
@@ -257,6 +306,20 @@ def get_document_file(
     return success_response(serialize_file(get_file(db, membership, file_id)))
 
 
+@router.get("/documents/files/{file_id}/download")
+def download_document_file_link(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The only way to read an uploaded file: a signed link that expires in a few minutes.
+    Founder / team member only, and only for a `clean` file."""
+    link = file_link(get_file(db, membership, file_id, lock=True), api_public_url=_api_public_url())
+    db.commit()  # persists a legacy file's move behind authentication
+    return success_response(link)
+
+
 @router.delete("/documents/files/{file_id}")
 def delete_document_file(
     file_id: uuid.UUID,
@@ -264,8 +327,12 @@ def delete_document_file(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    delete_file(db, get_file(db, membership, file_id))
+    # Row lock first: a concurrent "send for signature" on this file waits, then finds it gone
+    # (404) or, if it won the race, makes this delete see the request (409). The stored object
+    # is removed only after the commit succeeds.
+    target = delete_file(db, get_file(db, membership, file_id, lock=True))
     db.commit()
+    purge_object(target)
     return success_response({"deleted": True})
 
 
@@ -340,7 +407,10 @@ def revoke_share_endpoint(
 
 
 @router.get("/shared/{token}")
+# One bucket per caller across every token (a per-URL bucket would let a caller guess tokens freely).
+@limiter.shared_limit("30/minute", scope="public-doc-share")
 def open_shared_endpoint(
+    request: Request,
     token: str,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -349,7 +419,10 @@ def open_shared_endpoint(
     db.commit()  # persists last_viewed_at
     return success_response(
         {
-            "document": serialize_document(doc),
+            # No internal id or folder: the token holder needs the content, not our bookkeeping.
+            "document": {
+                k: v for k, v in serialize_document(doc).items() if k not in ("id", "folder")
+            },
             "access_level": share.access_level.value,
             "expires_at": share.expires_at.isoformat() if share.expires_at else None,
         }
@@ -374,7 +447,7 @@ def create_signature_request_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    file = get_file(db, membership, file_id)  # 404 if missing/cross-tenant
+    file = get_file(db, membership, file_id, lock=True)  # 404 if missing/cross-tenant
     title = body.title or file.filename
     req, pairs = create_request(
         db,
@@ -429,30 +502,64 @@ def cancel_signature_request_endpoint(
 
 
 @router.get("/sign/{token}")
+@limiter.shared_limit("30/minute", scope="public-sign-read")
 def view_for_signing_endpoint(
+    request: Request,
     token: str,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     signer = open_for_signing(db, token)  # 404 unknown/expired/cancelled/complete/signed
-    request = get_request_by_id(db, signer.request_id)
-    file = db.query(DocumentFile).filter_by(id=request.file_id).one()
+    sign_request = get_request_by_id(db, signer.request_id)
+    file = db.query(DocumentFile).filter_by(id=sign_request.file_id).one()
     return success_response(
         {
             "request": {
-                "title": request.title,
-                "status": serialize_request(db, request, with_signers=False)["status"],
+                "title": sign_request.title,
+                "status": serialize_request(db, sign_request, with_signers=False)["status"],
             },
-            "file": serialize_file(file),
+            # Only what the signer needs: no internal id, folder or upload time. The content is
+            # fetched from `download_url`, which re-checks that this token is still active.
+            "file": {
+                "filename": file.filename,
+                "content_type": file.content_type,
+                "size_bytes": file.size_bytes,
+                "download_url": f"{_api_public_url().rstrip('/')}/api/v1/sign/{token}/file",
+            },
             "signer": {"email": signer.email, "name": signer.name},
         }
     )
 
 
+@router.get("/sign/{token}/file")
+@limiter.shared_limit("30/minute", scope="public-sign-read")
+def sign_file_endpoint(
+    request: Request,
+    token: str,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    """The file behind a signing link. Valid only while the token is active (not signed, not
+    cancelled, not expired, file still clean): the same uniform 404 as the signing view."""
+    signer = open_for_signing(db, token)
+    sign_request = get_request_by_id(db, signer.request_id)
+    file = db.query(DocumentFile).filter_by(id=sign_request.file_id).one()
+    storage = get_storage()
+    if not file.is_private:
+        storage.make_private(file.storage_key)
+        file.is_private = True
+        file.url = None
+        db.commit()
+    remote = storage.private_url(file.storage_key, 300)
+    if remote is not None:
+        return RedirectResponse(remote, status_code=307)
+    return _file_response(file)
+
+
 @router.post("/sign/{token}")
+@limiter.shared_limit("10/minute", scope="public-sign")
 def sign_endpoint(
+    request: Request,
     token: str,
     body: SignAction,
-    request: Request,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     if not body.typed_name.strip():

@@ -189,38 +189,40 @@ simply never visits the link (it eventually expires per `expires_in_days`).
 **Zero credentials** — no `Authorization` header, no `X-Workspace-Id`. This is what the emailed
 link (§1) points at.
 
-**Response — 200** (`e2e/_captures/documents/signature_sign_view.json`, first signer, before
-signing):
+**Response — 200** (`e2e/_captures/documents_access/sign_view.json`, before signing; the older
+`documents/signature_sign_view.json` capture has the same shape, with the token redacted):
 
 ```json
 {
   "data": {
-    "request": { "title": "Investor Agreement", "status": "awaiting" },
+    "request": {
+      "title": "NDA",
+      "status": "awaiting"
+    },
     "file": {
-      "id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
-      "filename": "investor-agreement.pdf",
+      "filename": "nda.pdf",
       "content_type": "application/pdf",
-      "size_bytes": 47,
-      "folder": null,
-      "url": "var/storage/documents/b55d87ab-83ee-441c-b01b-9d7213321fd7/d05df11f91a040258a741ebf696ba2f4.pdf",
-      "scan_status": "clean",
-      "uploaded_at": "2026-09-19T10:10:27.175617+00:00"
+      "size_bytes": 19,
+      "download_url": "http://127.0.0.1:8073/api/v1/sign/REDACTED_TOKEN/file"
     },
     "signer": {
-      "email": "delivered+signer-one-9c893248fbd4@resend.dev",
-      "name": "Ada Investor"
+      "email": "delivered+signer-b5e31903f3c4@resend.dev",
+      "name": "Sam Signer"
     }
   },
   "meta": null
 }
 ```
 
-**Field-nesting trap:** `file` here is the exact same shape `serialize_file` returns everywhere
-else in Documents (Slice 2's `GET /documents/files/{id}`) — **`url`** is whatever the active
-`Storage` backend produced (a local filesystem path in this e2e capture, since the runner sets no
-`STORAGE_BACKEND`; a real Cloudinary URL in staging/production, per Slice 2's FE guide). Render the
-file the same way your Slice 2 file viewer does; don't special-case this response's `file.url`.
-`request.status` here is the **derived** status (§6) — `"awaiting"` — not the raw enum column; it
+**Field-nesting trap (changed in BE-A):** `file` here is **not** the editors' file summary any more. The
+public view carries only `filename`, `content_type`, `size_bytes` and **`download_url`** — no `id`,
+`folder`, `scan_status`, `uploaded_at` or storage `url`. `download_url` is `{API_PUBLIC_URL}/api/v1/sign/{token}/file`:
+a plain GET with no auth that serves the file (an `attachment`, or a `307` redirect to a provider-signed
+link on Cloudinary). It works **only while this signing link is active** — once the signer has signed, the
+request is cancelled or expired, or the file is blocked, it is the same uniform `404` as the rest of
+`/sign/{token}` (verified live: `e2e/test_documents_access.py` fetches it before and after signing).
+Embed it in an `<iframe>`/PDF viewer or offer it as a download; do not store it. Both `/sign/{token}`
+routes are rate limited per caller address (reads 30/min, `POST` 10/min → `429`). `request.status` here is the **derived** status (§6) — `"awaiting"` — not the raw enum column; it
 can also read `"expired"` for a signer whose link is technically un-consumed but past
 `expires_at`, though in that case `GET /sign/{token}` itself already 404s (§5) before the FE would
 ever see `status: "expired"` from this particular endpoint. `signer` is this token's own identity
@@ -635,7 +637,8 @@ every response body is captured verbatim in the named file.
 | `signers: []` on create → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/api/test_signatures.py::test_create_requires_signer_422` |
 | Mentor and consultant → `403 FORBIDDEN` on list, detail, create, remind and cancel; no signer email in the body | ✅ | `documents_access/mentor_signature_requests_403.json`; `e2e/test_documents_access.py` |
 | Request create with a clean file, `signer_links` returned once | ✅ | `documents_access/signature_request_create.json` |
-| Sign page file carries `scan_status: "clean"` | ✅ | `documents_access/sign_view.json` |
+| Sign page `file` is `{filename, content_type, size_bytes, download_url}`; `download_url` serves the PDF while the token is active and `404`s after signing | ✅ | `documents_access/sign_view.json`; `e2e/test_documents_access.py` |
+| `429` on `GET`/`POST /sign/{token}` and `/sign/{token}/file` after 30 / 10 requests per minute per caller | ⚠️ unit only (the e2e server runs the limiter, but the journey never reaches the cap) | `tests/api/test_documents_private_files.py::test_public_reads_are_limited_across_tokens`, `::test_signing_posts_are_limited_tighter` |
 | Public `POST /sign/{token}` response has no roster and no audit fields | ✅ | `documents_access/sign_public_response.json` |
 | Editors' request detail carries `signed_ip` / `signed_user_agent`; completed request survives a delete attempt (`409`) | ✅ | `documents_access/signature_request_detail_completed.json`, `file_delete_with_request_409.json` |
 | File `pending`/`blocked` → `409 FILE_NOT_CLEAN`; blocked-after-send → signer link `404` | ⚠️ unit only | `tests/api/test_documents_integrity.py` |

@@ -230,37 +230,40 @@ title/name field** — only `document_id` — so if the FE wants to show a docum
 Every successful call also records `last_viewed_at` on the share (visible to the sharer via §4a/§4b
 above) — there is no way to "peek" without it counting as a view.
 
-**Response — 200** (`e2e/_captures/documents/share_open.json`, trimmed to 3 of 9 sections for
-brevity — the live capture has all 9):
+**Response — 200** (`e2e/_captures/documents_access/shared_open.json`, trimmed to 2 of 5 sections):
 
 ```json
 {
   "data": {
     "document": {
-      "id": "a9f9c75d-6fe7-4e4a-9a71-843b9d75cbfc",
-      "kind": "business_plan",
-      "title": "Business Plan",
+      "kind": "one_pager",
+      "title": "One-Pager",
       "status": "draft",
       "ai_generated": false,
-      "folder": null,
-      "template_key": "business_plan",
+      "template_key": "one_pager",
       "version": 1,
-      "updated_at": "2026-09-19T10:10:26.543837+00:00",
+      "updated_at": "2026-10-24T21:30:19.311940+00:00",
       "sections": [
-        { "id": "6e916097-5ca7-4e2f-8649-64f49c986c11", "body": "", "heading": "Executive Summary" },
-        { "id": "b9534027-b23a-4501-add7-2dd87be57c5e", "body": "", "heading": "Problem" },
-        { "id": "e1a8911e-883b-41e0-b746-05fb90d3a6e3", "body": "", "heading": "Solution" }
+        {
+          "id": "81633db4-1459-4061-bd5f-2b1a6d7aea74",
+          "body": "",
+          "heading": "Overview"
+        },
+        {
+          "id": "93438665-7882-4968-8802-17d815214c83",
+          "body": "",
+          "heading": "Problem"
+        }
       ]
     },
     "access_level": "view",
-    "expires_at": "2026-10-19T10:10:26.555734+00:00"
+    "expires_at": "2026-11-23T21:30:19.420616+00:00"
   },
   "meta": null
 }
 ```
 
-**`document` is the exact same FULL shape (with `sections`) as the authenticated `GET
-/documents/{id}` from Slice 1** — build one document-viewer component and feed it either response.
+**`document` is the authenticated `GET /documents/{id}` shape (with `sections`) minus `id` and `folder`** (BE-A: the public viewer needs the content, not our internal id or folder name) — build one viewer that treats those two fields as optional. This route is rate limited per caller address across all tokens (30/min → `429`).
 `access_level` and `expires_at` are the share's, not the document's — surface `access_level` in the
 viewer chrome (e.g. a small "View only" badge) since a recipient landing here has no other way to
 know their permission level, and consider showing "Link expires <date>" (or nothing, if `null`).
@@ -353,6 +356,8 @@ every response body is captured verbatim in the named file.
 | Expired token (past `expires_at`, never revoked) → same uniform `404 NOT_FOUND` | ⚠️ unit only | `tests/services/documents/test_shares.py::test_open_unknown_expired_revoked_all_404` |
 | Mentor and consultant → `403 FORBIDDEN` on list, workspace list, create and revoke; the body never contains the recipient email | ✅ | `documents_access/mentor_shares_403.json`; `e2e/test_documents_access.py` |
 | Team member lists shares (200) | ✅ | `e2e/test_documents_access.py` |
+| Public open has no `id` / `folder` | ✅ | `documents_access/shared_open.json` |
+| `429` after 30 public opens per minute (across tokens) | ⚠️ unit only | `tests/api/test_documents_private_files.py::test_public_reads_are_limited_across_tokens` |
 | Cross-tenant revoke (real share, different startup) → `404` | ⚠️ unit only | `tests/api/test_document_shares.py::test_cross_tenant_revoke_404` |
 | `GET /documents/shares` route not shadowed by `GET /documents/{document_id}` | ⚠️ unit only | `tests/api/test_document_shares.py::test_shares_overview_not_shadowed_by_document_id` |
 | `access_level: "edit"` rejected (not offered in v1) | ⚠️ unit only (Pydantic enum validation — no dedicated test needed beyond schema coverage) | `app/schemas/document.py::ShareCreate`, `app/db/models/enums.py::ShareAccess` |

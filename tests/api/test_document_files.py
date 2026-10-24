@@ -35,7 +35,7 @@ def test_upload_then_get_and_list(client, db, tmp_path, monkeypatch):
     r = _upload(client, h, folder="Legal")
     assert r.status_code == 201
     fid = r.json()["data"]["id"]
-    assert r.json()["data"]["filename"] == "nda.pdf" and r.json()["data"]["url"]
+    assert r.json()["data"]["filename"] == "nda.pdf" and "url" not in r.json()["data"]
     got = client.get(f"/api/v1/documents/files/{fid}", headers=h)
     assert got.status_code == 200 and got.json()["data"]["size_bytes"] == 8
     lst = client.get("/api/v1/documents/files?folder=Legal", headers=h)

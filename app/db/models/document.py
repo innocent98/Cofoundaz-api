@@ -75,7 +75,12 @@ class DocumentFile(UUIDMixin, TimestampMixin, Base):
     content_type: Mapped[str] = mapped_column(String(120), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
-    url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Legacy public URL of a file uploaded before documents went private. NULL once the file is
+    # private; nothing serves it (reads go through a short-lived signed link).
+    url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # True once the stored object is an authenticated asset with no public URL. New uploads are
+    # private from the start; `files_backfill` moves the legacy ones.
+    is_private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     scan_status: Mapped[ScanStatus] = mapped_column(
         Enum(ScanStatus, native_enum=False, length=20),
         nullable=False,
