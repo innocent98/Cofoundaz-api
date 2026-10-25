@@ -90,6 +90,12 @@ class StubLLMClient:
         return f"[stub-llm] {key}"
 
 
+class EmptyCompletionError(RuntimeError):
+    """The model answered with no text. Deterministic for a given prompt (a spent reasoning
+    budget that a larger retry did not fix, a content filter), so retrying the job only burns
+    tokens: callers end the turn instead."""
+
+
 class OpenAILLMClient:
     """Calls the OpenAI (or OpenAI-compatible) Chat Completions API over httpx. Fail-loud.
 
@@ -113,6 +119,8 @@ class OpenAILLMClient:
 
     def __init__(self) -> None:
         self.last_usage_tokens: int = 0
+        # Tokens the caller can still spend today (None = unlimited); caps the larger retry.
+        self.headroom: int | None = None
 
     def _post_chat(self, payload: dict) -> dict:
         if not settings.LLM_API_KEY:
@@ -178,12 +186,14 @@ class OpenAILLMClient:
             # Reasoning models spend max_completion_tokens on hidden reasoning first; when the
             # whole budget went there the visible answer is empty and finish_reason is "length".
             # Retry once with a larger budget instead of failing the turn.
-            if reason != "length" or attempt == 2:
-                raise RuntimeError(
+            larger = min(max_tokens * EMPTY_RETRY_FACTOR, EMPTY_RETRY_CEILING)
+            affordable = self.headroom is None or self.headroom - spent >= larger
+            if reason != "length" or attempt == 2 or not affordable:
+                raise EmptyCompletionError(
                     f"LLM API returned an empty completion (finish_reason={reason}, "
                     f"reasoning_tokens={reasoning})."
                 )
-            budget = min(max_tokens * EMPTY_RETRY_FACTOR, EMPTY_RETRY_CEILING)
+            budget = larger
         raise RuntimeError("LLM API returned an empty completion.")  # pragma: no cover
 
     def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:

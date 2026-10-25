@@ -113,9 +113,8 @@ Content is freeform text (the model may use light markdown). Render opaquely; do
 
 ## 5. Failed and stale replies (fix D9, `fix/finance-d9-d10`)
 
-A reply no longer stays `generating` forever. The assistant turn ends `failed` when (a) the worker's last
-retry (5th attempt, about 7.5 minutes of backoff) still errors, for example an empty model completion,
-or (b) it is still `generating` more than `AI_REPLY_STALE_SECONDS` (900 s) after it was asked (worker down,
+A reply no longer stays `generating` forever. The assistant turn ends `failed` when (a) the model returns an empty completion (ends right away, seconds, no retries), or the worker's last
+retry (5th attempt, about 7.5 minutes of backoff) still errors for another reason, or (b) it is still `generating` more than `AI_REPLY_STALE_SECONDS` (900 s) after it was asked (worker down,
 job lost). `content` then holds a founder-visible sentence, so the FE can show it as the bubble text:
 `"Sorry, I couldn't put a reply together. Please try asking again."` (over the daily AI budget it is
 `"Today's AI usage limit for your workspace has been reached. Try again tomorrow."`). There is no new

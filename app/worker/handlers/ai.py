@@ -29,6 +29,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.activity import write_activity
 from app.platform.events import event_bus
+from app.platform.llm import EmptyCompletionError
 from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.ai_cofounder.finance_context import finance_context_for
 from app.services.ai_cofounder.prompts import build_cofounder_messages
@@ -574,9 +575,14 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
     try:
         text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
     except Exception as exc:  # noqa: BLE001 - any provider failure must end the turn eventually
-        if job.attempts < settings.WORKER_MAX_ATTEMPTS:
+        # An empty completion repeats for the same prompt, so end the turn now instead of
+        # spending the daily token budget on retries.
+        if (
+            not isinstance(exc, EmptyCompletionError)
+            and job.attempts < settings.WORKER_MAX_ATTEMPTS
+        ):
             raise  # let the runner retry with backoff
-        log.error(f"[ai] cofounder reply {msg.id} failed after {job.attempts} attempts: {exc}")
+        log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
         fail_message(db, msg, REPLY_FAILED_TEXT)
         return
     if text is None:

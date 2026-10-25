@@ -14,16 +14,28 @@ def today_utc() -> date:
     return datetime.now(UTC).date()
 
 
-def over_budget(db: Session, startup_id: uuid.UUID) -> bool:
-    budget = settings.LLM_DAILY_TOKEN_BUDGET
-    if budget <= 0:
-        return False  # unlimited
+def _used_today(db: Session, startup_id: uuid.UUID) -> int:
     used = db.execute(
         select(LlmUsageDaily.tokens_used).where(
             LlmUsageDaily.startup_id == startup_id, LlmUsageDaily.usage_date == today_utc()
         )
     ).scalar_one_or_none()
-    return (used or 0) >= budget
+    return used or 0
+
+
+def over_budget(db: Session, startup_id: uuid.UUID) -> bool:
+    budget = settings.LLM_DAILY_TOKEN_BUDGET
+    if budget <= 0:
+        return False  # unlimited
+    return _used_today(db, startup_id) >= budget
+
+
+def headroom(db: Session, startup_id: uuid.UUID) -> int | None:
+    """Tokens left today; None when the budget is unlimited."""
+    budget = settings.LLM_DAILY_TOKEN_BUDGET
+    if budget <= 0:
+        return None
+    return max(0, budget - _used_today(db, startup_id))
 
 
 def debit(db: Session, startup_id: uuid.UUID, tokens: int) -> None:
@@ -57,6 +69,8 @@ def metered_complete(
     if over_budget(db, startup_id):
         return None
     client = get_llm_client()
+    if hasattr(client, "headroom"):
+        client.headroom = headroom(db, startup_id)
     try:
         text = client.complete(messages, max_tokens=max_tokens)
     except Exception:

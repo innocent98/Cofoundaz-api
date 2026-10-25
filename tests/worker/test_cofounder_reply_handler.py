@@ -234,3 +234,45 @@ def test_debit_independent_commits_on_its_own_session(monkeypatch):
     assert events == []  # nothing to bill
     lb._debit_independent(uuid.uuid4(), 42)
     assert events == [("debit", 42), "commit"]
+
+
+def test_empty_completion_ends_the_turn_on_the_first_attempt(db, monkeypatch):
+    """A repeatable empty completion must not be retried: it would only burn the daily budget."""
+    from app.platform.events import event_bus
+    from app.platform.llm import EmptyCompletionError
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers the handler)
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 0)
+    s, assistant = _conv_with_pending(db)
+
+    class _Empty:
+        last_usage_tokens = 0
+        calls = 0
+
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            _Empty.calls += 1
+            raise EmptyCompletionError("empty (finish_reason=length)")
+
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _Empty())
+    job = db.query(Job).filter(Job.type == "ai.cofounder.reply").one()
+    seen = len(event_bus.published)
+
+    assert runner.run_once(db) == 1
+    db.refresh(assistant)
+    db.refresh(job)
+    assert _Empty.calls == 1
+    assert assistant.status == ChatMessageStatus.failed
+    assert assistant.content == REPLY_FAILED_TEXT
+    assert job.status == JobStatus.succeeded and job.attempts == 1
+    assert "ai.cofounder.reply.failed" in [e for e, _p in event_bus.published[seen:]]
+
+
+def test_headroom_reports_remaining_tokens(db, monkeypatch):
+    s, _assistant = _conv_with_pending(db)
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 0)
+    assert llm_budget.headroom(db, s.id) is None
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 1000)
+    assert llm_budget.headroom(db, s.id) == 1000
+    db.add(LlmUsageDaily(startup_id=s.id, usage_date=today_utc(), tokens_used=1500))
+    db.flush()
+    assert llm_budget.headroom(db, s.id) == 0
