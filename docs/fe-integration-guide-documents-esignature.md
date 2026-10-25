@@ -1,5 +1,7 @@
 # FE Integration Guide — Documents & Templates (Module 18, Slice 4: E-signature)
 
+> **Updated by Documents BE-D (2026-10-25):** e-sign v2 and link shares changed some shapes (signer statuses, `signer_links` nulls, `link` on share reads, PDF-only signing, executed PDF). Read `fe-integration-guide-documents-esign-v2.md` first; this guide still describes everything it does not mention.
+
 **This slice completes Module 18** (Documents & Templates) — all four slices (Library Core,
 Upload & Files, Sharing, E-signature) now ship together.
 

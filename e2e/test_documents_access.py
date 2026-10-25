@@ -24,6 +24,18 @@ G = "documents_access"
 _TOKEN_IN_LINK = re.compile(r"(/(?:sign|shared)/)[A-Za-z0-9_\-]{20,}")
 
 
+def _real_pdf() -> bytes:
+    """A one-page PDF the API can parse and stamp (signing validates the file)."""
+    from reportlab.pdfgen.canvas import Canvas
+
+    buf = io.BytesIO()
+    canvas = Canvas(buf)
+    canvas.drawString(72, 720, "e2e agreement")
+    canvas.showPage()
+    canvas.save()
+    return buf.getvalue()
+
+
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
@@ -110,7 +122,7 @@ def test_documents_access_journey(
         pdf = c.post(
             "/api/v1/documents/files",
             headers=founder,
-            files={"file": ("nda.pdf", io.BytesIO(b"%PDF-1.4\n%e2e\n%%EOF"), "application/pdf")},
+            files={"file": ("nda.pdf", io.BytesIO(_real_pdf()), "application/pdf")},
         )
         assert pdf.status_code == 201, pdf.text
         assert pdf.json()["data"]["scan_status"] == "clean"

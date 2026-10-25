@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "PDF_REQUIRED",
+      "message": "Only PDF files can be sent for signature. Export the document to PDF first.",
+      "field_errors": []
+    }
+  }
+}

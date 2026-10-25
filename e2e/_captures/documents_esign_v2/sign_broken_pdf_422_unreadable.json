@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "PDF_UNREADABLE",
+      "message": "This PDF can't be signed: it is encrypted, damaged or too long. Upload a plain PDF.",
+      "field_errors": []
+    }
+  }
+}

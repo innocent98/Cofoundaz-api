@@ -15,6 +15,7 @@ def register() -> None:
     """Import handler modules for their register_handler(...) side effects."""
     import app.worker.handlers.ai  # noqa: F401
     import app.worker.handlers.documents_ai  # noqa: F401
+    import app.worker.handlers.documents_sign  # noqa: F401
     import app.worker.handlers.email  # noqa: F401
     import app.worker.handlers.finance_model  # noqa: F401
     import app.worker.handlers.finance_payments  # noqa: F401

@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "FILE_HAS_SIGNATURE_REQUESTS",
+      "message": "This file has signature requests, so it can't be deleted.",
+      "field_errors": []
+    }
+  }
+}

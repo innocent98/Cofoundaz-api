@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "EXECUTED_NOT_READY",
+      "message": "The executed copy isn't ready yet. Try again shortly.",
+      "field_errors": []
+    }
+  }
+}

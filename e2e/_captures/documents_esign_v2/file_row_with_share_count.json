@@ -1,0 +1,22 @@
+{
+  "id": "4dfbabdc-1b36-43d9-b6d4-ccf4607717cc",
+  "filename": "founders-agreement.pdf",
+  "content_type": "application/pdf",
+  "mime": "application/pdf",
+  "type": "file",
+  "origin": "upload",
+  "source_document_id": null,
+  "source_version": null,
+  "size_bytes": 1371,
+  "folder": null,
+  "tags": [],
+  "owner": {
+    "id": "4310c541-fd35-4c82-a11a-466d6e83eb7a",
+    "name": "Ada Founder"
+  },
+  "share_count": 1,
+  "scan_status": "clean",
+  "uploaded_at": "2026-10-25T16:42:06.479328+00:00",
+  "trashed_at": null,
+  "purges_at": null
+}

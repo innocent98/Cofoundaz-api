@@ -66,6 +66,18 @@ _SIGN_LINK_RE = re.compile(r'href="([^"]*/sign/[^"]+)"')
 _FE_BASE = os.environ.get("APP_BASE_URL", "").rstrip("/")
 
 
+def _real_pdf() -> bytes:
+    """A one-page PDF the API can parse and stamp (signing validates the file)."""
+    from reportlab.pdfgen.canvas import Canvas
+
+    buf = io.BytesIO()
+    canvas = Canvas(buf)
+    canvas.drawString(72, 720, "e2e agreement")
+    canvas.showPage()
+    canvas.save()
+    return buf.getvalue()
+
+
 def _latest_email_for(email: str) -> dict:
     """The newest captured email dict for `email`, read straight from the file
     mail dir (same `E2E_MAIL_DIR` the link readers above use). Returned whole so
@@ -402,7 +414,8 @@ def test_documents_sharing_journey(
         assert len(doc_shares) == 1
         assert doc_shares[0]["id"] == share_id
         assert doc_shares[0]["last_viewed_at"] is not None
-        assert "link" not in doc_shares[0]
+        # BE-D: editors can copy the link again (derived token; same value as the one emailed)
+        assert doc_shares[0]["link"].rsplit("/", 1)[-1] == token
         capture("documents", "share_list_by_document", listed)
 
         # 6. GET /documents/shares -- workspace "Shared with others" overview,
@@ -443,7 +456,7 @@ def test_documents_esignature_journey(
         wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
 
         # 1. Upload a file to send for signature (Slice 2's /documents/files).
-        pdf_bytes = b"%PDF-1.4\n%a tiny fake PDF for e2e signing\n%%EOF"
+        pdf_bytes = _real_pdf()
         uploaded = c.post(
             "/api/v1/documents/files",
             headers=wh,

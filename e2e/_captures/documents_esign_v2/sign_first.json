@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "d290a4f7-1e90-4fd0-9200-66761cf6fd2a",
+      "title": "Founders agreement",
+      "status": "awaiting",
+      "file_id": "4dfbabdc-1b36-43d9-b6d4-ccf4607717cc",
+      "filename": "founders-agreement.pdf",
+      "signed_count": 1,
+      "total": 2,
+      "sequential": true,
+      "message": "Hi both, please sign before Friday.\nThanks, Ada",
+      "sent_at": "2026-10-25T16:42:09.059111+00:00",
+      "expires_at": "2026-11-08T16:42:09.103309+00:00",
+      "completed_at": null,
+      "created_at": "2026-10-25T16:42:09.059111+00:00"
+    },
+    "meta": null
+  }
+}

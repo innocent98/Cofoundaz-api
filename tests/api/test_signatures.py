@@ -6,6 +6,7 @@ from app.db.models.document import DocumentFile
 from app.db.models.enums import MembershipRole, ScanStatus, StartupStage
 from app.platform.email import ConsoleEmailSender
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import store_pdf
 
 
 def _member(db, *, role=MembershipRole.founder):
@@ -24,6 +25,7 @@ def _member(db, *, role=MembershipRole.founder):
     )
     db.add(f)
     db.flush()
+    store_pdf(f)
     h = {"Authorization": f"Bearer {create_access_token(str(u.id))}", "X-Workspace-Id": str(s.id)}
     return u, s, f, h
 

@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "signer_id": "a322a068-0137-4ceb-8df2-fe68cdc18d64",
+      "link": "http://localhost:3000/sign/REDACTED_TOKEN"
+    },
+    "meta": null
+  }
+}

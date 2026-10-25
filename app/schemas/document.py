@@ -1,7 +1,9 @@
+import re
 import uuid
+from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.db.models.enums import DocumentKind, DocumentStatus, ShareAccess
 
@@ -23,21 +25,59 @@ class DocumentSave(BaseModel):
     version: int
 
 
+# One address, no whitespace, angle brackets, commas or semicolons: nothing that could add a
+# recipient or a header when the value reaches an email's To.
+_EMAIL = re.compile(r"^[^@\s<>,;\"']{1,64}@[^@\s<>,;\"']{1,190}\.[^@\s<>,;\"']{2,}$")
+
+
+def _check_email(value: str) -> str:
+    value = value.strip()
+    if len(value) > 255 or not _EMAIL.match(value):
+        raise ValueError("Enter a valid email address.")
+    return value
+
+
 class ShareCreate(BaseModel):
-    email: str
+    """`email` omitted = "anyone with the link" (nothing is emailed). `expires_at` (a date in the
+    future, at most a year out) wins over `expires_in_days`; send `expires_in_days: null` and no
+    `expires_at` for a link that never expires."""
+
+    email: str | None = None
     access_level: ShareAccess = ShareAccess.view
     expires_in_days: int | None = 30
+    expires_at: datetime | None = None
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str | None) -> str | None:
+        return None if v is None else _check_email(v)
+
+
+class ShareExpiry(BaseModel):
+    """`expires_at: null` makes the link permanent."""
+
+    expires_at: datetime | None
 
 
 class SignerInput(BaseModel):
     email: str
-    name: str | None = None
+    name: str | None = Field(default=None, max_length=200)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        return _check_email(v)
 
 
 class SignatureRequestCreate(BaseModel):
-    signers: list[SignerInput] = Field(default_factory=list)
-    title: str | None = None
+    signers: list[SignerInput] = Field(default_factory=list, max_length=20)
+    title: str | None = Field(default=None, max_length=255)
     expires_in_days: int | None = 14
+    # Sign one after another in the order given; each next signer gets their link only when the
+    # one before has signed.
+    sequential: bool = False
+    # Shown to every signer; the default sentence is used when blank.
+    message: str | None = Field(default=None, max_length=2000)
 
 
 class SignAction(BaseModel):
