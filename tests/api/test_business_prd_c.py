@@ -222,11 +222,35 @@ def test_regenerate_a_section_rewrites_only_that_section(client, db, monkeypatch
     assert "[stub-llm]" in bodies["Financials & Projections"]
     assert bodies["Executive Summary"] == "MY EDIT"
     assert doc.version == before_version + 1
+    from app.db.models.document import DocumentVersion
+
+    snap = db.query(DocumentVersion).filter_by(document_id=doc.id, version=doc.version).one()
+    assert "[stub-llm]" in snap.sections[-1]["body"] or "[stub-llm]" in str(snap.sections)
+    assert "[stub-llm]" in doc.search_text and "MY EDIT" in doc.search_text
     assert job.result == {
         "status": "ready",
         "section": "financials",
         "document_version": doc.version,
     }
+
+
+def test_regenerate_skips_a_trashed_document(client, db, monkeypatch):
+    from datetime import UTC, datetime
+
+    s, _f, h, p = _complete_plan(db, monkeypatch)
+    doc = db.get(Document, p.document_id)
+    doc.trashed_at = datetime.now(UTC)
+    db.flush()
+    version = doc.version
+    job = db.get(
+        Job,
+        uuid.UUID(
+            client.post(f"{BB}/plan/sections/team/regenerate", headers=h).json()["data"]["job_id"]
+        ),
+    )
+    handle_plan_section(db, job)
+    db.refresh(doc)
+    assert job.result["status"] == "gone" and doc.version == version
 
 
 def test_regenerate_needs_a_finished_plan_and_a_known_section(client, db, monkeypatch):

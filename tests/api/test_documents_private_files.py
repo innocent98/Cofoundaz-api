@@ -326,6 +326,8 @@ def test_delete_and_request_create_lock_the_file_row(client, db, ws):
 def test_stored_object_is_removed_only_after_the_commit(client, db, ws, monkeypatch):
     _s, _m, h = ws
     fid = _upload(client, h)
+    _resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert _resp.status_code == 200
     order: list[str] = []
     from app.api.v1.endpoints import documents as ep
 
@@ -334,7 +336,7 @@ def test_stored_object_is_removed_only_after_the_commit(client, db, ws, monkeypa
         type(db), "commit", lambda self: (order.append("commit"), real_commit(self))[1]
     )
     monkeypatch.setattr(ep, "purge_object", lambda target: order.append("purge"))
-    resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    resp = client.delete(f"/api/v1/documents/files/{fid}/permanent", headers=h)
     assert resp.status_code == 200
     assert order == ["commit", "purge"]
 
@@ -343,11 +345,13 @@ def test_failed_commit_keeps_the_stored_object(client, db, ws, tmp_path, monkeyp
     _s, _m, h = ws
     fid = _upload(client, h)
     stored = next(Path(tmp_path).rglob("*.pdf"))
+    _resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert _resp.status_code == 200
     monkeypatch.setattr(
         type(db), "commit", lambda self: (_ for _ in ()).throw(RuntimeError("boom"))
     )
     with pytest.raises(RuntimeError):
-        client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+        client.delete(f"/api/v1/documents/files/{fid}/permanent", headers=h)
     assert stored.exists()
 
 

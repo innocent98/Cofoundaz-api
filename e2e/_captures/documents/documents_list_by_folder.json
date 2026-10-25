@@ -2,15 +2,24 @@
   "data": {
     "documents": [
       {
-        "id": "8ae96514-6ee4-4f1a-9c2b-cc2bf45cda96",
+        "id": "628a1f9b-611c-474e-a7db-1337bd7151d6",
         "kind": "business_plan",
+        "mime": "application/vnd.cofoundaz.document+json",
         "title": "Cofoundaz Business Plan",
         "status": "final",
         "ai_generated": false,
         "folder": "Investor Docs",
+        "tags": [],
         "template_key": "business_plan",
         "version": 2,
-        "updated_at": "2026-10-24T21:30:13.570269+00:00"
+        "owner": {
+          "id": "62ce90e5-eca5-434e-b312-e301a0c8459d",
+          "name": "Ada Founder"
+        },
+        "share_count": 0,
+        "updated_at": "2026-10-25T11:02:20.833265+00:00",
+        "trashed_at": null,
+        "purges_at": null
       }
     ]
   },

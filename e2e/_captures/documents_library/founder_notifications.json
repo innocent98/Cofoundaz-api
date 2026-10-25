@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "type": "document.version.created",
+      "title": "New version uploaded: Seed pitch narrative (v2) by delivered+team_member-3aa561ddd6ca",
+      "body": "Open document",
+      "data": {
+        "href": "/documents/c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+        "title": "Seed pitch narrative",
+        "version": 2,
+        "actor_id": "6c8367ea-6352-4e35-acca-82c17587dfc7",
+        "owner_id": "1694eaad-0851-40a7-8c58-576c80cced79",
+        "startup_id": "cd502d97-1ba7-40cc-8663-f618febbc678",
+        "author_name": "delivered+team_member-3aa561ddd6ca",
+        "document_id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6"
+      }
+    }
+  ]
+}

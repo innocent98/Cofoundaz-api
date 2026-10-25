@@ -1613,9 +1613,35 @@ gap-list rows 1–6, 25, 37 (D-DOC-1..4)
       public responses trimmed
 - [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
       `e2e/test_documents_access.py`; four FE guides updated from live captures
-- [ ] _Next (BE-B):_ versions, trash, rename/move/tag, folders, search, per-person grants + "Shared with me"
-      (gap rows 7–9, 11, 14, 20–22, 28) · _BE-C:_ export + templates · _BE-D:_ e-sign v2
+- [x] _BE-B shipped below_ · [ ] _BE-C:_ export + templates · [ ] _BE-D:_ e-sign v2
 - [ ] _Deferred:_ a real malware scanner behind `get_scanner()` · FE: hide Documents for non-F/TM roles (row 27)
+
+**Documents BE-B (library core)** — *built 2026-10-25 on `feature/documents-library-core`, PR to
+`develop` (migration `0073_documents_library_core`, after `0072`)* — SOP
+`docs/sop/2026-10-25-documents-be-b-library-core.md`, FE guide `docs/fe-integration-guide-documents-library.md`;
+closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
+- [x] Versions (row 7): `document_versions` snapshot on create / save / restore, list + get + restore
+      (restore = new version), `document.version.created` event, existing documents backfilled with their
+      current version
+- [x] Trash (row 8): soft delete for documents and files, `GET /documents/trash`, restore, permanent delete,
+      30-day daily purge job (`scheduled.documents.trash_purge`, self-managed worker handler); a file with a
+      signature request still cannot be trashed
+- [x] Rename / move / tag (row 9): `PATCH /documents/{id}` and `/files/{id}`, tags (10 max), nested folder
+      paths; download = BE-A's signed link
+- [x] Inline content route (row 11): `GET /documents/files/{id}/content` + `viewer` hint (BE: done; FE viewer open)
+- [x] Search (row 20): `q` over title / body / tags (documents) and name / tags (files), `tag` filter
+- [x] Folders (row 21): `document_folders`, create / rename (re-points the subtree and its items) / delete-if-empty,
+      counts + uncategorised + trash buckets, standard structure
+- [x] Summary fields (row 22): `owner`, `tags`, `share_count`, `mime`, `trashed_at`, `purges_at`
+- [x] Notifications (row 28): names + titles in copy, `href` in payloads, `document.version.created`,
+      `document.grant.created`
+- [x] Per-person grants + Shared with me (row 14, D-DOC-1): view / comment, by member or by email (binds on
+      verified sign-up or next call), owner / F+TM list + change + revoke, grantee-only `/documents/shared-with-me`
+      routes, comments, trashed / revoked invisible, token link unchanged ("anyone with the link")
+- [x] Tests: route × role matrix extended, library + grants + purge + notifications + migration tests, live
+      journey `e2e/test_documents_library.py`; one Opus access-control review, findings fixed
+- [ ] _Deferred:_ grants on files · "Can edit" grants · extracted text search for files · real malware scanner ·
+      revoking a member's grants when member removal ships · pruning old versions
 
 **Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto

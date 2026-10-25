@@ -8,11 +8,18 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import AppError, NotFound
+from app.core.errors import AppError, NotFound, NotInTrash
 from app.core.logger import log
 from app.core.rate_limit import limiter
+from app.db.models.comment import Comment
 from app.db.models.document import Document, DocumentFile, SignatureRequest
-from app.db.models.enums import DOCUMENT_ROLES, DocumentKind, DocumentStatus, ScanStatus
+from app.db.models.enums import (
+    DOCUMENT_ROLES,
+    DocumentKind,
+    DocumentStatus,
+    ScanStatus,
+    ShareAccess,
+)
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -21,8 +28,15 @@ from app.db.tenancy import require_role
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.signed_urls import InvalidSignedToken, verify_key
 from app.schemas.document import (
+    DocumentCommentCreate,
     DocumentCreate,
+    DocumentPatch,
     DocumentSave,
+    FilePatch,
+    FolderCreate,
+    FolderRename,
+    GrantCreate,
+    GrantUpdate,
     ShareCreate,
     SignAction,
     SignatureRequestCreate,
@@ -37,17 +51,44 @@ from app.services.documents.files import (
     list_files,
     local_path,
     purge_object,
-    serialize_file,
+    restore_file,
+    serialize_files,
+    trash_file,
+    update_file_metadata,
     upload_file,
+)
+from app.services.documents.folders import (
+    create_folder,
+    delete_folder,
+    folder_tree,
+    get_folder,
+    rename_folder,
+    standard_structure,
+)
+from app.services.documents.grants import (
+    create_grant,
+    get_grant,
+    granted_document,
+    list_grants,
+    list_workspace_grants,
+    revoke_grant,
+    serialize_grant,
+    serialize_shared_item,
+    set_permission,
+    shared_with_me,
 )
 from app.services.documents.service import (
     create_document,
     delete_document,
     get_document,
     list_documents,
+    restore_document,
     serialize_document,
-    serialize_summary,
+    serialize_public,
+    serialize_summaries,
+    trash_document,
     update_document,
+    update_metadata,
     validate_sections,
 )
 from app.services.documents.shares import (
@@ -72,6 +113,14 @@ from app.services.documents.signatures import (
 )
 from app.services.documents.sniff import declared_type, sniff_content_type
 from app.services.documents.template_defs import catalog, instantiate, template_view
+from app.services.documents.versions import (
+    get_version,
+    list_versions,
+    restore_version,
+    serialize_version,
+    version_authors,
+)
+from app.services.team import service as team_svc
 
 router = APIRouter()
 # D-DOC-1: every authenticated Documents route is founder + team member only (reads included)
@@ -97,7 +146,7 @@ def _api_public_url() -> str:
     return settings.API_PUBLIC_URL or settings.SERVER_HOST
 
 
-def _file_response(file: DocumentFile) -> FileResponse:
+def _file_response(file: DocumentFile, *, inline: bool = False) -> FileResponse:
     path = local_path(file)
     if path is None:
         raise NotFound()
@@ -109,7 +158,7 @@ def _file_response(file: DocumentFile) -> FileResponse:
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",
             "Content-Security-Policy": "sandbox; default-src 'none'",
-            "Content-Disposition": f'attachment; filename="{safe}"',
+            "Content-Disposition": f'{"inline" if inline else "attachment"}; filename="{safe}"',
         },
     )
 
@@ -176,6 +225,8 @@ def list_documents_endpoint(
     kind: str | None = None,
     folder: str | None = None,
     status: str | None = None,  # noqa: A002 - query name is part of the FE contract
+    q: str | None = Query(None, max_length=200),  # noqa: B008
+    tag: str | None = Query(None, max_length=60),  # noqa: B008
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
@@ -186,8 +237,10 @@ def list_documents_endpoint(
         kind=_parse_kind(kind),
         folder=folder,
         status=_parse_status(status),
+        q=q,
+        tag=tag,
     )
-    return success_response({"documents": [serialize_summary(r) for r in rows]})
+    return success_response({"documents": serialize_summaries(db, rows)})
 
 
 @router.post("/documents", status_code=status.HTTP_201_CREATED)
@@ -214,9 +267,10 @@ def create_document_endpoint(
         sections=sections,
         folder=body.folder,
         template_key=body.template_key,
+        tags=body.tags,
     )
     db.commit()
-    return success_response(serialize_document(doc))
+    return success_response(serialize_document(doc, db=db))
 
 
 @router.post("/documents/files", status_code=status.HTTP_201_CREATED)
@@ -263,18 +317,31 @@ async def upload_document_file(
         folder=folder,
     )
     db.commit()
-    return success_response(serialize_file(row))
+    return success_response(serialize_files(db, [row])[0])
 
 
 @router.get("/documents/files")
 def list_document_files(
     folder: str | None = None,
+    q: str | None = Query(None, max_length=200),  # noqa: B008
+    tag: str | None = Query(None, max_length=60),  # noqa: B008
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    rows = list_files(db, _startup(db, membership), folder=folder)
-    return success_response({"files": [serialize_file(r) for r in rows]})
+    rows = list_files(db, _startup(db, membership), folder=folder, q=q, tag=tag)
+    return success_response({"files": serialize_files(db, rows)})
+
+
+def _serve_signed_file(db: Session, token: str, *, inline: bool) -> FileResponse:
+    try:
+        claim = verify_key(token)
+    except InvalidSignedToken:
+        raise NotFound() from None
+    file = file_by_key(db, startup_id=claim.startup_id, key=claim.key)
+    if file is None or file.scan_status != ScanStatus.clean:
+        raise NotFound()
+    return _file_response(file, inline=inline)
 
 
 @router.get("/documents/files/download", response_class=FileResponse)
@@ -286,15 +353,19 @@ def download_document_file(
 ) -> FileResponse:
     """Serves a locally stored file to the holder of a valid, unexpired signed link. The link is
     only issued by `GET /documents/files/{id}/download` after the role and scan checks; expired,
-    tampered, unknown, or no-longer-clean is the same 404."""
-    try:
-        claim = verify_key(token)
-    except InvalidSignedToken:
-        raise NotFound() from None
-    file = file_by_key(db, startup_id=claim.startup_id, key=claim.key)
-    if file is None or file.scan_status != ScanStatus.clean:
-        raise NotFound()
-    return _file_response(file)
+    tampered, unknown, trashed, or no-longer-clean is the same 404."""
+    return _serve_signed_file(db, token, inline=False)
+
+
+@router.get("/documents/files/content", response_class=FileResponse)
+@limiter.shared_limit("30/minute", scope="public-doc-file")
+def view_document_file(
+    request: Request,
+    token: str = Query(..., min_length=1, max_length=2000),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> FileResponse:
+    """The same signed link served inline for the in-app viewer (PDF.js, images, text)."""
+    return _serve_signed_file(db, token, inline=True)
 
 
 @router.get("/documents/files/{file_id}")
@@ -304,7 +375,7 @@ def get_document_file(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response(serialize_file(get_file(db, membership, file_id)))
+    return success_response(serialize_files(db, [get_file(db, membership, file_id)])[0])
 
 
 @router.get("/documents/files/{file_id}/download")
@@ -325,6 +396,37 @@ def download_document_file_link(
     return success_response(link)
 
 
+@router.get("/documents/files/{file_id}/content")
+def view_document_file_link(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """A short-lived signed link to open the file INLINE in the viewer, with a `viewer` hint
+    (pdf, image, text, markdown, csv, docx, xlsx, pptx). Founder / team member, `clean` only."""
+    file = get_file(db, membership, file_id)
+    if not file.is_private:
+        db.refresh(file, with_for_update=True)
+    link = file_link(file, api_public_url=_api_public_url(), inline=True)
+    db.commit()
+    return success_response(link)
+
+
+@router.patch("/documents/files/{file_id}")
+def patch_document_file(
+    file_id: uuid.UUID,
+    body: FilePatch,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    file = get_file(db, membership, file_id)
+    update_file_metadata(db, file, fields={k: getattr(body, k) for k in body.model_fields_set})
+    db.commit()
+    return success_response(serialize_files(db, [file])[0])
+
+
 @router.delete("/documents/files/{file_id}")
 def delete_document_file(
     file_id: uuid.UUID,
@@ -332,10 +434,42 @@ def delete_document_file(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    # Row lock first: a concurrent "send for signature" on this file waits, then finds it gone
-    # (404) or, if it won the race, makes this delete see the request (409). The stored object
-    # is removed only after the commit succeeds.
-    target = delete_file(db, get_file(db, membership, file_id, lock=True))
+    """Moves the file to the trash (30 days, then it is purged). A file with a signature request
+    is refused (409). Row lock first so a concurrent "send for signature" serialises with it."""
+    file = trash_file(db, get_file(db, membership, file_id, lock=True), actor_id=membership.user_id)
+    db.commit()
+    return success_response(
+        {"deleted": True, "trashed_at": file.trashed_at.isoformat() if file.trashed_at else None}
+    )
+
+
+@router.post("/documents/files/{file_id}/restore")
+def restore_document_file(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    file = restore_file(
+        db, get_file(db, membership, file_id, trashed=True, lock=True), actor_id=membership.user_id
+    )
+    db.commit()
+    return success_response(serialize_files(db, [file])[0])
+
+
+@router.delete("/documents/files/{file_id}/permanent")
+def delete_document_file_permanently(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Empties one file from the trash right now. Only a trashed file (409 `NOT_IN_TRASH`
+    otherwise). The stored object is removed only after the commit succeeds."""
+    file = get_file(db, membership, file_id, trashed=None, lock=True)
+    if file.trashed_at is None:
+        raise NotInTrash()
+    target = delete_file(db, file)
     db.commit()
     purge_object(target)
     return success_response({"deleted": True})
@@ -425,9 +559,7 @@ def open_shared_endpoint(
     return success_response(
         {
             # No internal id or folder: the token holder needs the content, not our bookkeeping.
-            "document": {
-                k: v for k, v in serialize_document(doc).items() if k not in ("id", "folder")
-            },
+            "document": serialize_public(doc),
             "access_level": share.access_level.value,
             "expires_at": share.expires_at.isoformat() if share.expires_at else None,
         }
@@ -581,6 +713,185 @@ def sign_endpoint(
     return success_response(serialize_request(db, updated, with_signers=False))
 
 
+# --- folders ------------------------------------------------------------------------------
+# Declared before `/documents/{document_id}` so the literal segments win over the id parameter.
+
+
+@router.get("/documents/folders")
+def list_folders_endpoint(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(folder_tree(db, membership.startup_id))
+
+
+@router.post("/documents/folders", status_code=status.HTTP_201_CREATED)
+def create_folder_endpoint(
+    body: FolderCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    create_folder(db, membership.startup_id, name=body.name, parent_id=body.parent_id)
+    db.commit()
+    return success_response(folder_tree(db, membership.startup_id))
+
+
+@router.post("/documents/folders/standard", status_code=status.HTTP_201_CREATED)
+def standard_folders_endpoint(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    standard_structure(db, membership.startup_id)
+    db.commit()
+    return success_response(folder_tree(db, membership.startup_id))
+
+
+@router.patch("/documents/folders/{folder_id}")
+def rename_folder_endpoint(
+    folder_id: uuid.UUID,
+    body: FolderRename,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rename_folder(db, get_folder(db, membership.startup_id, folder_id), name=body.name)
+    db.commit()
+    return success_response(folder_tree(db, membership.startup_id))
+
+
+@router.delete("/documents/folders/{folder_id}")
+def delete_folder_endpoint(
+    folder_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    delete_folder(db, get_folder(db, membership.startup_id, folder_id))
+    db.commit()
+    return success_response({"deleted": True})
+
+
+# --- trash --------------------------------------------------------------------------------
+
+
+@router.get("/documents/trash")
+def list_trash_endpoint(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    docs = list_documents(db, startup, kind=None, folder=None, status=None, trashed=True)
+    files = list_files(db, startup, folder=None, trashed=True)
+    return success_response(
+        {"documents": serialize_summaries(db, docs), "files": serialize_files(db, files)}
+    )
+
+
+# --- per-person grants (D-DOC-1) ----------------------------------------------------------
+# Owner side (founder / team member). The grantee side is `/documents/shared-with-me`.
+
+
+@router.get("/documents/grants")
+def list_workspace_grants_endpoint(
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = list_workspace_grants(db, _startup(db, membership))
+    return success_response({"grants": [serialize_grant(db, g) for g in rows]})
+
+
+# --- shared with me (any signed-in, verified user; access comes from a live grant only) ---
+
+
+@router.get("/documents/shared-with-me")
+def shared_with_me_endpoint(
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = shared_with_me(db, user)
+    db.commit()  # persists email grants that just bound to this account
+    return success_response({"documents": [serialize_shared_item(db, g, d) for g, d in rows]})
+
+
+@router.get("/documents/shared-with-me/{document_id}")
+def get_shared_with_me_endpoint(
+    document_id: uuid.UUID,
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    grant, doc = granted_document(db, user, document_id)
+    db.commit()
+    return success_response(serialize_shared_item(db, grant, doc, with_content=True))
+
+
+@router.get("/documents/shared-with-me/{document_id}/comments")
+def list_shared_comments_endpoint(
+    document_id: uuid.UUID,
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    _grant, doc = granted_document(db, user, document_id)
+    return success_response(
+        {"comments": [_external_comment(c) for c in _document_comments(db, doc, viewer=user)]}
+    )
+
+
+@router.post("/documents/shared-with-me/{document_id}/comments", status_code=201)
+def create_shared_comment_endpoint(
+    document_id: uuid.UUID,
+    body: DocumentCommentCreate,
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    _grant, doc = granted_document(db, user, document_id, need=ShareAccess.comment)
+    out = _add_document_comment(db, doc, author=user, body=body.body)
+    db.commit()
+    return success_response(_external_comment(out))
+
+
+def _external_comment(c: dict) -> dict:
+    """A comment as an outsider sees it: the author's name, but no internal user ids."""
+    author = c.get("author")
+    return {
+        **{k: v for k, v in c.items() if k not in ("mention_user_ids", "author")},
+        "author": {"name": author.get("name")} if author else None,
+    }
+
+
+def _document_comments(db: Session, doc: Document, *, viewer: User) -> list[dict]:
+    rows = (
+        db.query(Comment)
+        .filter_by(startup_id=doc.startup_id, entity_type="document", entity_id=doc.id)
+        .order_by(Comment.created_at.asc(), Comment.id.asc())
+        .all()
+    )
+    names = team_svc._names(db, {c.author_id for c in rows if c.author_id})
+    return [team_svc.serialize_comment(c, names, viewer.id) for c in rows]
+
+
+def _add_document_comment(db: Session, doc: Document, *, author: User, body: str) -> dict:
+    c = Comment(
+        startup_id=doc.startup_id,
+        entity_type="document",
+        entity_id=doc.id,
+        author_id=author.id,
+        body=body.strip(),
+        mention_user_ids=[],
+    )
+    db.add(c)
+    db.flush()
+    names = team_svc._names(db, {author.id})
+    return team_svc.serialize_comment(c, names, author.id)
+
+
+# --- one document -------------------------------------------------------------------------
+
+
 @router.get("/documents/{document_id}")
 def get_document_endpoint(
     document_id: uuid.UUID,
@@ -588,7 +899,7 @@ def get_document_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response(serialize_document(get_document(db, membership, document_id)))
+    return success_response(serialize_document(get_document(db, membership, document_id), db=db))
 
 
 @router.put("/documents/{document_id}")
@@ -599,7 +910,9 @@ def update_document_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    doc = get_document(db, membership, document_id)
+    # Row lock: two saves from the same version serialise, so the second gets the 409 conflict
+    # instead of both claiming the same version number.
+    doc = get_document(db, membership, document_id, lock=True)
     update_document(
         db,
         doc,
@@ -608,9 +921,25 @@ def update_document_endpoint(
         status=body.status,
         folder=body.folder,
         expected_version=body.version,
+        author_id=membership.user_id,
     )
     db.commit()
-    return success_response(serialize_document(doc))
+    return success_response(serialize_document(doc, db=db))
+
+
+@router.patch("/documents/{document_id}")
+def patch_document_endpoint(
+    document_id: uuid.UUID,
+    body: DocumentPatch,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Rename, move, tag, or set the status without a new version (the content is untouched)."""
+    doc = get_document(db, membership, document_id)
+    update_metadata(db, doc, fields={k: getattr(body, k) for k in body.model_fields_set})
+    db.commit()
+    return success_response(serialize_document(doc, db=db))
 
 
 @router.delete("/documents/{document_id}")
@@ -620,7 +949,190 @@ def delete_document_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    doc = get_document(db, membership, document_id)
+    """Moves the document to the trash. It vanishes for everyone (library, grantees, token
+    links, search) and is purged after 30 days unless restored."""
+    doc = trash_document(db, get_document(db, membership, document_id), actor_id=membership.user_id)
+    db.commit()
+    return success_response(
+        {"deleted": True, "trashed_at": doc.trashed_at.isoformat() if doc.trashed_at else None}
+    )
+
+
+@router.post("/documents/{document_id}/restore")
+def restore_document_endpoint(
+    document_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = restore_document(
+        db,
+        get_document(db, membership, document_id, trashed=True),
+        actor_id=membership.user_id,
+    )
+    db.commit()
+    return success_response(serialize_document(doc, db=db))
+
+
+@router.delete("/documents/{document_id}/permanent")
+def delete_document_permanently_endpoint(
+    document_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Empties one document from the trash right now (409 `NOT_IN_TRASH` if it is not there)."""
+    doc = get_document(db, membership, document_id, trashed=None)
+    if doc.trashed_at is None:
+        raise NotInTrash()
     delete_document(db, doc)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.get("/documents/{document_id}/versions")
+def list_versions_endpoint(
+    document_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id)
+    return success_response({"versions": list_versions(db, doc), "current": doc.version})
+
+
+@router.get("/documents/{document_id}/versions/{number}")
+def get_version_endpoint(
+    document_id: uuid.UUID,
+    number: int,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id)
+    row = get_version(db, doc, number)
+    names = version_authors(db, [row])
+    return success_response(serialize_version(row, names, current=doc.version, with_content=True))
+
+
+@router.post("/documents/{document_id}/versions/{number}/restore")
+def restore_version_endpoint(
+    document_id: uuid.UUID,
+    number: int,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Makes that version's content the current one as a NEW version (history is kept)."""
+    doc = get_document(db, membership, document_id, lock=True)
+    restore_version(db, doc, number, author_id=membership.user_id)
+    db.commit()
+    return success_response(serialize_document(doc, db=db))
+
+
+@router.get("/documents/{document_id}/grants")
+def list_grants_endpoint(
+    document_id: uuid.UUID,
+    include_revoked: bool = False,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id, trashed=None)
+    rows = list_grants(db, doc, include_revoked=include_revoked)
+    return success_response({"grants": [serialize_grant(db, g) for g in rows]})
+
+
+@router.post("/documents/{document_id}/grants", status_code=status.HTTP_201_CREATED)
+@limiter.shared_limit("30/hour", scope="doc-grant-create")
+def create_grant_endpoint(
+    request: Request,
+    document_id: uuid.UUID,
+    body: GrantCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id)
+    grant = create_grant(
+        db,
+        doc,
+        granted_by_id=membership.user_id,
+        permission=body.permission,
+        email=body.email,
+        user_id=body.user_id,
+    )
+    link = f"{_fe_base_url()}/documents/shared-with-me"
+    # Best-effort, like the token-link share: the grant exists whether or not the mail goes out.
+    try:
+        get_email_sender().send(
+            EmailMessage(
+                to=grant.grantee_email,
+                subject="A document was shared with you on Cofoundaz",
+                html=(
+                    f"<p>You were given access to a document. Sign in with this email "
+                    f'address to open it: <a href="{link}">{link}</a></p>'
+                ),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberately tolerant; the grant still exists
+        log.warning(f"grant email to {grant.grantee_email} failed: {exc!r}")
+    db.commit()
+    return success_response(serialize_grant(db, grant))
+
+
+@router.patch("/documents/{document_id}/grants/{grant_id}")
+def update_grant_endpoint(
+    document_id: uuid.UUID,
+    grant_id: uuid.UUID,
+    body: GrantUpdate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id, trashed=None)
+    grant = get_grant(db, doc, grant_id)
+    if grant.revoked_at is not None:
+        raise NotFound()
+    set_permission(db, grant, body.permission)
+    db.commit()
+    return success_response(serialize_grant(db, grant))
+
+
+@router.delete("/documents/{document_id}/grants/{grant_id}")
+def revoke_grant_endpoint(
+    document_id: uuid.UUID,
+    grant_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id, trashed=None)
+    revoke_grant(db, get_grant(db, doc, grant_id), by=membership.user_id)
+    db.commit()
+    return success_response({"revoked": True})
+
+
+@router.get("/documents/{document_id}/comments")
+def list_document_comments_endpoint(
+    document_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id)
+    return success_response({"comments": _document_comments(db, doc, viewer=user)})
+
+
+@router.post("/documents/{document_id}/comments", status_code=201)
+def create_document_comment_endpoint(
+    document_id: uuid.UUID,
+    body: DocumentCommentCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc = get_document(db, membership, document_id)
+    out = _add_document_comment(db, doc, author=user, body=body.body)
+    db.commit()
+    return success_response(out)

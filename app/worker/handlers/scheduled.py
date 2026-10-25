@@ -12,12 +12,14 @@ from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.dashboard.kpi_snapshots import capture_snapshots
 from app.services.dashboard.service import tasks_done_this_week
+from app.services.documents.trash import run_purge
 from app.services.finance.reminders import process_overdue
 from app.services.marketing.service import publish_due_entry
 from app.services.mission.service import get_or_generate_today
 from app.services.sales.stall import notify_stalled
 from app.worker.runner import register_handler
 from app.worker.scheduler import (
+    SCHED_DOCUMENT_TRASH_PURGE,
     SCHED_DUE_SOON,
     SCHED_HEALTH_NIGHTLY,
     SCHED_INVOICE_OVERDUE,
@@ -145,6 +147,12 @@ def handle_invoice_overdue(db: Session, job: Job) -> None:
     )
 
 
+def handle_documents_trash_purge(db: Session, job: Job) -> None:  # noqa: ARG001
+    """Delete documents and files whose 30 days in the trash are up. Self-managed because the
+    stored objects may only be removed after the row deletions have committed."""
+    run_purge(db, now=datetime.now(UTC))
+
+
 register_handler(SCHED_MISSION, handle_mission_generate)
 register_handler(SCHED_OVERDUE, handle_roadmap_overdue)
 register_handler(SCHED_DUE_SOON, handle_roadmap_due_soon)
@@ -154,3 +162,6 @@ register_handler(SCHED_HEALTH_NIGHTLY, handle_health_nightly)
 register_handler(SCHED_MARKETING_PUBLISH, handle_marketing_publish)
 register_handler(SCHED_SALES_STALL, handle_sales_stall)
 register_handler(SCHED_INVOICE_OVERDUE, handle_invoice_overdue)
+register_handler(
+    SCHED_DOCUMENT_TRASH_PURGE, handle_documents_trash_purge, manages_transactions=True
+)

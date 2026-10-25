@@ -130,7 +130,7 @@ for roles outside F/TM (gap row 27) — until then mentors see 403 toasts.
 ## Follow-ups
 
 - A real scanner (`get_scanner`) and a worker path for `pending` → verdict.
-- Per-person grants + "Shared with me" (BE-B, row 14); the roles denied here regain scoped access then.
+- ~~Per-person grants + "Shared with me"~~ shipped in BE-B (`2026-10-25-documents-be-b-library-core.md`); the roles denied here regain access only through `/documents/shared-with-me*`.
 - Dashboard health signal `legal.signatures_complete` still counts signature requests for every role
   (count only, no content) — revisit with BE-B.
 - Notification copy/payload (row 28) is untouched; `owner_id` was added to payloads only.

@@ -46,6 +46,7 @@ SCHED_SALES_SEND = "scheduled.sales.outreach_send"
 SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
 OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
+SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
 INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
@@ -371,6 +372,21 @@ def _due_invoice_overdue(db: Session, now: datetime) -> list[Due]:
     ]
 
 
+def _due_trash_purge(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
+    """One purge sweep per local day, for every workspace at once (so no startup scope): the
+    30-day Documents trash retention is a day-granular promise."""
+    return [
+        Due(
+            "documents.trash_purge",
+            "all",
+            _local(now).date().isoformat(),
+            SCHED_DOCUMENT_TRASH_PURGE,
+            None,
+            {},
+        )
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -508,6 +524,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_sales_stalls(db, now),
         *_due_invoice_overdue(db, now),
         *_due_sales_outreach(db, now),
+        *_due_trash_purge(db, now),
     ]
     enqueued = 0
     for item in due:

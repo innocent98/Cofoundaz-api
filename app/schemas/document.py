@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, Field
 
 from app.db.models.enums import DocumentKind, DocumentStatus, ShareAccess
@@ -9,6 +11,7 @@ class DocumentCreate(BaseModel):
     folder: str | None = None
     template_key: str | None = None
     sections: list[dict] | None = None
+    tags: list[str] | None = None
 
 
 class DocumentSave(BaseModel):
@@ -37,4 +40,43 @@ class SignatureRequestCreate(BaseModel):
 
 
 class SignAction(BaseModel):
-    typed_name: str
+    typed_name: str = Field(max_length=200)
+
+
+class DocumentPatch(BaseModel):
+    """Rename / move / tag / set status. Only the fields sent are changed; `folder: null` moves
+    the document out of its folder."""
+
+    title: str | None = None
+    folder: str | None = None
+    tags: list[str] | None = None
+    status: DocumentStatus | None = None
+
+
+class FilePatch(BaseModel):
+    filename: str | None = None
+    folder: str | None = None
+    tags: list[str] | None = None
+
+
+class FolderCreate(BaseModel):
+    name: str
+    parent_id: uuid.UUID | None = None
+
+
+class FolderRename(BaseModel):
+    name: str
+
+
+class GrantCreate(BaseModel):
+    email: str | None = None
+    user_id: uuid.UUID | None = None
+    permission: ShareAccess = ShareAccess.view
+
+
+class GrantUpdate(BaseModel):
+    permission: ShareAccess
+
+
+class DocumentCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000, pattern=r"\S")

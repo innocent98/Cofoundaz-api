@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "FOLDER_EXISTS",
+      "message": "A folder with that name already exists here.",
+      "field_errors": []
+    }
+  }
+}

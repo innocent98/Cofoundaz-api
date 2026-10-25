@@ -14,6 +14,8 @@ CATEGORIES: tuple[str, ...] = (
 
 EVENT_CATEGORY: dict[str, str] = {
     "document.shared": "documents",
+    "document.version.created": "documents",
+    "document.grant.created": "documents",
     "document.signature.requested": "documents",
     "document.signature.signed": "documents",
     "document.signature.completed": "documents",

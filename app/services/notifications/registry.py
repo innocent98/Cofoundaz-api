@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.money import format_money
+from app.db.models.document import Document, DocumentGrant
 from app.db.models.enums import SALES_ROLES, MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
 from app.db.models.notification import Notification
@@ -133,6 +134,47 @@ def _document_shared(db: Session, payload: dict) -> list[uuid.UUID]:
     return _document_owner_recipients(db, payload, minus_actor=True)
 
 
+def _document_grantees(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Members with a live grant on the (non-trashed) document. A grantee outside the workspace
+    has no workspace inbox to deliver to, so they are told by email instead."""
+    rows = (
+        db.query(DocumentGrant.grantee_user_id)
+        .join(Document, Document.id == DocumentGrant.document_id)
+        .join(
+            Membership,
+            (Membership.user_id == DocumentGrant.grantee_user_id)
+            & (Membership.startup_id == Document.startup_id),
+        )
+        .filter(
+            DocumentGrant.document_id == payload["document_id"],
+            DocumentGrant.revoked_at.is_(None),
+            DocumentGrant.grantee_user_id.isnot(None),
+            Document.trashed_at.is_(None),
+            Membership.status == MembershipStatus.active,
+        )
+        .all()
+    )
+    return [r[0] for r in rows]
+
+
+def _document_version_created(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Everyone who can open the document except whoever saved the version: its owner (or the
+    founders) and members holding a grant."""
+    actor = _actor(payload)
+    chosen = [
+        *_document_owner_recipients(db, payload, minus_actor=True),
+        *_document_grantees(db, payload),
+    ]
+    return [u for u in dict.fromkeys(chosen) if u != actor]
+
+
+def _document_grant_created(db: Session, payload: dict) -> list[uuid.UUID]:
+    """The grantee, when they are already a member of the workspace (else the email is all)."""
+    return [
+        u for u in _document_grantees(db, payload) if str(u) == str(payload.get("grantee_user_id"))
+    ]
+
+
 def _document_signed(db: Session, payload: dict) -> list[uuid.UUID]:
     return _document_owner_recipients(db, payload, minus_actor=False)
 
@@ -184,10 +226,49 @@ def _s(
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
 SPECS: dict[str, NotifSpec] = {
-    "document.shared": _s(_document_shared, "A document was shared"),
+    "document.shared": NotifSpec(
+        _document_shared,
+        lambda p: (
+            f"{p.get('sharer_name') or 'A teammate'} shared a document: {p['title']}"
+            if p.get("title")
+            else "A document was shared"
+        ),
+        lambda _p: "Open document",
+    ),
     "document.signature.requested": _s(_nobody, "A document needs a signature"),
-    "document.signature.signed": _s(_document_signed, "A signer signed a document"),
-    "document.signature.completed": _s(_document_signed, "A document is fully signed"),
+    "document.signature.signed": NotifSpec(
+        _document_signed,
+        lambda p: (
+            f"{p.get('signer_name') or 'A signer'} signed {p['title']}"
+            if p.get("title")
+            else "A signer signed a document"
+        ),
+        lambda _p: "View request",
+    ),
+    "document.signature.completed": NotifSpec(
+        _document_signed,
+        lambda p: (
+            f"{p['title']} is fully signed" if p.get("title") else "A document is fully signed"
+        ),
+        lambda _p: "View request",
+    ),
+    # PRD 18 copy "New version uploaded: {doc} (v{n}) by {name}". Open type (no AUDIENCE row):
+    # the recipients are computed exactly, and a grantee's role is not a Documents role.
+    "document.version.created": NotifSpec(
+        _document_version_created,
+        lambda p: (
+            f"New version uploaded: {p.get('title') or 'a document'} (v{p.get('version')}) "
+            f"by {p.get('author_name') or 'a teammate'}"
+        ),
+        lambda _p: "Open document",
+    ),
+    "document.grant.created": NotifSpec(
+        _document_grant_created,
+        lambda p: (
+            f"{p.get('sharer_name') or 'Someone'} shared {p.get('title') or 'a document'} with you"
+        ),
+        lambda _p: "Open document",
+    ),
     # PRD 08 notifications copy: to the founder, CTA "Review suggestions".
     "business.suggestion.created": NotifSpec(
         _audience("business.suggestion.created", minus_actor=False),

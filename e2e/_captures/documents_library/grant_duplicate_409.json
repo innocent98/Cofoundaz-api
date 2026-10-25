@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "GRANT_EXISTS",
+      "message": "This person already has access to the document.",
+      "field_errors": []
+    }
+  }
+}

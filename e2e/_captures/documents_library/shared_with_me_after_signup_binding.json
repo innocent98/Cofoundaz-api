@@ -1,0 +1,28 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "documents": [
+        {
+          "id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+          "title": "Seed pitch narrative v2",
+          "kind": "custom",
+          "status": "final",
+          "version": 4,
+          "updated_at": "2026-10-25T11:02:18.285772+00:00",
+          "permission": "comment",
+          "workspace": {
+            "id": "cd502d97-1ba7-40cc-8663-f618febbc678",
+            "name": "LibraryCo"
+          },
+          "shared_by": {
+            "id": "6c8367ea-6352-4e35-acca-82c17587dfc7",
+            "name": "delivered+team_member-3aa561ddd6ca"
+          },
+          "shared_at": "2026-10-25T11:02:18.565766+00:00"
+        }
+      ]
+    },
+    "meta": null
+  }
+}

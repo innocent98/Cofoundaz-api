@@ -70,6 +70,9 @@ DIRECT = {
     "document.signature.requested",
     "document.signature.signed",
     "document.signature.completed",
+    # Exact recipients (owner, members holding a grant); see test_document_notifications.py
+    "document.version.created",
+    "document.grant.created",
 }
 
 

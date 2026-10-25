@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "versions": [
+        {
+          "version": 3,
+          "title": "Seed pitch (draft 3)",
+          "status": "draft",
+          "note": null,
+          "author": {
+            "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+            "name": "Ada Founder"
+          },
+          "created_at": "2026-10-25T11:02:18.214580+00:00",
+          "is_current": true
+        },
+        {
+          "version": 2,
+          "title": "Seed pitch narrative",
+          "status": "draft",
+          "note": null,
+          "author": {
+            "id": "6c8367ea-6352-4e35-acca-82c17587dfc7",
+            "name": null
+          },
+          "created_at": "2026-10-25T11:02:18.190775+00:00",
+          "is_current": false
+        },
+        {
+          "version": 1,
+          "title": "Seed pitch narrative",
+          "status": "draft",
+          "note": "Created",
+          "author": {
+            "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+            "name": "Ada Founder"
+          },
+          "created_at": "2026-10-25T11:02:18.165146+00:00",
+          "is_current": false
+        }
+      ],
+      "current": 3
+    },
+    "meta": null
+  }
+}

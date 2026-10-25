@@ -12,6 +12,7 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
+from app.services.documents.common import display_name
 
 
 def create_share(
@@ -45,6 +46,9 @@ def create_share(
             "share_id": str(row.id),
             "shared_by_id": str(shared_by_id),
             "owner_id": str(document.created_by_id) if document.created_by_id else None,
+            "title": document.title,
+            "sharer_name": display_name(db, shared_by_id),
+            "href": f"/documents/{document.id}",
         },
     )
     return row, raw
@@ -62,7 +66,8 @@ def list_shares(db: Session, document: Document) -> list[DocumentShare]:
 def list_workspace_shares(db: Session, startup: Startup) -> list[DocumentShare]:
     return (
         db.query(DocumentShare)
-        .filter_by(startup_id=startup.id)
+        .join(Document, Document.id == DocumentShare.document_id)
+        .filter(DocumentShare.startup_id == startup.id, Document.trashed_at.is_(None))
         .order_by(DocumentShare.created_at.desc())
         .all()
     )
@@ -84,8 +89,16 @@ def _is_expired(share: DocumentShare) -> bool:
 
 def open_shared(db: Session, token: str) -> DocumentShare:
     share = db.query(DocumentShare).filter_by(token_hash=hash_token(token)).first()
-    # Uniform 404 for unknown / revoked / expired — don't leak whether a token existed.
+    # Uniform 404 for unknown / revoked / expired / trashed-document — don't leak whether a
+    # token existed.
     if share is None or share.revoked_at is not None or _is_expired(share):
+        raise NotFound()
+    if (
+        db.query(Document.id)
+        .filter(Document.id == share.document_id, Document.trashed_at.is_(None))
+        .first()
+        is None
+    ):
         raise NotFound()
     share.last_viewed_at = datetime.now(UTC)
     db.flush()
@@ -93,7 +106,12 @@ def open_shared(db: Session, token: str) -> DocumentShare:
 
 
 def share_document(db: Session, membership: Membership, document_id: Any) -> Document:
-    doc = db.query(Document).filter_by(id=document_id, startup_id=membership.startup_id).first()
+    doc = (
+        db.query(Document)
+        .filter_by(id=document_id, startup_id=membership.startup_id)
+        .filter(Document.trashed_at.is_(None))
+        .first()
+    )
     if doc is None:
         raise NotFound()
     return doc

@@ -171,6 +171,9 @@ def record_signature(
             "request_id": str(request.id),
             "signer_id": str(signer.id),
             "owner_id": str(request.created_by_id) if request.created_by_id else None,
+            "title": request.title,
+            "signer_name": typed_name,
+            "href": "/documents/signatures",
         },
     )
     signers = _signers(db, request)
@@ -185,6 +188,8 @@ def record_signature(
                 "startup_id": str(request.startup_id),
                 "request_id": str(request.id),
                 "owner_id": str(request.created_by_id) if request.created_by_id else None,
+                "title": request.title,
+                "href": "/documents/signatures",
             },
         )
     return request
