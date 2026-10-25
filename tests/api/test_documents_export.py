@@ -139,7 +139,8 @@ def test_a_trashed_export_is_not_reused(client, ws):
     h = heads[MembershipRole.founder]
     doc = _rich(client, h)
     first = _export(client, h, doc["id"]).json()["data"]
-    assert client.delete(f"/api/v1/documents/files/{first['id']}", headers=h).status_code == 200
+    deleted = client.delete(f"/api/v1/documents/files/{first['id']}", headers=h)
+    assert deleted.status_code == 200
     second = _export(client, h, doc["id"])
     assert second.status_code == 201 and second.json()["data"]["id"] != first["id"]
 
@@ -156,7 +157,8 @@ def test_trashed_and_unknown_documents_are_404(client, ws):
     _s, _u, heads = ws
     h = heads[MembershipRole.founder]
     doc = _rich(client, h)
-    assert client.delete(f"/api/v1/documents/{doc['id']}", headers=h).status_code == 200
+    deleted = client.delete(f"/api/v1/documents/{doc['id']}", headers=h)
+    assert deleted.status_code == 200
     assert _export(client, h, doc["id"]).status_code == 404
     assert _export(client, h, str(uuid.uuid4())).status_code == 404
 
@@ -221,7 +223,8 @@ def test_export_survives_permanent_delete_of_its_source(client, ws):
     doc = _rich(client, h)
     f = _export(client, h, doc["id"]).json()["data"]
     client.delete(f"/api/v1/documents/{doc['id']}", headers=h)
-    assert client.delete(f"/api/v1/documents/{doc['id']}/permanent", headers=h).status_code == 200
+    deleted = client.delete(f"/api/v1/documents/{doc['id']}/permanent", headers=h)
+    assert deleted.status_code == 200
     row = client.get(f"/api/v1/documents/files/{f['id']}", headers=h).json()["data"]
     assert row["source_document_id"] is None and row["origin"] == "export"
 

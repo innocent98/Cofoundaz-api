@@ -37,7 +37,6 @@ FORMATS_BY_TYPE = dict(FORMATS.values())
 MAX_EXPORT_BYTES = 15 * 1024 * 1024  # the upload limit: an export must be a file we'd accept
 MAX_SOURCE_CHARS = 200_000
 MAX_LINES = 2000  # renderers are super-linear in line count; bounds the time the row lock is held
-_CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff\ufffe\uffff]")
 _FILENAME_UNSAFE = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
 _BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
 
@@ -47,8 +46,18 @@ _BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
 _PDF_MAP = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "‑": "-", " ": " "})
 
 
+def _xml_ok(cp: int) -> bool:
+    """XML 1.0 Char: tab, LF, CR and everything above space except surrogates and U+FFFE/FFFF
+    (also drops DEL and the C1 controls' neighbour 0x7f)."""
+    if cp in (0x09, 0x0A, 0x0D):
+        return True
+    return (
+        0x20 <= cp <= 0xD7FF and cp != 0x7F or 0xE000 <= cp <= 0xFFFD or 0x10000 <= cp <= 0x10FFFF
+    )
+
+
 def _clean(text: str) -> str:
-    return _CONTROL.sub("", text)
+    return "".join(ch for ch in text if _xml_ok(ord(ch)))
 
 
 def _pdf_text(text: str) -> str:
