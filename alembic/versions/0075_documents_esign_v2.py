@@ -8,7 +8,7 @@ signature_requests: `message`, `sequential`, `document_hash`, `executed_file_id`
 SET NULL), `executed_hash`, `owner_emailed_at`.
 signature_signers: `token_version` (link rotation), `notified_at` (link released; backfilled to
 `created_at` because every pre-v2 signer was emailed on creation), `viewed_at`,
-`executed_emailed_at`.
+`executed_emailed_at`, `link_copies` (audit of links handed to editors).
 document_shares: `file_id` (FK document_files, CASCADE) so uploaded files are shareable,
 `document_id` and `email` become nullable (email NULL = anyone with the link), and a CHECK keeps
 exactly one of document_id / file_id set.
@@ -72,6 +72,15 @@ def upgrade() -> None:
         "signature_signers",
         sa.Column("executed_emailed_at", sa.DateTime(timezone=True), nullable=True),
     )
+    op.add_column(
+        "signature_signers",
+        sa.Column(
+            "link_copies",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="[]",
+            nullable=False,
+        ),
+    )
     op.execute("UPDATE signature_signers SET notified_at = created_at")
 
     op.add_column(
@@ -104,6 +113,7 @@ def downgrade() -> None:
     op.alter_column("document_shares", "document_id", existing_type=sa.UUID(), nullable=False)
     op.drop_column("document_shares", "file_id")
 
+    op.drop_column("signature_signers", "link_copies")
     op.drop_column("signature_signers", "executed_emailed_at")
     op.drop_column("signature_signers", "viewed_at")
     op.drop_column("signature_signers", "notified_at")

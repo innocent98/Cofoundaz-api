@@ -2,20 +2,20 @@
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "complete",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 2,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
-      "completed_at": "2026-10-25T17:00:34.205895+00:00",
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
-      "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
+      "completed_at": "2026-10-25T17:18:03.068049+00:00",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
+      "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
       "executed": {
         "state": "pending",
         "file_id": null,
@@ -25,30 +25,47 @@
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-          "email": "delivered+signer-one-d41e91397360@resend.dev",
+          "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+          "email": "delivered+signer-one-c685d7cb984b@resend.dev",
           "name": "Ada Investor",
           "position": 0,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.087896+00:00",
-          "viewed_at": "2026-10-25T17:00:34.142260+00:00",
-          "signed_at": "2026-10-25T17:00:34.174017+00:00",
+          "notified_at": "2026-10-25T17:18:02.941259+00:00",
+          "viewed_at": "2026-10-25T17:18:02.996890+00:00",
+          "signed_at": "2026-10-25T17:18:03.035412+00:00",
           "signed_name": "Ada Investor",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer one)"
+          "signed_user_agent": "e2e-browser/1.0 (signer one)",
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:02.950734+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            },
+            {
+              "at": "2026-10-25T17:18:03.020131+00:00",
+              "via": "copied",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         },
         {
-          "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-          "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+          "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+          "email": "delivered+signer-two-df114f6f8386@resend.dev",
           "name": "Bello Legal",
           "position": 1,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.180645+00:00",
-          "viewed_at": "2026-10-25T17:00:34.205895+00:00",
-          "signed_at": "2026-10-25T17:00:34.205895+00:00",
+          "notified_at": "2026-10-25T17:18:03.047259+00:00",
+          "viewed_at": "2026-10-25T17:18:03.068049+00:00",
+          "signed_at": "2026-10-25T17:18:03.068049+00:00",
           "signed_name": "Bello Legal",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer two)"
+          "signed_user_agent": "e2e-browser/1.0 (signer two)",
+          "link_copies": []
         }
       ]
     },

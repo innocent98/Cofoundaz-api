@@ -72,7 +72,7 @@ class SignerInput(BaseModel):
 class SignatureRequestCreate(BaseModel):
     signers: list[SignerInput] = Field(default_factory=list, max_length=20)
     title: str | None = Field(default=None, max_length=255)
-    expires_in_days: int | None = 14
+    expires_in_days: int | None = Field(default=14, ge=1, le=365)
     # Sign one after another in the order given; each next signer gets their link only when the
     # one before has signed.
     sequential: bool = False

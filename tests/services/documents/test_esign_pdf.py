@@ -94,3 +94,16 @@ def test_hostile_text_is_rendered_as_text_not_markup():
 def test_build_rejects_an_unreadable_source():
     with pytest.raises(AppError):
         esign_pdf.build_executed_pdf(b"%PDF-1.4 junk", _cert())
+
+
+@pytest.mark.parametrize("exc", [TypeError, AttributeError, IndexError, KeyError, AssertionError])
+def test_any_parser_error_is_unreadable_not_a_500(monkeypatch, exc):
+    def boom(*_a, **_k):
+        raise exc("malformed")
+
+    monkeypatch.setattr(esign_pdf, "PdfReader", boom)
+    with pytest.raises(AppError) as e:
+        esign_pdf.validate_pdf(b"%PDF-1.4")
+    assert e.value.code == "PDF_UNREADABLE"
+    with pytest.raises(AppError):
+        esign_pdf.build_executed_pdf(b"%PDF-1.4", _cert())

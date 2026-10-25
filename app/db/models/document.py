@@ -280,6 +280,11 @@ class SignatureSigner(UUIDMixin, TimestampMixin, Base):
     executed_emailed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Audit: every time the signer's link was handed to an editor ("created" in the create
+    # response, "copied" by the copy-link route): [{user_id, name, email, at, via}].
+    link_copies: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
 
 
 class DocumentVersion(UUIDMixin, TimestampMixin, Base):
