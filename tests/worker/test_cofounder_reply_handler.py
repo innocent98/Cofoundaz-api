@@ -7,7 +7,12 @@ from app.db.models.job import Job, JobStatus
 from app.db.models.llm_usage import LlmUsageDaily
 from app.platform import llm_budget
 from app.platform.llm_budget import today_utc
-from app.services.ai_cofounder.service import create_conversation
+from app.services.ai_cofounder.service import (
+    BUDGET_FAILED_TEXT,
+    REPLY_FAILED_TEXT,
+    create_conversation,
+)
+from app.worker import runner
 from app.worker.handlers.ai import handle_cofounder_reply
 from tests.factories import create_membership, create_startup, create_user
 
@@ -89,7 +94,7 @@ def test_over_budget_marks_failed(db, monkeypatch):
 
     db.refresh(assistant)
     assert assistant.status == ChatMessageStatus.failed
-    assert assistant.content == ""
+    assert assistant.content == BUDGET_FAILED_TEXT
 
 
 def test_noop_when_message_missing(db):
@@ -107,3 +112,79 @@ def test_noop_when_not_generating(db, monkeypatch):
 
     db.refresh(assistant)
     assert assistant.content == "already answered"  # untouched
+
+
+class _EmptyLLM:
+    last_usage_tokens = 0
+
+    def __init__(self):
+        self.calls = 0
+
+    def complete(self, messages, *, max_tokens, temperature=0.7):
+        self.calls += 1
+        raise RuntimeError("LLM API returned an empty completion (finish_reason=length).")
+
+
+def _drain_ready(db, job_type="ai.cofounder.reply"):
+    """Make every queued job of this type due now so run_once claims it."""
+    from datetime import UTC, datetime
+
+    for j in db.query(Job).filter(Job.type == job_type):
+        j.run_after = datetime.now(UTC)
+    db.flush()
+
+
+def test_empty_completion_retries_then_fails_the_message_via_run_once(db, monkeypatch):
+    """Finance D9(a): after the last retry the turn is `failed` with a visible message,
+    never left `generating`."""
+    from app.platform.events import event_bus
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers the handler)
+
+    monkeypatch.setattr(settings, "WORKER_MAX_ATTEMPTS", 3)
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 0)
+    s, assistant = _conv_with_pending(db)
+    fake = _EmptyLLM()
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
+    job = db.query(Job).filter(Job.type == "ai.cofounder.reply").one()
+    seen = len(event_bus.published)
+
+    for attempt in (1, 2):
+        _drain_ready(db)
+        assert runner.run_once(db) == 1
+        db.refresh(assistant)
+        db.refresh(job)
+        assert assistant.status == ChatMessageStatus.generating  # still retrying
+        assert job.status == JobStatus.queued and job.attempts == attempt
+
+    _drain_ready(db)
+    assert runner.run_once(db) == 1
+    db.refresh(assistant)
+    db.refresh(job)
+    assert fake.calls == 3
+    assert assistant.status == ChatMessageStatus.failed
+    assert assistant.content == REPLY_FAILED_TEXT
+    assert job.status == JobStatus.succeeded  # the turn ended; nothing left to retry
+    new_events = [e for e, _p in event_bus.published[seen:]]
+    assert "ai.cofounder.reply.failed" in new_events
+
+
+def test_stale_generating_message_is_failed(db):
+    from datetime import UTC, datetime, timedelta
+
+    from app.services.ai_cofounder.service import fail_stale_generating
+
+    s, assistant = _conv_with_pending(db)
+    conv = assistant.conversation_id
+    from app.db.models.ai_chat import AiConversation
+
+    conversation = db.get(AiConversation, conv)
+    assert fail_stale_generating(db, conversation) == 0  # fresh turn left alone
+    assistant.created_at = datetime.now(UTC) - timedelta(
+        seconds=settings.AI_REPLY_STALE_SECONDS + 5
+    )
+    db.flush()
+
+    assert fail_stale_generating(db, conversation) == 1
+    db.refresh(assistant)
+    assert assistant.status == ChatMessageStatus.failed
+    assert assistant.content == REPLY_FAILED_TEXT

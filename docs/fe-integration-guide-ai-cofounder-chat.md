@@ -108,3 +108,65 @@ Content is freeform text (the model may use light markdown). Render opaquely; do
 | Empty content → 422; cross-tenant → 404; unauth → 401/403 | ✅ | `tests/api/test_ai_chat.py` |
 | Over budget → assistant `failed` | ✅ unit | `tests/worker/test_cofounder_reply_handler.py` |
 | Deferred (NOT in v1): token streaming, specialist-routing badges, action chips, suggestions, memory | — | scoped out; see SOP |
+
+---
+
+## 5. Failed and stale replies (fix D9, `fix/finance-d9-d10`)
+
+A reply no longer stays `generating` forever. The assistant turn ends `failed` when (a) the worker's last
+retry (5th attempt, about 7.5 minutes of backoff) still errors, for example an empty model completion,
+or (b) it is still `generating` more than `AI_REPLY_STALE_SECONDS` (900 s) after it was asked (worker down,
+job lost). `content` then holds a founder-visible sentence, so the FE can show it as the bubble text:
+`"Sorry, I couldn't put a reply together. Please try asking again."` (over the daily AI budget it is
+`"Today's AI usage limit for your workspace has been reached. Try again tomorrow."`). There is no new
+endpoint or field: keep polling `GET /ai/conversations/{id}` and treat `status: "failed"` as terminal.
+
+Captured live (the model call forced to fail with an empty completion; `e2e/_captures/finance_d9_d10/`).
+Right after sending, `chat_started.json`: the assistant turn is `generating` with `"content": ""`. After the
+worker's last attempt, `chat_after_last_retry.json`:
+
+```json
+{
+  "data": {
+    "id": "a96d006f-7241-4b60-8346-a216078ce501",
+    "title": "What levers should I look at first?",
+    "created_at": "2026-10-24T22:30:54.038880+00:00",
+    "updated_at": "2026-10-24T22:30:54.067566+00:00",
+    "messages": [
+      {
+        "id": "3f1363be-d87b-4ff0-9b55-dc4305d6097c",
+        "role": "user",
+        "status": "ready",
+        "content": "What levers should I look at first?",
+        "created_at": "2026-10-24T22:30:54.066566+00:00"
+      },
+      {
+        "id": "0c60df40-357d-4c87-863e-09b4f6864633",
+        "role": "assistant",
+        "status": "failed",
+        "content": "Sorry, I couldn't put a reply together. Please try asking again.",
+        "created_at": "2026-10-24T22:30:54.067566+00:00"
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+**What the FE must do.** Render `failed` as an error bubble using `content` and offer "Try again" (a new
+`POST .../messages` is allowed straight away; the 409 `REPLY_IN_PROGRESS` guard no longer blocks on a dead
+turn, because the stale sweep runs first). Keep the bounded polling from section 2, but expect the
+failure to arrive after several minutes when the model keeps erroring, so stop at your own timeout and
+show the same wording rather than "Thinking..." forever. The stale sweep also runs on `GET`, so reopening
+an old thread repairs it.
+
+`chat_stale_failed.json` shows a turn whose job never ran, read back after it aged past the window: it is
+`failed` with the same sentence. (In that capture the aged turn sorts first only because the test rewrote
+its `created_at` two hours into the past; a real stale turn keeps its place.)
+
+| Behaviour | Verified live | Source |
+|---|---|---|
+| Last retry fails, turn ends `failed` with the sentence | yes | `chat_after_last_retry.json` (LLM stubbed to fail; real worker loop, real server) |
+| Stale `generating` turn failed on `GET`, next send allowed | yes | `chat_stale_failed.json`, follow-up `202` asserted in `e2e/test_finance_d9_d10.py` |
+| Real model no longer returns empty for "What levers should I look at first?" | **no, not exercised** | cause inferred from the code (reasoning tokens exhausting the cap); the lead verifies on staging |
+| Over-budget wording | unit only | `tests/worker/test_cofounder_reply_handler.py` |

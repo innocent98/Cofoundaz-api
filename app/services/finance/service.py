@@ -106,7 +106,17 @@ def list_transactions(
     return rows, next_cursor, total
 
 
-_PROVIDER_SOURCES = (TransactionSource.paystack, TransactionSource.flutterwave)
+# Every source that mirrors an outside system (Mono bank feed, payment providers, accounting
+# import) is category-only; only `manual` rows are fully editable. Disconnecting an integration
+# keeps its history, so no public route needs to delete an imported row.
+_IMPORTED_SOURCES = frozenset(
+    {
+        TransactionSource.bank,
+        TransactionSource.accounting,
+        TransactionSource.paystack,
+        TransactionSource.flutterwave,
+    }
+)
 
 
 def _reject_managed(row: Transaction, *, changed: set[str] | None = None) -> None:
@@ -124,7 +134,7 @@ def _reject_managed(row: Transaction, *, changed: set[str] | None = None) -> Non
             "source",
             "This transaction is managed by an expense; edit or delete the expense instead.",
         )
-    if row.source in _PROVIDER_SOURCES and (changed is None or changed - {"category"}):
+    if row.source in _IMPORTED_SOURCES and (changed is None or changed - {"category"}):
         raise _validation("source", "Imported transactions are read-only except the category.")
 
 

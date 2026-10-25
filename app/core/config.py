@@ -205,6 +205,12 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_TIMEOUT: int = 60  # seconds per LLM HTTP call (LLM latency >> a normal request)
     LLM_MAX_TOKENS: int = 800  # default output cap
+    # AI chat turns: reasoning models count hidden reasoning against the cap, so open questions
+    # ("what levers should I look at first?") exhausted 800 and came back empty (finance D9).
+    LLM_CHAT_MAX_TOKENS: int = 3000
+    # A chat reply still `generating` this long after it was asked is marked failed (retries
+    # back off 30s..8min, so the default sits just past the last attempt).
+    AI_REPLY_STALE_SECONDS: int = 900
     LLM_DAILY_TOKEN_BUDGET: int = 100000  # per-startup per-UTC-day token cap; <= 0 = unlimited
 
     # Admin
