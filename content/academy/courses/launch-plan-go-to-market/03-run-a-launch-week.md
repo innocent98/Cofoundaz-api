@@ -4,7 +4,7 @@ title: "Run a launch week"
 order: 3
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 A launch week is a short sprint with a number to hit. It gives you energy and data.
 

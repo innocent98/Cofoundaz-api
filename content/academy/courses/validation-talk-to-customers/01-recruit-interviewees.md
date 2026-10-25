@@ -4,7 +4,7 @@ title: "Recruit interviewees"
 order: 1
 duration: 9
 video:
-review_status: draft
+review_status: reviewed
 ---
 The quality of your interviews depends on who you talk to. Five people who truly have the problem teach you more than twenty who are merely polite.
 

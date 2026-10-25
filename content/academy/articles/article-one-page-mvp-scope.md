@@ -7,7 +7,7 @@ tags:
   - product
   - mvp
 order: 7
-review_status: draft
+review_status: reviewed
 ---
 A scope document does not need to be long. One page is enough, and it keeps everyone honest.
 

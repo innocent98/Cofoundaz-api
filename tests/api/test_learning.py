@@ -218,7 +218,7 @@ def test_recommendations_carry_a_hero_with_its_own_reason(client, db):
 def test_courses_list_and_detail_shapes(client, db):
     _u, _s, h = _member(db)
     courses = client.get(f"{BASE}/courses", headers=h).json()["data"]["courses"]
-    assert len(courses) == 8 and all(c["review_status"] == "draft" for c in courses)
+    assert len(courses) == 8 and all(c["review_status"] == "reviewed" for c in courses)
     assert {
         "id",
         "title",
@@ -275,7 +275,7 @@ def test_articles_search_tags_and_reader(client, db):
     _u, _s, h = _member(db)
     listing = client.get(f"{BASE}/articles", headers=h).json()["data"]["articles"]
     assert len(listing) == 10
-    assert all("body" not in a and a["review_status"] == "draft" for a in listing)
+    assert all("body" not in a and a["review_status"] == "reviewed" for a in listing)
     found = client.get(f"{BASE}/articles?q=runway", headers=h).json()["data"]["articles"]
     assert found and found[0]["id"] == "article-read-your-runway"
     tagged = client.get(f"{BASE}/articles?tag=pricing", headers=h).json()["data"]["articles"]

@@ -4,7 +4,7 @@ title: "Cut everything else"
 order: 2
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 Founders rarely run out of ideas. They run out of time and money. Cutting is the main skill of scoping.
 

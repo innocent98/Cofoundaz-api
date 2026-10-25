@@ -4,7 +4,7 @@ title: "Give equity and roles clear terms"
 order: 3
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 Unclear promises about ownership cause more broken teams than almost any other problem. Settle them early and put them in writing.
 

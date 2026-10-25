@@ -4,7 +4,7 @@ title: "Test a price with real money"
 order: 3
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 Asking people "would you pay?" does not tell you much. Asking them to actually pay does.
 

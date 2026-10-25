@@ -4,7 +4,7 @@ title: "Test demand before you build"
 order: 3
 duration: 8
 video:
-review_status: draft
+review_status: reviewed
 ---
 Before you commit months to building, run one cheap test to see whether people want the result you promise.
 

@@ -6,7 +6,7 @@ level: beginner
 stage_tags: [validation]
 gap_tags: [customers, market]
 order: 2
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Recruit five interviewees who match your problem statement"
   - "Ask about past behaviour instead of pitching your idea"

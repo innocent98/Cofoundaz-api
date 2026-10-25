@@ -4,7 +4,7 @@ title: "Run a monthly numbers review"
 order: 3
 duration: 8
 video:
-review_status: draft
+review_status: reviewed
 ---
 A short, regular review turns numbers from a surprise into a habit.
 

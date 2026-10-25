@@ -35,17 +35,18 @@ def test_shipped_content_is_valid_and_covers_every_stage():
     assert {p.stage for p in bundle.paths} == {s.value for s in StartupStage}
 
 
-def test_every_item_ships_as_a_draft_with_no_video_and_no_placeholder_text():
+def test_every_item_ships_reviewed_with_no_video_and_no_placeholder_text():
+    # Adebayo reviewed all shipped content on 2026-10-25; new files start as draft.
     bundle = load_content()
     for course in bundle.courses:
-        assert course.review_status == ReviewStatus.draft
+        assert course.review_status == ReviewStatus.reviewed
         for lesson in course.lessons:
-            assert lesson.review_status == ReviewStatus.draft
+            assert lesson.review_status == ReviewStatus.reviewed
             assert lesson.video_id is None  # no videos exist yet (D-ACA-2)
             assert len(lesson.transcript.split()) > 100
         assert "placeholder" not in (course.title + course.description).lower()
     for article in bundle.articles:
-        assert article.review_status == ReviewStatus.draft
+        assert article.review_status == ReviewStatus.reviewed
         assert len(article.body.split()) > 150
         assert "[placeholder]" not in article.title.lower()
 

@@ -7,7 +7,7 @@ tags:
   - runway
   - growth
 order: 6
-review_status: draft
+review_status: reviewed
 ---
 Runway tells you how many months you can keep operating if nothing changes. You can calculate it in five minutes.
 

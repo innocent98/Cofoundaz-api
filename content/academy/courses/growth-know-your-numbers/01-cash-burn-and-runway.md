@@ -4,7 +4,7 @@ title: "Cash, burn and runway"
 order: 1
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 Three numbers tell you how long your business can survive.
 

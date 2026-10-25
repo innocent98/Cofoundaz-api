@@ -50,3 +50,9 @@
 - Team-progress view and CMS (Module 25.4) are out of scope. Gap 24 (complete a course ticks a Roadmap task or lifts Health) is not built; `learning.course.completed` is now consumed only by Notifications.
 - Behind a proxy, the public verify limit keys on the connecting address; if all traffic arrives from one proxy address the 30 a minute is shared (the same limit behaviour as the other public routes).
 - Names with letters outside Western European Latin are folded on the PDF; embed a font if that matters.
+
+## Update 2026-10-25: content reviewed
+Adebayo read all 48 content files (6 paths, 8 courses with their lessons, 10 articles) and approved them as they stand. Every file now
+carries `review_status: reviewed` (PR `chore/academy-content-reviewed`), so production shows them without the Draft badge. Tests that
+asserted the shipped content was a draft now assert `reviewed`. New content files still start as `draft` until reviewed.
+**Operate:** after merge, reload content on each environment: `docker compose exec -T api python -m app.services.learning.content`.

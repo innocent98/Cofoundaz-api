@@ -4,7 +4,7 @@ title: "Hire against the plan"
 order: 2
 duration: 14
 video:
-review_status: draft
+review_status: reviewed
 ---
 Hiring is the biggest spending decision most startups make. It should follow the work, not the mood of the month.
 

@@ -4,7 +4,7 @@ title: "Choose launch channels"
 order: 1
 duration: 11
 video:
-review_status: draft
+review_status: reviewed
 ---
 A channel is a place where your customers already pay attention. You do not need ten. Pick two.
 

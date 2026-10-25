@@ -7,7 +7,7 @@ tags:
   - focus
   - build
 order: 9
-review_status: draft
+review_status: reviewed
 ---
 Founders live in the urgent. A fixed weekly review keeps you pointed at what matters.
 

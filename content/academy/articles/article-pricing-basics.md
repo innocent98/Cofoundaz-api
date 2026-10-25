@@ -7,7 +7,7 @@ tags:
   - validation
   - money
 order: 2
-review_status: draft
+review_status: reviewed
 ---
 A first price is a hypothesis, not a promise. You will change it. The goal is to start close enough to learn quickly.
 

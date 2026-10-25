@@ -7,7 +7,7 @@ tags:
   - launch
   - money
 order: 5
-review_status: draft
+review_status: reviewed
 ---
 You do not need a full payment system to charge your first customers. You need a clear way to ask for money and a record of what came in.
 

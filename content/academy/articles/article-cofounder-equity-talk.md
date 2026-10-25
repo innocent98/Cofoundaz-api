@@ -7,7 +7,7 @@ tags:
   - legal
   - equity
 order: 8
-review_status: draft
+review_status: reviewed
 ---
 Conversations about ownership are easiest at the start, when no one has much to lose. They get harder with every month of progress.
 

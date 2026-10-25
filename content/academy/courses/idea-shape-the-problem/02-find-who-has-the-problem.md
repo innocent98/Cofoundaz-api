@@ -4,7 +4,7 @@ title: "Find who has the problem"
 order: 2
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 A good problem statement is only useful if real people match it. This lesson turns "who" into a list of names.
 

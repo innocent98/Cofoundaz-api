@@ -4,7 +4,7 @@ title: "Write a problem statement"
 order: 1
 duration: 8
 video:
-review_status: draft
+review_status: reviewed
 ---
 A problem statement names a person, a situation and a cost. Use this shape:
 

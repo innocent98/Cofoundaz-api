@@ -4,7 +4,7 @@ title: "Unit economics in plain language"
 order: 2
 duration: 12
 video:
-review_status: draft
+review_status: reviewed
 ---
 Unit economics asks a simple question: **do you make money on each customer or sale, before overheads?**
 

@@ -4,7 +4,7 @@ title: "Double down on the winner"
 order: 2
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 Once one channel clearly beats the others, the job changes from testing to scaling it carefully.
 

@@ -4,7 +4,7 @@ title: "Pick a pricing model"
 order: 2
 duration: 10
 video:
-review_status: draft
+review_status: reviewed
 ---
 The same price can be packaged in different ways. The model you pick shapes how customers behave and how steady your income is.
 

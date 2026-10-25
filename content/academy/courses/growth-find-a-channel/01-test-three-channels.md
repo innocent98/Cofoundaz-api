@@ -4,7 +4,7 @@ title: "Test three channels"
 order: 1
 duration: 13
 video:
-review_status: draft
+review_status: reviewed
 ---
 Do not guess which channel will work. Test three, in small batches, side by side.
 
