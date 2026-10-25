@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "comments": [
+        {
+          "id": "b58db5c1-9c70-4b12-a484-84c39285a944",
+          "entity_type": "document",
+          "entity_id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+          "anchor": null,
+          "author": {
+            "id": "ba27af70-124a-4361-addf-019441a5decf",
+            "name": null
+          },
+          "body": "Tighten the problem statement",
+          "mention_user_ids": [],
+          "created_at": "2026-10-25T11:02:18.785517+00:00",
+          "edited_at": null,
+          "resolved_at": null,
+          "is_mine": false
+        }
+      ]
+    },
+    "meta": null
+  }
+}

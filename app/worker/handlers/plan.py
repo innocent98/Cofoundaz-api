@@ -16,7 +16,12 @@ from app.platform.llm_budget import debit, over_budget
 from app.services.business.plan_context import build_plan_context
 from app.services.business.plan_defs import PLAN_SECTIONS, SECTIONS_BY_KEY, STAGE_CAPTIONS
 from app.services.business.plan_prompt import build_section_messages
-from app.services.documents.service import create_document, validate_sections
+from app.services.documents.service import (
+    create_document,
+    search_text_of,
+    validate_sections,
+)
+from app.services.documents.versions import snapshot
 from app.worker.runner import register_handler
 
 
@@ -119,7 +124,10 @@ def handle_plan_section(db: Session, job: Job) -> None:
         max_tokens=settings.LLM_MAX_TOKENS,
     )
     debit(db, startup.id, getattr(client, "last_usage_tokens", 0))
-    db.refresh(doc)  # pick up edits made while the model was writing
+    db.refresh(doc, with_for_update=True)  # pick up edits made while the model was writing
+    if doc.trashed_at is not None:
+        job.result = {"status": "gone", "section": key}
+        return
     current = list(doc.sections or [])
     idx = next((i for i, sec in enumerate(current) if sec.get("heading") == section.heading), None)
     if idx is None:
@@ -127,8 +135,10 @@ def handle_plan_section(db: Session, job: Job) -> None:
         return
     current[idx] = {**current[idx], "body": body.strip()}
     doc.sections = validate_sections(current)
+    doc.search_text = search_text_of(doc.sections)
     doc.version += 1
     db.flush()
+    snapshot(db, doc, author_id=None, note="AI regenerated a section")
     job.result = {"status": "ready", "section": key, "document_version": doc.version}
 
 

@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "NOT_IN_TRASH",
+      "message": "Move it to the trash first.",
+      "field_errors": []
+    }
+  }
+}

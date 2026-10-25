@@ -20,6 +20,7 @@ from tests.factories import create_membership, create_startup, create_user
 
 SIGNER_EMAIL = "signer-secret@example.com"
 SHARE_EMAIL = "recipient-secret@example.com"
+GRANT_EMAIL = "grantee-secret@example.com"
 DENIED = sorted(set(MembershipRole) - DOCUMENT_ROLES, key=lambda r: r.value)
 ALLOWED = sorted(DOCUMENT_ROLES, key=lambda r: r.value)
 
@@ -62,11 +63,22 @@ def world(client, db, tmp_path, monkeypatch):
         json={"signers": [{"email": SIGNER_EMAIL, "name": "S"}]},
         headers=h,
     ).json()["data"]
+    folder = client.post("/api/v1/documents/folders", json={"name": "Legal"}, headers=h).json()[
+        "data"
+    ]["folders"][0]
+    grant = client.post(
+        f"/api/v1/documents/{doc['id']}/grants",
+        json={"email": GRANT_EMAIL, "permission": "comment"},
+        headers=h,
+    ).json()["data"]
     ids = {
         "doc": doc["id"],
         "file": file["id"],
         "share": share["id"],
         "req": req["id"],
+        "folder": folder["id"],
+        "grant": grant["id"],
+        "number": 1,
         "key": "business_plan",
     }
     return heads, ids
@@ -98,9 +110,41 @@ ROUTES = [
     ),
     ("POST", "/documents/signature-requests/{req}/cancel", None, False),
     ("DELETE", "/documents/{doc}/shares/{share}", None, False),
+    ("GET", "/documents/files/{file}/content", None, False),
+    ("PATCH", "/documents/files/{file}", {"tags": ["a"]}, False),
+    ("POST", "/documents/files/{file}/restore", None, False),
+    ("DELETE", "/documents/files/{file}/permanent", None, False),
+    ("GET", "/documents/folders", None, False),
+    ("POST", "/documents/folders", {"name": "Fin"}, False),
+    ("POST", "/documents/folders/standard", None, False),
+    ("PATCH", "/documents/folders/{folder}", {"name": "Contracts"}, False),
+    ("GET", "/documents/trash", None, False),
+    ("GET", "/documents/grants", None, False),
+    ("GET", "/documents/{doc}/grants", None, False),
+    ("POST", "/documents/{doc}/grants", {"email": "q@example.com", "permission": "view"}, False),
+    ("PATCH", "/documents/{doc}/grants/{grant}", {"permission": "view"}, False),
+    ("GET", "/documents/{doc}/comments", None, False),
+    ("POST", "/documents/{doc}/comments", {"body": "note"}, False),
+    ("GET", "/documents/{doc}/versions", None, False),
+    ("GET", "/documents/{doc}/versions/{number}", None, False),
+    ("POST", "/documents/{doc}/versions/{number}/restore", None, False),
+    ("PATCH", "/documents/{doc}", {"title": "renamed"}, False),
+    ("POST", "/documents/{doc}/restore", None, False),
+    ("DELETE", "/documents/{doc}/grants/{grant}", None, False),
+    ("DELETE", "/documents/folders/{folder}", None, False),
     ("DELETE", "/documents/files/{file}", None, False),
+    ("DELETE", "/documents/{doc}/permanent", None, False),
     ("DELETE", "/documents/{doc}", None, False),
 ]
+
+# Open to any verified account by design: access comes from a live per-person grant, never from
+# a workspace role (tests/api/test_documents_grants.py covers these).
+GRANTEE_ROUTES = {
+    ("GET", "/documents/shared-with-me"),
+    ("GET", "/documents/shared-with-me/{doc}"),
+    ("GET", "/documents/shared-with-me/{doc}/comments"),
+    ("POST", "/documents/shared-with-me/{doc}/comments"),
+}
 
 
 def _call(client, route, ids, headers):
@@ -140,12 +184,15 @@ def test_matrix_covers_every_documents_route():
         "/api/v1/sign/{token}",
         "/api/v1/sign/{token}/file",
         "/api/v1/documents/files/download",
+        "/api/v1/documents/files/content",
     }
     path_names = {  # the matrix spells path params with its own names
         "{document_id}": "{doc}",
         "{file_id}": "{file}",
         "{share_id}": "{share}",
         "{request_id}": "{req}",
+        "{folder_id}": "{folder}",
+        "{grant_id}": "{grant}",
     }
     live = set()
     for path, ops in app.openapi()["paths"].items():
@@ -154,7 +201,8 @@ def test_matrix_covers_every_documents_route():
         for old, new in path_names.items():
             path = path.replace(old, new)
         live |= {(m.upper(), path.removeprefix("/api/v1")) for m in ops}
-    assert live == {(m, p) for m, p, *_ in ROUTES}
+    assert live - GRANTEE_ROUTES == {(m, p) for m, p, *_ in ROUTES}
+    assert GRANTEE_ROUTES <= live
 
 
 def test_public_token_routes_stay_open(client, world):

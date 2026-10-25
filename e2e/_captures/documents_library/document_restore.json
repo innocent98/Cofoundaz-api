@@ -1,0 +1,27 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "a8b89e08-f669-403e-a9ce-63ab77a4ebd6",
+      "kind": "custom",
+      "mime": "application/vnd.cofoundaz.document+json",
+      "title": "Live, not trashed",
+      "status": "draft",
+      "ai_generated": false,
+      "folder": null,
+      "tags": [],
+      "template_key": null,
+      "version": 1,
+      "owner": {
+        "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+        "name": "Ada Founder"
+      },
+      "share_count": 1,
+      "updated_at": "2026-10-25T11:02:19.787351+00:00",
+      "trashed_at": null,
+      "purges_at": null,
+      "sections": []
+    },
+    "meta": null
+  }
+}

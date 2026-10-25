@@ -165,6 +165,26 @@ class FileHasSignatureRequests(AppError):  # noqa: N818
     message = "This file has signature requests, so it can't be deleted."
 
 
+class FolderNotEmpty(AppError):  # noqa: N818
+    code, http_status = "FOLDER_NOT_EMPTY", 409
+    message = "This folder still has documents or files in it."
+
+
+class FolderExists(AppError):  # noqa: N818
+    code, http_status = "FOLDER_EXISTS", 409
+    message = "A folder with that name already exists here."
+
+
+class GrantExists(AppError):  # noqa: N818
+    code, http_status = "GRANT_EXISTS", 409
+    message = "This person already has access to the document."
+
+
+class NotInTrash(AppError):  # noqa: N818
+    code, http_status = "NOT_IN_TRASH", 409
+    message = "Move it to the trash first."
+
+
 class FileNotClean(AppError):  # noqa: N818
     code, http_status = "FILE_NOT_CLEAN", 409
     message = "This file hasn't passed the security scan, so it can't be sent or shared yet."

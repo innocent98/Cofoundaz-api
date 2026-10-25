@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "deleted": true,
+      "trashed_at": "2026-10-25T11:02:19.615240+00:00"
+    },
+    "meta": null
+  }
+}

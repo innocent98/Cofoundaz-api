@@ -16,6 +16,12 @@ Base path: `/api/v1`. Same auth convention as the rest of Documents & Templates 
 workspace-scoped routes: Bearer access token (`Authorization: Bearer <token>`) + `X-Workspace-Id`
 header — **except the two public signing routes, §3 and §4, which take no auth at all.**
 
+> **BE-B update (2026-10-25).** Delete is now a soft delete (30-day Trash), rows carry `owner`, `tags`,
+> `share_count`, `mime`, `trashed_at`, `purges_at`, and a trashed document's token link 404s. Re-captured
+> bodies in `e2e/_captures/documents*/` include the new fields. Full detail:
+> `docs/fe-integration-guide-documents-library.md`. Anything below that shows a document or file row without
+> these fields, or a hard delete, is the pre-BE-B shape.
+
 > **BE-A update (2026-10-24, D-DOC-1) — read this first.** Every authenticated Documents route is
 > now **founder + team_member only, reads included**. `mentor`, `business_consultant`, `investor`,
 > `accountant`, `legal_advisor` (any other role) get `403 FORBIDDEN` — `{"error":{"code":"FORBIDDEN",

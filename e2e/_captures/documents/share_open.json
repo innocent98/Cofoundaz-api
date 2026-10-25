@@ -7,57 +7,57 @@
       "ai_generated": false,
       "template_key": "business_plan",
       "version": 1,
-      "updated_at": "2026-10-24T21:30:15.213314+00:00",
+      "updated_at": "2026-10-25T11:02:22.378897+00:00",
       "sections": [
         {
-          "id": "2aea4f5e-5857-438d-891b-d142ccaacf73",
+          "id": "e0e612e4-fd39-4784-b427-e1b9afb6b395",
           "body": "",
           "heading": "Executive Summary"
         },
         {
-          "id": "3a979388-a8e9-4182-9263-e079c45d467f",
+          "id": "30a1aea7-f13b-40fe-8657-ba65ae726ca7",
           "body": "",
           "heading": "Problem"
         },
         {
-          "id": "adbb7783-3eec-40d1-b952-171947f5ae93",
+          "id": "591e8d0b-1870-4ea9-996b-882f005b9606",
           "body": "",
           "heading": "Solution"
         },
         {
-          "id": "b80a7edb-c9a3-4db1-bd07-60454e17db0a",
+          "id": "91085f96-9e1e-4cfa-8c2c-219098dff3bb",
           "body": "",
           "heading": "Market & Customer"
         },
         {
-          "id": "22c049e3-5fb4-4a70-b244-f3211d83cf20",
+          "id": "b8b427cb-ba96-456c-8cd9-e5b73160326b",
           "body": "",
           "heading": "Business Model"
         },
         {
-          "id": "43b7a022-4a82-4328-95ca-0247589120a4",
+          "id": "4faf0086-8be0-40d8-8ef4-81b0f5701bcf",
           "body": "",
           "heading": "Go-to-Market"
         },
         {
-          "id": "25c299a7-72fc-48a8-a5be-8ca9c38859d0",
+          "id": "699d0dfa-5f1c-4e8a-b1ca-3f19ddcd1064",
           "body": "",
           "heading": "Team"
         },
         {
-          "id": "678951c1-2e46-4a15-9f3f-fa28a7c7046c",
+          "id": "7d9d9cf9-cc5c-46cd-ad0c-1ef920677eb1",
           "body": "",
           "heading": "Financials"
         },
         {
-          "id": "5f77d2f7-4acf-46ae-9288-eb551abc9cb8",
+          "id": "cbcd562e-83b7-4bf7-a15b-4ac20d0e3b17",
           "body": "",
           "heading": "The Ask"
         }
       ]
     },
     "access_level": "view",
-    "expires_at": "2026-11-23T21:30:15.245276+00:00"
+    "expires_at": "2026-11-24T11:02:22.426348+00:00"
   },
   "meta": null
 }

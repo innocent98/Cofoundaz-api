@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "A document needs a name.",
+      "field_errors": [
+        {
+          "field": "title",
+          "message": "A document needs a name."
+        }
+      ]
+    }
+  }
+}

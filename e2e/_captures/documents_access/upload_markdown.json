@@ -2,13 +2,22 @@
   "status": 201,
   "body": {
     "data": {
-      "id": "bba922ae-3919-421a-adb7-571ceb14d854",
+      "id": "6bcbbc12-efcb-44fa-a6de-9816c1246e6c",
       "filename": "notes.md",
       "content_type": "text/markdown",
+      "mime": "text/markdown",
       "size_bytes": 8,
       "folder": null,
+      "tags": [],
+      "owner": {
+        "id": "7b26b396-26bc-43a2-a02e-025cc80fa14c",
+        "name": "Ada F"
+      },
+      "share_count": 0,
       "scan_status": "clean",
-      "uploaded_at": "2026-10-24T21:30:19.366386+00:00"
+      "uploaded_at": "2026-10-25T11:02:25.862791+00:00",
+      "trashed_at": null,
+      "purges_at": null
     },
     "meta": null
   }

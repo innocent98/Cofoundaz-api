@@ -159,7 +159,7 @@ def _mission_tasks(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
 def _documents(db: Session, s: Startup, _u: User, p: str) -> Query[Any]:
     return (
         db.query(Document.id, Document.title, Document.updated_at)
-        .filter(Document.startup_id == s.id, _has(Document.title, p))
+        .filter(Document.startup_id == s.id, Document.trashed_at.is_(None), _has(Document.title, p))
         .order_by(Document.updated_at.desc())
     )
 

@@ -1,0 +1,85 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "folders": [
+        {
+          "id": "892c9d71-7d52-447a-a3ca-6da69c335451",
+          "name": "Archive",
+          "path": "Archive",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "65b0702f-4418-46cd-9bea-8b021973915f",
+          "name": "Contracts",
+          "path": "Contracts",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "2a2922a2-a75d-4236-9894-cfd9526701cb",
+          "name": "Corporate",
+          "path": "Corporate",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "415e599f-0198-4786-8fb2-43a6e646b7a7",
+          "name": "Financials",
+          "path": "Financials",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "444ba652-eed0-4b4e-9483-739e3262206e",
+          "name": "Fundraising",
+          "path": "Fundraising",
+          "parent_id": null,
+          "document_count": 1,
+          "file_count": 0,
+          "total_count": 1
+        },
+        {
+          "id": "6c548203-d273-4d37-9b57-cf33561709ec",
+          "name": "Seed",
+          "path": "Fundraising/Seed",
+          "parent_id": "444ba652-eed0-4b4e-9483-739e3262206e",
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "b7d7b820-d472-4b63-837a-fb28222c000e",
+          "name": "Legal",
+          "path": "Legal",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        },
+        {
+          "id": "6c5b0534-cfc4-4f86-a212-a4e58ac25408",
+          "name": "Marketing",
+          "path": "Marketing",
+          "parent_id": null,
+          "document_count": 0,
+          "file_count": 0,
+          "total_count": 0
+        }
+      ],
+      "uncategorized": 0,
+      "trash": 0,
+      "total": 1
+    },
+    "meta": null
+  }
+}

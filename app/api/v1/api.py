@@ -29,10 +29,12 @@ from app.api.v1.endpoints import (
 )
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.onboarding import router as onboarding_router
+from app.services.documents.grants import register as register_grant_binding
 from app.services.health_score.triggers import register as register_health_triggers
 from app.services.notifications.registry import register as register_notifications
 
 register_notifications()
+register_grant_binding()
 register_health_triggers()
 
 api_router = APIRouter()

@@ -1,6 +1,6 @@
 {
-  "to": "delivered+signer-one-f8801e44bf0c@resend.dev",
+  "to": "delivered+signer-one-2b02229c62fc@resend.dev",
   "subject": "Signature requested: Investor Agreement",
   "html": "<p>You have a document to review and sign: <a href=\"http://localhost:3000/sign/REDACTED_TOKEN\">http://localhost:3000/sign/REDACTED_TOKEN</a></p>",
-  "sent_at": "2026-10-24T21:30:16.063539+00:00"
+  "sent_at": "2026-10-25T11:02:23.166944+00:00"
 }

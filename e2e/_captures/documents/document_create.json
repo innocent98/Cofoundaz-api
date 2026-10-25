@@ -1,57 +1,66 @@
 {
   "data": {
-    "id": "8ae96514-6ee4-4f1a-9c2b-cc2bf45cda96",
+    "id": "628a1f9b-611c-474e-a7db-1337bd7151d6",
     "kind": "business_plan",
+    "mime": "application/vnd.cofoundaz.document+json",
     "title": "Business Plan",
     "status": "draft",
     "ai_generated": false,
     "folder": null,
+    "tags": [],
     "template_key": "business_plan",
     "version": 1,
-    "updated_at": "2026-10-24T21:30:13.537086+00:00",
+    "owner": {
+      "id": "62ce90e5-eca5-434e-b312-e301a0c8459d",
+      "name": "Ada Founder"
+    },
+    "share_count": 0,
+    "updated_at": "2026-10-25T11:02:20.780304+00:00",
+    "trashed_at": null,
+    "purges_at": null,
     "sections": [
       {
-        "id": "e7c17bdc-77e5-4fd7-b137-8d1028309174",
+        "id": "b38c632f-17bf-475c-9351-29f497d76091",
         "body": "",
         "heading": "Executive Summary"
       },
       {
-        "id": "1db00b54-9d2d-4c71-af20-b3175e8c279e",
+        "id": "b7dedf68-6804-4417-8e62-c3e42a113dce",
         "body": "",
         "heading": "Problem"
       },
       {
-        "id": "2b056507-9574-4a8e-9a5c-42b045dcebc7",
+        "id": "9d88ba07-1f14-4c03-9f90-223c039ca8ea",
         "body": "",
         "heading": "Solution"
       },
       {
-        "id": "3e5ffe11-78f3-4905-9ea7-52347be0132d",
+        "id": "4a733c2c-9a44-4d1a-bcd7-fc24d210b495",
         "body": "",
         "heading": "Market & Customer"
       },
       {
-        "id": "8dacadaf-82ee-47bf-8dfc-229deed45fbf",
+        "id": "f746a76f-0cea-4e3f-acd1-464a669fc50b",
         "body": "",
         "heading": "Business Model"
       },
       {
-        "id": "f332b9cc-920d-41c4-96bd-4d744a91eda5",
+        "id": "44221629-af1c-40bc-a767-65d667dc6c70",
         "body": "",
         "heading": "Go-to-Market"
       },
       {
-        "id": "a7f024ad-f8aa-4ab1-a096-9eede7d1543c",
+        "id": "3cefaa23-cffe-4f51-bac5-326803ac71a2",
         "body": "",
         "heading": "Team"
       },
       {
-        "id": "2ae81c7b-f05f-4836-b93f-1517fe7fbd9a",
+        "id": "bbfc52a1-f01a-4278-8b10-6f457fab5f42",
         "body": "",
         "heading": "Financials"
       },
       {
-        "id": "50b7d33f-dc47-499c-b7d4-185a81a4095e",
+        "id": "5de5ff4a-bc7a-47c5-a98b-56fc002fadda",
         "body": "",
         "heading": "The Ask"
       }
