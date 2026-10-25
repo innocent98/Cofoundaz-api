@@ -85,6 +85,7 @@ one snapshot per document, root folders for every folder string in use). Downgra
 | 6 | Could not revoke a grant/link while the document was trashed | Grant routes use `trashed=None` (token-link revoke by id was already not trash-gated) |
 | 7 | Grantee comment payload leaked internal user ids / `mention_user_ids` | Outsider serializer returns `{name}` only |
 | 10–12 | Tag filter wildcards; unbounded `typed_name` in a notification title; blank comment body | `autoescape`, `max_length=200`, non-blank pattern |
+| 3b | (Automated commit review) the open team `/comments/{id}` routes could edit/delete/resolve a document comment, e.g. by a revoked grantee who is still a member | Team comment service now 404s `entity_type='document'` comments |
 | 8, 9 | Grants outlive membership removal; a provider-signed URL already issued survives a trash for ≤ 5 min | Accepted, see Follow-ups |
 
 ## Operate / roll back

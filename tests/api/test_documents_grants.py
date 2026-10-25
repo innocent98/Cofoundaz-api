@@ -494,3 +494,27 @@ def test_tag_filter_treats_wildcards_literally(client, world):
         client.get(f"{API}/documents", params={"tag": "%"}, headers=h).json()["data"]["documents"]
         == []
     )
+
+
+def test_team_comment_routes_cannot_touch_document_comments(client, world):
+    """A (possibly revoked) grantee is still a workspace member: the open team /comments API must
+    not edit, delete or resolve a document comment."""
+    _s, users, heads = world
+    h = heads[M.founder]
+    doc = new_doc(client, h)
+    _grant(client, h, doc, user_id=str(users[M.mentor].id), permission="comment")
+    made = client.post(
+        f"{API}/documents/shared-with-me/{doc['id']}/comments",
+        json={"body": "mine"},
+        headers=headers(users[M.mentor]),
+    ).json()["data"]
+    mentor = heads[M.mentor]
+    for method, path, body in [
+        ("PATCH", f"/comments/{made['id']}", {"body": "edited"}),
+        ("DELETE", f"/comments/{made['id']}", None),
+        ("POST", f"/comments/{made['id']}/resolve", {}),
+    ]:
+        r = client.request(method, API + path, json=body, headers=mentor)
+        assert r.status_code == 404, (method, r.text)
+        r = client.request(method, API + path, json=body, headers=h)
+        assert r.status_code == 404, (method, r.text)

@@ -238,7 +238,9 @@ def create_comment(
 
 def _own_comment(db: Session, startup: Startup, comment_id: uuid.UUID) -> Comment:
     c = db.query(Comment).filter_by(id=comment_id, startup_id=startup.id).first()
-    if c is None:
+    # Document comments belong to the Documents routes (founder / team member, or a live grant);
+    # this team API is open to every member, so it must never edit, delete or resolve them.
+    if c is None or c.entity_type == "document":
         raise NotFound()
     return c
 
