@@ -7,7 +7,7 @@ signatures are: simple electronic signatures, not certificate-based ones.
 """
 
 import io
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from html import escape
 
@@ -24,6 +24,18 @@ from app.core.errors import AppError
 from app.services.documents.export import _pdf_text
 
 MAX_PAGES = 300
+# Malformed PDFs surface as all sorts of errors from the parser; every one is "unreadable".
+_PDF_ERRORS = (
+    PyPdfError,
+    ValueError,
+    KeyError,
+    IndexError,
+    TypeError,
+    AttributeError,
+    OSError,
+    RecursionError,
+    AssertionError,
+)
 
 LEGAL_CAVEAT = (
     "These are simple electronic signatures: each signer typed their name to adopt it as their "
@@ -43,6 +55,7 @@ class SignerStamp:
     ip: str | None
     user_agent: str | None
     viewed_at: datetime | None
+    link_copies: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -74,7 +87,7 @@ def validate_pdf(content: bytes) -> int:
         pages = len(reader.pages)
     except AppError:
         raise
-    except (PyPdfError, ValueError, KeyError, OSError, RecursionError):
+    except _PDF_ERRORS:
         raise _unreadable() from None
     if pages < 1 or pages > MAX_PAGES:
         raise _unreadable()
@@ -165,6 +178,10 @@ def render_certificate(cert: Certificate) -> bytes:
             ["Email", _p(s.email, body)],
             ["Typed signature", _p(s.signed_name, body)],
             ["Viewed", _p(_ts(s.viewed_at) if s.viewed_at else None, body)],
+            [
+                "Link handed out",
+                _p("\n".join(s.link_copies) or "Never left the signer's inbox", body),
+            ],
             ["Signed", _p(_ts(s.signed_at), body)],
             ["IP address", _p(s.ip, mono)],
             ["User agent", _p(s.user_agent, mono)],
@@ -218,6 +235,6 @@ def build_executed_pdf(source: bytes, cert: Certificate) -> bytes:
         writer.add_metadata({"/Title": _pdf_text(cert.title)[:200], "/Producer": "Cofoundaz"})
         out = io.BytesIO()
         writer.write(out)
-    except (PyPdfError, ValueError, KeyError, OSError, RecursionError):
+    except _PDF_ERRORS:
         raise _unreadable() from None
     return out.getvalue()

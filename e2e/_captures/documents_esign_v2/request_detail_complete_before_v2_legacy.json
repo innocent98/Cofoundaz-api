@@ -1,0 +1,60 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "1a82277d-d3e8-4c64-a34d-566e4361001f",
+      "title": "One-Pager.pdf",
+      "status": "complete",
+      "file_id": "fec4505b-defd-48fd-a32e-ae294a15733b",
+      "filename": "One-Pager.pdf",
+      "signed_count": 1,
+      "total": 1,
+      "sequential": false,
+      "message": "Ada Founder has sent you One-Pager.pdf to sign via Cofoundaz.",
+      "sent_at": "2026-10-25T17:18:04.603750+00:00",
+      "expires_at": "2026-11-08T17:18:04.609156+00:00",
+      "completed_at": "2026-10-25T17:18:04.644824+00:00",
+      "created_at": "2026-10-25T17:18:04.603750+00:00",
+      "document_hash": null,
+      "executed": {
+        "state": "legacy",
+        "file_id": null,
+        "filename": null,
+        "size_bytes": null
+      },
+      "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
+      "signers": [
+        {
+          "id": "d0bb5d4a-8350-4d0c-bff2-75d0e111b72c",
+          "email": "delivered+signer-three-99a4b1d0989f@resend.dev",
+          "name": "Cleo",
+          "position": 0,
+          "status": "signed",
+          "notified_at": "2026-10-25T17:18:04.625607+00:00",
+          "viewed_at": "2026-10-25T17:18:04.644824+00:00",
+          "signed_at": "2026-10-25T17:18:04.644824+00:00",
+          "signed_name": "Cleo",
+          "signed_ip": "127.0.0.1",
+          "signed_user_agent": "python-httpx/0.28.1",
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:04.614000+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            },
+            {
+              "at": "2026-10-25T17:18:04.637541+00:00",
+              "via": "copied",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
+        }
+      ]
+    },
+    "meta": null
+  }
+}

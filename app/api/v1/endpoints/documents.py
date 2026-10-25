@@ -14,7 +14,7 @@ from app.core.errors import AppError, NotFound, NotInTrash
 from app.core.logger import log
 from app.core.rate_limit import limiter
 from app.db.models.comment import Comment
-from app.db.models.document import Document, DocumentFile, SignatureRequest
+from app.db.models.document import Document, DocumentFile, SignatureRequest, SignatureSigner
 from app.db.models.enums import (
     DOCUMENT_ROLES,
     DocumentKind,
@@ -125,6 +125,7 @@ from app.services.documents.signatures import (
     mark_viewed,
     open_for_executed,
     open_for_signing,
+    record_link_access,
     record_signature,
     reissue_unsigned,
     release_next,
@@ -852,6 +853,7 @@ def create_signature_request_endpoint(
         links.append(link)
         if link:
             _signature_email(signer.email, link, title, req.message, sender)
+            record_link_access(db, signer, user_id=membership.user_id, via="created")
     db.commit()
     return success_response({**serialize_request(db, req), "signer_links": links})
 
@@ -881,6 +883,9 @@ def signer_link_endpoint(
     their turn."""
     req = get_request(db, membership, request_id)
     raw = link_for_signer(db, req, signer_id)
+    signer = db.query(SignatureSigner).filter_by(id=signer_id).one()
+    record_link_access(db, signer, user_id=membership.user_id, via="copied")
+    db.commit()
     return success_response({"signer_id": str(signer_id), "link": f"{_fe_base_url()}/sign/{raw}"})
 
 

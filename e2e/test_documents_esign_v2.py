@@ -243,6 +243,13 @@ def test_documents_esign_v2_journey(
         )
         assert bad_email.status_code == 422
         cap("sign_bad_signer_email_422", bad_email)
+        too_long = c.post(
+            f"/api/v1/documents/files/{file_id}/signature-requests",
+            headers=founder,
+            json={"signers": [{"email": unique_email("x")}], "expires_in_days": 100000},
+        )
+        assert too_long.status_code == 422
+        cap("sign_expires_in_days_out_of_bounds_422", too_long)
 
         # ---- sequential request with a custom message ------------------------------------------
         s1, s2 = unique_email("signer-one"), unique_email("signer-two")
@@ -426,6 +433,36 @@ def test_documents_esign_v2_journey(
         )
         assert rem.status_code == 200
         cap("remind", rem)
+        # a request completed before e-sign v2 has no executed copy and never will: `legacy`
+        from app.db.models.document import SignatureRequest
+        from app.db.models.job import Job
+        from app.db.session import SessionLocal
+
+        cur = c.get(
+            f"/api/v1/documents/signature-requests/{par.json()['data']['id']}/signers/"
+            f"{par.json()['data']['signers'][0]['id']}/link",
+            headers=founder,
+        )
+        assert cur.status_code == 200  # the reminder rotated the link; copy the current one
+        signed = c.post(
+            f"/api/v1/sign/{cur.json()['data']['link'].rsplit('/', 1)[-1]}",
+            json={"typed_name": "Cleo"},
+        )
+        assert signed.status_code == 200, signed.text
+        db = SessionLocal()
+        try:
+            db.query(SignatureRequest).filter_by(id=par.json()["data"]["id"]).update(
+                {"document_hash": None}
+            )
+            db.query(Job).filter_by(type="documents.signature_finalize", status="queued").delete()
+            db.commit()
+        finally:
+            db.close()
+        legacy = c.get(
+            f"/api/v1/documents/signature-requests/{par.json()['data']['id']}", headers=founder
+        )
+        assert legacy.json()["data"]["executed"]["state"] == "legacy"
+        cap("request_detail_complete_before_v2_legacy", legacy)
         lst = c.get("/api/v1/documents/signature-requests", headers=founder)
         assert lst.status_code == 200
         cap("request_list", lst)

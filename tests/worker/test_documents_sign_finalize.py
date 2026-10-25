@@ -170,3 +170,17 @@ def test_the_stamped_pdf_keeps_the_original_pages_first(db, world):
     assert "Audit certificate" in out.pages[-1].extract_text()
     assert db.get(SignatureRequest, req.id).document_hash in out.pages[-1].extract_text()
     assert signer_token  # imported for the sibling tests' parity
+
+
+def test_a_party_claimed_by_another_job_is_not_emailed_again(db, world):
+    from app.worker.handlers.documents_sign import _claim, _unclaim
+
+    startup, founder, _mod, mail = world
+    _f, req = _completed(db, startup, founder)
+    a = db.query(SignatureSigner).filter_by(email="a@x.com").one()
+    assert _claim(db, SignatureSigner, a.id, "executed_emailed_at") is True
+    assert _claim(db, SignatureSigner, a.id, "executed_emailed_at") is False  # the second job loses
+    runner.run_once(db)
+    assert "a@x.com" not in [m.to for m in mail.sent]  # the claim holder is responsible for it
+    _unclaim(db, SignatureSigner, a.id, "executed_emailed_at")
+    assert _claim(db, SignatureSigner, a.id, "executed_emailed_at") is True

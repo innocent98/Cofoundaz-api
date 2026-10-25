@@ -69,7 +69,7 @@ Only a **clean PDF** that can be parsed. Everything else is refused *when the re
 
 ## 3. Send a request: `POST /documents/files/{file_id}/signature-requests`
 
-Body (all optional except `signers`): `signers[]` (`email` required, `name`), `title`, `expires_in_days` (default 14), `sequential` (default false),
+Body (all optional except `signers`): `signers[]` (`email` required, `name`), `title`, `expires_in_days` (1 to 365, default 14; `null` = never expires; anything else is a 422), `sequential` (default false),
 `message` (≤ 2000 chars; blank = default sentence). At most 20 signers. Limit 30/hour per caller.
 
 Verified sequential example (first signer released, second waiting; `signer_links` lines up with `signers`, **`null` = not released yet**):
@@ -79,39 +79,48 @@ Verified sequential example (first signer released, second waiting; `signer_link
   "status": 201,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "awaiting",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 0,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
       "completed_at": null,
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
-      "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
+      "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
       "executed": null,
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-          "email": "delivered+signer-one-d41e91397360@resend.dev",
+          "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+          "email": "delivered+signer-one-c685d7cb984b@resend.dev",
           "name": "Ada Investor",
           "position": 0,
           "status": "pending",
-          "notified_at": "2026-10-25T17:00:34.087896+00:00",
+          "notified_at": "2026-10-25T17:18:02.941259+00:00",
           "viewed_at": null,
           "signed_at": null,
           "signed_name": null,
           "signed_ip": null,
-          "signed_user_agent": null
+          "signed_user_agent": null,
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:02.950734+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         },
         {
-          "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-          "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+          "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+          "email": "delivered+signer-two-df114f6f8386@resend.dev",
           "name": "Bello Legal",
           "position": 1,
           "status": "waiting",
@@ -120,7 +129,8 @@ Verified sequential example (first signer released, second waiting; `signer_link
           "signed_at": null,
           "signed_name": null,
           "signed_ip": null,
-          "signed_user_agent": null
+          "signed_user_agent": null,
+          "link_copies": []
         }
       ],
       "signer_links": [
@@ -137,10 +147,10 @@ What the first signer's email looks like (the second signer got nothing yet):
 
 ```json
 {
-  "to": "delivered+signer-one-d41e91397360@resend.dev",
+  "to": "delivered+signer-one-c685d7cb984b@resend.dev",
   "subject": "Signature requested: Founders agreement",
   "html": "<p>Hi both, please sign before Friday.<br>Thanks, Ada</p><p><a href=\"http://localhost:3000/sign/REDACTED_TOKEN\">Review and sign</a></p><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p>",
-  "sent_at": "2026-10-25T17:00:34.095343+00:00"
+  "sent_at": "2026-10-25T17:18:02.947850+00:00"
 }
 ```
 
@@ -151,35 +161,44 @@ Parallel (default) with the default message, signing an exported PDF:
   "status": 201,
   "body": {
     "data": {
-      "id": "bf83c35f-b8f6-45e0-8e8e-6b9d335827f4",
+      "id": "1a82277d-d3e8-4c64-a34d-566e4361001f",
       "title": "One-Pager.pdf",
       "status": "awaiting",
-      "file_id": "2c245d68-f643-474f-81d6-4894f76fb777",
+      "file_id": "fec4505b-defd-48fd-a32e-ae294a15733b",
       "filename": "One-Pager.pdf",
       "signed_count": 0,
       "total": 1,
       "sequential": false,
       "message": "Ada Founder has sent you One-Pager.pdf to sign via Cofoundaz.",
-      "sent_at": "2026-10-25T17:00:35.883197+00:00",
-      "expires_at": "2026-11-08T17:00:35.893392+00:00",
+      "sent_at": "2026-10-25T17:18:04.603750+00:00",
+      "expires_at": "2026-11-08T17:18:04.609156+00:00",
       "completed_at": null,
-      "created_at": "2026-10-25T17:00:35.883197+00:00",
-      "document_hash": "9fdaaa1235891408f0313e1ddfccf8eb5b5cc374f4a6dfc9ce7f2d87f6911070",
+      "created_at": "2026-10-25T17:18:04.603750+00:00",
+      "document_hash": "a19e96d6cd23969f1420d14fee4c370b4b5c1aebec0dfed8e8bcce6fc72d89c2",
       "executed": null,
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "8ff3811a-7e75-421f-ad08-2a971516556e",
-          "email": "delivered+signer-three-454cf340d1c0@resend.dev",
+          "id": "d0bb5d4a-8350-4d0c-bff2-75d0e111b72c",
+          "email": "delivered+signer-three-99a4b1d0989f@resend.dev",
           "name": "Cleo",
           "position": 0,
           "status": "pending",
-          "notified_at": "2026-10-25T17:00:35.893392+00:00",
+          "notified_at": "2026-10-25T17:18:04.609156+00:00",
           "viewed_at": null,
           "signed_at": null,
           "signed_name": null,
           "signed_ip": null,
-          "signed_user_agent": null
+          "signed_user_agent": null,
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:04.614000+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         }
       ],
       "signer_links": [
@@ -187,6 +206,26 @@ Parallel (default) with the default message, signing an exported PDF:
       ]
     },
     "meta": null
+  }
+}
+```
+
+Out-of-range expiry (`0`, negative, or above 365):
+
+```json
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "expires_in_days",
+          "message": "Input should be less than or equal to 365"
+        }
+      ]
+    }
   }
 }
 ```
@@ -225,39 +264,48 @@ Both return the same object. After the first signer opened their link (state **v
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "awaiting",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 0,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
       "completed_at": null,
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
-      "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
+      "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
       "executed": null,
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-          "email": "delivered+signer-one-d41e91397360@resend.dev",
+          "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+          "email": "delivered+signer-one-c685d7cb984b@resend.dev",
           "name": "Ada Investor",
           "position": 0,
           "status": "viewed",
-          "notified_at": "2026-10-25T17:00:34.087896+00:00",
-          "viewed_at": "2026-10-25T17:00:34.142260+00:00",
+          "notified_at": "2026-10-25T17:18:02.941259+00:00",
+          "viewed_at": "2026-10-25T17:18:02.996890+00:00",
           "signed_at": null,
           "signed_name": null,
           "signed_ip": null,
-          "signed_user_agent": null
+          "signed_user_agent": null,
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:02.950734+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         },
         {
-          "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-          "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+          "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+          "email": "delivered+signer-two-df114f6f8386@resend.dev",
           "name": "Bello Legal",
           "position": 1,
           "status": "waiting",
@@ -266,7 +314,8 @@ Both return the same object. After the first signer opened their link (state **v
           "signed_at": null,
           "signed_name": null,
           "signed_ip": null,
-          "signed_user_agent": null
+          "signed_user_agent": null,
+          "link_copies": []
         }
       ]
     },
@@ -276,7 +325,7 @@ Both return the same object. After the first signer opened their link (state **v
 ```
 
 Signer `status` values: `waiting` (sequential, not their turn; no link exists), `pending` (link sent, not opened), `viewed` (opened, not signed), `signed`.
-Request `status`: `awaiting`, `complete`, `cancelled`, `expired` (derived). `executed` is `null` until the request completes.
+Request `status`: `awaiting`, `complete`, `cancelled`, `expired` (derived). `executed` is `null` until the request completes; `{"state": "legacy", ...}` for a request that completed before e-sign v2 (no executed copy exists or will be built; hide the download).
 
 The list (`{"data": {"requests": [...]}}`):
 
@@ -287,87 +336,125 @@ The list (`{"data": {"requests": [...]}}`):
     "data": {
       "requests": [
         {
-          "id": "bf83c35f-b8f6-45e0-8e8e-6b9d335827f4",
+          "id": "1a82277d-d3e8-4c64-a34d-566e4361001f",
           "title": "One-Pager.pdf",
-          "status": "awaiting",
-          "file_id": "2c245d68-f643-474f-81d6-4894f76fb777",
+          "status": "complete",
+          "file_id": "fec4505b-defd-48fd-a32e-ae294a15733b",
           "filename": "One-Pager.pdf",
-          "signed_count": 0,
+          "signed_count": 1,
           "total": 1,
           "sequential": false,
           "message": "Ada Founder has sent you One-Pager.pdf to sign via Cofoundaz.",
-          "sent_at": "2026-10-25T17:00:35.883197+00:00",
-          "expires_at": "2026-11-08T17:00:35.893392+00:00",
-          "completed_at": null,
-          "created_at": "2026-10-25T17:00:35.883197+00:00",
-          "document_hash": "9fdaaa1235891408f0313e1ddfccf8eb5b5cc374f4a6dfc9ce7f2d87f6911070",
-          "executed": null,
+          "sent_at": "2026-10-25T17:18:04.603750+00:00",
+          "expires_at": "2026-11-08T17:18:04.609156+00:00",
+          "completed_at": "2026-10-25T17:18:04.644824+00:00",
+          "created_at": "2026-10-25T17:18:04.603750+00:00",
+          "document_hash": null,
+          "executed": {
+            "state": "legacy",
+            "file_id": null,
+            "filename": null,
+            "size_bytes": null
+          },
           "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
           "signers": [
             {
-              "id": "8ff3811a-7e75-421f-ad08-2a971516556e",
-              "email": "delivered+signer-three-454cf340d1c0@resend.dev",
+              "id": "d0bb5d4a-8350-4d0c-bff2-75d0e111b72c",
+              "email": "delivered+signer-three-99a4b1d0989f@resend.dev",
               "name": "Cleo",
               "position": 0,
-              "status": "pending",
-              "notified_at": "2026-10-25T17:00:35.917276+00:00",
-              "viewed_at": null,
-              "signed_at": null,
-              "signed_name": null,
-              "signed_ip": null,
-              "signed_user_agent": null
+              "status": "signed",
+              "notified_at": "2026-10-25T17:18:04.625607+00:00",
+              "viewed_at": "2026-10-25T17:18:04.644824+00:00",
+              "signed_at": "2026-10-25T17:18:04.644824+00:00",
+              "signed_name": "Cleo",
+              "signed_ip": "127.0.0.1",
+              "signed_user_agent": "python-httpx/0.28.1",
+              "link_copies": [
+                {
+                  "at": "2026-10-25T17:18:04.614000+00:00",
+                  "via": "created",
+                  "name": "Ada Founder",
+                  "email": "delivered+e2e-101791a33a21@resend.dev",
+                  "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+                },
+                {
+                  "at": "2026-10-25T17:18:04.637541+00:00",
+                  "via": "copied",
+                  "name": "Ada Founder",
+                  "email": "delivered+e2e-101791a33a21@resend.dev",
+                  "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+                }
+              ]
             }
           ]
         },
         {
-          "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+          "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
           "title": "Founders agreement",
           "status": "complete",
-          "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+          "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
           "filename": "founders-agreement.pdf",
           "signed_count": 2,
           "total": 2,
           "sequential": true,
           "message": "Hi both, please sign before Friday.\nThanks, Ada",
-          "sent_at": "2026-10-25T17:00:34.082155+00:00",
-          "expires_at": "2026-11-08T17:00:34.087896+00:00",
-          "completed_at": "2026-10-25T17:00:34.205895+00:00",
-          "created_at": "2026-10-25T17:00:34.082155+00:00",
-          "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+          "sent_at": "2026-10-25T17:18:02.933745+00:00",
+          "expires_at": "2026-11-08T17:18:02.941259+00:00",
+          "completed_at": "2026-10-25T17:18:03.068049+00:00",
+          "created_at": "2026-10-25T17:18:02.933745+00:00",
+          "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
           "executed": {
             "state": "ready",
-            "file_id": "b82c582b-6b32-4092-ac55-1f87c7490618",
+            "file_id": "597e5401-6cde-4846-8730-a461a9934868",
             "filename": "founders-agreement - signed.pdf",
-            "size_bytes": 3805,
-            "sha256": "b5eff85f1ef2e9a256a7ba22b03bab806b2537e2df72ab410a30c4d484668480"
+            "size_bytes": 4669,
+            "sha256": "29b4b7b106221ada2844adef83cf6d9b9501b9221e9e29814a44685d1e2ad1bb"
           },
           "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
           "signers": [
             {
-              "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-              "email": "delivered+signer-one-d41e91397360@resend.dev",
+              "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+              "email": "delivered+signer-one-c685d7cb984b@resend.dev",
               "name": "Ada Investor",
               "position": 0,
               "status": "signed",
-              "notified_at": "2026-10-25T17:00:34.087896+00:00",
-              "viewed_at": "2026-10-25T17:00:34.142260+00:00",
-              "signed_at": "2026-10-25T17:00:34.174017+00:00",
+              "notified_at": "2026-10-25T17:18:02.941259+00:00",
+              "viewed_at": "2026-10-25T17:18:02.996890+00:00",
+              "signed_at": "2026-10-25T17:18:03.035412+00:00",
               "signed_name": "Ada Investor",
               "signed_ip": "127.0.0.1",
-              "signed_user_agent": "e2e-browser/1.0 (signer one)"
+              "signed_user_agent": "e2e-browser/1.0 (signer one)",
+              "link_copies": [
+                {
+                  "at": "2026-10-25T17:18:02.950734+00:00",
+                  "via": "created",
+                  "name": "Ada Founder",
+                  "email": "delivered+e2e-101791a33a21@resend.dev",
+                  "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+                },
+                {
+                  "at": "2026-10-25T17:18:03.020131+00:00",
+                  "via": "copied",
+                  "name": "Ada Founder",
+                  "email": "delivered+e2e-101791a33a21@resend.dev",
+                  "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+                }
+              ]
             },
             {
-              "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-              "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+              "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+              "email": "delivered+signer-two-df114f6f8386@resend.dev",
               "name": "Bello Legal",
               "position": 1,
               "status": "signed",
-              "notified_at": "2026-10-25T17:00:34.180645+00:00",
-              "viewed_at": "2026-10-25T17:00:34.205895+00:00",
-              "signed_at": "2026-10-25T17:00:34.205895+00:00",
+              "notified_at": "2026-10-25T17:18:03.047259+00:00",
+              "viewed_at": "2026-10-25T17:18:03.068049+00:00",
+              "signed_at": "2026-10-25T17:18:03.068049+00:00",
               "signed_name": "Bello Legal",
               "signed_ip": "127.0.0.1",
-              "signed_user_agent": "e2e-browser/1.0 (signer two)"
+              "signed_user_agent": "e2e-browser/1.0 (signer two)",
+              "link_copies": []
             }
           ]
         }
@@ -387,13 +474,20 @@ Returns the signer's current link. Nothing changes; the link in the signer's inb
   "status": 200,
   "body": {
     "data": {
-      "signer_id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
+      "signer_id": "96a4d6d5-8160-47c7-9932-55478f326a27",
       "link": "http://localhost:3000/sign/REDACTED_TOKEN"
     },
     "meta": null
   }
 }
 ```
+
+**Link audit (new).** An editor holding a live signer link could sign as that person, so every time a link is handed to a workspace member it is recorded:
+once per released signer in the create response (`via: "created"`) and on every call of this route (`via: "copied"`). `signers[].link_copies` (editor objects, see the detail above)
+lists `{user_id, name, email, at, via}`, and the audit certificate prints "Link handed out" for each signer, so the record shows the link left the signer's inbox.
+**UX:** show it next to the signer ("Link copied by Ada on 25 Oct 17:42") and warn before copying: "Anyone with this link can sign as {signer}. The copy is recorded."
+
+A signer who got their link before this release (a random token) cannot be re-copied: `409 LINK_NOT_RECOVERABLE`; send a reminder (new link, copyable afterwards).
 
 Refused with `409` when the signer already signed, the request is complete/cancelled/expired (`SIGNATURE_NOT_ACTIVE`), or the signer is waiting their turn:
 
@@ -458,7 +552,7 @@ A mentor (or any non-F/TM role) gets 403 on all of the above:
         "message": "Hi both, please sign before Friday.\nThanks, Ada",
         "sent_by": "Ada Founder",
         "sequential": true,
-        "expires_at": "2026-11-08T17:00:34.087896+00:00"
+        "expires_at": "2026-11-08T17:18:02.941259+00:00"
       },
       "file": {
         "filename": "founders-agreement.pdf",
@@ -467,7 +561,7 @@ A mentor (or any non-F/TM role) gets 403 on all of the above:
         "download_url": "http://127.0.0.1:8610/api/v1/sign/REDACTED_TOKEN/file"
       },
       "signer": {
-        "email": "delivered+signer-one-d41e91397360@resend.dev",
+        "email": "delivered+signer-one-c685d7cb984b@resend.dev",
         "name": "Ada Investor"
       },
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements."
@@ -505,19 +599,19 @@ The first signer of a sequential request; the response has no roster. At this mo
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "awaiting",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 1,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
       "completed_at": null,
-      "created_at": "2026-10-25T17:00:34.082155+00:00"
+      "created_at": "2026-10-25T17:18:02.933745+00:00"
     },
     "meta": null
   }
@@ -531,19 +625,19 @@ The last signature completes the request. The response now also has `executed_ur
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "complete",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 2,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
-      "completed_at": "2026-10-25T17:00:34.205895+00:00",
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
+      "completed_at": "2026-10-25T17:18:03.068049+00:00",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
       "executed_url": "http://127.0.0.1:8610/api/v1/sign/REDACTED_TOKEN/executed"
     },
     "meta": null
@@ -590,20 +684,20 @@ Right after completion:
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "complete",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 2,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
-      "completed_at": "2026-10-25T17:00:34.205895+00:00",
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
-      "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
+      "completed_at": "2026-10-25T17:18:03.068049+00:00",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
+      "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
       "executed": {
         "state": "pending",
         "file_id": null,
@@ -613,30 +707,112 @@ Right after completion:
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-          "email": "delivered+signer-one-d41e91397360@resend.dev",
+          "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+          "email": "delivered+signer-one-c685d7cb984b@resend.dev",
           "name": "Ada Investor",
           "position": 0,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.087896+00:00",
-          "viewed_at": "2026-10-25T17:00:34.142260+00:00",
-          "signed_at": "2026-10-25T17:00:34.174017+00:00",
+          "notified_at": "2026-10-25T17:18:02.941259+00:00",
+          "viewed_at": "2026-10-25T17:18:02.996890+00:00",
+          "signed_at": "2026-10-25T17:18:03.035412+00:00",
           "signed_name": "Ada Investor",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer one)"
+          "signed_user_agent": "e2e-browser/1.0 (signer one)",
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:02.950734+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            },
+            {
+              "at": "2026-10-25T17:18:03.020131+00:00",
+              "via": "copied",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         },
         {
-          "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-          "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+          "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+          "email": "delivered+signer-two-df114f6f8386@resend.dev",
           "name": "Bello Legal",
           "position": 1,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.180645+00:00",
-          "viewed_at": "2026-10-25T17:00:34.205895+00:00",
-          "signed_at": "2026-10-25T17:00:34.205895+00:00",
+          "notified_at": "2026-10-25T17:18:03.047259+00:00",
+          "viewed_at": "2026-10-25T17:18:03.068049+00:00",
+          "signed_at": "2026-10-25T17:18:03.068049+00:00",
           "signed_name": "Bello Legal",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer two)"
+          "signed_user_agent": "e2e-browser/1.0 (signer two)",
+          "link_copies": []
+        }
+      ]
+    },
+    "meta": null
+  }
+}
+```
+
+A request that completed before this release:
+
+```json
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "1a82277d-d3e8-4c64-a34d-566e4361001f",
+      "title": "One-Pager.pdf",
+      "status": "complete",
+      "file_id": "fec4505b-defd-48fd-a32e-ae294a15733b",
+      "filename": "One-Pager.pdf",
+      "signed_count": 1,
+      "total": 1,
+      "sequential": false,
+      "message": "Ada Founder has sent you One-Pager.pdf to sign via Cofoundaz.",
+      "sent_at": "2026-10-25T17:18:04.603750+00:00",
+      "expires_at": "2026-11-08T17:18:04.609156+00:00",
+      "completed_at": "2026-10-25T17:18:04.644824+00:00",
+      "created_at": "2026-10-25T17:18:04.603750+00:00",
+      "document_hash": null,
+      "executed": {
+        "state": "legacy",
+        "file_id": null,
+        "filename": null,
+        "size_bytes": null
+      },
+      "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
+      "signers": [
+        {
+          "id": "d0bb5d4a-8350-4d0c-bff2-75d0e111b72c",
+          "email": "delivered+signer-three-99a4b1d0989f@resend.dev",
+          "name": "Cleo",
+          "position": 0,
+          "status": "signed",
+          "notified_at": "2026-10-25T17:18:04.625607+00:00",
+          "viewed_at": "2026-10-25T17:18:04.644824+00:00",
+          "signed_at": "2026-10-25T17:18:04.644824+00:00",
+          "signed_name": "Cleo",
+          "signed_ip": "127.0.0.1",
+          "signed_user_agent": "python-httpx/0.28.1",
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:04.614000+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            },
+            {
+              "at": "2026-10-25T17:18:04.637541+00:00",
+              "via": "copied",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         }
       ]
     },
@@ -652,54 +828,71 @@ A few seconds later:
   "status": 200,
   "body": {
     "data": {
-      "id": "fbeac61e-54bc-4f76-9a98-af62fcdea723",
+      "id": "2b81176a-edce-4db2-9f1f-bae2a087aa3b",
       "title": "Founders agreement",
       "status": "complete",
-      "file_id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+      "file_id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
       "filename": "founders-agreement.pdf",
       "signed_count": 2,
       "total": 2,
       "sequential": true,
       "message": "Hi both, please sign before Friday.\nThanks, Ada",
-      "sent_at": "2026-10-25T17:00:34.082155+00:00",
-      "expires_at": "2026-11-08T17:00:34.087896+00:00",
-      "completed_at": "2026-10-25T17:00:34.205895+00:00",
-      "created_at": "2026-10-25T17:00:34.082155+00:00",
-      "document_hash": "ee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5",
+      "sent_at": "2026-10-25T17:18:02.933745+00:00",
+      "expires_at": "2026-11-08T17:18:02.941259+00:00",
+      "completed_at": "2026-10-25T17:18:03.068049+00:00",
+      "created_at": "2026-10-25T17:18:02.933745+00:00",
+      "document_hash": "a1f361e64b738f2c2946da5dadaab49a4d5adb6fc53255ff6bc4c2fac4ecf627",
       "executed": {
         "state": "ready",
-        "file_id": "b82c582b-6b32-4092-ac55-1f87c7490618",
+        "file_id": "597e5401-6cde-4846-8730-a461a9934868",
         "filename": "founders-agreement - signed.pdf",
-        "size_bytes": 3805,
-        "sha256": "b5eff85f1ef2e9a256a7ba22b03bab806b2537e2df72ab410a30c4d484668480"
+        "size_bytes": 4669,
+        "sha256": "29b4b7b106221ada2844adef83cf6d9b9501b9221e9e29814a44685d1e2ad1bb"
       },
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
       "signers": [
         {
-          "id": "e4344095-3d32-4ffe-95d7-cd53f79288af",
-          "email": "delivered+signer-one-d41e91397360@resend.dev",
+          "id": "96a4d6d5-8160-47c7-9932-55478f326a27",
+          "email": "delivered+signer-one-c685d7cb984b@resend.dev",
           "name": "Ada Investor",
           "position": 0,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.087896+00:00",
-          "viewed_at": "2026-10-25T17:00:34.142260+00:00",
-          "signed_at": "2026-10-25T17:00:34.174017+00:00",
+          "notified_at": "2026-10-25T17:18:02.941259+00:00",
+          "viewed_at": "2026-10-25T17:18:02.996890+00:00",
+          "signed_at": "2026-10-25T17:18:03.035412+00:00",
           "signed_name": "Ada Investor",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer one)"
+          "signed_user_agent": "e2e-browser/1.0 (signer one)",
+          "link_copies": [
+            {
+              "at": "2026-10-25T17:18:02.950734+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            },
+            {
+              "at": "2026-10-25T17:18:03.020131+00:00",
+              "via": "copied",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-101791a33a21@resend.dev",
+              "user_id": "74d8ddad-0d8b-404d-ac03-5f23280cf490"
+            }
+          ]
         },
         {
-          "id": "03180348-9482-4fa3-a9ae-c66fc494682b",
-          "email": "delivered+signer-two-b59eb873d98c@resend.dev",
+          "id": "b6ffa449-261f-40e3-ab4e-a92ea14ddb16",
+          "email": "delivered+signer-two-df114f6f8386@resend.dev",
           "name": "Bello Legal",
           "position": 1,
           "status": "signed",
-          "notified_at": "2026-10-25T17:00:34.180645+00:00",
-          "viewed_at": "2026-10-25T17:00:34.205895+00:00",
-          "signed_at": "2026-10-25T17:00:34.205895+00:00",
+          "notified_at": "2026-10-25T17:18:03.047259+00:00",
+          "viewed_at": "2026-10-25T17:18:03.068049+00:00",
+          "signed_at": "2026-10-25T17:18:03.068049+00:00",
           "signed_name": "Bello Legal",
           "signed_ip": "127.0.0.1",
-          "signed_user_agent": "e2e-browser/1.0 (signer two)"
+          "signed_user_agent": "e2e-browser/1.0 (signer two)",
+          "link_copies": []
         }
       ]
     },
@@ -732,7 +925,7 @@ A few seconds later:
   "body": {
     "data": {
       "url": "http://127.0.0.1:8610/api/v1/documents/files/download?token=REDACTED_TOKEN",
-      "expires_at": "2026-10-25T17:05:35+00:00",
+      "expires_at": "2026-10-25T17:23:04+00:00",
       "content_type": "application/pdf",
       "filename": "founders-agreement - signed.pdf"
     },
@@ -745,7 +938,7 @@ The executed copy is also an ordinary private file in the library (`origin: "exe
 
 ```json
 {
-  "id": "b82c582b-6b32-4092-ac55-1f87c7490618",
+  "id": "597e5401-6cde-4846-8730-a461a9934868",
   "filename": "founders-agreement - signed.pdf",
   "content_type": "application/pdf",
   "mime": "application/pdf",
@@ -753,16 +946,16 @@ The executed copy is also an ordinary private file in the library (`origin: "exe
   "origin": "executed",
   "source_document_id": null,
   "source_version": null,
-  "size_bytes": 3805,
+  "size_bytes": 4669,
   "folder": null,
   "tags": [],
   "owner": {
-    "id": "fd31c57f-7884-4fee-a61f-5f3b0bcbf033",
+    "id": "74d8ddad-0d8b-404d-ac03-5f23280cf490",
     "name": "Ada Founder"
   },
   "share_count": 0,
   "scan_status": "clean",
-  "uploaded_at": "2026-10-25T17:00:35.701554+00:00",
+  "uploaded_at": "2026-10-25T17:18:04.462897+00:00",
   "trashed_at": null,
   "purges_at": null
 }
@@ -787,9 +980,9 @@ It, and the PDF that was signed, **cannot be deleted or trashed** while the sign
 
 ```json
 {
-  "pages": 2,
+  "pages": 3,
   "first_page_text": "Founders agreement (e2e)",
-  "certificate_text": "Cofoundaz signature certificate\nCertificate page 1\n Signatures\nFounders agreement\nAda Investor\nAda Investor <delivered+signer-one-d41e91397360@resend.dev> | signed 2026-10-25 17:00:34 UTC\nBello Legal\nBello Legal <delivered+signer-two-b59eb873d98c@resend.dev> | signed 2026-10-25 17:00:34 UTC\nAudit certificate\nDocument\nfounders-agreement.pdf\nRequest\nfbeac61e-54bc-4f76-9a98-af62fcdea723\nSent by\nAda Founder\nSent\n2026-10-25 17:00:34 UTC\nCompleted\n2026-10-25 17:00:34 UTC\nDocument SHA-256\nee1d57505cd1cb9633a18b3bba91d46dc953f6a514a752971bfd6a9f66a9f7c5\nSigners\nSigner\n1. Ada Investor\nEmail\ndelivered+signer-one-d41e91397360@resend.dev\nTyped signature\nAda Investor\nViewed\n2026-10-25 17:00:34 UTC\nSigned\n2026-10-25 17:00:34 UTC\nIP address\n127.0.0.1\nUser agent\ne2e-browser/1.0 (signer one)\nSigner\n2. Bello Legal\nEmail\ndelivered+signer-two-b59eb873d98c@resend.dev\nTyped signature\nBello Legal\nViewed\n2026-10-25 17:00:34 UTC\nSigned\n2026-10-25 17:00:34 UTC\nIP address\n127.0.0.1\nUser agent\ne2e-browser/1.0 (signer two)\nThese are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's\nemail, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature\nand is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction;\ntake legal advice for high-stakes agreements.\n"
+  "certificate_text": "Cofoundaz signature certificate\nCertificate page 2\nThese are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's\nemail, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature\nand is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction;\ntake legal advice for high-stakes agreements.\n"
 }
 ```
 
@@ -798,10 +991,10 @@ Subject `Signed: {title}`, the executed PDF attached (`<original> - signed.pdf`)
 
 ```json
 {
-  "to": "delivered+signer-one-d41e91397360@resend.dev",
+  "to": "delivered+signer-one-c685d7cb984b@resend.dev",
   "subject": "Signed: Founders agreement",
-  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Founders agreement is fully signed</h2><p>Everyone has signed. The executed PDF, with its signature page and audit certificate, is attached. Keep it for your records.</p><ul><li>Ada Investor (delivered+signer-one-d41e91397360@resend.dev)</li><li>Bello Legal (delivered+signer-two-b59eb873d98c@resend.dev)</li></ul><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p></div>",
-  "sent_at": "2026-10-25T17:00:35.747201+00:00",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Founders agreement is fully signed</h2><p>Everyone has signed. The executed PDF, with its signature page and audit certificate, is attached. Keep it for your records.</p><ul><li>Ada Investor (delivered+signer-one-c685d7cb984b@resend.dev)</li><li>Bello Legal (delivered+signer-two-df114f6f8386@resend.dev)</li></ul><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p></div>",
+  "sent_at": "2026-10-25T17:18:04.500505+00:00",
   "attachments": [
     "founders-agreement_-_signed.pdf"
   ]
@@ -845,15 +1038,15 @@ Create:
   "status": 201,
   "body": {
     "data": {
-      "id": "0cbd160b-5c0f-4083-9081-8f5cdd29d0b8",
+      "id": "130bc553-b54e-44ae-8807-efe8b49ef592",
       "kind": "file",
       "email": null,
       "anyone_with_link": true,
       "access_level": "view",
-      "expires_at": "2026-11-04T17:00:33+00:00",
+      "expires_at": "2026-11-04T17:18:02+00:00",
       "revoked_at": null,
       "last_viewed_at": null,
-      "created_at": "2026-10-25T17:00:33.808567+00:00",
+      "created_at": "2026-10-25T17:18:02.670085+00:00",
       "status": "active",
       "link": "http://localhost:3000/shared/REDACTED_TOKEN"
     },
@@ -871,15 +1064,15 @@ Create:
     "data": {
       "shares": [
         {
-          "id": "0cbd160b-5c0f-4083-9081-8f5cdd29d0b8",
+          "id": "130bc553-b54e-44ae-8807-efe8b49ef592",
           "kind": "file",
           "email": null,
           "anyone_with_link": true,
           "access_level": "view",
-          "expires_at": "2026-11-04T17:00:33+00:00",
+          "expires_at": "2026-11-04T17:18:02+00:00",
           "revoked_at": null,
           "last_viewed_at": null,
-          "created_at": "2026-10-25T17:00:33.808567+00:00",
+          "created_at": "2026-10-25T17:18:02.670085+00:00",
           "status": "active",
           "link": "http://localhost:3000/shared/REDACTED_TOKEN"
         }
@@ -899,15 +1092,15 @@ Change the expiry (`PATCH .../shares/{share_id}`, body `{"expires_at": "<iso>"}`
   "status": 200,
   "body": {
     "data": {
-      "id": "0cbd160b-5c0f-4083-9081-8f5cdd29d0b8",
+      "id": "130bc553-b54e-44ae-8807-efe8b49ef592",
       "kind": "file",
       "email": null,
       "anyone_with_link": true,
       "access_level": "view",
-      "expires_at": "2026-11-14T17:00:33+00:00",
+      "expires_at": "2026-11-14T17:18:02+00:00",
       "revoked_at": null,
-      "last_viewed_at": "2026-10-25T17:00:33.856357+00:00",
-      "created_at": "2026-10-25T17:00:33.808567+00:00",
+      "last_viewed_at": "2026-10-25T17:18:02.708224+00:00",
+      "created_at": "2026-10-25T17:18:02.670085+00:00",
       "status": "active",
       "link": "http://localhost:3000/shared/REDACTED_TOKEN"
     },
@@ -935,7 +1128,7 @@ Revoke: `DELETE .../shares/{share_id}` → `{"data": {"revoked": true}, "meta": 
         "download_url": "http://127.0.0.1:8610/api/v1/shared/REDACTED_TOKEN/file"
       },
       "access_level": "view",
-      "expires_at": "2026-11-04T17:00:33+00:00"
+      "expires_at": "2026-11-04T17:18:02+00:00"
     },
     "meta": null
   }
@@ -974,7 +1167,7 @@ After revoke (or expiry, trash, or the file no longer being clean) all of it is 
   "status": 201,
   "body": {
     "data": {
-      "id": "04a3468d-912f-49ef-bc9f-b694f6198d52",
+      "id": "1b5e5e46-04b4-47a7-aa27-ce17fc0cc1e2",
       "kind": "document",
       "email": null,
       "anyone_with_link": true,
@@ -982,7 +1175,7 @@ After revoke (or expiry, trash, or the file no longer being clean) all of it is 
       "expires_at": null,
       "revoked_at": null,
       "last_viewed_at": null,
-      "created_at": "2026-10-25T17:00:33.933014+00:00",
+      "created_at": "2026-10-25T17:18:02.786802+00:00",
       "status": "active",
       "link": "http://localhost:3000/shared/REDACTED_TOKEN"
     },
@@ -998,7 +1191,7 @@ Files now carry a real `share_count` (live links only):
 
 ```json
 {
-  "id": "5e5641a4-3242-41d6-a709-3989e1e9465b",
+  "id": "b151cc1c-a92e-49d8-9c3e-ac10856bfa9f",
   "filename": "founders-agreement.pdf",
   "content_type": "application/pdf",
   "mime": "application/pdf",
@@ -1010,12 +1203,12 @@ Files now carry a real `share_count` (live links only):
   "folder": null,
   "tags": [],
   "owner": {
-    "id": "fd31c57f-7884-4fee-a61f-5f3b0bcbf033",
+    "id": "74d8ddad-0d8b-404d-ac03-5f23280cf490",
     "name": "Ada Founder"
   },
   "share_count": 1,
   "scan_status": "clean",
-  "uploaded_at": "2026-10-25T17:00:33.776285+00:00",
+  "uploaded_at": "2026-10-25T17:18:02.637155+00:00",
   "trashed_at": null,
   "purges_at": null
 }
@@ -1031,6 +1224,7 @@ Files now carry a real `share_count` (live links only):
 | 409 | `FILE_NOT_CLEAN` | file not scanned clean (sign or share) |
 | 409 | `FILE_UNAVAILABLE` | the stored PDF could not be read (retry) |
 | 409 | `SIGNATURE_NOT_ACTIVE` | remind / copy link on a complete, cancelled or expired request, or a signer who already signed |
+| 409 | `LINK_NOT_RECOVERABLE` | copy link for a signer whose link predates e-sign v2 (send a reminder) |
 | 409 | `SIGNER_NOT_RELEASED` | copy link for a sequential signer whose turn has not come |
 | 409 | `EXECUTED_NOT_READY` | executed PDF not built yet (editor route and signer route) |
 | 409 | `FILE_HAS_SIGNATURE_REQUESTS` | delete/trash the signed or executed file |
@@ -1042,7 +1236,7 @@ Files now carry a real `share_count` (live links only):
 
 - `signer_links` is a **list aligned with `signers`** and can contain `null` (sequential, not released). It is only in the **create** response.
 - Per-signer `status`, `viewed_at`, `signed_ip`, `signed_user_agent` exist only under `signers[]` of the **editor** objects. The public `POST /sign/{token}` response has no `signers` and no `document_hash`.
-- `executed` is `null` (not complete) vs an object with `state: "pending"` (file ids are `null`) vs `state: "ready"` (adds `sha256`). Note `pending` has no `sha256` key at all.
+- `executed` is `null` (not complete) vs `state: "legacy"` (old request) vs an object with `state: "pending"` (file ids are `null`) vs `state: "ready"` (adds `sha256`). Note `pending` has no `sha256` key at all.
 - `message` is on the request (editor) **and** `request.message` on the public view; `sent_by` exists only on the public view.
 - Share objects: `email` is `null` for anyone-with-link and `anyone_with_link` is the boolean to branch on; `document_id`/`file_id` appear only in the workspace list `GET /documents/shares` (with `link` there too).
 - `expires_at` is the instant, always UTC with offset; the share/request is dead at that instant.
@@ -1084,5 +1278,9 @@ Files now carry a real `share_count` (live links only):
 | 90-day limit on the signer's executed link | **unit-tested only** (a clock cannot be waited out) |
 | Cloudinary-backed storage (private download + `read_private`) | **not exercised live**: local storage only; unit-tested with a faked provider |
 | Real mail delivery (SMTP/Resend) of the executed copy | **not exercised**: file mail backend only |
+| Link audit entries (create + copy) and the certificate line | live (detail captures) and unit-tested (certificate text) |
+| `expires_in_days` bounds 422; legacy executed state | live |
+| Two last signers submitting at the same instant, double submit | **unit-tested only** (lock order asserted on the SQL, stale-roster simulation); not raced live |
+| `LINK_NOT_RECOVERABLE` | unit-tested only (needs a pre-v2 row) |
 | Rate limits on the new routes | **not exercised live** (the e2e server runs with the limiter relaxed); configured with `shared_limit` and covered by the route matrix test only |
 | Pre-v2 shares/requests after the migration | unit-tested (migration test); not run against real data |

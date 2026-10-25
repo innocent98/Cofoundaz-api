@@ -11,8 +11,10 @@ from app.db.models.document import DocumentFile, SignatureRequest, SignatureSign
 from app.db.models.enums import ScanStatus, SignatureRequestStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
+from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.documents.common import display_name
 from app.services.documents.esign_pdf import LEGAL_CAVEAT, validate_pdf
 from app.services.documents.files import assert_clean, ensure_private
 from app.services.documents.links import derive_token, matches, plausible, sha256_hex, token_hash
@@ -176,6 +178,35 @@ def reissue_unsigned(db: Session, request: SignatureRequest) -> list[tuple[Signa
     return pairs
 
 
+def record_link_access(
+    db: Session, signer: SignatureSigner, *, user_id: uuid.UUID, via: str
+) -> None:
+    """Audit: the signer's link was handed to a workspace member (`via` = "created" in the create
+    response, "copied" by the copy-link route). Shown to editors and printed on the certificate,
+    so the record shows the link left the signer's inbox."""
+    user = db.get(User, user_id)
+    name = display_name(db, user_id)
+    signer.link_copies = [
+        *signer.link_copies,
+        {
+            "user_id": str(user_id),
+            "name": name,
+            "email": user.email if user else None,
+            "at": datetime.now(UTC).isoformat(),
+            "via": via,
+        },
+    ]
+    db.flush()
+
+
+def describe_link_access(entry: dict[str, Any]) -> str:
+    # Name only: the certificate goes to external signers, so no member email on it.
+    who = entry.get("name") or "a workspace member"
+    when = str(entry.get("at", ""))[:19].replace("T", " ")
+    how = "in the create response" if entry.get("via") == "created" else "copied"
+    return f"Link {how} by {who} at {when} UTC"
+
+
 def link_for_signer(db: Session, request: SignatureRequest, signer_id: Any) -> str:
     """The current link of one signer, for an editor to copy again. Changes nothing (the signer's
     emailed link keeps working). 404 for another request's signer, 409 when the request is not
@@ -192,7 +223,17 @@ def link_for_signer(db: Session, request: SignatureRequest, signer_id: Any) -> s
             "them signs.",
             409,
         )
-    return signer_token(signer)
+    raw = signer_token(signer)
+    if not matches(signer.token_hash, raw):
+        # A pre-v2 signer: their emailed link is a random token we cannot recompute. Rotating
+        # would kill the link already in their inbox, so refuse; a reminder mints a derived one.
+        raise AppError(
+            "LINK_NOT_RECOVERABLE",
+            "This signer's link was created before links could be copied. Send a reminder to "
+            "give them a new link you can copy.",
+            409,
+        )
+    return raw
 
 
 def release_next(db: Session, request: SignatureRequest) -> tuple[SignatureSigner, str] | None:
@@ -303,7 +344,17 @@ def record_signature(
     ip: str | None,
     user_agent: str | None,
 ) -> SignatureRequest:
-    request = db.query(SignatureRequest).filter_by(id=signer.request_id).one()
+    # Serialise signers of one request: lock the request row, then re-read this signer under lock.
+    # Without it two parallel last signers each see the other as unsigned and nobody completes
+    # the request; a double submit from one signer would overwrite the audit fields.
+    request = (
+        db.query(SignatureRequest)
+        .filter_by(id=signer.request_id)
+        .with_for_update()
+        .populate_existing()
+        .one()
+    )
+    db.refresh(signer, with_for_update=True)
     if signer.signed_at is not None or not _active(request):
         raise NotFound()
     now = datetime.now(UTC)
@@ -327,7 +378,13 @@ def record_signature(
             "href": "/documents/signatures",
         },
     )
-    signers = _signers(db, request)
+    signers = (
+        db.query(SignatureSigner)
+        .filter_by(request_id=request.id)
+        .populate_existing()
+        .order_by(SignatureSigner.position.asc())
+        .all()
+    )
     if all(s.signed_at is not None for s in signers):
         request.status = SignatureRequestStatus.complete
         request.completed_at = now
@@ -376,6 +433,9 @@ def executed_info(db: Session, request: SignatureRequest) -> dict[str, Any] | No
     has built the PDF, then `ready` with the file's id."""
     if request.status != SignatureRequestStatus.complete:
         return None
+    if request.executed_file_id is None and request.document_hash is None:
+        # Completed before e-sign v2: no executed copy was ever built and none will be.
+        return {"state": "legacy", "file_id": None, "filename": None, "size_bytes": None}
     if request.executed_file_id is None:
         return {"state": "pending", "file_id": None, "filename": None, "size_bytes": None}
     file = db.query(DocumentFile).filter_by(id=request.executed_file_id).first()
@@ -426,6 +486,7 @@ def serialize_request(
                 "signed_name": s.signed_name,
                 "signed_ip": s.signed_ip,
                 "signed_user_agent": s.signed_user_agent,
+                "link_copies": list(s.link_copies),
             }
             for s in signers
         ]

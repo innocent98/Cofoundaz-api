@@ -13,7 +13,9 @@ transaction that completes the request. Idempotent and resumable, because it com
 import html
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.logger import log
@@ -35,7 +37,7 @@ from app.services.documents.esign_pdf import (
 from app.services.documents.folders import ensure_path
 from app.services.documents.links import sha256_hex
 from app.services.documents.scanner import scan_file
-from app.services.documents.signatures import FINALIZE_JOB
+from app.services.documents.signatures import FINALIZE_JOB, describe_link_access
 from app.worker.runner import register_handler
 
 
@@ -81,6 +83,7 @@ def build_executed_file(db: Session, req: SignatureRequest) -> DocumentFile:
                 ip=s.signed_ip,
                 user_agent=s.signed_user_agent,
                 viewed_at=s.viewed_at,
+                link_copies=[describe_link_access(e) for e in s.link_copies],
             )
             for s in signers
         ],
@@ -148,6 +151,24 @@ def _send(
     )
 
 
+def _claim(db: Session, model: Any, row_id: uuid.UUID, column: str) -> bool:
+    """Atomically stamp `column` (still NULL) before sending, and commit. Only the job whose
+    UPDATE matched may send, so two jobs for one request never email the same party twice (the
+    row lock the handler took is released by its earlier commit)."""
+    col = getattr(model, column)
+    res = db.execute(
+        update(model).where(model.id == row_id, col.is_(None)).values({column: datetime.now(UTC)})
+    )
+    db.commit()
+    return bool(res.rowcount == 1)  # type: ignore[attr-defined]
+
+
+def _unclaim(db: Session, model: Any, row_id: uuid.UUID, column: str) -> None:
+    """The send failed: free the claim so the retry (or another job) sends it."""
+    db.execute(update(model).where(model.id == row_id).values({column: None}))
+    db.commit()
+
+
 def handle_signature_finalize(db: Session, job: Job) -> None:
     req = (
         db.query(SignatureRequest)
@@ -171,26 +192,26 @@ def handle_signature_finalize(db: Session, job: Job) -> None:
     )
     failures: list[str] = []
     for s in signers:
-        if s.executed_emailed_at is not None:
-            continue
+        if not _claim(db, SignatureSigner, s.id, "executed_emailed_at"):
+            continue  # already sent, or another job is sending it right now
         try:
             _send(s.email, req, signers, file)
         except Exception as exc:  # noqa: BLE001 - keep going; the retry resends only the failed
             failures.append(f"{type(exc).__name__}")
             log.warning(f"executed copy to signer {s.id} failed: {exc!r}")
-            continue
-        s.executed_emailed_at = datetime.now(UTC)
-        db.commit()
+            _unclaim(db, SignatureSigner, s.id, "executed_emailed_at")
     owner = db.get(User, req.created_by_id) if req.created_by_id else None
-    if owner is not None and owner.email and req.owner_emailed_at is None:
+    if (
+        owner is not None
+        and owner.email
+        and _claim(db, SignatureRequest, req.id, "owner_emailed_at")
+    ):
         try:
             _send(owner.email, req, signers, file)
         except Exception as exc:  # noqa: BLE001
             failures.append(f"{type(exc).__name__}")
             log.warning(f"executed copy to sender of {req.id} failed: {exc!r}")
-        else:
-            req.owner_emailed_at = datetime.now(UTC)
-            db.commit()
+            _unclaim(db, SignatureRequest, req.id, "owner_emailed_at")
     if failures:
         raise RuntimeError(f"{len(failures)} executed-copy email(s) failed; will retry")
 

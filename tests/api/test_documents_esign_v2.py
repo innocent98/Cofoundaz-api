@@ -353,7 +353,7 @@ def test_completion_enqueues_one_job_then_the_worker_builds_and_emails_the_execu
     got = client.get(link["url"].replace("http://api.test", ""))
     assert got.status_code == 200
     pdf = PdfReader(io.BytesIO(got.content))
-    assert len(pdf.pages) == 2  # the original page + the signature/certificate page
+    assert len(pdf.pages) >= 2  # the original page + the signature/certificate page(s)
     text = "\n".join(p.extract_text() for p in pdf.pages)
     for needle in ["Signer 0", "Signer 1", "a@x.com", "b@x.com", "UA-0", "simple electronic"]:
         assert needle in text
@@ -567,3 +567,155 @@ def test_workspace_share_list_includes_file_shares_and_trashed_targets_drop_out(
     assert rows[0]["kind"] == "file" and rows[0]["file_id"] == f["id"] and rows[0]["link"]
     client.delete(f"{API}/documents/files/{f['id']}", headers=h)
     assert client.get(f"{API}/documents/shares", headers=h).json()["data"]["shares"] == []
+
+
+# ---- review fixes: locking, link audit, legacy rows, bounds ---------------------------------------
+
+
+def test_record_signature_locks_the_request_then_the_signer_and_a_double_submit_is_a_noop(
+    client, db, ws
+):
+    from sqlalchemy import event
+
+    from app.core.errors import NotFound
+    from app.services.documents.signatures import record_signature
+
+    f = upload(client, _h(ws))
+    req = _send(client, ws, f["id"], signers=[{"email": "a@x.com"}])
+    signer = db.query(SignatureSigner).one()
+    seen: list[str] = []
+
+    def spy(_conn, _cur, statement, *_a):
+        if "FOR UPDATE" in statement:
+            seen.append(statement.split("FROM", 1)[1].split()[0])
+
+    event.listen(db.get_bind(), "before_cursor_execute", spy)
+    try:
+        record_signature(db, signer, typed_name="A", ip="203.0.113.1", user_agent="UA-1")
+    finally:
+        event.remove(db.get_bind(), "before_cursor_execute", spy)
+    assert seen[:2] == ["signature_requests", "signature_signers"]  # request first, then signer
+
+    with pytest.raises(NotFound):  # the second submit of the same signer
+        record_signature(db, signer, typed_name="EVIL", ip="203.0.113.2", user_agent="UA-2")
+    db.refresh(signer)
+    assert (signer.signed_name, signer.signed_ip) == ("A", "203.0.113.1")
+    assert db.query(Job).filter_by(type="documents.signature_finalize").count() == 1
+    assert req["id"]
+
+
+def test_the_last_signer_completes_even_if_the_other_looks_unsigned_in_a_stale_session(
+    client, db, ws
+):
+    """The race: this signer's session loaded the roster before the other signature committed.
+    The completion check re-reads the roster under the lock, so the request still completes."""
+    from app.services.documents.signatures import record_signature
+
+    f = upload(client, _h(ws))
+    _send(client, ws, f["id"])
+    a, b = db.query(SignatureSigner).order_by(SignatureSigner.position).all()
+    stale_b_unsigned = (b.signed_at, b.signed_name)
+    assert stale_b_unsigned == (None, None)
+    # "the other transaction" commits b's signature behind this session's back
+    db.execute(
+        SignatureSigner.__table__.update()
+        .where(SignatureSigner.id == b.id)
+        .values(signed_at=datetime.now(UTC), signed_name="B")
+    )
+    assert b.signed_at is None  # the identity map is stale, as in the race
+    record_signature(db, a, typed_name="A", ip=None, user_agent=None)
+    assert db.query(SignatureRequest).one().status.value == "complete"
+    assert db.query(Job).filter_by(type="documents.signature_finalize").count() == 1
+
+
+def test_every_link_handed_to_an_editor_is_audited_and_printed_on_the_certificate(
+    client, db, ws, monkeypatch
+):
+    import app.worker.handlers.documents_sign as sign_mod
+
+    monkeypatch.setattr(sign_mod, "get_email_sender", lambda: ConsoleEmailSender())
+    f = upload(client, _h(ws))
+    req = _send(client, ws, f["id"])
+    # the create response itself handed out both links
+    assert [len(s["link_copies"]) for s in req["signers"]] == [1, 1]
+    assert req["signers"][0]["link_copies"][0]["via"] == "created"
+    sid = req["signers"][0]["id"]
+    url = f"{API}/documents/signature-requests/{req['id']}/signers/{sid}/link"
+    client.get(url, headers=_h(ws))
+    detail = client.get(f"{API}/documents/signature-requests/{req['id']}", headers=_h(ws)).json()[
+        "data"
+    ]
+    copies = detail["signers"][0]["link_copies"]
+    assert [c["via"] for c in copies] == ["created", "copied"]
+    assert copies[1]["email"] and copies[1]["name"] and copies[1]["at"] and copies[1]["user_id"]
+    # signer B's link was only handed out at creation
+    assert len(detail["signers"][1]["link_copies"]) == 1
+
+    for link in req["signer_links"]:
+        client.post(f"{API}/sign/{_token(link)}", json={"typed_name": "X"})
+    _drain(db)
+    d = client.get(f"{API}/documents/signature-requests/{req['id']}", headers=_h(ws)).json()["data"]
+    link = client.get(
+        f"{API}/documents/signature-requests/{req['id']}/executed", headers=_h(ws)
+    ).json()["data"]
+    text = "\n".join(
+        p.extract_text()
+        for p in PdfReader(
+            io.BytesIO(client.get(link["url"].replace("http://api.test", "")).content)
+        ).pages
+    )
+    assert "Link handed out" in text and "copied by" in text and "in the create response" in text
+    assert d["executed"]["state"] == "ready"
+
+
+def test_copying_the_link_of_a_pre_v2_signer_is_refused_not_a_dead_link(client, db, ws):
+    f = upload(client, _h(ws))
+    req = _send(client, ws, f["id"], signers=[{"email": "a@x.com"}])
+    from app.services.auth.sessions import hash_token
+
+    db.query(SignatureSigner).update({"token_hash": hash_token("a-random-pre-v2-token")})
+    db.flush()
+    sid = req["signers"][0]["id"]
+    r = client.get(
+        f"{API}/documents/signature-requests/{req['id']}/signers/{sid}/link", headers=_h(ws)
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "LINK_NOT_RECOVERABLE"
+    # a reminder gives them a derived link that can then be copied
+    client.post(f"{API}/documents/signature-requests/{req['id']}/remind", headers=_h(ws))
+    again = client.get(
+        f"{API}/documents/signature-requests/{req['id']}/signers/{sid}/link", headers=_h(ws)
+    )
+    assert again.status_code == 200
+
+
+def test_a_request_completed_before_v2_reports_a_legacy_executed_state(client, db, ws):
+    f = upload(client, _h(ws))
+    req = _send(client, ws, f["id"], signers=[{"email": "a@x.com"}])
+    client.post(f"{API}/sign/{_token(req['signer_links'][0])}", json={"typed_name": "A"})
+    db.query(SignatureRequest).update({"document_hash": None})  # how pre-v2 rows look
+    db.query(Job).delete()
+    db.flush()
+    d = client.get(f"{API}/documents/signature-requests/{req['id']}", headers=_h(ws)).json()["data"]
+    assert d["executed"] == {
+        "state": "legacy",
+        "file_id": None,
+        "filename": None,
+        "size_bytes": None,
+    }
+
+
+@pytest.mark.parametrize("days", [0, -1, 366, 10**9])
+def test_expires_in_days_is_bounded(client, ws, days):
+    f = upload(client, _h(ws))
+    r = client.post(
+        f"{API}/documents/files/{f['id']}/signature-requests",
+        json={"signers": [{"email": "a@x.com"}], "expires_in_days": days},
+        headers=_h(ws),
+    )
+    assert r.status_code == 422
+
+
+def test_a_request_without_an_expiry_is_still_allowed(client, ws):
+    f = upload(client, _h(ws))
+    req = _send(client, ws, f["id"], signers=[{"email": "a@x.com"}], expires_in_days=None)
+    assert req["expires_at"] is None
