@@ -188,3 +188,49 @@ def test_stale_generating_message_is_failed(db):
     db.refresh(assistant)
     assert assistant.status == ChatMessageStatus.failed
     assert assistant.content == REPLY_FAILED_TEXT
+
+
+def test_failed_call_tokens_are_still_debited(monkeypatch):
+    """A call that burned tokens then failed is billed on its own session."""
+    from app.platform import llm_budget as lb
+
+    billed = []
+    monkeypatch.setattr(lb, "_debit_independent", lambda sid, n: billed.append(n))
+    monkeypatch.setattr(lb, "over_budget", lambda db, sid: False)
+
+    class _Burn:
+        last_usage_tokens = 1700
+
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            raise RuntimeError("empty")
+
+    monkeypatch.setattr(lb, "get_llm_client", lambda: _Burn())
+    import pytest
+
+    with pytest.raises(RuntimeError):
+        lb.metered_complete(None, uuid.uuid4(), [], max_tokens=10)
+    assert billed == [1700]
+
+
+def test_debit_independent_commits_on_its_own_session(monkeypatch):
+    from app.db import session as session_mod
+    from app.platform import llm_budget as lb
+
+    events = []
+
+    class _Own:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def commit(self):
+            events.append("commit")
+
+    monkeypatch.setattr(session_mod, "SessionLocal", lambda: _Own())
+    monkeypatch.setattr(lb, "debit", lambda own, sid, n: events.append(("debit", n)))
+    lb._debit_independent(uuid.uuid4(), 0)
+    assert events == []  # nothing to bill
+    lb._debit_independent(uuid.uuid4(), 42)
+    assert events == [("debit", 42), "commit"]

@@ -41,13 +41,30 @@ def debit(db: Session, startup_id: uuid.UUID, tokens: int) -> None:
     db.flush()
 
 
+def _debit_independent(startup_id: uuid.UUID, tokens: int) -> None:
+    from app.db.session import SessionLocal  # local: avoids an import cycle at module load
+
+    if tokens <= 0:
+        return
+    with SessionLocal() as own:
+        debit(own, startup_id, tokens)
+        own.commit()
+
+
 def metered_complete(
     db: Session, startup_id: uuid.UUID, messages: list[LLMMessage], *, max_tokens: int
 ) -> str | None:
     if over_budget(db, startup_id):
         return None
     client = get_llm_client()
-    text = client.complete(messages, max_tokens=max_tokens)
+    try:
+        text = client.complete(messages, max_tokens=max_tokens)
+    except Exception:
+        # A failed call (e.g. an empty reasoning-budget completion, retried larger) still cost
+        # tokens, and the job's savepoint rolls back this session's writes, so bill them on
+        # their own session or retries would be free.
+        _debit_independent(startup_id, getattr(client, "last_usage_tokens", 0))
+        raise
     debit(db, startup_id, getattr(client, "last_usage_tokens", 0))
     return text
 
