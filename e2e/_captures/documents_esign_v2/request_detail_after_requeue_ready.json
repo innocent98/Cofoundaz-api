@@ -1,0 +1,54 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "b0a9d6eb-9a34-45b5-bc3f-4eae32518e88",
+      "title": "founders-agreement.pdf",
+      "status": "complete",
+      "file_id": "e03bbe9f-99b5-447d-9c27-d1fd141b60e5",
+      "filename": "founders-agreement.pdf",
+      "signed_count": 1,
+      "total": 1,
+      "sequential": false,
+      "message": "Ada Founder has sent you founders-agreement.pdf to sign via Cofoundaz.",
+      "sent_at": "2026-10-25T20:01:51.329533+00:00",
+      "expires_at": "2026-11-08T20:01:51.334647+00:00",
+      "completed_at": "2026-10-25T20:01:51.348788+00:00",
+      "created_at": "2026-10-25T20:01:51.329533+00:00",
+      "document_hash": "131836dee3925f0b013f6e702500304cd33fb971dc02b3f3df5b574398d050c7",
+      "executed": {
+        "state": "ready",
+        "file_id": "266b6c83-6413-425b-b944-6e919f567191",
+        "filename": "founders-agreement - signed.pdf",
+        "size_bytes": 3759,
+        "sha256": "cc3bd1bcc75ebd0222ca10ce8b2f72879e027d95a9d5cf1376aebf5b087f6ed6"
+      },
+      "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
+      "signers": [
+        {
+          "id": "f86000fc-453f-45b7-b8fe-8f8b2deb69cf",
+          "email": "delivered+signer-four-e96384383d0f@resend.dev",
+          "name": "Dayo",
+          "position": 0,
+          "status": "signed",
+          "notified_at": "2026-10-25T20:01:51.334647+00:00",
+          "viewed_at": "2026-10-25T20:01:51.348788+00:00",
+          "signed_at": "2026-10-25T20:01:51.348788+00:00",
+          "signed_name": "Dayo",
+          "signed_ip": "127.0.0.1",
+          "signed_user_agent": "python-httpx/0.28.1",
+          "link_copies": [
+            {
+              "at": "2026-10-25T20:01:51.338738+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-80ad0fec983e@resend.dev",
+              "user_id": "215bf31d-2c32-4833-a84b-4127fb5f4cd2"
+            }
+          ]
+        }
+      ]
+    },
+    "meta": null
+  }
+}

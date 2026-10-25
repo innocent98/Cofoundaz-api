@@ -1,8 +1,8 @@
 {
-  "to": "delivered+signer-one-c685d7cb984b@resend.dev",
+  "to": "delivered+signer-one-47b38a027f89@resend.dev",
   "subject": "Signed: Founders agreement",
-  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Founders agreement is fully signed</h2><p>Everyone has signed. The executed PDF, with its signature page and audit certificate, is attached. Keep it for your records.</p><ul><li>Ada Investor (delivered+signer-one-c685d7cb984b@resend.dev)</li><li>Bello Legal (delivered+signer-two-df114f6f8386@resend.dev)</li></ul><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p></div>",
-  "sent_at": "2026-10-25T17:18:04.500505+00:00",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Founders agreement is fully signed</h2><p>Everyone has signed. The executed PDF, with its signature page and audit certificate, is attached. Keep it for your records.</p><ul><li>Ada Investor (delivered+signer-one-47b38a027f89@resend.dev)</li><li>Bello Legal (delivered+signer-two-166c2902d204@resend.dev)</li></ul><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p></div>",
+  "sent_at": "2026-10-25T20:01:51.159373+00:00",
   "attachments": [
     "founders-agreement_-_signed.pdf"
   ]

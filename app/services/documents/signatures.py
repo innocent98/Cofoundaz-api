@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound, SignatureNotActive
 from app.db.models.document import DocumentFile, SignatureRequest, SignatureSigner
-from app.db.models.enums import ScanStatus, SignatureRequestStatus
+from app.db.models.enums import JobStatus, ScanStatus, SignatureRequestStatus
+from app.db.models.job import Job
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -437,7 +438,17 @@ def executed_info(db: Session, request: SignatureRequest) -> dict[str, Any] | No
         # Completed before e-sign v2: no executed copy was ever built and none will be.
         return {"state": "legacy", "file_id": None, "filename": None, "size_bytes": None}
     if request.executed_file_id is None:
-        return {"state": "pending", "file_id": None, "filename": None, "size_bytes": None}
+        # `failed`: every finalize job is dead (attempts exhausted), nothing will retry it
+        # until an operator re-queues it. The FE stops its spinner and says so.
+        statuses = {
+            st
+            for (st,) in db.query(Job.status).filter(
+                Job.type == FINALIZE_JOB, Job.payload["request_id"].astext == str(request.id)
+            )
+        }
+        live = statuses & {JobStatus.queued, JobStatus.running}
+        state = "failed" if JobStatus.failed in statuses and not live else "pending"
+        return {"state": state, "file_id": None, "filename": None, "size_bytes": None}
     file = db.query(DocumentFile).filter_by(id=request.executed_file_id).first()
     return {
         "state": "ready" if file else "pending",
