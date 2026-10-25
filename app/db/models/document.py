@@ -118,6 +118,15 @@ class DocumentFile(UUIDMixin, TimestampMixin, Base):
     trashed_by_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Set on a PDF/DOCX export of a rich document: which document, at which version. NULL for an
+    # upload. The file outlives its source (SET NULL when the document is purged).
+    source_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (Index("ix_document_files_startup_folder", "startup_id", "folder"),)
 

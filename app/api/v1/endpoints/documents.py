@@ -1,7 +1,8 @@
 import uuid
 from typing import Any
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -28,10 +29,12 @@ from app.db.tenancy import require_role
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.signed_urls import InvalidSignedToken, verify_key
 from app.schemas.document import (
+    AiDraftRequest,
     DocumentCommentCreate,
     DocumentCreate,
     DocumentPatch,
     DocumentSave,
+    ExportRequest,
     FilePatch,
     FolderCreate,
     FolderRename,
@@ -40,7 +43,9 @@ from app.schemas.document import (
     ShareCreate,
     SignAction,
     SignatureRequestCreate,
+    TemplateInstantiate,
 )
+from app.services.documents.export import export_document
 from app.services.documents.files import (
     FILE_LINK_TTL_SECONDS,
     delete_file,
@@ -65,6 +70,7 @@ from app.services.documents.folders import (
     rename_folder,
     standard_structure,
 )
+from app.services.documents.generator import create_from_template, form_for, queue_redraft
 from app.services.documents.grants import (
     create_grant,
     get_grant,
@@ -151,6 +157,11 @@ def _file_response(file: DocumentFile, *, inline: bool = False) -> FileResponse:
     if path is None:
         raise NotFound()
     safe = file.filename.replace('"', "").replace("\r", "").replace("\n", "")
+    ascii_name = safe.encode("ascii", "ignore").decode().strip() or "file"
+    disposition = (
+        f'{"inline" if inline else "attachment"}; filename="{ascii_name}"; '
+        f"filename*=UTF-8''{quote(safe)}"
+    )
     return FileResponse(
         path,
         media_type=file.content_type,
@@ -158,7 +169,7 @@ def _file_response(file: DocumentFile, *, inline: bool = False) -> FileResponse:
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",
             "Content-Security-Policy": "sandbox; default-src 'none'",
-            "Content-Disposition": f'{"inline" if inline else "attachment"}; filename="{safe}"',
+            "Content-Disposition": disposition,
         },
     )
 
@@ -216,8 +227,76 @@ def get_template(
     key: str,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    return success_response(template_view(key))
+    """The template plus its form state for THIS workspace: what is auto-filled (and from where),
+    what is empty, what an AI draft can fill. Nothing is created."""
+    view = template_view(key)
+    form = form_for(db, _startup(db, membership), membership.user_id, key)
+    return success_response({**view, "form": form})
+
+
+@router.post("/documents/templates/{key}/instantiate", status_code=status.HTTP_201_CREATED)
+@limiter.shared_limit("60/hour", scope="doc-instantiate")
+def instantiate_template_endpoint(
+    request: Request,
+    key: str,
+    body: TemplateInstantiate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    doc, form, ai = create_from_template(
+        db,
+        _startup(db, membership),
+        user_id=membership.user_id,
+        template_key=key,
+        values=body.values,
+        title=body.title,
+        folder=body.folder,
+        want_ai=body.ai_draft or bool(body.ai_sections),
+        ai_sections=body.ai_sections,
+    )
+    db.commit()
+    return success_response({"document": serialize_document(doc, db=db), "form": form, "ai": ai})
+
+
+@router.post("/documents/{document_id}/ai-draft", status_code=status.HTTP_202_ACCEPTED)
+@limiter.shared_limit("20/hour", scope="doc-ai-draft")
+def redraft_document_endpoint(
+    request: Request,
+    document_id: uuid.UUID,
+    body: AiDraftRequest,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Queue an AI draft for the document's still-empty AI-draftable sections (the retry after a
+    failed draft). Poll `GET /jobs/{job_id}`."""
+    doc = get_document(db, membership, document_id)
+    ai = queue_redraft(db, _startup(db, membership), doc, body.sections)
+    db.commit()
+    return success_response(ai)
+
+
+@router.post("/documents/{document_id}/export")
+@limiter.shared_limit("20/minute", scope="doc-export")
+def export_document_endpoint(
+    request: Request,
+    response: Response,
+    document_id: uuid.UUID,
+    body: ExportRequest,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Export the document as a stored PDF or DOCX file: 201 for a new file, 200 when this
+    version was already exported in this format (the same file comes back)."""
+    doc = get_document(db, membership, document_id, lock=True)
+    row, created = export_document(db, doc, body.format, actor_id=membership.user_id)
+    db.commit()
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return success_response(serialize_files(db, [row])[0])
 
 
 @router.get("/documents")

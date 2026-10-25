@@ -28,6 +28,7 @@ from app.services.documents.common import (  # noqa: F401 - re-exported for the 
     search_text_of,
 )
 from app.services.documents.folders import ensure_path
+from app.services.documents.template_defs import disclaimer_for
 from app.services.documents.versions import snapshot
 
 TRASH_RETENTION_DAYS = 30
@@ -317,6 +318,7 @@ def serialize_summary(
 ) -> dict[str, Any]:
     return {
         "id": str(doc.id),
+        "type": "document",
         "kind": doc.kind.value,
         "mime": DOCUMENT_MIME,
         "title": doc.title,
@@ -325,6 +327,7 @@ def serialize_summary(
         "folder": doc.folder,
         "tags": list(doc.tags or []),
         "template_key": doc.template_key,
+        "disclaimer": disclaimer_for(doc.template_key, doc.kind),
         "version": doc.version,
         "owner": owner,
         "share_count": share_count,
@@ -360,6 +363,7 @@ PUBLIC_FIELDS = (
     "status",
     "ai_generated",
     "template_key",
+    "disclaimer",
     "version",
     "updated_at",
     "sections",

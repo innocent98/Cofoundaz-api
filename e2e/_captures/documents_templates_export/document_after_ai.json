@@ -1,0 +1,75 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "cec804f2-8862-4a3b-b7f0-8f3b576615aa",
+      "type": "document",
+      "kind": "business_plan",
+      "mime": "application/vnd.cofoundaz.document+json",
+      "title": "NovaPay business plan",
+      "status": "draft",
+      "ai_generated": true,
+      "folder": "Fundraising",
+      "tags": [],
+      "template_key": "business_plan",
+      "disclaimer": null,
+      "version": 2,
+      "owner": {
+        "id": "97ef66ef-8c63-4ebb-a8de-c10d50c71a2f",
+        "name": "Ada Founder"
+      },
+      "share_count": 0,
+      "updated_at": "2026-10-25T15:03:54.482766+00:00",
+      "trashed_at": null,
+      "purges_at": null,
+      "sections": [
+        {
+          "id": "5c48f141-8232-479d-bfbd-b6748e9f5b14",
+          "body": "[stub-llm] AI-generated assessment narrative.",
+          "heading": "Executive Summary"
+        },
+        {
+          "id": "1a0c62cf-7938-440a-be06-791a4131cb7b",
+          "body": "- Traders lose money to slow cash handling\n- Card fraud",
+          "heading": "Problem"
+        },
+        {
+          "id": "17d4e21d-d785-4dc3-8e0b-99eeae313dcc",
+          "body": "- A mobile wallet for market traders",
+          "heading": "Solution"
+        },
+        {
+          "id": "621f2515-eca2-40d9-86d7-f3ff8a9e63c0",
+          "body": "- Open-air market traders",
+          "heading": "Market & Customer"
+        },
+        {
+          "id": "35e65be9-5f1d-469d-ac57-2598f15435b7",
+          "body": "- Transaction fees (pricing basis: 1% per payment)",
+          "heading": "Business Model"
+        },
+        {
+          "id": "01283ccb-be04-43d5-a041-c208d6f55bda",
+          "body": "[stub-llm] AI-generated assessment narrative.",
+          "heading": "Go-to-Market"
+        },
+        {
+          "id": "66c4c983-563f-4fed-a103-ab3dde91bc23",
+          "body": "",
+          "heading": "Team"
+        },
+        {
+          "id": "f155add2-0c5f-4c4e-917d-fc5eb8e9e55d",
+          "body": "[stub-llm] AI-generated assessment narrative.",
+          "heading": "Financials"
+        },
+        {
+          "id": "5f8a4a7c-800e-4191-9ec9-41c9e99efa35",
+          "body": "",
+          "heading": "The Ask"
+        }
+      ]
+    },
+    "meta": null
+  }
+}

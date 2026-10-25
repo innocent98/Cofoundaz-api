@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "format",
+          "message": "Input should be 'pdf' or 'docx'"
+        }
+      ]
+    }
+  }
+}

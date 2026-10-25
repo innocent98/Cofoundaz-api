@@ -1,0 +1,173 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "templates": [
+        {
+          "key": "business_plan",
+          "name": "Business Plan",
+          "description": "A full business plan.",
+          "kind": "business_plan",
+          "category": "Pitch",
+          "sections": [
+            "Executive Summary",
+            "Problem",
+            "Solution",
+            "Market & Customer",
+            "Business Model",
+            "Go-to-Market",
+            "Team",
+            "Financials",
+            "The Ask"
+          ],
+          "disclaimer": null
+        },
+        {
+          "key": "pitch_deck",
+          "name": "Pitch Deck",
+          "description": "An investor pitch narrative.",
+          "kind": "pitch_deck",
+          "category": "Pitch",
+          "sections": [
+            "Hook",
+            "Problem",
+            "Solution",
+            "Why Now",
+            "Market",
+            "Product",
+            "Team",
+            "The Ask"
+          ],
+          "disclaimer": null
+        },
+        {
+          "key": "financial_model",
+          "name": "Financial Model",
+          "description": "A lightweight financial narrative.",
+          "kind": "financial_model",
+          "category": "Financial",
+          "sections": [
+            "Assumptions",
+            "Revenue",
+            "Costs",
+            "Runway",
+            "Projections"
+          ],
+          "disclaimer": null
+        },
+        {
+          "key": "meeting_notes",
+          "name": "Meeting Notes",
+          "description": "Structured meeting notes.",
+          "kind": "meeting_notes",
+          "category": "Operational",
+          "sections": [
+            "Attendees",
+            "Agenda",
+            "Discussion",
+            "Decisions",
+            "Action Items"
+          ],
+          "disclaimer": null
+        },
+        {
+          "key": "one_pager",
+          "name": "One-Pager",
+          "description": "A concise one-page overview.",
+          "kind": "one_pager",
+          "category": "Pitch",
+          "sections": [
+            "Overview",
+            "Problem",
+            "Solution",
+            "Traction",
+            "The Ask"
+          ],
+          "disclaimer": null
+        },
+        {
+          "key": "nda",
+          "name": "Non-Disclosure Agreement",
+          "description": "A one-way NDA for sharing confidential information with a partner, investor or contractor.",
+          "kind": "nda",
+          "category": "Legal",
+          "sections": [
+            "Parties",
+            "Purpose",
+            "Confidential Information",
+            "Obligations of the Receiving Party",
+            "Exclusions",
+            "Term",
+            "Return or Destruction",
+            "Remedies",
+            "Governing Law",
+            "Signatures"
+          ],
+          "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it."
+        },
+        {
+          "key": "contractor_agreement",
+          "name": "Contractor Agreement",
+          "description": "An independent contractor agreement for freelancers and short engagements.",
+          "kind": "contractor_agreement",
+          "category": "Legal",
+          "sections": [
+            "Parties",
+            "Services",
+            "Fees and Payment",
+            "Independent Contractor",
+            "Intellectual Property",
+            "Confidentiality",
+            "Term and Termination",
+            "Liability",
+            "Governing Law",
+            "Signatures"
+          ],
+          "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it."
+        },
+        {
+          "key": "founder_agreement",
+          "name": "Founder Agreement",
+          "description": "Roles, equity, vesting and decision rules between two co-founders.",
+          "kind": "founder_agreement",
+          "category": "Legal",
+          "sections": [
+            "Parties",
+            "Roles and Commitment",
+            "Equity",
+            "Vesting",
+            "Intellectual Property",
+            "Decision Making",
+            "Leaving the Company",
+            "Confidentiality",
+            "Disputes",
+            "Governing Law",
+            "Signatures"
+          ],
+          "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it."
+        },
+        {
+          "key": "safe",
+          "name": "SAFE (Simple Agreement for Future Equity)",
+          "description": "A plain-language SAFE-style agreement for an early investment.",
+          "kind": "safe",
+          "category": "Legal",
+          "sections": [
+            "Parties and Investment",
+            "Equity Financing",
+            "Valuation Cap and Discount",
+            "Liquidity Event",
+            "Dissolution",
+            "Representations",
+            "No Shareholder Rights",
+            "Termination",
+            "Governing Law",
+            "Signatures"
+          ],
+          "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it."
+        }
+      ]
+    },
+    "meta": null
+  }
+}

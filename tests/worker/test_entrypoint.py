@@ -63,3 +63,13 @@ def test_register_wires_notification_subscribers_into_the_worker(monkeypatch):
     monkeypatch.setattr(registry, "register", lambda *a, **k: calls.append(1))
     register()
     assert calls == [1]
+
+
+def test_register_wires_the_template_draft_handler():
+    from app.services.documents.generator import AI_DRAFT_JOB
+    from app.worker.__main__ import register
+    from app.worker.runner import JOB_HANDLERS
+
+    JOB_HANDLERS.clear()
+    register()
+    assert AI_DRAFT_JOB in JOB_HANDLERS

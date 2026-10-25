@@ -1,4 +1,5 @@
 import uuid
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -80,3 +81,19 @@ class GrantUpdate(BaseModel):
 
 class DocumentCommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=5000, pattern=r"\S")
+
+
+class ExportRequest(BaseModel):
+    format: Literal["pdf", "docx"]
+
+
+class TemplateInstantiate(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
+    folder: str | None = None
+    values: dict[str, Any] = Field(default_factory=dict)
+    ai_draft: bool = False
+    ai_sections: list[str] | None = None
+
+
+class AiDraftRequest(BaseModel):
+    sections: list[str] | None = None

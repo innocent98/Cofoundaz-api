@@ -190,6 +190,11 @@ class FileNotClean(AppError):  # noqa: N818
     message = "This file hasn't passed the security scan, so it can't be sent or shared yet."
 
 
+class AiBudgetExhausted(AppError):  # noqa: N818
+    code, http_status = "AI_BUDGET_EXHAUSTED", 429
+    message = "Today's AI allowance for this workspace is used up. Try again tomorrow."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."
