@@ -86,6 +86,27 @@ create 30/h, copy link 60/h, remind 30/h; the public routes keep their shared bu
   link-only shares (they cannot exist in the old schema); executed files stay as ordinary files. Old code ignores the new
   rows' extra fields. Signers whose links were derived keep valid hashes (the hash column is unchanged).
 
+## Fix: the worker could not see uploaded files (2026-10-25, `fix/worker-shared-storage`)
+
+- **Symptom:** in the FE live walk on the shared docker stack, `documents.signature_finalize` failed with "the signed file's
+  content is missing" and every completed request stayed `executed.state: "pending"`.
+- **Root cause:** `STORAGE_BACKEND=local` (dev, staging **and** production) writes to `/app/var/storage` inside the container.
+  `docker-compose.prod.yml` mounted the `app_storage` volume on `api` only, and the dev compose mounted nothing, so the worker
+  saw its own empty directory. The finalize job is the first worker job that reads or writes stored files, so nothing hit it
+  before. Unit tests, `run_once` worker tests and the e2e journey all run in one process with one storage dir, so they
+  passed.
+- **Fix:** mount the same named volume `app_storage:/app/var/storage` on `worker` in `docker-compose.prod.yml`, and add the
+  `app_storage` volume to both `api` and `worker` in `docker-compose.yml`. The image already creates the dir owned by
+  `appuser` (uid 1000), so a fresh named volume inherits the right ownership.
+- **Side effect (dev only):** local uploads used to live in the api container's writable layer and were lost on every
+  recreate. Files uploaded before this change are not in the new volume: their rows remain but downloads 404 locally. Staging
+  and prod keep their existing `app_storage` volume, so nothing moves there.
+- **Operate:** `docker compose up -d api worker` recreates both containers with the volume. Requests that completed while the
+  worker was blind still have a failed or retrying finalize job. Once the worker can see the files, re-queue them as
+  described in "Stuck job" above. The handler is idempotent.
+- **Roll back:** revert the compose change. The worker then goes blind again: executed PDFs stay `pending`.
+- **Lesson:** a new worker job that touches storage needs a check in the containerised stack, not only in-process tests.
+
 ## Follow-ups
 
 - Field placement (page / x / y per signer) once the PDF viewer (row 11, FE) and a Q2 decision exist; draw-a-signature pad.

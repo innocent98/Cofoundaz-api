@@ -42,6 +42,10 @@ services:
       # Migrations are edited as often as app code in this project; without this
       # you would have to rebuild the image to run a new revision in the container.
       - ./alembic:/app/alembic
+      # LOCAL_STORAGE_DIR (./var/storage): a named volume shared with the worker, so
+      # uploads survive a container recreate and jobs (e-sign executed PDF) can read
+      # and write them. Before this, each container kept its own copy in its layer.
+      - app_storage:/app/var/storage
     env_file:
       - .env
     environment:
@@ -78,6 +82,8 @@ services:
     volumes:
       - ./app:/app/app
       - ./alembic:/app/alembic
+      # Shared with api (see there): the worker reads and writes the same files.
+      - app_storage:/app/var/storage
     env_file:
       - .env
     environment:
@@ -129,3 +135,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  app_storage:
