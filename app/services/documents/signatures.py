@@ -200,9 +200,8 @@ def record_link_access(
 
 
 def describe_link_access(entry: dict[str, Any]) -> str:
-    who = entry.get("name") or "a member"
-    if entry.get("email"):
-        who = f"{who} ({entry['email']})"
+    # Name only: the certificate goes to external signers, so no member email on it.
+    who = entry.get("name") or "a workspace member"
     when = str(entry.get("at", ""))[:19].replace("T", " ")
     how = "in the create response" if entry.get("via") == "created" else "copied"
     return f"Link {how} by {who} at {when} UTC"

@@ -5,7 +5,7 @@ signature + an audit certificate), stored privately, downloadable by editors and
 party**; a **signing order** switch (sequential release), a **message** to signers, a **Viewed** state, a full **request
 detail** (sent date, expiry, per-signer email / status / viewed / signed times, `signed_ip`, `signed_user_agent`), **copy a
 signer's link again**, and **"anyone with the link" shares with a custom expiry** for rich documents *and* uploaded files
-(list, change expiry, revoke, copy again). Migration `0075_documents_esign_v2` (the only one). New dependency `pypdf ^5`.
+(list, change expiry, revoke, copy again). Migrations `0075_documents_esign_v2` and (review fix, PR after #190) `0076_documents_signer_link_audit` (`signature_signers.link_copies`). New dependency `pypdf ^5`.
 Branch `feature/documents-esign-v2` → `develop` (PR in the hand-back). Closes gap-list rows 15, 16 (minus field placement),
 17, 31, 37. FE guide: `docs/fe-integration-guide-documents-esign-v2.md` (live-captured).
 
