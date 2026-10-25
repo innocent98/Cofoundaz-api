@@ -1,5 +1,10 @@
 # FE Integration Guide — Documents & Templates (Module 18, Slice 1: Document Library Core)
 
+> **Superseded in part by BE-C** (`docs/fe-integration-guide-documents-templates-export.md`): the template objects
+> below now also carry `category` and `disclaimer`, there are four more (legal) templates, `GET /document-templates/{key}`
+> returns a `form`, and `POST /documents/templates/{key}/instantiate` is the "Use template" call. The bodies below are
+> the Slice 1 captures and are otherwise unchanged.
+
 All request/response bodies below are pasted **verbatim** from live captures taken by
 `e2e/test_documents.py::test_documents_journey` running against a real server
 (`scripts/e2e_run.sh`) — see `e2e/_captures/documents/*.json`. Nothing here is retyped from the

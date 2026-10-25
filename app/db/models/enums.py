@@ -211,6 +211,11 @@ class DocumentKind(enum.StrEnum):
     financial_model = "financial_model"
     meeting_notes = "meeting_notes"
     one_pager = "one_pager"
+    # Legal drafts (D-DOC-4): structured templates with a not-legal-advice disclaimer.
+    nda = "nda"
+    contractor_agreement = "contractor_agreement"
+    founder_agreement = "founder_agreement"
+    safe = "safe"
     custom = "custom"
 
 

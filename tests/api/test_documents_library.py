@@ -210,6 +210,7 @@ def test_public_share_payload_carries_content_only(client, ws):
         "status",
         "ai_generated",
         "template_key",
+        "disclaimer",
         "version",
         "updated_at",
         "sections",

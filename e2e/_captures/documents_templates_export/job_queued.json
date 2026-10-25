@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "0aab2096-3db2-49b5-ace6-15450d26beaf",
+      "type": "ai.documents.template_draft",
+      "status": "queued",
+      "result": null,
+      "error": null
+    },
+    "meta": null
+  }
+}

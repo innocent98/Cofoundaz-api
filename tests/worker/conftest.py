@@ -24,6 +24,7 @@ def _fresh_handler_imports():
     sys.modules.pop("app.worker.handlers.scheduled", None)
     sys.modules.pop("app.worker.handlers.ai", None)
     sys.modules.pop("app.worker.handlers.plan", None)
+    sys.modules.pop("app.worker.handlers.documents_ai", None)
     yield
     sys.modules.pop("app.worker.handlers.email", None)
     sys.modules.pop("app.worker.handlers.scheduled", None)

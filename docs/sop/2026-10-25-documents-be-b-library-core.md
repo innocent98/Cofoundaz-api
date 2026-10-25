@@ -99,5 +99,5 @@ downgrade leaves the extra columns harmless.
 
 - Member removal does not exist yet: when it ships, decide whether `user_id` grants end with membership.
 - Grants on files, "Can edit" grants, extracted-text search for files, version pruning (history is unbounded).
-- Real malware scanner (BE-A), export/instantiate (BE-C), e-sign v2 (BE-D).
+- Real malware scanner (BE-A), export/instantiate (BE-C, shipped: `2026-10-25-documents-be-c-templates-export.md`), e-sign v2 (BE-D).
 - A provider-signed (Cloudinary) URL stays valid for its ≤ 5 minutes after the file is trashed.

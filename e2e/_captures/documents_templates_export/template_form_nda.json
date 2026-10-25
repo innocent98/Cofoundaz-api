@@ -1,0 +1,180 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "key": "nda",
+      "name": "Non-Disclosure Agreement",
+      "description": "A one-way NDA for sharing confidential information with a partner, investor or contractor.",
+      "kind": "nda",
+      "category": "Legal",
+      "sections": [
+        "Parties",
+        "Purpose",
+        "Confidential Information",
+        "Obligations of the Receiving Party",
+        "Exclusions",
+        "Term",
+        "Return or Destruction",
+        "Remedies",
+        "Governing Law",
+        "Signatures"
+      ],
+      "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it.",
+      "form": {
+        "template_key": "nda",
+        "fields": [
+          {
+            "key": "disclosing_party",
+            "label": "Disclosing party",
+            "type": "text",
+            "required": true,
+            "value": "NovaPay",
+            "state": "filled",
+            "source": "profile",
+            "ai_draftable": false
+          },
+          {
+            "key": "receiving_party",
+            "label": "Receiving party",
+            "type": "text",
+            "required": true,
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": false
+          },
+          {
+            "key": "effective_date",
+            "label": "Effective date",
+            "type": "date",
+            "required": false,
+            "value": "2026-10-25",
+            "state": "filled",
+            "source": "system",
+            "ai_draftable": false
+          },
+          {
+            "key": "purpose",
+            "label": "Purpose of sharing",
+            "type": "longtext",
+            "required": true,
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": false
+          },
+          {
+            "key": "term_years",
+            "label": "Confidentiality period (years)",
+            "type": "text",
+            "required": false,
+            "value": "2",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "governing_law",
+            "label": "Governing law",
+            "type": "text",
+            "required": true,
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": false
+          }
+        ],
+        "sections": [
+          {
+            "key": "parties",
+            "heading": "Parties",
+            "value": "This Non-Disclosure Agreement is made on 2026-10-25 between NovaPay (the \"Disclosing Party\") and [Receiving party] (the \"Receiving Party\").",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "purpose",
+            "heading": "Purpose",
+            "value": "The Disclosing Party will share confidential information with the Receiving Party solely for the following purpose: [Purpose of sharing]. The Receiving Party may not use the information for any other purpose.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "confidential_information",
+            "heading": "Confidential Information",
+            "value": "\"Confidential Information\" means any non-public information the Disclosing Party shares in any form, including business plans, financials, customer and supplier details, product designs, source code and know-how, whether or not it is marked confidential.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "obligations_of_the_receiving_party",
+            "heading": "Obligations of the Receiving Party",
+            "value": "The Receiving Party will: keep the Confidential Information secret using at least the care it uses for its own confidential material; share it only with people who need to know it for the purpose above and who are bound by equivalent duties; and not copy it except as the purpose requires.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "exclusions",
+            "heading": "Exclusions",
+            "value": "These duties do not apply to information that: is or becomes public through no fault of the Receiving Party; was already known to the Receiving Party without a duty of confidence; is received lawfully from a third party; or must be disclosed by law, in which case the Receiving Party will give the Disclosing Party prompt notice where allowed.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "term",
+            "heading": "Term",
+            "value": "This agreement covers information shared from the effective date. The duties of confidentiality continue for 2 years after the effective date.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "return_or_destruction",
+            "heading": "Return or Destruction",
+            "value": "On request, the Receiving Party will promptly return or destroy all Confidential Information and confirm in writing that it has done so.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "remedies",
+            "heading": "Remedies",
+            "value": "The Receiving Party acknowledges that a breach may cause harm that money alone cannot repair, and that the Disclosing Party may seek an injunction in addition to any other remedy.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "governing_law",
+            "heading": "Governing Law",
+            "value": "This agreement is governed by the laws of [Governing law], and its courts have jurisdiction over any dispute.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "signatures",
+            "heading": "Signatures",
+            "value": "Signed for NovaPay:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________\n\nSigned for [Receiving party]:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          }
+        ],
+        "unfilled_required": [
+          "receiving_party",
+          "purpose",
+          "governing_law"
+        ],
+        "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it.",
+        "ai_available": false
+      }
+    },
+    "meta": null
+  }
+}

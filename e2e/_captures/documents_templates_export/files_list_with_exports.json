@@ -1,0 +1,54 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "files": [
+        {
+          "id": "3385527b-9a00-4b32-84c6-e04aeaf5ad11",
+          "filename": "Non-Disclosure Agreement.docx",
+          "content_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "type": "file",
+          "origin": "export",
+          "source_document_id": "34bb977d-7a11-48e4-a98a-ab84b9998775",
+          "source_version": 1,
+          "size_bytes": 38319,
+          "folder": null,
+          "tags": [],
+          "owner": {
+            "id": "97ef66ef-8c63-4ebb-a8de-c10d50c71a2f",
+            "name": "Ada Founder"
+          },
+          "share_count": 0,
+          "scan_status": "clean",
+          "uploaded_at": "2026-10-25T15:03:54.655989+00:00",
+          "trashed_at": null,
+          "purges_at": null
+        },
+        {
+          "id": "0f069faa-155d-40c1-ad14-561390cab32d",
+          "filename": "Non-Disclosure Agreement.pdf",
+          "content_type": "application/pdf",
+          "mime": "application/pdf",
+          "type": "file",
+          "origin": "export",
+          "source_document_id": "34bb977d-7a11-48e4-a98a-ab84b9998775",
+          "source_version": 1,
+          "size_bytes": 4444,
+          "folder": null,
+          "tags": [],
+          "owner": {
+            "id": "97ef66ef-8c63-4ebb-a8de-c10d50c71a2f",
+            "name": "Ada Founder"
+          },
+          "share_count": 0,
+          "scan_status": "clean",
+          "uploaded_at": "2026-10-25T15:03:54.614057+00:00",
+          "trashed_at": null,
+          "purges_at": null
+        }
+      ]
+    },
+    "meta": null
+  }
+}
