@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "url": "http://127.0.0.1:8610/api/v1/documents/files/download?token=REDACTED_TOKEN",
+      "expires_at": "2026-10-25T17:05:35+00:00",
+      "content_type": "application/pdf",
+      "filename": "founders-agreement - signed.pdf"
+    },
+    "meta": null
+  }
+}

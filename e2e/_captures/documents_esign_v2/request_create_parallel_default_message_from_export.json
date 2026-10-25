@@ -1,0 +1,42 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "bf83c35f-b8f6-45e0-8e8e-6b9d335827f4",
+      "title": "One-Pager.pdf",
+      "status": "awaiting",
+      "file_id": "2c245d68-f643-474f-81d6-4894f76fb777",
+      "filename": "One-Pager.pdf",
+      "signed_count": 0,
+      "total": 1,
+      "sequential": false,
+      "message": "Ada Founder has sent you One-Pager.pdf to sign via Cofoundaz.",
+      "sent_at": "2026-10-25T17:00:35.883197+00:00",
+      "expires_at": "2026-11-08T17:00:35.893392+00:00",
+      "completed_at": null,
+      "created_at": "2026-10-25T17:00:35.883197+00:00",
+      "document_hash": "9fdaaa1235891408f0313e1ddfccf8eb5b5cc374f4a6dfc9ce7f2d87f6911070",
+      "executed": null,
+      "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
+      "signers": [
+        {
+          "id": "8ff3811a-7e75-421f-ad08-2a971516556e",
+          "email": "delivered+signer-three-454cf340d1c0@resend.dev",
+          "name": "Cleo",
+          "position": 0,
+          "status": "pending",
+          "notified_at": "2026-10-25T17:00:35.893392+00:00",
+          "viewed_at": null,
+          "signed_at": null,
+          "signed_name": null,
+          "signed_ip": null,
+          "signed_user_agent": null
+        }
+      ],
+      "signer_links": [
+        "http://localhost:3000/sign/REDACTED_TOKEN"
+      ]
+    },
+    "meta": null
+  }
+}

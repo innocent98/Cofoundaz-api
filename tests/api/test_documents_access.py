@@ -17,6 +17,7 @@ from app.core.security import create_access_token
 from app.db.models.enums import DOCUMENT_ROLES, MembershipRole, StartupStage
 from app.main import app
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import make_pdf
 
 SIGNER_EMAIL = "signer-secret@example.com"
 SHARE_EMAIL = "recipient-secret@example.com"
@@ -50,7 +51,7 @@ def world(client, db, tmp_path, monkeypatch):
     doc = client.post("/api/v1/documents", json={"title": "Secret plan"}, headers=h).json()["data"]
     file = client.post(
         "/api/v1/documents/files",
-        files={"file": ("nda.pdf", io.BytesIO(b"%PDF-1.4 body"), "application/pdf")},
+        files={"file": ("nda.pdf", io.BytesIO(make_pdf()), "application/pdf")},
         headers=h,
     ).json()["data"]
     share = client.post(
@@ -63,6 +64,9 @@ def world(client, db, tmp_path, monkeypatch):
         json={"signers": [{"email": SIGNER_EMAIL, "name": "S"}]},
         headers=h,
     ).json()["data"]
+    fshare = client.post(f"/api/v1/documents/files/{file['id']}/shares", json={}, headers=h).json()[
+        "data"
+    ]
     folder = client.post("/api/v1/documents/folders", json={"name": "Legal"}, headers=h).json()[
         "data"
     ]["folders"][0]
@@ -76,6 +80,8 @@ def world(client, db, tmp_path, monkeypatch):
         "file": file["id"],
         "share": share["id"],
         "req": req["id"],
+        "signer": req["signers"][0]["id"],
+        "fshare": fshare["id"],
         "folder": folder["id"],
         "grant": grant["id"],
         "number": 1,
@@ -99,6 +105,13 @@ ROUTES = [
     ("GET", "/documents/shares", None, False),
     ("GET", "/documents/{doc}/shares", None, False),
     ("POST", "/documents/{doc}/shares", {"email": "z@example.com", "access_level": "view"}, False),
+    ("PATCH", "/documents/{doc}/shares/{share}", {"expires_at": None}, False),
+    ("GET", "/documents/files/{file}/shares", None, False),
+    ("POST", "/documents/files/{file}/shares", {}, False),
+    ("PATCH", "/documents/files/{file}/shares/{fshare}", {"expires_at": None}, False),
+    ("DELETE", "/documents/files/{file}/shares/{fshare}", None, False),
+    ("GET", "/documents/signature-requests/{req}/signers/{signer}/link", None, False),
+    ("GET", "/documents/signature-requests/{req}/executed", None, False),
     ("GET", "/documents/signature-requests", None, False),
     ("GET", "/documents/signature-requests/{req}", None, False),
     ("POST", "/documents/signature-requests/{req}/remind", None, False),
@@ -186,6 +199,8 @@ def test_matrix_covers_every_documents_route():
         "/api/v1/shared/{token}",
         "/api/v1/sign/{token}",
         "/api/v1/sign/{token}/file",
+        "/api/v1/sign/{token}/executed",
+        "/api/v1/shared/{token}/file",
         "/api/v1/documents/files/download",
         "/api/v1/documents/files/content",
     }
@@ -194,6 +209,7 @@ def test_matrix_covers_every_documents_route():
         "{file_id}": "{file}",
         "{share_id}": "{share}",
         "{request_id}": "{req}",
+        "{signer_id}": "{signer}",
         "{folder_id}": "{folder}",
         "{grant_id}": "{grant}",
     }
@@ -203,6 +219,8 @@ def test_matrix_covers_every_documents_route():
             continue
         for old, new in path_names.items():
             path = path.replace(old, new)
+        if path.startswith("/api/v1/documents/files/{file}/shares/"):
+            path = path.replace("{share}", "{fshare}")  # a file's share, not a document's
         live |= {(m.upper(), path.removeprefix("/api/v1")) for m in ops}
     assert live - GRANTEE_ROUTES == {(m, p) for m, p, *_ in ROUTES}
     assert GRANTEE_ROUTES <= live

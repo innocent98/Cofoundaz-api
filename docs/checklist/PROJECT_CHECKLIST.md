@@ -1613,7 +1613,7 @@ gap-list rows 1–6, 25, 37 (D-DOC-1..4)
       public responses trimmed
 - [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
       `e2e/test_documents_access.py`; four FE guides updated from live captures
-- [x] _BE-B shipped below_ · [x] _BE-C shipped below (PR open)_ · [ ] _BE-D:_ e-sign v2
+- [x] _BE-B shipped below_ · [x] _BE-C shipped below_ · [x] _BE-D shipped below (PR open)_
 - [ ] _Deferred:_ a real malware scanner behind `get_scanner()` · FE: hide Documents for non-F/TM roles (row 27)
 
 **Documents BE-B (library core)** — *built 2026-10-25 on `feature/documents-library-core`, PR to
@@ -1661,6 +1661,28 @@ closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
       `e2e/test_documents_templates_export.py`; one Opus review, findings fixed
 - [ ] _Deferred:_ sharing a file (token link / grant on files) · TrueType font for non-Latin PDF text · counsel-reviewed
       clause text · executed-PDF stamping and DOCX signing (BE-D)
+
+**Documents BE-D (e-sign v2 + link shares)** — *built 2026-10-25 on `feature/documents-esign-v2`, PR to `develop`
+(migration `0075_documents_esign_v2`, after `0074`; new dependency `pypdf`, so the shared stack needs
+`docker compose build api worker`, and the **worker must run** for executed PDFs)* — SOP
+`docs/sop/2026-10-25-documents-be-d-esign-v2.md`, FE guide `docs/fe-integration-guide-documents-esign-v2.md`
+(live-captured); closes gap-list rows 15, 16 (minus field placement), 17, 31, 37 (D-DOC-2)
+- [x] Executed PDF (row 15): original pages + signature page + audit certificate (signers, emails, viewed / signed times, IP,
+      user agent, SHA-256, legal caveat); private `DocumentFile` (`origin: "executed"`); worker job
+      `documents.signature_finalize` (self-managed, resumable); emailed with the PDF to every signer and the sender;
+      editor link `GET .../signature-requests/{id}/executed`, signer link `GET /sign/{token}/executed` (90 days)
+- [x] Signing order (row 16): `sequential`, next link released and emailed only after the previous signature, waiting
+      signers unreachable; custom `message` (default sentence stored), header-injection safe; Viewed state (`viewed_at`)
+- [x] Request detail (rows 31, 37): `sent_at`, `expires_at`, per-signer `status` (waiting / pending / viewed / signed),
+      `notified_at` / `viewed_at` / `signed_at`, `signed_ip`, `signed_user_agent` (editors only), `document_hash`,
+      `executed`, `legal_caveat`; copy a signer's link again (derived token, hashed at rest, remind rotates)
+- [x] Link shares (row 17): "anyone with the link" (no email), custom `expires_at` or days or never, list / change expiry /
+      revoke / copy again, for documents **and uploaded files**; `GET /shared/{token}/file`; real `share_count` on files
+- [x] BE-C exports are signable (PDF export); **DOCX: require a PDF export first** (`422 PDF_REQUIRED`)
+- [x] Tests: API, worker through `run_once`, PDF, links, storage, migration, route × role matrix; live journey
+      `e2e/test_documents_esign_v2.py`
+- [ ] _Deferred:_ **field placement** (needs the PDF viewer, row 11 FE, + Q2) · draw-a-signature · rebuild-executed action ·
+      reminder timers · real malware scanner · per-person grants on files
 
 **Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto

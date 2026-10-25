@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.db.models.document import DocumentFile, DocumentVersion
 from app.db.models.enums import MembershipRole
 from app.platform.events import event_bus
-from tests.documents_helpers import headers, new_doc, team, upload
+from tests.documents_helpers import PDF, headers, new_doc, team, upload
 
 API = "/api/v1"
 
@@ -591,7 +591,7 @@ def test_content_link_is_inline_with_a_viewer_hint(client, ws):
     got = client.get(
         f"{API}/documents/files/content", params={"token": link["url"].split("token=")[1]}
     )
-    assert got.status_code == 200 and got.content == b"%PDF-1.4 body"
+    assert got.status_code == 200 and got.content == PDF
     assert got.headers["content-disposition"].startswith("inline;")
     assert got.headers["x-content-type-options"] == "nosniff"
     assert "sandbox" in got.headers["content-security-policy"]

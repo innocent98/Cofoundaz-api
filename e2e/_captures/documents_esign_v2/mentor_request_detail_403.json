@@ -1,0 +1,10 @@
+{
+  "status": 403,
+  "body": {
+    "error": {
+      "code": "FORBIDDEN",
+      "message": "You don't have permission to do that.",
+      "field_errors": []
+    }
+  }
+}

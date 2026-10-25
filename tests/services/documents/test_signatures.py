@@ -14,6 +14,7 @@ from app.services.documents.signatures import (
     serialize_request,
 )
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import store_pdf
 
 
 def _ctx(db):
@@ -32,6 +33,7 @@ def _ctx(db):
     )
     db.add(f)
     db.flush()
+    store_pdf(f)
     return u, s, m, f
 
 

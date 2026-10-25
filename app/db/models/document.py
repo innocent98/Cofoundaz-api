@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -140,10 +141,18 @@ class DocumentShare(UUIDMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[uuid.UUID] = mapped_column(
+    # Exactly one of `document_id` / `file_id` is set (CHECK): a share is of a rich document or of
+    # an uploaded/exported file.
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("document_files.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     shared_by_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -152,7 +161,8 @@ class DocumentShare(UUIDMixin, TimestampMixin, Base):
         nullable=True,
         index=True,
     )
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    # NULL = "anyone with the link" (no recipient, nothing emailed).
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     access_level: Mapped[ShareAccess] = mapped_column(
         Enum(ShareAccess, native_enum=False, length=20), nullable=False
     )
@@ -167,7 +177,12 @@ class DocumentShare(UUIDMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
 
-    __table_args__ = (Index("ix_document_shares_startup_created", "startup_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_document_shares_startup_created", "startup_id", "created_at"),
+        CheckConstraint(
+            "(document_id IS NOT NULL) <> (file_id IS NOT NULL)", name="ck_document_shares_target"
+        ),
+    )
 
 
 class SignatureRequest(UUIDMixin, TimestampMixin, Base):
@@ -209,6 +224,26 @@ class SignatureRequest(UUIDMixin, TimestampMixin, Base):
     cancelled_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # The sender's note to the signers (the default sentence is stored when none was typed).
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # True: signers sign one after another in `position` order; the next link is released only
+    # when the previous signer has signed.
+    sequential: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # SHA-256 of the PDF at send time (NULL on requests sent before e-sign v2).
+    document_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # The executed PDF (the original pages plus the signature and audit-certificate pages): a
+    # private DocumentFile, set by the worker after the last signature.
+    executed_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("document_files.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    executed_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # When the executed copy was emailed to the sender (per signer: `executed_emailed_at`).
+    owner_emailed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (Index("ix_signature_requests_startup_created", "startup_id", "created_at"),)
 
@@ -232,6 +267,19 @@ class SignatureSigner(UUIDMixin, TimestampMixin, Base):
     signed_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     signed_user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Bumped to rotate the signer's link (a reminder); the link is derived from (id, version).
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # When the link was released to the signer (immediately, or in sequential mode when the
+    # previous signer signed). NULL = not their turn yet; no usable token exists for them.
+    notified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    viewed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    executed_emailed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class DocumentVersion(UUIDMixin, TimestampMixin, Base):

@@ -1,3 +1,4 @@
+import html
 import uuid
 from typing import Any
 from urllib.parse import quote
@@ -20,6 +21,7 @@ from app.db.models.enums import (
     DocumentStatus,
     ScanStatus,
     ShareAccess,
+    SignatureRequestStatus,
 )
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -41,13 +43,17 @@ from app.schemas.document import (
     GrantCreate,
     GrantUpdate,
     ShareCreate,
+    ShareExpiry,
     SignAction,
     SignatureRequestCreate,
     TemplateInstantiate,
 )
+from app.services.documents.common import display_name
+from app.services.documents.esign_pdf import LEGAL_CAVEAT
 from app.services.documents.export import export_document
 from app.services.documents.files import (
     FILE_LINK_TTL_SECONDS,
+    VIEWER_BY_CONTENT_TYPE,
     delete_file,
     ensure_private,
     file_by_key,
@@ -100,21 +106,28 @@ from app.services.documents.service import (
 from app.services.documents.shares import (
     _share,
     create_share,
+    list_file_shares,
     list_shares,
     list_workspace_shares,
     open_shared,
+    resolve_expiry,
     revoke_share,
     serialize_share,
+    set_expiry,
     share_document,
 )
 from app.services.documents.signatures import (
     cancel_request,
     create_request,
     get_request,
+    link_for_signer,
     list_requests,
+    mark_viewed,
+    open_for_executed,
     open_for_signing,
     record_signature,
     reissue_unsigned,
+    release_next,
     serialize_request,
 )
 from app.services.documents.sniff import declared_type, sniff_content_type
@@ -178,14 +191,25 @@ def _startup(db: Session, membership: Membership) -> Startup:
     return db.query(Startup).filter(Startup.id == membership.startup_id).one()
 
 
-def _signature_email(to: str, link: str, title: str) -> None:
-    """Best-effort: a flaky mail backend must not fail the request."""
+def _signature_email(
+    to: str, link: str, title: str, message: str | None, sender: str | None
+) -> None:
+    """Best-effort: a flaky mail backend must not fail the request. The sender's message goes
+    only into the HTML body, escaped; the subject is the title with line breaks removed, so
+    nothing a user typed can add a header."""
+    subject = " ".join(f"Signature requested: {title}".split())[:200]
+    text = message or f"{sender or 'A teammate'} has sent you {title} to sign via Cofoundaz."
+    body = html.escape(text).replace("\n", "<br>")
     try:
         get_email_sender().send(
             EmailMessage(
                 to=to,
-                subject=f"Signature requested: {title}",
-                html=f'<p>You have a document to review and sign: <a href="{link}">{link}</a></p>',
+                subject=subject,
+                html=(
+                    f"<p>{body}</p>"
+                    f'<p><a href="{html.escape(link, quote=True)}">Review and sign</a></p>'
+                    f"<p style='font-size:12px;color:#666'>{html.escape(LEGAL_CAVEAT)}</p>"
+                ),
             )
         )
     except Exception as exc:  # noqa: BLE001 - delivery is best-effort
@@ -554,6 +578,44 @@ def delete_document_file_permanently(
     return success_response({"deleted": True})
 
 
+def _share_email(to: str, link: str, title: str) -> None:
+    """Best-effort: the share exists whether or not the email goes out (the link is also returned
+    to the sharer)."""
+    try:
+        get_email_sender().send(
+            EmailMessage(
+                to=to,
+                subject="A document was shared with you on Cofoundaz",
+                html=(
+                    f"<p>You can view <strong>{html.escape(title)}</strong> here: "
+                    f'<a href="{html.escape(link, quote=True)}">{html.escape(link)}</a></p>'
+                ),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - deliberately tolerant; share still created
+        log.warning(f"share notification email to {to} failed: {exc!r}")
+
+
+def _create_link_share(
+    db: Session, membership: Membership, target: Document | DocumentFile, body: ShareCreate
+) -> dict[str, Any]:
+    expires_at = resolve_expiry(expires_at=body.expires_at, expires_in_days=body.expires_in_days)
+    share, raw = create_share(
+        db,
+        target,
+        shared_by_id=membership.user_id,
+        email=body.email,
+        access_level=body.access_level,
+        expires_at=expires_at,
+    )
+    base = _fe_base_url()
+    link = f"{base}/shared/{raw}"
+    if body.email:
+        _share_email(body.email, link, getattr(target, "title", None) or target.filename)  # type: ignore[union-attr]
+    db.commit()
+    return success_response(serialize_share(share, link_base=base))
+
+
 @router.get("/documents/shares")
 def list_workspace_shares_endpoint(
     membership: Membership = Depends(_editor),  # noqa: B008
@@ -561,43 +623,26 @@ def list_workspace_shares_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     rows = list_workspace_shares(db, _startup(db, membership))
-    return success_response({"shares": [serialize_share(r, with_document=True) for r in rows]})
+    base = _fe_base_url()
+    return success_response(
+        {"shares": [serialize_share(r, with_document=True, link_base=base) for r in rows]}
+    )
 
 
 @router.post("/documents/{document_id}/shares", status_code=status.HTTP_201_CREATED)
+@limiter.shared_limit("60/hour", scope="doc-share-create")
 def create_share_endpoint(
+    request: Request,
     document_id: uuid.UUID,
     body: ShareCreate,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    """Share a document: with a person (`email`, who is emailed the link) or with anyone holding
+    the link (no `email`). The response carries the link; `GET .../shares` returns it again."""
     doc = share_document(db, membership, document_id)
-    share, raw = create_share(
-        db,
-        doc,
-        shared_by_id=membership.user_id,
-        email=body.email,
-        access_level=body.access_level,
-        expires_in_days=body.expires_in_days,
-    )
-    link = f"{_fe_base_url()}/shared/{raw}"
-    # Best-effort: the share is created regardless of email delivery. The link is
-    # returned in the response so the founder can copy it even if the mail send
-    # fails (a flaky provider must not 500 share creation). Auth/invite sends
-    # stay fail-loud; only this notification is tolerant.
-    try:
-        get_email_sender().send(
-            EmailMessage(
-                to=body.email,
-                subject="A document was shared with you on Cofoundaz",
-                html=f'<p>You can view the document here: <a href="{link}">{link}</a></p>',
-            )
-        )
-    except Exception as exc:  # noqa: BLE001 - deliberately tolerant; share still created
-        log.warning(f"share notification email to {body.email} failed: {exc!r}")
-    db.commit()
-    return success_response({**serialize_share(share), "link": link})
+    return _create_link_share(db, membership, doc, body)
 
 
 @router.get("/documents/{document_id}/shares")
@@ -608,7 +653,25 @@ def list_shares_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     doc = share_document(db, membership, document_id)
-    return success_response({"shares": [serialize_share(r) for r in list_shares(db, doc)]})
+    base = _fe_base_url()
+    return success_response(
+        {"shares": [serialize_share(r, link_base=base) for r in list_shares(db, doc)]}
+    )
+
+
+@router.patch("/documents/{document_id}/shares/{share_id}")
+def update_share_endpoint(
+    document_id: uuid.UUID,
+    share_id: uuid.UUID,
+    body: ShareExpiry,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    share = _share(db, membership, document_id, share_id)
+    set_expiry(db, share, resolve_expiry(expires_at=body.expires_at, expires_in_days=None))
+    db.commit()
+    return success_response(serialize_share(share, link_base=_fe_base_url()))
 
 
 @router.delete("/documents/{document_id}/shares/{share_id}")
@@ -624,6 +687,65 @@ def revoke_share_endpoint(
     return success_response({"revoked": True})
 
 
+@router.post("/documents/files/{file_id}/shares", status_code=status.HTTP_201_CREATED)
+@limiter.shared_limit("60/hour", scope="doc-share-create")
+def create_file_share_endpoint(
+    request: Request,
+    file_id: uuid.UUID,
+    body: ShareCreate,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Share an uploaded or exported file by link (view only; 409 unless the scan is clean)."""
+    file = get_file(db, membership, file_id)
+    return _create_link_share(db, membership, file, body)
+
+
+@router.get("/documents/files/{file_id}/shares")
+def list_file_shares_endpoint(
+    file_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    file = get_file(db, membership, file_id)
+    base = _fe_base_url()
+    return success_response(
+        {"shares": [serialize_share(r, link_base=base) for r in list_file_shares(db, file)]}
+    )
+
+
+@router.patch("/documents/files/{file_id}/shares/{share_id}")
+def update_file_share_endpoint(
+    file_id: uuid.UUID,
+    share_id: uuid.UUID,
+    body: ShareExpiry,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    get_file(db, membership, file_id)
+    share = _share(db, membership, file_id, share_id)
+    set_expiry(db, share, resolve_expiry(expires_at=body.expires_at, expires_in_days=None))
+    db.commit()
+    return success_response(serialize_share(share, link_base=_fe_base_url()))
+
+
+@router.delete("/documents/files/{file_id}/shares/{share_id}")
+def revoke_file_share_endpoint(
+    file_id: uuid.UUID,
+    share_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    get_file(db, membership, file_id)
+    revoke_share(db, _share(db, membership, file_id, share_id))
+    db.commit()
+    return success_response({"revoked": True})
+
+
 @router.get("/shared/{token}")
 # One bucket per caller across every token (a per-URL bucket would let a caller guess tokens freely).
 @limiter.shared_limit("30/minute", scope="public-doc-share")
@@ -633,16 +755,57 @@ def open_shared_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     share = open_shared(db, token)  # 404 unknown/expired/revoked
+    expires_at = share.expires_at.isoformat() if share.expires_at else None
+    if share.file_id is not None:
+        file = db.query(DocumentFile).filter_by(id=share.file_id).one()
+        db.commit()
+        return success_response(
+            {
+                "kind": "file",
+                "file": {
+                    "filename": file.filename,
+                    "content_type": file.content_type,
+                    "size_bytes": file.size_bytes,
+                    "viewer": VIEWER_BY_CONTENT_TYPE.get(file.content_type, "download"),
+                    "download_url": f"{_api_public_url().rstrip('/')}/api/v1/shared/{token}/file",
+                },
+                "access_level": share.access_level.value,
+                "expires_at": expires_at,
+            }
+        )
     doc = db.query(Document).filter_by(id=share.document_id).one()
     db.commit()  # persists last_viewed_at
     return success_response(
         {
+            "kind": "document",
             # No internal id or folder: the token holder needs the content, not our bookkeeping.
             "document": serialize_public(doc),
             "access_level": share.access_level.value,
-            "expires_at": share.expires_at.isoformat() if share.expires_at else None,
+            "expires_at": expires_at,
         }
     )
+
+
+@router.get("/shared/{token}/file")
+@limiter.shared_limit("30/minute", scope="public-doc-share")
+def shared_file_endpoint(
+    request: Request,
+    token: str,
+    inline: bool = Query(False),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    """The file behind a file share link, served while the share is live (not revoked, not
+    expired, file not trashed and still clean): the same uniform 404 otherwise."""
+    share = open_shared(db, token)
+    if share.file_id is None:
+        raise NotFound()
+    file = db.query(DocumentFile).filter_by(id=share.file_id).one()
+    storage = ensure_private(file)
+    db.commit()  # last_viewed_at, and a legacy file's move behind authentication
+    remote = storage.private_url(file.storage_key, FILE_LINK_TTL_SECONDS)
+    if remote is not None:
+        return RedirectResponse(remote, status_code=307)
+    return _file_response(file, inline=inline)
 
 
 @router.get("/documents/signature-requests")
@@ -656,15 +819,21 @@ def list_signature_requests_endpoint(
 
 
 @router.post("/documents/files/{file_id}/signature-requests", status_code=status.HTTP_201_CREATED)
+@limiter.shared_limit("30/hour", scope="doc-sign-create")
 def create_signature_request_endpoint(
+    request: Request,
     file_id: uuid.UUID,
     body: SignatureRequestCreate,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    """Send a PDF for signature. `sequential` releases each signer's link only when the previous
+    one has signed; `signer_links` lines up with `signers` and holds null for a signer whose turn
+    hasn't come. Only PDFs can be signed (export a document to PDF first)."""
     file = get_file(db, membership, file_id, lock=True)  # 404 if missing/cross-tenant
     title = body.title or file.filename
+    sender = display_name(db, membership.user_id)
     req, pairs = create_request(
         db,
         file,
@@ -672,10 +841,17 @@ def create_signature_request_endpoint(
         title=title,
         signers=[s.model_dump() for s in body.signers],
         expires_in_days=body.expires_in_days,
+        message=body.message,
+        sequential=body.sequential,
+        sender_name=sender,
     )
-    links = [f"{_fe_base_url()}/sign/{raw}" for _signer, raw in pairs]
-    for (signer, _raw), link in zip(pairs, links, strict=True):
-        _signature_email(signer.email, link, title)
+    base = _fe_base_url()
+    links: list[str | None] = []
+    for signer, raw in pairs:
+        link = f"{base}/sign/{raw}" if raw else None
+        links.append(link)
+        if link:
+            _signature_email(signer.email, link, title, req.message, sender)
     db.commit()
     return success_response({**serialize_request(db, req), "signer_links": links})
 
@@ -690,17 +866,64 @@ def get_signature_request_endpoint(
     return success_response(serialize_request(db, get_request(db, membership, request_id)))
 
 
+@router.get("/documents/signature-requests/{request_id}/signers/{signer_id}/link")
+@limiter.shared_limit("60/hour", scope="doc-sign-link")
+def signer_link_endpoint(
+    request: Request,
+    request_id: uuid.UUID,
+    signer_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Copy a signer's link again (editors only). Nothing changes: the emailed link keeps working.
+    409 when the request is no longer active, the signer has signed, or (sequential) it isn't
+    their turn."""
+    req = get_request(db, membership, request_id)
+    raw = link_for_signer(db, req, signer_id)
+    return success_response({"signer_id": str(signer_id), "link": f"{_fe_base_url()}/sign/{raw}"})
+
+
+@router.get("/documents/signature-requests/{request_id}/executed")
+def executed_signature_request_endpoint(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """A short-lived signed link to the executed PDF of a completed request (409
+    EXECUTED_NOT_READY until the worker has built it)."""
+    req = get_request(db, membership, request_id)
+    file = (
+        db.query(DocumentFile).filter_by(id=req.executed_file_id).first()
+        if req.executed_file_id
+        else None
+    )
+    if file is None:
+        raise AppError(
+            "EXECUTED_NOT_READY", "The executed copy isn't ready yet. Try again shortly.", 409
+        )
+    return success_response(file_link(file, api_public_url=_api_public_url()))
+
+
 @router.post("/documents/signature-requests/{request_id}/remind")
+@limiter.shared_limit("30/hour", scope="doc-sign-remind")
 def remind_signature_request_endpoint(
+    request: Request,
     request_id: uuid.UUID,
     membership: Membership = Depends(_editor),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     req = get_request(db, membership, request_id)
-    pairs = reissue_unsigned(db, req)  # rotates unsigned signers' tokens; 409 if not active
+    pairs = reissue_unsigned(
+        db, req
+    )  # rotates released, unsigned signers' links; 409 if not active
+    sender = display_name(db, req.created_by_id)
     for signer, raw in pairs:
-        _signature_email(signer.email, f"{_fe_base_url()}/sign/{raw}", req.title)
+        _signature_email(
+            signer.email, f"{_fe_base_url()}/sign/{raw}", req.title, req.message, sender
+        )
     db.commit()
     return success_response({"reminded": len(pairs)})
 
@@ -724,14 +947,23 @@ def view_for_signing_endpoint(
     token: str,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    signer = open_for_signing(db, token)  # 404 unknown/expired/cancelled/complete/signed
+    signer = open_for_signing(db, token)  # 404 unknown/expired/cancelled/complete/signed/not-yet
+    mark_viewed(signer)
     sign_request = get_request_by_id(db, signer.request_id)
     file = db.query(DocumentFile).filter_by(id=sign_request.file_id).one()
+    sender = display_name(db, sign_request.created_by_id)
+    db.commit()
     return success_response(
         {
             "request": {
                 "title": sign_request.title,
                 "status": serialize_request(db, sign_request, with_signers=False)["status"],
+                "message": sign_request.message,
+                "sent_by": sender,
+                "sequential": sign_request.sequential,
+                "expires_at": (
+                    sign_request.expires_at.isoformat() if sign_request.expires_at else None
+                ),
             },
             # Only what the signer needs: no internal id, folder or upload time. The content is
             # fetched from `download_url`, which re-checks that this token is still active.
@@ -742,6 +974,7 @@ def view_for_signing_endpoint(
                 "download_url": f"{_api_public_url().rstrip('/')}/api/v1/sign/{token}/file",
             },
             "signer": {"email": signer.email, "name": signer.name},
+            "legal_caveat": LEGAL_CAVEAT,
         }
     )
 
@@ -768,6 +1001,23 @@ def sign_file_endpoint(
     return _file_response(file)
 
 
+@router.get("/sign/{token}/executed")
+@limiter.shared_limit("30/minute", scope="public-sign-read")
+def sign_executed_endpoint(
+    request: Request,
+    token: str,
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    """The executed PDF, for a signer whose request completed (their own link, for 90 days after
+    completion). 409 EXECUTED_NOT_READY while the worker is still building it."""
+    _signer, _req, file = open_for_executed(db, token)
+    storage = ensure_private(file)
+    remote = storage.private_url(file.storage_key, FILE_LINK_TTL_SECONDS)
+    if remote is not None:
+        return RedirectResponse(remote, status_code=307)
+    return _file_response(file)
+
+
 @router.post("/sign/{token}")
 @limiter.shared_limit("10/minute", scope="public-sign")
 def sign_endpoint(
@@ -786,10 +1036,23 @@ def sign_endpoint(
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+    released = release_next(db, updated)  # sequential: the next signer's turn
+    if released is not None:
+        nxt, raw = released
+        _signature_email(
+            nxt.email,
+            f"{_fe_base_url()}/sign/{raw}",
+            updated.title,
+            updated.message,
+            display_name(db, updated.created_by_id),
+        )
     db.commit()
     # with_signers=False: the public signer must NOT receive the co-signer roster
     # (emails/names). They keep status + signed_count/total (outside the signers block).
-    return success_response(serialize_request(db, updated, with_signers=False))
+    out = serialize_request(db, updated, with_signers=False)
+    if updated.status == SignatureRequestStatus.complete:
+        out["executed_url"] = f"{_api_public_url().rstrip('/')}/api/v1/sign/{token}/executed"
+    return success_response(out)
 
 
 # --- folders ------------------------------------------------------------------------------

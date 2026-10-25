@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "signers.0.email",
+          "message": "Value error, Enter a valid email address."
+        }
+      ]
+    }
+  }
+}

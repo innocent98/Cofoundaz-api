@@ -8,6 +8,7 @@ import cloudinary
 import cloudinary.exceptions
 import cloudinary.uploader
 import cloudinary.utils
+import httpx
 
 from app.core.config import settings
 
@@ -29,6 +30,10 @@ class Storage(Protocol):
 
     def make_private(self, key: str) -> None:
         """Move a legacy publicly-reachable asset behind authentication (idempotent)."""
+
+    def read_private(self, key: str) -> bytes | None:
+        """The bytes of a private asset, or None when it is missing. For server-side processing
+        only (stamping an executed PDF); readers get `private_url` or a signed local link."""
 
 
 class LocalStorage:
@@ -56,6 +61,10 @@ class LocalStorage:
 
     def make_private(self, key: str) -> None:
         return None
+
+    def read_private(self, key: str) -> bytes | None:
+        path = self.open_private(key)
+        return path.read_bytes() if path is not None else None
 
     def open_private(self, key: str) -> Path | None:
         """The file for `key`, or None when it is missing or escapes the storage root."""
@@ -115,6 +124,16 @@ class CloudinaryStorage:
                 expires_at=int(time.time()) + ttl_seconds,
             )
         )
+
+    def read_private(self, key: str) -> bytes | None:
+        url = self.private_url(key, 60)
+        if url is None:
+            return None
+        resp = httpx.get(url, timeout=30.0, follow_redirects=False)
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.content
 
     def make_private(self, key: str) -> None:
         # Legacy receipts were uploaded with the default delivery type ("upload"), which is

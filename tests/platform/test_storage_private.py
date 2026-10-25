@@ -115,3 +115,38 @@ def test_cloudinary_make_private_still_raises_other_errors():
         pytest.raises(Error),
     ):
         s.make_private("receipts/s/k.pdf")
+
+
+def test_local_read_private_returns_bytes_or_none(tmp_path):
+    s = LocalStorage(str(tmp_path))
+    s.save_private("documents/s/k.pdf", b"%PDF-body", "application/pdf")
+    assert s.read_private("documents/s/k.pdf") == b"%PDF-body"
+    assert s.read_private("documents/s/missing.pdf") is None
+    assert s.read_private("../../etc/passwd") is None  # escapes the root
+
+
+def test_cloudinary_read_private_downloads_the_signed_url():
+    import httpx
+
+    s = CloudinaryStorage()
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen["url"] = url
+        return httpx.Response(200, content=b"%PDF-body", request=httpx.Request("GET", url))
+
+    with patch("app.platform.storage.httpx.get", fake_get):
+        assert s.read_private("documents/s/k.pdf") == b"%PDF-body"
+    assert "authenticated" in seen["url"]
+
+    def missing(url, **kw):
+        return httpx.Response(404, request=httpx.Request("GET", url))
+
+    with patch("app.platform.storage.httpx.get", missing):
+        assert s.read_private("documents/s/k.pdf") is None
+
+    def boom(url, **kw):
+        return httpx.Response(500, request=httpx.Request("GET", url))
+
+    with patch("app.platform.storage.httpx.get", boom), pytest.raises(httpx.HTTPStatusError):
+        s.read_private("documents/s/k.pdf")

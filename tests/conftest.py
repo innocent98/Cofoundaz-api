@@ -32,6 +32,13 @@ def _never_touch_the_real_outreach_mailbox(monkeypatch: pytest.MonkeyPatch) -> N
                 monkeypatch.setattr(settings, name, "")
 
 
+@pytest.fixture(autouse=True)
+def _isolated_local_storage(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uploads (and the signing flow, which reads the stored PDF) write under the test's tmp dir,
+    never `var/storage`."""
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_DIR", str(tmp_path / "storage"))
+
+
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
     eng = create_engine(TEST_URL, pool_pre_ping=True)

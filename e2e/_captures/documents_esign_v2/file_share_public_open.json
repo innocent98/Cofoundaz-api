@@ -1,0 +1,18 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "kind": "file",
+      "file": {
+        "filename": "founders-agreement.pdf",
+        "content_type": "application/pdf",
+        "size_bytes": 1371,
+        "viewer": "pdf",
+        "download_url": "http://127.0.0.1:8610/api/v1/shared/REDACTED_TOKEN/file"
+      },
+      "access_level": "view",
+      "expires_at": "2026-11-04T17:00:33+00:00"
+    },
+    "meta": null
+  }
+}

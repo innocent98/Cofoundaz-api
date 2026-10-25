@@ -6,8 +6,9 @@ from datetime import UTC, datetime
 from app.core.security import create_access_token
 from app.db.models.enums import MembershipRole, StartupStage
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import make_pdf
 
-PDF = b"%PDF-1.4 body"
+PDF = make_pdf()
 
 
 def headers(user, startup=None) -> dict[str, str]:

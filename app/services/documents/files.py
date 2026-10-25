@@ -2,12 +2,12 @@ import datetime as dt
 import uuid
 from typing import Any
 
-from sqlalchemy import Text, cast, func
+from sqlalchemy import Text, cast, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, FileHasSignatureRequests, FileNotClean, NotFound
 from app.core.logger import log
-from app.db.models.document import DocumentFile, SignatureRequest
+from app.db.models.document import DocumentFile, DocumentShare, SignatureRequest
 from app.db.models.enums import ScanStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
@@ -148,6 +148,19 @@ def get_file(
     return row
 
 
+def has_signature_records(db: Session, file_id: uuid.UUID) -> bool:
+    """True when a signature request was sent from this file or produced it as its executed copy:
+    either way it is part of a signed record and must outlive any delete."""
+    return (
+        db.query(SignatureRequest.id)
+        .filter(
+            or_(SignatureRequest.file_id == file_id, SignatureRequest.executed_file_id == file_id)
+        )
+        .first()
+        is not None
+    )
+
+
 def assert_clean(file: DocumentFile) -> None:
     """409 unless the file has passed the scan. Gate for sending a file to signers, for issuing
     any download link, and for sharing when files become shareable."""
@@ -163,7 +176,7 @@ def delete_file(db: Session, file: DocumentFile) -> tuple[str, bool]:
     then fails. Refuses (409) while any signature request references the file: the request, and
     above all a completed one, is the signed record and must outlive the upload.
     """
-    if db.query(SignatureRequest.id).filter_by(file_id=file.id).first() is not None:
+    if has_signature_records(db, file.id):
         raise FileHasSignatureRequests()
     target = (file.storage_key, file.is_private)
     db.delete(file)
@@ -179,7 +192,7 @@ def delete_file(db: Session, file: DocumentFile) -> tuple[str, bool]:
 def trash_file(db: Session, file: DocumentFile, *, actor_id: uuid.UUID) -> DocumentFile:
     """Soft delete. A file with any signature request is refused (409) exactly like a hard
     delete: the request, a completed one above all, is the signed record and needs its file."""
-    if db.query(SignatureRequest.id).filter_by(file_id=file.id).first() is not None:
+    if has_signature_records(db, file.id):
         raise FileHasSignatureRequests()
     file.trashed_at = dt.datetime.now(dt.UTC)
     file.trashed_by_id = actor_id
@@ -242,7 +255,7 @@ def purge_expired_files(
     )
     targets = []
     for f in rows:
-        if db.query(SignatureRequest.id).filter_by(file_id=f.id).first() is not None:
+        if has_signature_records(db, f.id):
             continue
         targets.append(delete_file(db, f))
     return targets
@@ -316,7 +329,13 @@ def file_by_key(db: Session, *, startup_id: str, key: str) -> DocumentFile | Non
     )
 
 
-def serialize_file(f: DocumentFile, *, owner: dict[str, Any] | None = None) -> dict[str, Any]:
+def serialize_file(
+    f: DocumentFile,
+    *,
+    owner: dict[str, Any] | None = None,
+    share_count: int = 0,
+    executed: bool = False,
+) -> dict[str, Any]:
     """The file summary. There is deliberately no `url`: content is read through
     `GET /documents/files/{id}/download` or `/content` (a short-lived signed link) only."""
     return {
@@ -325,14 +344,16 @@ def serialize_file(f: DocumentFile, *, owner: dict[str, Any] | None = None) -> d
         "content_type": f.content_type,
         "mime": f.content_type,
         "type": "file",
-        "origin": "export" if f.source_version is not None else "upload",
+        "origin": (
+            "executed" if executed else "export" if f.source_version is not None else "upload"
+        ),
         "source_document_id": str(f.source_document_id) if f.source_document_id else None,
         "source_version": f.source_version,
         "size_bytes": f.size_bytes,
         "folder": f.folder,
         "tags": list(f.tags or []),
         "owner": owner,
-        "share_count": 0,  # files are not shareable yet (BE-C); present so rows match documents
+        "share_count": share_count,
         "scan_status": f.scan_status.value,
         "uploaded_at": f.created_at.isoformat(),
         "trashed_at": f.trashed_at.isoformat() if f.trashed_at else None,
@@ -340,9 +361,44 @@ def serialize_file(f: DocumentFile, *, owner: dict[str, Any] | None = None) -> d
     }
 
 
+def _file_share_counts(db: Session, ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Live (not revoked, not expired) shares per file."""
+    if not ids:
+        return {}
+    now = dt.datetime.now(dt.UTC)
+    rows = (
+        db.query(DocumentShare.file_id, func.count())
+        .filter(
+            DocumentShare.file_id.in_(ids),
+            DocumentShare.revoked_at.is_(None),
+            or_(DocumentShare.expires_at.is_(None), DocumentShare.expires_at > now),
+        )
+        .group_by(DocumentShare.file_id)
+        .all()
+    )
+    return {fid: n for fid, n in rows if fid is not None}
+
+
 def serialize_files(db: Session, files: list[DocumentFile]) -> list[dict[str, Any]]:
     owners = owner_map(db, {f.uploaded_by_id for f in files if f.uploaded_by_id})
+    ids = [f.id for f in files]
+    counts = _file_share_counts(db, ids)
+    executed = (
+        {
+            eid
+            for (eid,) in db.query(SignatureRequest.executed_file_id)
+            .filter(SignatureRequest.executed_file_id.in_(ids))
+            .all()
+        }
+        if ids
+        else set()
+    )
     return [
-        serialize_file(f, owner=owners.get(f.uploaded_by_id) if f.uploaded_by_id else None)
+        serialize_file(
+            f,
+            owner=owners.get(f.uploaded_by_id) if f.uploaded_by_id else None,
+            share_count=counts.get(f.id, 0),
+            executed=f.id in executed,
+        )
         for f in files
     ]

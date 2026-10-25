@@ -106,6 +106,7 @@ cloudinary = "^1.40"
 pyyaml = "^6.0"
 reportlab = "^4.4"
 python-docx = "^1.2.0"
+pypdf = "^6.21.2"
 
 [tool.poetry.group.dev.dependencies]
 # Floors are the versions actually verified on this tree, not the superseded ones

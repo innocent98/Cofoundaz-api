@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.db.models.enums import MembershipRole
 from app.db.models.notification import Notification
 from tests.documents_helpers import headers, new_doc, outsider, team
+from tests.pdf_helpers import make_pdf
 
 API = "/api/v1"
 M = MembershipRole
@@ -139,7 +140,7 @@ def test_signature_copy_has_the_signer_and_document_and_a_link(client, db, world
     _s, users, heads = world
     f = client.post(
         f"{API}/documents/files",
-        files={"file": ("nda.pdf", io.BytesIO(b"%PDF-1.4 body"), "application/pdf")},
+        files={"file": ("nda.pdf", io.BytesIO(make_pdf()), "application/pdf")},
         headers=heads[M.founder],
     ).json()["data"]
     req = client.post(

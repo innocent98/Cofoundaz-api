@@ -12,8 +12,9 @@ from app.db.models.document import DocumentFile
 from app.db.models.enums import MembershipRole, ScanStatus, StartupStage
 from app.services.documents import scanner
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import make_pdf
 
-PDF = b"%PDF-1.4 body"
+PDF = make_pdf()
 
 
 @pytest.fixture

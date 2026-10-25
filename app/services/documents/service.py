@@ -308,8 +308,11 @@ def _share_counts(db: Session, docs: list[Document]) -> dict[uuid.UUID, int]:
         .group_by(DocumentGrant.document_id)
         .all()
     )
-    for did, n in [*links, *grants]:
-        counts[did] = counts.get(did, 0) + int(n)
+    for link_doc, n in links:
+        if link_doc is not None:
+            counts[link_doc] = counts.get(link_doc, 0) + int(n)
+    for grant_doc, m in grants:
+        counts[grant_doc] = counts.get(grant_doc, 0) + int(m)
     return counts
 
 

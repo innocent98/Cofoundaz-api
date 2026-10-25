@@ -17,8 +17,9 @@ from app.db.models.membership import Membership
 from app.main import app
 from app.services.documents import files as files_svc
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import make_pdf
 
-PDF = b"%PDF-1.4 secret body"
+PDF = make_pdf("secret body")
 
 
 @pytest.fixture
@@ -170,6 +171,9 @@ class _CloudStorage:
 
     def make_private(self, key):
         self.made_private.append(key)
+
+    def read_private(self, key):
+        return self.saved.get(key)
 
 
 def test_remote_backend_returns_provider_link_and_signers_are_redirected(

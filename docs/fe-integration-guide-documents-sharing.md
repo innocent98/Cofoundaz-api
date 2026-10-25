@@ -1,5 +1,7 @@
 # FE Integration Guide — Documents & Templates (Module 18, Slice 3: Sharing)
 
+> **Updated by Documents BE-D (2026-10-25):** e-sign v2 and link shares changed some shapes (signer statuses, `signer_links` nulls, `link` on share reads, PDF-only signing, executed PDF). Read `fe-integration-guide-documents-esign-v2.md` first; this guide still describes everything it does not mention.
+
 All request/response bodies below are pasted **verbatim** from live captures taken by
 `e2e/test_documents.py::test_documents_sharing_journey` running against a real server
 (`scripts/e2e_run.sh`) — see `e2e/_captures/documents/share_*.json`. Nothing here is retyped from
