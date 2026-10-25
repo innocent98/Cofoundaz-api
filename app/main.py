@@ -18,6 +18,7 @@ from app.core.rate_limit import (
     limiter,
     verify_included_router_resolution,
 )
+from app.services.documents.scanner import warn_if_noop_scanner
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -70,6 +71,7 @@ async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JS
 # /api/v1 surface unlimited. See app/core/rate_limit.py.
 install_included_router_support()
 verify_included_router_resolution()
+warn_if_noop_scanner(settings.ENVIRONMENT)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware

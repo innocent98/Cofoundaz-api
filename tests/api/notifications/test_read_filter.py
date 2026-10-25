@@ -34,11 +34,11 @@ def _legacy(db, s, user, type_="mission.ready"):
 def test_mentor_does_not_see_legacy_mission_row(db, client):
     s, owner, mentor, hdr = _ws(db)
     row = _legacy(db, s, mentor)
-    _legacy(db, s, mentor, "document.shared")
+    _legacy(db, s, mentor, "roadmap.replanned")
     db.commit()
     h = hdr(mentor)
     r = client.get("/api/v1/notifications", headers=h)
-    assert [n["type"] for n in r.json()["data"]["notifications"]] == ["document.shared"]
+    assert [n["type"] for n in r.json()["data"]["notifications"]] == ["roadmap.replanned"]
     assert client.get("/api/v1/notifications/unread-count", headers=h).json()["data"]["unread"] == 1
     assert client.post(f"/api/v1/notifications/{row.id}/read", headers=h).status_code == 404
     assert client.post("/api/v1/notifications/read-all", headers=h).json()["data"]["marked"] == 1

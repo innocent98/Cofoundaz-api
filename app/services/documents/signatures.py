@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound, SignatureNotActive
 from app.db.models.document import DocumentFile, SignatureRequest, SignatureSigner
-from app.db.models.enums import SignatureRequestStatus
+from app.db.models.enums import ScanStatus, SignatureRequestStatus
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.auth.sessions import hash_token
+from app.services.documents.files import assert_clean
 
 
 def create_request(
@@ -25,6 +26,7 @@ def create_request(
 ) -> tuple[SignatureRequest, list[tuple[SignatureSigner, str]]]:
     if not signers:
         raise AppError("VALIDATION_ERROR", "At least one signer is required.", 422)
+    assert_clean(file)
     expires_at = datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
     req = SignatureRequest(
         startup_id=file.startup_id,
@@ -138,6 +140,9 @@ def open_for_signing(db: Session, token: str) -> SignatureSigner:
     request = db.query(SignatureRequest).filter_by(id=signer.request_id).one()
     if not _active(request):
         raise NotFound()
+    file = db.query(DocumentFile).filter_by(id=request.file_id).one()
+    if file.scan_status != ScanStatus.clean:  # blocked after the request went out
+        raise NotFound()
     return signer
 
 
@@ -165,6 +170,7 @@ def record_signature(
             "startup_id": str(request.startup_id),
             "request_id": str(request.id),
             "signer_id": str(signer.id),
+            "owner_id": str(request.created_by_id) if request.created_by_id else None,
         },
     )
     signers = _signers(db, request)
@@ -175,7 +181,11 @@ def record_signature(
         event_bus.publish(
             db,
             "document.signature.completed",
-            {"startup_id": str(request.startup_id), "request_id": str(request.id)},
+            {
+                "startup_id": str(request.startup_id),
+                "request_id": str(request.id),
+                "owner_id": str(request.created_by_id) if request.created_by_id else None,
+            },
         )
     return request
 
@@ -212,6 +222,8 @@ def serialize_request(
                 "status": "signed" if s.signed_at is not None else "pending",
                 "signed_at": s.signed_at.isoformat() if s.signed_at else None,
                 "signed_name": s.signed_name,
+                "signed_ip": s.signed_ip,
+                "signed_user_agent": s.signed_user_agent,
             }
             for s in signers
         ]

@@ -3,7 +3,7 @@
 All request/response bodies below are pasted **verbatim** from live captures taken by
 `e2e/test_documents.py::test_documents_files_journey` running against a real server
 (`scripts/e2e_run.sh`) — see `e2e/_captures/documents/file_*.json`. Nothing here is retyped from
-the schema, the service, or memory. IDs, timestamps, and the storage `url` are real values from
+the schema, the service, or memory. IDs and timestamps are real values from
 that ephemeral test run (they differ on every real request; the shapes are exact). Every payload,
 status code, and error body in this guide was exercised live, except the `403 FORBIDDEN` write-role
 row (§6), which is cited from a passing unit test rather than captured live in this journey — noted
@@ -13,24 +13,33 @@ Base path: `/api/v1`. Same auth convention as the rest of Documents & Templates 
 tenant-scoped module): Bearer access token (`Authorization: Bearer <token>`) + `X-Workspace-Id`
 header identifying the active workspace.
 
-**Role rule — identical to Slice 1: read = any active member, write = founder or team_member
-(editor).** `GET /documents/files`, `GET /documents/files/{id}` use `require_workspace` (any active
-member). `POST`/`DELETE /documents/files` use the same `_editor = require_role(founder,
-team_member)` gate Slice 1's document writes use. A non-editor member gets `403 FORBIDDEN` on
-upload/delete (§6).
+> **BE-A update (2026-10-24, D-DOC-1) — read this first.** Every authenticated Documents route is
+> now **founder + team_member only, reads included**. `mentor`, `business_consultant`, `investor`,
+> `accountant`, `legal_advisor` (any other role) get `403 FORBIDDEN` — `{"error":{"code":"FORBIDDEN",
+> "message":"You don't have permission to do that.","field_errors":[]}}` — on every route in this
+> guide, and the body never contains a document, file, signer email or share-recipient email. Live
+> capture: `e2e/_captures/documents_access/mentor_list_documents_403.json` (and the sibling
+> `mentor_*_403.json`, `consultant_template_403.json`). Anywhere below that still says "any active
+> member can read", read it as "founder or team member". The only unauthenticated routes are the
+> two token routes (`GET /shared/{token}`, `GET`/`POST /sign/{token}`). **FE instruction:** hide the
+> Documents area for every role except founder and team member instead of letting it 403. Per-person
+> grants for the other roles come later.
+
+**Role rule — reads and writes are both founder or team_member.** `GET /documents/files`,
+`GET /documents/files/{id}`, `POST` and `DELETE /documents/files` all use
+`_editor = require_role(*DOCUMENT_ROLES)`; any other role gets `403 FORBIDDEN` (§6).
 
 Every success response is the standard envelope `{"data": …, "meta": null}`. Errors drop
 `data`/`meta` and return `{"error": {…}}` (see §6).
 
-**CRITICAL — the `url` field is environment-dependent.** In this local e2e run (and in your own
-local dev environment, unless you've configured Cloudinary), the server runs on `LocalStorage` and
-`url` is a **local filesystem path on the API host** (e.g. `var/storage/documents/<startup_id>/
-<uuid>.pdf`, exactly what's captured below) — **not a fetchable HTTP URL**. In staging/production,
-`STORAGE_BACKEND=cloudinary` is set, and `url` is a real Cloudinary `https://res.cloudinary.com/...`
-secure URL that the FE can load/download directly. **Do not build against the local-path shape** —
-treat `url` as an opaque string you hand to an `<a href>`/`<img src>`, and know that it will not
-resolve to anything the browser can reach when pointed at a local dev backend running without
-Cloudinary configured.
+**CRITICAL (BE-A, security fix) — files have NO `url` any more.** Earlier versions returned a
+`url` (a permanent public Cloudinary link in staging/prod). It is gone from every file response —
+upload, list, get, and the public signing view — and uploaded content is now stored privately. The
+**only** way to read a file is `GET /documents/files/{id}/download` (§1b): founder/team member only,
+only for a `clean` file, answering a **short-lived signed link** (about 5 minutes). Do not cache or
+persist that link; request a fresh one on each "Open"/"Download" click. Files uploaded before this
+change are moved behind authentication by an ops backfill job (`python -m
+app.services.documents.files_backfill`) and, until it has run, on first download.
 
 ---
 
@@ -81,24 +90,44 @@ Legal
     "content_type": "application/pdf",
     "size_bytes": 46,
     "folder": "Legal",
-    "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+    "scan_status": "clean",
     "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
   },
   "meta": null
 }
 ```
 
-`url` here is a **LocalStorage filesystem path** — shape verified live on LocalStorage; the
-production `url` is a Cloudinary `https://` URL (see the callout above). `id` is a fresh
-server-assigned UUID — the storage key on disk/Cloudinary is a *different*, internally-generated
-UUID (`storage_key`, not returned to the client) — do not assume `id` appears anywhere in `url`.
+There is no `url`; `id` is a fresh server-assigned UUID (the internal storage key is never returned).
+
+### 1b. `GET /api/v1/documents/files/{id}/download` — the signed link
+
+Founder/team member only (others: `403`). Refuses a file that is not `clean` with `409 FILE_NOT_CLEAN`.
+Real body (`e2e/_captures/documents_access/file_download_link.json`, token redacted):
+
+```json
+{
+  "data": {
+    "url": "http://127.0.0.1:8073/api/v1/documents/files/download?token=REDACTED_TOKEN",
+    "expires_at": "2026-10-24T21:35:20+00:00",
+    "content_type": "application/pdf",
+    "filename": "nda.pdf"
+  },
+  "meta": null
+}
+```
+
+`url` is a provider-signed link on Cloudinary, or (local/dev) an API link of the form
+`{API_PUBLIC_URL}/api/v1/documents/files/download?token=…`. Either way: open it with a plain GET, **no
+`Authorization` header**; it serves the file as an attachment and stops working after `expires_at`
+(a tampered, expired, deleted or since-blocked file is a uniform `404`). A link already issued keeps
+working until it expires even if the user later loses access, which is why it is short-lived.
 
 ### The file summary shape
 
 Every file response — upload, list row, get — is exactly this object, no variant:
 
 ```json
-{ "id", "filename", "content_type", "size_bytes", "folder", "url", "uploaded_at" }
+{ "id", "filename", "content_type", "size_bytes", "folder", "scan_status", "uploaded_at" }
 ```
 
 Unlike Slice 1's document summary-vs-full split (§5 of the templates guide), **there is no
@@ -109,10 +138,10 @@ is omitted on the list endpoint.
 |---|---|
 | `id` | Server-assigned UUID. Use this for `GET`/`DELETE /documents/files/{id}`. |
 | `filename` | Exactly what the client sent as the multipart part's filename — not sanitized, not deduplicated. Two uploads of `nda.pdf` produce two rows, each with `filename: "nda.pdf"` and a distinct `id`. |
-| `content_type` | The MIME type the client's multipart part declared — must be one of the allowlisted types (§3) or the upload 422s before a row is ever created. |
+| `content_type` | The **canonical type of the bytes**, decided by magic-byte sniffing (§5), not the raw header. It always equals the allowlisted type the client declared (a mismatch is a 422), except that Markdown sent as `text/x-markdown` or `application/octet-stream` (with an `.md`/`.markdown` filename) is stored as `text/markdown`. |
 | `size_bytes` | Byte length the server measured while streaming the upload — trust this over any client-reported size. |
 | `folder` | The `folder` form field you sent, or `null` if omitted. Same freeform-string semantics as a document's `folder`. |
-| `url` | Opaque storage URL/path — see the environment callout above. Never parse it for meaning beyond "hand it to the browser to fetch the file" (and only in an environment where it's actually an `https://` URL). |
+| `scan_status` | `"pending"`, `"clean"` or `"blocked"`. Today's scanner is a placeholder that marks every accepted file `clean` immediately, so you will see `clean`; **render the other two anyway**: `pending` = "Scanning…" and `blocked` = "Blocked by security scan" (no send-for-signature, delete still allowed). Only `clean` files can be sent for signature (`409 FILE_NOT_CLEAN` otherwise). |
 | `uploaded_at` | ISO-8601 timestamp, server clock. |
 
 ---
@@ -135,7 +164,7 @@ Any active member. Optional `folder` query param — exact string match (same co
         "content_type": "application/pdf",
         "size_bytes": 46,
         "folder": "Legal",
-        "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+        "scan_status": "clean",
         "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
       }
     ]
@@ -166,7 +195,7 @@ response in §1, since nothing had changed:
     "content_type": "application/pdf",
     "size_bytes": 46,
     "folder": "Legal",
-    "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
+    "scan_status": "clean",
     "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
   },
   "meta": null
@@ -197,6 +226,25 @@ live, see §6/§7).
 { "error": { "code": "NOT_FOUND", "message": "Not found.", "field_errors": [] } }
 ```
 
+**A file with a signature request cannot be deleted (BE-A).** `DELETE` answers `409` and the file and its
+requests stay untouched — the signed request is the record (`e2e/_captures/documents_access/file_delete_with_request_409.json`):
+
+```json
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "FILE_HAS_SIGNATURE_REQUESTS",
+      "message": "This file has signature requests, so it can't be deleted.",
+      "field_errors": []
+    }
+  }
+}
+```
+
+Show "This file has signature requests, so it can't be deleted" and offer no retry. A file with no request
+deletes as below.
+
 **This is a hard, unrecoverable delete.** There is no undo/trash/restore in this slice — surface a
 confirmation step in the FE before calling this endpoint, exactly as you would for Slice 1's
 `DELETE /documents/{id}`.
@@ -220,6 +268,25 @@ any database row or storage write happens (a rejected upload leaves nothing behi
 | `image/jpeg` | `.jpg` |
 | `text/plain` | `.txt` |
 | `text/csv` | `.csv` |
+| `text/markdown` (also accepted as `text/x-markdown`, or `application/octet-stream` when the filename ends `.md`/`.markdown`) | `.md` |
+
+**The bytes must match the declared type.** The server sniffs the content: PDF must start `%PDF-`, PNG and
+JPEG must carry their signatures, Office files must be real OOXML zips of the declared kind (a `.docx` sent
+as `.xlsx` is refused), and text/CSV/Markdown must be NUL-free UTF-8. An empty file is refused. A mismatch
+or empty file is a `422 VALIDATION_ERROR` and nothing is stored (`e2e/_captures/documents_access/upload_exe_as_pdf_422.json`):
+
+```json
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "That file's contents don't match its type, or the file is empty.",
+      "field_errors": []
+    }
+  }
+}
+```
 
 **Response — 422** for a disallowed type (`virus.exe` / `application/x-msdownload`,
 `e2e/_captures/documents/file_upload_bad_type_422.json`):
@@ -228,7 +295,7 @@ any database row or storage write happens (a rejected upload leaves nothing behi
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "That file type isn't allowed. Upload a PDF, Office doc, image, text, or CSV.",
+    "message": "That file type isn't allowed. Upload a PDF, Office doc, image, text, Markdown, or CSV.",
     "field_errors": []
   }
 }
@@ -259,7 +326,8 @@ Standard envelope:
 | Status | Code | When | Live capture |
 |---|---|---|---|
 | 401 | — | Missing or invalid access token | not captured in this journey — same auth dependency as every other module |
-| 403 | `FORBIDDEN` | Non-editor (e.g. `mentor`) calls `POST`/`DELETE /documents/files` | not captured live in this journey — asserted over HTTP in `tests/api/test_document_files.py::test_mentor_cannot_upload_403` |
+| 403 | `FORBIDDEN` | Any role except founder/team_member, on any `/documents/files` route (reads too) | `documents_access/mentor_files_403.json` |
+| 409 | `FILE_HAS_SIGNATURE_REQUESTS` | `DELETE` a file that has any signature request (awaiting, complete or cancelled) | `documents_access/file_delete_with_request_409.json` |
 | 404 | `NOT_FOUND` | Unknown/cross-tenant file `id` | `file_get_after_delete.json` (id gone after delete) |
 | 422 | `VALIDATION_ERROR` | Disallowed `content_type`, or file exceeds 15 MB | `file_upload_bad_type_422.json` (type); size cap not captured live — `tests/api/test_document_files.py::test_upload_oversize_422` |
 
@@ -276,12 +344,17 @@ every response body is captured verbatim in the named file.
 |---|---|---|
 | `POST /documents/files` — multipart upload with `folder`, 201, file summary shape | ✅ | `file_upload.json` |
 | `GET /documents/files?folder=...` — shows the upload, summary shape identical to upload response | ✅ | `file_list_by_folder.json` |
-| `GET /documents/files/{id}` — metadata + `url` | ✅ | `file_get.json` |
+| `GET /documents/files/{id}` — metadata (no `url`) | ✅ | `file_get.json` |
 | Disallowed content-type → `422 VALIDATION_ERROR` | ✅ | `file_upload_bad_type_422.json` |
 | `DELETE /documents/files/{id}` — `{deleted: true}`, and the row + storage object are actually gone (db.commit persisted) | ✅ | `file_delete.json` |
 | `GET /documents/files/{id}` after delete → `404 NOT_FOUND` | ✅ | `file_get_after_delete.json` |
-| `url` is a LocalStorage filesystem path in local/e2e captures; a Cloudinary `https://` URL in staging/prod | ✅ (local shape) / explicitly labelled (prod shape not exercised here — needs `STORAGE_BACKEND=cloudinary` + real Cloudinary credentials) | every capture above, `app/platform/storage.py` |
-| Non-editor (`mentor`) → `403 FORBIDDEN` on upload/delete; member can still read | ⚠️ unit only | `tests/api/test_document_files.py::test_mentor_cannot_upload_403` |
+| Mentor and consultant → `403 FORBIDDEN` on every `/documents/files` route, reads included | ✅ | `documents_access/mentor_files_403.json`; `e2e/test_documents_access.py` |
+| `GET /documents/files/{id}/download` → signed link; opening it with no auth header returns the bytes; tampered link → 404; mentor → 403 | ✅ | `documents_access/file_download_link.json`; `e2e/test_documents_access.py` |
+| Cloudinary-signed link and legacy-file `make_private` move | ⚠️ unit only (fake provider storage; no real Cloudinary in e2e) | `tests/api/test_documents_private_files.py::test_remote_backend_returns_provider_link_and_signers_are_redirected`, `::test_legacy_public_file_is_moved_private_when_first_served` |
+| Magic-byte mismatch (`MZ` as `application/pdf`) → `422`, nothing stored | ✅ | `documents_access/upload_exe_as_pdf_422.json` |
+| Markdown upload accepted, stored as `text/markdown`, `scan_status: "clean"` | ✅ | `documents_access/upload_markdown.json` |
+| Delete a file that has a signature request → `409 FILE_HAS_SIGNATURE_REQUESTS` (also after completion) | ✅ | `documents_access/file_delete_with_request_409.json`; `e2e/test_documents_access.py` re-attempts after completion |
+| `scan_status` `pending` / `blocked` bodies | ⚠️ unit only (the live scanner always answers `clean`) | `tests/api/test_documents_integrity.py::test_signing_is_blocked_until_clean` |
 | File exceeds 15 MB → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/api/test_document_files.py::test_upload_oversize_422` |
 | Cross-tenant `GET` (real file, different startup) → `404` | ⚠️ unit only | `tests/api/test_document_files.py::test_cross_tenant_get_real_file_404` |
 | `GET /documents/files` route not shadowed by `GET /documents/{document_id}` | ⚠️ unit only | `tests/api/test_document_files.py::test_files_route_not_shadowed_by_document_id` |

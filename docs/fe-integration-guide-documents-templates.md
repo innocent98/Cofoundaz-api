@@ -13,13 +13,21 @@ Base path: `/api/v1`. Same auth convention as every other tenant-scoped module i
 access token (`Authorization: Bearer <token>`) + `X-Workspace-Id` header identifying the active
 workspace (`GET /auth/me` → `data.active_workspace_id` is the source for that header).
 
-**Role rule: read = any active member, write = founder or team_member (editor).**
-`GET /documents`, `GET /documents/{id}`, `GET /document-templates`, `GET
-/document-templates/{key}` use the same `require_workspace` dependency as every other read
-endpoint in this API — any active member (including `mentor`, `business_consultant`, `investor`,
-etc.) can call them. `POST`/`PUT`/`DELETE /documents` use `_editor = require_role(founder,
-team_member)` — the exact same role gate Business Builder's write endpoints use. A non-editor
-member gets `403 FORBIDDEN` on any write (§7).
+> **BE-A update (2026-10-24, D-DOC-1) — read this first.** Every authenticated Documents route is
+> now **founder + team_member only, reads included**. `mentor`, `business_consultant`, `investor`,
+> `accountant`, `legal_advisor` (any other role) get `403 FORBIDDEN` — `{"error":{"code":"FORBIDDEN",
+> "message":"You don't have permission to do that.","field_errors":[]}}` — on every route in this
+> guide, and the body never contains a document, file, signer email or share-recipient email. Live
+> capture: `e2e/_captures/documents_access/mentor_list_documents_403.json` (and the sibling
+> `mentor_*_403.json`, `consultant_template_403.json`). Anywhere below that still says "any active
+> member can read", read it as "founder or team member". The only unauthenticated routes are the
+> two token routes (`GET /shared/{token}`, `GET`/`POST /sign/{token}`). **FE instruction:** hide the
+> Documents area for every role except founder and team member instead of letting it 403. Per-person
+> grants for the other roles come later.
+
+**Role rule: reads and writes are both founder or team_member** (`_editor = require_role(*DOCUMENT_ROLES)`).
+Any other role gets `403 FORBIDDEN` on `GET`/`POST`/`PUT`/`DELETE /documents`, `GET /document-templates`
+and `GET /document-templates/{key}` (§7).
 
 Every success response is the standard envelope `{"data": …, "meta": null}`. Errors drop
 `data`/`meta` and return `{"error": {…}}` (see §7).
@@ -28,7 +36,7 @@ Every success response is the standard envelope `{"data": …, "meta": null}`. E
 
 ## 1. The template catalog — `GET /api/v1/document-templates`
 
-The in-code template registry, read-only, five entries. Any active member can call this.
+The in-code template registry, read-only, five entries. Founder or team member only (others: `403`).
 
 Response (`e2e/_captures/documents/templates_catalog.json`, status `200`):
 
@@ -201,7 +209,7 @@ Generator calls the same create seam (see the SOP's Follow-ups for that dependen
 
 ## 4. `GET /api/v1/documents/{id}` — one full document
 
-Any active member. Same shape as the create response, **with `sections`** — see the trap in §5.
+Founder or team member only. Same shape as the create response, **with `sections`** — see the trap in §5.
 
 Response right after create (`e2e/_captures/documents/document_get.json`, status `200`) — byte-
 identical to §3's create response for this document, since nothing had changed yet:
@@ -366,7 +374,7 @@ Standard envelope:
 | Status | Code | When | Live capture |
 |---|---|---|---|
 | 401 | — | Missing or invalid access token | not captured in this journey — same auth dependency as every other module |
-| 403 | `FORBIDDEN` | Non-editor (e.g. `mentor`) calls `POST`/`PUT`/`DELETE /documents` | not captured live in this journey — asserted over HTTP in `tests/api/test_documents.py::test_mentor_cannot_write_403` (same member-can-read / non-editor-cannot-write assertion this guide describes) |
+| 403 | `FORBIDDEN` | Any role except founder/team_member calls **any** `/documents` or `/document-templates` route (reads too) | `documents_access/mentor_list_documents_403.json` |
 | 404 | `NOT_FOUND` | Unknown/cross-tenant document `id`; unknown `?kind=`/`?status=` filter value; unknown template `key` | `document_get_after_delete.json` (id gone after delete) |
 | 409 | `DOCUMENT_VERSION_CONFLICT` | `PUT /documents/{id}` with a `version` that no longer matches the document's current version | `document_update_conflict.json` |
 | 422 | `VALIDATION_ERROR` | Bad `sections` shape on create/update — non-object array element, or `heading`/`body` not a string | not captured live in this journey (happy-path payloads only) — asserted in `tests/services/documents/test_service.py` / `tests/api/test_documents.py::test_create_blank_and_bad_sections_422` |
@@ -400,7 +408,8 @@ not just unit-tested in-process — and every response body is captured verbatim
 | `GET /documents?folder=...` — summary shape, `sections` key absent | ✅ | `documents_list_by_folder.json` |
 | `DELETE /documents/{id}` — `{deleted: true}` | ✅ | `document_delete.json` |
 | `GET /documents/{id}` after delete → `404 NOT_FOUND` | ✅ | `document_get_after_delete.json` |
-| Non-editor (`mentor`) → `403 FORBIDDEN` on write; member can still read | ⚠️ unit only | `tests/api/test_documents.py::test_mentor_cannot_write_403` |
+| Mentor and consultant → `403 FORBIDDEN` on every read and write route (templates, documents) | ✅ | `e2e/_captures/documents_access/mentor_list_documents_403.json`, `consultant_template_403.json` (journey `e2e/test_documents_access.py` asserts all 10 reads + 9 writes per role) |
+| Team member reads every route | ✅ | `e2e/test_documents_access.py` (asserts 200 on all 10 reads) |
 | Bad `sections` shape → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/api/test_documents.py::test_create_blank_and_bad_sections_422` |
 | Unknown `?kind=` filter → `404` | ⚠️ unit only | `tests/api/test_documents.py::test_bad_kind_filter_404` |
 | Cross-tenant `GET` (real document, different startup) → `404` | ⚠️ unit only | `tests/api/test_documents.py::test_cross_tenant_get_real_document_404` |

@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "ef122c9b-6b3d-40b4-bf22-0f0058246bf6",
+    "id": "8ae96514-6ee4-4f1a-9c2b-cc2bf45cda96",
     "kind": "business_plan",
     "title": "Business Plan",
     "status": "draft",
@@ -8,50 +8,50 @@
     "folder": null,
     "template_key": "business_plan",
     "version": 1,
-    "updated_at": "2026-09-30T08:32:48.881251+00:00",
+    "updated_at": "2026-10-24T21:30:13.537086+00:00",
     "sections": [
       {
-        "id": "4ee2e97c-8293-4572-b500-e3d0dfff50a7",
+        "id": "e7c17bdc-77e5-4fd7-b137-8d1028309174",
         "body": "",
         "heading": "Executive Summary"
       },
       {
-        "id": "6d458bbb-5a84-44f0-a5ed-2e90cca86c6e",
+        "id": "1db00b54-9d2d-4c71-af20-b3175e8c279e",
         "body": "",
         "heading": "Problem"
       },
       {
-        "id": "4e21fb61-6187-4a8f-89e1-c37d4e260616",
+        "id": "2b056507-9574-4a8e-9a5c-42b045dcebc7",
         "body": "",
         "heading": "Solution"
       },
       {
-        "id": "80dc41c4-e8f7-4502-9c2c-e9f075554b12",
+        "id": "3e5ffe11-78f3-4905-9ea7-52347be0132d",
         "body": "",
         "heading": "Market & Customer"
       },
       {
-        "id": "e8acf6f5-9383-4e0d-b90d-d03dbeac12ed",
+        "id": "8dacadaf-82ee-47bf-8dfc-229deed45fbf",
         "body": "",
         "heading": "Business Model"
       },
       {
-        "id": "45016f27-0e40-4f57-8a09-50229b5dcf5a",
+        "id": "f332b9cc-920d-41c4-96bd-4d744a91eda5",
         "body": "",
         "heading": "Go-to-Market"
       },
       {
-        "id": "229bb139-fb2b-4f68-97e3-cad4f59f1032",
+        "id": "a7f024ad-f8aa-4ab1-a096-9eede7d1543c",
         "body": "",
         "heading": "Team"
       },
       {
-        "id": "b5996982-7fd3-4ba7-9a29-ba1cc371b5a7",
+        "id": "2ae81c7b-f05f-4836-b93f-1517fe7fbd9a",
         "body": "",
         "heading": "Financials"
       },
       {
-        "id": "8c3a561a-a200-4305-9d2e-a2a57e8ea00a",
+        "id": "50b7d33f-dc47-499c-b7d4-185a81a4095e",
         "body": "",
         "heading": "The Ask"
       }

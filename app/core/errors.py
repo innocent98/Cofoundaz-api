@@ -160,6 +160,16 @@ class SignatureNotActive(AppError):  # noqa: N818
     message = "This signature request is already complete or cancelled."
 
 
+class FileHasSignatureRequests(AppError):  # noqa: N818
+    code, http_status = "FILE_HAS_SIGNATURE_REQUESTS", 409
+    message = "This file has signature requests, so it can't be deleted."
+
+
+class FileNotClean(AppError):  # noqa: N818
+    code, http_status = "FILE_NOT_CLEAN", 409
+    message = "This file hasn't passed the security scan, so it can't be sent or shared yet."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."

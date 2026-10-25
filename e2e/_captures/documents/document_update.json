@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "ef122c9b-6b3d-40b4-bf22-0f0058246bf6",
+    "id": "8ae96514-6ee4-4f1a-9c2b-cc2bf45cda96",
     "kind": "business_plan",
     "title": "Cofoundaz Business Plan",
     "status": "final",
@@ -8,15 +8,15 @@
     "folder": "Investor Docs",
     "template_key": "business_plan",
     "version": 2,
-    "updated_at": "2026-09-30T08:32:48.895160+00:00",
+    "updated_at": "2026-10-24T21:30:13.570269+00:00",
     "sections": [
       {
-        "id": "f567ccb2-ec26-4e3c-84e0-59202c874378",
+        "id": "daea62a1-4d4f-4911-b223-e1ee540143a0",
         "body": "We help founders ship faster.",
         "heading": "Executive Summary"
       },
       {
-        "id": "5aa01000-6f4d-4703-acbe-b6ed3cbffad1",
+        "id": "ff21666d-1051-443e-872e-0312e4782f42",
         "body": "$500k pre-seed.",
         "heading": "The Ask"
       }

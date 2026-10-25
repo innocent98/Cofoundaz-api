@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "request": {
+        "title": "NDA",
+        "status": "awaiting"
+      },
+      "file": {
+        "filename": "nda.pdf",
+        "content_type": "application/pdf",
+        "size_bytes": 19,
+        "download_url": "http://127.0.0.1:8073/api/v1/sign/REDACTED_TOKEN/file"
+      },
+      "signer": {
+        "email": "delivered+signer-b5e31903f3c4@resend.dev",
+        "name": "Sam Signer"
+      }
+    },
+    "meta": null
+  }
+}

@@ -4,7 +4,7 @@ import pytest
 
 from app.core.errors import NotFound, SignatureNotActive
 from app.db.models.document import DocumentFile
-from app.db.models.enums import SignatureRequestStatus
+from app.db.models.enums import ScanStatus, SignatureRequestStatus
 from app.services.documents.signatures import (
     cancel_request,
     create_request,
@@ -28,6 +28,7 @@ def _ctx(db):
         size_bytes=10,
         storage_key=f"documents/{s.id}/x.pdf",
         url="file:///x.pdf",
+        scan_status=ScanStatus.clean,
     )
     db.add(f)
     db.flush()

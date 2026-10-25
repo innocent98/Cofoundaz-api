@@ -62,3 +62,10 @@ def test_every_written_action_is_classified():
     classified = policy._OPEN_NAMESPACES | set(policy._RESTRICTED_NAMESPACES)
     unclassified = {a for a in actions if a.split(".", 1)[0] not in classified}
     assert unclassified == set(), "classify these in app/platform/activity.py"
+
+
+@pytest.mark.parametrize("role", list(MembershipRole))
+def test_document_activity_is_founder_and_team_member_only(role):
+    """D-DOC-1: document activity names documents and signers; same gate as the Documents routes."""
+    seen = policy.activity_visible(role, "document.signature.completed", "signature_request")
+    assert seen == (role in {MembershipRole.founder, MembershipRole.team_member})

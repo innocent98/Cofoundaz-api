@@ -16,12 +16,38 @@ Base path: `/api/v1`. Same auth convention as the rest of Documents & Templates 
 workspace-scoped routes: Bearer access token (`Authorization: Bearer <token>`) + `X-Workspace-Id`
 header — **except the two public signing routes, §3 and §4, which take no auth at all.**
 
-**Role rule:** read (`GET /documents/signature-requests`, `GET
-/documents/signature-requests/{id}`) = any active member (`require_workspace`). Write (`POST
-.../signature-requests`, `.../remind`, `.../cancel`) = founder or team_member (editor) — the same
-`_editor = require_role(founder, team_member)` gate every other Documents write uses. A non-editor
-member (e.g. `mentor`) gets `403 FORBIDDEN` on create/remind/cancel — not captured live in this
-journey, see §10 (`tests/api/test_signatures.py::test_mentor_cannot_create_403`).
+> **BE-A update (2026-10-24, D-DOC-1) — read this first.** Every authenticated Documents route is
+> now **founder + team_member only, reads included**. `mentor`, `business_consultant`, `investor`,
+> `accountant`, `legal_advisor` (any other role) get `403 FORBIDDEN` — `{"error":{"code":"FORBIDDEN",
+> "message":"You don't have permission to do that.","field_errors":[]}}` — on every route in this
+> guide, and the body never contains a document, file, signer email or share-recipient email. Live
+> capture: `e2e/_captures/documents_access/mentor_shares_403.json` and
+> `mentor_signature_requests_403.json` (same body). Anywhere below that still says "any active
+> member can read", read it as "founder or team member". The only unauthenticated routes are the
+> two token routes (`GET /shared/{token}`, `GET`/`POST /sign/{token}`). **FE instruction:** hide the
+> Documents area for every role except founder and team member instead of letting it 403. Per-person
+> grants for the other roles come later.
+
+**Role rule:** every authenticated signature route (`GET /documents/signature-requests`, `GET
+/documents/signature-requests/{id}`, `POST .../signature-requests`, `.../remind`, `.../cancel`) =
+founder or team_member (`_editor = require_role(*DOCUMENT_ROLES)`). Signer emails are never returned to
+any other role.
+
+**Two more BE-A rules the FE must surface:**
+1. **Only `clean` files can be sent.** `POST .../signature-requests` on a file whose `scan_status` is
+   `pending` or `blocked` is `409 FILE_NOT_CLEAN` — `{"error":{"code":"FILE_NOT_CLEAN","message":"This file hasn't passed the security scan, so it can't be sent or shared yet.","field_errors":[]}}`
+   (shape from the error class; the live scanner always answers `clean`, so this body was **not captured
+   live** — it is covered by `tests/api/test_documents_integrity.py::test_signing_is_blocked_until_clean`).
+   If a file is blocked *after* a request went out, the signer's link answers the uniform `404` (§5).
+2. **The file behind a request can't be deleted** (`409 FILE_HAS_SIGNATURE_REQUESTS`, even after the
+   request completes) — see the files guide §4. Disable "Delete" on files that appear in any request
+   and say why.
+3. **In-app notifications changed.** `document.signature.signed` and `document.signature.completed`
+   go only to the founder or team member who sent the request; `document.signature.requested` creates
+   **no** in-app notification (the signers get the email; nobody in the workspace has anything to sign);
+   mentors and consultants get none of them. Notification bodies are unchanged (title only). Live:
+   `documents_access/founder_notifications.json` (both types present, no `requested`) and
+   `mentor_notifications.json` (none).
 
 Every success response is the standard envelope `{"data": …, "meta": null}`. Errors drop
 `data`/`meta` and return `{"error": {…}}` (see §9).
@@ -95,7 +121,9 @@ POST /api/v1/documents/files/067b0aad-43c8-469e-a02f-ca580508c9ce/signature-requ
         "position": 0,
         "status": "pending",
         "signed_at": null,
-        "signed_name": null
+        "signed_name": null,
+        "signed_ip": null,
+        "signed_user_agent": null
       },
       {
         "email": "delivered+signer-two-505c5afa4fd5@resend.dev",
@@ -103,12 +131,14 @@ POST /api/v1/documents/files/067b0aad-43c8-469e-a02f-ca580508c9ce/signature-requ
         "position": 1,
         "status": "pending",
         "signed_at": null,
-        "signed_name": null
+        "signed_name": null,
+        "signed_ip": null,
+        "signed_user_agent": null
       }
     ],
     "signer_links": [
-      "http://localhost:3000/sign/-5ApVpq-Lkl6wkVHpnRo2AcZPZ5Tqzc5yGcFFc8clrY",
-      "http://localhost:3000/sign/rWw0hICPo7FsnAOh3ooWbASsjob0fB98PJT1YaNyD0c"
+      "http://localhost:3000/sign/REDACTED_TOKEN",
+      "http://localhost:3000/sign/REDACTED_TOKEN"
     ]
   },
   "meta": null
@@ -159,37 +189,40 @@ simply never visits the link (it eventually expires per `expires_in_days`).
 **Zero credentials** — no `Authorization` header, no `X-Workspace-Id`. This is what the emailed
 link (§1) points at.
 
-**Response — 200** (`e2e/_captures/documents/signature_sign_view.json`, first signer, before
-signing):
+**Response — 200** (`e2e/_captures/documents_access/sign_view.json`, before signing; the older
+`documents/signature_sign_view.json` capture has the same shape, with the token redacted):
 
 ```json
 {
   "data": {
-    "request": { "title": "Investor Agreement", "status": "awaiting" },
+    "request": {
+      "title": "NDA",
+      "status": "awaiting"
+    },
     "file": {
-      "id": "067b0aad-43c8-469e-a02f-ca580508c9ce",
-      "filename": "investor-agreement.pdf",
+      "filename": "nda.pdf",
       "content_type": "application/pdf",
-      "size_bytes": 47,
-      "folder": null,
-      "url": "var/storage/documents/b55d87ab-83ee-441c-b01b-9d7213321fd7/d05df11f91a040258a741ebf696ba2f4.pdf",
-      "uploaded_at": "2026-09-19T10:10:27.175617+00:00"
+      "size_bytes": 19,
+      "download_url": "http://127.0.0.1:8073/api/v1/sign/REDACTED_TOKEN/file"
     },
     "signer": {
-      "email": "delivered+signer-one-9c893248fbd4@resend.dev",
-      "name": "Ada Investor"
+      "email": "delivered+signer-b5e31903f3c4@resend.dev",
+      "name": "Sam Signer"
     }
   },
   "meta": null
 }
 ```
 
-**Field-nesting trap:** `file` here is the exact same shape `serialize_file` returns everywhere
-else in Documents (Slice 2's `GET /documents/files/{id}`) — **`url`** is whatever the active
-`Storage` backend produced (a local filesystem path in this e2e capture, since the runner sets no
-`STORAGE_BACKEND`; a real Cloudinary URL in staging/production, per Slice 2's FE guide). Render the
-file the same way your Slice 2 file viewer does; don't special-case this response's `file.url`.
-`request.status` here is the **derived** status (§6) — `"awaiting"` — not the raw enum column; it
+**Field-nesting trap (changed in BE-A):** `file` here is **not** the editors' file summary any more. The
+public view carries only `filename`, `content_type`, `size_bytes` and **`download_url`** — no `id`,
+`folder`, `scan_status`, `uploaded_at` or storage `url`. `download_url` is `{API_PUBLIC_URL}/api/v1/sign/{token}/file`:
+a plain GET with no auth that serves the file (an `attachment`, or a `307` redirect to a provider-signed
+link on Cloudinary). It works **only while this signing link is active** — once the signer has signed, the
+request is cancelled or expired, or the file is blocked, it is the same uniform `404` as the rest of
+`/sign/{token}` (verified live: `e2e/test_documents_access.py` fetches it before and after signing).
+Embed it in an `<iframe>`/PDF viewer or offer it as a download; do not store it. Both `/sign/{token}`
+routes are rate limited per caller address (reads 30/min, `POST` 10/min → `429`). `request.status` here is the **derived** status (§6) — `"awaiting"` — not the raw enum column; it
 can also read `"expired"` for a signer whose link is technically un-consumed but past
 `expires_at`, though in that case `GET /sign/{token}` itself already 404s (§5) before the FE would
 ever see `status: "expired"` from this particular endpoint. `signer` is this token's own identity
@@ -213,7 +246,7 @@ VALIDATION_ERROR` (not exercised live; same shape as every other 422 in this API
 **Request** (first signer, this journey):
 
 ```json
-POST /api/v1/sign/-5ApVpq-Lkl6wkVHpnRo2AcZPZ5Tqzc5yGcFFc8clrY
+POST /api/v1/sign/REDACTED_TOKEN
 { "typed_name": "Ada Investor" }
 ```
 
@@ -392,7 +425,7 @@ There is no "undo cancel" — a founder who cancels by mistake must create a new
 
 ## 9. Reading requests back — `GET /documents/signature-requests` and `.../{id}`
 
-Both are **workspace-scoped, member-readable, and never carry `signer_links`** (§1).
+Both are **workspace-scoped, founder/team-member-readable, and never carry `signer_links`** (§1).
 
 ### 9a. `GET /documents/signature-requests/{id}` — one request, full detail
 
@@ -419,7 +452,9 @@ Both are **workspace-scoped, member-readable, and never carry `signer_links`** (
         "position": 0,
         "status": "signed",
         "signed_at": "2026-09-19T10:10:27.226000+00:00",
-        "signed_name": "Ada Investor"
+        "signed_name": "Ada Investor",
+        "signed_ip": "127.0.0.1",
+        "signed_user_agent": "python-httpx/0.28.1"
       },
       {
         "email": "delivered+signer-two-505c5afa4fd5@resend.dev",
@@ -427,7 +462,9 @@ Both are **workspace-scoped, member-readable, and never carry `signer_links`** (
         "position": 1,
         "status": "signed",
         "signed_at": "2026-09-19T10:10:27.249267+00:00",
-        "signed_name": "Bello Legal"
+        "signed_name": "Bello Legal",
+        "signed_ip": "127.0.0.1",
+        "signed_user_agent": "python-httpx/0.28.1"
       }
     ]
   },
@@ -457,8 +494,8 @@ against the same ephemeral database, filter client-side on `id` if you diff agai
         "completed_at": "2026-09-19T10:10:27.249267+00:00",
         "created_at": "2026-09-19T10:10:27.186441+00:00",
         "signers": [
-          { "email": "delivered+signer-one-9c893248fbd4@resend.dev", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-19T10:10:27.226000+00:00", "signed_name": "Ada Investor" },
-          { "email": "delivered+signer-two-505c5afa4fd5@resend.dev", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-19T10:10:27.249267+00:00", "signed_name": "Bello Legal" }
+          { "email": "delivered+signer-one-9c893248fbd4@resend.dev", "name": "Ada Investor", "position": 0, "status": "signed", "signed_at": "2026-09-19T10:10:27.226000+00:00", "signed_name": "Ada Investor", "signed_ip": "127.0.0.1", "signed_user_agent": "python-httpx/0.28.1" },
+          { "email": "delivered+signer-two-505c5afa4fd5@resend.dev", "name": "Bello Legal", "position": 1, "status": "signed", "signed_at": "2026-09-19T10:10:27.249267+00:00", "signed_name": "Bello Legal", "signed_ip": "127.0.0.1", "signed_user_agent": "python-httpx/0.28.1" }
         ]
       }
     ]
@@ -475,19 +512,56 @@ per-signer signed/unsigned dots in the list.
 
 ---
 
-## 10. Audit trail — captured server-side, not exposed in any response today
+## 10. Audit trail — `signed_ip` and `signed_user_agent` (editors only)
 
-Per the design (D2), every signature records a typed-name **audit trail**: `signed_name` (what the
-signer typed — returned, see `signers[].signed_name` above), `signed_at` (returned), and
-**`signed_ip` + `signed_user_agent` — captured (`POST /sign/{token}` passes `request.client.host`
-and the `User-Agent` header into `record_signature`) but NEVER serialized into any API response.**
-`serialize_request()`'s per-signer dict only emits `email`/`name`/`position`/`status`/`signed_at`/
-`signed_name` — confirmed by reading `app/services/documents/signatures.py::serialize_request`
-directly, and indirectly by every capture in this guide (no response above contains `signed_ip` or
-`signed_user_agent` anywhere). **If the comp or a future screen needs to show "Signed from IP
-x.x.x.x" or a device/browser string for compliance purposes, that requires a new field on
-`serialize_request` — it is not something the FE can get today by any existing call.** Don't build
-that UI against an assumption it's already there.
+Every signature records `signed_name`, `signed_at`, and the signer's **IP address and `User-Agent`**
+(`POST /sign/{token}` passes `request.client.host` and the header into `record_signature`). Since BE-A
+(row 37) the two audit fields are returned **per signer in `GET /documents/signature-requests/{id}`,
+`GET /documents/signature-requests` and the create response** — to founder and team member only (every
+other role gets `403` before reaching them). They are `null` until that signer signs. The **public**
+`POST /sign/{token}` response still carries no roster, so a signer never sees their own or anyone
+else's audit data (asserted live: the response contains neither `signers` nor the user agent).
+
+Real body from `e2e/_captures/documents_access/signature_request_detail_completed.json` (the user
+agent is the test client's; a browser will send its own string; the IP is the address the API sees —
+behind a proxy that is the proxy unless it forwards the client address):
+
+```json
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "042f8ad8-d293-4200-a9c4-b74a7fc9e778",
+      "title": "NDA",
+      "status": "complete",
+      "file_id": "67c5a60a-00b9-44b7-9d6c-f7cfdd0a8a85",
+      "filename": "nda.pdf",
+      "signed_count": 1,
+      "total": 1,
+      "expires_at": "2026-11-07T20:44:35.029948+00:00",
+      "completed_at": "2026-10-24T20:44:36.093897+00:00",
+      "created_at": "2026-10-24T20:44:35.015892+00:00",
+      "signers": [
+        {
+          "email": "delivered+signer-20a9a40b908d@resend.dev",
+          "name": "Sam Signer",
+          "position": 0,
+          "status": "signed",
+          "signed_at": "2026-10-24T20:44:36.093897+00:00",
+          "signed_name": "Sam Signer",
+          "signed_ip": "127.0.0.1",
+          "signed_user_agent": "e2e-ua"
+        }
+      ]
+    },
+    "meta": null
+  }
+}
+```
+
+Show these as an audit line ("Signed from 127.0.0.1 · e2e-ua") in the request detail only; treat them as
+personal data (do not log or analytics-track them). There is **no certificate page or executed PDF yet**
+(BE-D).
 
 ---
 
@@ -524,7 +598,8 @@ Standard envelope:
 | Status | Code | When | Live capture |
 |---|---|---|---|
 | 401 | — | Missing/invalid access token on any of the 5 workspace-scoped routes | not captured in this journey — same auth dependency as every other module |
-| 403 | `FORBIDDEN` | Non-editor (e.g. `mentor`) calls `POST .../signature-requests`, `.../remind`, or `.../cancel` | not captured live — `tests/api/test_signatures.py::test_mentor_cannot_create_403` |
+| 403 | `FORBIDDEN` | Any role except founder/team_member on any authenticated signature route (`GET`s included) | `documents_access/mentor_signature_requests_403.json` |
+| 409 | `FILE_NOT_CLEAN` | Create a request for a file whose `scan_status` is not `clean` | not captured live (scanner always answers `clean`) — `tests/api/test_documents_integrity.py::test_signing_is_blocked_until_clean` |
 | 404 | `NOT_FOUND` | Unknown/cross-tenant `file_id` on create; unknown/cross-tenant `request_id` on get/remind/cancel; unknown, already-signed, cancelled, complete, or expired token on `GET`/`POST /sign/{token}` (§5) | `signature_sign_after_signed_404.json`, `signature_sign_after_cancel_404.json` (both live) |
 | 409 | `SIGNATURE_NOT_ACTIVE` | `remind` or `cancel` on a request that's already `complete` or `cancelled` | not captured live — `tests/services/documents/test_signatures.py::test_cancel_complete_request_409` (cancel-side; remind shares the same `_active()` guard, not separately unit-tested for the 409 path) |
 | 422 | `VALIDATION_ERROR` | `signers: []` on create; blank/whitespace-only `typed_name` on `POST /sign/{token}` | `tests/api/test_signatures.py::test_create_requires_signer_422` (create-side, live-equivalent shape confirmed via unit test); blank `typed_name` not separately unit-tested but enforced identically in `sign_endpoint` before any service call |
@@ -560,10 +635,17 @@ every response body is captured verbatim in the named file.
 | `remind` rotates unsigned signers' tokens; the OLD link 404s afterward | ⚠️ unit only | `tests/api/test_signatures.py::test_remind_rotates_and_new_link_works`, `tests/services/documents/test_signatures.py::test_reissue_unsigned_rotates_tokens` |
 | `cancel`/`remind` on an already-`complete` request → `409 SIGNATURE_NOT_ACTIVE` | ⚠️ unit only | `tests/services/documents/test_signatures.py::test_cancel_complete_request_409` |
 | `signers: []` on create → `422 VALIDATION_ERROR` | ⚠️ unit only | `tests/api/test_signatures.py::test_create_requires_signer_422` |
-| Non-editor (`mentor`) → `403 FORBIDDEN` on create | ⚠️ unit only | `tests/api/test_signatures.py::test_mentor_cannot_create_403` |
+| Mentor and consultant → `403 FORBIDDEN` on list, detail, create, remind and cancel; no signer email in the body | ✅ | `documents_access/mentor_signature_requests_403.json`; `e2e/test_documents_access.py` |
+| Request create with a clean file, `signer_links` returned once | ✅ | `documents_access/signature_request_create.json` |
+| Sign page `file` is `{filename, content_type, size_bytes, download_url}`; `download_url` serves the PDF while the token is active and `404`s after signing | ✅ | `documents_access/sign_view.json`; `e2e/test_documents_access.py` |
+| `429` on `GET`/`POST /sign/{token}` and `/sign/{token}/file` after 30 / 10 requests per minute per caller | ⚠️ unit only (the e2e server runs the limiter, but the journey never reaches the cap) | `tests/api/test_documents_private_files.py::test_public_reads_are_limited_across_tokens`, `::test_signing_posts_are_limited_tighter` |
+| Public `POST /sign/{token}` response has no roster and no audit fields | ✅ | `documents_access/sign_public_response.json` |
+| Editors' request detail carries `signed_ip` / `signed_user_agent`; completed request survives a delete attempt (`409`) | ✅ | `documents_access/signature_request_detail_completed.json`, `file_delete_with_request_409.json` |
+| File `pending`/`blocked` → `409 FILE_NOT_CLEAN`; blocked-after-send → signer link `404` | ⚠️ unit only | `tests/api/test_documents_integrity.py` |
+| In-app notifications: `signed`/`completed` reach the sender only; nobody gets `requested`; mentor/consultant get none | ✅ | `documents_access/founder_notifications.json`, `mentor_notifications.json` |
 | Cross-tenant cancel (real request, different startup) → `404` | ⚠️ unit only | `tests/api/test_signatures.py::test_cross_tenant_cancel_404` |
 | `GET /documents/signature-requests` route not shadowed by `GET /documents/{document_id}` | ⚠️ unit only | `tests/api/test_signatures.py::test_signature_requests_not_shadowed_by_document_id` |
-| `signed_ip`/`signed_user_agent` captured server-side but never serialized in any response | ✅ (absence confirmed across every capture in this guide) + code-read | §10 above; `app/services/documents/signatures.py::serialize_request` |
+| `signed_ip`/`signed_user_agent` returned per signer to editors (older versions of this guide said they were never serialized; that is no longer true) | ✅ | `documents_access/signature_request_detail_completed.json` |
 
 The ⚠️ rows are genuine gaps in this journey (a second-role/second-tenant/expired-clock/remind/
 already-complete setup was judged not worth the added journey complexity and runtime for one live

@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.document import DocumentFile
-from app.db.models.enums import MembershipRole, StartupStage
+from app.db.models.enums import MembershipRole, ScanStatus, StartupStage
 from app.platform.email import ConsoleEmailSender
 from tests.factories import create_membership, create_startup, create_user
 
@@ -20,6 +20,7 @@ def _member(db, *, role=MembershipRole.founder):
         size_bytes=10,
         storage_key=f"documents/{s.id}/x.pdf",
         url="file:///x.pdf",
+        scan_status=ScanStatus.clean,
     )
     db.add(f)
     db.flush()
@@ -54,7 +55,8 @@ def test_create_returns_signer_links_and_public_sign_completes(client, db):
     r2 = client.post(f"/api/v1/sign/{tokens[1]}", json={"typed_name": "Bob"})
     assert r2.status_code == 200 and r2.json()["data"]["status"] == "complete"
     # signing again -> 404
-    assert client.post(f"/api/v1/sign/{tokens[0]}", json={"typed_name": "Alice"}).status_code == 404
+    resp = client.post(f"/api/v1/sign/{tokens[0]}", json={"typed_name": "Alice"})
+    assert resp.status_code == 404
 
 
 def test_create_requires_signer_422(client, db):

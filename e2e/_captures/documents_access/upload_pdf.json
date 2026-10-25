@@ -1,0 +1,15 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "706d906c-1dbd-482e-a5cf-6aa4f3ca338f",
+      "filename": "nda.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 19,
+      "folder": null,
+      "scan_status": "clean",
+      "uploaded_at": "2026-10-24T21:30:19.392592+00:00"
+    },
+    "meta": null
+  }
+}

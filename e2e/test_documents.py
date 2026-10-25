@@ -284,7 +284,8 @@ def test_documents_files_journey(base_url, make_verified_user, capture):
         assert file_row["content_type"] == "application/pdf"
         assert file_row["size_bytes"] == len(pdf_bytes)
         assert file_row["folder"] == "Legal"
-        assert file_row["url"]
+        assert "url" not in file_row  # private since BE-A: read via GET .../{id}/download
+        assert file_row["scan_status"] == "clean"
         capture("documents", "file_upload", uploaded)
 
         file_id = file_row["id"]
@@ -388,7 +389,8 @@ def test_documents_sharing_journey(
         opened = c.get(f"/api/v1/shared/{token}")
         assert opened.status_code == 200, opened.text
         opened_body = opened.json()["data"]
-        assert opened_body["document"]["id"] == doc_id
+        assert "id" not in opened_body["document"]  # BE-A: no internal id/folder on the public open
+        assert "folder" not in opened_body["document"]
         assert opened_body["access_level"] == "view"
         capture("documents", "share_open", opened)
 
@@ -500,7 +502,7 @@ def test_documents_esignature_journey(
         view1_body = view1.json()["data"]
         assert view1_body["request"]["title"] == "Investor Agreement"
         assert view1_body["request"]["status"] == "awaiting"
-        assert view1_body["file"]["id"] == file_id
+        assert "id" not in view1_body["file"] and view1_body["file"]["filename"]
         assert view1_body["signer"]["email"] == signer1_email
         capture("documents", "signature_sign_view", view1)
 

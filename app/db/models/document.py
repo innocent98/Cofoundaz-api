@@ -12,6 +12,7 @@ from app.db.mixins import TimestampMixin, UUIDMixin
 from app.db.models.enums import (
     DocumentKind,
     DocumentStatus,
+    ScanStatus,
     ShareAccess,
     SignatureRequestStatus,
 )
@@ -74,7 +75,20 @@ class DocumentFile(UUIDMixin, TimestampMixin, Base):
     content_type: Mapped[str] = mapped_column(String(120), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
-    url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Legacy public URL of a file uploaded before documents went private. NULL once the file is
+    # private; nothing serves it (reads go through a short-lived signed link).
+    url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    # True once the stored object is an authenticated asset with no public URL. New uploads are
+    # private from the start; `files_backfill` moves the legacy ones.
+    is_private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    scan_status: Mapped[ScanStatus] = mapped_column(
+        Enum(ScanStatus, native_enum=False, length=20),
+        nullable=False,
+        server_default=ScanStatus.pending.value,
+    )
+    scanned_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (Index("ix_document_files_startup_folder", "startup_id", "folder"),)
 
@@ -129,7 +143,10 @@ class SignatureRequest(UUIDMixin, TimestampMixin, Base):
     )
     file_id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True),
-        ForeignKey("document_files.id", ondelete="CASCADE"),
+        # NO ACTION (not CASCADE): deleting a file must never take its signature requests, least
+        # of all a completed one, with it. Workspace deletion still works because both tables
+        # cascade from `startups` in the same statement.
+        ForeignKey("document_files.id"),
         nullable=False,
         index=True,
     )

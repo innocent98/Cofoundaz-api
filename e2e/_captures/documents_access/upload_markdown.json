@@ -1,0 +1,15 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "bba922ae-3919-421a-adb7-571ceb14d854",
+      "filename": "notes.md",
+      "content_type": "text/markdown",
+      "size_bytes": 8,
+      "folder": null,
+      "scan_status": "clean",
+      "uploaded_at": "2026-10-24T21:30:19.366386+00:00"
+    },
+    "meta": null
+  }
+}

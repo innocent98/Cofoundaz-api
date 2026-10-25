@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "3ba464e8-8748-439e-9199-b021c50f3fa0",
+      "title": "NDA",
+      "status": "complete",
+      "file_id": "706d906c-1dbd-482e-a5cf-6aa4f3ca338f",
+      "filename": "nda.pdf",
+      "signed_count": 1,
+      "total": 1,
+      "expires_at": "2026-11-07T21:30:19.451328+00:00",
+      "completed_at": "2026-10-24T21:30:20.407889+00:00",
+      "created_at": "2026-10-24T21:30:19.442980+00:00",
+      "signers": [
+        {
+          "email": "delivered+signer-b5e31903f3c4@resend.dev",
+          "name": "Sam Signer",
+          "position": 0,
+          "status": "signed",
+          "signed_at": "2026-10-24T21:30:20.407889+00:00",
+          "signed_name": "Sam Signer",
+          "signed_ip": "127.0.0.1",
+          "signed_user_agent": "e2e-ua"
+        }
+      ]
+    },
+    "meta": null
+  }
+}

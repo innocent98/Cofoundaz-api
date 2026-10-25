@@ -12,11 +12,28 @@ Base path: `/api/v1`. Same auth convention as the rest of Documents & Templates:
 (`Authorization: Bearer <token>`) + `X-Workspace-Id` header — **except the public open endpoint,
 §4, which takes no auth at all.**
 
-**Role rule:** read (`GET /documents/{id}/shares`, `GET /documents/shares`) = any active member
-(`require_workspace`). Write (`POST`/`DELETE .../shares`) = founder or team_member (editor) —
-`_editor = require_role(founder, team_member)`, the same gate every other Documents write uses. A
-non-editor member (e.g. `mentor`) gets `403 FORBIDDEN` on create/revoke — not captured live in this
-journey, see §8.
+> **BE-A update (2026-10-24, D-DOC-1) — read this first.** Every authenticated Documents route is
+> now **founder + team_member only, reads included**. `mentor`, `business_consultant`, `investor`,
+> `accountant`, `legal_advisor` (any other role) get `403 FORBIDDEN` — `{"error":{"code":"FORBIDDEN",
+> "message":"You don't have permission to do that.","field_errors":[]}}` — on every route in this
+> guide, and the body never contains a document, file, signer email or share-recipient email. Live
+> capture: `e2e/_captures/documents_access/mentor_shares_403.json` and
+> `mentor_signature_requests_403.json` (same body). Anywhere below that still says "any active
+> member can read", read it as "founder or team member". The only unauthenticated routes are the
+> two token routes (`GET /shared/{token}`, `GET`/`POST /sign/{token}`). **FE instruction:** hide the
+> Documents area for every role except founder and team member instead of letting it 403. Per-person
+> grants for the other roles come later.
+
+**Notification change:** `document.shared` is no longer broadcast to the workspace. It goes to the
+document's owner (creator) unless they are the one sharing, so a founder sharing their own document sees
+nothing, a team member sharing the founder's document notifies the founder, and mentors/consultants never
+get it. Verified live only for "founder shares own document → no `document.shared` for anyone"
+(`e2e/test_documents_access.py` asserts it on the founder's feed); the team-member-shares-founder's-document
+case is unit-tested (`tests/services/notifications/test_document_notifications.py`), not live.
+
+**Role rule:** every authenticated share route (`GET /documents/{id}/shares`, `GET /documents/shares`,
+`POST`/`DELETE .../shares`) = founder or team_member (`_editor = require_role(*DOCUMENT_ROLES)`). Share
+recipient emails are never returned to any other role (§8).
 
 Every success response is the standard envelope `{"data": …, "meta": null}`. Errors drop
 `data`/`meta` and return `{"error": {…}}` (see §7).
@@ -73,7 +90,7 @@ POST /api/v1/documents/{document_id}/shares
     "last_viewed_at": null,
     "created_at": "2026-09-19T10:10:26.553829+00:00",
     "status": "active",
-    "link": "http://localhost:3000/shared/Z0fDvGr2h3i9xOHSTlnQVhRlnNa81jy1HF9zXasOA2U"
+    "link": "http://localhost:3000/shared/REDACTED_TOKEN"
   },
   "meta": null
 }
@@ -136,7 +153,7 @@ the link uniformly 404s (§5) — there is no grace period and no warning email 
 
 ### 4a. `GET /api/v1/documents/{document_id}/shares` — per-document "Shared with" list
 
-Any active member. Returns every share ever created for that document (not filtered by
+Founder or team member only. Returns every share ever created for that document (not filtered by
 active/expired/revoked — the FE greys out non-active rows using `status`, see below).
 
 **Response — 200**, right after the create + one public open above
@@ -169,7 +186,7 @@ below was hit. This is the comp's "Shared with" list's data source; render `emai
 
 ### 4b. `GET /api/v1/documents/shares` — workspace "Shared with others" overview
 
-Any active member. Same share objects, across **every** document in the workspace, newest-first —
+Founder or team member only. Same share objects, across **every** document in the workspace, newest-first —
 this is the comp's `Document | Shared with | Access | Last viewed` table.
 
 **Response — 200** (`e2e/_captures/documents/share_list_workspace.json`):
@@ -213,37 +230,40 @@ title/name field** — only `document_id` — so if the FE wants to show a docum
 Every successful call also records `last_viewed_at` on the share (visible to the sharer via §4a/§4b
 above) — there is no way to "peek" without it counting as a view.
 
-**Response — 200** (`e2e/_captures/documents/share_open.json`, trimmed to 3 of 9 sections for
-brevity — the live capture has all 9):
+**Response — 200** (`e2e/_captures/documents_access/shared_open.json`, trimmed to 2 of 5 sections):
 
 ```json
 {
   "data": {
     "document": {
-      "id": "a9f9c75d-6fe7-4e4a-9a71-843b9d75cbfc",
-      "kind": "business_plan",
-      "title": "Business Plan",
+      "kind": "one_pager",
+      "title": "One-Pager",
       "status": "draft",
       "ai_generated": false,
-      "folder": null,
-      "template_key": "business_plan",
+      "template_key": "one_pager",
       "version": 1,
-      "updated_at": "2026-09-19T10:10:26.543837+00:00",
+      "updated_at": "2026-10-24T21:30:19.311940+00:00",
       "sections": [
-        { "id": "6e916097-5ca7-4e2f-8649-64f49c986c11", "body": "", "heading": "Executive Summary" },
-        { "id": "b9534027-b23a-4501-add7-2dd87be57c5e", "body": "", "heading": "Problem" },
-        { "id": "e1a8911e-883b-41e0-b746-05fb90d3a6e3", "body": "", "heading": "Solution" }
+        {
+          "id": "81633db4-1459-4061-bd5f-2b1a6d7aea74",
+          "body": "",
+          "heading": "Overview"
+        },
+        {
+          "id": "93438665-7882-4968-8802-17d815214c83",
+          "body": "",
+          "heading": "Problem"
+        }
       ]
     },
     "access_level": "view",
-    "expires_at": "2026-10-19T10:10:26.555734+00:00"
+    "expires_at": "2026-11-23T21:30:19.420616+00:00"
   },
   "meta": null
 }
 ```
 
-**`document` is the exact same FULL shape (with `sections`) as the authenticated `GET
-/documents/{id}` from Slice 1** — build one document-viewer component and feed it either response.
+**`document` is the authenticated `GET /documents/{id}` shape (with `sections`) minus `id` and `folder`** (BE-A: the public viewer needs the content, not our internal id or folder name) — build one viewer that treats those two fields as optional. This route is rate limited per caller address across all tokens (30/min → `429`).
 `access_level` and `expires_at` are the share's, not the document's — surface `access_level` in the
 viewer chrome (e.g. a small "View only" badge) since a recipient landing here has no other way to
 know their permission level, and consider showing "Link expires <date>" (or nothing, if `null`).
@@ -305,7 +325,7 @@ Standard envelope:
 | Status | Code | When | Live capture |
 |---|---|---|---|
 | 401 | — | Missing/invalid access token on any authed route | not captured in this journey — same auth dependency as every other module |
-| 403 | `FORBIDDEN` | Non-editor (e.g. `mentor`) calls `POST`/`DELETE .../shares` | not captured live — `tests/api/test_document_shares.py::test_mentor_cannot_share_403` |
+| 403 | `FORBIDDEN` | Any role except founder/team_member calls any share route, `GET`s included | `documents_access/mentor_shares_403.json`; earlier note: not captured live — `tests/api/test_document_shares.py::test_mentor_cannot_share_403` |
 | 404 | `NOT_FOUND` | Unknown document (create/list/revoke); cross-tenant document/share; unknown, expired, or revoked share token on `GET /shared/{token}` | `share_open_after_revoke.json` (revoked case, live) |
 | 422 | `VALIDATION_ERROR` | Malformed body, or `access_level` outside `{view, comment}` (e.g. `"edit"`) | not captured live — Pydantic enum validation, same shape as every other 422 in this API |
 
@@ -334,7 +354,10 @@ every response body is captured verbatim in the named file.
 | `GET /shared/{token}` → `404 NOT_FOUND` after revoke (uniform shape) | ✅ | `share_open_after_revoke.json` |
 | Unknown token (never existed) → same uniform `404 NOT_FOUND` | ⚠️ unit only | `tests/api/test_document_shares.py::test_unknown_token_404` |
 | Expired token (past `expires_at`, never revoked) → same uniform `404 NOT_FOUND` | ⚠️ unit only | `tests/services/documents/test_shares.py::test_open_unknown_expired_revoked_all_404` |
-| Non-editor (`mentor`) → `403 FORBIDDEN` on create; member can still list | ⚠️ unit only | `tests/api/test_document_shares.py::test_mentor_cannot_share_403` |
+| Mentor and consultant → `403 FORBIDDEN` on list, workspace list, create and revoke; the body never contains the recipient email | ✅ | `documents_access/mentor_shares_403.json`; `e2e/test_documents_access.py` |
+| Team member lists shares (200) | ✅ | `e2e/test_documents_access.py` |
+| Public open has no `id` / `folder` | ✅ | `documents_access/shared_open.json` |
+| `429` after 30 public opens per minute (across tokens) | ⚠️ unit only | `tests/api/test_documents_private_files.py::test_public_reads_are_limited_across_tokens` |
 | Cross-tenant revoke (real share, different startup) → `404` | ⚠️ unit only | `tests/api/test_document_shares.py::test_cross_tenant_revoke_404` |
 | `GET /documents/shares` route not shadowed by `GET /documents/{document_id}` | ⚠️ unit only | `tests/api/test_document_shares.py::test_shares_overview_not_shadowed_by_document_id` |
 | `access_level: "edit"` rejected (not offered in v1) | ⚠️ unit only (Pydantic enum validation — no dedicated test needed beyond schema coverage) | `app/schemas/document.py::ShareCreate`, `app/db/models/enums.py::ShareAccess` |

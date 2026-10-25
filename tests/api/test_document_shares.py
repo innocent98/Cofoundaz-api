@@ -46,7 +46,8 @@ def test_list_and_revoke_then_open_404(client, db):
     sid = client.get(f"/api/v1/documents/{doc.id}/shares", headers=h).json()["data"]["shares"][0][
         "id"
     ]
-    assert client.delete(f"/api/v1/documents/{doc.id}/shares/{sid}", headers=h).status_code == 200
+    resp = client.delete(f"/api/v1/documents/{doc.id}/shares/{sid}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"/api/v1/shared/{token}").status_code == 404
 
 
