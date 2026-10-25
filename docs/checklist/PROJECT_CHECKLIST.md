@@ -1348,7 +1348,7 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 - [x] `CANVAS_BLOCKS` block registry (`app/services/business/canvas_defs.py`) — 5 canvas types,
       `BlockDef{key,label,kind}`, `empty_blocks()` scaffold
 - [x] Canvas service — `get_or_create_canvas` (lazy-get/create) · `validate_blocks` (per-block-kind
-      422) · `save_canvas` (version check → full-replace merge, pinned by a dedicated test → 
+      422) · `save_canvas` (version check → full-replace merge, pinned by a dedicated test →
       `business.artifact.completed` on the not-complete→complete transition only) · `completion`
       (derived `filled_blocks`/`total_blocks`/`completion_pct`/`status`) · `overview`
 - [x] `GET /business-builder/overview` (member, read-only, creates no rows) · `GET
@@ -1613,7 +1613,7 @@ gap-list rows 1–6, 25, 37 (D-DOC-1..4)
       public responses trimmed
 - [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
       `e2e/test_documents_access.py`; four FE guides updated from live captures
-- [x] _BE-B shipped below_ · [x] _BE-C shipped below_ · [x] _BE-D shipped below (PR open)_
+- [x] _BE-B shipped below_ · [x] _BE-C shipped below_ · [x] _BE-D shipped below (#190, #191 merged)_
 - [ ] _Deferred:_ a real malware scanner behind `get_scanner()` · FE: hide Documents for non-F/TM roles (row 27)
 
 **Documents BE-B (library core)** — *built 2026-10-25 on `feature/documents-library-core`, PR to
@@ -1662,7 +1662,7 @@ closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
 - [ ] _Deferred:_ sharing a file (token link / grant on files) · TrueType font for non-Latin PDF text · counsel-reviewed
       clause text · executed-PDF stamping and DOCX signing (BE-D)
 
-**Documents BE-D (e-sign v2 + link shares)** — *built 2026-10-25 on `feature/documents-esign-v2`, PR to `develop`
+**Documents BE-D (e-sign v2 + link shares)** — *✅ merged 2026-10-25 (#190 `0075`, review fixes #191 `0076`); worker storage volume fix `fix/worker-shared-storage`
 (migration `0075_documents_esign_v2`, after `0074`; new dependency `pypdf`, so the shared stack needs
 `docker compose build api worker`, and the **worker must run** for executed PDFs)* — SOP
 `docs/sop/2026-10-25-documents-be-d-esign-v2.md`, FE guide `docs/fe-integration-guide-documents-esign-v2.md`
@@ -1683,6 +1683,8 @@ closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
       for pre-v2 signers, `legacy` executed state, `expires_in_days` 1–365, per-party email claim, any malformed PDF is `PDF_UNREADABLE`
 - [x] Tests: API, worker through `run_once`, PDF, links, storage, migration, route × role matrix; live journey
       `e2e/test_documents_esign_v2.py`
+- [x] Worker shares the uploads volume (`app_storage:/app/var/storage`) in both compose files: without it the finalize job
+      could not read the signed file in the containerised stack (found in the FE live walk; in-process tests could not see it)
 - [ ] _Deferred:_ **field placement** (needs the PDF viewer, row 11 FE, + Q2) · draw-a-signature · rebuild-executed action ·
       reminder timers · real malware scanner · per-person grants on files
 
