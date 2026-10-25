@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.logger import log
 from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessCanvas, BusinessRecord
@@ -28,9 +29,11 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.activity import write_activity
 from app.platform.events import event_bus
+from app.platform.llm import EmptyCompletionError
 from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.ai_cofounder.finance_context import finance_context_for
 from app.services.ai_cofounder.prompts import build_cofounder_messages
+from app.services.ai_cofounder.service import BUDGET_FAILED_TEXT, REPLY_FAILED_TEXT, fail_message
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
@@ -569,10 +572,22 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
             db, startup_id=startup.id, user_id=conversation.created_by
         ),
     )
-    text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    try:
+        text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
+    except Exception as exc:  # noqa: BLE001 - any provider failure must end the turn eventually
+        # An empty completion repeats for the same prompt, so end the turn now instead of
+        # spending the daily token budget on retries.
+        if (
+            not isinstance(exc, EmptyCompletionError)
+            and job.attempts < settings.WORKER_MAX_ATTEMPTS
+        ):
+            raise  # let the runner retry with backoff
+        log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
+        fail_message(db, msg, REPLY_FAILED_TEXT)
+        return
     if text is None:
-        msg.status = ChatMessageStatus.failed  # over budget — no templated fallback for a chat turn
-        db.flush()
+        # over budget — no templated fallback for a chat turn
+        fail_message(db, msg, BUDGET_FAILED_TEXT)
         return
     msg.content = text.strip()
     msg.status = ChatMessageStatus.ready

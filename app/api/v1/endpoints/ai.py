@@ -22,6 +22,7 @@ from app.platform.llm_budget import is_ai_enrichment_job, over_budget, today_utc
 from app.schemas.ai_chat import CreateConversationRequest, PostMessageRequest
 from app.services.ai_cofounder.service import (
     create_conversation,
+    fail_stale_generating,
     get_conversation,
     list_conversations,
     messages_for,
@@ -125,6 +126,8 @@ def get_conversation_endpoint(
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
     conv = get_conversation(db, startup, user, conversation_id)
+    if fail_stale_generating(db, conv):
+        db.commit()
     return success_response(serialize_conversation(conv, messages_for(db, conv)))
 
 

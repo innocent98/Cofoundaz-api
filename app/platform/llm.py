@@ -6,6 +6,10 @@ from typing import Literal, Protocol
 import httpx
 
 from app.core.config import settings
+from app.core.logger import log
+
+EMPTY_RETRY_FACTOR = 4
+EMPTY_RETRY_CEILING = 16000
 
 Role = Literal["system", "user", "assistant"]
 
@@ -86,6 +90,12 @@ class StubLLMClient:
         return f"[stub-llm] {key}"
 
 
+class EmptyCompletionError(RuntimeError):
+    """The model answered with no text. Deterministic for a given prompt (a spent reasoning
+    budget that a larger retry did not fix, a content filter), so retrying the job only burns
+    tokens: callers end the turn instead."""
+
+
 class OpenAILLMClient:
     """Calls the OpenAI (or OpenAI-compatible) Chat Completions API over httpx. Fail-loud.
 
@@ -109,6 +119,8 @@ class OpenAILLMClient:
 
     def __init__(self) -> None:
         self.last_usage_tokens: int = 0
+        # Tokens the caller can still spend today (None = unlimited); caps the larger retry.
+        self.headroom: int | None = None
 
     def _post_chat(self, payload: dict) -> dict:
         if not settings.LLM_API_KEY:
@@ -137,24 +149,52 @@ class OpenAILLMClient:
 
     def _content(self, body: dict) -> str:
         try:
-            return str(body["choices"][0]["message"]["content"])
+            content = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"LLM API returned an unexpected body shape: {exc}") from exc
+        # A refusal / content-filter / exhausted-reasoning reply carries `content: null`; that
+        # must read as empty, not as the string "None".
+        return "" if content is None else str(content)
+
+    def _finish(self, body: dict) -> tuple[str, int]:
+        """(finish_reason, reasoning_tokens) of the first choice, for diagnostics."""
+        try:
+            reason = str(body["choices"][0].get("finish_reason"))
+        except (KeyError, IndexError, TypeError, AttributeError):
+            reason = "unknown"
+        details = (body.get("usage") or {}).get("completion_tokens_details") or {}
+        return reason, int(details.get("reasoning_tokens", 0) or 0)
 
     def complete(
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
     ) -> str:
-        body = self._post_chat(
-            {
-                "messages": [{"role": m.role, "content": m.content} for m in messages],
-                "max_completion_tokens": max_tokens,
-            }
-        )
-        self.last_usage_tokens = int((body.get("usage") or {}).get("total_tokens", 0) or 0)
-        text = self._content(body)
-        if not text or not text.strip():
-            raise RuntimeError("LLM API returned an empty completion.")
-        return strip_dashes(text)
+        wire = [{"role": m.role, "content": m.content} for m in messages]
+        budget = max_tokens
+        spent = 0
+        for attempt in (1, 2):
+            body = self._post_chat({"messages": wire, "max_completion_tokens": budget})
+            spent += int((body.get("usage") or {}).get("total_tokens", 0) or 0)
+            self.last_usage_tokens = spent
+            text = self._content(body)
+            if text and text.strip():
+                return strip_dashes(text)
+            reason, reasoning = self._finish(body)
+            log.warning(
+                f"[llm] empty completion model={settings.LLM_MODEL} finish_reason={reason} "
+                f"reasoning_tokens={reasoning} max_completion_tokens={budget} attempt={attempt}"
+            )
+            # Reasoning models spend max_completion_tokens on hidden reasoning first; when the
+            # whole budget went there the visible answer is empty and finish_reason is "length".
+            # Retry once with a larger budget instead of failing the turn.
+            larger = min(max_tokens * EMPTY_RETRY_FACTOR, EMPTY_RETRY_CEILING)
+            affordable = self.headroom is None or self.headroom - spent >= larger
+            if reason != "length" or attempt == 2 or not affordable:
+                raise EmptyCompletionError(
+                    f"LLM API returned an empty completion (finish_reason={reason}, "
+                    f"reasoning_tokens={reasoning})."
+                )
+            budget = larger
+        raise RuntimeError("LLM API returned an empty completion.")  # pragma: no cover
 
     def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
         body = self._post_chat(

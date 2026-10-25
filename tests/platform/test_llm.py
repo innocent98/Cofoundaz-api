@@ -92,6 +92,75 @@ def test_openai_client_fails_loud_on_empty_completion(monkeypatch):
         OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=10)
 
 
+def _length_empty(reasoning=800):
+    return httpx.Response(
+        200,
+        json={
+            "choices": [{"message": {"content": ""}, "finish_reason": "length"}],
+            "usage": {
+                "total_tokens": 900,
+                "completion_tokens_details": {"reasoning_tokens": reasoning},
+            },
+        },
+    )
+
+
+def test_empty_completion_from_exhausted_reasoning_budget_retries_larger(monkeypatch):
+    """Finance D9: a reasoning model burned the whole cap thinking, so content was empty."""
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    sent = []
+
+    def fake_post(url, json, headers, timeout):
+        sent.append(json["max_completion_tokens"])
+        if len(sent) == 1:
+            return _length_empty()
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "Start with payroll."}}],
+                "usage": {"total_tokens": 1500},
+            },
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    client = OpenAILLMClient()
+    out = client.complete([LLMMessage(role="user", content="u")], max_tokens=800)
+    assert out == "Start with payroll."
+    assert sent == [800, 3200]
+    assert client.last_usage_tokens == 2400  # both calls are metered
+
+
+def test_empty_completion_after_retry_raises_with_finish_reason(monkeypatch):
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    calls = []
+
+    def fake_post(url, json, headers, timeout):
+        calls.append(1)
+        return _length_empty()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    with pytest.raises(RuntimeError, match=r"finish_reason=length, reasoning_tokens=800"):
+        OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=800)
+    assert len(calls) == 2
+
+
+def test_empty_completion_other_finish_reason_is_not_retried(monkeypatch):
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    calls = []
+
+    def fake_post(url, json, headers, timeout):
+        calls.append(1)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": None}, "finish_reason": "content_filter"}]},
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    with pytest.raises(RuntimeError, match="finish_reason=content_filter"):
+        OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=800)
+    assert len(calls) == 1
+
+
 def test_stub_complete_json_matches_schema_shape():
     schema = {
         "type": "object",
@@ -317,3 +386,36 @@ def test_no_em_or_en_dashes_in_api_copy():
             ):
                 offenders.append(f"{path}:{node.lineno}")
     assert offenders == []
+
+
+def test_empty_completion_is_a_terminal_error_type(monkeypatch):
+    from app.platform.llm import EmptyCompletionError
+
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _length_empty())
+    with pytest.raises(EmptyCompletionError):
+        OpenAILLMClient().complete([LLMMessage(role="user", content="u")], max_tokens=800)
+
+
+def test_larger_retry_is_skipped_when_headroom_is_too_small(monkeypatch):
+    from app.platform.llm import EmptyCompletionError
+
+    monkeypatch.setattr(settings, "LLM_API_KEY", "sk-test")
+    calls = []
+
+    def fake_post(url, json, headers, timeout):
+        calls.append(json["max_completion_tokens"])
+        return _length_empty()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    client = OpenAILLMClient()
+    client.headroom = 2000  # first call spends 900; the 3200-token retry no longer fits
+    with pytest.raises(EmptyCompletionError):
+        client.complete([LLMMessage(role="user", content="u")], max_tokens=800)
+    assert calls == [800]
+
+    calls.clear()
+    client.headroom = 10_000  # fits
+    with pytest.raises(EmptyCompletionError):
+        client.complete([LLMMessage(role="user", content="u")], max_tokens=800)
+    assert calls == [800, 3200]

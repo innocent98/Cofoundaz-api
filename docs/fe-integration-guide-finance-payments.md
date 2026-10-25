@@ -706,6 +706,8 @@ Changing the category works. `capture: transaction_imported_category_patched.jso
 ```
 
 Any other field or DELETE is 422. Note the `field` is `source` and the message is the same for both.
+
+> **Update (fix D10, `fix/finance-d9-d10`):** this rule now covers **every imported source**: `bank` (Mono), `accounting`, `paystack` and `flutterwave`. Before, a `bank` row accepted `PATCH {"amount_minor": ...}` and `DELETE` with 200. Same 422 shape for all four, captured live on a Mono row (`e2e/_captures/finance_d9_d10/bank_patch_amount_422.json`, `bank_delete_422.json`, Paystack twins `paystack_*`). A category-only PATCH on a bank row stays 200 (`bank_patch_category_200.json`: `category` changes, `amount_minor` and `direction` do not). `manual` rows remain fully editable/deletable; `invoice` and `expense` rows keep their own "managed by" 422s. Disconnecting Mono or Paystack keeps the imported rows. Keep hiding Edit/Delete on every row whose `source` is not `manual`, and show only the category control.
 `capture: error_patch_imported_amount.json`
 
 ```json

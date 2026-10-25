@@ -4,12 +4,19 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.errors import AppError, NotFound
 from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.enums import ChatMessageRole, ChatMessageStatus
 from app.db.models.startup import Startup
 from app.db.models.user import User
+from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+
+REPLY_FAILED_TEXT = "Sorry, I couldn't put a reply together. Please try asking again."
+BUDGET_FAILED_TEXT = (
+    "Today's AI usage limit for your workspace has been reached. Try again tomorrow."
+)
 
 _TITLE_MAX = 80
 
@@ -73,9 +80,41 @@ def messages_for(db: Session, conversation: AiConversation) -> list[AiMessage]:
     )
 
 
+def fail_message(db: Session, msg: AiMessage, text: str) -> None:
+    """End an assistant turn as `failed` with a founder-visible message (the FE polls it)."""
+    msg.status = ChatMessageStatus.failed
+    msg.content = text
+    db.flush()
+    event_bus.publish(
+        db,
+        "ai.cofounder.reply.failed",
+        {"message_id": str(msg.id), "conversation_id": str(msg.conversation_id)},
+    )
+
+
+def fail_stale_generating(db: Session, conversation: AiConversation) -> int:
+    """Fail assistant turns stuck `generating` past AI_REPLY_STALE_SECONDS (worker down,
+    job lost). Returns how many were failed; the caller commits."""
+    cutoff = datetime.now(UTC) - timedelta(seconds=settings.AI_REPLY_STALE_SECONDS)
+    stale = (
+        db.query(AiMessage)
+        .filter(
+            AiMessage.conversation_id == conversation.id,
+            AiMessage.role == ChatMessageRole.assistant,
+            AiMessage.status == ChatMessageStatus.generating,
+            AiMessage.created_at < cutoff,
+        )
+        .all()
+    )
+    for m in stale:
+        fail_message(db, m, REPLY_FAILED_TEXT)
+    return len(stale)
+
+
 def post_message(db: Session, conversation: AiConversation, content: str) -> AiMessage:
     """Store the founder's turn + an empty `generating` assistant turn, and enqueue the
     `ai.cofounder.reply` job that fills it. Returns the assistant turn to poll for."""
+    fail_stale_generating(db, conversation)
     # Guard against spam / LLM-cost amplification: refuse a new turn while one is still
     # being generated in this conversation (the FE should be polling the existing one).
     in_flight = (

@@ -137,3 +137,39 @@ def test_second_message_while_generating_409(client, db):
     )
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "REPLY_IN_PROGRESS"
+
+
+def test_stale_generating_reply_is_failed_on_read_and_new_turn_allowed(client, db):
+    from datetime import timedelta
+
+    from app.core.config import settings
+    from app.db.models.ai_chat import AiMessage
+    from app.db.models.enums import ChatMessageRole, ChatMessageStatus
+
+    u, s, h = _founder(db)
+    db.commit()
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={"message": "first"}).json()[
+        "data"
+    ]
+    pending = (
+        db.query(AiMessage)
+        .filter(
+            AiMessage.role == ChatMessageRole.assistant, AiMessage.conversation_id == conv["id"]
+        )
+        .one()
+    )
+    pending.created_at = pending.created_at - timedelta(
+        seconds=settings.AI_REPLY_STALE_SECONDS + 60
+    )
+    db.commit()
+
+    got = client.get(f"/api/v1/ai/conversations/{conv['id']}", headers=h).json()["data"]
+    assistant = [m for m in got["messages"] if m["role"] == "assistant"][0]
+    assert assistant["status"] == "failed"
+    assert assistant["content"]
+    db.expire_all()
+    assert db.get(AiMessage, pending.id).status == ChatMessageStatus.failed
+    again = client.post(
+        f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": "retry"}
+    )
+    assert again.status_code == 202

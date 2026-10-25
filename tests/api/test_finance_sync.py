@@ -1,3 +1,5 @@
+from datetime import date
+
 import httpx
 import pytest
 from cryptography.fernet import Fernet
@@ -117,6 +119,43 @@ def test_imported_rows_are_read_only_except_category(client, db):
     deleted = client.delete(f"{BASE}/transactions/{tid}", headers=h)
     assert deleted.status_code == 422
     assert str(tid) in {str(t.id) for t in _imported(db, s.id).values()}
+
+
+@pytest.mark.parametrize("source", ["bank", "accounting", "paystack", "flutterwave"])
+def test_every_imported_source_is_category_only(client, db, source):
+    """Finance D10: Mono bank rows (and any other imported source) were editable/deletable."""
+    _u, s, h = _member(db)
+    row = Transaction(
+        startup_id=s.id,
+        date=date(2026, 3, 10),
+        description="Imported",
+        amount_minor=5000,
+        currency="NGN",
+        direction=TransactionDirection.inflow,
+        source=source,
+        external_ref=f"{source}-1",
+    )
+    db.add(row)
+    db.flush()
+    tid = str(row.id)
+
+    for body in (
+        {"amount_minor": 100},
+        {"direction": "out"},
+        {"category": "Sales", "date": "2026-01-01"},
+    ):
+        bad = client.patch(f"{BASE}/transactions/{tid}", json=body, headers=h)
+        assert bad.status_code == 422, (source, body, bad.text)
+        assert "Imported transactions are read-only except the category." in bad.text
+    gone = client.delete(f"{BASE}/transactions/{tid}", headers=h)
+    assert gone.status_code == 422
+
+    ok = client.patch(f"{BASE}/transactions/{tid}", json={"category": "Sales"}, headers=h)
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["data"]["category"] == "Sales"
+    assert ok.json()["data"]["amount_minor"] == 5000
+    db.expire_all()
+    assert db.get(Transaction, row.id) is not None
 
 
 def test_manual_rows_still_editable(client, db):
