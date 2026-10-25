@@ -1,6 +1,6 @@
 {
-  "to": "delivered+signer-one-0126b550359c@resend.dev",
+  "to": "delivered+signer-one-d41e91397360@resend.dev",
   "subject": "Signature requested: Founders agreement",
   "html": "<p>Hi both, please sign before Friday.<br>Thanks, Ada</p><p><a href=\"http://localhost:3000/sign/REDACTED_TOKEN\">Review and sign</a></p><p style='font-size:12px;color:#666'>These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer&#x27;s email, IP address, browser, the time and the document&#x27;s SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.</p>",
-  "sent_at": "2026-10-25T16:42:09.125150+00:00"
+  "sent_at": "2026-10-25T17:00:34.095343+00:00"
 }

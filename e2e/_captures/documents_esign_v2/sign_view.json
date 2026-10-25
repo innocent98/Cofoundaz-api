@@ -8,7 +8,7 @@
         "message": "Hi both, please sign before Friday.\nThanks, Ada",
         "sent_by": "Ada Founder",
         "sequential": true,
-        "expires_at": "2026-11-08T16:42:09.103309+00:00"
+        "expires_at": "2026-11-08T17:00:34.087896+00:00"
       },
       "file": {
         "filename": "founders-agreement.pdf",
@@ -17,7 +17,7 @@
         "download_url": "http://127.0.0.1:8610/api/v1/sign/REDACTED_TOKEN/file"
       },
       "signer": {
-        "email": "delivered+signer-one-0126b550359c@resend.dev",
+        "email": "delivered+signer-one-d41e91397360@resend.dev",
         "name": "Ada Investor"
       },
       "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements."

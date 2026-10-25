@@ -2,15 +2,15 @@
   "status": 201,
   "body": {
     "data": {
-      "id": "3e04c09e-ce49-422e-9263-75588716f799",
+      "id": "0cbd160b-5c0f-4083-9081-8f5cdd29d0b8",
       "kind": "file",
       "email": null,
       "anyone_with_link": true,
       "access_level": "view",
-      "expires_at": "2026-11-04T16:42:06+00:00",
+      "expires_at": "2026-11-04T17:00:33+00:00",
       "revoked_at": null,
       "last_viewed_at": null,
-      "created_at": "2026-10-25T16:42:06.748182+00:00",
+      "created_at": "2026-10-25T17:00:33.808567+00:00",
       "status": "active",
       "link": "http://localhost:3000/shared/REDACTED_TOKEN"
     },
