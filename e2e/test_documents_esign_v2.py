@@ -463,6 +463,59 @@ def test_documents_esign_v2_journey(
         )
         assert legacy.json()["data"]["executed"]["state"] == "legacy"
         cap("request_detail_complete_before_v2_legacy", legacy)
+        # ---- a request whose finalize job died: `failed`, then the operator re-queue command ------
+        s4 = unique_email("signer-four")
+        stuck = c.post(
+            f"/api/v1/documents/files/{file_id}/signature-requests",
+            headers=founder,
+            json={"signers": [{"email": s4, "name": "Dayo"}]},
+        )
+        assert stuck.status_code == 201, stuck.text
+        stuck_id = stuck.json()["data"]["id"]
+        done4 = c.post(
+            f"/api/v1/sign/{stuck.json()['data']['signer_links'][0].rsplit('/', 1)[-1]}",
+            json={"typed_name": "Dayo"},
+        )
+        assert done4.status_code == 200
+        db = SessionLocal()
+        try:  # the worker could not do its job: the finalize job ran out of attempts
+            for j in db.query(Job).filter_by(type="documents.signature_finalize"):
+                if j.payload["request_id"] == stuck_id:
+                    j.status = "failed"
+                    j.attempts = 5
+                    j.error = "the signed file's content is missing"
+            db.commit()
+        finally:
+            db.close()
+        failed = c.get(f"/api/v1/documents/signature-requests/{stuck_id}", headers=founder)
+        assert failed.json()["data"]["executed"]["state"] == "failed"
+        cap("request_detail_complete_executed_failed", failed)
+
+        import subprocess
+        import sys
+
+        cmd = [sys.executable, "-m", "app.services.documents.requeue_finalize"]
+        dry = subprocess.run(cmd + ["--dry-run"], capture_output=True, text=True, check=True)
+        capture_json(
+            G, "requeue_command_dry_run_output", json.loads(dry.stdout.strip().splitlines()[-1])
+        )
+        real = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        out = json.loads(real.stdout.strip().splitlines()[-1])
+        assert out["enqueued"] >= 1
+        capture_json(G, "requeue_command_output", out)
+        again = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        assert json.loads(again.stdout.strip().splitlines()[-1])["enqueued"] == 0  # idempotent
+        capture_json(
+            G,
+            "requeue_command_second_run_output",
+            json.loads(again.stdout.strip().splitlines()[-1]),
+        )
+        _drain()
+        healed = c.get(f"/api/v1/documents/signature-requests/{stuck_id}", headers=founder)
+        assert healed.json()["data"]["executed"]["state"] == "ready"
+        cap("request_detail_after_requeue_ready", healed)
+        assert len([m for m in _mails_for(s4) if m["subject"].startswith("Signed:")]) == 1
+
         lst = c.get("/api/v1/documents/signature-requests", headers=founder)
         assert lst.status_code == 200
         cap("request_list", lst)

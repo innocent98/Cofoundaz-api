@@ -78,8 +78,20 @@ create 30/h, copy link 60/h, remind 30/h; the public routes keep their shared bu
 - **Deploy:** `docker compose build api worker` (new dependency `pypdf`), then migrate (`0075`), restart api + worker.
   The worker **must** be running for executed PDFs and their emails (job `documents.signature_finalize`); a request completed
   while it is down stays `executed.state: "pending"` and finishes when it returns.
-- **Stuck job:** a failed `documents.signature_finalize` job (attempts exhausted) leaves `executed.state: "pending"`. Re-queue by
-  inserting a job with the same payload (`{"request_id": "..."}`) or resetting the failed row to `queued`; the handler is idempotent.
+- **Stuck job:** a `documents.signature_finalize` job that exhausts its attempts (for example because the worker could not see
+  storage) used to leave `executed.state: "pending"` forever. It now reads **`failed`** (every job for the request is dead) so the
+  FE can stop its spinner, and the operator heals it with the one-off command (also handy after fixing a worker outage):
+
+  ```bash
+  docker compose exec api python -m app.services.documents.requeue_finalize --dry-run   # counts only
+  docker compose exec api python -m app.services.documents.requeue_finalize             # enqueue
+  ```
+
+  It enqueues `documents.signature_finalize` for every `complete` v2 request (`document_hash` set; pre-v2 are `legacy`) whose
+  `executed_file_id` is null or whose signers / sender are not all marked emailed, skipping requests that already have a queued or
+  running job, and prints `{"stuck", "skipped_active_job", "enqueued", "would_enqueue"}`. It lives under `app/` because the image has
+  no `scripts/`. Safe to run twice or while the worker is up: the handler is resumable and claims each email atomically, so nobody
+  is emailed twice. The worker then drains the jobs on its next tick.
 - **`SECRET_KEY`:** do not rotate casually; every outstanding signer link and v2 share link dies (re-copy after remind /
   re-share).
 - **Roll back:** `alembic downgrade 0074_documents_templates_export` drops the new columns and **deletes** file shares and
@@ -110,7 +122,7 @@ create 30/h, copy link 60/h, remind 30/h; the public routes keep their shared bu
 ## Follow-ups
 
 - Field placement (page / x / y per signer) once the PDF viewer (row 11, FE) and a Q2 decision exist; draw-a-signature pad.
-- Re-queue/"rebuild executed copy" action for editors, and an admin view of failed finalize jobs.
+- An editor-facing "rebuild executed copy" action (today only the operator command re-queues; the API exposes `executed.state: "failed"`).
 - Reminder timing (14/30-day timers), expiry reminders and a "Viewed" notification to the sender.
 - DOCX/image signing would need a trusted converter in the image.
 - Shares: per-person grants on files; comment-level shares of files; rotating a share's link without revoking it.

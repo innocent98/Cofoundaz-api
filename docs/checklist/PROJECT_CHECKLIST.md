@@ -1685,6 +1685,9 @@ closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
       `e2e/test_documents_esign_v2.py`
 - [x] Worker shares the uploads volume (`app_storage:/app/var/storage`) in both compose files: without it the finalize job
       could not read the signed file in the containerised stack (found in the FE live walk; in-process tests could not see it)
+- [x] Stuck-job recovery (re-walk D2): `python -m app.services.documents.requeue_finalize [--dry-run]` re-queues completed v2
+      requests with no executed file or unsent emails (skips live jobs, idempotent); `executed.state: "failed"` when every finalize
+      job is dead; tests incl. `run_once`; live capture in the FE guide
 - [ ] _Deferred:_ **field placement** (needs the PDF viewer, row 11 FE, + Q2) · draw-a-signature · rebuild-executed action ·
       reminder timers · real malware scanner · per-person grants on files
 
