@@ -7,7 +7,7 @@ tags:
   - scale
   - hiring
 order: 10
-review_status: draft
+review_status: reviewed
 ---
 Your first hire changes the company. A little writing before you start prevents expensive mistakes.
 

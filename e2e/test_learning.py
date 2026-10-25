@@ -92,11 +92,11 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         assert hero["reason_source"] == "ai" and "[stub-llm]" in hero["reason"]
         capture("learning", "recommendations_reason", upgraded)
 
-        # 2. The catalog and one course page. Every item is still flagged as a draft.
+        # 2. The catalog and one course page. Every item is reviewed (Adebayo, 2026-10-25).
         courses = c.get("/api/v1/learning/courses", headers=wh)
         assert courses.status_code == 200, courses.text
         assert len(courses.json()["data"]["courses"]) == 8
-        assert {x["review_status"] for x in courses.json()["data"]["courses"]} == {"draft"}
+        assert {x["review_status"] for x in courses.json()["data"]["courses"]} == {"reviewed"}
         capture("learning", "courses", courses)
         detail = c.get(f"/api/v1/learning/courses/{COURSE}", headers=wh)
         assert detail.status_code == 200, detail.text

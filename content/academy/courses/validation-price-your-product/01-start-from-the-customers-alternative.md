@@ -4,7 +4,7 @@ title: "Start from the customer's alternative"
 order: 1
 duration: 9
 video:
-review_status: draft
+review_status: reviewed
 ---
 Your price is not decided by your costs. It is decided by what the customer compares you to.
 

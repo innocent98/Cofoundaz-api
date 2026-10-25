@@ -7,7 +7,7 @@ tags:
   - customers
   - sales
 order: 4
-review_status: draft
+review_status: reviewed
 ---
 Ads and big campaigns can work later. The first ten customers almost always come from direct conversations.
 

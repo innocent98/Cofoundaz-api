@@ -6,7 +6,7 @@ level: intermediate
 stage_tags: [validation, build]
 gap_tags: [product, demand]
 order: 4
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Choose the single flow that delivers your promised value"
   - "Cut features with a clear rule instead of a feeling"

@@ -6,7 +6,7 @@ level: beginner
 stage_tags: [idea, validation]
 gap_tags: [product, market]
 order: 1
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Write your problem as one sentence that names a person, a situation and a cost"
   - "List the first 20 real people who have the problem, instead of a vague market"

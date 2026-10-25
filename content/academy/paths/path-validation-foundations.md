@@ -8,6 +8,6 @@ courses:
   - validation-talk-to-customers
   - validation-price-your-product
   - build-scope-the-mvp
-review_status: draft
+review_status: reviewed
 ---
 Prove that people have the problem, will pay and want your first version.

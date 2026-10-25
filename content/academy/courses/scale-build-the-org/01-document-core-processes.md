@@ -4,7 +4,7 @@ title: "Document core processes"
 order: 1
 duration: 12
 video:
-review_status: draft
+review_status: reviewed
 ---
 If the business only works when you are in the room, it cannot grow past you. Documenting processes is how you move knowledge out of your head.
 

@@ -6,7 +6,7 @@ level: advanced
 stage_tags: [growth]
 gap_tags: [market]
 order: 6
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Run three small channel tests with a clear success bar"
   - "Decide which channel earns more budget and time"

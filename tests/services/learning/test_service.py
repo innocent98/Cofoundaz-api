@@ -63,7 +63,7 @@ def test_articles_search_and_tag_filters(db):
 
 def test_article_detail_has_related_articles_and_courses(db):
     detail = svc.article_detail(db, get_article(db, "article-pricing-basics"))
-    assert detail["body"] and detail["review_status"] == "draft"
+    assert detail["body"] and detail["review_status"] == "reviewed"
     related = detail["related"]
     assert "article-pricing-basics" not in {a["id"] for a in related["articles"]}
     assert "validation-price-your-product" in {c["id"] for c in related["courses"]}
@@ -135,7 +135,7 @@ def test_continue_opens_the_next_unfinished_lesson_after_a_completion(db):
 def test_course_detail_exposes_description_outcomes_video_and_review_flag(db):
     user, startup = founder_and_startup(db)
     detail = svc.course_detail(get_course(db, COURSE), svc.load_state(db, startup.id, user.id))
-    assert detail["description"] and detail["outcomes"] and detail["review_status"] == "draft"
+    assert detail["description"] and detail["outcomes"] and detail["review_status"] == "reviewed"
     assert [lesson["order"] for lesson in detail["lessons"]] == [1, 2, 3]
     for lesson in detail["lessons"]:
         assert lesson["video"] is None

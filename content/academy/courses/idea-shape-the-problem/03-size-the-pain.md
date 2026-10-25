@@ -4,7 +4,7 @@ title: "Size the pain"
 order: 3
 duration: 12
 video:
-review_status: draft
+review_status: reviewed
 ---
 Not every real problem is worth a business. This lesson helps you judge how much the problem hurts, and whether people already pay to fix it.
 

@@ -6,7 +6,7 @@ tags:
   - validation
   - customers
 order: 1
-review_status: draft
+review_status: reviewed
 ---
 The best customer questions are about the past. People are poor at predicting their own behaviour and very good at describing what they already did.
 

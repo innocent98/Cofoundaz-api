@@ -4,7 +4,7 @@ title: "Measure what a customer costs you"
 order: 3
 duration: 9
 video:
-review_status: draft
+review_status: reviewed
 ---
 If you do not know what a customer costs you to win, you cannot tell whether growth is healthy.
 

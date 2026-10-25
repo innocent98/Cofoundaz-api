@@ -4,7 +4,7 @@ title: "Synthesize what you heard"
 order: 3
 duration: 11
 video:
-review_status: draft
+review_status: reviewed
 ---
 Five interviews produce a pile of notes. Synthesis turns the pile into decisions.
 

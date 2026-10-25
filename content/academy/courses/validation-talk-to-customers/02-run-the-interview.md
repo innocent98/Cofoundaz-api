@@ -4,7 +4,7 @@ title: "Run the interview"
 order: 2
 duration: 14
 video:
-review_status: draft
+review_status: reviewed
 ---
 The single rule of a customer interview: **ask about the past, not the future.** People are poor at predicting what they will do and generous with compliments. They are far better at describing what they already did.
 

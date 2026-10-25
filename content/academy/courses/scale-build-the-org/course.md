@@ -6,7 +6,7 @@ level: advanced
 stage_tags: [scale]
 gap_tags: [team, legal]
 order: 8
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Write down the five processes the business depends on"
   - "Plan hires from the work, not from the wish list"

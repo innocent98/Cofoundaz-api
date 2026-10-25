@@ -6,7 +6,7 @@ level: intermediate
 stage_tags: [launch]
 gap_tags: [market, customers]
 order: 5
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Pick two launch channels where your customers already spend time"
   - "Write a one line message a stranger understands in five seconds"

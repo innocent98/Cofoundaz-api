@@ -6,7 +6,7 @@ level: intermediate
 stage_tags: [validation, launch]
 gap_tags: [pricing, money]
 order: 3
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Anchor your price on the customer's alternatives and the value you create"
   - "Choose between subscription, usage and one-off pricing"

@@ -4,7 +4,7 @@ title: "Pick the one core flow"
 order: 1
 duration: 12
 video:
-review_status: draft
+review_status: reviewed
 ---
 Your product promises one outcome. The core flow is the shortest path a customer takes to reach it.
 

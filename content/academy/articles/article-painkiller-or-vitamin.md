@@ -7,7 +7,7 @@ tags:
   - validation
   - product
 order: 3
-review_status: draft
+review_status: reviewed
 ---
 Customers buy painkillers on the same day. They think about vitamins for months and often never buy. Early founders need painkillers.
 

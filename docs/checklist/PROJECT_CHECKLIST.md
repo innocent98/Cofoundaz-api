@@ -2136,6 +2136,7 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
 
 **Academy BE gaps (2026-10-22, branch `feature/academy-be`, migration `0069_academy_content`; PR pending):**
 - [x] D-ACA-1 content: `content/academy/` markdown (8 courses x 3 lessons covering all 6 stages, 6 stage paths, 10 articles; every file `review_status: draft`, exposed by the API) + idempotent loader `python -m app.services.learning.content` (validates, upserts by slug, prunes; wired into the prod `migrate` step; `content/` copied into the image) — gap 6
+- [x] Content review (2026-10-25): Adebayo approved all 48 files; every file is now `review_status: reviewed` (`chore/academy-content-reviewed`)
 - [x] Catalog moved to the DB (`academy_courses`, `academy_lessons`, `academy_paths`, `academy_articles`); `[Placeholder]` titles gone; course `description` + `outcomes` (gap 4); paths embed ordered courses with progress (gap 13)
 - [x] D-ACA-2 video: strict 11-character YouTube id, `video: {provider, id, embed_url}` or `null`, never `placeholder://` — gap 5 (BE half)
 - [x] D-ACA-5 certificates: `learning.certificate.generate` handler registered (jobs no longer fail "no handler"), reportlab PDF with QR, `GET /learning/certificates/{id}/pdf` owner only (404 for anyone else, 409 until rendered), `holder_name` + `CFZ-XXXX-XXXX-XXXX` credential ID, public rate-limited `GET /verify/{code}` (minimal fields), LinkedIn add-to-profile URL (`ACADEMY_LINKEDIN_ORG_ID` hook) — gaps 1, 7, 17

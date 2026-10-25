@@ -6,7 +6,7 @@ level: advanced
 stage_tags: [growth, scale]
 gap_tags: [money]
 order: 7
-review_status: draft
+review_status: reviewed
 outcomes:
   - "Calculate burn and runway from your own bank balance"
   - "Explain unit economics in plain language"

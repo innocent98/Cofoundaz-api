@@ -4,7 +4,7 @@ title: "Write launch messaging"
 order: 2
 duration: 9
 video:
-review_status: draft
+review_status: reviewed
 ---
 People decide in seconds whether something is for them. Your message must work in that time.
 
