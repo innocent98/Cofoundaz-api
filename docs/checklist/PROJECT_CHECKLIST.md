@@ -3708,3 +3708,16 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
   - [x] Synthesizer `source=feedback`; open survey answers endpoint; share-link rotation; `linked_experiments`
   - [x] Tests first, e2e journey + captures, real-model captures
 - [ ] Slice (c) FE (sub-session) + live re-walk
+
+
+## Settings + Billing (2026-10-27)
+Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
+- [x] (a) Settings BE: profile edit + avatar, change password, 2FA status/disable/new backup codes, sessions list/revoke, workspace
+      settings + logo, notification digest/quiet-hours storage (branch `feature/settings-be`, migration 0077, guide
+      `docs/fe-integration-guide-settings.md`, SOP `docs/sop/2026-10-27-settings-be-account.md`)
+  - [x] Tests first (53), e2e journey + captures
+  - [ ] FE sub-session + live re-walk of every control (1440 + 375, every role)
+- [ ] (b) Billing BE on Paystack (plans, checkout, webhook with HMAC, subscription state, usage, invoices, cards, add-ons, plan gate)
+  - [ ] Waiting on D-SET-1 to 7 (defaults in the gap list)
+- [ ] Deferred: digest sender + quiet hours enforcement; account deletion/export; AI preferences/memory; SMS 2FA
+

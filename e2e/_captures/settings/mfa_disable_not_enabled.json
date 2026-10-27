@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "MFA_NOT_ENABLED",
+    "message": "Two-factor isn't on.",
+    "field_errors": []
+  }
+}

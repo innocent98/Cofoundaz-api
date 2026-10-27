@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That file isn't a valid image.",
+    "field_errors": []
+  }
+}
