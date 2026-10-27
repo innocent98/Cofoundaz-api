@@ -93,11 +93,15 @@ def test_patch_me_rejects_blank_long_or_control_character_names(client, db):
         assert err["field"].endswith("full_name") and not err["message"].startswith("Value error")
 
 
-def test_patch_me_ignores_unknown_fields_and_requires_auth(client, db):
+def test_patch_me_rejects_unknown_fields_and_requires_auth(client, db):
     assert client.patch("/api/v1/auth/me", json={"full_name": "A"}).status_code == 401
     u = create_user(db, status=UserStatus.active)
     db.flush()
     r = client.patch(
         "/api/v1/auth/me", json={"full_name": "Ada", "email": "evil@x.com"}, headers=_auth(u)
     )
-    assert r.status_code == 200 and r.json()["data"]["user"]["email"] == u.email
+    # Rejected, never applied: a typo or an attempt to change the email must not look like a save.
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["field_errors"][0]["field"].endswith("email")
+    db.refresh(u)
+    assert u.email != "evil@x.com"
