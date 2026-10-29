@@ -10,6 +10,7 @@ from app.services.notifications.categories import CATEGORIES
 class PreferencesUpdate(BaseModel):
     master_email: bool | None = None
     categories: dict[str, bool] | None = None
+    in_app: dict[str, bool] | None = None
     digest_mode: Literal["realtime", "daily", "weekly"] | None = None
     digest_time: time | None = None
     digest_day: int | None = Field(default=None, ge=0, le=6)
@@ -18,7 +19,7 @@ class PreferencesUpdate(BaseModel):
     quiet_until: time | None = None
     timezone: str | None = None
 
-    @field_validator("categories")
+    @field_validator("categories", "in_app")
     @classmethod
     def _known_categories(cls, v: dict[str, bool] | None) -> dict[str, bool] | None:
         if v:

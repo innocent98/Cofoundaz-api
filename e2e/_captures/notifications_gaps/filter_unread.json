@@ -1,0 +1,99 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "1ff4de43-680d-4a17-8801-51c6277046d9",
+        "type": "finance.invoice.paid",
+        "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
+        "body": "View invoice",
+        "data": {
+          "number": "INV-2026-001",
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "finance",
+        "created_at": "2026-10-29T20:35:40.580061+00:00"
+      },
+      {
+        "id": "d9a8b74d-077e-48bc-b283-f1f997016c75",
+        "type": "finance.runway.low",
+        "title": "Runway below 6 months, review recommended",
+        "body": "Open Finance",
+        "data": {
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "critical",
+        "module": "finance",
+        "created_at": "2026-10-29T20:35:40.575193+00:00"
+      },
+      {
+        "id": "44784378-b8e9-4753-9847-f5f6f60f326e",
+        "type": "finance.invoice.overdue",
+        "title": "Invoice overdue: INV-2026-002 \u00b7 None \u00b7 NGN 0.00",
+        "body": "Send reminder",
+        "data": {
+          "number": "INV-2026-002",
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "critical",
+        "module": "finance",
+        "created_at": "2026-10-29T20:35:40.570708+00:00"
+      },
+      {
+        "id": "de9f8447-c01e-442a-9bc3-043737ef1aff",
+        "type": "roadmap.milestone.due_soon",
+        "title": "Milestone due soon: Validate demand, tomorrow",
+        "body": "",
+        "data": {
+          "title": "Validate demand",
+          "relative": "tomorrow",
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33",
+          "milestone_id": "m1"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "roadmap",
+        "created_at": "2026-10-29T20:35:40.562896+00:00"
+      },
+      {
+        "id": "465381f9-10b2-42d5-8888-b5d110e091db",
+        "type": "dashboard.briefing.ready",
+        "title": "Your daily AI briefing is ready",
+        "body": "",
+        "data": {
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33",
+          "briefing_id": "b1"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "dashboard",
+        "created_at": "2026-10-29T20:35:40.554682+00:00"
+      },
+      {
+        "id": "26a0f5c7-f428-41b9-9a00-0d61602f561f",
+        "type": "mission.ready",
+        "title": "Your mission for today is ready",
+        "body": "Run 10 customer interviews",
+        "data": {
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33",
+          "first_task_title": "Run 10 customer interviews"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "missions",
+        "created_at": "2026-10-29T20:35:40.197640+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

@@ -15,8 +15,7 @@ from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.notifications.audience import AUDIENCE, FOUNDER_ROLES, kpi_roles
-from app.services.notifications.categories import category_for
-from app.services.notifications.preferences import email_enabled
+from app.services.notifications.preferences import email_route, in_app_enabled
 from app.services.notifications.service import create_notifications
 
 
@@ -559,22 +558,32 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     spec = SPECS.get(event)
     if spec is None or not payload.get("startup_id"):
         return
-    user_ids = spec.recipients(db, payload)
-    if not user_ids:
-        return
     startup_id = uuid.UUID(str(payload["startup_id"]))
-    rows = create_notifications(
-        db,
-        user_ids=user_ids,
-        startup_id=startup_id,
-        type=event,
-        title=spec.title(payload),
-        body=spec.body(payload),
-        data=payload,
-    )
-    category = category_for(event)
+    visible: list[uuid.UUID] = []
+    hidden: list[uuid.UUID] = []
+    for u in spec.recipients(db, payload):
+        if in_app_enabled(db, user_id=u, startup_id=startup_id, event=event):
+            visible.append(u)
+        elif email_route(db, user_id=u, startup_id=startup_id, event=event) != "skip":
+            # PRD 20.2: In app off hides the row from the inbox, but the Email switch is
+            # independent, so the row still exists (hidden) for email and the digest to use.
+            hidden.append(u)
+    rows: list[Any] = []
+    for group, is_hidden in ((visible, False), (hidden, True)):
+        if group:
+            rows += create_notifications(
+                db,
+                user_ids=group,
+                startup_id=startup_id,
+                type=event,
+                title=spec.title(payload),
+                body=spec.body(payload),
+                data=payload,
+                hidden=is_hidden,
+            )
     for n in rows:
-        if email_enabled(db, user_id=n.user_id, startup_id=n.startup_id, category=category):
+        route = email_route(db, user_id=n.user_id, startup_id=n.startup_id, event=event)
+        if route == "now":
             job_dispatcher.enqueue(
                 db, "email.notification", {"notification_id": str(n.id)}, startup_id
             )

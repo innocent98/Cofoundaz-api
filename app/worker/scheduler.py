@@ -33,6 +33,7 @@ from app.platform.jobs import job_dispatcher
 from app.platform.outreach import imap_configured, outreach_configured
 from app.services.calendar import reminders as calendar_reminders
 from app.services.finance.reminders import MAX_AUTO_REMINDERS, REMINDER_INTERVAL_DAYS
+from app.services.notifications import digest
 
 SCHED_MISSION = "scheduled.mission.generate"
 SCHED_OVERDUE = "scheduled.roadmap.overdue"
@@ -50,6 +51,7 @@ SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
 OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
+SCHED_NOTIF_DIGEST = "scheduled.notifications.digest"
 SCHED_JOURNAL_NUDGE = "scheduled.journal.nudge"
 JOURNAL_REMINDER_HOUR = 20  # local; the evening writing reminder
 JOURNAL_PROMPT_HOUR = 9  # local; the daily prompt notification
@@ -125,6 +127,32 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
         for sid in _active_startup_ids(db)
         if str(sid) not in claimed and now_t >= delivery.get(sid, default)
     ]
+
+
+def _due_notification_digests(db: Session, now: datetime) -> list[Due]:
+    """Digest emails (PRD 20.3): once per recipient and workspace per local day at their delivery
+    time (weekly: on their chosen weekday). The job re-reads preferences before sending."""
+    out: list[Due] = []
+    for row, period in digest.due_rows(db, now):
+        scope = row.user_id.hex + row.startup_id.hex  # 64 chars (scope_key limit)
+        claimed = (
+            db.query(ScheduledRun.id)
+            .filter_by(task_key="notifications.digest", scope_key=scope, period_key=period)
+            .first()
+        )
+        if claimed is None:
+            payload = {"user_id": str(row.user_id), "startup_id": str(row.startup_id)}
+            out.append(
+                Due(
+                    "notifications.digest",
+                    scope,
+                    period,
+                    SCHED_NOTIF_DIGEST,
+                    row.startup_id,
+                    payload,
+                )
+            )
+    return out
 
 
 def _due_journal_nudges(db: Session, now: datetime) -> list[Due]:
@@ -615,6 +643,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_invoice_overdue(db, now),
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
+        *_due_notification_digests(db, now),
         *_due_journal_nudges(db, now),
         *_due_calendar_syncs(db, now),
         *_due_calendar_reminders(db, now),

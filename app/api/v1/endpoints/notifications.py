@@ -4,7 +4,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -33,9 +33,12 @@ from app.services.notifications.preferences import (
     set_preferences,
 )
 from app.services.notifications.service import (
+    archive,
+    counts,
     list_notifications,
     mark_all_read,
     mark_read,
+    restore,
     serialize_notification,
     unread_count,
 )
@@ -48,6 +51,10 @@ def list_notifications_endpoint(
     unread: bool = False,
     limit: int = 20,
     cursor: str | None = None,
+    filter: str = Query(
+        default="all", pattern="^(all|unread|urgent|mentions|ai|deadlines|billing)$"
+    ),  # noqa: A002, B008
+    archived: bool = False,
     membership: Membership = Depends(require_workspace),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
@@ -60,6 +67,8 @@ def list_notifications_endpoint(
         unread=unread,
         limit=limit,
         cursor=cursor,
+        filter_=filter,
+        archived=archived,
     )
     return success_response(
         {"notifications": [serialize_notification(n) for n in rows], "next_cursor": next_cursor}
@@ -82,6 +91,58 @@ def unread_count_endpoint(
             )
         }
     )
+
+
+@router.get("/notifications/counts")
+def counts_endpoint(
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        counts(
+            db,
+            user_id=membership.user_id,
+            startup_id=membership.startup_id,
+            role=membership.role,
+        )
+    )
+
+
+@router.post("/notifications/{notification_id}/archive")
+def archive_endpoint(
+    notification_id: uuid.UUID,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    n = archive(
+        db,
+        user_id=membership.user_id,
+        startup_id=membership.startup_id,
+        role=membership.role,
+        nid=notification_id,
+    )
+    db.commit()
+    return success_response(serialize_notification(n))
+
+
+@router.post("/notifications/{notification_id}/restore")
+def restore_endpoint(
+    notification_id: uuid.UUID,
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    n = restore(
+        db,
+        user_id=membership.user_id,
+        startup_id=membership.startup_id,
+        role=membership.role,
+        nid=notification_id,
+    )
+    db.commit()
+    return success_response(serialize_notification(n))
 
 
 @router.post("/notifications/{notification_id}/read")
@@ -139,6 +200,7 @@ def put_preferences_endpoint(
         startup_id=membership.startup_id,
         master_email=body.master_email,
         categories=body.categories,
+        in_app=body.in_app,
         schedule=body.model_dump(include=set(SCHEDULE_FIELDS)),
     )
     db.commit()
