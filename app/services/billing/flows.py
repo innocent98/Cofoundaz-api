@@ -9,7 +9,7 @@ together and the effect happens once.
 
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -683,6 +683,25 @@ def _finish_upgrade(
     )
 
 
+def _assert_no_upgrade_in_flight(db: Session, startup_id: uuid.UUID) -> None:
+    """The row lock ends at the pre-charge commit, so a second upgrade is refused while one is pending."""
+    in_flight = (
+        db.query(BillingOperation)
+        .filter(
+            BillingOperation.startup_id == startup_id,
+            BillingOperation.kind == "upgrade",
+            BillingOperation.status == "pending",
+            BillingOperation.created_at > subs.now() - timedelta(minutes=10),
+        )
+        .first()
+    )
+    if in_flight is not None:
+        raise _err(
+            "UPGRADE_IN_PROGRESS",
+            "Another plan change is still being processed. Try again in a minute.",
+        )
+
+
 def change_plan(
     db: Session,
     *,
@@ -731,6 +750,7 @@ def change_plan(
         if op.status == "paid":
             return {"result": "applied", "amount_charged_minor": op.amount_minor}
         raise _err("ALREADY_PROCESSED", "That request already went through.")
+    _assert_no_upgrade_in_flight(db, startup_id)
     due = prev["amount_due_minor"]
     pm = default_method(db, startup_id)
     if due > 0 and pm is None:

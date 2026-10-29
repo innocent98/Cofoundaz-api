@@ -592,3 +592,24 @@ def test_trial_is_not_restarted_for_a_workspace_that_canceled(client, db, monkey
     monkeypatch.setattr(settings, "PLAN_ENFORCEMENT", True)
     d = client.get(f"{B}/subscription", headers=h).json()["data"]
     assert d["status"] == "canceled" and d["plan"]["key"] == "starter"
+
+
+def test_a_second_upgrade_is_refused_while_one_is_in_flight(client, db):
+    _, startup, h = workspace(db)
+    _subscribe(client, db, h)
+    db.add(
+        BillingOperation(
+            startup_id=startup.id,
+            reference="cfz_upgrade_inflight",
+            kind="upgrade",
+            amount_minor=1,
+            params={"plan_key": "scale", "interval": "monthly"},
+        )
+    )
+    db.flush()
+    r = client.post(
+        f"{B}/subscription/change",
+        json={"plan": "scale", "interval": "monthly"},
+        headers={**h, "Idempotency-Key": "second"},
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "UPGRADE_IN_PROGRESS"
