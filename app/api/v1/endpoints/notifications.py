@@ -27,7 +27,11 @@ from app.platform.realtime import (
     mint_stream_ticket,
 )
 from app.schemas.notification import PreferencesUpdate
-from app.services.notifications.preferences import effective_preferences, set_preferences
+from app.services.notifications.preferences import (
+    SCHEDULE_FIELDS,
+    effective_preferences,
+    set_preferences,
+)
 from app.services.notifications.service import (
     list_notifications,
     mark_all_read,
@@ -135,6 +139,7 @@ def put_preferences_endpoint(
         startup_id=membership.startup_id,
         master_email=body.master_email,
         categories=body.categories,
+        schedule=body.model_dump(include=set(SCHEDULE_FIELDS)),
     )
     db.commit()
     return success_response(eff)

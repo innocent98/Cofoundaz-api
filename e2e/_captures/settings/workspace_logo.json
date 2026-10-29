@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "319eca7c-5c7c-49ff-801c-ed3562e64afc",
+    "name": "Nova Pay",
+    "description": null,
+    "website": "https://novapay.example",
+    "logo_url": "var/storage/logos/319eca7c-5c7c-49ff-801c-ed3562e64afc/e3619029ed984604a307c257c22065a5.png",
+    "industry": "Fintech",
+    "business_model": "b2b",
+    "stage": "build",
+    "country": "NG",
+    "can_edit": true
+  },
+  "meta": null
+}
