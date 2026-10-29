@@ -12,6 +12,7 @@ from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
+from app.platform.audit import write_audit
 from app.platform.email import EmailMessage, get_email_sender
 from app.platform.events import event_bus
 from app.services.auth.emails import invitation_email
@@ -113,15 +114,23 @@ def create_invitations(
             continue
         handled_this_call.add(email_key)
         raw = secrets.token_urlsafe(32)
-        db.add(
-            Invitation(
-                startup_id=startup.id,
-                email=email,
-                role=role,
-                token_hash=hash_token(raw),
-                invited_by=inviter.id,
-                expires_at=datetime.now(UTC) + _TTL,
-            )
+        invitation = Invitation(
+            startup_id=startup.id,
+            email=email,
+            role=role,
+            token_hash=hash_token(raw),
+            invited_by=inviter.id,
+            expires_at=datetime.now(UTC) + _TTL,
+        )
+        db.add(invitation)
+        db.flush()
+        write_audit(
+            db,
+            "team.invitation.created",
+            actor_user_id=inviter.id,
+            startup_id=startup.id,
+            entity_type="invitation",
+            entity_id=invitation.id,
         )
         batch.outbox.append(
             invitation_email(
@@ -173,6 +182,13 @@ def accept_invitation(db: Session, user: User, token: str) -> Membership:
         .filter(Membership.user_id == user.id, Membership.startup_id == inv.startup_id)
         .first()
     )
+    if existing is not None and existing.status == MembershipStatus.removed:
+        # A removed person invited back: reopen their old row with the role they were just
+        # invited as. Without this the accept succeeded but they stayed locked out. (A suspended
+        # member is not reopened by an invitation: suspension is an admin decision.)
+        existing.status = MembershipStatus.active
+        existing.role = inv.role
+        existing.joined_at = now
     if existing is None:
         existing = Membership(
             user_id=user.id,
@@ -187,6 +203,14 @@ def accept_invitation(db: Session, user: User, token: str) -> Membership:
     inv.accepted_at = now
     inv.accepted_user_id = user.id
     db.flush()
+    write_audit(
+        db,
+        "team.member.joined",
+        actor_user_id=user.id,
+        startup_id=inv.startup_id,
+        entity_type="membership",
+        entity_id=existing.id,
+    )
     event_bus.publish(
         db,
         "workspace.member.joined",
