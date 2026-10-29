@@ -117,11 +117,10 @@ def test_only_a_founder_manages_members(client, db, role):
     s, u = team(db)
     db.commit()
     h = headers(u[role], s)
-    assert (
-        client.patch(f"{T}/members/{u[M].id}", json={"role": "mentor"}, headers=h).status_code
-        == 403
-    )
-    assert client.delete(f"{T}/members/{u[M].id}", headers=h).status_code == 403
+    resp = client.patch(f"{T}/members/{u[M].id}", json={"role": "mentor"}, headers=h)
+    assert resp.status_code == 403
+    resp = client.delete(f"{T}/members/{u[M].id}", headers=h)
+    assert resp.status_code == 403
     assert client.get(f"{T}/invitations", headers=h).status_code == 403
     assert client.get(f"{T}/audit", headers=h).status_code == 403
     assert client.get(f"{T}/audit/export", headers=h).status_code == 403
@@ -135,10 +134,8 @@ def test_role_change_rules(client, db):
     assert own.status_code == 409 and own.json()["error"]["code"] == "CANNOT_CHANGE_SELF"
     inv = client.patch(f"{T}/members/{u[M].id}", json={"role": "investor"}, headers=h)
     assert inv.status_code == 422
-    assert (
-        client.patch(f"{T}/members/{uuid.uuid4()}", json={"role": "mentor"}, headers=h).status_code
-        == 404
-    )
+    resp = client.patch(f"{T}/members/{uuid.uuid4()}", json={"role": "mentor"}, headers=h)
+    assert resp.status_code == 404
 
 
 def test_cannot_manage_a_member_of_another_workspace(client, db):
@@ -146,11 +143,10 @@ def test_cannot_manage_a_member_of_another_workspace(client, db):
     s2, u2 = team(db, name="Other")
     db.commit()
     h = headers(u[F], s)
-    assert (
-        client.patch(f"{T}/members/{u2[M].id}", json={"role": "accountant"}, headers=h).status_code
-        == 404
-    )
-    assert client.delete(f"{T}/members/{u2[M].id}", headers=h).status_code == 404
+    resp = client.patch(f"{T}/members/{u2[M].id}", json={"role": "accountant"}, headers=h)
+    assert resp.status_code == 404
+    resp = client.delete(f"{T}/members/{u2[M].id}", headers=h)
+    assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------- remove / leave
@@ -199,9 +195,12 @@ def test_cannot_remove_yourself_or_a_stranger(client, db):
     h = headers(u[F], s)
     r = client.delete(f"{T}/members/{u[F].id}", headers=h)
     assert r.status_code == 409 and r.json()["error"]["code"] == "CANNOT_REMOVE_SELF"
-    assert client.delete(f"{T}/members/{uuid.uuid4()}", headers=h).status_code == 404
-    assert client.delete(f"{T}/members/{u[TM].id}", headers=h).status_code == 200
-    assert client.delete(f"{T}/members/{u[TM].id}", headers=h).status_code == 404  # already gone
+    resp = client.delete(f"{T}/members/{uuid.uuid4()}", headers=h)
+    assert resp.status_code == 404
+    resp = client.delete(f"{T}/members/{u[TM].id}", headers=h)
+    assert resp.status_code == 200
+    resp = client.delete(f"{T}/members/{u[TM].id}", headers=h)
+    assert resp.status_code == 404  # already gone
 
 
 def test_member_leaves_and_loses_grants(client, db):
@@ -213,7 +212,8 @@ def test_member_leaves_and_loses_grants(client, db):
     db.expire_all()
     assert db.get(DocumentGrant, g.id).revoked_at is not None
     assert client.get(f"{T}/members", headers=headers(u[M], s)).status_code == 403
-    assert client.post(f"{T}/leave", headers=headers(u[M], s)).status_code == 403
+    again = client.post(f"{T}/leave", headers=headers(u[M], s))
+    assert again.status_code == 403
 
 
 def test_the_last_founder_cannot_leave_but_a_co_founder_can(client, db):
@@ -223,7 +223,8 @@ def test_the_last_founder_cannot_leave_but_a_co_founder_can(client, db):
     assert r.status_code == 409 and r.json()["error"]["code"] == "LAST_FOUNDER"
     # Promote a second founder, then the first may leave.
     client.patch(f"{T}/members/{u[TM].id}", json={"role": "founder"}, headers=headers(u[F], s))
-    assert client.post(f"{T}/leave", headers=headers(u[F], s)).status_code == 200
+    left = client.post(f"{T}/leave", headers=headers(u[F], s))
+    assert left.status_code == 200
     last = client.post(f"{T}/leave", headers=headers(u[TM], s))
     assert last.status_code == 409 and last.json()["error"]["code"] == "LAST_FOUNDER"
 
@@ -278,10 +279,8 @@ def test_list_resend_revoke_invitation(client, db, mail):
     assert (
         db.query(Invitation).filter_by(id=inv_id).one().token_hash != old_hash
     )  # old link is dead
-    assert client.delete(f"{T}/invitations/{inv_id}", headers=hf).json()["data"] == {
-        "id": inv_id,
-        "revoked": True,
-    }
+    revoked = client.delete(f"{T}/invitations/{inv_id}", headers=hf)
+    assert revoked.json()["data"] == {"id": inv_id, "revoked": True}
     assert client.get(f"{T}/invitations", headers=hf).json()["data"] == []
     for call in (
         client.post(f"{T}/invitations/{inv_id}/resend", headers=hf),
@@ -319,8 +318,10 @@ def test_invitation_routes_are_workspace_scoped(client, db, mail):
     _invite(client, headers(u2[F], s2))
     foreign = db.query(Invitation).one()
     hf = headers(u[F], s)
-    assert client.post(f"{T}/invitations/{foreign.id}/resend", headers=hf).status_code == 404
-    assert client.delete(f"{T}/invitations/{foreign.id}", headers=hf).status_code == 404
+    foreign_resend = client.post(f"{T}/invitations/{foreign.id}/resend", headers=hf)
+    assert foreign_resend.status_code == 404
+    resp = client.delete(f"{T}/invitations/{foreign.id}", headers=hf)
+    assert resp.status_code == 404
     assert client.get(f"{T}/invitations", headers=hf).json()["data"] == []
     assert db.query(Invitation).one().status == InvitationStatus.pending
 
