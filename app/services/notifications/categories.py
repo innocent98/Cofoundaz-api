@@ -89,12 +89,13 @@ CATEGORY_DEFAULTS: dict[str, bool] = {
 }
 
 # PRD 20.2 locked-on alerts (D-NOT-1). Always in-app and email, regardless of any switch.
+# Only types whose recipients are already role-restricted belong here: a critical alert
+# ignores every opt-out, so it must never reach roles outside its audience.
 CRITICAL_TYPES: frozenset[str] = frozenset(
     {
         "billing.payment.failed",
         "finance.runway.low",
         "finance.invoice.overdue",
-        "roadmap.milestone.overdue",
         "document.signature.requested",
         "sales.sending.paused",
     }

@@ -475,24 +475,28 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     if spec is None or not payload.get("startup_id"):
         return
     startup_id = uuid.UUID(str(payload["startup_id"]))
-    # PRD 20.2: a recipient who switched this category's in-app delivery off does not get the row
-    # at all (critical types and types with no row are always delivered).
-    user_ids = [
-        u
-        for u in spec.recipients(db, payload)
-        if in_app_enabled(db, user_id=u, startup_id=startup_id, event=event)
-    ]
-    if not user_ids:
-        return
-    rows = create_notifications(
-        db,
-        user_ids=user_ids,
-        startup_id=startup_id,
-        type=event,
-        title=spec.title(payload),
-        body=spec.body(payload),
-        data=payload,
-    )
+    visible: list[uuid.UUID] = []
+    hidden: list[uuid.UUID] = []
+    for u in spec.recipients(db, payload):
+        if in_app_enabled(db, user_id=u, startup_id=startup_id, event=event):
+            visible.append(u)
+        elif email_route(db, user_id=u, startup_id=startup_id, event=event) != "skip":
+            # PRD 20.2: In app off hides the row from the inbox, but the Email switch is
+            # independent, so the row still exists (hidden) for email and the digest to use.
+            hidden.append(u)
+    rows: list[Any] = []
+    for group, is_hidden in ((visible, False), (hidden, True)):
+        if group:
+            rows += create_notifications(
+                db,
+                user_ids=group,
+                startup_id=startup_id,
+                type=event,
+                title=spec.title(payload),
+                body=spec.body(payload),
+                data=payload,
+                hidden=is_hidden,
+            )
     for n in rows:
         route = email_route(db, user_id=n.user_id, startup_id=n.startup_id, event=event)
         if route == "now":

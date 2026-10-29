@@ -46,6 +46,7 @@ def create_notifications(
     title: str,
     body: str,
     data: dict[str, Any],
+    hidden: bool = False,
 ) -> list[Notification]:
     rows = [
         Notification(
@@ -55,11 +56,14 @@ def create_notifications(
             title=title,
             body=body,
             data=dict(data),
+            hidden=hidden,
         )
         for uid in user_ids
     ]
     db.add_all(rows)
     db.flush()
+    if hidden:
+        return rows  # not in the inbox, so nothing to push to it
     pending = db.info.setdefault("pending_realtime", [])
     for n in rows:
         pending.append(
@@ -91,6 +95,7 @@ def list_notifications(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
             audience_filter(role),
+            Notification.hidden.is_(False),
             _archive_clause(archived),
             _filter_clause(filter_),
         )
@@ -139,6 +144,7 @@ def unread_count(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
             audience_filter(role),
+            Notification.hidden.is_(False),
             Notification.archived_at.is_(None),
             Notification.read_at.is_(None),
         )
@@ -157,7 +163,7 @@ def mark_read(
     row = (
         db.query(Notification)
         .filter_by(id=notification_id, user_id=user_id, startup_id=startup_id)
-        .filter(audience_filter(role))
+        .filter(audience_filter(role), Notification.hidden.is_(False))
         .first()
     )
     if row is None:
@@ -177,6 +183,7 @@ def mark_all_read(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
             audience_filter(role),
+            Notification.hidden.is_(False),
             Notification.archived_at.is_(None),
             Notification.read_at.is_(None),
         )
@@ -192,7 +199,7 @@ def _owned(
     row = (
         db.query(Notification)
         .filter_by(id=nid, user_id=user_id, startup_id=startup_id)
-        .filter(audience_filter(role))
+        .filter(audience_filter(role), Notification.hidden.is_(False))
         .first()
     )
     if row is None:
@@ -234,6 +241,7 @@ def counts(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
             audience_filter(role),
+            Notification.hidden.is_(False),
             Notification.archived_at.is_(None),
         )
         .group_by(Notification.type, Notification.read_at.is_(None))
@@ -261,6 +269,7 @@ def counts(
             Notification.user_id == user_id,
             Notification.startup_id == startup_id,
             audience_filter(role),
+            Notification.hidden.is_(False),
             Notification.archived_at.isnot(None),
         )
         .count()

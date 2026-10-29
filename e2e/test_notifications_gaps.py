@@ -92,7 +92,7 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
             "roadmap.milestone.due_soon",
             {"milestone_id": "m1", "title": "Validate demand", "relative": "tomorrow"},
         )
-        _publish(wid, "roadmap.milestone.overdue", {"milestone_id": "m2"})
+        _publish(wid, "finance.invoice.overdue", {"number": "INV-2026-002"})
         _publish(wid, "finance.runway.low", {})
         _publish(wid, "finance.invoice.paid", {"number": "INV-2026-001"})
 
@@ -139,9 +139,7 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
         capture(g, "preferences_unknown_category", r)
         before = c.get(f"{n}/counts", headers=wh).json()["data"]["all"]
         _publish(wid, "mission.completed", {})  # roadmap_missions category: now switched off
-        _publish(
-            wid, "roadmap.milestone.overdue", {"milestone_id": "m3"}
-        )  # critical: still arrives
+        _publish(wid, "finance.runway.low", {})  # critical: still arrives
         r = c.get(f"{n}/counts", headers=wh)
         assert r.json()["data"]["all"] == before + 1
         capture(g, "counts_after_in_app_off", r)
@@ -165,7 +163,9 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
         # Flush the live emails queued so far (a tick before 23:59 UTC is not digest time yet).
         _tick_and_drain(datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0))
         before_mail = mailbox.count_for(u["email"])
-        _publish(wid, "finance.invoice.paid", {"number": "INV-2026-001"})  # held for the digest, not emailed live
+        _publish(
+            wid, "finance.invoice.paid", {"number": "INV-2026-001"}
+        )  # held for the digest, not emailed live
         _tick_and_drain(datetime.now(UTC).replace(hour=23, minute=59, second=30, microsecond=0))
         assert mailbox.count_for(u["email"]) == before_mail + 1
         msg = mailbox.latest_for(u["email"])

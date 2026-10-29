@@ -51,25 +51,25 @@ Chip mapping (PRD 20.1 plus the designed Unread / Urgent): **All, Unread, Urgent
 Urgent filters to the critical types. Mentions = comments that mention you. AI = briefing, plans, suggestions, insights, re-plans, course
 recommendations. Deadlines = milestone due / overdue, invoice overdue, quarterly assessment. Billing = every `billing.*` type.
 
-Example, `filter=urgent` (two critical rows in the journey: runway low and milestone overdue):
+Example, `filter=urgent` (two critical rows in the journey: runway low and an overdue invoice):
 
 ```json
 {
   "data": {
     "notifications": [
       {
-        "id": "34f63573-8ce3-462e-a10b-506a114367e3",
+        "id": "d9a8b74d-077e-48bc-b283-f1f997016c75",
         "type": "finance.runway.low",
         "title": "Runway below 6 months, review recommended",
         "body": "Open Finance",
         "data": {
-          "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
         },
         "read": false,
         "archived": false,
         "priority": "critical",
         "module": "finance",
-        "created_at": "2026-10-29T20:27:53.650219+00:00"
+        "created_at": "2026-10-29T20:35:40.575193+00:00"
       },
       "... more rows, same shape ..."
     ],
@@ -112,19 +112,19 @@ or a type your role cannot see.
 ```json
 {
   "data": {
-    "id": "aad25ee0-df5e-474f-9750-fb43a18d2df3",
+    "id": "1ff4de43-680d-4a17-8801-51c6277046d9",
     "type": "finance.invoice.paid",
     "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
     "body": "View invoice",
     "data": {
       "number": "INV-2026-001",
-      "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+      "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
     },
     "read": true,
     "archived": true,
     "priority": "normal",
     "module": "finance",
-    "created_at": "2026-10-29T20:27:53.654747+00:00"
+    "created_at": "2026-10-29T20:35:40.580061+00:00"
   },
   "meta": null
 }
@@ -134,19 +134,19 @@ or a type your role cannot see.
   "data": {
     "notifications": [
       {
-        "id": "aad25ee0-df5e-474f-9750-fb43a18d2df3",
+        "id": "1ff4de43-680d-4a17-8801-51c6277046d9",
         "type": "finance.invoice.paid",
         "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
         "body": "View invoice",
         "data": {
           "number": "INV-2026-001",
-          "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+          "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
         },
         "read": true,
         "archived": true,
         "priority": "normal",
         "module": "finance",
-        "created_at": "2026-10-29T20:27:53.654747+00:00"
+        "created_at": "2026-10-29T20:35:40.580061+00:00"
       }
     ],
     "next_cursor": null
@@ -165,19 +165,19 @@ or a type your role cannot see.
 ```json
 {
   "data": {
-    "id": "aad25ee0-df5e-474f-9750-fb43a18d2df3",
+    "id": "1ff4de43-680d-4a17-8801-51c6277046d9",
     "type": "finance.invoice.paid",
     "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
     "body": "View invoice",
     "data": {
       "number": "INV-2026-001",
-      "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+      "startup_id": "54281b0e-c712-45ee-a839-2818cc02cf33"
     },
     "read": true,
     "archived": false,
     "priority": "normal",
     "module": "finance",
-    "created_at": "2026-10-29T20:27:53.654747+00:00"
+    "created_at": "2026-10-29T20:35:40.580061+00:00"
   },
   "meta": null
 }
@@ -317,9 +317,7 @@ non-critical notifications of that row from being created at all** (existing row
         "key": "roadmap_missions",
         "title": "Roadmap & missions",
         "description": "Re-plans, milestones, missions and streaks.",
-        "critical_types": [
-          "roadmap.milestone.overdue"
-        ]
+        "critical_types": []
       },
       {
         "key": "health_assessment",
@@ -417,7 +415,7 @@ non-critical notifications of that row from being created at all** (existing row
     "urgent_unread": 3,
     "mentions": 0,
     "ai": 1,
-    "deadlines": 3,
+    "deadlines": 2,
     "billing": 0,
     "archived": 0
   },
@@ -425,7 +423,7 @@ non-critical notifications of that row from being created at all** (existing row
 }
 ```
 
-(The count above rose by exactly one: the switched-off mission notification was not created and the critical milestone alert was.)
+(The count above rose by exactly one: the switched-off mission notification is hidden and the critical runway alert is shown.)
 
 ## 5. Digest and quiet hours settings
 
@@ -483,9 +481,7 @@ non-critical notifications of that row from being created at all** (existing row
         "key": "roadmap_missions",
         "title": "Roadmap & missions",
         "description": "Re-plans, milestones, missions and streaks.",
-        "critical_types": [
-          "roadmap.milestone.overdue"
-        ]
+        "critical_types": []
       },
       {
         "key": "health_assessment",
@@ -575,8 +571,8 @@ non-critical notifications of that row from being created at all** (existing row
 ```json
 {
   "subject": "Acme Labs: your daily Cofoundaz digest",
-  "to": "delivered+e2e-eaa34b3529cb@resend.dev",
-  "body": "<div style=\"font-family:system-ui,sans-serif;max-width:560px\"><h2>Your daily digest</h2><h3>Finance (2)</h3><ul><li>Invoice paid: INV-2026-001 \ud83c\udf89</li><li>Invoice paid: INV-2026-001 \ud83c\udf89</li></ul><h3>Missions (1)</h3><ul><li>Your mission for today is ready</li></ul><h3>Roadmap (1)</h3><ul><li>Milestone due soon: Validate demand, tomorrow</li></ul><p><a href=\"http://localhost:3000/notifications\">Open your notifications</a></p><hr><p style=\"font-size:12px;color:#666\">Urgent alerts always arrive straight away, so they are not repeated here. Change this in your notification settings.</p></div>"
+  "to": "delivered+e2e-d02ae9ea7b89@resend.dev",
+  "body": "<div style=\"font-family:system-ui,sans-serif;max-width:560px\"><h2>Your daily digest</h2><h3>Finance (2)</h3><ul><li>Invoice paid: INV-2026-001 \ud83c\udf89</li><li>Invoice paid: INV-2026-001 \ud83c\udf89</li></ul><h3>Missions (2)</h3><ul><li>Today&#x27;s mission is complete</li><li>Your mission for today is ready</li></ul><h3>Roadmap (1)</h3><ul><li>Milestone due soon: Validate demand, tomorrow</li></ul><p><a href=\"http://localhost:3000/notifications\">Open your notifications</a></p><hr><p style=\"font-size:12px;color:#666\">Urgent alerts always arrive straight away, so they are not repeated here. Change this in your notification settings.</p></div>"
 }
 ```
 

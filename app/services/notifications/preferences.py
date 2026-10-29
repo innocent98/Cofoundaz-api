@@ -151,8 +151,8 @@ def email_route(
     """How one notification reaches the recipient's inbox: "now", "digest" (batched) or "skip".
 
     Critical types always go "now" (PRD 20.2/20.3: they bypass the digest and quiet hours).
-    Everything else needs the master switch and its category's email switch, is held back during
-    quiet hours (in-app is unaffected) and joins the digest when the user chose one.
+    Everything else needs the master switch and its category's email switch, is skipped during
+    quiet hours (in-app is unaffected; the item stays in the inbox and a digest) and joins the digest when the user chose one.
     """
     if is_critical(event):
         return "now"

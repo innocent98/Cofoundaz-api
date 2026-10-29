@@ -48,9 +48,7 @@
         "key": "roadmap_missions",
         "title": "Roadmap & missions",
         "description": "Re-plans, milestones, missions and streaks.",
-        "critical_types": [
-          "roadmap.milestone.overdue"
-        ]
+        "critical_types": []
       },
       {
         "key": "health_assessment",

@@ -24,6 +24,7 @@ from app.services.notifications.categories import CRITICAL_TYPES, category_for, 
 from app.services.notifications.preferences import email_enabled
 
 TOP_PER_MODULE = 3
+MAX_ITEMS = 200  # newest first; a very long window still yields a small email
 MAX_WINDOW = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
 
 
@@ -66,15 +67,14 @@ def _gather(db: Session, row: NotificationPreference, since: datetime) -> list[N
             audience_filter(role),
         )
         .order_by(Notification.created_at.desc())
+        .limit(MAX_ITEMS)
         .all()
     )
-    return [
-        n
-        for n in items
-        if email_enabled(
-            db, user_id=row.user_id, startup_id=row.startup_id, category=category_for(n.type)
-        )
-    ]
+    enabled = {
+        c: email_enabled(db, user_id=row.user_id, startup_id=row.startup_id, category=c)
+        for c in {category_for(n.type) for n in items}
+    }
+    return [n for n in items if enabled[category_for(n.type)]]
 
 
 def render(startup_name: str, mode: str, items: list[Notification]) -> tuple[str, str]:

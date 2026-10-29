@@ -187,9 +187,9 @@ def test_preferences_expose_groups_in_app_and_lock_metadata(client, db):
     assert bad.status_code == 422
 
 
-def test_in_app_off_drops_non_critical_but_never_critical(db):
+def test_in_app_off_hides_the_row_but_email_is_independent(client, db):
     registry.register()
-    u, s, _h = _member(db)
+    u, s, h = _member(db)
     set_preferences(
         db,
         user_id=u.id,
@@ -198,11 +198,50 @@ def test_in_app_off_drops_non_critical_but_never_critical(db):
         categories=None,
         in_app={"finance": False, "roadmap_missions": False},
     )
-    event_bus.publish(db, "finance.runway.low", {"startup_id": str(s.id)})
-    event_bus.publish(db, "finance.invoice.paid", {"startup_id": str(s.id)})
+    db.commit()
+    event_bus.publish(db, "finance.runway.low", {"startup_id": str(s.id)})  # critical: visible
+    event_bus.publish(
+        db, "finance.invoice.paid", {"startup_id": str(s.id)}
+    )  # in-app off, email off
+    event_bus.publish(db, "mission.ready", {"startup_id": str(s.id)})  # in-app off, email ON
+    db.commit()
+    stored = {(n.type, n.hidden) for n in db.query(Notification).filter_by(user_id=u.id).all()}
+    # No row at all when both channels are off; a hidden row when email still wants it.
+    assert stored == {("finance.runway.low", False), ("mission.ready", True)}
+    # The hidden row feeds email, and is invisible everywhere in the inbox.
+    assert db.query(Job).filter_by(type="email.notification").count() == 2
+    assert _titles(client, h) == ["Runway below 6 months, review recommended"]
+    assert client.get(_api("/counts"), headers=h).json()["data"]["all"] == 1
+    assert client.get(_api("/unread-count"), headers=h).json()["data"]["unread"] == 1
+    hidden = db.query(Notification).filter_by(user_id=u.id, hidden=True).one()
+    assert client.post(_api(f"/{hidden.id}/archive"), headers=h).status_code == 404
+    assert client.post(_api(f"/{hidden.id}/read"), headers=h).status_code == 404
+
+
+def test_hidden_rows_still_reach_the_digest(db, sender):
+    registry.register()
+    u, s, _h = _member(db)
+    s.name = "Acme"
+    set_preferences(
+        db,
+        user_id=u.id,
+        startup_id=s.id,
+        master_email=None,
+        categories=None,
+        in_app={"roadmap_missions": False},
+        schedule={"digest_mode": "daily"},
+    )
     event_bus.publish(db, "mission.ready", {"startup_id": str(s.id)})
-    types = {n.type for n in db.query(Notification).filter_by(user_id=u.id).all()}
-    assert types == {"finance.runway.low"}  # critical stays; the switched-off categories are gone
+    assert db.query(Notification).filter_by(user_id=u.id, hidden=True).count() == 1
+    assert digest.send_digest(db, user_id=u.id, startup_id=s.id, now=datetime.now(UTC)) is True
+    assert "Your mission for today is ready" in sender.sent[0].html
+
+
+def test_milestone_overdue_is_not_critical(client, db):
+    # Its recipients are every member, so it must stay opt-outable (review finding).
+    from app.services.notifications.categories import is_critical
+
+    assert not is_critical("roadmap.milestone.overdue")
 
 
 # ---------------------------------------------------------------- email routing
