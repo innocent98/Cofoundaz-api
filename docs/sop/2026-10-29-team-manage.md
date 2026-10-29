@@ -26,7 +26,7 @@ revoked, and a Documents grant outlived the membership it was issued for.
 ## What's involved
 
 `app/services/team/members.py` (new), `app/api/v1/endpoints/team.py`, `app/schemas/team.py`, `app/services/onboarding/invites.py` (audit rows, re-invite fix).
-Tests `tests/api/test_team_manage.py` (26). Live `e2e/test_team_manage.py`, captures `e2e/_captures/team_manage/`.
+Tests `tests/api/test_team_manage.py` (25). Live `e2e/test_team_manage.py`, captures `e2e/_captures/team_manage/`.
 
 ## Verification
 
