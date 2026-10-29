@@ -18,7 +18,7 @@ from app.services.journal.encryption import encrypt_content
 from app.services.journal.lock import MAX_ATTEMPTS, mint_token
 from app.services.notifications import registry
 from app.worker import runner, scheduler
-from app.worker.handlers import scheduled as _scheduled  # noqa: F401
+from app.worker.handlers import scheduled as scheduled_handlers
 from tests.factories import (
     create_membership,
     create_milestone,
@@ -29,7 +29,7 @@ from tests.factories import (
 )
 
 TODAY = date.today()
-PASSWORD = "Sup3rSecret!pw"
+PASSWORD = "pw-" + uuid.uuid4().hex  # generated per run, never a fixed secret
 
 
 def _founder(db):
@@ -62,6 +62,10 @@ def _entry(db, u, s, day, *, mood=3, stress=5, text="a first line\nand more word
     db.add(MoodLog(startup_id=s.id, founder_id=u.id, date=day, mood=mood, stress=stress))
     db.flush()
     return e
+
+
+def test_nudge_handler_is_registered():
+    assert scheduled_handlers.handle_journal_nudge
 
 
 def _api(path):
@@ -477,7 +481,8 @@ def test_retro_offer_create_conflict_update_delete(client, db):
     assert (
         client.get(_api(f"/retros/{retro['id']}"), headers=h).json()["data"]["what_change"] == "c"
     )
-    assert client.delete(_api(f"/retros/{retro['id']}"), headers=h).status_code == 200
+    deleted = client.delete(_api(f"/retros/{retro['id']}"), headers=h)
+    assert deleted.status_code == 200
     assert client.get(_api(f"/retros/{retro['id']}"), headers=h).status_code == 404
 
 

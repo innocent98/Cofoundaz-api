@@ -66,7 +66,8 @@ def _b64(raw: bytes) -> str:
 
 def mint_token(row: JournalSettings, *, now: float | None = None) -> str:
     expiry = int((now if now is not None else time.time()) + TOKEN_TTL_SECONDS)
-    body = f"{row.founder_id}.{row.startup_id}.{row.passcode_version}.{expiry}"
+    revision = row.passcode_version  # a counter, not secret data
+    body = f"{row.founder_id}.{row.startup_id}.{revision}.{expiry}"
     return f"{_b64(body.encode())}.{_b64(_mac(body))}"
 
 

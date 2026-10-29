@@ -176,7 +176,6 @@ def test_journal_gaps_journey(base_url, make_verified_user, capture, capture_jso
         capture(g, "passcode_too_short", r)
         r = c.put(f"{j}/passcode", headers=wh, json={"passcode": PASSCODE})
         assert r.status_code == 200
-        token = r.json()["data"]["token"]
         capture_json(g, "passcode_set", _redacted(r))
         r = c.get(f"{j}/entries", headers=wh)
         assert r.status_code == 423 and r.json()["error"]["code"] == "JOURNAL_LOCKED"
@@ -253,7 +252,9 @@ def test_journal_gaps_journey(base_url, make_verified_user, capture, capture_jso
         capture(g, "entries_after_delete", r)
 
         # 9. Opt-in evening reminder: the scheduler fires it, the bell shows it.
-        assert c.put(f"{j}/settings", headers=wh, json={"evening_reminder": True}).status_code == 200
+        assert (
+            c.put(f"{j}/settings", headers=wh, json={"evening_reminder": True}).status_code == 200
+        )
         _tick(datetime.now(UTC).replace(hour=22, minute=0, second=0, microsecond=0))
         _drain()
         notes = c.get("/api/v1/notifications", headers=wh)
