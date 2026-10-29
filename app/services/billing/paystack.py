@@ -7,7 +7,9 @@ returned or put in an exception message.
 
 import hashlib
 import hmac
+import re
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -31,6 +33,22 @@ class PaystackUnavailable(AppError):  # noqa: N818
 class PaystackRejected(AppError):  # noqa: N818
     code, http_status = "PAYSTACK_REJECTED", 502
     message = "Our payment provider couldn't complete that. Nothing was charged."
+
+
+# The exact shape flows.reference_for() mints. Anything else never reaches Paystack: the reference
+# arrives from the checkout callback's query string and is interpolated into a URL path.
+REFERENCE_RE = re.compile(r"^cfz_(checkout|card|addon|upgrade)_[0-9a-f]{20}$")
+
+
+class InvalidReference(AppError):  # noqa: N818
+    code, http_status = "INVALID_REFERENCE", 422
+    message = "That payment reference isn't valid."
+
+
+def check_reference(reference: str) -> str:
+    if not isinstance(reference, str) or not REFERENCE_RE.fullmatch(reference):
+        raise InvalidReference()
+    return reference
 
 
 def secret_key() -> str:
@@ -134,7 +152,8 @@ def initialize(
 
 
 def verify(reference: str) -> dict[str, Any]:
-    return _data(_request("GET", f"/transaction/verify/{reference}"))
+    safe = quote(check_reference(reference), safe="")
+    return _data(_request("GET", f"/transaction/verify/{safe}"))
 
 
 def charge_authorization(

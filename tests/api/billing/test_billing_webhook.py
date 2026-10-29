@@ -52,9 +52,8 @@ def test_unconfigured_server_fails_closed(client, db, monkeypatch):
 
     monkeypatch.setattr(settings, "PAYSTACK_SECRET_KEY", None)
     raw = b'{"event":"charge.success","data":{}}'
-    assert (
-        client.post(W, content=raw, headers={"x-paystack-signature": sign(raw)}).status_code == 401
-    )
+    resp = client.post(W, content=raw, headers={"x-paystack-signature": sign(raw)})
+    assert resp.status_code == 401
 
 
 def test_live_key_refused_outside_production(client, db, monkeypatch):
@@ -68,12 +67,10 @@ def test_live_key_refused_outside_production(client, db, monkeypatch):
     assert r.status_code == 503 and r.json()["error"]["code"] == "BILLING_NOT_CONFIGURED"
     monkeypatch.setattr(settings, "PAYSTACK_SECRET_KEY", None)
     monkeypatch.setattr(settings, "PAYSTACK_TEST_SECRET_KEY", None)
-    assert (
-        client.post(
-            f"{B}/subscription/checkout", json={"plan": "growth", "interval": "monthly"}, headers=h
-        ).status_code
-        == 503
+    resp = client.post(
+        f"{B}/subscription/checkout", json={"plan": "growth", "interval": "monthly"}, headers=h
     )
+    assert resp.status_code == 503
 
 
 def test_charge_success_activates_and_a_redelivery_is_a_noop(client, db):
@@ -117,17 +114,14 @@ def test_unknown_reference_and_other_events_are_acknowledged_and_ignored(client,
         resp = client.post(W, content=body, headers={"x-paystack-signature": sign(body)})
         assert resp.status_code == 200 and resp.json()["data"]["outcome"] == "ignored_malformed"
     garbage = b"not json"
-    assert (
-        client.post(W, content=garbage, headers={"x-paystack-signature": sign(garbage)}).status_code
-        == 401
-    )
+    resp = client.post(W, content=garbage, headers={"x-paystack-signature": sign(garbage)})
+    assert resp.status_code == 401
 
 
 def test_oversized_bodies_are_rejected(client, db):
     big = b"x" * (300 * 1024)
-    assert (
-        client.post(W, content=big, headers={"x-paystack-signature": sign(big)}).status_code == 401
-    )
+    resp = client.post(W, content=big, headers={"x-paystack-signature": sign(big)})
+    assert resp.status_code == 401
 
 
 def test_renewal_extends_the_period_once(client, db):
@@ -277,40 +271,34 @@ def test_subscription_lifecycle_events(client, db):
     _active(client, db, h)
     sub = db.query(BillingSubscription).filter_by(startup_id=startup.id).one()
     code = sub.paystack_subscription_code
-    assert (
-        post_event(
-            client,
-            "subscription.create",
-            {
-                "subscription_code": "SUB_other",
-                "email_token": "t",
-                "customer": {"customer_code": sub.paystack_customer_code},
-            },
-        ).json()["data"]["outcome"]
-        == "ignored_not_current"
-    )
-    assert (
-        post_event(
-            client,
-            "subscription.create",
-            {
-                "subscription_code": code,
-                "email_token": "fresh",
-                "customer": {"customer_code": sub.paystack_customer_code},
-            },
-        ).json()["data"]["outcome"]
-        == "linked"
-    )
+    out = post_event(
+        client,
+        "subscription.create",
+        {
+            "subscription_code": "SUB_other",
+            "email_token": "t",
+            "customer": {"customer_code": sub.paystack_customer_code},
+        },
+    ).json()["data"]["outcome"]
+    assert out == "ignored_not_current"
+    out = post_event(
+        client,
+        "subscription.create",
+        {
+            "subscription_code": code,
+            "email_token": "fresh",
+            "customer": {"customer_code": sub.paystack_customer_code},
+        },
+    ).json()["data"]["outcome"]
+    assert out == "linked"
     db.refresh(sub)
     assert sub.paystack_email_token == "fresh"
-    assert (
-        post_event(
-            client,
-            "subscription.create",
-            {"subscription_code": "x", "customer": {"customer_code": "CUS_none"}},
-        ).json()["data"]["outcome"]
-        == "ignored_no_subscription"
-    )
+    out = post_event(
+        client,
+        "subscription.create",
+        {"subscription_code": "x", "customer": {"customer_code": "CUS_none"}},
+    ).json()["data"]["outcome"]
+    assert out == "ignored_no_subscription"
     assert (
         post_event(client, "subscription.not_renew", {"subscription_code": code}).json()["data"][
             "outcome"

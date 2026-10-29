@@ -55,7 +55,8 @@ def test_non_founders_get_the_founder_message(client, db, role):
         r = client.get(f"{B}{path}", headers=h)
         assert r.status_code == 403, path
         assert r.json()["error"]["message"] == "Billing is managed by your workspace founder."
-    assert client.post(f"{B}/subscription/cancel", json={}, headers=h).status_code == 403
+    resp = client.post(f"{B}/subscription/cancel", json={}, headers=h)
+    assert resp.status_code == 403
 
 
 def test_new_workspace_is_on_starter_with_no_trial_when_enforcement_is_off(client, db):
@@ -80,14 +81,14 @@ def test_checkout_returns_a_link_and_replays_the_same_one(client, db):
 
 def test_checkout_validation(client, db):
     _, _, h = workspace(db)
-    assert _checkout(client, h, "starter").status_code == 422
-    assert _checkout(client, h, "nope").status_code == 404
-    assert (
-        client.post(
-            f"{B}/subscription/checkout", json={"plan": "growth", "interval": "weekly"}, headers=h
-        ).status_code
-        == 422
+    starter = _checkout(client, h, "starter")
+    assert starter.status_code == 422
+    unknown = _checkout(client, h, "nope")
+    assert unknown.status_code == 404
+    resp = client.post(
+        f"{B}/subscription/checkout", json={"plan": "growth", "interval": "weekly"}, headers=h
     )
+    assert resp.status_code == 422
 
 
 def test_callback_verify_activates_the_plan_once(client, db):
@@ -108,10 +109,8 @@ def test_callback_verify_activates_the_plan_once(client, db):
     sub = db.query(BillingSubscription).filter_by(startup_id=startup.id).one()
     assert sub.paystack_subscription_code and sub.paystack_email_token
     assert db.query(Notification).filter(Notification.type == "billing.plan.changed").count() == 1
-    assert (
-        client.get(f"{B}/subscription/verify", params={"reference": ref}, headers=h).status_code
-        == 200
-    )
+    resp = client.get(f"{B}/subscription/verify", params={"reference": ref}, headers=h)
+    assert resp.status_code == 200
 
 
 def test_abandoned_checkout_stays_free(client, db):
@@ -129,14 +128,12 @@ def test_verify_of_another_workspaces_reference_is_404(client, db):
     _, _, h1 = workspace(db)
     _, _, h2 = workspace(db)
     ref = _checkout(client, h1).json()["data"]["reference"]
-    assert (
-        client.get(f"{B}/subscription/verify", params={"reference": ref}, headers=h2).status_code
-        == 404
+    resp = client.get(f"{B}/subscription/verify", params={"reference": ref}, headers=h2)
+    assert resp.status_code == 404
+    resp = client.get(
+        f"{B}/subscription/verify", params={"reference": "cfz_checkout_" + "0" * 20}, headers=h1
     )
-    assert (
-        client.get(f"{B}/subscription/verify", params={"reference": "nope"}, headers=h1).status_code
-        == 404
-    )
+    assert resp.status_code == 404  # well-formed but unknown
 
 
 def test_already_subscribed_cannot_checkout_again(client, db):
@@ -313,7 +310,8 @@ def test_trial_is_once_and_expires(client, db):
     db.flush()
     d = client.get(f"{B}/subscription", headers=h).json()["data"]
     assert d["plan"]["key"] == "starter" and d["status"] == "free"
-    assert client.post(f"{B}/trial", headers=h).status_code == 409
+    resp = client.post(f"{B}/trial", headers=h)
+    assert resp.status_code == 409
 
 
 def test_enforcement_starts_the_one_trial_for_existing_workspaces(client, db, monkeypatch):
@@ -346,14 +344,18 @@ def test_cards_default_remove_and_last_card_rule(client, db):
     db.flush()
     cards = client.get(f"{B}/payment-methods", headers=h).json()["data"]
     second = next(c["id"] for c in cards if c["last4"] == "1111")
-    assert client.put(f"{B}/payment-methods/{second}/default", headers=h).status_code == 200
+    resp = client.put(f"{B}/payment-methods/{second}/default", headers=h)
+    assert resp.status_code == 200
     cards = client.get(f"{B}/payment-methods", headers=h).json()["data"]
     assert cards[0]["id"] == second and cards[0]["is_default"] and not cards[1]["is_default"]
-    assert client.delete(f"{B}/payment-methods/{second}", headers=h).status_code == 200
+    resp = client.delete(f"{B}/payment-methods/{second}", headers=h)
+    assert resp.status_code == 200
     left = client.get(f"{B}/payment-methods", headers=h).json()["data"]
     assert [c["id"] for c in left] == [first] and left[0]["is_default"] is True
-    assert client.delete(f"{B}/payment-methods/{second}", headers=h).status_code == 404
-    assert client.put(f"{B}/payment-methods/{second}/default", headers=h).status_code == 404
+    resp = client.delete(f"{B}/payment-methods/{second}", headers=h)
+    assert resp.status_code == 404
+    resp = client.put(f"{B}/payment-methods/{second}/default", headers=h)
+    assert resp.status_code == 404
 
 
 def test_add_card_checks_with_50_naira_and_refunds(client, db):
@@ -384,18 +386,15 @@ def test_addon_purchase_adds_credits_and_an_invoice(client, db):
     )
     inv = client.get(f"{B}/invoices", headers=h).json()["data"]
     assert inv[0]["kind"] == "addon" and inv[0]["amount_minor"] == 800_000
-    assert client.post(f"{B}/addons/nope/purchase", headers=h).status_code == 404
+    resp = client.post(f"{B}/addons/nope/purchase", headers=h)
+    assert resp.status_code == 404
     assert client.get(f"{B}/addons", headers=h).json()["data"]["tokens_per_credit"] == 50
 
 
 def test_addon_idempotency_key_is_bound_to_its_operation(client, db):
     _, _, h = workspace(db)
-    assert (
-        client.post(
-            f"{B}/addons/credits_2000/purchase", headers={**h, "Idempotency-Key": "z"}
-        ).status_code
-        == 200
-    )
+    resp = client.post(f"{B}/addons/credits_2000/purchase", headers={**h, "Idempotency-Key": "z"})
+    assert resp.status_code == 200
     other = client.post(f"{B}/addons/credits_10000/purchase", headers={**h, "Idempotency-Key": "z"})
     assert other.status_code == 409
 
@@ -424,10 +423,8 @@ def test_invoice_pdf_and_details(client, db):
         and pdf.content.startswith(b"%PDF")
         and pdf.headers["content-type"] == "application/pdf"
     )
-    assert (
-        client.get(f"{B}/invoices/00000000-0000-0000-0000-000000000000/pdf", headers=h).status_code
-        == 404
-    )
+    resp = client.get(f"{B}/invoices/00000000-0000-0000-0000-000000000000/pdf", headers=h)
+    assert resp.status_code == 404
 
 
 def test_invoices_are_scoped_to_the_workspace(client, db):
@@ -437,7 +434,8 @@ def test_invoices_are_scoped_to_the_workspace(client, db):
     assert len(client.get(f"{B}/invoices", headers=h1).json()["data"]) == 1
     assert client.get(f"{B}/invoices", headers=h2).json()["data"] == []
     inv = db.query(BillingInvoice).one()
-    assert client.get(f"{B}/invoices/{inv.id}/pdf", headers=h2).status_code == 404
+    resp = client.get(f"{B}/invoices/{inv.id}/pdf", headers=h2)
+    assert resp.status_code == 404
 
 
 def test_usage_meters_and_the_90_percent_alert_fires_once(client, db):
@@ -548,7 +546,8 @@ def test_removing_the_last_card_is_blocked_even_while_canceling_and_resume_needs
     _subscribe(client, db, h)
     client.post(f"{B}/subscription/cancel", json={}, headers=h)
     card = client.get(f"{B}/payment-methods", headers=h).json()["data"][0]["id"]
-    assert client.delete(f"{B}/payment-methods/{card}", headers=h).status_code == 409
+    resp = client.delete(f"{B}/payment-methods/{card}", headers=h)
+    assert resp.status_code == 409
     db.query(BillingPaymentMethod).filter_by(startup_id=startup.id).delete()
     db.flush()
     r = client.post(f"{B}/subscription/resume", headers=h)

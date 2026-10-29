@@ -869,6 +869,7 @@ def purchase_addon(
 def verify_reference(db: Session, startup_id: uuid.UUID, reference: str) -> dict[str, Any]:
     """The callback return: ask Paystack for the truth about one of OUR references and apply it.
     Never trusts query-string status; another workspace's reference is a 404."""
+    paystack.check_reference(reference)
     op = _existing_op(db, reference)
     if op is None or op.startup_id != startup_id:
         raise AppError("NOT_FOUND", "Not found.", 404)
