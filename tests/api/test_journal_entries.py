@@ -101,7 +101,7 @@ def test_future_dated_entry_is_rejected(client, db):
     _u, _s, h = _founder(db)
     db.commit()
 
-    tomorrow = (TODAY + timedelta(days=1)).isoformat()
+    tomorrow = (TODAY + timedelta(days=2)).isoformat()  # one day of timezone slack is allowed
     r = client.post("/api/v1/journal/entries", json=_body(date=tomorrow), headers=h)
     assert r.status_code == 422, r.text
 
@@ -142,7 +142,7 @@ def test_prompt_today_shape_unchanged_and_enqueues(client, db):
 
     first = client.get("/api/v1/journal/prompts/today", headers=h)
     assert first.status_code == 200, first.text
-    assert set(first.json()["data"].keys()) == {"prompt"}
+    assert set(first.json()["data"].keys()) == {"prompt", "dismissed"}
     assert isinstance(first.json()["data"]["prompt"], str)
     assert first.json()["data"]["prompt"]
 

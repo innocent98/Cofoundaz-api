@@ -1,0 +1,49 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "3e159768-b736-4b2d-829d-6db36d7246b7",
+      "title": "Seed round intro",
+      "event_date": "2026-11-01",
+      "end_date": null,
+      "start_time": "10:00",
+      "end_time": "11:00",
+      "timezone": "Africa/Lagos",
+      "location": "Lagos office",
+      "video_url": "https://meet.example.com/seed-intro",
+      "description": null,
+      "visibility": "team",
+      "created_by": "3d130cd3-1f95-4602-b63e-e3e836950abe",
+      "agenda": "1. Traction\n2. Ask",
+      "assistant_enabled": true,
+      "assistant_state": "ready",
+      "assistant_error": null,
+      "summary": "[stub-llm] summary",
+      "decisions": [
+        "[stub-llm] decisions"
+      ],
+      "action_items": [
+        {
+          "id": "20fe6283",
+          "title": "[stub-llm] action_items",
+          "task_id": null,
+          "assignee_id": null
+        }
+      ],
+      "has_transcript": true,
+      "summarised_at": "2026-10-29T15:08:13.554639+00:00",
+      "attendees": [
+        {
+          "email": "guest-14f871@example.com",
+          "name": "Guest Investor",
+          "user_id": null,
+          "internal": false,
+          "invite_state": "sent"
+        }
+      ],
+      "can_manage": true,
+      "transcript": "We agreed to send the data room Monday. Ada will update the cap table by Friday. We agreed to send the data room Monday. Ada will update the cap table by Friday."
+    },
+    "meta": null
+  }
+}

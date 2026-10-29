@@ -31,7 +31,7 @@ digest email.
 
 `app/services/notifications/{categories,preferences,service,registry,digest}.py`, `app/api/v1/endpoints/notifications.py` (+ `counts`, `archive`,
 `restore`), `app/schemas/notification.py`, `app/db/models/{notification,notification_preference}.py`, `app/worker/{scheduler,handlers/scheduled,handlers/email}.py`,
-migration `0081` (chained after `0077` today; Journal `0080`, Billing `0078`, Calendar `0079` merge first: re-chain before merging). Tests:
+migration `0081` (chained after Journal `0080_journal_gaps`). Tests:
 `tests/api/test_notifications_gaps.py` (17) plus updated `test_preferences.py`, `test_learning_notifications.py`, `test_sales_notifications.py`
 (the "in-app only, no category" assertions became "opt-in category, email default off"). Live: `e2e/test_notifications_gaps.py`,
 captures in `e2e/_captures/notifications_gaps/`.
@@ -44,7 +44,7 @@ server, including a digest email built by the scheduler and sent by the worker. 
 
 ## Operate / roll back
 
-No new env vars. The digest uses the existing email backend. `alembic downgrade 0077_settings_notif_schedule` drops the three columns (revert the code
+No new env vars. The digest uses the existing email backend. `alembic downgrade 0080_journal_gaps` drops the three columns (revert the code
 first). **Behaviour change to expect:** critical alerts now email (they were in-app only before), and the five original categories keep their email
 defaults. If a critical type proves noisy, remove it from `CRITICAL_TYPES`.
 

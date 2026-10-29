@@ -257,6 +257,9 @@ def test_calendar_journey(base_url, make_verified_user, capture):
                 "status",
                 "calendar_status",
                 "progress",
+                "days_left",
+                "tasks_done",
+                "tasks_total",
             }
             assert row["status"] in {"todo", "in_progress", "done"}
             assert row["calendar_status"] in {

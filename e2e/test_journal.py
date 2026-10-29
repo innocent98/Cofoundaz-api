@@ -83,7 +83,7 @@ def test_journal_journey(base_url, make_verified_user, capture):
         prompt = c.get("/api/v1/journal/prompts/today", headers=wh)
         assert prompt.status_code == 200, prompt.text
         assert prompt.json()["data"]["prompt"]
-        assert set(prompt.json()["data"].keys()) == {"prompt"}
+        assert set(prompt.json()["data"].keys()) == {"prompt", "dismissed"}
         capture("journal", "prompts_today", prompt)
 
         # 1b. Seed an operational signal for the AI prompt (gather_prompt_context grounds
@@ -103,7 +103,7 @@ def test_journal_journey(base_url, make_verified_user, capture):
         _drain()
         ai_prompt = c.get("/api/v1/journal/prompts/today", headers=wh)
         assert ai_prompt.status_code == 200, ai_prompt.text
-        assert set(ai_prompt.json()["data"].keys()) == {"prompt"}
+        assert set(ai_prompt.json()["data"].keys()) == {"prompt", "dismissed"}
         assert "[stub-llm]" in ai_prompt.json()["data"]["prompt"]
         capture("journal", "prompt_today_ai", ai_prompt)
 

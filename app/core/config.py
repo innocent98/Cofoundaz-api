@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     API_PUBLIC_URL: str = ""
     # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.
     PAYMENT_PROVIDER_STUB: bool = False
+
+    # Cofoundaz Billing (subscriptions) is Adebayo's own Paystack account, separate from the
+    # per-founder keys in Finance. PAYSTACK_SECRET_KEY wins; PAYSTACK_TEST_SECRET_KEY is the
+    # test-mode fallback. A live key is refused outside production (billing/paystack.py).
+    PAYSTACK_SECRET_KEY: str | None = None
+    PAYSTACK_TEST_SECRET_KEY: str | None = None
+    # Plan gating is built dark: nothing is blocked until this is switched on (D-SET-3 / D-SAL-11).
+    PLAN_ENFORCEMENT: bool = False
+    BILLING_TRIAL_DAYS: int = 14
+    BILLING_GRACE_DAYS: int = 7
     # Mono bank link (Finance integrations). The secret key and webhook secret belong to the
     # Cofoundaz Mono app, not to a founder: only the linked account id is per-founder (and is
     # encrypted with FINANCE_CONNECTIONS_ENCRYPTION_KEY). Sandbox only unless MONO_ALLOW_LIVE.
@@ -44,6 +54,13 @@ class Settings(BaseSettings):
     MONO_PUBLIC_KEY: str | None = None
     MONO_WEBHOOK_SECRET: str | None = None
     MONO_ALLOW_LIVE: bool = False
+    # Google Calendar sync (per-user OAuth). The client id/secret belong to the Cofoundaz Google
+    # app; each user's own tokens are Fernet-encrypted (FINANCE_CONNECTIONS_ENCRYPTION_KEY).
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Dev/e2e only: answer every Google call from an in-process fake (never reachable in production).
+    CALENDAR_PROVIDER_STUB: bool = False
+    CALENDAR_SYNC_INTERVAL_MINUTES: int = 15
     FINANCE_SYNC_BACKFILL_DAYS: int = 90
     FINANCE_SYNC_MAX_PAGES: int = 20
     FINANCE_SYNC_MIN_INTERVAL_SECONDS: int = 30

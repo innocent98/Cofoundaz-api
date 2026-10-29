@@ -64,6 +64,14 @@ def _with_roles(db: Session, startup_id: Any, roles: frozenset[MembershipRole]) 
     return [r[0] for r in rows]
 
 
+def _journal_owner(db: Session, payload: dict) -> list[uuid.UUID]:
+    """The one founder whose journal nudge this is (still an active founder of the workspace)."""
+    if not payload.get("founder_id"):
+        return []
+    owner = uuid.UUID(str(payload["founder_id"]))
+    return [u for u in _with_roles(db, payload["startup_id"], FOUNDER_ROLES) if u == owner]
+
+
 def _audience(
     event: str, *, minus_actor: bool = True
 ) -> Callable[[Session, dict], list[uuid.UUID]]:
@@ -204,6 +212,30 @@ def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
 
+def _payload_users(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Calendar events name their recipients; keep only people still active in the workspace."""
+    wanted = {uuid.UUID(str(u)) for u in payload.get("user_ids", [])}
+    actor = _actor({"actor_id": payload.get("actor_id")})
+    active = set(_active_member_ids(db, payload["startup_id"], exclude=None))
+    return [u for u in wanted if u in active and u != actor]
+
+
+def _calendar_reminder_title(p: dict) -> str:
+    from app.services.calendar.reminders import human_offset
+
+    title, offset = p.get("title") or "an event", int(p.get("offset_minutes") or 0)
+    if p.get("kind") == "meeting":
+        return f"Meeting starting in {human_offset(offset)}: {title}"
+    noun = "Milestone" if p.get("kind") == "milestone" else "Deadline"
+    if offset == 1440:
+        return (
+            f"{noun} deadline tomorrow: {title}"
+            if noun == "Milestone"
+            else f"Deadline tomorrow: {title}"
+        )
+    return f"{noun} in {human_offset(offset)}: {title}"
+
+
 @dataclass(frozen=True)
 class NotifSpec:
     recipients: Callable[[Session, dict], list[uuid.UUID]]
@@ -224,7 +256,46 @@ def _s(
 # (app/services/onboarding/invites.py::accept_invitation) publishes
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
+def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Billing is the founder's: only active founders hear about payments, usage and plan changes."""
+    return _with_roles(db, payload["startup_id"], FOUNDER_ROLES)
+
+
 SPECS: dict[str, NotifSpec] = {
+    # PRD 19 notifications. In-app only (no email category). `user_ids` is chosen by the sender.
+    "calendar.reminder": NotifSpec(
+        _payload_users, _calendar_reminder_title, lambda _p: "Open calendar"
+    ),
+    "calendar.meeting.invited": NotifSpec(
+        _payload_users,
+        lambda p: f"You're invited: {p.get('title') or 'a meeting'} · {p.get('date') or ''}".rstrip(
+            " ·"
+        ),
+        lambda _p: "Open meeting",
+    ),
+    "calendar.meeting.summary_ready": NotifSpec(
+        _payload_users,
+        lambda p: (
+            f"Meeting summary ready: {p.get('title') or 'your meeting'}"
+            f" · {int(p.get('action_item_count') or 0)} action items"
+        ),
+        lambda _p: "Review actions",
+    ),
+    "billing.payment.failed": NotifSpec(
+        _founders,
+        lambda _p: "Payment failed. Update your payment method",
+        lambda p: f"Fix it within {p.get('grace_days', 7)} days to keep your plan.",
+    ),
+    "billing.usage.threshold": NotifSpec(
+        _founders,
+        lambda _p: "You've used 90% of your AI credits for this cycle",
+        lambda _p: "Add credits",
+    ),
+    "billing.plan.changed": NotifSpec(
+        _founders,
+        lambda p: f"Plan changed to {str(p.get('to', '')).capitalize()}",
+        lambda _p: "View plan",
+    ),
     "document.shared": NotifSpec(
         _document_shared,
         lambda p: (
@@ -341,6 +412,17 @@ SPECS: dict[str, NotifSpec] = {
         lambda p: f"New pattern detected in customer feedback: {p.get('theme') or 'a new theme'}",
         lambda _p: "See insight",
     ),
+    # Journal nudges (PRD 21.4 + design): generic copy, never any entry content. In-app only.
+    "journal.reminder": NotifSpec(
+        _journal_owner,
+        lambda _p: "A quiet moment for your journal",
+        lambda _p: "You have not written today. Two minutes is enough.",
+    ),
+    "journal.prompt.daily": NotifSpec(
+        _journal_owner,
+        lambda _p: "Today's journal prompt is ready",
+        lambda _p: "",
+    ),
     "roadmap.milestone.due_soon": NotifSpec(
         _all_active_members,
         lambda p: (
@@ -399,7 +481,9 @@ SPECS: dict[str, NotifSpec] = {
     # PRD 23 notifications copy: only the mentioned member is notified.
     "team.comment.mentioned": NotifSpec(
         lambda _db, p: [uuid.UUID(str(p["user_id"]))] if p.get("user_id") else [],
-        lambda p: f'You were mentioned by {p.get("author_name") or "a teammate"}: "{p.get("snippet", "")}"',
+        lambda p: (
+            f'You were mentioned by {p.get("author_name") or "a teammate"}: "{p.get("snippet", "")}"'
+        ),
         lambda p: p.get("entity_title") or "",
     ),
     "kpi.threshold.crossed": NotifSpec(

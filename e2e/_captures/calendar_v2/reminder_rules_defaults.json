@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "rules": [
+        {
+          "kind": "milestone",
+          "offsets_minutes": [
+            10080,
+            1440
+          ],
+          "is_default": true,
+          "default_offsets_minutes": [
+            10080,
+            1440
+          ]
+        },
+        {
+          "kind": "compliance",
+          "offsets_minutes": [
+            20160,
+            10080,
+            1440
+          ],
+          "is_default": true,
+          "default_offsets_minutes": [
+            20160,
+            10080,
+            1440
+          ]
+        },
+        {
+          "kind": "meeting",
+          "offsets_minutes": [
+            15
+          ],
+          "is_default": true,
+          "default_offsets_minutes": [
+            15
+          ]
+        }
+      ],
+      "can_edit": true
+    },
+    "meta": null
+  }
+}

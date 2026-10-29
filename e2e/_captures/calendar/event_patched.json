@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "932c1784-512a-47e0-94a3-e1078572fadb",
+    "id": "dbff0b38-24ea-43d4-b341-bd259ad87845",
     "title": "Partner call, Sahel Fund",
     "type": "meeting",
     "event_date": "2026-10-15",
@@ -8,9 +8,14 @@
     "end_time": "12:45",
     "all_day": false,
     "description": "Bring the latest traction deck.",
-    "created_by": "496bf9e0-877c-4b01-9a03-1a7cab410afb",
-    "created_at": "2026-10-12T10:41:51.831723Z",
-    "updated_at": "2026-10-12T10:41:51.953694Z"
+    "end_date": null,
+    "timezone": "Africa/Lagos",
+    "location": null,
+    "video_url": null,
+    "visibility": "team",
+    "created_by": "9514af4b-a702-439a-ab7e-0de998a3d336",
+    "created_at": "2026-10-29T15:08:09.755051Z",
+    "updated_at": "2026-10-29T15:08:09.935736Z"
   },
   "meta": null
 }

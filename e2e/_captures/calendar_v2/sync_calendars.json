@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "calendars": [
+        {
+          "id": "primary",
+          "name": "founder.stub@gmail.example",
+          "primary": true,
+          "writable": true
+        },
+        {
+          "id": "team@group.calendar.stub",
+          "name": "Team calendar",
+          "primary": false,
+          "writable": true
+        },
+        {
+          "id": "holidays#stub@group.v.calendar.google.com",
+          "name": "Holidays",
+          "primary": false,
+          "writable": false
+        }
+      ],
+      "selected": "primary"
+    },
+    "meta": null
+  }
+}

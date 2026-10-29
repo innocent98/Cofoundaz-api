@@ -2345,6 +2345,23 @@ plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
       cap on the events list · `tasksInfo`, `AgendaItemData.subtitle` and the quarter-count header
       (no backend source) — see SOP Follow-ups
 
+### Module 19 — Calendar: PRD completion, BE (2026-10-27, branch `feature/calendar-be`, migration `0079_calendar_meetings_sync`)
+
+_Gap list `cofoundaz/docs/checklist/calendar-prd-gaps.md` (rows B1 to B13). Decisions D-CAL-1 to D-CAL-9 there. SOP
+`docs/sop/2026-10-27-calendar-be-meetings-sync.md`, FE guide `docs/fe-integration-guide-calendar-v2.md`. The earlier "Deferred" items
+for multi-day events, external sync and the reminder scheduler are now built (below). PR pending._
+
+- [x] Feed `GET /calendar/feed?date_from&date_to&layers` (milestone, compliance (empty until Legal), meeting, team, marketing, external, busy), 366-day cap
+- [x] Event fields: `end_date`, `timezone`, `location`, `video_url`, `visibility` (private = creator + invitees)
+- [x] Meetings: CRUD, attendees (internal by email match, external), agenda, invites with `.ics` (REQUEST/CANCEL, SEQUENCE), invited-only read for other roles
+- [x] AI summary (D-CAL-1, no bot): paste notes, summary + decisions + action items, per-item assignee, "Add all to tasks", retry after a failure
+- [x] Reminder rules (PRD defaults, founder edits, reset) + scheduler scan + 3 notifications (`calendar.reminder`, `.meeting.invited`, `.meeting.summary_ready`)
+- [x] Google sync: per-user OAuth with signed single-use state, Fernet tokens, refresh, `needs_attention`, pull (incremental + 410 resync), push (hash diff, edit, delete), direction + calendar picker, Sync now, disconnect + revoke, 15-minute worker job
+- [x] Milestones: `days_left`, `tasks_done/total`, `summary`
+- [x] Tests: 81 new (sync 32, meetings 26, feed/reminders 23) + live e2e `e2e/test_calendar_meetings_sync.py` against the in-process Google fake
+- [ ] **Real Google round trip with a test user** (cannot run headless; Adebayo) and Google verification (D-CAL-3)
+- [ ] _Deferred:_ Outlook sync (paths reserved), meeting bot, compliance layer data (Legal), dashboard Upcoming and global search reading the feed (B14), recurring events
+
 **Dev-environment note (2026-10-06):** the local dev database was still stamped `0038_validation`,
 the number Module 09 carried on its branch before being renumbered to `0041_validation` at merge,
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
@@ -3260,6 +3277,7 @@ fan-out are unit-verified only (no live capture).
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 20 — Notifications PRD gaps (FE hand-off pass)** — **built 2026-10-29** on `feature/notifications-be-gaps` (migration `0081_notifications_gaps`; PR pending): server filters + counts, priority/module on rows, archive/restore, per-category In app + Email grid with locked critical alerts, working digest and quiet hours. SOP `docs/sop/2026-10-29-notifications-prd-gaps.md`, FE guide `docs/fe-integration-guide-notifications-inbox.md`.
+- [x] **Module 23 — Team page (light, PRD overridden 2026-10-29)** — **built** on `feature/team-be-gaps` (no migration; PR pending): role change, remove, leave, invitation list / resend / revoke, Documents grants revoked on removal, Audit tab + CSV, comments index. Tasks, Directory and the grants matrix deliberately not built. SOP `docs/sop/2026-10-29-team-manage.md`, FE guide `docs/fe-integration-guide-team.md`.
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 10 — Marketing Hub** — *✅ ALL 5 SLICES BUILT — MODULE 10 COMPLETE (2026-09-29)*: Slice 1
       (Content Calendar + Channels + Overview CRUD spine, migration
@@ -3320,6 +3338,7 @@ follow the established async-upgrade pattern (templated fallback written synchro
       `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
       `docs/fe-integration-guide-learning-recommendations.md`. Per-course reasons +
       Health-Score-weighted sort key remain unbuilt follow-ups.
+- [x] **Module 21 — Journal PRD gaps (FE hand-off pass)** — **built 2026-10-29** on `feature/journal-be-gaps` (migration `0080_journal_gaps`; PR pending): by-date read, richer list + month filter, stats, mood range + annotations, rule-based insights + supportive card, prompt dismiss + library, settings, optional passcode lock (`423 JOURNAL_LOCKED`), export, permanent delete, retros, opt-in reminder notifications. SOP `docs/sop/2026-10-29-journal-prd-gaps.md`, FE guide `docs/fe-integration-guide-journal.md` (regenerated from live captures). FE: hand-off brief `cofoundaz/docs/fe-handoff/journal.md`.
 - [x] **Module 21 — AI context-aware journal prompts** — **shipped 2026-09-23** as the daily
       `prompt` upgrade (static→AI on `GET /journal/prompts/today`, grounded only in operational
       signals — never journal content or mood; migration `0032_journal_prompts`,
@@ -3718,7 +3737,11 @@ Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
       `docs/fe-integration-guide-settings.md`, SOP `docs/sop/2026-10-27-settings-be-account.md`)
   - [x] Tests first (53), e2e journey + captures
   - [ ] FE sub-session + live re-walk of every control (1440 + 375, every role)
-- [ ] (b) Billing BE on Paystack (plans, checkout, webhook with HMAC, subscription state, usage, invoices, cards, add-ons, plan gate)
-  - [ ] Waiting on D-SET-1 to 7 (defaults in the gap list)
+- [x] (b) Billing BE on Paystack, built to the recommended defaults (branch `feature/settings-billing`, migration 0078, guide
+      `docs/fe-integration-guide-settings-billing.md`, SOP `docs/sop/2026-10-27-settings-be-billing.md`); D-SET-1 to 14 accepted by Adebayo 2026-10-29
+  - [x] Plans, checkout + callback verify, HMAC-verified idempotent webhook, subscription state (trial/grace/cancel/scheduled downgrade), prorated upgrade
+  - [x] Usage meters, invoices + PDF receipts, cards, credit-pack add-ons, billing details, notifications, plan gate (dark) on Sales outreach
+  - [x] Opus review of webhook/money/plan-gate paths, findings fixed
+  - [ ] Live Paystack round trip (hosted checkout, real charge, real webhook delivery); FE sub-session + re-walk; flip `PLAN_ENFORCEMENT`
 - [ ] Deferred: digest sender + quiet hours enforcement; account deletion/export; AI preferences/memory; SMS 2FA
 

@@ -1,7 +1,7 @@
 """Notifications: archive, per-category in-app switches, digest bookkeeping
 
 Revision ID: 0081_notifications_gaps
-Revises: 0077_settings_notif_schedule
+Revises: 0080_journal_gaps
 Create Date: 2026-10-29
 
 notifications.archived_at (inbox archive / restore), notifications.hidden (in-app switched off), notification_preferences.in_app (in-app
@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
 
 revision = "0081_notifications_gaps"
-down_revision = "0077_settings_notif_schedule"
+down_revision = "0080_journal_gaps"
 branch_labels = None
 depends_on = None
 

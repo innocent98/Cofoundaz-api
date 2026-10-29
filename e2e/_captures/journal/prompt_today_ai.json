@@ -1,6 +1,7 @@
 {
   "data": {
-    "prompt": "[stub-llm] prompt"
+    "prompt": "[stub-llm] prompt",
+    "dismissed": false
   },
   "meta": null
 }

@@ -1,0 +1,11 @@
+{
+  "data": {
+    "kind": "downgrade",
+    "amount_due_minor": 0,
+    "credit_minor": 0,
+    "effective": "period_end",
+    "currency": "NGN",
+    "keeps_until": "2026-11-27T13:31:40.439611+00:00"
+  },
+  "meta": null
+}

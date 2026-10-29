@@ -28,6 +28,9 @@ CORE_ROLES: frozenset[MembershipRole] = frozenset(
 FOUNDER_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
 
 AUDIENCE: dict[str, frozenset[MembershipRole]] = {
+    "billing.payment.failed": FOUNDER_ROLES,
+    "billing.usage.threshold": FOUNDER_ROLES,
+    "billing.plan.changed": FOUNDER_ROLES,
     "mission.ready": MISSION_ROLES,
     "mission.completed": MISSION_ROLES,
     "mission.streak.milestone": MISSION_ROLES,
@@ -55,6 +58,8 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "sales.deal.won": SALES_ROLES,
     "sales.deal.stalled": SALES_ROLES,
     "sales.sending.paused": FOUNDER_ROLES,
+    "journal.reminder": FOUNDER_ROLES,  # the journal is founder-only (PRD 21)
+    "journal.prompt.daily": FOUNDER_ROLES,
 }
 
 # The audience of this type depends on its payload: payload["audience"] == "finance" opens it to

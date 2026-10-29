@@ -62,6 +62,11 @@ export FINANCE_CONNECTIONS_ENCRYPTION_KEY="${FINANCE_CONNECTIONS_ENCRYPTION_KEY:
 export PAYMENT_PROVIDER_STUB="true"
 export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
 export API_PUBLIC_URL="${E2E_BASE_URL}"
+# Cofoundaz Billing (Paystack subscriptions): a throwaway test-mode key generated per run, exported to
+# BOTH the server and the pytest process (the journey signs its webhook with it). It always wins over a
+# developer's real key in .env, and the stubbed HTTP above answers api.paystack.co, so no run reaches Paystack.
+export PAYSTACK_SECRET_KEY="sk_test_e2e_$(poetry run python -c 'import secrets; print(secrets.token_hex(12))')"
+export PAYSTACK_TEST_SECRET_KEY=""
 # Mono bank link: fake sandbox-shaped values, set explicitly so a developer's real sandbox keys
 # in .env are never used (process env beats the env file) and no run can reach Mono. The
 # stubbed HTTP above answers api.withmono.com; the webhook secret is what the journey signs with.
@@ -69,6 +74,13 @@ export MONO_SECRET_KEY="test_sk_e2e_stub_key"
 export MONO_PUBLIC_KEY="test_pk_e2e_stub_key"
 export MONO_WEBHOOK_SECRET="e2e-mono-webhook-secret"
 export MONO_ALLOW_LIVE="false"
+
+# Calendar sync: the e2e server AND the in-process worker drain answer every Google call from the
+# in-process fake (app/services/calendar/stub_transport.py). The client id/secret are placeholders;
+# nothing here can reach Google, and a developer's real values in .env are overridden.
+export CALENDAR_PROVIDER_STUB="true"
+export GOOGLE_CLIENT_ID="e2e-google-client-id.apps.example"
+export GOOGLE_CLIENT_SECRET="placeholder-not-a-real-secret"
 
 # Sales outreach: the e2e server and test process must NEVER reach a real mailbox, even when a
 # developer's .env holds the cPanel settings. Blank values win over .env (process env beats the

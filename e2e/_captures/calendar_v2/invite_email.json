@@ -1,0 +1,8 @@
+{
+  "to": "<guest placeholder>",
+  "subject": "Ada Founder invited you: Seed round intro \u00b7 01 Nov 2026",
+  "html": "<p>Ada Founder invited you to a meeting.</p><p><strong>Seed round intro</strong><br>Sun 01 Nov 2026, 10:00 (Africa/Lagos)<br>Lagos office</p><p><a href=\"https://meet.example.com/seed-intro\">Join the call</a></p>",
+  "attachments": [
+    "invite.ics"
+  ]
+}

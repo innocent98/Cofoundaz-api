@@ -3,13 +3,31 @@ from app.db.models.ai_chat import AiConversation, AiMessage  # noqa: F401
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401
+from app.db.models.billing import (  # noqa: F401
+    BillingAddonPurchase,
+    BillingDetails,
+    BillingInvoice,
+    BillingOperation,
+    BillingPaymentMethod,
+    BillingPlan,
+    BillingSubscription,
+    BillingWebhookEvent,
+)
 from app.db.models.budget import Budget  # noqa: F401
 from app.db.models.business import (  # noqa: F401
     BusinessCanvas,
     BusinessCanvasVersion,
     BusinessRecord,
 )
-from app.db.models.calendar import CalendarEvent  # noqa: F401
+from app.db.models.calendar import (  # noqa: F401
+    CalendarAttendee,
+    CalendarConnection,
+    CalendarEvent,
+    CalendarEventLink,
+    CalendarExternalEvent,
+    CalendarMeeting,
+    CalendarReminderRule,
+)
 from app.db.models.comment import Comment  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
 from app.db.models.document import Document  # noqa: F401
@@ -27,7 +45,13 @@ from app.db.models.health_score import (  # noqa: F401
 from app.db.models.invitation import Invitation  # noqa: F401
 from app.db.models.invoice import Invoice  # noqa: F401
 from app.db.models.job import Job  # noqa: F401
-from app.db.models.journal import JournalEntry, JournalPrompt, MoodLog  # noqa: F401
+from app.db.models.journal import (  # noqa: F401
+    JournalEntry,
+    JournalPrompt,
+    JournalRetro,
+    JournalSettings,
+    MoodLog,
+)
 from app.db.models.kpi_snapshot import KpiSnapshot  # noqa: F401
 from app.db.models.learning import (  # noqa: F401
     AcademyArticle,

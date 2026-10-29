@@ -1,0 +1,54 @@
+{
+  "data": {
+    "exported_at": "2026-10-29T20:07:49.877291+00:00",
+    "entries": [
+      {
+        "date": "2026-10-24",
+        "mood": "rough",
+        "stress": 9,
+        "content": "Day 1 first line\nSecond line about pricing and runway."
+      },
+      {
+        "date": "2026-10-25",
+        "mood": "meh",
+        "stress": 8,
+        "content": "Day 2 first line\nSecond line about pricing and runway."
+      },
+      {
+        "date": "2026-10-26",
+        "mood": "okay",
+        "stress": 7,
+        "content": "Day 3 first line\nSecond line about pricing and runway."
+      },
+      {
+        "date": "2026-10-27",
+        "mood": "good",
+        "stress": 6,
+        "content": "Day 4 first line\nSecond line about pricing and runway."
+      },
+      {
+        "date": "2026-10-28",
+        "mood": "good",
+        "stress": 5,
+        "content": "Day 5 first line\nSecond line about pricing and runway."
+      },
+      {
+        "date": "2026-10-29",
+        "mood": "great",
+        "stress": 4,
+        "content": "Day 6 first line\nSecond line about pricing and runway."
+      }
+    ],
+    "retros": [
+      {
+        "milestone_title": "Validate demand",
+        "created_at": "2026-10-29T20:07:49.792315+00:00",
+        "updated_at": "2026-10-29T20:07:49.848690+00:00",
+        "what_worked": "a",
+        "what_didnt": "b",
+        "what_change": "c"
+      }
+    ]
+  },
+  "meta": null
+}
