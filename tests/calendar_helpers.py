@@ -4,10 +4,11 @@ pointed at the in-process fake (never a real endpoint), and an email sender that
 from datetime import UTC, datetime
 from urllib.parse import parse_qs, urlparse
 
-import app.worker.handlers.calendar  # noqa: F401  (registers the calendar job handlers)
+from app.worker.handlers import calendar as _calendar_handlers  # registers the job handlers
 from tests.documents_helpers import headers
 
 BASE = "/api/v1/calendar"
+HANDLERS_LOADED = bool(_calendar_handlers.JOB_SYNC)
 
 
 def h(user, startup):

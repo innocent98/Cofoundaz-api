@@ -80,12 +80,7 @@ def test_feed_range_rules(client, cal):
     assert _feed(client, startup, users[F], d1=TODAY - timedelta(days=1)).status_code == 422
     assert _feed(client, startup, users[F], d1=TODAY + timedelta(days=400)).status_code == 422
     assert _feed(client, startup, users[F], layers="nonsense").status_code == 422
-    assert (
-        client.get(
-            f"{BASE}/feed", headers=h(users[F], startup[0] if False else startup)
-        ).status_code
-        == 422
-    )
+    assert client.get(f"{BASE}/feed", headers=h(users[F], startup)).status_code == 422
     assert _feed(client, startup, users[MENTOR]).status_code == 403
 
 
@@ -134,15 +129,12 @@ def test_private_events_stay_private(client, cal):
         client.get(f"{BASE}/events", headers=h(users[TM], startup)).json()["data"]["events"] == []
     )
     assert client.get(f"{BASE}/events/{p['id']}", headers=h(users[TM], startup)).status_code == 404
-    assert (
-        client.patch(
-            f"{BASE}/events/{p['id']}", headers=h(users[TM], startup), json={"title": "x"}
-        ).status_code
-        == 404
+    resp = client.patch(
+        f"{BASE}/events/{p['id']}", headers=h(users[TM], startup), json={"title": "x"}
     )
-    assert (
-        client.delete(f"{BASE}/events/{p['id']}", headers=h(users[TM], startup)).status_code == 404
-    )
+    assert resp.status_code == 404
+    resp = client.delete(f"{BASE}/events/{p['id']}", headers=h(users[TM], startup))
+    assert resp.status_code == 404
 
 
 def test_event_roundtrips_new_fields(client, cal):
@@ -167,19 +159,17 @@ def test_event_roundtrips_new_fields(client, cal):
         "team",
         None,
     )
-    assert (
-        client.post(
-            f"{BASE}/events",
-            headers=h(users[F], startup),
-            json={
-                "title": "x",
-                "type": "task",
-                "event_date": "2026-11-03",
-                "timezone": "Nope/Zone",
-            },
-        ).status_code
-        == 422
+    resp = client.post(
+        f"{BASE}/events",
+        headers=h(users[F], startup),
+        json={
+            "title": "x",
+            "type": "task",
+            "event_date": "2026-11-03",
+            "timezone": "Nope/Zone",
+        },
     )
+    assert resp.status_code == 422
 
 
 def test_milestones_have_days_left_and_task_counts(client, db, cal):
@@ -222,14 +212,12 @@ def test_rules_default_edit_and_reset(client, cal):
         and by["meeting"]["is_default"] is True
     )
     # Only the founder edits.
-    assert (
-        client.put(
-            f"{BASE}/reminder-rules/meeting",
-            headers=h(users[TM], startup),
-            json={"offsets_minutes": [5]},
-        ).status_code
-        == 403
+    resp = client.put(
+        f"{BASE}/reminder-rules/meeting",
+        headers=h(users[TM], startup),
+        json={"offsets_minutes": [5]},
     )
+    assert resp.status_code == 403
     put = client.put(
         f"{BASE}/reminder-rules/meeting",
         headers=h(users[F], startup),
@@ -257,24 +245,18 @@ def test_rules_default_edit_and_reset(client, cal):
 )
 def test_rule_validation(client, cal, body):
     startup, users, _ = cal
-    assert (
-        client.put(
-            f"{BASE}/reminder-rules/meeting", headers=h(users[F], startup), json=body
-        ).status_code
-        == 422
-    )
+    resp = client.put(f"{BASE}/reminder-rules/meeting", headers=h(users[F], startup), json=body)
+    assert resp.status_code == 422
 
 
 def test_unknown_rule_kind_is_422(client, cal):
     startup, users, _ = cal
-    assert (
-        client.put(
-            f"{BASE}/reminder-rules/nonsense",
-            headers=h(users[F], startup),
-            json={"offsets_minutes": [5]},
-        ).status_code
-        == 422
+    resp = client.put(
+        f"{BASE}/reminder-rules/nonsense",
+        headers=h(users[F], startup),
+        json={"offsets_minutes": [5]},
     )
+    assert resp.status_code == 422
 
 
 # ---------- the scan ----------

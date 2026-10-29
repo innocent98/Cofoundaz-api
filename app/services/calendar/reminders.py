@@ -212,7 +212,7 @@ def scan(db: Session, now: datetime) -> list[ReminderDue]:
             out.append(
                 ReminderDue(
                     sid,
-                    f"ms-{m.id}:{o}",
+                    f"milestone-{m.id}:{o}",
                     "milestone",
                     "roadmap_milestone",
                     m.id,

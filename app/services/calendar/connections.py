@@ -8,6 +8,7 @@ connection row, so a captured callback URL cannot be replayed or used by another
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,7 @@ from app.core.errors import (
     NotFound,
     TokenInvalid,
 )
+from app.core.logger import log
 from app.db.models.calendar import (
     CalendarConnection,
     CalendarEventLink,
@@ -124,7 +126,8 @@ def status(db: Session, *, user_id: uuid.UUID) -> dict[str, Any]:
 def nonce_cookie_value(nonce: str) -> str:
     """What the browser must present at the callback: binds the consent to the browser that
     started it (stops login-CSRF, where an attacker's connect URL is completed by a victim)."""
-    return hashlib.sha256(nonce.encode()).hexdigest()
+    # Keyed, so the cookie value cannot be derived from the nonce without the server secret.
+    return hmac.new(settings.SECRET_KEY.encode(), nonce.encode(), hashlib.sha256).hexdigest()
 
 
 def start_connect(
@@ -320,8 +323,9 @@ def wipe(db: Session, conn: CalendarConnection) -> int:
     try:
         if conn.refresh_ciphertext:
             google.revoke(decrypt_token(conn.refresh_ciphertext))
-    except AppError:
-        pass
+    except AppError as exc:
+        # Unreadable or unconfigured token: nothing to revoke, and the wipe below still proceeds.
+        log.info(f"[calendar] revoke skipped for connection {conn.id}: {exc.code}")
     removed = db.query(CalendarExternalEvent).filter_by(connection_id=conn.id).delete()
     db.query(CalendarEventLink).filter_by(connection_id=conn.id).delete()
     conn.status = "disconnected"

@@ -142,12 +142,11 @@ def test_deleting_a_meeting_cancels_for_invited_externals(client, db, cal):
     startup, users, sender = cal
     m = _create(client, startup, users[F], attendees=[{"email": "a@client.com"}])
     runner.run_once(db)
-    assert (
-        client.delete(f"{BASE}/meetings/{m['id']}", headers=h(users[F], startup)).status_code == 200
-    )
+    resp = client.delete(f"{BASE}/meetings/{m['id']}", headers=h(users[F], startup))
+    assert resp.status_code == 200
     runner.run_once(db)
     assert [x.subject.split(":")[0] for x in sender.sent] == [
-        "Test Founder invited you" if False else sender.sent[0].subject.split(":")[0],
+        sender.sent[0].subject.split(":")[0],
         "Cancelled",
     ]
     assert client.get(f"{BASE}/meetings/{m['id']}", headers=h(users[F], startup)).status_code == 404
@@ -208,25 +207,18 @@ def test_roles_and_invited_only_access(client, db, cal):
             == []
         )
     # Invited or not, only founders/team members write.
-    assert (
-        client.patch(mine, headers=h(users[MENTOR], startup), json={"title": "x"}).status_code
-        == 403
+    resp = client.patch(mine, headers=h(users[MENTOR], startup), json={"title": "x"})
+    assert resp.status_code == 403
+    resp = client.delete(mine, headers=h(users[MENTOR], startup))
+    assert resp.status_code == 403
+    resp = client.post(f"{BASE}/meetings", headers=h(users[MENTOR], startup), json=meeting_body())
+    assert resp.status_code == 403
+    resp = client.post(
+        f"{BASE}/meetings/{m['id']}/assistant",
+        headers=h(users[MENTOR], startup),
+        json={"transcript": "x" * 40},
     )
-    assert client.delete(mine, headers=h(users[MENTOR], startup)).status_code == 403
-    assert (
-        client.post(
-            f"{BASE}/meetings", headers=h(users[MENTOR], startup), json=meeting_body()
-        ).status_code
-        == 403
-    )
-    assert (
-        client.post(
-            f"{BASE}/meetings/{m['id']}/assistant",
-            headers=h(users[MENTOR], startup),
-            json={"transcript": "x" * 40},
-        ).status_code
-        == 403
-    )
+    assert resp.status_code == 403
 
 
 def test_cross_workspace_meeting_is_404(client, db, cal):
@@ -236,12 +228,10 @@ def test_cross_workspace_meeting_is_404(client, db, cal):
     m = _create(client, startup, users[F])
     other, ousers = team(db, name="Other")
     assert client.get(f"{BASE}/meetings/{m['id']}", headers=h(ousers[F], other)).status_code == 404
-    assert (
-        client.patch(
-            f"{BASE}/meetings/{m['id']}", headers=h(ousers[F], other), json={"title": "x"}
-        ).status_code
-        == 404
+    resp = client.patch(
+        f"{BASE}/meetings/{m['id']}", headers=h(ousers[F], other), json={"title": "x"}
     )
+    assert resp.status_code == 404
 
 
 def test_private_meeting_hidden_from_other_managers_unless_invited(client, db, cal):
@@ -347,11 +337,7 @@ def test_assistant_summary_and_add_to_tasks(client, db, cal):
     bad = client.patch(
         f"{BASE}/meetings/{m['id']}/action-items/{item['id']}",
         headers=h(users[F], startup),
-        json={
-            "assignee_id": (
-                str(users[MENTOR].id) if False else "00000000-0000-0000-0000-000000000000"
-            )
-        },
+        json={"assignee_id": ("00000000-0000-0000-0000-000000000000")},
     )
     assert bad.status_code == 422
     add = client.post(
@@ -415,14 +401,12 @@ def test_assistant_disabled_and_short_notes(client, db, cal):
     )
     assert r.status_code == 409 and r.json()["error"]["code"] == "ASSISTANT_DISABLED"
     on = _create(client, startup, users[F])
-    assert (
-        client.post(
-            f"{BASE}/meetings/{on['id']}/assistant",
-            headers=h(users[F], startup),
-            json={"transcript": "short"},
-        ).status_code
-        == 422
+    resp = client.post(
+        f"{BASE}/meetings/{on['id']}/assistant",
+        headers=h(users[F], startup),
+        json={"transcript": "short"},
     )
+    assert resp.status_code == 422
 
 
 def test_assistant_over_budget_fails_cleanly(client, db, cal, monkeypatch):

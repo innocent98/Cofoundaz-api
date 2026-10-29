@@ -203,7 +203,7 @@ def push(db: Session, conn: CalendarConnection, access: str) -> int:
             try:
                 google.delete_event(access, conn.calendar_id, stale.external_id)
             except google.GoogleNotFound:
-                pass
+                log.info(f"[calendar] copy {stale.external_id} already gone from Google")
             db.delete(stale)
             del links[event_id]
     for ev in pushable:

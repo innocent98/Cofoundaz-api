@@ -107,7 +107,7 @@ all). Layers: `milestone`, `compliance` (always empty until Legal ships; the tog
             "id": "08d2feb0-680a-48cb-86ae-c2ef1ae77c6f"
           },
           "private": false,
-          "id": "ms-08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
+          "id": "milestone-08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
           "layer": "milestone",
           "kind": "milestone",
           "title": "Validate demand",
@@ -143,7 +143,7 @@ Field notes (these are the nesting traps):
 - `start_time`/`end_time` are null with `all_day: true` (milestones, marketing items carry `start_time` and `all_day: false`).
 - `ref` tells the drawer what to open: `{"type": "event"|"milestone"|"marketing_post"|"external", "id"}`. `milestone` opens in
   Roadmap, `marketing_post` in Marketing; only `event` is editable here. `ref` is **null** on `busy` items.
-- A milestone's `id` is `ms-<uuid>` and a marketing item's `mk-<uuid>`: use `ref.id` for the real id.
+- A milestone's `id` is `milestone-<uuid>` and a marketing item's `marketing-<uuid>`: use `ref.id` for the real id.
 - `status` is set only for `milestone` (`on_track | at_risk | complete | not_started`) and `marketing` (`scheduled | published`).
 - `private: true` on an `external`/`busy` item is always true; on an event it means `visibility: "private"` (show a lock).
 - `busy` items have `title: "Busy"` by construction. Never try to show a teammate's Google title; the server does not send one.
@@ -187,7 +187,7 @@ Filtered by layer, and the range error:
             "id": "08d2feb0-680a-48cb-86ae-c2ef1ae77c6f"
           },
           "private": false,
-          "id": "ms-08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
+          "id": "milestone-08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
           "layer": "milestone",
           "kind": "milestone",
           "title": "Validate demand",

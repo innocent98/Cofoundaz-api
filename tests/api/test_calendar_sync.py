@@ -71,20 +71,16 @@ def test_outlook_is_reserved_not_built(client, cal):
     assert r.status_code == 501 and r.json()["error"]["code"] == "FEATURE_NOT_ENABLED"
     cb = client.get(f"{BASE}/sync/outlook/callback", params={"code": "x", "state": "y"})
     assert cb.status_code == 501
-    assert (
-        client.post(f"{BASE}/sync/nonsense/connect", headers=h(users[F], startup)).status_code
-        == 404
-    )
+    resp = client.post(f"{BASE}/sync/nonsense/connect", headers=h(users[F], startup))
+    assert resp.status_code == 404
 
 
 @pytest.mark.parametrize("role", [MENTOR, ACC])
 def test_other_roles_cannot_use_sync(client, cal, role):
     startup, users, _ = cal
     assert client.get(f"{BASE}/sync", headers=h(users[role], startup)).status_code == 403
-    assert (
-        client.post(f"{BASE}/sync/google/connect", headers=h(users[role], startup)).status_code
-        == 403
-    )
+    resp = client.post(f"{BASE}/sync/google/connect", headers=h(users[role], startup))
+    assert resp.status_code == 403
 
 
 def test_callback_stores_encrypted_tokens_and_redirects(client, db, cal):
@@ -489,7 +485,8 @@ def test_disconnect_revokes_wipes_tokens_and_imported_events(client, db, cal):
     )
     assert stub_transport.STATE["revoked"] == ["stub-refresh-token"]
     assert db.query(CalendarExternalEvent).count() == 0
-    assert client.delete(f"{BASE}/sync/google", headers=h(users[F], startup)).status_code == 404
+    resp = client.delete(f"{BASE}/sync/google", headers=h(users[F], startup))
+    assert resp.status_code == 404
     # Reconnecting after a disconnect works on the same row.
     cb, _ = connect_google(client, db, users[F], startup)
     assert cb.headers["location"].endswith("connected=google")
@@ -500,7 +497,8 @@ def test_connections_are_per_user_not_per_workspace(client, db, cal):
     connect_google(client, db, users[F], startup)
     tm = client.get(f"{BASE}/sync", headers=h(users[TM], startup)).json()["data"]["google"]
     assert tm["connected"] is False
-    assert client.delete(f"{BASE}/sync/google", headers=h(users[TM], startup)).status_code == 404
+    resp = client.delete(f"{BASE}/sync/google", headers=h(users[TM], startup))
+    assert resp.status_code == 404
 
 
 def test_unreadable_ciphertext_is_a_clean_error(client, db, cal):
@@ -637,3 +635,23 @@ def test_removed_member_stops_syncing_and_loses_their_tokens(client, db, cal):
     db.refresh(c)
     assert c.status == "disconnected" and c.refresh_ciphertext is None
     assert db.query(CalendarExternalEvent).filter_by(connection_id=c.id).count() == 0
+
+
+def test_forged_proof_cookie_is_refused(client, db, cal):
+    """The proof cookie is keyed: an unkeyed hash of the nonce (all an attacker could compute from
+    a leaked nonce) does not pass, and neither does an arbitrary value."""
+    import hashlib
+
+    startup, users, _ = cal
+    for forge in (lambda n: "0" * 64, lambda n: hashlib.sha256(n.encode()).hexdigest()):
+        r = client.post(f"{BASE}/sync/google/connect", headers=h(users[F], startup))
+        state = parse_qs(urlparse(r.json()["data"]["auth_url"]).query)["state"][0]
+        nonce = _conn(db, users[F]).oauth_nonce
+        client.cookies.set("cfz_cal_oauth", forge(nonce), path="/api/v1/calendar/sync")
+        cb = client.get(
+            f"{BASE}/sync/google/callback",
+            params={"code": "good-code", "state": state},
+            follow_redirects=False,
+        )
+        assert cb.headers["location"].endswith("error=invalid_state")
+        assert _conn(db, users[F]).status == "pending"

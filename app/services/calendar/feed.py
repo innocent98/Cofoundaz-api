@@ -99,7 +99,7 @@ def _milestones(db: Session, startup_id: uuid.UUID, d0: date, d1: date, today: d
     )
     return [
         _item(
-            id=f"ms-{m.id}",
+            id=f"milestone-{m.id}",
             layer="milestone",
             kind="milestone",
             title=m.title,
@@ -134,7 +134,7 @@ def _marketing(db: Session, startup_id: uuid.UUID, d0: date, d1: date) -> list[d
         local = r.scheduled_at.astimezone(zone)
         out.append(
             _item(
-                id=f"mk-{r.id}",
+                id=f"marketing-{r.id}",
                 layer="marketing",
                 kind="marketing_post",
                 title=r.title,
