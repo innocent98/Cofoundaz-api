@@ -31,7 +31,7 @@ delete, a mood trend and today's prompt only, so most designed controls had no e
 `app/api/v1/endpoints/journal.py` (rewritten route set), `app/services/journal/{lock,stats,retros,account,prompt_library}.py`,
 `service.py` (by-date, month filter, search cap), `app/db/models/journal.py` (`JournalSettings`, `JournalRetro`, `JournalPrompt.dismissed`),
 `app/schemas/journal.py`, `app/services/notifications/{registry,audience}.py`, `app/worker/{scheduler,handlers/scheduled}.py`, migration
-`0080_journal_gaps` (chained after `0077`; Billing `0078` and Calendar `0079` merge first, re-chain before merging).
+`0080_journal_gaps` (chained after Calendar `0079_calendar_meetings_sync`).
 Tests: `tests/api/test_journal_gaps.py` (92), plus fixes to `test_journal_entries.py` and the two notification audience tests. Live journey:
 `e2e/test_journal_gaps.py`, captures in `e2e/_captures/journal_gaps/` (the older `journal/` captures were re-run).
 
@@ -44,7 +44,7 @@ supportive card appearing, the weekday/deadline/mood-shift insights, the 09:00 p
 
 ## Operate / roll back
 
-No new env vars (the existing `JOURNAL_ENCRYPTION_KEY` is still required; staging lacks it, handoff 0c). `alembic downgrade 0077_settings_notif_schedule`
+No new env vars (the existing `JOURNAL_ENCRYPTION_KEY` is still required; staging lacks it, handoff 0c). `alembic downgrade 0079_calendar_meetings_sync`
 drops `journal_settings`, `journal_retros` and `journal_prompts.dismissed`; the API must be reverted first. A founder who set a passcode and lost it
 uses `DELETE /journal/passcode` with their password.
 

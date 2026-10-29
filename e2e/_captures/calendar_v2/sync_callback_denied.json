@@ -1,0 +1,4 @@
+{
+  "status": 302,
+  "location": "http://localhost:3000/calendar/sync?error=access_denied"
+}

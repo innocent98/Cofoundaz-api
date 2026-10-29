@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Ask for at most 366 days at a time.",
+      "field_errors": [
+        {
+          "field": "date_to",
+          "message": "Ask for at most 366 days at a time."
+        }
+      ]
+    }
+  }
+}

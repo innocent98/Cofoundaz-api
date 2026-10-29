@@ -1,7 +1,7 @@
 """Journal: settings (passcode, reminders), retros, prompt dismissal
 
 Revision ID: 0080_journal_gaps
-Revises: 0077_settings_notif_schedule
+Revises: 0079_calendar_meetings_sync
 Create Date: 2026-10-29
 
 journal_settings (per founder: optional passcode hash, reminder toggles, supportive-card
@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from alembic import op
 
 revision = "0080_journal_gaps"
-down_revision = "0077_settings_notif_schedule"
+down_revision = "0079_calendar_meetings_sync"
 branch_labels = None
 depends_on = None
 

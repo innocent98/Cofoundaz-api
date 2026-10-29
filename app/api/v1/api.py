@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     ai,
     assessments,
+    billing,
     business,
     calendar,
     dashboard,
@@ -71,3 +72,5 @@ api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"]
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
 api_router.include_router(workspace.router, prefix="/workspace", tags=["workspace"])
+api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
+api_router.include_router(billing.webhook_router, prefix="/webhooks", tags=["webhooks"])

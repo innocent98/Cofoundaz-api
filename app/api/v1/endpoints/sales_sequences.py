@@ -34,6 +34,7 @@ from app.schemas.sales_sequences import (
     SequenceUpdate,
     StepWriteIn,
 )
+from app.services.billing.gate import assert_feature
 from app.services.sales import deals as deals_svc
 from app.services.sales import drafts as drafts_svc
 from app.services.sales import sending as sending_svc
@@ -46,6 +47,19 @@ from app.services.sales.tokens import verify_token
 router = APIRouter()
 public_router = APIRouter()
 _sales = require_role(*SALES_ROLES)
+
+
+def _outreach(
+    membership: Membership = Depends(_sales),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Membership:
+    """Sales role, then the paid-plan gate for anything that sends mail (D-SAL-11). A dependency, so
+    a locked workspace gets 402 before the request body is even validated. Dark until
+    PLAN_ENFORCEMENT is switched on."""
+    assert_feature(db, membership.startup_id, "sales_outreach")
+    return membership
+
+
 _founder = require_role(MembershipRole.founder)
 
 
@@ -142,7 +156,7 @@ def list_enrollments(
 def enroll(
     sequence_id: uuid.UUID,
     payload: EnrollIn,
-    membership: Membership = Depends(_sales),  # noqa: B008
+    membership: Membership = Depends(_outreach),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
@@ -272,7 +286,7 @@ def latest_follow_up(
 def send_follow_up(
     deal_id: uuid.UUID,
     payload: FollowUpSend,
-    membership: Membership = Depends(_sales),  # noqa: B008
+    membership: Membership = Depends(_outreach),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:

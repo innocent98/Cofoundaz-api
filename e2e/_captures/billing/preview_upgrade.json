@@ -1,0 +1,11 @@
+{
+  "data": {
+    "kind": "upgrade",
+    "amount_due_minor": 4404929,
+    "credit_minor": 2395071,
+    "effective": "now",
+    "currency": "NGN",
+    "keeps_until": null
+  },
+  "meta": null
+}

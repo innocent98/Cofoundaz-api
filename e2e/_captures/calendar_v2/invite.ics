@@ -1,0 +1,20 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Cofoundaz//Calendar//EN
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:3e159768-b736-4b2d-829d-6db36d7246b7@cofoundaz.com
+SEQUENCE:0
+DTSTAMP:20261029T150813Z
+DTSTART:20261101T090000Z
+DTEND:20261101T100000Z
+SUMMARY:Seed round intro
+STATUS:CONFIRMED
+ORGANIZER;CN=Ada Founder:mailto:placeholder@example.invalid
+ATTENDEE;CN=Guest Investor;RSVP=TRUE:mailto:placeholder@example.invalid
+DESCRIPTION:https://meet.example.com/seed-intro
+LOCATION:Lagos office
+URL:https://meet.example.com/seed-intro
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "meetings": [
+        {
+          "id": "3e159768-b736-4b2d-829d-6db36d7246b7",
+          "title": "Seed round intro",
+          "event_date": "2026-11-01",
+          "end_date": null,
+          "start_time": "10:00",
+          "end_time": "11:00",
+          "timezone": "Africa/Lagos",
+          "location": "Lagos office",
+          "video_url": "https://meet.example.com/seed-intro",
+          "description": null,
+          "visibility": "team",
+          "created_by": "3d130cd3-1f95-4602-b63e-e3e836950abe",
+          "agenda": "1. Traction\n2. Ask",
+          "assistant_enabled": true,
+          "assistant_state": "idle",
+          "assistant_error": null,
+          "summary": null,
+          "decisions": [],
+          "action_items": [],
+          "has_transcript": false,
+          "summarised_at": null,
+          "attendees": [
+            {
+              "email": "guest-14f871@example.com",
+              "name": "Guest Investor",
+              "user_id": null,
+              "internal": false,
+              "invite_state": "sent"
+            }
+          ],
+          "can_manage": true,
+          "transcript": null
+        }
+      ]
+    },
+    "meta": null
+  }
+}

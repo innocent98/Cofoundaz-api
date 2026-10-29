@@ -1,0 +1,19 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "title",
+          "message": "String should have at least 1 character"
+        },
+        {
+          "field": "timezone",
+          "message": "Value error, timezone must be an IANA name such as Africa/Lagos"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TRIAL_UNAVAILABLE",
+    "message": "This workspace has already used its trial.",
+    "field_errors": []
+  }
+}

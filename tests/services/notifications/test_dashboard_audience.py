@@ -43,6 +43,10 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "assessment.quarterly.due": FOUNDER,
     "validation.smoke_test.milestone": CORE,
     "validation.insight.detected": CORE,
+    # Billing is the founder's (PRD 24 access)
+    "billing.payment.failed": FOUNDER,
+    "billing.usage.threshold": FOUNDER,
+    "billing.plan.changed": FOUNDER,
     "kpi.threshold.crossed": CORE,  # the test payload's audience is marketing
     "business.suggestion.created": FOUNDER,
     # Pages every member can open (Health, Roadmap, Business Builder, Team)
@@ -75,6 +79,11 @@ DIRECT = {
     # Exact recipients (owner, members holding a grant); see test_document_notifications.py
     "document.version.created",
     "document.grant.created",
+    # Calendar: the sender names the users (creator, invitees, or founders and team members for
+    # milestones); see tests/api/test_calendar_feed_reminders.py and test_calendar_meetings.py
+    "calendar.reminder",
+    "calendar.meeting.invited",
+    "calendar.meeting.summary_ready",
 }
 
 

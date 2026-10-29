@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "configured": true,
+      "google": {
+        "provider": "google",
+        "connected": true,
+        "status": "active",
+        "account_email": "founder.stub@gmail.example",
+        "direction": "two_way",
+        "calendar_id": "primary",
+        "last_sync_at": "2026-10-29T15:08:13.855863+00:00",
+        "last_sync_summary": {
+          "pulled": 2,
+          "pushed": 3,
+          "removed": 0
+        },
+        "last_error": null,
+        "needs_attention": false
+      },
+      "outlook": {
+        "provider": "outlook",
+        "available": false
+      }
+    },
+    "meta": null
+  }
+}

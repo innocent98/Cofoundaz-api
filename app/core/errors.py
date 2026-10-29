@@ -105,6 +105,17 @@ class FinanceConnectionUnreadable(AppError):  # noqa: N818
     message = "That payment connection could not be read."
 
 
+class CalendarSyncNotConfigured(AppError):  # noqa: N818
+    code, http_status = "CALENDAR_SYNC_NOT_CONFIGURED", 503
+    message = "Calendar sync is not configured on the server."
+
+
+class CalendarConnectionUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor a token may appear in an error.
+    code, http_status = "CALENDAR_CONNECTION_UNREADABLE", 500
+    message = "That calendar connection could not be read."
+
+
 class FeatureNotEnabled(AppError):  # noqa: N818
     code, http_status = "FEATURE_NOT_ENABLED", 501
     message = "This feature isn't available yet."

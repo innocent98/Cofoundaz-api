@@ -28,6 +28,9 @@ CORE_ROLES: frozenset[MembershipRole] = frozenset(
 FOUNDER_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
 
 AUDIENCE: dict[str, frozenset[MembershipRole]] = {
+    "billing.payment.failed": FOUNDER_ROLES,
+    "billing.usage.threshold": FOUNDER_ROLES,
+    "billing.plan.changed": FOUNDER_ROLES,
     "mission.ready": MISSION_ROLES,
     "mission.completed": MISSION_ROLES,
     "mission.streak.milestone": MISSION_ROLES,

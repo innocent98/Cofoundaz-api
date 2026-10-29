@@ -1,0 +1,10 @@
+{
+  "status": 501,
+  "body": {
+    "error": {
+      "code": "FEATURE_NOT_ENABLED",
+      "message": "This feature isn't available yet.",
+      "field_errors": []
+    }
+  }
+}
