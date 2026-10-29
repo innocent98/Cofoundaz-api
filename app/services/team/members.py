@@ -177,7 +177,8 @@ def _end_membership(
     db: Session, *, startup: Startup, m: Membership, actor_id: uuid.UUID, action: str
 ) -> dict[str, int]:
     user = db.get(User, m.user_id)
-    assert user is not None
+    if user is None:
+        raise NotFound()
     m.status = MembershipStatus.removed
     db.flush()
     grants = revoke_document_grants(db, startup_id=startup.id, user=user, revoked_by=actor_id)
