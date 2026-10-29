@@ -1,0 +1,9 @@
+{
+  "status": 202,
+  "body": {
+    "data": {
+      "assistant_state": "queued"
+    },
+    "meta": null
+  }
+}

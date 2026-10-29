@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "milestones": [
+        {
+          "id": "08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
+          "title": "Validate demand",
+          "due_on": "2026-11-12",
+          "status": "todo",
+          "calendar_status": "not_started",
+          "progress": 0,
+          "days_left": 14,
+          "tasks_done": 0,
+          "tasks_total": 3
+        },
+        {
+          "id": "47f7cf65-be94-40c6-81e6-c13db9478c31",
+          "title": "Pricing test",
+          "due_on": "2026-12-03",
+          "status": "todo",
+          "calendar_status": "not_started",
+          "progress": 0,
+          "days_left": 35,
+          "tasks_done": 0,
+          "tasks_total": 2
+        },
+        {
+          "id": "c5396bda-19f8-4b01-90e8-7fe53ff858c0",
+          "title": "Core flow",
+          "due_on": "2027-01-07",
+          "status": "todo",
+          "calendar_status": "not_started",
+          "progress": 0,
+          "days_left": 70,
+          "tasks_done": 0,
+          "tasks_total": 2
+        }
+      ],
+      "summary": {
+        "total": 3,
+        "complete": 0
+      }
+    },
+    "meta": null
+  }
+}

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logger import log
 from app.db.models.assessment import Assessment
+from app.db.models.calendar import CalendarConnection
 from app.db.models.enums import (
     AssessmentStatus,
     CampaignStatus,
@@ -29,6 +30,7 @@ from app.db.models.scheduled_run import ScheduledRun
 from app.db.models.startup import Startup
 from app.platform.jobs import job_dispatcher
 from app.platform.outreach import imap_configured, outreach_configured
+from app.services.calendar import reminders as calendar_reminders
 from app.services.finance.reminders import MAX_AUTO_REMINDERS, REMINDER_INTERVAL_DAYS
 
 SCHED_MISSION = "scheduled.mission.generate"
@@ -47,6 +49,7 @@ SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
 OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
+SCHED_CALENDAR_REMINDER = "scheduled.calendar.reminder"
 INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
@@ -387,6 +390,48 @@ def _due_trash_purge(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
     ]
 
 
+def _due_calendar_syncs(db: Session, now: datetime) -> list[Due]:
+    """One sync per active Google connection per interval window (CALENDAR_SYNC_INTERVAL_MINUTES)."""
+    local = _local(now)
+    step = max(1, settings.CALENDAR_SYNC_INTERVAL_MINUTES)
+    bucket = (local.hour * 60 + local.minute) // step
+    period = f"{local.date().isoformat()}#{bucket}"
+    rows = (
+        db.query(CalendarConnection.id, CalendarConnection.startup_id)
+        .join(Startup, Startup.id == CalendarConnection.startup_id)
+        .filter(CalendarConnection.status == "active", Startup.deleted_at.is_(None))
+        .all()
+    )
+    return [
+        Due("calendar.sync", str(cid), period, "calendar.sync", sid, {"connection_id": str(cid)})
+        for cid, sid in rows
+    ]
+
+
+def _due_calendar_reminders(db: Session, now: datetime) -> list[Due]:
+    """PRD 19.4: one reminder per (item, offset), ever. Rules are read per workspace."""
+    return [
+        Due(
+            "calendar.reminder",
+            r.scope,
+            "once",
+            SCHED_CALENDAR_REMINDER,
+            r.startup_id,
+            {
+                "startup_id": str(r.startup_id),
+                "kind": r.kind,
+                "source": r.source,
+                "source_id": str(r.source_id),
+                "title": r.title,
+                "offset_minutes": r.offset_minutes,
+                "date": r.on.isoformat(),
+                "user_ids": [str(u) for u in r.user_ids],
+            },
+        )
+        for r in calendar_reminders.scan(db, now)
+    ]
+
+
 def _due_overdue_milestones(db: Session, now: datetime) -> list[Due]:
     today = _local(now).date()
     already_claimed = exists().where(
@@ -525,6 +570,8 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_invoice_overdue(db, now),
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
+        *_due_calendar_syncs(db, now),
+        *_due_calendar_reminders(db, now),
     ]
     enqueued = 0
     for item in due:

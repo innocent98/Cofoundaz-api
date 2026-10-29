@@ -1,0 +1,100 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "items": [
+        {
+          "end_date": null,
+          "start_time": null,
+          "end_time": null,
+          "all_day": false,
+          "timezone": "Africa/Lagos",
+          "status": null,
+          "ref": {
+            "type": "event",
+            "id": "dd667d8d-5704-4754-914e-23b234901e25"
+          },
+          "private": true,
+          "id": "dd667d8d-5704-4754-914e-23b234901e25",
+          "layer": "team",
+          "kind": "task",
+          "title": "Private errand",
+          "date": "2026-11-01"
+        },
+        {
+          "end_date": null,
+          "start_time": null,
+          "end_time": null,
+          "all_day": true,
+          "timezone": "Africa/Lagos",
+          "status": null,
+          "ref": {
+            "type": "event",
+            "id": "088fd45f-7277-4bc0-b368-e1ee859927bd"
+          },
+          "private": false,
+          "id": "088fd45f-7277-4bc0-b368-e1ee859927bd",
+          "layer": "team",
+          "kind": "deadline",
+          "title": "VAT filing",
+          "date": "2026-11-01"
+        },
+        {
+          "end_date": null,
+          "start_time": "10:00",
+          "end_time": "11:00",
+          "all_day": false,
+          "timezone": "Africa/Lagos",
+          "status": null,
+          "ref": {
+            "type": "event",
+            "id": "3e159768-b736-4b2d-829d-6db36d7246b7"
+          },
+          "private": false,
+          "id": "3e159768-b736-4b2d-829d-6db36d7246b7",
+          "layer": "meeting",
+          "kind": "meeting",
+          "title": "Seed round intro",
+          "date": "2026-11-01"
+        },
+        {
+          "end_date": null,
+          "start_time": null,
+          "end_time": null,
+          "all_day": true,
+          "timezone": "Africa/Lagos",
+          "status": "not_started",
+          "ref": {
+            "type": "milestone",
+            "id": "08d2feb0-680a-48cb-86ae-c2ef1ae77c6f"
+          },
+          "private": false,
+          "id": "ms-08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
+          "layer": "milestone",
+          "kind": "milestone",
+          "title": "Validate demand",
+          "date": "2026-11-12"
+        }
+      ],
+      "counts": {
+        "milestone": 1,
+        "compliance": 0,
+        "meeting": 1,
+        "team": 2,
+        "marketing": 0,
+        "external": 0,
+        "busy": 0
+      },
+      "layers": [
+        "milestone",
+        "compliance",
+        "meeting",
+        "team",
+        "marketing",
+        "external",
+        "busy"
+      ]
+    },
+    "meta": null
+  }
+}

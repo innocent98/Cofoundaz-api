@@ -70,6 +70,13 @@ export MONO_PUBLIC_KEY="test_pk_e2e_stub_key"
 export MONO_WEBHOOK_SECRET="e2e-mono-webhook-secret"
 export MONO_ALLOW_LIVE="false"
 
+# Calendar sync: the e2e server AND the in-process worker drain answer every Google call from the
+# in-process fake (app/services/calendar/stub_transport.py). The client id/secret are placeholders;
+# nothing here can reach Google, and a developer's real values in .env are overridden.
+export CALENDAR_PROVIDER_STUB="true"
+export GOOGLE_CLIENT_ID="e2e-google-client-id.apps.example"
+export GOOGLE_CLIENT_SECRET="placeholder-not-a-real-secret"
+
 # Sales outreach: the e2e server and test process must NEVER reach a real mailbox, even when a
 # developer's .env holds the cPanel settings. Blank values win over .env (process env beats the
 # env file in pydantic-settings). The journey points the in-process worker at an in-process fake

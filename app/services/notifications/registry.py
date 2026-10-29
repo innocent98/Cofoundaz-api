@@ -205,6 +205,30 @@ def _all_active_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=None)
 
 
+def _payload_users(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Calendar events name their recipients; keep only people still active in the workspace."""
+    wanted = {uuid.UUID(str(u)) for u in payload.get("user_ids", [])}
+    actor = _actor({"actor_id": payload.get("actor_id")})
+    active = set(_active_member_ids(db, payload["startup_id"], exclude=None))
+    return [u for u in wanted if u in active and u != actor]
+
+
+def _calendar_reminder_title(p: dict) -> str:
+    from app.services.calendar.reminders import human_offset
+
+    title, offset = p.get("title") or "an event", int(p.get("offset_minutes") or 0)
+    if p.get("kind") == "meeting":
+        return f"Meeting starting in {human_offset(offset)}: {title}"
+    noun = "Milestone" if p.get("kind") == "milestone" else "Deadline"
+    if offset == 1440:
+        return (
+            f"{noun} deadline tomorrow: {title}"
+            if noun == "Milestone"
+            else f"Deadline tomorrow: {title}"
+        )
+    return f"{noun} in {human_offset(offset)}: {title}"
+
+
 @dataclass(frozen=True)
 class NotifSpec:
     recipients: Callable[[Session, dict], list[uuid.UUID]]
@@ -226,6 +250,25 @@ def _s(
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
 SPECS: dict[str, NotifSpec] = {
+    # PRD 19 notifications. In-app only (no email category). `user_ids` is chosen by the sender.
+    "calendar.reminder": NotifSpec(
+        _payload_users, _calendar_reminder_title, lambda _p: "Open calendar"
+    ),
+    "calendar.meeting.invited": NotifSpec(
+        _payload_users,
+        lambda p: f"You're invited: {p.get('title') or 'a meeting'} · {p.get('date') or ''}".rstrip(
+            " ·"
+        ),
+        lambda _p: "Open meeting",
+    ),
+    "calendar.meeting.summary_ready": NotifSpec(
+        _payload_users,
+        lambda p: (
+            f"Meeting summary ready: {p.get('title') or 'your meeting'}"
+            f" · {int(p.get('action_item_count') or 0)} action items"
+        ),
+        lambda _p: "Review actions",
+    ),
     "document.shared": NotifSpec(
         _document_shared,
         lambda p: (
@@ -400,7 +443,9 @@ SPECS: dict[str, NotifSpec] = {
     # PRD 23 notifications copy: only the mentioned member is notified.
     "team.comment.mentioned": NotifSpec(
         lambda _db, p: [uuid.UUID(str(p["user_id"]))] if p.get("user_id") else [],
-        lambda p: f'You were mentioned by {p.get("author_name") or "a teammate"}: "{p.get("snippet", "")}"',
+        lambda p: (
+            f'You were mentioned by {p.get("author_name") or "a teammate"}: "{p.get("snippet", "")}"'
+        ),
         lambda p: p.get("entity_title") or "",
     ),
     "kpi.threshold.crossed": NotifSpec(

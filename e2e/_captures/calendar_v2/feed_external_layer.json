@@ -1,0 +1,64 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "items": [
+        {
+          "end_date": null,
+          "start_time": "10:00",
+          "end_time": "11:00",
+          "all_day": false,
+          "timezone": "Africa/Lagos",
+          "status": null,
+          "ref": {
+            "type": "external",
+            "id": "f8d800cd-2ead-4e04-91f0-4359230ad2da"
+          },
+          "private": true,
+          "id": "ext-f8d800cd-2ead-4e04-91f0-4359230ad2da",
+          "layer": "external",
+          "kind": "external",
+          "title": "Investor coffee (from Google)",
+          "date": "2026-10-30"
+        },
+        {
+          "end_date": null,
+          "start_time": null,
+          "end_time": null,
+          "all_day": true,
+          "timezone": "Africa/Lagos",
+          "status": null,
+          "ref": {
+            "type": "external",
+            "id": "4f0ab56b-b7fc-4824-90f2-9c745a5780c4"
+          },
+          "private": true,
+          "id": "ext-4f0ab56b-b7fc-4824-90f2-9c745a5780c4",
+          "layer": "external",
+          "kind": "external",
+          "title": "Family wedding (from Google)",
+          "date": "2026-11-01"
+        }
+      ],
+      "counts": {
+        "milestone": 0,
+        "compliance": 0,
+        "meeting": 0,
+        "team": 0,
+        "marketing": 0,
+        "external": 2,
+        "busy": 0
+      },
+      "layers": [
+        "milestone",
+        "compliance",
+        "meeting",
+        "team",
+        "marketing",
+        "external",
+        "busy"
+      ]
+    },
+    "meta": null
+  }
+}

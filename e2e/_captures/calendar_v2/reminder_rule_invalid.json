@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "offsets_minutes",
+          "message": "Value error, each offset must be between 1 minute and 14 days"
+        }
+      ]
+    }
+  }
+}
