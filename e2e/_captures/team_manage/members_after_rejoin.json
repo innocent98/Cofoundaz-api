@@ -1,0 +1,21 @@
+{
+  "data": [
+    {
+      "user_id": "3584cf02-36a5-4657-92b0-e676e5a85523",
+      "name": "Ada Founder",
+      "email": "delivered+e2e-097d1ac440e8@resend.dev",
+      "role": "founder",
+      "joined_at": "2026-10-29T20:55:12.828374+00:00",
+      "last_active_at": "2026-10-29T20:55:12.544740+00:00"
+    },
+    {
+      "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+      "name": null,
+      "email": "delivered+e2e-5128f0bb8b51@resend.dev",
+      "role": "team_member",
+      "joined_at": "2026-10-29T20:55:14.551051+00:00",
+      "last_active_at": "2026-10-29T20:55:14.290075+00:00"
+    }
+  ],
+  "meta": null
+}

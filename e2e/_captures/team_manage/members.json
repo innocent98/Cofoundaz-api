@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "user_id": "3584cf02-36a5-4657-92b0-e676e5a85523",
+      "name": "Ada Founder",
+      "email": "delivered+e2e-097d1ac440e8@resend.dev",
+      "role": "founder",
+      "joined_at": "2026-10-29T20:55:12.828374+00:00",
+      "last_active_at": "2026-10-29T20:55:12.544740+00:00"
+    },
+    {
+      "user_id": "65dbf6dd-5a07-4f6f-907e-1f6f4938cfd9",
+      "name": null,
+      "email": "delivered+e2e-29b959f2efbe@resend.dev",
+      "role": "mentor",
+      "joined_at": "2026-10-29T20:55:13.897938+00:00",
+      "last_active_at": "2026-10-29T20:55:13.591280+00:00"
+    },
+    {
+      "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+      "name": null,
+      "email": "delivered+e2e-5128f0bb8b51@resend.dev",
+      "role": "mentor",
+      "joined_at": "2026-10-29T20:55:13.535920+00:00",
+      "last_active_at": "2026-10-29T20:55:13.276031+00:00"
+    }
+  ],
+  "meta": null
+}

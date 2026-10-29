@@ -1,0 +1,43 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "2cae786c-fa7f-4dab-b095-c9c1924f806a",
+        "action": "team.member.joined",
+        "actor": "delivered+e2e-5128f0bb8b51@resend.dev",
+        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
+        "created_at": "2026-10-29T20:55:14.545567+00:00"
+      },
+      {
+        "id": "e722ebdc-6a9f-4ac5-b1ca-ca855bdd9eec",
+        "action": "team.invitation.created",
+        "actor": "Ada Founder",
+        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
+        "created_at": "2026-10-29T20:55:14.273046+00:00"
+      },
+      {
+        "id": "68923128-71b9-40a3-a9a6-ee5828f5ecf9",
+        "action": "team.member.removed",
+        "actor": "Ada Founder",
+        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
+        "created_at": "2026-10-29T20:55:14.232610+00:00"
+      },
+      {
+        "id": "86f086a9-4ddd-4239-9a84-c3ea4d787342",
+        "action": "team.member.left",
+        "actor": "delivered+e2e-29b959f2efbe@resend.dev",
+        "target": "delivered+e2e-29b959f2efbe@resend.dev",
+        "created_at": "2026-10-29T20:55:14.190057+00:00"
+      },
+      {
+        "id": "97f88508-86fd-4c0a-95df-1ccdff1b8780",
+        "action": "team.member.role_changed",
+        "actor": "Ada Founder",
+        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
+        "created_at": "2026-10-29T20:55:14.148728+00:00"
+      }
+    ],
+    "next_cursor": "MjAyNi0xMC0yOVQyMDo1NToxNC4xNDg3MjgrMDA6MDB8OTdmODg1MDgtODZmZC00YzBhLTk1ZGYtMWNjZGZmMWI4Nzgw"
+  },
+  "meta": null
+}
