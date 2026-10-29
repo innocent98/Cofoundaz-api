@@ -15,7 +15,7 @@ revoked, and a Documents grant outlived the membership it was issued for.
 |---|---|
 | **Scope (Adebayo, 2026-10-29)** | "As simple and light as it can be; override the PRD." Designed screens + the required list only. Not built: Team Tasks (PRD 23.1), Directory (23.5), per-module grant matrix (23.4). |
 | **Removal** | `memberships.status = removed` (the row stays, so history stays attributed). `require_workspace` resolves only active memberships, so every route and the SSE stream (which re-checks on a timer) lock the person out at once. No sessions are revoked: the account is still valid for its other workspaces. Rejected: deleting the row (breaks authorship and the unique key). |
-| **Grants, links, invitations** | In the same transaction: Documents grants revoked (`revoked_at` + `revoked_by_id`, history kept; matched by account OR by the email addressed), public share links the person created revoked, pending invitations they sent revoked (Opus review: a removed founder could otherwise still bring people in). Open signature requests they created are untouched (follow-up). |
+| **Grants, links, invitations** | In the same transaction: Documents grants revoked (`revoked_at` + `revoked_by_id`, history kept; matched by account OR by the email addressed), public share links the person created revoked, pending invitations they sent revoked (Opus review: a removed founder could otherwise still bring people in). Open signature requests they created are untouched (follow-up). Demoting a founder also revokes the invitations they sent. |
 | **Founders** | Founder-only management. A founder cannot change their own role, remove themselves, or leave as the last active founder. Role changes, removals and leaving all take a row lock on the workspace and re-check under it that the actor is still an active founder, so two founders acting on each other at once cannot leave the workspace with none (Opus review). |
 | **Roles** | Any of the invite roles except investor. The audit log records that a role changed, not to what (`audit_log` has no payload column; adding one was out of scope). |
 | **Re-invite** | Fixed an existing bug: accepting an invitation as a previously removed member succeeded but left the membership removed. It now reopens the row with the invited role. A suspended member is not reopened (admin decision). |
@@ -26,7 +26,7 @@ revoked, and a Documents grant outlived the membership it was issued for.
 ## What's involved
 
 `app/services/team/members.py` (new), `app/api/v1/endpoints/team.py`, `app/schemas/team.py`, `app/services/onboarding/invites.py` (audit rows, re-invite fix).
-Tests `tests/api/test_team_manage.py` (25). Live `e2e/test_team_manage.py`, captures `e2e/_captures/team_manage/`.
+Tests `tests/api/test_team_manage.py` (26). Live `e2e/test_team_manage.py`, captures `e2e/_captures/team_manage/`.
 
 ## Verification
 

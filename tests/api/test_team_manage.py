@@ -432,7 +432,19 @@ def test_resolved_thread_drops_out_of_unresolved(client, db):
 def test_csv_cells_are_neutralised_even_after_whitespace(db):
     from app.services.team.members import _csv_safe
 
-    for bad in ["=1+1", "+1", "-1", "@SUM(A1)", "\t=1", "\r=1", "  =1", "\x00=1"]:
+    for bad in [
+        "=1+1",
+        "+1",
+        "-1",
+        "@SUM(A1)",
+        "\t=1",
+        "\r=1",
+        "  =1",
+        "\x00=1",
+        "\u200b=1",
+        "\u00a0=1",
+        "\ufeff@x",
+    ]:
         assert _csv_safe(bad).startswith("'"), repr(bad)
     assert _csv_safe("Ada Founder") == "Ada Founder"
     assert _csv_safe("") == ""
@@ -493,5 +505,22 @@ def test_removal_kills_their_share_links_and_pending_invitations(client, db, mai
     assert db.get(DocumentShare, own.id).revoked_at is None  # someone else's link survives
     assert (
         db.query(Invitation).filter_by(email="x@example.com").one().status
+        == InvitationStatus.revoked
+    )
+
+
+def test_demoting_a_founder_revokes_the_invitations_they_sent(client, db, mail):
+    s, u = team(db)
+    db.commit()
+    hf = headers(u[F], s)
+    client.patch(f"{T}/members/{u[TM].id}", json={"role": "founder"}, headers=hf)
+    client.post(
+        f"{T}/invitations",
+        json={"invites": [{"email": "y@example.com", "role": "founder"}]},
+        headers=headers(u[TM], s),
+    )
+    client.patch(f"{T}/members/{u[TM].id}", json={"role": "mentor"}, headers=hf)
+    assert (
+        db.query(Invitation).filter_by(email="y@example.com").one().status
         == InvitationStatus.revoked
     )

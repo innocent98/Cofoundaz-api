@@ -13,6 +13,7 @@ import binascii
 import csv
 import io
 import secrets
+import unicodedata
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -115,6 +116,10 @@ def change_role(
     _lock_workspace_for(db, startup.id, actor.id)
     m = _active_member(db, startup.id, target_user_id)
     if m.role != role:
+        if m.role == MembershipRole.founder:
+            # Only founders invite, so a demoted founder's pending invitations (which may carry
+            # the founder role) are revoked rather than left to outlive their authority.
+            _revoke_sent_invitations(db, startup.id, m.user_id)
         m.role = role
         db.flush()
         write_audit(
@@ -154,6 +159,20 @@ def revoke_document_grants(
     return n
 
 
+def _revoke_sent_invitations(db: Session, startup_id: uuid.UUID, user_id: uuid.UUID) -> int:
+    n = (
+        db.query(Invitation)
+        .filter(
+            Invitation.startup_id == startup_id,
+            Invitation.invited_by == user_id,
+            Invitation.status == InvitationStatus.pending,
+        )
+        .update({Invitation.status: InvitationStatus.revoked}, synchronize_session=False)
+    )
+    db.flush()
+    return n
+
+
 def _end_membership(
     db: Session, *, startup: Startup, m: Membership, actor_id: uuid.UUID, action: str
 ) -> dict[str, int]:
@@ -174,15 +193,7 @@ def _end_membership(
         )
         .update({DocumentShare.revoked_at: now}, synchronize_session=False)
     )
-    invites = (
-        db.query(Invitation)
-        .filter(
-            Invitation.startup_id == startup.id,
-            Invitation.invited_by == m.user_id,
-            Invitation.status == InvitationStatus.pending,
-        )
-        .update({Invitation.status: InvitationStatus.revoked}, synchronize_session=False)
-    )
+    invites = _revoke_sent_invitations(db, startup.id, m.user_id)
     write_audit(
         db,
         action,
@@ -455,11 +466,15 @@ def audit_log(
 
 
 def _csv_safe(cell: str) -> str:
-    """A cell a spreadsheet could run as a formula (leading = + - @, tab or CR, even after
-    whitespace or control characters) gets a leading apostrophe."""
-    head = cell.lstrip(" \t\r\n\x00\x0b\x0c")[:1]
-    if cell[:1] in ("\t", "\r") or head in ("=", "+", "-", "@"):
+    """A cell a spreadsheet could run as a formula gets a leading apostrophe: the first
+    character that is not whitespace or a control/format character is one of = + - @, or the
+    cell starts with a tab or carriage return."""
+    if cell[:1] in ("\t", "\r"):
         return "'" + cell
+    for ch in cell:
+        if ch.isspace() or unicodedata.category(ch).startswith("C"):
+            continue
+        return "'" + cell if ch in "=+-@" else cell
     return cell
 
 
