@@ -1,11 +1,11 @@
 import uuid
 from datetime import UTC, date, datetime
 
-from sqlalchemy import nullslast
+from sqlalchemy import func, nullslast
 from sqlalchemy.orm import Session
 
 from app.db.models.enums import RoadmapStatus
-from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase
+from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
 from app.schemas.calendar import MilestoneResponse
 
 ON_TRACK = "on_track"
@@ -30,9 +30,11 @@ def calendar_status(status: RoadmapStatus, due_on: date | None, today: date) -> 
     return NOT_STARTED
 
 
-def serialize_milestone(row: RoadmapMilestone, *, today: date) -> MilestoneResponse:
-    # `tasksInfo` is NOT returned: the FE renders "11 of 13 tasks complete" but nothing in the
-    # schema backs it. Omitted rather than faked, and labelled not-backed in the FE guide.
+def serialize_milestone(
+    row: RoadmapMilestone, *, today: date, tasks: tuple[int, int] = (0, 0)
+) -> MilestoneResponse:
+    # `tasks_done/tasks_total` are real counts of the milestone's roadmap tasks (the FE renders
+    # "11 of 13 tasks complete" from them); `days_left` is negative once overdue, None if undated.
     return MilestoneResponse(
         id=row.id,
         title=row.title,
@@ -40,6 +42,9 @@ def serialize_milestone(row: RoadmapMilestone, *, today: date) -> MilestoneRespo
         status=row.status,
         calendar_status=calendar_status(row.status, row.due_on, today),
         progress=row.progress,
+        days_left=None if row.due_on is None else (row.due_on - today).days,
+        tasks_done=tasks[0],
+        tasks_total=tasks[1],
     )
 
 
@@ -73,4 +78,15 @@ def list_milestones(
         )
         .all()
     )
-    return [serialize_milestone(row, today=as_of) for row in rows]
+    counts = {
+        mid: (int(done), int(total))
+        for mid, done, total in db.query(
+            RoadmapTask.milestone_id,
+            func.count().filter(RoadmapTask.status == RoadmapStatus.done),
+            func.count(),
+        )
+        .filter(RoadmapTask.milestone_id.in_([r.id for r in rows]))
+        .group_by(RoadmapTask.milestone_id)
+        .all()
+    }
+    return [serialize_milestone(row, today=as_of, tasks=counts.get(row.id, (0, 0))) for row in rows]

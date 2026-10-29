@@ -19,7 +19,15 @@ from app.db.models.business import (  # noqa: F401
     BusinessCanvasVersion,
     BusinessRecord,
 )
-from app.db.models.calendar import CalendarEvent  # noqa: F401
+from app.db.models.calendar import (  # noqa: F401
+    CalendarAttendee,
+    CalendarConnection,
+    CalendarEvent,
+    CalendarEventLink,
+    CalendarExternalEvent,
+    CalendarMeeting,
+    CalendarReminderRule,
+)
 from app.db.models.comment import Comment  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
 from app.db.models.document import Document  # noqa: F401

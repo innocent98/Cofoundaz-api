@@ -2,30 +2,43 @@
   "data": {
     "milestones": [
       {
-        "id": "d74baf60-adf5-43e3-ba3b-4486e3cb25a6",
+        "id": "a059fc4c-b65d-45e2-a1df-b8b32f3d2b71",
         "title": "Validate demand",
-        "due_on": "2026-10-26",
+        "due_on": "2026-11-12",
         "status": "todo",
         "calendar_status": "not_started",
-        "progress": 0
+        "progress": 0,
+        "days_left": 14,
+        "tasks_done": 0,
+        "tasks_total": 2
       },
       {
-        "id": "18be6486-7eb1-48bc-b8d9-b31c067ef47d",
+        "id": "2dd9458f-24cd-40e5-aab8-70c33a06e6ad",
         "title": "Pricing test",
-        "due_on": "2026-11-16",
+        "due_on": "2026-12-03",
         "status": "todo",
         "calendar_status": "not_started",
-        "progress": 0
+        "progress": 0,
+        "days_left": 35,
+        "tasks_done": 0,
+        "tasks_total": 2
       },
       {
-        "id": "37cdfef1-d0fb-4943-b6b5-f16b9bc890ac",
+        "id": "0405fb4e-4788-4f8f-802a-20b91b8b19c4",
         "title": "Core flow",
-        "due_on": "2026-12-21",
+        "due_on": "2027-01-07",
         "status": "todo",
         "calendar_status": "not_started",
-        "progress": 0
+        "progress": 0,
+        "days_left": 70,
+        "tasks_done": 0,
+        "tasks_total": 2
       }
-    ]
+    ],
+    "summary": {
+      "total": 3,
+      "complete": 0
+    }
   },
   "meta": null
 }

@@ -2345,6 +2345,23 @@ plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
       cap on the events list · `tasksInfo`, `AgendaItemData.subtitle` and the quarter-count header
       (no backend source) — see SOP Follow-ups
 
+### Module 19 — Calendar: PRD completion, BE (2026-10-27, branch `feature/calendar-be`, migration `0079_calendar_meetings_sync`)
+
+_Gap list `cofoundaz/docs/checklist/calendar-prd-gaps.md` (rows B1 to B13). Decisions D-CAL-1 to D-CAL-9 there. SOP
+`docs/sop/2026-10-27-calendar-be-meetings-sync.md`, FE guide `docs/fe-integration-guide-calendar-v2.md`. The earlier "Deferred" items
+for multi-day events, external sync and the reminder scheduler are now built (below). PR pending._
+
+- [x] Feed `GET /calendar/feed?date_from&date_to&layers` (milestone, compliance (empty until Legal), meeting, team, marketing, external, busy), 366-day cap
+- [x] Event fields: `end_date`, `timezone`, `location`, `video_url`, `visibility` (private = creator + invitees)
+- [x] Meetings: CRUD, attendees (internal by email match, external), agenda, invites with `.ics` (REQUEST/CANCEL, SEQUENCE), invited-only read for other roles
+- [x] AI summary (D-CAL-1, no bot): paste notes, summary + decisions + action items, per-item assignee, "Add all to tasks", retry after a failure
+- [x] Reminder rules (PRD defaults, founder edits, reset) + scheduler scan + 3 notifications (`calendar.reminder`, `.meeting.invited`, `.meeting.summary_ready`)
+- [x] Google sync: per-user OAuth with signed single-use state, Fernet tokens, refresh, `needs_attention`, pull (incremental + 410 resync), push (hash diff, edit, delete), direction + calendar picker, Sync now, disconnect + revoke, 15-minute worker job
+- [x] Milestones: `days_left`, `tasks_done/total`, `summary`
+- [x] Tests: 81 new (sync 32, meetings 26, feed/reminders 23) + live e2e `e2e/test_calendar_meetings_sync.py` against the in-process Google fake
+- [ ] **Real Google round trip with a test user** (cannot run headless; Adebayo) and Google verification (D-CAL-3)
+- [ ] _Deferred:_ Outlook sync (paths reserved), meeting bot, compliance layer data (Legal), dashboard Upcoming and global search reading the feed (B14), recurring events
+
 **Dev-environment note (2026-10-06):** the local dev database was still stamped `0038_validation`,
 the number Module 09 carried on its branch before being renumbered to `0041_validation` at merge,
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from

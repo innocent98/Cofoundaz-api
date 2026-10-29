@@ -54,6 +54,13 @@ class Settings(BaseSettings):
     MONO_PUBLIC_KEY: str | None = None
     MONO_WEBHOOK_SECRET: str | None = None
     MONO_ALLOW_LIVE: bool = False
+    # Google Calendar sync (per-user OAuth). The client id/secret belong to the Cofoundaz Google
+    # app; each user's own tokens are Fernet-encrypted (FINANCE_CONNECTIONS_ENCRYPTION_KEY).
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Dev/e2e only: answer every Google call from an in-process fake (never reachable in production).
+    CALENDAR_PROVIDER_STUB: bool = False
+    CALENDAR_SYNC_INTERVAL_MINUTES: int = 15
     FINANCE_SYNC_BACKFILL_DAYS: int = 90
     FINANCE_SYNC_MAX_PAGES: int = 20
     FINANCE_SYNC_MIN_INTERVAL_SECONDS: int = 30
