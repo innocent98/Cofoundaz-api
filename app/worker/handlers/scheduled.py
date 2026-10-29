@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.enums import RoadmapStatus
 from app.db.models.job import Job
+from app.db.models.journal import JournalEntry
 from app.db.models.marketing import ContentCalendarEntry
 from app.db.models.mission import MissionTask
 from app.db.models.roadmap import RoadmapMilestone
@@ -23,6 +24,7 @@ from app.worker.scheduler import (
     SCHED_DUE_SOON,
     SCHED_HEALTH_NIGHTLY,
     SCHED_INVOICE_OVERDUE,
+    SCHED_JOURNAL_NUDGE,
     SCHED_KPI_SNAPSHOT,
     SCHED_MARKETING_PUBLISH,
     SCHED_MISSION,
@@ -97,6 +99,38 @@ def handle_assessment_quarterly(db: Session, job: Job) -> None:
     )
 
 
+def handle_journal_nudge(db: Session, job: Job) -> None:
+    """One opt-in journal nudge. The reminder is skipped when an entry already exists for the
+    local day; it only checks the row's existence, never its content."""
+    kind = job.payload["kind"]
+    startup_id = uuid.UUID(str(job.payload["startup_id"]))
+    founder_id = uuid.UUID(str(job.payload["founder_id"]))
+    if kind == "reminder":
+        written = (
+            db.query(JournalEntry.id)
+            .filter_by(
+                startup_id=startup_id,
+                founder_id=founder_id,
+                date=date.fromisoformat(str(job.payload["date"])),
+            )
+            .first()
+        )
+        if written is not None:
+            return
+        event = "journal.reminder"
+    else:
+        event = "journal.prompt.daily"
+    event_bus.publish(
+        db,
+        event,
+        {
+            "startup_id": str(startup_id),
+            "founder_id": str(founder_id),
+            "href": "/journal",
+        },
+    )
+
+
 def handle_kpi_snapshot(db: Session, job: Job) -> None:
     startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
     if startup is None:
@@ -158,6 +192,7 @@ register_handler(SCHED_OVERDUE, handle_roadmap_overdue)
 register_handler(SCHED_DUE_SOON, handle_roadmap_due_soon)
 register_handler(SCHED_QUARTERLY, handle_assessment_quarterly)
 register_handler(SCHED_KPI_SNAPSHOT, handle_kpi_snapshot)
+register_handler(SCHED_JOURNAL_NUDGE, handle_journal_nudge)
 register_handler(SCHED_HEALTH_NIGHTLY, handle_health_nightly)
 register_handler(SCHED_MARKETING_PUBLISH, handle_marketing_publish)
 register_handler(SCHED_SALES_STALL, handle_sales_stall)

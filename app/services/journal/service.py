@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -23,6 +24,8 @@ from app.services.journal.encryption import (
     decrypt_content,
     encrypt_content,
 )
+
+SEARCH_SCAN_CAP = 2000
 
 
 class JournalService:
@@ -252,6 +255,23 @@ class JournalService:
             founder_id=user_id,
         )
 
+    @classmethod
+    def get_entry_by_date(
+        cls,
+        db: Session,
+        *,
+        user_id: uuid.UUID,
+        startup_id: uuid.UUID,
+        entry_date: date,
+    ) -> JournalEntry:
+        cls.check_founder_access(db, user_id=user_id, startup_id=startup_id)
+        entry = cls._get_entry_by_date(
+            db, startup_id=startup_id, founder_id=user_id, entry_date=entry_date
+        )
+        if entry is None:
+            raise NotFound()
+        return entry
+
     @staticmethod
     def get_entry_content(entry: JournalEntry) -> str:
         """Decrypt journal content only when explicitly requested."""
@@ -312,9 +332,9 @@ class JournalService:
             if update_data["stress"] is None:
                 raise AppError(
                     "VALIDATION_ERROR",
-                    "Content cannot be null.",
+                    "Stress cannot be null.",
                     422,
-                    field_errors=[{"field": "content", "message": "Omit the field instead."}],
+                    field_errors=[{"field": "stress", "message": "Omit the field instead."}],
                 )
 
             entry.stress = update_data["stress"]
@@ -389,6 +409,7 @@ class JournalService:
         startup_id: uuid.UUID,
         limit: int = 20,
         offset: int = 0,
+        month: tuple[int, int] | None = None,
     ) -> tuple[list[JournalEntry], int]:
         cls.check_founder_access(
             db,
@@ -400,6 +421,8 @@ class JournalService:
             JournalEntry.startup_id == startup_id,
             JournalEntry.founder_id == user_id,
         )
+        if month is not None:
+            base_query = cls._in_month(base_query, month)
 
         total = base_query.count()
 
@@ -415,6 +438,12 @@ class JournalService:
 
         return entries, total
 
+    @staticmethod
+    def _in_month(query: Any, month: tuple[int, int]) -> Any:
+        first = date(month[0], month[1], 1)
+        nxt = date(month[0] + (month[1] == 12), month[1] % 12 + 1, 1)
+        return query.filter(JournalEntry.date >= first, JournalEntry.date < nxt)
+
     # ------------------------------------------------------------------
     # Search own entries
     # ------------------------------------------------------------------
@@ -429,6 +458,7 @@ class JournalService:
         query: str,
         limit: int = 20,
         offset: int = 0,
+        month: tuple[int, int] | None = None,
     ) -> tuple[list[JournalEntry], int]:
         """Search metadata belonging to the founder's own entries.
 
@@ -443,15 +473,14 @@ class JournalService:
             startup_id=startup_id,
         )
 
-        entries = (
-            db.query(JournalEntry)
-            .filter(
-                JournalEntry.startup_id == startup_id,
-                JournalEntry.founder_id == user_id,
-            )
-            .order_by(JournalEntry.date.desc())
-            .all()
+        scope = db.query(JournalEntry).filter(
+            JournalEntry.startup_id == startup_id,
+            JournalEntry.founder_id == user_id,
         )
+        if month is not None:
+            scope = cls._in_month(scope, month)
+        # Content is encrypted, so matching happens in memory: bounded to the newest entries.
+        entries = scope.order_by(JournalEntry.date.desc()).limit(SEARCH_SCAN_CAP).all()
 
         needle = query.strip().lower()
 
