@@ -7,13 +7,11 @@ token (`X-Journal-Token`) minted by `POST /journal/unlock`; without a valid one 
 removing the passcode kills every outstanding token. Five wrong tries lock unlocking for 15 minutes.
 """
 
-import base64
-import hashlib
-import hmac
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import jwt
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -26,7 +24,7 @@ TOKEN_TTL_SECONDS = 30 * 60
 MAX_ATTEMPTS = 5
 LOCKOUT = timedelta(minutes=15)
 MAX_LOCKOUT = timedelta(hours=24)
-_PURPOSE = b"journal-unlock-v1"
+_PURPOSE = "journal-unlock"
 
 
 class JournalLocked(AppError):  # noqa: N818
@@ -55,38 +53,37 @@ def get_settings(db: Session, *, startup_id: uuid.UUID, founder_id: uuid.UUID) -
 # ----------------------------------------------------------------------
 
 
-def _mac(body: str) -> bytes:
-    key = hmac.new(app_settings.SECRET_KEY.encode(), _PURPOSE, hashlib.sha256).digest()
-    return hmac.new(key, body.encode(), hashlib.sha256).digest()
-
-
-def _b64(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+def _key() -> str:
+    # Not SECRET_KEY itself: an unlock token must never verify as a login token (both are
+    # HS256 JWTs carrying the founder id as `sub`), so the key is purpose-scoped as well.
+    return f"{_PURPOSE}:{app_settings.SECRET_KEY}"
 
 
 def mint_token(row: JournalSettings, *, now: float | None = None) -> str:
-    expiry = int((now if now is not None else time.time()) + TOKEN_TTL_SECONDS)
-    revision = row.passcode_version  # a counter, not secret data
-    body = f"{row.founder_id}.{row.startup_id}.{revision}.{expiry}"
-    return f"{_b64(body.encode())}.{_b64(_mac(body))}"
+    """A 30-minute HS256 JWT: sub = founder, sid = workspace, ver = passcode version."""
+    issued = now if now is not None else time.time()
+    claims = {
+        "sub": str(row.founder_id),
+        "sid": str(row.startup_id),
+        "ver": row.passcode_version,
+        "purpose": _PURPOSE,
+        "exp": int(issued + TOKEN_TTL_SECONDS),
+    }
+    return jwt.encode(claims, _key(), algorithm="HS256")
 
 
-def _token_ok(row: JournalSettings, token: str, *, now: float | None = None) -> bool:
+def _token_ok(row: JournalSettings, token: str) -> bool:
     try:
-        raw_body, raw_mac = token.split(".")
-        pad = "=" * (-len(raw_body) % 4)
-        body = base64.urlsafe_b64decode(raw_body + pad).decode()
-        mac = base64.urlsafe_b64decode(raw_mac + "=" * (-len(raw_mac) % 4))
-        founder, startup, version, expiry = body.split(".")
-    except (ValueError, UnicodeDecodeError):
-        return False
-    if not hmac.compare_digest(mac, _mac(body)):
+        claims = jwt.decode(
+            token, _key(), algorithms=["HS256"], options={"require": ["exp", "sub", "sid", "ver"]}
+        )
+    except jwt.PyJWTError:
         return False
     return (
-        founder == str(row.founder_id)
-        and startup == str(row.startup_id)
-        and version == str(row.passcode_version)
-        and int(expiry) >= (now if now is not None else time.time())
+        claims.get("purpose") == _PURPOSE
+        and claims["sub"] == str(row.founder_id)
+        and claims["sid"] == str(row.startup_id)
+        and claims["ver"] == row.passcode_version
     )
 
 

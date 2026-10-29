@@ -326,7 +326,46 @@ def test_forged_and_foreign_tokens_rejected(client, db):
     _set(client, h)
     row = db.query(JournalSettings).filter_by(founder_id=u.id).one()
     good = mint_token(row)
-    for token in ["garbage", good + "x", good.split(".")[0] + "." + "A" * 43, ""]:
+    import jwt
+
+    from app.core.config import settings as cfg
+    from app.core.security import create_access_token
+
+    forged_key = jwt.encode(
+        {
+            "sub": str(u.id),
+            "sid": str(s.id),
+            "ver": row.passcode_version,
+            "purpose": "journal-unlock",
+            "exp": 4102444800,
+        },
+        "not-the-server-key",
+        algorithm="HS256",
+    )
+    wrong_purpose = jwt.encode(
+        {
+            "sub": str(u.id),
+            "sid": str(s.id),
+            "ver": row.passcode_version,
+            "purpose": "other",
+            "exp": 4102444800,
+        },
+        f"journal-unlock:{cfg.SECRET_KEY}",
+        algorithm="HS256",
+    )
+    no_alg = jwt.encode({"sub": str(u.id), "exp": 4102444800}, "", algorithm="none")
+    # A real login (access) token for the same user must not unlock the journal either.
+    login_token = create_access_token(str(u.id))
+    for token in [
+        "garbage",
+        good + "x",
+        good[:-4],
+        forged_key,
+        wrong_purpose,
+        no_alg,
+        login_token,
+        "",
+    ]:
         r = client.get(_api("/entries"), headers={**h, "X-Journal-Token": token})
         assert r.status_code == 423
     expired = mint_token(row, now=0)
@@ -678,3 +717,10 @@ def test_lockout_arithmetic_never_overflows(client, db):
     assert r.status_code == 403
     db.refresh(row)
     assert row.locked_until - datetime.now(UTC) <= timedelta(hours=24, seconds=5)
+
+
+def test_unlock_token_is_not_a_login_token(client, db):
+    u, _s, h = _founder(db)
+    token = _set(client, h).json()["data"]["token"]
+    r = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
