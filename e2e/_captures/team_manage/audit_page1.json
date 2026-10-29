@@ -2,42 +2,42 @@
   "data": {
     "entries": [
       {
-        "id": "2cae786c-fa7f-4dab-b095-c9c1924f806a",
+        "id": "a4f405a1-6447-4168-9d22-1de6f23977c5",
         "action": "team.member.joined",
-        "actor": "delivered+e2e-5128f0bb8b51@resend.dev",
-        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
-        "created_at": "2026-10-29T20:55:14.545567+00:00"
+        "actor": "delivered+e2e-a0f7dc891a8e@resend.dev",
+        "target": "delivered+e2e-a0f7dc891a8e@resend.dev",
+        "created_at": "2026-10-29T21:00:29.350723+00:00"
       },
       {
-        "id": "e722ebdc-6a9f-4ac5-b1ca-ca855bdd9eec",
+        "id": "3ae9b372-58dc-415c-806f-332286548e57",
         "action": "team.invitation.created",
         "actor": "Ada Founder",
-        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
-        "created_at": "2026-10-29T20:55:14.273046+00:00"
+        "target": "delivered+e2e-a0f7dc891a8e@resend.dev",
+        "created_at": "2026-10-29T21:00:29.076927+00:00"
       },
       {
-        "id": "68923128-71b9-40a3-a9a6-ee5828f5ecf9",
+        "id": "e244100f-00b2-4790-acd3-d64abb5d7c57",
         "action": "team.member.removed",
         "actor": "Ada Founder",
-        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
-        "created_at": "2026-10-29T20:55:14.232610+00:00"
+        "target": "delivered+e2e-a0f7dc891a8e@resend.dev",
+        "created_at": "2026-10-29T21:00:29.036677+00:00"
       },
       {
-        "id": "86f086a9-4ddd-4239-9a84-c3ea4d787342",
+        "id": "be8ecd66-d792-4c24-9a2c-5bb82ed3a186",
         "action": "team.member.left",
-        "actor": "delivered+e2e-29b959f2efbe@resend.dev",
-        "target": "delivered+e2e-29b959f2efbe@resend.dev",
-        "created_at": "2026-10-29T20:55:14.190057+00:00"
+        "actor": "delivered+e2e-5e31d3c844ad@resend.dev",
+        "target": "delivered+e2e-5e31d3c844ad@resend.dev",
+        "created_at": "2026-10-29T21:00:28.993241+00:00"
       },
       {
-        "id": "97f88508-86fd-4c0a-95df-1ccdff1b8780",
+        "id": "d6e72ad3-b0cd-4e69-b16a-a28a52f2d5c5",
         "action": "team.member.role_changed",
         "actor": "Ada Founder",
-        "target": "delivered+e2e-5128f0bb8b51@resend.dev",
-        "created_at": "2026-10-29T20:55:14.148728+00:00"
+        "target": "delivered+e2e-a0f7dc891a8e@resend.dev",
+        "created_at": "2026-10-29T21:00:28.951825+00:00"
       }
     ],
-    "next_cursor": "MjAyNi0xMC0yOVQyMDo1NToxNC4xNDg3MjgrMDA6MDB8OTdmODg1MDgtODZmZC00YzBhLTk1ZGYtMWNjZGZmMWI4Nzgw"
+    "next_cursor": "MjAyNi0xMC0yOVQyMTowMDoyOC45NTE4MjUrMDA6MDB8ZDZlNzJhZDMtYjBjZC00ZTY5LWIxNmEtYTI4YTUyZjJkNWM1"
   },
   "meta": null
 }

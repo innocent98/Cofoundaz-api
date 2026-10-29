@@ -25,27 +25,27 @@ errors are `{"error": {"code", "message", "field_errors": []}}`.
 ## 1. `GET /members`: the Members tab
 
 Active members only, A to Z by name. **`name` can be `null`** (someone who signed up and never set a name): show the email instead. `joined_at`
-is when they joined this workspace; `last_active_at` is their most recent sign-in (any workspace), or `null`. The row with your own `user_id` is "you".
+is when they joined this workspace; `last_active_at` is their most recent sign-in (any workspace) and is **only returned to founders** (`null` for every other role and for someone who never signed in): show "never" for null only on a founder's screen, and hide the column for other roles. The row with your own `user_id` is "you".
 Pending invitations are a separate list (section 3): render them as "invite pending" rows after the members.
 
 ```json
 {
   "data": [
     {
-      "user_id": "3584cf02-36a5-4657-92b0-e676e5a85523",
+      "user_id": "87bb0e98-4d48-4136-a023-a8d7626e4bd3",
       "name": "Ada Founder",
-      "email": "delivered+e2e-097d1ac440e8@resend.dev",
+      "email": "delivered+e2e-b27bac6e9439@resend.dev",
       "role": "founder",
-      "joined_at": "2026-10-29T20:55:12.828374+00:00",
-      "last_active_at": "2026-10-29T20:55:12.544740+00:00"
+      "joined_at": "2026-10-29T21:00:27.634213+00:00",
+      "last_active_at": "2026-10-29T21:00:27.344853+00:00"
     },
     {
-      "user_id": "65dbf6dd-5a07-4f6f-907e-1f6f4938cfd9",
+      "user_id": "194d59a1-fa1e-408d-ae89-fedb81b26bbc",
       "name": null,
-      "email": "delivered+e2e-29b959f2efbe@resend.dev",
+      "email": "delivered+e2e-5e31d3c844ad@resend.dev",
       "role": "mentor",
-      "joined_at": "2026-10-29T20:55:13.897938+00:00",
-      "last_active_at": "2026-10-29T20:55:13.591280+00:00"
+      "joined_at": "2026-10-29T21:00:28.681277+00:00",
+      "last_active_at": "2026-10-29T21:00:28.417243+00:00"
     },
     "... more members, same shape ..."
   ],
@@ -62,7 +62,7 @@ assignable). Founder only. Returns the new role. Toast copy from the PRD: "{name
 ```json
 {
   "data": {
-    "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+    "user_id": "df6954c2-b34f-4215-9f81-ed4f49244fd2",
     "role": "accountant"
   },
   "meta": null
@@ -103,12 +103,12 @@ means the 14 days ran out (it can still be re-sent). Accepted and revoked invita
 {
   "data": [
     {
-      "id": "70442065-9b63-41b1-9e31-35af20c4c257",
-      "email": "delivered+pending-909c0d29c317@resend.dev",
+      "id": "b1540e6b-9cc5-4480-9dbb-6099cd57aec1",
+      "email": "delivered+pending-a78d3c2d5eb2@resend.dev",
       "role": "accountant",
       "invited_by": "Ada Founder",
-      "created_at": "2026-10-29T20:55:14.079742+00:00",
-      "expires_at": "2026-11-12T20:55:14.090305+00:00",
+      "created_at": "2026-10-29T21:00:28.876430+00:00",
+      "expires_at": "2026-11-12T21:00:28.887072+00:00",
       "expired": false
     }
   ],
@@ -123,7 +123,7 @@ Resending or revoking one that was already accepted or revoked is **409 `INVITAT
 ```json
 {
   "data": {
-    "id": "70442065-9b63-41b1-9e31-35af20c4c257",
+    "id": "b1540e6b-9cc5-4480-9dbb-6099cd57aec1",
     "resent": true,
     "delivered": true
   },
@@ -133,7 +133,7 @@ Resending or revoking one that was already accepted or revoked is **409 `INVITAT
 ```json
 {
   "data": {
-    "id": "70442065-9b63-41b1-9e31-35af20c4c257",
+    "id": "b1540e6b-9cc5-4480-9dbb-6099cd57aec1",
     "revoked": true
   },
   "meta": null
@@ -167,15 +167,17 @@ accept succeeded but they stayed locked out). A suspended member is not reopened
 ## 4. Remove and leave
 
 **`DELETE /members/{user_id}`** (founder): sets the membership to removed. **Effects, all at once:** the person loses every workspace route and the realtime
-stream immediately; their **Documents grants in this workspace are revoked** (counted in `document_grants_revoked`); their past activity and comments stay attributed to them. Confirm copy from the PRD: "Remove {name}? They lose access immediately. Their past activity stays attributed."
+stream immediately; their **Documents grants in this workspace are revoked** (`document_grants_revoked`), **public share links they created are revoked** (`share_links_revoked`) and **pending invitations they sent are revoked** (`invitations_revoked`); their past activity and comments stay attributed to them. Confirm copy from the PRD: "Remove {name}? They lose access immediately. Their past activity stays attributed."
 You cannot remove yourself (409 `CANNOT_REMOVE_SELF`: use Leave).
 
 ```json
 {
   "data": {
-    "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+    "user_id": "df6954c2-b34f-4215-9f81-ed4f49244fd2",
     "removed": true,
-    "document_grants_revoked": 1
+    "document_grants_revoked": 1,
+    "share_links_revoked": 0,
+    "invitations_revoked": 0
   },
   "meta": null
 }
@@ -207,7 +209,9 @@ sign-in screen.
 {
   "data": {
     "left": true,
-    "document_grants_revoked": 0
+    "document_grants_revoked": 0,
+    "share_links_revoked": 0,
+    "invitations_revoked": 0
   },
   "meta": null
 }
@@ -259,7 +263,7 @@ comment mentions you. To open a thread use the existing endpoints (`GET /team/co
   "data": [
     {
       "entity_type": "roadmap_milestone",
-      "entity_id": "56ccc640-03c2-4cb2-8a10-4927cef7b5d5",
+      "entity_id": "f3d681db-d49f-4581-ab5c-f477f9f1ea34",
       "anchor": null,
       "context": "Validate demand",
       "comment_count": 1,
@@ -268,7 +272,7 @@ comment mentions you. To open a thread use the existing endpoints (`GET /team/co
       "last_comment": {
         "author": "Ada Founder",
         "snippet": "Can you review the interview plan?",
-        "created_at": "2026-10-29T20:55:13.967103+00:00"
+        "created_at": "2026-10-29T21:00:28.750131+00:00"
       }
     }
   ],

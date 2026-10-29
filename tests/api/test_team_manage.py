@@ -73,6 +73,24 @@ def test_members_list_has_join_and_last_active(client, db):
     rows = client.get(f"{T}/members", headers=headers(u[F], s)).json()["data"]
     assert len(rows) == len(MembershipRole)
     assert {"user_id", "name", "email", "role", "joined_at", "last_active_at"} <= set(rows[0])
+    # The sign-in time is account-wide: only founders get it, everyone else sees null.
+    from app.db.models.auth import AuthSession
+
+    db.add(
+        AuthSession(
+            user_id=u[M].id,
+            family_id=uuid.uuid4(),
+            refresh_token_hash="x" * 64,
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+    )
+    db.commit()
+    mentor_row = next(r for r in rows if r["user_id"] == str(u[M].id))
+    assert mentor_row["last_active_at"] is None
+    as_founder = client.get(f"{T}/members", headers=headers(u[F], s)).json()["data"]
+    assert next(r for r in as_founder if r["user_id"] == str(u[M].id))["last_active_at"]
+    as_mentor = client.get(f"{T}/members", headers=headers(u[M], s)).json()["data"]
+    assert all(r["last_active_at"] is None for r in as_mentor)
 
 
 # ---------------------------------------------------------------- change role
@@ -149,6 +167,8 @@ def test_remove_locks_them_out_revokes_grants_and_keeps_history(client, db):
         "user_id": str(u[TM].id),
         "removed": True,
         "document_grants_revoked": 1,
+        "share_links_revoked": 0,
+        "invitations_revoked": 0,
     }
     db.expire_all()
     assert db.get(DocumentGrant, g.id).revoked_at is not None
@@ -189,7 +209,7 @@ def test_member_leaves_and_loses_grants(client, db):
     g = _doc_with_grant(db, s, u[F], u[M])
     db.commit()
     r = client.post(f"{T}/leave", headers=headers(u[M], s))
-    assert r.status_code == 200 and r.json()["data"] == {"left": True, "document_grants_revoked": 1}
+    assert r.status_code == 200 and r.json()["data"]["document_grants_revoked"] == 1
     db.expire_all()
     assert db.get(DocumentGrant, g.id).revoked_at is not None
     assert client.get(f"{T}/members", headers=headers(u[M], s)).status_code == 403
@@ -407,3 +427,71 @@ def test_resolved_thread_drops_out_of_unresolved(client, db):
     hf = headers(u[F], s)
     assert len(client.get(f"{T}/comments/threads", headers=hf).json()["data"]) == 1
     assert client.get(f"{T}/comments/threads?filter=unresolved", headers=hf).json()["data"] == []
+
+
+def test_csv_cells_are_neutralised_even_after_whitespace(db):
+    from app.services.team.members import _csv_safe
+
+    for bad in ["=1+1", "+1", "-1", "@SUM(A1)", "\t=1", "\r=1", "  =1", "\x00=1"]:
+        assert _csv_safe(bad).startswith("'"), repr(bad)
+    assert _csv_safe("Ada Founder") == "Ada Founder"
+    assert _csv_safe("") == ""
+
+
+def test_founder_changes_recheck_the_actor_under_lock(client, db):
+    # A founder demoted a moment ago (their request already authenticated) must not still manage
+    # members: the service re-checks the actor's current membership.
+    from app.core.errors import Forbidden
+    from app.db.models.startup import Startup
+    from app.services.team.members import change_role, remove_member
+
+    s, u = team(db)
+    startup = db.get(Startup, s.id)
+    db.query(Membership).filter_by(user_id=u[F].id, startup_id=s.id).one().role = TM
+    db.flush()
+    with pytest.raises(Forbidden):
+        change_role(db, startup=startup, actor=u[F], target_user_id=u[M].id, role=TM)
+    with pytest.raises(Forbidden):
+        remove_member(db, startup=startup, actor=u[F], target_user_id=u[M].id)
+
+
+def test_removal_kills_their_share_links_and_pending_invitations(client, db, mail):
+    from app.db.models.document import DocumentShare
+
+    s, u = team(db)
+    g = _doc_with_grant(db, s, u[F], u[M])
+    link = DocumentShare(
+        startup_id=s.id,
+        document_id=g.document_id,
+        shared_by_id=u[TM].id,
+        email=None,
+        access_level=ShareAccess.view,
+        token_hash="h" * 64,
+    )
+    own = DocumentShare(
+        startup_id=s.id,
+        document_id=g.document_id,
+        shared_by_id=u[F].id,
+        email=None,
+        access_level=ShareAccess.view,
+        token_hash="i" * 64,
+    )
+    db.add_all([link, own])
+    db.commit()
+    # A second founder sends an invitation, then gets removed by the first.
+    client.patch(f"{T}/members/{u[TM].id}", json={"role": "founder"}, headers=headers(u[F], s))
+    client.post(
+        f"{T}/invitations",
+        json={"invites": [{"email": "x@example.com", "role": "mentor"}]},
+        headers=headers(u[TM], s),
+    )
+    r = client.delete(f"{T}/members/{u[TM].id}", headers=headers(u[F], s))
+    assert r.json()["data"]["share_links_revoked"] == 1
+    assert r.json()["data"]["invitations_revoked"] == 1
+    db.expire_all()
+    assert db.get(DocumentShare, link.id).revoked_at is not None
+    assert db.get(DocumentShare, own.id).revoked_at is None  # someone else's link survives
+    assert (
+        db.query(Invitation).filter_by(email="x@example.com").one().status
+        == InvitationStatus.revoked
+    )

@@ -1,8 +1,10 @@
 {
   "data": {
-    "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+    "user_id": "df6954c2-b34f-4215-9f81-ed4f49244fd2",
     "removed": true,
-    "document_grants_revoked": 1
+    "document_grants_revoked": 1,
+    "share_links_revoked": 0,
+    "invitations_revoked": 0
   },
   "meta": null
 }

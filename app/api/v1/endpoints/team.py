@@ -66,7 +66,11 @@ def get_members(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """Active workspace members (assignee/owner pickers, directory)."""
-    return success_response(members_svc.list_members_detailed(db, _ws(db, membership)))
+    return success_response(
+        members_svc.list_members_detailed(
+            db, _ws(db, membership), include_last_active=membership.role == MembershipRole.founder
+        )
+    )
 
 
 @router.get("/comments")

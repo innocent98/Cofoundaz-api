@@ -1,28 +1,28 @@
 {
   "data": [
     {
-      "user_id": "3584cf02-36a5-4657-92b0-e676e5a85523",
+      "user_id": "87bb0e98-4d48-4136-a023-a8d7626e4bd3",
       "name": "Ada Founder",
-      "email": "delivered+e2e-097d1ac440e8@resend.dev",
+      "email": "delivered+e2e-b27bac6e9439@resend.dev",
       "role": "founder",
-      "joined_at": "2026-10-29T20:55:12.828374+00:00",
-      "last_active_at": "2026-10-29T20:55:12.544740+00:00"
+      "joined_at": "2026-10-29T21:00:27.634213+00:00",
+      "last_active_at": "2026-10-29T21:00:27.344853+00:00"
     },
     {
-      "user_id": "65dbf6dd-5a07-4f6f-907e-1f6f4938cfd9",
+      "user_id": "194d59a1-fa1e-408d-ae89-fedb81b26bbc",
       "name": null,
-      "email": "delivered+e2e-29b959f2efbe@resend.dev",
+      "email": "delivered+e2e-5e31d3c844ad@resend.dev",
       "role": "mentor",
-      "joined_at": "2026-10-29T20:55:13.897938+00:00",
-      "last_active_at": "2026-10-29T20:55:13.591280+00:00"
+      "joined_at": "2026-10-29T21:00:28.681277+00:00",
+      "last_active_at": "2026-10-29T21:00:28.417243+00:00"
     },
     {
-      "user_id": "35f73327-7591-4703-9671-c187bb92f4d8",
+      "user_id": "df6954c2-b34f-4215-9f81-ed4f49244fd2",
       "name": null,
-      "email": "delivered+e2e-5128f0bb8b51@resend.dev",
+      "email": "delivered+e2e-a0f7dc891a8e@resend.dev",
       "role": "mentor",
-      "joined_at": "2026-10-29T20:55:13.535920+00:00",
-      "last_active_at": "2026-10-29T20:55:13.276031+00:00"
+      "joined_at": "2026-10-29T21:00:28.354366+00:00",
+      "last_active_at": "2026-10-29T21:00:28.094663+00:00"
     }
   ],
   "meta": null

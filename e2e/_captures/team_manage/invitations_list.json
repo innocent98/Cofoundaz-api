@@ -1,12 +1,12 @@
 {
   "data": [
     {
-      "id": "70442065-9b63-41b1-9e31-35af20c4c257",
-      "email": "delivered+pending-909c0d29c317@resend.dev",
+      "id": "b1540e6b-9cc5-4480-9dbb-6099cd57aec1",
+      "email": "delivered+pending-a78d3c2d5eb2@resend.dev",
       "role": "accountant",
       "invited_by": "Ada Founder",
-      "created_at": "2026-10-29T20:55:14.079742+00:00",
-      "expires_at": "2026-11-12T20:55:14.090305+00:00",
+      "created_at": "2026-10-29T21:00:28.876430+00:00",
+      "expires_at": "2026-11-12T21:00:28.887072+00:00",
       "expired": false
     }
   ],

@@ -20,11 +20,11 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.errors import AppError, NotFound
+from app.core.errors import AppError, Forbidden, NotFound
 from app.db.models.audit import AuditLog
 from app.db.models.auth import AuthSession
 from app.db.models.comment import Comment
-from app.db.models.document import DocumentGrant
+from app.db.models.document import DocumentGrant, DocumentShare
 from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
@@ -81,6 +81,25 @@ def _founder_count(db: Session, startup_id: uuid.UUID) -> int:
     )
 
 
+def _lock_workspace_for(db: Session, startup_id: uuid.UUID, actor_id: uuid.UUID) -> None:
+    """Serialise founder-level changes per workspace and re-check, under the lock, that the actor
+    is still an active founder: two founders demoting or removing each other (or one leaving)
+    at the same moment cannot leave the workspace without a founder."""
+    db.query(Startup.id).filter(Startup.id == startup_id).with_for_update().one()
+    still = (
+        db.query(Membership.id)
+        .filter_by(
+            startup_id=startup_id,
+            user_id=actor_id,
+            role=MembershipRole.founder,
+            status=MembershipStatus.active,
+        )
+        .first()
+    )
+    if still is None:
+        raise Forbidden()
+
+
 def change_role(
     db: Session, *, startup: Startup, actor: User, target_user_id: uuid.UUID, role: MembershipRole
 ) -> Membership:
@@ -93,6 +112,7 @@ def change_role(
             422,
             field_errors=[{"field": "role", "message": "That role can't be assigned here."}],
         )
+    _lock_workspace_for(db, startup.id, actor.id)
     m = _active_member(db, startup.id, target_user_id)
     if m.role != role:
         m.role = role
@@ -142,6 +162,27 @@ def _end_membership(
     m.status = MembershipStatus.removed
     db.flush()
     grants = revoke_document_grants(db, startup_id=startup.id, user=user, revoked_by=actor_id)
+    # Links they handed out must die with their membership, and so must invitations they sent
+    # (a removed founder could otherwise still bring people in).
+    now = datetime.now(UTC)
+    shares = (
+        db.query(DocumentShare)
+        .filter(
+            DocumentShare.startup_id == startup.id,
+            DocumentShare.shared_by_id == m.user_id,
+            DocumentShare.revoked_at.is_(None),
+        )
+        .update({DocumentShare.revoked_at: now}, synchronize_session=False)
+    )
+    invites = (
+        db.query(Invitation)
+        .filter(
+            Invitation.startup_id == startup.id,
+            Invitation.invited_by == m.user_id,
+            Invitation.status == InvitationStatus.pending,
+        )
+        .update({Invitation.status: InvitationStatus.revoked}, synchronize_session=False)
+    )
     write_audit(
         db,
         action,
@@ -155,7 +196,11 @@ def _end_membership(
         "workspace.member.removed",
         {"startup_id": str(startup.id), "user_id": str(m.user_id), "actor_id": str(actor_id)},
     )
-    return {"document_grants_revoked": grants}
+    return {
+        "document_grants_revoked": grants,
+        "share_links_revoked": shares,
+        "invitations_revoked": invites,
+    }
 
 
 def remove_member(
@@ -163,6 +208,7 @@ def remove_member(
 ) -> dict[str, int]:
     if target_user_id == actor.id:
         raise AppError("CANNOT_REMOVE_SELF", "Use Leave workspace to remove yourself.", 409)
+    _lock_workspace_for(db, startup.id, actor.id)
     m = _active_member(db, startup.id, target_user_id)
     return _end_membership(
         db, startup=startup, m=m, actor_id=actor.id, action="team.member.removed"
@@ -182,8 +228,11 @@ def leave(db: Session, *, startup: Startup, user: User) -> dict[str, int]:
     return _end_membership(db, startup=startup, m=m, actor_id=user.id, action="team.member.left")
 
 
-def list_members_detailed(db: Session, startup: Startup) -> list[dict[str, Any]]:
-    """Active members with join date and last sign-in, for the Members tab."""
+def list_members_detailed(
+    db: Session, startup: Startup, *, include_last_active: bool
+) -> list[dict[str, Any]]:
+    """Active members with join date and (founders only) last sign-in, for the Members tab.
+    The sign-in time is account-wide, so it is not shown to the other roles."""
     base = team_svc.list_members(db, startup)
     ids = {uuid.UUID(m["user_id"]) for m in base}
     joined: dict[uuid.UUID, datetime | None] = dict(
@@ -192,12 +241,16 @@ def list_members_detailed(db: Session, startup: Startup) -> list[dict[str, Any]]
         .tuples()
         .all()
     )
-    last: dict[uuid.UUID, datetime] = dict(
-        db.query(AuthSession.user_id, func.max(AuthSession.created_at))
-        .filter(AuthSession.user_id.in_(ids))
-        .group_by(AuthSession.user_id)
-        .tuples()
-        .all()
+    last: dict[uuid.UUID, datetime] = (
+        dict(
+            db.query(AuthSession.user_id, func.max(AuthSession.created_at))
+            .filter(AuthSession.user_id.in_(ids))
+            .group_by(AuthSession.user_id)
+            .tuples()
+            .all()
+        )
+        if include_last_active
+        else {}
     )
     out = []
     for m in base:
@@ -401,6 +454,15 @@ def audit_log(
     return _audit_rows(db, rows), next_cursor
 
 
+def _csv_safe(cell: str) -> str:
+    """A cell a spreadsheet could run as a formula (leading = + - @, tab or CR, even after
+    whitespace or control characters) gets a leading apostrophe."""
+    head = cell.lstrip(" \t\r\n\x00\x0b\x0c")[:1]
+    if cell[:1] in ("\t", "\r") or head in ("=", "+", "-", "@"):
+        return "'" + cell
+    return cell
+
+
 def audit_csv(db: Session, startup: Startup) -> str:
     rows = (
         _audit_query(db, startup.id)
@@ -412,9 +474,8 @@ def audit_csv(db: Session, startup: Startup) -> str:
     w = csv.writer(buf)
     w.writerow(["when", "actor", "action", "target"])
     for r in _audit_rows(db, rows):
-        # A leading = + - @ would make a spreadsheet run the cell as a formula.
         cells = [r["actor"] or "", r["action"], r["target"] or ""]
-        w.writerow([r["created_at"], *[f"'{c}" if c[:1] in "=+-@" else c for c in cells]])
+        w.writerow([r["created_at"], *[_csv_safe(c) for c in cells]])
     return buf.getvalue()
 
 
