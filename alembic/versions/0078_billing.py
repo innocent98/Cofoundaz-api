@@ -103,10 +103,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("startup_id", name="uq_billing_subscriptions_startup_id"),
     )
     op.create_index(
-        "ix_billing_subscriptions_customer", "billing_subscriptions", ["paystack_customer_code"]
+        "ix_billing_subscriptions_paystack_customer_code", "billing_subscriptions", ["paystack_customer_code"]
     )
     op.create_index(
-        "ix_billing_subscriptions_sub_code", "billing_subscriptions", ["paystack_subscription_code"]
+        "ix_billing_subscriptions_paystack_subscription_code", "billing_subscriptions", ["paystack_subscription_code"]
     )
     op.create_table(
         "billing_payment_methods",

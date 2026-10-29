@@ -73,8 +73,12 @@ class BillingSubscription(UUIDMixin, TimestampMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     grace_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    paystack_customer_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    paystack_subscription_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    paystack_customer_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    paystack_subscription_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
     paystack_email_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     usage_alert_cycle: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
