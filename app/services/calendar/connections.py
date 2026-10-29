@@ -7,8 +7,6 @@ connection row, so a captured callback URL cannot be replayed or used by another
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -123,11 +121,31 @@ def status(db: Session, *, user_id: uuid.UUID) -> dict[str, Any]:
     }
 
 
+PROOF_TYP = "calendar_oauth_proof"
+
+
 def nonce_cookie_value(nonce: str) -> str:
     """What the browser must present at the callback: binds the consent to the browser that
-    started it (stops login-CSRF, where an attacker's connect URL is completed by a victim)."""
-    # Keyed, so the cookie value cannot be derived from the nonce without the server secret.
-    return hmac.new(settings.SECRET_KEY.encode(), nonce.encode(), hashlib.sha256).hexdigest()
+    started it (stops login-CSRF, where an attacker's connect URL is completed by a victim).
+    A signed, short-lived token over the nonce, so it cannot be minted without the server secret."""
+    claims = {
+        "typ": PROOF_TYP,
+        "nonce": nonce,
+        "exp": _now() + timedelta(seconds=STATE_TTL_SECONDS),
+    }
+    return jwt.encode(claims, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def proof_matches(proof: str | None, nonce: str) -> bool:
+    if not proof:
+        return False
+    try:
+        claims = jwt.decode(proof, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except jwt.PyJWTError:
+        return False
+    return claims.get("typ") == PROOF_TYP and secrets.compare_digest(
+        str(claims.get("nonce", "")), nonce
+    )
 
 
 def start_connect(
@@ -184,9 +202,7 @@ def complete_callback(
         or conn.startup_id != startup_id
     ):
         return ERR_STATE
-    proof_ok = browser_proof is not None and secrets.compare_digest(
-        browser_proof, nonce_cookie_value(conn.oauth_nonce)
-    )
+    proof_ok = proof_matches(browser_proof, conn.oauth_nonce)
     conn.oauth_nonce = None  # single use, whatever happens next
     conn.nonce_expires_at = None
     if not proof_ok:
