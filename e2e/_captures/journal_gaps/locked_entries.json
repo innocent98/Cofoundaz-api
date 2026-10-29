@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "JOURNAL_LOCKED",
+    "message": "Unlock your journal to continue.",
+    "field_errors": []
+  }
+}

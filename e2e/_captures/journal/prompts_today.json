@@ -1,6 +1,7 @@
 {
   "data": {
-    "prompt": "What went well today that you do not want to overlook?"
+    "prompt": "What would you change if you could replay today?",
+    "dismissed": false
   },
   "meta": null
 }

@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "df969b45-fefe-4b4c-b654-1ace731f6023",
+    "milestone_id": "b0699117-eb96-4ec6-b228-4975351469e6",
+    "milestone_title": "Validate demand",
+    "created_at": "2026-10-29T20:07:49.792315Z",
+    "updated_at": "2026-10-29T20:07:49.792315Z",
+    "what_worked": "Talking to users first",
+    "what_didnt": "Pricing guesses",
+    "what_change": "Test price earlier"
+  },
+  "meta": null
+}

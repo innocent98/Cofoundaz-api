@@ -3319,6 +3319,7 @@ follow the established async-upgrade pattern (templated fallback written synchro
       `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
       `docs/fe-integration-guide-learning-recommendations.md`. Per-course reasons +
       Health-Score-weighted sort key remain unbuilt follow-ups.
+- [x] **Module 21 — Journal PRD gaps (FE hand-off pass)** — **built 2026-10-29** on `feature/journal-be-gaps` (migration `0080_journal_gaps`; PR pending): by-date read, richer list + month filter, stats, mood range + annotations, rule-based insights + supportive card, prompt dismiss + library, settings, optional passcode lock (`423 JOURNAL_LOCKED`), export, permanent delete, retros, opt-in reminder notifications. SOP `docs/sop/2026-10-29-journal-prd-gaps.md`, FE guide `docs/fe-integration-guide-journal.md` (regenerated from live captures). FE: hand-off brief `cofoundaz/docs/fe-handoff/journal.md`.
 - [x] **Module 21 — AI context-aware journal prompts** — **shipped 2026-09-23** as the daily
       `prompt` upgrade (static→AI on `GET /journal/prompts/today`, grounded only in operational
       signals — never journal content or mood; migration `0032_journal_prompts`,

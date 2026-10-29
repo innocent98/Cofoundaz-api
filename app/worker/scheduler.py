@@ -20,6 +20,7 @@ from app.db.models.enums import (
 )
 from app.db.models.finance_connection import FinanceConnection
 from app.db.models.invoice import Invoice
+from app.db.models.journal import JournalSettings
 from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
@@ -47,6 +48,9 @@ SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
 OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
+SCHED_JOURNAL_NUDGE = "scheduled.journal.nudge"
+JOURNAL_REMINDER_HOUR = 20  # local; the evening writing reminder
+JOURNAL_PROMPT_HOUR = 9  # local; the daily prompt notification
 INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
@@ -118,6 +122,44 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
         for sid in _active_startup_ids(db)
         if str(sid) not in claimed and now_t >= delivery.get(sid, default)
     ]
+
+
+def _due_journal_nudges(db: Session, now: datetime) -> list[Due]:
+    """Opt-in journal nudges (PRD 21.4 + design), once per founder per local day: the daily prompt
+    from JOURNAL_PROMPT_HOUR, the evening reminder from JOURNAL_REMINDER_HOUR. The job re-checks
+    whether an entry exists before the reminder fires. Reads settings rows only, never entries."""
+    local = _local(now)
+    period = local.date().isoformat()
+    out: list[Due] = []
+    for kind, column, hour in (
+        ("prompt", JournalSettings.daily_prompt_notifications, JOURNAL_PROMPT_HOUR),
+        ("reminder", JournalSettings.evening_reminder, JOURNAL_REMINDER_HOUR),
+    ):
+        if local.hour < hour:
+            continue
+        task_key = f"journal.{kind}"
+        claimed = {
+            r[0]
+            for r in db.query(ScheduledRun.scope_key)
+            .filter(ScheduledRun.task_key == task_key, ScheduledRun.period_key == period)
+            .all()
+        }
+        rows = (
+            db.query(JournalSettings.startup_id, JournalSettings.founder_id)
+            .join(Startup, Startup.id == JournalSettings.startup_id)
+            .filter(column.is_(True), Startup.deleted_at.is_(None))
+            .all()
+        )
+        for sid, fid in rows:
+            if str(fid) not in claimed:
+                payload = {
+                    "startup_id": str(sid),
+                    "founder_id": str(fid),
+                    "kind": kind,
+                    "date": period,
+                }
+                out.append(Due(task_key, str(fid), period, SCHED_JOURNAL_NUDGE, sid, payload))
+    return out
 
 
 def _due_kpi_snapshots(db: Session, now: datetime) -> list[Due]:
@@ -525,6 +567,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_invoice_overdue(db, now),
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
+        *_due_journal_nudges(db, now),
     ]
     enqueued = 0
     for item in due:

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "PASSCODE_INCORRECT",
+    "message": "That passcode did not match.",
+    "field_errors": [
+      {
+        "field": "passcode",
+        "message": "Incorrect passcode."
+      }
+    ]
+  }
+}

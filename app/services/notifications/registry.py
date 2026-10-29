@@ -65,6 +65,14 @@ def _with_roles(db: Session, startup_id: Any, roles: frozenset[MembershipRole]) 
     return [r[0] for r in rows]
 
 
+def _journal_owner(db: Session, payload: dict) -> list[uuid.UUID]:
+    """The one founder whose journal nudge this is (still an active founder of the workspace)."""
+    if not payload.get("founder_id"):
+        return []
+    owner = uuid.UUID(str(payload["founder_id"]))
+    return [u for u in _with_roles(db, payload["startup_id"], FOUNDER_ROLES) if u == owner]
+
+
 def _audience(
     event: str, *, minus_actor: bool = True
 ) -> Callable[[Session, dict], list[uuid.UUID]]:
@@ -341,6 +349,17 @@ SPECS: dict[str, NotifSpec] = {
         _audience("validation.insight.detected", minus_actor=False),
         lambda p: f"New pattern detected in customer feedback: {p.get('theme') or 'a new theme'}",
         lambda _p: "See insight",
+    ),
+    # Journal nudges (PRD 21.4 + design): generic copy, never any entry content. In-app only.
+    "journal.reminder": NotifSpec(
+        _journal_owner,
+        lambda _p: "A quiet moment for your journal",
+        lambda _p: "You have not written today. Two minutes is enough.",
+    ),
+    "journal.prompt.daily": NotifSpec(
+        _journal_owner,
+        lambda _p: "Today's journal prompt is ready",
+        lambda _p: "",
     ),
     "roadmap.milestone.due_soon": NotifSpec(
         _all_active_members,
