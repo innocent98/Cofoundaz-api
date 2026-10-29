@@ -3718,7 +3718,7 @@ Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
   - [x] Tests first (53), e2e journey + captures
   - [ ] FE sub-session + live re-walk of every control (1440 + 375, every role)
 - [x] (b) Billing BE on Paystack, built to the recommended defaults (branch `feature/settings-billing`, migration 0078, guide
-      `docs/fe-integration-guide-settings-billing.md`, SOP `docs/sop/2026-10-27-settings-be-billing.md`); **draft PR**: D-SET-1, 2, 4, 6 unanswered
+      `docs/fe-integration-guide-settings-billing.md`, SOP `docs/sop/2026-10-27-settings-be-billing.md`); D-SET-1 to 14 accepted by Adebayo 2026-10-29
   - [x] Plans, checkout + callback verify, HMAC-verified idempotent webhook, subscription state (trial/grace/cancel/scheduled downgrade), prorated upgrade
   - [x] Usage meters, invoices + PDF receipts, cards, credit-pack add-ons, billing details, notifications, plan gate (dark) on Sales outreach
   - [x] Opus review of webhook/money/plan-gate paths, findings fixed
