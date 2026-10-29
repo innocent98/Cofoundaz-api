@@ -661,3 +661,15 @@ def test_nudges_scheduled_per_workspace(db):
     db.flush()
     scheduler.scheduler_tick(db, now=datetime.now(UTC).replace(hour=22, minute=0))
     assert db.query(Job).filter_by(type=scheduler.SCHED_JOURNAL_NUDGE).count() == 2
+
+
+def test_lockout_arithmetic_never_overflows(client, db):
+    u, _s, h = _founder(db)
+    _set(client, h)
+    row = db.query(JournalSettings).filter_by(founder_id=u.id).one()
+    row.failed_attempts = 10_000_000 - 1  # far past any realistic number of rounds
+    db.flush()
+    r = client.post(_api("/unlock"), json={"passcode": "0000"}, headers=h)
+    assert r.status_code == 403
+    db.refresh(row)
+    assert row.locked_until - datetime.now(UTC) <= timedelta(hours=24, seconds=5)

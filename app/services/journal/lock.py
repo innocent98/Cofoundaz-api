@@ -147,7 +147,8 @@ def _register_failure(db: Session, row: JournalSettings) -> None:
     row.failed_attempts += 1
     if row.failed_attempts % MAX_ATTEMPTS == 0:
         rounds = row.failed_attempts // MAX_ATTEMPTS
-        row.locked_until = datetime.now(UTC) + min(LOCKOUT * 2 ** (rounds - 1), MAX_LOCKOUT)
+        exponent = min(rounds - 1, 7)  # 15 min * 2**7 already exceeds the 24 h cap
+        row.locked_until = datetime.now(UTC) + min(LOCKOUT * 2**exponent, MAX_LOCKOUT)
     # The failure must survive the error response (the request transaction rolls back on raise).
     db.commit()
 
