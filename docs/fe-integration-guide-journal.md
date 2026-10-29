@@ -632,7 +632,7 @@ A wrong or missing `current_passcode` on a change is **403 `PASSCODE_INCORRECT`*
 }
 ```
 
-Five wrong tries in a row lock unlocking for 15 minutes: **429 `PASSCODE_LOCKED_OUT`** ("Too many wrong tries. Try again in a few
+Five wrong tries in a row lock unlocking for 15 minutes (the lock doubles for every further five wrong tries, up to 24 hours; a correct passcode resets it): **429 `PASSCODE_LOCKED_OUT`** ("Too many wrong tries. Try again in a few
 minutes."), and `GET /settings` then shows `locked_until` (ISO time) so the UI can show a countdown. *Not captured live (unit-tested):
 the journey does not burn five attempts.* `POST /unlock` with no passcode set is 409 `PASSCODE_NOT_SET` (unit-tested).
 

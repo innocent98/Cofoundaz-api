@@ -151,14 +151,17 @@ def _due_journal_nudges(db: Session, now: datetime) -> list[Due]:
             .all()
         )
         for sid, fid in rows:
-            if str(fid) not in claimed:
+            scope = (
+                sid.hex + fid.hex
+            )  # 64 chars (scope_key limit); one claim per workspace and founder
+            if scope not in claimed:
                 payload = {
                     "startup_id": str(sid),
                     "founder_id": str(fid),
                     "kind": kind,
                     "date": period,
                 }
-                out.append(Due(task_key, str(fid), period, SCHED_JOURNAL_NUDGE, sid, payload))
+                out.append(Due(task_key, scope, period, SCHED_JOURNAL_NUDGE, sid, payload))
     return out
 
 

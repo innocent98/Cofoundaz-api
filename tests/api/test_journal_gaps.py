@@ -590,3 +590,74 @@ def test_nudge_not_delivered_to_a_non_founder(db):
         {"startup_id": str(s.id), "founder_id": str(tm.id), "href": "/journal"},
     )
     assert db.query(Notification).filter_by(user_id=tm.id).count() == 0
+
+
+def test_lockout_doubles_each_round_and_success_resets(client, db):
+    u, s, h = _founder(db)
+    _set(client, h)
+    row = db.query(JournalSettings).filter_by(founder_id=u.id).one()
+    spans = []
+    for _round in range(2):
+        for _ in range(MAX_ATTEMPTS):
+            client.post(_api("/unlock"), json={"passcode": "0000"}, headers=h)
+        db.refresh(row)
+        spans.append(row.locked_until - datetime.now(UTC))
+        row.locked_until = None  # time passes
+        db.flush()
+    assert spans[1] > spans[0] * 1.8
+    ok = client.post(_api("/unlock"), json={"passcode": "4821"}, headers=h)
+    assert ok.status_code == 200
+    db.refresh(row)
+    assert row.failed_attempts == 0
+
+
+def test_token_from_one_workspace_does_not_open_another(client, db):
+    u, s, h = _founder(db)
+    s2 = create_startup(db, owner=u, name="Second")
+    create_membership(db, u, s2, role=MembershipRole.founder)
+    db.flush()
+    h2 = {**h, "X-Workspace-Id": str(s2.id)}
+    token_a = _set(client, h).json()["data"]["token"]
+    _set(client, h2)  # same passcode version (1) in the second workspace
+    r = client.get(_api("/entries"), headers={**h2, "X-Journal-Token": token_a})
+    assert r.status_code == 423
+
+
+def test_remove_passcode_password_guesses_are_throttled(client, db, monkeypatch):
+    from app.services.auth import throttle
+
+    _u, _s, h = _founder(db)
+    _set(client, h)
+    store: dict[str, int] = {}
+
+    class _R:
+        def get(self, k):
+            return store.get(k)
+
+        def incr(self, k):
+            store[k] = store.get(k, 0) + 1
+
+        def expire(self, *_a):
+            pass
+
+        def delete(self, k):
+            store.pop(k, None)
+
+    monkeypatch.setattr(throttle, "get_redis", lambda: _R())
+    for _ in range(throttle.MAX_FAILURES):
+        r = client.request("DELETE", _api("/passcode"), json={"password": "bad"}, headers=h)
+        assert r.status_code == 403
+    r = client.request("DELETE", _api("/passcode"), json={"password": PASSWORD}, headers=h)
+    assert r.status_code == 429
+
+
+def test_nudges_scheduled_per_workspace(db):
+    registry.register()
+    u, s, _h = _founder(db)
+    s2 = create_startup(db, owner=u, name="Second")
+    create_membership(db, u, s2, role=MembershipRole.founder)
+    for st in (s, s2):
+        db.add(JournalSettings(startup_id=st.id, founder_id=u.id, evening_reminder=True))
+    db.flush()
+    scheduler.scheduler_tick(db, now=datetime.now(UTC).replace(hour=22, minute=0))
+    assert db.query(Job).filter_by(type=scheduler.SCHED_JOURNAL_NUDGE).count() == 2

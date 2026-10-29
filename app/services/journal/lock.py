@@ -25,6 +25,7 @@ from app.db.models.journal import JournalSettings
 TOKEN_TTL_SECONDS = 30 * 60
 MAX_ATTEMPTS = 5
 LOCKOUT = timedelta(minutes=15)
+MAX_LOCKOUT = timedelta(hours=24)
 _PURPOSE = b"journal-unlock-v1"
 
 
@@ -65,7 +66,7 @@ def _b64(raw: bytes) -> str:
 
 def mint_token(row: JournalSettings, *, now: float | None = None) -> str:
     expiry = int((now if now is not None else time.time()) + TOKEN_TTL_SECONDS)
-    body = f"{row.founder_id}.{row.passcode_version}.{expiry}"
+    body = f"{row.founder_id}.{row.startup_id}.{row.passcode_version}.{expiry}"
     return f"{_b64(body.encode())}.{_b64(_mac(body))}"
 
 
@@ -75,13 +76,14 @@ def _token_ok(row: JournalSettings, token: str, *, now: float | None = None) -> 
         pad = "=" * (-len(raw_body) % 4)
         body = base64.urlsafe_b64decode(raw_body + pad).decode()
         mac = base64.urlsafe_b64decode(raw_mac + "=" * (-len(raw_mac) % 4))
-        founder, version, expiry = body.split(".")
+        founder, startup, version, expiry = body.split(".")
     except (ValueError, UnicodeDecodeError):
         return False
     if not hmac.compare_digest(mac, _mac(body)):
         return False
     return (
         founder == str(row.founder_id)
+        and startup == str(row.startup_id)
         and version == str(row.passcode_version)
         and int(expiry) >= (now if now is not None else time.time())
     )
@@ -140,10 +142,12 @@ def _check_not_locked_out(row: JournalSettings) -> None:
 
 
 def _register_failure(db: Session, row: JournalSettings) -> None:
+    # The counter keeps running (reset only by a success), and each further round of
+    # MAX_ATTEMPTS doubles the lockout (15 min, 30, 60 ... capped at 24 h).
     row.failed_attempts += 1
-    if row.failed_attempts >= MAX_ATTEMPTS:
-        row.locked_until = datetime.now(UTC) + LOCKOUT
-        row.failed_attempts = 0
+    if row.failed_attempts % MAX_ATTEMPTS == 0:
+        rounds = row.failed_attempts // MAX_ATTEMPTS
+        row.locked_until = datetime.now(UTC) + min(LOCKOUT * 2 ** (rounds - 1), MAX_LOCKOUT)
     # The failure must survive the error response (the request transaction rolls back on raise).
     db.commit()
 

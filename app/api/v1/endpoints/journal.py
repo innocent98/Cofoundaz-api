@@ -43,6 +43,7 @@ from app.schemas.journal import (
     RetroCreate,
     UnlockResponse,
 )
+from app.services.auth.throttle import assert_not_locked, clear, record_failure
 from app.services.journal import account, lock, prompt_library, retros, stats
 from app.services.journal.service import JournalService
 
@@ -687,13 +688,17 @@ def remove_journal_passcode(
     """Forgot or no longer wanted: the ACCOUNT password removes it (entries are untouched)."""
     startup = _startup(db, membership)
     _require_founder(db, user=user, startup=startup, enforce_lock=False)
+    throttle_key = f"throttle:journal-passcode-remove:{user.id}"
+    assert_not_locked(throttle_key)
     if user.password_hash is None or not verify_password(payload.password, user.password_hash):
+        record_failure(throttle_key)
         raise AppError(
             "PASSWORD_INCORRECT",
             "That password did not match.",
             403,
             field_errors=[{"field": "password", "message": "Incorrect password."}],
         )
+    clear(throttle_key)
     row = lock.get_settings(db, startup_id=startup.id, founder_id=user.id)
     lock.remove_passcode(db, row)
     write_audit(db, "journal.passcode.removed", actor_user_id=user.id, startup_id=startup.id)
