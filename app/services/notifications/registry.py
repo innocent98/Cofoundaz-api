@@ -225,7 +225,27 @@ def _s(
 # (app/services/onboarding/invites.py::accept_invitation) publishes
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
+def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Billing is the founder's: only active founders hear about payments, usage and plan changes."""
+    return _with_roles(db, payload["startup_id"], FOUNDER_ROLES)
+
+
 SPECS: dict[str, NotifSpec] = {
+    "billing.payment.failed": NotifSpec(
+        _founders,
+        lambda _p: "Payment failed. Update your payment method",
+        lambda p: f"Fix it within {p.get('grace_days', 7)} days to keep your plan.",
+    ),
+    "billing.usage.threshold": NotifSpec(
+        _founders,
+        lambda _p: "You've used 90% of your AI credits for this cycle",
+        lambda _p: "Add credits",
+    ),
+    "billing.plan.changed": NotifSpec(
+        _founders,
+        lambda p: f"Plan changed to {str(p.get('to', '')).capitalize()}",
+        lambda _p: "View plan",
+    ),
     "document.shared": NotifSpec(
         _document_shared,
         lambda p: (

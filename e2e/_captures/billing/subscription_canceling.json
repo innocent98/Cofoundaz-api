@@ -1,0 +1,23 @@
+{
+  "data": {
+    "plan": {
+      "key": "scale",
+      "name": "Scale"
+    },
+    "interval": "monthly",
+    "status": "active",
+    "price_minor": 6800000,
+    "currency": "NGN",
+    "current_period_start": "2026-10-27T13:31:40.439611+00:00",
+    "renews_at": null,
+    "ends_at": "2026-11-27T13:31:40.439611+00:00",
+    "trial_ends_at": null,
+    "trial_available": false,
+    "cancel_at_period_end": true,
+    "cancel_reason": "Too expensive right now",
+    "pending_change": null,
+    "payment_issue": null,
+    "enforcement": false
+  },
+  "meta": null
+}

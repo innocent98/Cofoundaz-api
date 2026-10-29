@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_CHANGE",
+    "message": "You're already on that plan.",
+    "field_errors": []
+  }
+}

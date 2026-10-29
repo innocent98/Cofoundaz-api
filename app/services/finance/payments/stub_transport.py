@@ -7,6 +7,7 @@ Any secret key containing "bad" is answered with the provider's 401 body.
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import httpx
 
@@ -31,10 +32,150 @@ def _bearer(request: httpx.Request) -> str:
     return auth[7:] if auth.lower().startswith("bearer ") else auth
 
 
+# Cofoundaz Billing's own Paystack account (services/billing/paystack.py) shares this stub. State
+# lives in these module-level dicts so verify can echo what initialize was asked for; tests and
+# journeys reset or poke them directly.
+PS_TX: dict[str, dict[str, object]] = {}
+PS_ABANDONED: set[str] = set()
+PS_SUBS: dict[str, list[dict[str, Any]]] = {}
+
+
+def _customer_code(email: str) -> str:
+    return "CUS_stub_" + format(abs(hash(email)) % 10**8, "08d")
+
+
+def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | None:
+    body = json.loads(request.content or b"{}") if request.content else {}
+    if path == "/plan" and request.method == "POST":
+        name = str(body.get("name"))
+        return _json(
+            200,
+            {
+                "status": True,
+                "message": "Plan created",
+                "data": {
+                    "plan_code": "PLN_stub_" + format(abs(hash(name)) % 10**8, "08d"),
+                    "name": name,
+                    "amount": body.get("amount"),
+                },
+            },
+        )
+    if path.startswith("/transaction/verify/"):
+        ref = path.rsplit("/", 1)[1]
+        tx = PS_TX.get(ref)
+        if tx is None:
+            return _json(404, {"status": False, "message": "Transaction reference not found"})
+        if ref in PS_ABANDONED:
+            return _json(
+                200,
+                {
+                    "status": True,
+                    "message": "Verification successful",
+                    "data": {"status": "abandoned", "reference": ref, "amount": tx["amount"]},
+                },
+            )
+        data = _tx_data(ref, tx)
+        if tx.get("plan"):  # Paystack subscribes the customer when a plan-bound payment succeeds
+            cust = str(data["customer"]["customer_code"])  # type: ignore[index]
+            if not any(r["plan"]["plan_code"] == tx["plan"] for r in PS_SUBS.get(cust, [])):
+                n = len(PS_SUBS.get(cust, [])) + 1
+                PS_SUBS.setdefault(cust, []).append(
+                    {
+                        "subscription_code": f"SUB_stub_{n:04d}",
+                        "email_token": f"tok_stub_{n:04d}",
+                        "status": "active",
+                        "plan": {"plan_code": tx["plan"]},
+                    }
+                )
+        return _json(200, {"status": True, "message": "Verification successful", "data": data})
+    if path == "/transaction/charge_authorization":
+        ref = str(body["reference"])
+        if "decline" in str(body.get("authorization_code")):
+            return _json(
+                200,
+                {
+                    "status": True,
+                    "message": "Charge attempted",
+                    "data": {"status": "failed", "reference": ref, "amount": body["amount"]},
+                },
+            )
+        tx = {
+            "amount": body["amount"],
+            "email": body["email"],
+            "plan": None,
+            "authorization_code": body["authorization_code"],
+        }
+        PS_TX[ref] = tx
+        return _json(
+            200, {"status": True, "message": "Charge attempted", "data": _tx_data(ref, tx)}
+        )
+    if path == "/refund" and request.method == "POST":
+        return _json(
+            200,
+            {
+                "status": True,
+                "message": "Refund has been queued for processing",
+                "data": {
+                    "transaction": {"reference": body.get("transaction")},
+                    "status": "pending",
+                },
+            },
+        )
+    if path == "/subscription" and request.method == "POST":
+        code = "SUB_stub_" + format(len(PS_SUBS.get(str(body["customer"]), [])) + 1, "04d")
+        row = {
+            "subscription_code": code,
+            "email_token": "tok_stub_" + code[-4:],
+            "status": "active",
+            "plan": {"plan_code": body["plan"]},
+        }
+        PS_SUBS.setdefault(str(body["customer"]), []).append(row)
+        return _json(
+            200, {"status": True, "message": "Subscription successfully created", "data": row}
+        )
+    if path == "/subscription" and request.method == "GET":
+        rows = PS_SUBS.get(str(request.url.params.get("customer")), [])
+        return _json(200, {"status": True, "message": "Subscriptions retrieved", "data": rows})
+    if path == "/subscription/disable":
+        return _json(200, {"status": True, "message": "Subscription disabled successfully"})
+    return None
+
+
+def _tx_data(ref: str, tx: dict[str, object]) -> dict[str, object]:
+    email = str(tx["email"])
+    data: dict[str, object] = {
+        "id": 7000 + len(PS_TX),
+        "status": "success",
+        "reference": ref,
+        "amount": tx["amount"],
+        "currency": "NGN",
+        "paid_at": _STUB_WHEN,
+        "channel": "card",
+        "customer": {"email": email, "customer_code": _customer_code(email)},
+        "authorization": {
+            "authorization_code": tx.get("authorization_code") or "AUTH_stub_" + ref[-8:],
+            "channel": "card",
+            "reusable": True,
+            "card_type": "visa",
+            "last4": "4081",
+            "exp_month": "12",
+            "exp_year": "2030",
+            "bank": "TEST BANK",
+            "signature": "SIG_stub_visa_4081",
+        },
+    }
+    if tx.get("plan"):
+        data["plan_object"] = {"plan_code": tx["plan"]}
+    return data
+
+
 def _paystack(request: httpx.Request) -> httpx.Response:
     if "bad" in _bearer(request):
         return _json(401, {"status": False, "message": "Invalid key"})
     path = request.url.path
+    billing = _paystack_billing(request, path)
+    if billing is not None:
+        return billing
     if path == "/balance":
         return _json(
             200,
@@ -65,7 +206,7 @@ def _paystack(request: httpx.Request) -> httpx.Response:
                 ],
             },
         )
-    if path == "/refund":
+    if path == "/refund":  # GET list (Finance sync); the billing POST is answered above
         return _json(
             200,
             {
@@ -78,6 +219,11 @@ def _paystack(request: httpx.Request) -> httpx.Response:
     if path == "/transaction/initialize":
         body = json.loads(request.content or b"{}")
         ref = str(body.get("reference") or "stub_ps_ref")
+        PS_TX[ref] = {
+            "amount": body.get("amount"),
+            "email": body.get("email"),
+            "plan": body.get("plan"),
+        }
         return _json(
             200,
             {

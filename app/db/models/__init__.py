@@ -3,6 +3,16 @@ from app.db.models.ai_chat import AiConversation, AiMessage  # noqa: F401
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401
+from app.db.models.billing import (  # noqa: F401
+    BillingAddonPurchase,
+    BillingDetails,
+    BillingInvoice,
+    BillingOperation,
+    BillingPaymentMethod,
+    BillingPlan,
+    BillingSubscription,
+    BillingWebhookEvent,
+)
 from app.db.models.budget import Budget  # noqa: F401
 from app.db.models.business import (  # noqa: F401
     BusinessCanvas,
