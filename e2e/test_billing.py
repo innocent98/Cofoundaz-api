@@ -14,7 +14,8 @@ import os
 
 import httpx
 
-KEY = os.environ.get("PAYSTACK_SECRET_KEY", "sk_test_e2e_billing_key")
+# Generated per run by scripts/e2e_run.sh and shared with the server (no key literal in the repo).
+KEY = os.environ["PAYSTACK_SECRET_KEY"]
 B = "/api/v1/billing"
 CUS = "CUS_e2e_placeholder"
 
@@ -169,7 +170,9 @@ def test_billing_journey(base_url, make_verified_user, capture, capture_json):
         assert r.json()["data"]["kind"] == "downgrade"
         capture("billing", "preview_downgrade", r)
         r = c.post(
-            f"{B}/subscription/change", json={"plan": "growth", "interval": "monthly"}, headers={**h, "Idempotency-Key": "e2e-chg-2"}
+            f"{B}/subscription/change",
+            json={"plan": "growth", "interval": "monthly"},
+            headers={**h, "Idempotency-Key": "e2e-chg-2"},
         )
         assert r.json()["data"]["result"] == "scheduled"
         capture("billing", "change_downgrade", r)
@@ -177,7 +180,9 @@ def test_billing_journey(base_url, make_verified_user, capture, capture_json):
         assert r.json()["data"]["pending_change"]["plan"]["key"] == "growth"
         capture("billing", "subscription_pending_downgrade", r)
         r = c.post(
-            f"{B}/subscription/change", json={"plan": "scale", "interval": "monthly"}, headers={**h, "Idempotency-Key": "e2e-chg-3"}
+            f"{B}/subscription/change",
+            json={"plan": "scale", "interval": "monthly"},
+            headers={**h, "Idempotency-Key": "e2e-chg-3"},
         )
         assert r.status_code == 409 and r.json()["error"]["code"] == "NO_CHANGE"
         capture("billing", "change_no_change", r)
