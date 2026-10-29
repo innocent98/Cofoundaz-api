@@ -97,7 +97,7 @@ Legend: ✅ meets PRD · ❌ gap · Layer **BE** / **FE** · Severity **Sec** > 
 
 ## Ledger / handoff (2026-10-27)
 
-- **Branch** `feature/calendar-be` in worktree `/Users/adebayovictor/Documents/dev/cofoundaz/wt/calendar-be` (API repo, migration `0077_calendar_meetings_sync`, chains after 0076). Gaps B1 to B13 built; B14 (dashboard/search read the feed) not.
+- **Branch** `feature/calendar-be` in worktree `/Users/adebayovictor/Documents/dev/cofoundaz/wt/calendar-be` (API repo, migration `0079_calendar_meetings_sync`, chains after 0076). Gaps B1 to B13 built; B14 (dashboard/search read the feed) not.
 - **Done:** feed, event fields, meetings + invites/ICS, assistant (paste notes), reminder rules + scanner + notifications, Google sync (per-user OAuth with signed state + browser-proof cookie, Fernet tokens, refresh, `needs_attention` reconnect state, pull/push, picker, disconnect/revoke, worker job). Opus review done, 6 of 7 findings fixed (the 7th was already handled). SOP `docs/sop/2026-10-27-calendar-be-meetings-sync.md`; checklist updated.
 - **Left:** (1) confirm the full-suite + e2e runs were green (`/tmp/cal-full.txt`, `/tmp/cal-e2e-out.txt` if still there), (2) generate `docs/fe-integration-guide-calendar-v2.md` from `e2e/_captures/calendar_v2/` with the template at the scratchpad `guide_template.md` (placeholders `@@capture_name@@`), (3) open the API PR (no attribution; head `feature/calendar-be`), (4) FE session.
 - **FE blockers to tell the FE session:** connect must call with `credentials: "include"` (HttpOnly `cfz_cal_oauth` cookie), callback lands on `{APP_BASE_URL}/calendar/sync?connected=google|error=<code>`.

@@ -62,6 +62,11 @@ export FINANCE_CONNECTIONS_ENCRYPTION_KEY="${FINANCE_CONNECTIONS_ENCRYPTION_KEY:
 export PAYMENT_PROVIDER_STUB="true"
 export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
 export API_PUBLIC_URL="${E2E_BASE_URL}"
+# Cofoundaz Billing (Paystack subscriptions): a throwaway test-mode key generated per run, exported to
+# BOTH the server and the pytest process (the journey signs its webhook with it). It always wins over a
+# developer's real key in .env, and the stubbed HTTP above answers api.paystack.co, so no run reaches Paystack.
+export PAYSTACK_SECRET_KEY="sk_test_e2e_$(poetry run python -c 'import secrets; print(secrets.token_hex(12))')"
+export PAYSTACK_TEST_SECRET_KEY=""
 # Mono bank link: fake sandbox-shaped values, set explicitly so a developer's real sandbox keys
 # in .env are never used (process env beats the env file) and no run can reach Mono. The
 # stubbed HTTP above answers api.withmono.com; the webhook secret is what the journey signs with.

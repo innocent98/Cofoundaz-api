@@ -2345,7 +2345,7 @@ plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
       cap on the events list · `tasksInfo`, `AgendaItemData.subtitle` and the quarter-count header
       (no backend source) — see SOP Follow-ups
 
-### Module 19 — Calendar: PRD completion, BE (2026-10-27, branch `feature/calendar-be`, migration `0077_calendar_meetings_sync`)
+### Module 19 — Calendar: PRD completion, BE (2026-10-27, branch `feature/calendar-be`, migration `0079_calendar_meetings_sync`)
 
 _Gap list `cofoundaz/docs/checklist/calendar-prd-gaps.md` (rows B1 to B13). Decisions D-CAL-1 to D-CAL-9 there. SOP
 `docs/sop/2026-10-27-calendar-be-meetings-sync.md`, FE guide `docs/fe-integration-guide-calendar-v2.md`. The earlier "Deferred" items
@@ -3276,6 +3276,7 @@ fan-out are unit-verified only (no live capture).
       see its own section above.
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
 - [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 23 — Team page (light, PRD overridden 2026-10-29)** — **built** on `feature/team-be-gaps` (no migration; PR pending): role change, remove, leave, invitation list / resend / revoke, Documents grants revoked on removal, Audit tab + CSV, comments index. Tasks, Directory and the grants matrix deliberately not built. SOP `docs/sop/2026-10-29-team-manage.md`, FE guide `docs/fe-integration-guide-team.md`.
 - [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
 - [x] **Module 10 — Marketing Hub** — *✅ ALL 5 SLICES BUILT — MODULE 10 COMPLETE (2026-09-29)*: Slice 1
       (Content Calendar + Channels + Overview CRUD spine, migration
@@ -3725,3 +3726,20 @@ Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-
   - [x] Synthesizer `source=feedback`; open survey answers endpoint; share-link rotation; `linked_experiments`
   - [x] Tests first, e2e journey + captures, real-model captures
 - [ ] Slice (c) FE (sub-session) + live re-walk
+
+
+## Settings + Billing (2026-10-27)
+Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
+- [x] (a) Settings BE: profile edit + avatar, change password, 2FA status/disable/new backup codes, sessions list/revoke, workspace
+      settings + logo, notification digest/quiet-hours storage (branch `feature/settings-be`, migration 0077, guide
+      `docs/fe-integration-guide-settings.md`, SOP `docs/sop/2026-10-27-settings-be-account.md`)
+  - [x] Tests first (53), e2e journey + captures
+  - [ ] FE sub-session + live re-walk of every control (1440 + 375, every role)
+- [x] (b) Billing BE on Paystack, built to the recommended defaults (branch `feature/settings-billing`, migration 0078, guide
+      `docs/fe-integration-guide-settings-billing.md`, SOP `docs/sop/2026-10-27-settings-be-billing.md`); D-SET-1 to 14 accepted by Adebayo 2026-10-29
+  - [x] Plans, checkout + callback verify, HMAC-verified idempotent webhook, subscription state (trial/grace/cancel/scheduled downgrade), prorated upgrade
+  - [x] Usage meters, invoices + PDF receipts, cards, credit-pack add-ons, billing details, notifications, plan gate (dark) on Sales outreach
+  - [x] Opus review of webhook/money/plan-gate paths, findings fixed
+  - [ ] Live Paystack round trip (hosted checkout, real charge, real webhook delivery); FE sub-session + re-walk; flip `PLAN_ENFORCEMENT`
+- [ ] Deferred: digest sender + quiet hours enforcement; account deletion/export; AI preferences/memory; SMS 2FA
+

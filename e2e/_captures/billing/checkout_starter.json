@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PLAN_NOT_PURCHASABLE",
+    "message": "Starter is free: there's nothing to pay for.",
+    "field_errors": []
+  }
+}

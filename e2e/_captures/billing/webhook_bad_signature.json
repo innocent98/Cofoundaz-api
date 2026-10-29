@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_SIGNATURE",
+    "message": "Signature check failed.",
+    "field_errors": []
+  }
+}

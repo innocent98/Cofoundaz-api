@@ -1,7 +1,7 @@
 """Calendar: meetings, attendees, reminder rules, Google sync
 
-Revision ID: 0077_calendar_meetings_sync
-Revises: 0076_documents_signer_link_audit
+Revision ID: 0079_calendar_meetings_sync
+Revises: 0078_billing
 Create Date: 2026-10-27
 
 calendar_events gains end_date, timezone (backfilled Africa/Lagos), location, video_url,
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0077_calendar_meetings_sync"
-down_revision = "0076_documents_signer_link_audit"
+revision = "0079_calendar_meetings_sync"
+down_revision = "0078_billing"
 branch_labels = None
 depends_on = None
 

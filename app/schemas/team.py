@@ -47,3 +47,7 @@ class CommentEdit(BaseModel):
 
 class CommentResolve(BaseModel):
     resolved: bool = True
+
+
+class MemberRoleChange(BaseModel):
+    role: InvitableRole

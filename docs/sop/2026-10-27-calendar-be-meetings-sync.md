@@ -4,7 +4,7 @@
 agenda, invite email + `.ics`, invited-only access for non-founder roles, post-meeting AI summary and "Add all to tasks"),
 editable **reminder rules** with the PRD defaults and the notifications they fire, and **Google Calendar sync** (per-user
 OAuth, encrypted tokens, pull + push, disconnect with revoke, a worker job every 15 minutes). Migration
-`0077_calendar_meetings_sync`. Branch `feature/calendar-be` → `develop`. Gap list: `cofoundaz/docs/checklist/calendar-prd-gaps.md`
+`0079_calendar_meetings_sync`. Branch `feature/calendar-be` → `develop`. Gap list: `cofoundaz/docs/checklist/calendar-prd-gaps.md`
 (rows B1 to B13). FE guide: `docs/fe-integration-guide-calendar-v2.md` (live-captured; Google itself is a fake in it, see its
 verification table).
 
@@ -37,7 +37,7 @@ two-way Google sync.
 
 | Area | Where |
 |---|---|
-| Migration | `alembic/versions/0077_calendar_meetings_sync.py` (new columns on `calendar_events`; tables `calendar_attendees`, `calendar_meetings`, `calendar_reminder_rules`, `calendar_connections`, `calendar_external_events`, `calendar_event_links`) |
+| Migration | `alembic/versions/0079_calendar_meetings_sync.py` (new columns on `calendar_events`; tables `calendar_attendees`, `calendar_meetings`, `calendar_reminder_rules`, `calendar_connections`, `calendar_external_events`, `calendar_event_links`) |
 | Models / schemas | `app/db/models/calendar.py`, `app/schemas/calendar.py` |
 | Services | `app/services/calendar/{google,stub_transport,crypto,connections,sync,feed,meetings,invites,ics,assistant,reminders}.py` |
 | Routes | `app/api/v1/endpoints/calendar.py` (31 routes under `/api/v1/calendar`) |

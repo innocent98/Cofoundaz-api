@@ -1,0 +1,9 @@
+{
+  "data": {
+    "reference": "cfz_checkout_d1c31eeec551fadcda49",
+    "kind": "checkout",
+    "status": "paid",
+    "outcome": "already_processed"
+  },
+  "meta": null
+}
