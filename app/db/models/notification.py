@@ -33,6 +33,10 @@ class Notification(UUIDMixin, TimestampMixin, Base):
     read_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PRD 20.1 "archive": hidden from the inbox and the unread count, listed under Archived.
+    archived_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index("ix_notifications_user_startup_created", "user_id", "startup_id", "created_at"),

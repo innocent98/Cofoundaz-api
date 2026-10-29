@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "aad25ee0-df5e-474f-9750-fb43a18d2df3",
+    "type": "finance.invoice.paid",
+    "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
+    "body": "View invoice",
+    "data": {
+      "number": "INV-2026-001",
+      "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+    },
+    "read": true,
+    "archived": false,
+    "priority": "normal",
+    "module": "finance",
+    "created_at": "2026-10-29T20:27:53.654747+00:00"
+  },
+  "meta": null
+}

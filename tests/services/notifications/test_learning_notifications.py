@@ -32,11 +32,16 @@ def _notes(db, s, type_):
     return db.query(Notification).filter_by(startup_id=s.id, type=type_).all()
 
 
+from app.services.notifications.categories import CATEGORY_DEFAULTS, category_for  # noqa: E402
+
+
 def test_both_types_are_core_audience_and_in_app_only():
     for event in ("learning.course.completed", "learning.course.recommended"):
         assert AUDIENCE[event] == CORE
         assert event in registry.SPECS
-        assert registry.category_for(event) is None  # in-app only, no email
+        # The Academy row is opt-in for email (D-NOT-2): in-app only until the user turns it on.
+        assert category_for(event) == "academy"
+        assert CATEGORY_DEFAULTS["academy"] is False
         assert audience_visible(MembershipRole.mentor, event, {}) is False
         assert audience_visible(MembershipRole.team_member, event, {}) is True
 

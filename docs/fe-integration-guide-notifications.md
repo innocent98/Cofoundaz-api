@@ -1,3 +1,6 @@
+> **2026-10-29:** archive, server-side filters, counts, `priority` / `module` on rows, the `in_app` switch and the preferences `groups` grid are in
+> `fe-integration-guide-notifications-inbox.md`. Rows now carry three more fields (`archived`, `priority`, `module`); the bodies below predate them.
+
 # FE Integration Guide — Notifications (Module 20, Slices 1–3: In-App Feed + Email + Scheduler)
 
 **Slice 4 (real-time SSE push delivery) has since shipped — see

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "query.filter",
+        "message": "String should match pattern '^(all|unread|urgent|mentions|ai|deadlines|billing)$'"
+      }
+    ]
+  }
+}

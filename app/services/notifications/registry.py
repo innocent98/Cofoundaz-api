@@ -15,8 +15,7 @@ from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.notifications.audience import AUDIENCE, FOUNDER_ROLES, kpi_roles
-from app.services.notifications.categories import category_for
-from app.services.notifications.preferences import email_enabled
+from app.services.notifications.preferences import email_route, in_app_enabled
 from app.services.notifications.service import create_notifications
 
 
@@ -475,10 +474,16 @@ def _handle(db: Session, event: str, payload: dict) -> None:
     spec = SPECS.get(event)
     if spec is None or not payload.get("startup_id"):
         return
-    user_ids = spec.recipients(db, payload)
+    startup_id = uuid.UUID(str(payload["startup_id"]))
+    # PRD 20.2: a recipient who switched this category's in-app delivery off does not get the row
+    # at all (critical types and types with no row are always delivered).
+    user_ids = [
+        u
+        for u in spec.recipients(db, payload)
+        if in_app_enabled(db, user_id=u, startup_id=startup_id, event=event)
+    ]
     if not user_ids:
         return
-    startup_id = uuid.UUID(str(payload["startup_id"]))
     rows = create_notifications(
         db,
         user_ids=user_ids,
@@ -488,9 +493,9 @@ def _handle(db: Session, event: str, payload: dict) -> None:
         body=spec.body(payload),
         data=payload,
     )
-    category = category_for(event)
     for n in rows:
-        if email_enabled(db, user_id=n.user_id, startup_id=n.startup_id, category=category):
+        route = email_route(db, user_id=n.user_id, startup_id=n.startup_id, event=event)
+        if route == "now":
             job_dispatcher.enqueue(
                 db, "email.notification", {"notification_id": str(n.id)}, startup_id
             )

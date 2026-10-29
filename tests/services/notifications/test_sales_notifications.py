@@ -67,12 +67,16 @@ def _stall(db, s, d):
     assert notify_stalled(db, deal_id=d.id, startup_id=s.id, now=NOW)
 
 
+from app.services.notifications.categories import CATEGORY_DEFAULTS, category_for  # noqa: E402
+
+
 def test_types_are_core_audience_and_in_app_only():
     assert AUDIENCE["sales.deal.won"] == CORE and AUDIENCE["sales.deal.stalled"] == CORE
     assert "sales.deal.stage_changed" not in registry.SPECS
     assert "sales.deal.lost" not in registry.SPECS
-    assert registry.category_for("sales.deal.won") is None
-    assert registry.category_for("sales.deal.stalled") is None
+    # The Sales row is opt-in for email (D-NOT-2), so by default these stay in-app only.
+    assert category_for("sales.deal.won") == "sales"
+    assert CATEGORY_DEFAULTS["sales"] is False
 
 
 def test_stalled_goes_to_owner_with_copy(db, monkeypatch):

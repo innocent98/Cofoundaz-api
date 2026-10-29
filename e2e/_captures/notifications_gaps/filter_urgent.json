@@ -1,0 +1,37 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "34f63573-8ce3-462e-a10b-506a114367e3",
+        "type": "finance.runway.low",
+        "title": "Runway below 6 months, review recommended",
+        "body": "Open Finance",
+        "data": {
+          "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "critical",
+        "module": "finance",
+        "created_at": "2026-10-29T20:27:53.650219+00:00"
+      },
+      {
+        "id": "2f6a3c37-d1be-46a4-be7a-55e8a71f358d",
+        "type": "roadmap.milestone.overdue",
+        "title": "Milestone overdue, I've drafted a re-plan for your review",
+        "body": "Review re-plan",
+        "data": {
+          "startup_id": "c7de4a98-465c-4d73-82bf-6b73a932f1f0",
+          "milestone_id": "m2"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "critical",
+        "module": "roadmap",
+        "created_at": "2026-10-29T20:27:53.643406+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

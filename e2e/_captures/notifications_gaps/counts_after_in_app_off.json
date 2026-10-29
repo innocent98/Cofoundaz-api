@@ -1,0 +1,14 @@
+{
+  "data": {
+    "all": 7,
+    "unread": 6,
+    "urgent": 3,
+    "urgent_unread": 3,
+    "mentions": 0,
+    "ai": 1,
+    "deadlines": 3,
+    "billing": 0,
+    "archived": 0
+  },
+  "meta": null
+}
