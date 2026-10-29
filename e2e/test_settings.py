@@ -5,8 +5,14 @@ verbatim source of docs/fe-integration-guide-settings.md. Anything secret (TOTP 
 codes, tokens) is replaced with an obvious placeholder before it is written to disk.
 """
 
+import secrets
+
 import httpx
 import pyotp
+
+# Passwords are built per run so no password literal sits in the repo (secret scanners flag them).
+WRONG_PW = "Wr-" + secrets.token_hex(6) + "-0"
+NEW_PW = "Nw-" + secrets.token_hex(6) + "-7"
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
 
@@ -48,7 +54,12 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     r = c.patch(
         "/api/v1/auth/me",
         headers=auth,
-        json={"full_name": "Ada Obi", "role_title": "CEO", "country": "ng", "phone": "+2348012345678"},
+        json={
+            "full_name": "Ada Obi",
+            "role_title": "CEO",
+            "country": "ng",
+            "phone": "+2348012345678",
+        },
     )
     assert r.status_code == 200, r.text
     capture("settings", "profile_patch", r)
@@ -76,13 +87,17 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     capture("settings", "mfa_status_off", r)
     setup = c.post("/api/v1/auth/mfa/totp/setup", headers=auth).json()["data"]
     secret = setup["secret"]
-    r = c.post("/api/v1/auth/mfa/totp/verify", headers=auth, json={"code": pyotp.TOTP(secret).now()})
+    r = c.post(
+        "/api/v1/auth/mfa/totp/verify", headers=auth, json={"code": pyotp.TOTP(secret).now()}
+    )
     assert r.status_code == 200
     codes = r.json()["data"]["backup_codes"]
     r = c.get("/api/v1/auth/mfa", headers=auth)
     assert r.json()["data"]["backup_codes_remaining"] == 10
     capture("settings", "mfa_status_on", r)
-    r = c.post("/api/v1/auth/mfa/backup-codes/regenerate", headers=auth, json={"password": "wrong-1"})
+    r = c.post(
+        "/api/v1/auth/mfa/backup-codes/regenerate", headers=auth, json={"password": WRONG_PW}
+    )
     assert r.status_code == 422
     capture("settings", "mfa_regenerate_wrong_password", r)
     r = c.post(
@@ -92,7 +107,12 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     capture_json(
         "settings",
         "mfa_regenerate",
-        {"data": {"backup_codes": ["0000000001", "...nine more, ten digits each (placeholders)"]}, "meta": None},
+        {
+            "data": {
+                "backup_codes": ["0000000001", "...nine more, ten digits each (placeholders)"]
+            },
+            "meta": None,
+        },
     )
     assert codes[0] not in r.json()["data"]["backup_codes"]
 
@@ -101,7 +121,9 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     r = c.get("/api/v1/auth/sessions", headers=auth)
     rows = r.json()["data"]
     assert len(rows) == 2 and sum(x["current"] for x in rows) == 1
-    capture_json("settings", "sessions_list", {"data": [_redact_session(x) for x in rows], "meta": None})
+    capture_json(
+        "settings", "sessions_list", {"data": [_redact_session(x) for x in rows], "meta": None}
+    )
     theirs = next(x for x in rows if not x["current"])
     r = c.delete(f"/api/v1/auth/sessions/{theirs['id']}", headers=auth)
     assert r.status_code == 200
@@ -131,7 +153,9 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     )
     assert r.status_code == 200 and r.json()["data"] == {"enabled": False}
     capture("settings", "mfa_disable", r)
-    r = c.post("/api/v1/auth/mfa/disable", headers=auth, json={"password": u["password"], "code": "1"})
+    r = c.post(
+        "/api/v1/auth/mfa/disable", headers=auth, json={"password": u["password"], "code": "1"}
+    )
     assert r.status_code == 409
     capture("settings", "mfa_disable_not_enabled", r)
 
@@ -139,7 +163,7 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     r = c.post(
         "/api/v1/auth/password/change",
         headers=auth,
-        json={"current_password": "nope-nope-1", "new_password": "Brand-New-77"},
+        json={"current_password": WRONG_PW, "new_password": NEW_PW},
     )
     assert r.status_code == 422
     capture("settings", "password_change_wrong_current", r)
@@ -153,13 +177,13 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     r = c.post(
         "/api/v1/auth/password/change",
         headers=auth,
-        json={"current_password": u["password"], "new_password": "Brand-New-77"},
+        json={"current_password": u["password"], "new_password": NEW_PW},
     )
     assert r.status_code == 200, r.text
     capture("settings", "password_change", r)
     with httpx.Client(base_url=base_url, timeout=15.0) as fresh:
         assert fresh.post("/api/v1/auth/login", json=u).status_code == 401
-        ok = fresh.post("/api/v1/auth/login", json={"email": u["email"], "password": "Brand-New-77"})
+        ok = fresh.post("/api/v1/auth/login", json={"email": u["email"], "password": NEW_PW})
         assert ok.status_code == 200
     # this device's refresh cookie is still valid after the change
     assert c.post("/api/v1/auth/refresh").status_code == 200
@@ -171,7 +195,12 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
     r = c.patch(
         "/api/v1/workspace",
         headers=wh,
-        json={"name": "Nova Pay", "website": "https://novapay.example", "stage": "build", "country": "ng"},
+        json={
+            "name": "Nova Pay",
+            "website": "https://novapay.example",
+            "stage": "build",
+            "country": "ng",
+        },
     )
     assert r.status_code == 200, r.text
     capture("settings", "workspace_patch", r)
