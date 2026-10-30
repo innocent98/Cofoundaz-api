@@ -15,7 +15,8 @@ import os
 import httpx
 
 # Generated per run by scripts/e2e_run.sh and shared with the server (no key literal in the repo).
-KEY = os.environ["PAYSTACK_SECRET_KEY"]
+# Absent on the live gate, which deselects this journey but still imports the module.
+KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 B = "/api/v1/billing"
 CUS = "CUS_e2e_placeholder"
 
