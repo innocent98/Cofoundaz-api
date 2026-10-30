@@ -25,6 +25,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
 from app.platform.activity import activity_visibility_filter, serialize_activity
 from app.platform.jobs import job_dispatcher
+from app.services.ai_preferences import get_prefs
 from app.services.dashboard.briefing import serialize_blocks
 from app.services.dashboard.kpi_history import trend
 from app.services.dashboard.kpis import kpi_metrics
@@ -253,7 +254,22 @@ def get_or_generate_briefing(db: Session, startup: Startup) -> DailyBriefing | N
     return row
 
 
-def _briefing_blocks(db: Session, startup: Startup) -> dict[str, Any]:
+def _briefing_blocks(db: Session, startup: Startup, user: User) -> dict[str, Any]:
+    prefs = get_prefs(db, user_id=user.id, startup_id=startup.id)
+    if not prefs.daily_briefing:  # their choice: nothing is generated or shown for them
+        return {
+            "briefing": {"status": "off", "message": None, "id": None, "actions": []},
+            "risks": {"status": "off", "message": None, "items": []},
+            "opportunities": {"status": "off", "message": None, "items": []},
+        }
+    blocks = _briefing_blocks_on(db, startup)
+    if not prefs.proactive_suggestions:  # AI-suggested next steps and quick wins stay hidden
+        blocks["briefing"] = {**blocks["briefing"], "actions": []}
+        blocks["opportunities"] = {"status": "off", "message": None, "items": []}
+    return blocks
+
+
+def _briefing_blocks_on(db: Session, startup: Startup) -> dict[str, Any]:
     row = _section_isolated(db, lambda: get_or_generate_briefing(db, startup))
     if not isinstance(row, DailyBriefing):  # None (no assessment) or {"error": True}
         return {
@@ -316,7 +332,7 @@ def get_summary(
             db, lambda: {"assessment_complete": latest_completed_result(db, startup.id) is not None}
         ),
         **(
-            _briefing_blocks(db, startup)
+            _briefing_blocks(db, startup, user)
             if role in BRIEFING_ROLES
             else _restricted_briefing_blocks()
         ),

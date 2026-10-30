@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.platform.llm import LLMMessage
+from app.services.ai_preferences import tone_instruction
 
 # Modules the AI may point a risk/opportunity/action at. The server maps each to a route
 # (app/services/dashboard/briefing.py::MODULE_HREFS), so the model never invents a URL.
@@ -81,6 +82,7 @@ def build_dashboard_briefing_messages(
     runway_months: float | None = None,
     runway_status: str | None = None,
     monthly_revenue: str | None = None,
+    tone: str | None = None,
 ) -> list[LLMMessage]:
     """Prompt for the dashboard's daily briefing. Business + state context only, no PII."""
     system = (
@@ -96,7 +98,8 @@ def build_dashboard_briefing_messages(
         "does (it is added to today's mission as written) and 'navigate' only for 'Review X' "
         "steps). The dashboard shows the live Health Score right next to this text and it changes "
         "during the day, so never state the Health Score number or any change in it; you may "
-        "refer to the health band in words. No preamble, no headings, no invented numbers."
+        "refer to the health band in words. No preamble, no headings, no invented numbers. "
+        + tone_instruction(tone)
     )
     finance = (
         f"Runway: {runway_months} months.\n"

@@ -1,15 +1,16 @@
 import uuid
 from datetime import UTC, datetime, time, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.enums import JobStatus, MembershipRole
 from app.db.models.job import Job
 from app.db.models.llm_usage import LlmUsageDaily
@@ -30,6 +31,7 @@ from app.services.ai_cofounder.service import (
     serialize_conversation,
     serialize_message,
 )
+from app.services.ai_preferences import AiPrefs, get_prefs, update_prefs
 
 router = APIRouter()
 
@@ -39,6 +41,50 @@ _MAX_RECENT_FAILURES = 20
 # Module 03); mentors, accountants, and legal advisors do not get the founder's
 # context-rich chat. Conversations are further scoped to their creator in the service.
 _chat_access = require_role(MembershipRole.founder, MembershipRole.team_member)
+
+
+class AiSettingsPatch(BaseModel):
+    """Unknown fields are rejected (422); send only what changes. `tone` is a fixed set, never free text."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    proactive_suggestions: bool | None = None
+    daily_briefing: bool | None = None
+    tone: Literal["straight_shooter", "encouraging"] | None = None
+
+
+def _settings_json(p: AiPrefs) -> dict[str, Any]:
+    return {
+        "proactive_suggestions": p.proactive_suggestions,
+        "daily_briefing": p.daily_briefing,
+        "tone": p.tone,
+    }
+
+
+@router.get("/settings")
+def get_ai_settings(
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(
+        _settings_json(get_prefs(db, user_id=membership.user_id, startup_id=membership.startup_id))
+    )
+
+
+@router.patch("/settings")
+def patch_ai_settings(
+    body: AiSettingsPatch,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    changes = {k: getattr(body, k) for k in body.model_fields_set}
+    if not changes or any(v is None for v in changes.values()):
+        raise AppError("VALIDATION_ERROR", "Send at least one setting, with a value.", 422)
+    prefs = update_prefs(
+        db, user_id=membership.user_id, startup_id=membership.startup_id, changes=changes
+    )
+    db.commit()
+    return success_response(_settings_json(prefs))
 
 
 @router.get("/status")
