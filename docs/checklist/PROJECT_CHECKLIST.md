@@ -3745,3 +3745,10 @@ Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
   - [ ] Live Paystack round trip (hosted checkout, real charge, real webhook delivery); FE sub-session + re-walk; flip `PLAN_ENFORCEMENT`
 - [ ] Deferred: digest sender + quiet hours enforcement; account deletion/export; AI preferences/memory; SMS 2FA
 
+## AI preferences (Settings S8, 2026-10-30)
+- [x] `GET/PATCH /ai/settings` (proactive suggestions, daily briefing, tone) that change behaviour; migration 0082; guide
+      `docs/fe-integration-guide-ai-settings.md`; SOP `docs/sop/2026-10-30-ai-preferences.md`
+  - [x] Briefing off: no generation/trigger, no notification; suggestions off: briefing actions + opportunities hidden, course-recommended notification skipped; tone in chat and briefing prompts
+  - [ ] FE wiring + live re-walk; verify tone with the real model
+- [ ] Deferred: "What I remember" / Forget / Clear all (needs a memory store)
+

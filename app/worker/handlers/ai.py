@@ -34,6 +34,7 @@ from app.platform.llm_budget import metered_complete, metered_complete_json
 from app.services.ai_cofounder.finance_context import finance_context_for
 from app.services.ai_cofounder.prompts import build_cofounder_messages
 from app.services.ai_cofounder.service import BUDGET_FAILED_TEXT, REPLY_FAILED_TEXT, fail_message
+from app.services.ai_preferences import founder_tone, get_prefs
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
@@ -349,7 +350,7 @@ def handle_dashboard_briefing(db: Session, job: Job) -> None:
     result = metered_complete_json(
         db,
         startup.id,
-        build_dashboard_briefing_messages(**ctx),
+        build_dashboard_briefing_messages(**ctx, tone=founder_tone(db, startup.id)),
         schema=dashboard_briefing_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
@@ -570,6 +571,11 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
         # Role-gated: only a member who may read Finance gets the money figures.
         finance_context=finance_context_for(
             db, startup_id=startup.id, user_id=conversation.created_by
+        ),
+        tone=(
+            get_prefs(db, user_id=conversation.created_by, startup_id=startup.id).tone
+            if conversation.created_by
+            else None
         ),
     )
     try:

@@ -1,4 +1,5 @@
 from app.platform.llm import LLMMessage
+from app.services.ai_preferences import tone_instruction
 
 
 def build_cofounder_messages(
@@ -10,6 +11,7 @@ def build_cofounder_messages(
     goals: list[str],
     history: list[tuple[str, str]],
     finance_context: str | None = None,
+    tone: str | None = None,
 ) -> list[LLMMessage]:
     """Prompt for an AI Co-Founder chat turn.
 
@@ -26,6 +28,7 @@ def build_cofounder_messages(
         f"Stage: {stage or 'unspecified'}. One-liner: {description or 'unspecified'}. "
         f"Current focus goals: {goal_lines}."
     )
+    system += "\n" + tone_instruction(tone)
     if finance_context:
         system += "\n" + finance_context
     messages = [LLMMessage(role="system", content=system)]

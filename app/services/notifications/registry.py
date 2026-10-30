@@ -14,6 +14,7 @@ from app.db.models.membership import Membership
 from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.ai_preferences import opted_out
 from app.services.notifications.audience import AUDIENCE, FOUNDER_ROLES, kpi_roles
 from app.services.notifications.preferences import email_route, in_app_enabled
 from app.services.notifications.service import create_notifications
@@ -70,6 +71,19 @@ def _journal_owner(db: Session, payload: dict) -> list[uuid.UUID]:
         return []
     owner = uuid.UUID(str(payload["founder_id"]))
     return [u for u in _with_roles(db, payload["startup_id"], FOUNDER_ROLES) if u == owner]
+
+
+def _respecting_ai_prefs(
+    recipients: Callable[[Session, dict], list[uuid.UUID]], field: str
+) -> Callable[[Session, dict], list[uuid.UUID]]:
+    """Drop members who switched the matching AI preference off (Settings → AI preferences)."""
+
+    def _filtered(db: Session, payload: dict) -> list[uuid.UUID]:
+        ids = recipients(db, payload)
+        skip = opted_out(db, uuid.UUID(str(payload["startup_id"])), field, ids)
+        return [u for u in ids if u not in skip]
+
+    return _filtered
 
 
 def _audience(
@@ -475,7 +489,8 @@ SPECS: dict[str, NotifSpec] = {
     # PRD 02.1. In-app only (no email category): it's a daily nudge, not something to mail.
     # Only BRIEFING_ROLES see the briefing prose (it is built from finance figures).
     "dashboard.briefing.ready": _s(
-        _audience("dashboard.briefing.ready"), "Your daily AI briefing is ready"
+        _respecting_ai_prefs(_audience("dashboard.briefing.ready"), "daily_briefing"),
+        "Your daily AI briefing is ready",
     ),
     # PRD 02.1 "{Metric} crossed {threshold}: now {value}"; title is composed by the job.
     # PRD 23 notifications copy: only the mentioned member is notified.
@@ -529,7 +544,7 @@ SPECS: dict[str, NotifSpec] = {
         lambda _p: "Download it",
     ),
     "learning.course.recommended": NotifSpec(
-        _learner("learning.course.recommended"),
+        _respecting_ai_prefs(_learner("learning.course.recommended"), "proactive_suggestions"),
         lambda p: (
             f"New course recommended for your stage: {p['course_title']}"
             if p.get("course_title")
