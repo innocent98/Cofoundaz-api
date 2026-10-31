@@ -25,7 +25,7 @@ def serialize_staff(db: Session, rows: list[PlatformStaff]) -> list[dict[str, An
     ids = {r.user_id for r in rows} | {r.invited_by for r in rows if r.invited_by}
     users = (
         {
-            u.id: (u.email, p.full_name if p else None)
+            u.id: (u.email, p.full_name if p else None, u.last_login_at)
             for u, p in db.query(User, UserProfile)
             .outerjoin(UserProfile, UserProfile.user_id == User.id)
             .filter(User.id.in_(ids))
@@ -38,11 +38,18 @@ def serialize_staff(db: Session, rows: list[PlatformStaff]) -> list[dict[str, An
         {
             "id": str(r.id),
             "user_id": str(r.user_id),
-            "email": users.get(r.user_id, (None, None))[0],
-            "full_name": users.get(r.user_id, (None, None))[1],
+            "email": users.get(r.user_id, (None, None, None))[0],
+            "full_name": users.get(r.user_id, (None, None, None))[1],
             "role": r.role.value,
             "scopes": list(r.scopes),
-            "invited_by_email": users.get(r.invited_by, (None, None))[0] if r.invited_by else None,
+            "last_login_at": (
+                users[r.user_id][2].isoformat()
+                if r.user_id in users and users[r.user_id][2]
+                else None
+            ),
+            "invited_by_email": (
+                users.get(r.invited_by, (None, None, None))[0] if r.invited_by else None
+            ),
             "created_at": r.created_at.isoformat(),
             "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
         }

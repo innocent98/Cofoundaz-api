@@ -67,7 +67,9 @@ def signup(
 @router.post("/verify")
 def verify(payload: TokenRequest, db: Session = Depends(get_db)) -> dict[str, Any]:  # noqa: B008
     user = consume_auth_token(db, AuthTokenPurpose.email_verification, payload.token)
-    user.status = UserStatus.active
+    # A token issued before a staff suspension must not lift it.
+    if user.status != UserStatus.disabled:
+        user.status = UserStatus.active
     user.email_verified_at = datetime.now(UTC)
     db.flush()
     event_bus.publish(db, "auth.user.verified", {"user_id": str(user.id)})

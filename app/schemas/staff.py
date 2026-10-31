@@ -33,3 +33,12 @@ class StaffRevokeRequest(BaseModel):
 
     reason: Reason
     totp_code: TotpCode
+
+
+class StaffActionRequest(BaseModel):
+    """Body of every staff mutation on a user: why, and the staff member's own fresh code."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Reason
+    totp_code: TotpCode
