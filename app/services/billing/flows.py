@@ -165,7 +165,7 @@ def start_checkout(
     if amount <= 0:
         raise _err("PLAN_NOT_PURCHASABLE", "Starter is free: there's nothing to pay for.", 422)
     sub = subs.current(db, startup_id)
-    if subs.is_paid(sub):
+    if subs.is_paid(sub) and not sub.comped:  # a complimentary plan can be replaced by a paid one
         raise _err("ALREADY_SUBSCRIBED", "You're already on a paid plan. Change plan instead.")
     code = ensure_plan_code(db, plan, interval)
     return _hosted(
@@ -342,6 +342,7 @@ def _activate(
     sub.cancel_at_period_end = False
     sub.canceled_at = None
     sub.cancel_reason = None
+    sub.comped = False
     sub.pending_plan_key = sub.pending_interval = None
     sub.payment_failed_at = sub.grace_ends_at = None
     if customer_code:
@@ -416,7 +417,7 @@ def finalize_charge(db: Session, data: dict[str, Any]) -> str:
     store_authorization(db, op.startup_id, data.get("authorization"))
     op.status = "paid"
     sub = subs.get_or_create(db, op.startup_id)
-    if op.kind == "checkout" and subs.is_paid(sub):
+    if op.kind == "checkout" and subs.is_paid(sub) and not sub.comped:
         # A second checkout link was paid after the workspace already subscribed: record it, give
         # back the money, and don't start a second Paystack subscription.
         record_invoice(
@@ -537,7 +538,7 @@ def _renewal(db: Session, data: dict[str, Any]) -> str:
     if db.query(BillingInvoice).filter_by(reference=reference).first() is not None:
         return "already_processed"
     when = _paid_when(data)
-    if sub.status in ("active", "past_due"):
+    if sub.status in ("active", "past_due") and not sub.comped:
         plan_key = sub.pending_plan_key or sub.plan_key
         interval = sub.pending_interval or sub.interval
     else:
@@ -725,6 +726,7 @@ def change_plan(
     if done is not None and done.kind == "upgrade" and done.status == "paid":
         return {"result": "applied", "amount_charged_minor": done.amount_minor}
     db.query(BillingSubscription).filter_by(startup_id=startup_id).with_for_update().first()
+    _assert_not_comped(subs.current(db, startup_id))
     prev = preview_change(db, startup_id, plan_key, interval)
     sub = subs.current(db, startup_id)
     target = subs.plan_by_key(db, plan_key)
@@ -809,7 +811,19 @@ def change_plan(
     return {"result": "applied", "amount_charged_minor": due}
 
 
+def _assert_not_comped(sub: BillingSubscription) -> None:
+    """A complimentary plan has nothing at Paystack to change, cancel or resume; it ends on its own
+    date, or the founder buys a plan at checkout."""
+    if sub.comped:
+        raise _err(
+            "PLAN_COMPLIMENTARY",
+            "This plan is complimentary and ends on its own date. Choose a paid plan at checkout "
+            "to keep it after that.",
+        )
+
+
 def _cancel(db: Session, sub: BillingSubscription, *, reason: str | None) -> dict[str, Any]:
+    _assert_not_comped(sub)
     if not subs.is_paid(sub):
         raise _err("NOT_SUBSCRIBED", "There's no paid plan to cancel.")
     # Not linked yet: find it first, or the card keeps being charged after we show "canceled".
@@ -837,6 +851,7 @@ def cancel(db: Session, startup_id: uuid.UUID, reason: str | None) -> dict[str, 
 
 def resume(db: Session, startup_id: uuid.UUID) -> None:
     sub = subs.current(db, startup_id)
+    _assert_not_comped(sub)
     if not (sub.status == "active" and sub.cancel_at_period_end):
         raise _err("NOT_CANCELED", "This plan isn't set to cancel.")
     plan = subs.plan_by_key(db, sub.plan_key)

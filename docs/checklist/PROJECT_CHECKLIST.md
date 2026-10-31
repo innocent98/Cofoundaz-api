@@ -3771,7 +3771,7 @@ Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-AD
 
 ### Slices still ahead
 - [ ] B: Users, Workspaces (read-only), Dashboard KPIs
-- [ ] C: Billing overrides (refund, credit, extend trial, comp)
+- [x] C: Billing overrides (refund, credit, extend trial, comp): built 2026-10-31, see below
 - [ ] D: Feature flags
 - [ ] E: Maintenance mode + global sign-out with a second approver
 - [ ] FE for both consoles (after the API slices)
@@ -3795,3 +3795,18 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 - [x] Unit tests, live e2e journey, Opus review (no High or Medium; Lows fixed)
 - [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
+
+### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, on develop after #206 merged, PR draft)
+
+Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan for N days, refund = internal entry. SOP `docs/sop/2026-10-31-admin-billing-overrides.md`, FE guide `docs/fe-integration-guide-admin-billing.md`.
+- [x] `billing_overrides` ledger + `comped` + `refunded_minor` (migration 0084, refund cap check)
+- [x] Refund recorded as pending (partial/full, over-refund guard incl. pending); founder sees it only after staff mark it done, then the invoice flips to `refunded` (Adebayo "Accept all four")
+- [x] Credit (AI credits visible in Usage at once)
+- [x] Extend trial (1-60 days, 90-day cap)
+- [x] Comp (lapses by itself; founder cancel/resume/change blocked; MRR excludes it)
+- [x] Step-up + reason + audit row + `request_id` idempotency + locks on every override
+- [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
+- [ ] CI green, #206 merged first, then re-chain 0084 on develop's head and merge develop in
+- [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
+- [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
+

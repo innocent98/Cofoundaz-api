@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PLAN_NOT_COMPABLE",
+    "message": "Starter is already free. Choose a paid plan.",
+    "field_errors": []
+  }
+}

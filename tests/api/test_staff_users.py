@@ -232,6 +232,7 @@ def test_user_search_filters_and_paging(client, db):
         "role": "founder",
         "plan_key": "growth",
         "billing_status": "active",
+        "comped": False,
     }
     seen, cursor = [], None
     for _ in range(10):
@@ -291,7 +292,7 @@ def test_profile_shape_and_no_secrets(client, db):
     assert d["two_factor"] is True and d["is_staff"] is False
     assert d["workspaces"][0]["workspace_id"] == str(ws.id)
     assert set(d["workspaces"][0]) == {
-        "workspace_id", "name", "role", "membership_status", "plan_key", "billing_status",
+        "workspace_id", "name", "role", "membership_status", "plan_key", "billing_status", "comped",
         "trial_ends_at", "current_period_end", "cancel_at_period_end",
     }  # fmt: skip
     assert d["sessions"][0]["ip"] == "10.0.0.9"
@@ -520,7 +521,7 @@ def test_workspace_list_and_detail(client, db):
     row = rows[0]
     assert set(row) == {
         "id", "name", "owner_email", "owner_name", "stage", "country", "created_at", "seats",
-        "members", "plan_key", "billing_status", "health_score", "health_band", "last_active_at",
+        "members", "plan_key", "billing_status", "comped", "health_score", "health_band", "last_active_at",
     }  # fmt: skip
     assert row["seats"] == 2 and row["members"] == 3  # mentors are free
     assert row["health_score"] == 72 and row["plan_key"] == "growth" and row["last_active_at"]

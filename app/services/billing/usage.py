@@ -23,7 +23,7 @@ SEAT_ROLES = (MembershipRole.founder, MembershipRole.team_member)
 
 def cycle_bounds(sub: BillingSubscription) -> tuple[date, date]:
     """[start, end) of the metering cycle: the paid period, else the calendar month."""
-    if subs.is_paid(sub) and sub.current_period_start and sub.current_period_end:
+    if subs.is_paid(sub) and not sub.comped and sub.current_period_start and sub.current_period_end:
         return sub.current_period_start.date(), sub.current_period_end.date()
     today = datetime.now(UTC).date()
     start = today.replace(day=1)

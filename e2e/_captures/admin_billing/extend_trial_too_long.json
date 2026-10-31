@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "TRIAL_TOO_LONG",
+    "message": "A trial can run at most 90 days in total.",
+    "field_errors": [
+      {
+        "field": "days",
+        "message": "too long for this trial"
+      }
+    ]
+  }
+}
