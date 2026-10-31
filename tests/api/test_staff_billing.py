@@ -422,3 +422,101 @@ def test_overview_lists_everything(client, db):
     assert {o["actor_email"] for o in d["overrides"]} == {staff.email}
     assert d["invoices"][0]["refundable_minor"] == inv.amount_minor - 100
     assert d["workspace"]["id"] == str(ws.id)
+
+
+def test_a_replay_with_different_values_is_refused(client, db):
+    _, ws, _ = workspace(db)
+    staff = sa(db)
+    inv = invoice(db, ws, amount=1_000_000)
+    rid = str(uuid.uuid4())
+    assert (
+        act(
+            client, staff, ws, "refund", request_id=rid, invoice_id=str(inv.id), amount_minor=100
+        ).status_code
+        == 200
+    )
+    r = act(client, staff, ws, "refund", request_id=rid, invoice_id=str(inv.id), amount_minor=999)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "REQUEST_ID_REUSED"
+    db.refresh(inv)
+    assert inv.refunded_minor == 100
+
+
+def test_buying_a_plan_while_comped_activates_it_instead_of_refunding(client, db):
+    from tests.billing_helpers import post_event
+
+    user, ws, founder = workspace(db)
+    staff = sa(db)
+    act(client, staff, ws, "comp", plan_key="growth", days=30)
+    buy = client.post(
+        f"{B}/subscription/checkout",
+        json={"plan": "scale", "interval": "monthly"},
+        headers={**founder, "Idempotency-Key": "k-buy"},
+    ).json()["data"]
+    scale = db.query(BillingPlan).filter_by(key="scale").one()
+    r = post_event(
+        client,
+        "charge.success",
+        {
+            "id": 1, "status": "success", "reference": buy["reference"],
+            "amount": scale.price_monthly_minor, "currency": "NGN",
+            "paid_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "customer": {"email": user.email, "customer_code": "CUS_comp_1"},
+        },
+    )  # fmt: skip
+    assert r.status_code == 200, r.text
+    got = client.get(f"{B}/subscription", headers=founder).json()["data"]
+    assert got["plan"]["key"] == "scale" and got["comped"] is False and got["status"] == "active"
+    inv = client.get(f"{B}/invoices", headers=founder).json()["data"][0]
+    assert inv["status"] == "paid"
+
+
+def test_old_paystack_events_do_not_touch_a_comped_workspace(client, db):
+    from tests.billing_helpers import post_event
+
+    user, ws, founder = workspace(db)
+    staff = sa(db)
+    sub = subs.get_or_create(db, ws.id)
+    sub.status, sub.paystack_customer_code = "canceled", "CUS_old_1"
+    db.flush()
+    act(client, staff, ws, "comp", plan_key="scale", days=30)
+    cust = {"customer_code": "CUS_old_1", "email": user.email}
+    post_event(client, "invoice.payment_failed", {"customer": cust, "subscription": {}})
+    post_event(
+        client,
+        "subscription.create",
+        {"subscription_code": "SUB_late", "email_token": "t", "customer": cust, "plan": {}},
+    )
+    post_event(
+        client,
+        "charge.success",
+        {
+            "id": 2, "status": "success", "reference": "renewal-late-1", "amount": 1,
+            "currency": "NGN", "customer": cust, "plan": {"plan_code": "PLN_x"},
+        },
+    )  # fmt: skip
+    got = client.get(f"{B}/subscription", headers=founder).json()["data"]
+    assert got["plan"]["key"] == "scale" and got["status"] == "active" and got["comped"] is True
+    assert got["payment_issue"] is None
+    db.expire_all()
+    row = db.query(BillingSubscription).filter_by(startup_id=ws.id).one()
+    assert row.paystack_subscription_code is None
+
+
+def test_a_long_comp_meters_credits_by_calendar_month(client, db):
+    _, ws, founder = workspace(db)
+    staff = sa(db)
+    act(client, staff, ws, "comp", plan_key="growth", days=365)
+    c = client.get(f"{B}/usage", headers=founder).json()["data"]["cycle"]
+    start = datetime.fromisoformat(c["starts_on"])
+    assert start.day == 1 and (datetime.fromisoformat(c["resets_on"]) - start).days <= 31
+
+
+def test_staff_user_and_workspace_reads_flag_comped_workspaces(client, db):
+    _, ws, _ = workspace(db)
+    staff = sa(db)
+    act(client, staff, ws, "comp", plan_key="growth", days=30)
+    rows = client.get(
+        "/api/v1/admin/workspaces", params={"query": ws.name or ""}, headers=hdr(staff)
+    )
+    mine = [w for w in rows.json()["data"]["workspaces"] if w["id"] == str(ws.id)]
+    assert mine and mine[0]["comped"] is True and mine[0]["billing_status"] == "active"

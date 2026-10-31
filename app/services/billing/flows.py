@@ -417,7 +417,7 @@ def finalize_charge(db: Session, data: dict[str, Any]) -> str:
     store_authorization(db, op.startup_id, data.get("authorization"))
     op.status = "paid"
     sub = subs.get_or_create(db, op.startup_id)
-    if op.kind == "checkout" and subs.is_paid(sub):
+    if op.kind == "checkout" and subs.is_paid(sub) and not sub.comped:
         # A second checkout link was paid after the workspace already subscribed: record it, give
         # back the money, and don't start a second Paystack subscription.
         record_invoice(
@@ -538,7 +538,7 @@ def _renewal(db: Session, data: dict[str, Any]) -> str:
     if db.query(BillingInvoice).filter_by(reference=reference).first() is not None:
         return "already_processed"
     when = _paid_when(data)
-    if sub.status in ("active", "past_due"):
+    if sub.status in ("active", "past_due") and not sub.comped:
         plan_key = sub.pending_plan_key or sub.plan_key
         interval = sub.pending_interval or sub.interval
     else:

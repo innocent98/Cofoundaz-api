@@ -59,6 +59,7 @@ def search_workspaces(
             owner_profile.c.full_name.label("owner_name"),
             BillingSubscription.plan_key,
             BillingSubscription.status.label("billing_status"),
+            BillingSubscription.comped.label("comped"),
             HealthScore.score,
             HealthScore.band,
         )
@@ -134,6 +135,7 @@ def search_workspaces(
             "members": members.get(r.id, 0),
             "plan_key": r.plan_key or "starter",
             "billing_status": r.billing_status or "free",
+            "comped": bool(r.comped),
             "health_score": r.score,
             "health_band": r.band,
             "last_active_at": _iso(last_active.get(r.id)),

@@ -49,7 +49,7 @@ def _sub_by_customer(db: Session, data: dict[str, Any]) -> BillingSubscription |
 
 def _on_subscription_create(db: Session, data: dict[str, Any]) -> str:
     sub = _sub_by_customer(db, data)
-    if sub is None:
+    if sub is None or sub.comped:  # a complimentary plan has no Paystack subscription behind it
         return "ignored_no_subscription"
     # A scheduled (future) subscription for a plan change must not overwrite a live one's token.
     if (
@@ -83,7 +83,7 @@ def _on_disable(db: Session, data: dict[str, Any]) -> str:
 def _on_payment_failed(db: Session, data: dict[str, Any]) -> str:
     inner = subs.as_dict(data.get("subscription")) or data
     sub = _sub_by_code(db, inner.get("subscription_code")) or _sub_by_customer(db, data)
-    if sub is None or sub.status not in ("active", "past_due"):
+    if sub is None or sub.comped or sub.status not in ("active", "past_due"):
         return "ignored_no_subscription"
     if sub.status == "active":
         t = subs.now()

@@ -13,7 +13,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext
@@ -63,6 +63,16 @@ def _locked_subscription(db: Session, startup_id: uuid.UUID) -> BillingSubscript
         .one()
     )
     return subs.apply_transitions(db, sub)
+
+
+def _begin(db: Session, startup_id: uuid.UUID, request_id: uuid.UUID) -> BillingSubscription:
+    """Serialise on the request id, then on the workspace, before touching anything. The first
+    stops one `request_id` sent twice at once (even for two workspaces) from racing on the unique
+    key; the second covers the lazy creation of the subscription row. Both release at commit."""
+    for key in (f"billing-override:request:{request_id}", f"billing-override:ws:{startup_id}"):
+        db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"), {"k": key})
+    _workspace(db, startup_id)
+    return _locked_subscription(db, startup_id)
 
 
 def serialize_override(row: BillingOverride, actor_email: str | None = None) -> dict[str, Any]:
@@ -136,12 +146,24 @@ def overview(db: Session, startup_id: uuid.UUID) -> dict[str, Any]:
 
 
 def _replay(
-    db: Session, request_id: uuid.UUID, startup_id: uuid.UUID, kind: str, actor_id: uuid.UUID
+    db: Session,
+    request_id: uuid.UUID,
+    startup_id: uuid.UUID,
+    kind: str,
+    actor_id: uuid.UUID,
+    **fields: Any,
 ) -> BillingOverride | None:
+    """The stored override for a repeated `request_id`, provided it is the very same request:
+    same workspace, kind, staff member and values. Anything else reuses the id and is refused."""
     row = db.query(BillingOverride).filter(BillingOverride.request_id == request_id).first()
     if row is None:
         return None
-    if row.startup_id != startup_id or row.kind != kind or row.actor_user_id != actor_id:
+    if (
+        row.startup_id != startup_id
+        or row.kind != kind
+        or row.actor_user_id != actor_id
+        or any(getattr(row, k) != v for k, v in fields.items())
+    ):
         raise _err(
             "REQUEST_ID_REUSED",
             "That request id was already used for a different override. Use a new one.",
@@ -205,9 +227,11 @@ def refund(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    _workspace(db, startup_id)
-    _locked_subscription(db, startup_id)
-    prior = _replay(db, request_id, startup_id, "refund", ctx.user.id)
+    _begin(db, startup_id, request_id)
+    prior = _replay(
+        db, request_id, startup_id, "refund", ctx.user.id,
+        invoice_id=invoice_id, amount_minor=amount_minor,
+    )  # fmt: skip
     inv = (
         db.query(BillingInvoice)
         .filter(BillingInvoice.id == invoice_id, BillingInvoice.startup_id == startup_id)
@@ -261,9 +285,8 @@ def credit(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    _workspace(db, startup_id)
-    _locked_subscription(db, startup_id)
-    prior = _replay(db, request_id, startup_id, "credit", ctx.user.id)
+    _begin(db, startup_id, request_id)
+    prior = _replay(db, request_id, startup_id, "credit", ctx.user.id, credits=credits)
     if prior is not None:
         return _result(ctx, prior, replayed=True)
     row = BillingOverride(
@@ -303,9 +326,8 @@ def extend_trial(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    _workspace(db, startup_id)
-    sub = _locked_subscription(db, startup_id)
-    prior = _replay(db, request_id, startup_id, "trial", ctx.user.id)
+    sub = _begin(db, startup_id, request_id)
+    prior = _replay(db, request_id, startup_id, "trial", ctx.user.id, days=days)
     if prior is not None:
         return _result(ctx, prior, replayed=True, subscription=_subscription_view(db, sub))
     if sub.status != "trialing" or sub.trial_ends_at is None:
@@ -350,9 +372,8 @@ def comp(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    _workspace(db, startup_id)
-    sub = _locked_subscription(db, startup_id)
-    prior = _replay(db, request_id, startup_id, "comp", ctx.user.id)
+    sub = _begin(db, startup_id, request_id)
+    prior = _replay(db, request_id, startup_id, "comp", ctx.user.id, plan_key=plan_key, days=days)
     if prior is not None:
         return _result(ctx, prior, replayed=True, subscription=_subscription_view(db, sub))
     plan = subs.plan_by_key(db, plan_key)

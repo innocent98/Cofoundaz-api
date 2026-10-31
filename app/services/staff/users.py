@@ -84,6 +84,7 @@ def _primary_memberships(db: Session, user_ids: list[uuid.UUID]) -> dict[uuid.UU
             Startup.name,
             BillingSubscription.plan_key,
             BillingSubscription.status,
+            BillingSubscription.comped,
         )
         .join(Startup, Startup.id == Membership.startup_id)
         .outerjoin(BillingSubscription, BillingSubscription.startup_id == Startup.id)
@@ -96,7 +97,7 @@ def _primary_memberships(db: Session, user_ids: list[uuid.UUID]) -> dict[uuid.UU
         .all()
     )
     out: dict[uuid.UUID, dict[str, Any]] = {}
-    for uid, sid, role, name, plan, status in rows:
+    for uid, sid, role, name, plan, status, comped in rows:
         entry = out.setdefault(uid, {"count": 0, "primary": None})
         entry["count"] += 1
         cand = {
@@ -105,6 +106,7 @@ def _primary_memberships(db: Session, user_ids: list[uuid.UUID]) -> dict[uuid.UU
             "role": role.value,
             "plan_key": plan or "starter",
             "billing_status": status or "free",
+            "comped": bool(comped),
         }
         if entry["primary"] is None or (
             role.value == "founder" and entry["primary"]["role"] != "founder"
@@ -270,11 +272,12 @@ def user_profile(db: Session, ctx: StaffContext, user_id: uuid.UUID) -> dict[str
             "membership_status": mstatus.value,
             "plan_key": plan or "starter",
             "billing_status": bstatus or "free",
+            "comped": bool(comped),
             "trial_ends_at": trial.isoformat() if trial else None,
             "current_period_end": period.isoformat() if period else None,
             "cancel_at_period_end": bool(cancel),
         }
-        for sid, name, role, mstatus, plan, bstatus, trial, period, cancel in (
+        for sid, name, role, mstatus, plan, bstatus, comped, trial, period, cancel in (
             db.query(
                 Startup.id,
                 Startup.name,
@@ -282,6 +285,7 @@ def user_profile(db: Session, ctx: StaffContext, user_id: uuid.UUID) -> dict[str
                 Membership.status,
                 BillingSubscription.plan_key,
                 BillingSubscription.status,
+                BillingSubscription.comped,
                 BillingSubscription.trial_ends_at,
                 BillingSubscription.current_period_end,
                 BillingSubscription.cancel_at_period_end,
