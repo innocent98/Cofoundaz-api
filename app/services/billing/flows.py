@@ -355,20 +355,26 @@ def _activate(
         )
 
 
+def _adopt_active_subscription(sub: BillingSubscription, plan_code: str | None) -> bool:
+    """Store the customer's active Paystack subscription on `sub`. True when there is one."""
+    if not sub.paystack_customer_code:
+        return False
+    for row in paystack.list_subscriptions(sub.paystack_customer_code):
+        plan = subs.as_dict(row.get("plan"))
+        if row.get("status") == "active" and (not plan_code or plan.get("plan_code") == plan_code):
+            sub.paystack_subscription_code = row.get("subscription_code")
+            sub.paystack_email_token = row.get("email_token")
+            return True
+    return False
+
+
 def _link_paystack_subscription(sub: BillingSubscription, plan_code: str | None) -> None:
     """Best effort: remember the Paystack subscription code and its email token so we can cancel
-    it later. The `subscription.create` webhook fills the same fields if this call fails."""
-    if not sub.paystack_customer_code:
-        return
+    it later. Paystack creates the subscription just after the charge, so it can be missing here;
+    the `subscription.create` webhook fills the same fields, and cancel and plan changes look again.
+    """
     try:
-        for row in paystack.list_subscriptions(sub.paystack_customer_code):
-            plan = subs.as_dict(row.get("plan"))
-            if row.get("status") == "active" and (
-                not plan_code or plan.get("plan_code") == plan_code
-            ):
-                sub.paystack_subscription_code = row.get("subscription_code")
-                sub.paystack_email_token = row.get("email_token")
-                return
+        _adopt_active_subscription(sub, plan_code)
     except AppError as exc:
         log.warning(f"billing: couldn't read the Paystack subscription ({exc.code})")
 
@@ -628,6 +634,8 @@ def _switch_paystack_plan(
 ) -> None:
     """Stop the old Paystack subscription and, for a paid target, schedule the new one to start when
     the current period ends (so the card isn't charged twice for the same days)."""
+    if not sub.paystack_subscription_code:
+        _adopt_active_subscription(sub, None)
     if sub.paystack_subscription_code and sub.paystack_email_token:
         paystack.disable_subscription(
             code=sub.paystack_subscription_code, email_token=sub.paystack_email_token
@@ -804,6 +812,9 @@ def change_plan(
 def _cancel(db: Session, sub: BillingSubscription, *, reason: str | None) -> dict[str, Any]:
     if not subs.is_paid(sub):
         raise _err("NOT_SUBSCRIBED", "There's no paid plan to cancel.")
+    # Not linked yet: find it first, or the card keeps being charged after we show "canceled".
+    if not sub.paystack_subscription_code:
+        _adopt_active_subscription(sub, None)
     if sub.paystack_subscription_code and sub.paystack_email_token:
         paystack.disable_subscription(
             code=sub.paystack_subscription_code, email_token=sub.paystack_email_token
@@ -832,14 +843,17 @@ def resume(db: Session, startup_id: uuid.UUID) -> None:
     pm = default_method(db, startup_id)
     if pm is None or not sub.paystack_customer_code or not sub.current_period_end:
         raise _err("NO_PAYMENT_METHOD", "Add a card before resuming your plan.")
-    created = paystack.create_subscription(
-        customer_code=sub.paystack_customer_code,
-        plan_code=ensure_plan_code(db, plan, sub.interval),
-        authorization_code=pm.authorization_code,
-        start_date_iso=sub.current_period_end.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-    )
-    sub.paystack_subscription_code = created.get("subscription_code")
-    sub.paystack_email_token = created.get("email_token")
+    plan_code = ensure_plan_code(db, plan, sub.interval)
+    # One still active at Paystack keeps renewing, and a second one is refused as "already in place".
+    if not _adopt_active_subscription(sub, plan_code):
+        created = paystack.create_subscription(
+            customer_code=sub.paystack_customer_code,
+            plan_code=plan_code,
+            authorization_code=pm.authorization_code,
+            start_date_iso=sub.current_period_end.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+        )
+        sub.paystack_subscription_code = created.get("subscription_code")
+        sub.paystack_email_token = created.get("email_token")
     sub.cancel_at_period_end = False
     sub.canceled_at = None
     sub.cancel_reason = None

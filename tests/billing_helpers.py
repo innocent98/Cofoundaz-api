@@ -31,6 +31,7 @@ def _paystack_stub(monkeypatch: pytest.MonkeyPatch) -> None:
     stub_transport.PS_TX.clear()
     stub_transport.PS_ABANDONED.clear()
     stub_transport.PS_SUBS.clear()
+    stub_transport.PS_CUSTOMER_IDS.clear()
 
 
 def seed_plans(db: Session) -> None:
