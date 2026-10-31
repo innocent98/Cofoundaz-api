@@ -79,6 +79,12 @@ def _onboard(c: httpx.Client, auth: dict, name: str) -> str:
     return c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]
 
 
+def _staff_by_email(http: httpx.Client, headers: dict, email: str) -> dict:
+    """The e2e database is shared by every journey, so never pick staff by role alone."""
+    rows = http.get(f"{S}/staff", headers=headers).json()["data"]
+    return next(s for s in rows if s["email"] == email)
+
+
 def _act(
     http, who: dict, app: Authenticator, path: str, reason: str = "Support ticket 4821 follow-up"
 ):
@@ -220,11 +226,7 @@ def test_admin_users_journey(
     capture("admin_users", "resend_verification_already_verified", r)
 
     # ---- staff targets -----------------------------------------------------------------------
-    sa_id = next(
-        s["user_id"]
-        for s in http.get(f"{S}/staff", headers=sa).json()["data"]
-        if s["role"] == "super_admin"
-    )
+    sa_id = _staff_by_email(http, sa, sa_user["email"])["user_id"]
     r = _act(http, adm, adm_app, f"/users/{sa_id}/suspend", "Trying to suspend a Super Admin")
     assert r.status_code == 403 and r.json()["error"]["code"] == "STAFF_TARGET"
     capture("admin_users", "suspend_staff_as_admin", r)
@@ -237,16 +239,8 @@ def test_admin_users_journey(
     assert r.json()["data"]["sessions"] == [] and r.json()["data"]["phone"] is None
 
     # ---- change a staff member's scopes without revoking them (P9) ---------------------------
-    adm_id = next(
-        s["id"]
-        for s in http.get(f"{S}/staff", headers=sa).json()["data"]
-        if s["email"] == adm_user["email"]
-    )
-    own_staff_id = next(
-        s["id"]
-        for s in http.get(f"{S}/staff", headers=sa).json()["data"]
-        if s["role"] == "super_admin"
-    )
+    adm_id = _staff_by_email(http, sa, adm_user["email"])["id"]
+    own_staff_id = _staff_by_email(http, sa, sa_user["email"])["id"]
 
     def patch(staff_id, role, scopes, reason="Adding the content scope", code=None):
         return http.patch(
@@ -319,5 +313,5 @@ def test_admin_users_journey(
     } <= set(actions)
     capture("admin_users", "audit_user_actions", r)
     r = http.get(f"{S}/staff", headers=sa)
-    assert r.json()["data"][0]["last_login_at"]
+    assert _staff_by_email(http, sa, sa_user["email"])["last_login_at"]
     capture("admin_users", "staff_list_with_last_login", r)
