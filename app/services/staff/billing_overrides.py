@@ -88,6 +88,7 @@ def serialize_override(row: BillingOverride, actor_email: str | None = None) -> 
         "days": row.days,
         "plan_key": row.plan_key,
         "provider_refund": row.provider_refund,
+        "completed_at": _iso(row.completed_at),
         "details": row.details,
         "created_at": row.created_at.isoformat(),
     }
@@ -101,7 +102,12 @@ def _serialize_invoice(i: BillingInvoice) -> dict[str, Any]:
         "description": i.description,
         "amount_minor": i.amount_minor,
         "refunded_minor": i.refunded_minor,
-        "refundable_minor": max(0, i.amount_minor - i.refunded_minor) if i.status == "paid" else 0,
+        "refund_pending_minor": i.refund_pending_minor,
+        "refundable_minor": (
+            max(0, i.amount_minor - i.refunded_minor - i.refund_pending_minor)
+            if i.status == "paid"
+            else 0
+        ),
         "currency": i.currency,
         "status": i.status,
         "paid_at": _iso(i.paid_at),
@@ -247,7 +253,7 @@ def refund(
             "INVOICE_NOT_REFUNDABLE",
             "Only a paid invoice can be refunded; this one is " + inv.status + ".",
         )
-    remaining = inv.amount_minor - inv.refunded_minor
+    remaining = inv.amount_minor - inv.refunded_minor - inv.refund_pending_minor
     if amount_minor > remaining:
         raise AppError(
             code="REFUND_EXCEEDS_INVOICE",
@@ -255,9 +261,9 @@ def refund(
             http_status=422,
             field_errors=[{"field": "amount_minor", "message": f"at most {remaining}"}],
         )
-    inv.refunded_minor += amount_minor
-    if inv.refunded_minor == inv.amount_minor:
-        inv.status = "refunded"
+    # Recorded only: the founder's invoice (status, refunded_minor) is unchanged until the refund
+    # is made at Paystack and marked done; until then it still counts against the cap.
+    inv.refund_pending_minor += amount_minor
     row = BillingOverride(
         request_id=request_id,
         startup_id=startup_id,
@@ -267,9 +273,73 @@ def refund(
         invoice_id=inv.id,
         amount_minor=amount_minor,
         provider_refund="pending",
-        details={"invoice_number": inv.number, "invoice_status_after": inv.status},
+        details={"invoice_number": inv.number},
     )
     _finish(db, ctx, row, action="billing.refund.issued", startup_id=startup_id, ip=ip, ua=ua)
+    db.commit()
+    return _result(ctx, row, replayed=False, invoice=_serialize_invoice(inv))
+
+
+def complete_refund(
+    db: Session,
+    ctx: StaffContext,
+    startup_id: uuid.UUID,
+    override_id: uuid.UUID,
+    *,
+    reason: str,
+    ip: str | None,
+    ua: str | None,
+) -> dict[str, Any]:
+    """Staff confirm a recorded refund was made at Paystack. Only now does the founder's invoice
+    show it, and a fully refunded invoice flips to `refunded`. Idempotent: completing an entry that
+    is already done changes nothing and answers `replayed: true`."""
+    _workspace(db, startup_id)
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+        {"k": f"billing-override:ws:{startup_id}"},
+    )
+    _locked_subscription(db, startup_id)
+    row = (
+        db.query(BillingOverride)
+        .filter(
+            BillingOverride.id == override_id,
+            BillingOverride.startup_id == startup_id,
+            BillingOverride.kind == "refund",
+        )
+        .with_for_update()
+        .first()
+    )
+    if row is None or row.invoice_id is None or row.amount_minor is None:
+        raise _err("REFUND_NOT_FOUND", "No refund entry with that id in this workspace.", 404)
+    inv = (
+        db.query(BillingInvoice).filter(BillingInvoice.id == row.invoice_id).with_for_update().one()
+    )
+    if row.provider_refund == "done":
+        return _result(ctx, row, replayed=True, invoice=_serialize_invoice(inv))
+    inv.refund_pending_minor -= row.amount_minor
+    inv.refunded_minor += row.amount_minor
+    if inv.refunded_minor == inv.amount_minor:
+        inv.status = "refunded"
+    row.provider_refund = "done"
+    row.completed_at = subs.now()
+    row.completed_by_user_id = ctx.user.id
+    write_audit(
+        db,
+        "billing.refund.completed",
+        actor_user_id=ctx.user.id,
+        startup_id=startup_id,
+        entity_type="billing_override",
+        entity_id=row.id,
+        reason=reason,
+        ip=ip,
+        user_agent=ua,
+        details={
+            "invoice_id": str(inv.id),
+            "amount_minor": row.amount_minor,
+            "invoice_status_after": inv.status,
+            "issued_by": str(row.actor_user_id),
+        },
+    )
     db.commit()
     return _result(ctx, row, replayed=False, invoice=_serialize_invoice(inv))
 

@@ -10,6 +10,7 @@ from app.core.envelope import Meta, success_response
 from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.schemas.staff import (
+    CompleteRefundRequest,
     CompRequest,
     CreditRequest,
     ExtendTrialRequest,
@@ -185,6 +186,24 @@ def billing_refund(
             reason=payload.reason,
             ip=ip,
             ua=ua,
+        )
+    )
+
+
+@router.post("/billing/{workspace_id}/refunds/{override_id}/complete")
+def billing_complete_refund(
+    workspace_id: uuid.UUID,
+    override_id: uuid.UUID,
+    payload: CompleteRefundRequest,
+    request: Request,
+    ctx: _Ctx,
+    db: _Db,
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.complete_refund(
+            db, ctx, workspace_id, override_id, reason=payload.reason, ip=ip, ua=ua
         )
     )
 

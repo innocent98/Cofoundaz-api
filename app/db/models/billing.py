@@ -129,12 +129,17 @@ class BillingInvoice(UUIDMixin, TimestampMixin, Base):
     reference: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     plan_key: Mapped[str | None] = mapped_column(String(20), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Kobo refunded by staff so far (internal entries, D-ADM-6); `status` flips to refunded at 100%.
+    # Kobo staff have recorded a refund for but not yet marked done (D-ADM-6): staff-only, counts
+    # against the cap, invisible to the founder.
+    refund_pending_minor: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Kobo whose refund has really been made at Paystack and marked done; the founder sees this
+    # and `status` flips to refunded only when it reaches the invoice amount.
     refunded_minor: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     __table_args__ = (
         CheckConstraint(
-            "refunded_minor >= 0 AND refunded_minor <= amount_minor",
+            "refunded_minor >= 0 AND refund_pending_minor >= 0 "
+            "AND refunded_minor + refund_pending_minor <= amount_minor",
             name="ck_billing_invoices_refund_bounds",
         ),
     )
@@ -233,6 +238,11 @@ class BillingOverride(UUIDMixin, TimestampMixin, Base):
         Integer, nullable=True
     )  # trial extension / comp length
     plan_key: Mapped[str | None] = mapped_column(String(20), nullable=True)  # comp
-    # refund only: "pending" = recorded here, no money has moved at Paystack yet
+    # refund only: "pending" = recorded here, no money has moved at Paystack yet; "done" = staff
+    # confirmed it was made there (`completed_at`, `completed_by_user_id`)
     provider_refund: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
     details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

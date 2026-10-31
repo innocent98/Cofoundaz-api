@@ -6,7 +6,7 @@ Create Date: 2026-10-31
 
 Adds the `billing_overrides` ledger (refund, credit, trial extension, comp; `request_id` unique so
 a replay cannot apply twice), `billing_subscriptions.comped` and `billing_invoices.refunded_minor`.
-A DB check keeps a refund from exceeding its invoice.
+A DB check keeps refunded plus pending refunds within the invoice amount.
 """
 
 import sqlalchemy as sa
@@ -29,10 +29,15 @@ def upgrade() -> None:
         "billing_invoices",
         sa.Column("refunded_minor", sa.Integer(), server_default="0", nullable=False),
     )
+    op.add_column(
+        "billing_invoices",
+        sa.Column("refund_pending_minor", sa.Integer(), server_default="0", nullable=False),
+    )
     op.create_check_constraint(
         "ck_billing_invoices_refund_bounds",
         "billing_invoices",
-        "refunded_minor >= 0 AND refunded_minor <= amount_minor",
+        "refunded_minor >= 0 AND refund_pending_minor >= 0 "
+        "AND refunded_minor + refund_pending_minor <= amount_minor",
     )
     op.create_table(
         "billing_overrides",
@@ -69,6 +74,13 @@ def upgrade() -> None:
         sa.Column("days", sa.Integer(), nullable=True),
         sa.Column("plan_key", sa.String(20), nullable=True),
         sa.Column("provider_refund", sa.String(10), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "completed_by_user_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("users.id"),
+            nullable=True,
+        ),
         sa.Column("details", postgresql.JSONB(), nullable=False),
     )
     op.create_index("ix_billing_overrides_startup_id", "billing_overrides", ["startup_id"])
@@ -78,5 +90,6 @@ def downgrade() -> None:
     op.drop_index("ix_billing_overrides_startup_id", table_name="billing_overrides")
     op.drop_table("billing_overrides")
     op.drop_constraint("ck_billing_invoices_refund_bounds", "billing_invoices", type_="check")
+    op.drop_column("billing_invoices", "refund_pending_minor")
     op.drop_column("billing_invoices", "refunded_minor")
     op.drop_column("billing_subscriptions", "comped")

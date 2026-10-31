@@ -83,6 +83,16 @@ class RefundRequest(_OverrideBase):
     amount_minor: Annotated[int, Field(ge=1, le=2_000_000_000)]  # kobo
 
 
+class CompleteRefundRequest(BaseModel):
+    """Confirms a recorded refund was made in Paystack. Idempotent by nature: completing twice
+    changes nothing, so it needs no request id."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Reason
+    totp_code: TotpCode
+
+
 class CreditRequest(_OverrideBase):
     credits: Annotated[int, Field(ge=1, le=100_000)]  # AI credits (1 credit = 50 tokens)
 

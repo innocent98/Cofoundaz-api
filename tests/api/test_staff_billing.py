@@ -122,25 +122,96 @@ def test_unknown_workspace_is_404(client, db):
 # ---------------------------------------------------------------- refund
 
 
-def test_partial_then_full_refund_updates_the_founders_invoice_list(client, db):
+def complete(client, staff, ws, override_id, **body):
+    import pyotp
+
+    r = get_redis()
+    for k in r.scan_iter("staff_stepup_used:*"):
+        r.delete(k)
+    payload = {"reason": REASON, "totp_code": pyotp.TOTP(staff.test_secret).now(), **body}
+    return client.post(
+        f"{S}/billing/{ws.id}/refunds/{override_id}/complete", json=payload, headers=hdr(staff)
+    )
+
+
+def test_a_recorded_refund_is_invisible_to_the_founder_until_marked_done(client, db):
     _, ws, founder = workspace(db)
     staff = sa(db)
     inv = invoice(db, ws, amount=2_400_000)
-    r = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=1_000_000)
+    r = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=2_400_000)
     assert r.status_code == 200, r.text
     d = r.json()["data"]
-    assert d["replayed"] is False
-    assert d["override"]["provider_refund"] == "pending"
-    assert d["invoice"]["refunded_minor"] == 1_000_000
-    assert d["invoice"]["refundable_minor"] == 1_400_000 and d["invoice"]["status"] == "paid"
+    assert d["replayed"] is False and d["override"]["provider_refund"] == "pending"
+    assert d["invoice"]["refund_pending_minor"] == 2_400_000 and d["invoice"]["refunded_minor"] == 0
+    assert d["invoice"]["refundable_minor"] == 0 and d["invoice"]["status"] == "paid"
     listed = client.get(f"{B}/invoices", headers=founder).json()["data"][0]
-    assert listed["refunded_minor"] == 1_000_000 and listed["status"] == "paid"
-    r2 = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=1_400_000)
-    assert r2.status_code == 200
+    assert listed["status"] == "paid" and listed["refunded_minor"] == 0
+    # marking it done is what the founder finally sees
+    done = complete(client, staff, ws, d["override"]["id"])
+    assert done.status_code == 200, done.text
+    dd = done.json()["data"]
+    assert dd["replayed"] is False and dd["override"]["provider_refund"] == "done"
+    assert dd["override"]["completed_at"]
+    assert dd["invoice"]["status"] == "refunded" and dd["invoice"]["refund_pending_minor"] == 0
     listed = client.get(f"{B}/invoices", headers=founder).json()["data"][0]
     assert listed["status"] == "refunded" and listed["refunded_minor"] == 2_400_000
-    pdf = client.get(f"{B}/invoices/{inv.id}/pdf", headers=founder)
-    assert pdf.status_code == 200
+    assert client.get(f"{B}/invoices/{inv.id}/pdf", headers=founder).status_code == 200
+    row = db.query(AuditLog).filter_by(action="billing.refund.completed").one()
+    assert row.actor_user_id == staff.id and row.reason == REASON
+    assert row.details["invoice_status_after"] == "refunded"
+
+
+def test_a_partial_refund_done_shows_the_amount_but_the_invoice_stays_paid(client, db):
+    _, ws, founder = workspace(db)
+    staff = sa(db)
+    inv = invoice(db, ws, amount=2_400_000)
+    first = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=1_000_000)
+    second = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=1_400_000)
+    assert complete(client, staff, ws, first.json()["data"]["override"]["id"]).status_code == 200
+    listed = client.get(f"{B}/invoices", headers=founder).json()["data"][0]
+    assert listed["status"] == "paid" and listed["refunded_minor"] == 1_000_000
+    view = client.get(f"{S}/billing/{ws.id}", headers=hdr(staff)).json()["data"]["invoices"][0]
+    assert view["refund_pending_minor"] == 1_400_000 and view["refundable_minor"] == 0
+    assert complete(client, staff, ws, second.json()["data"]["override"]["id"]).status_code == 200
+    listed = client.get(f"{B}/invoices", headers=founder).json()["data"][0]
+    assert listed["status"] == "refunded" and listed["refunded_minor"] == 2_400_000
+
+
+def test_completing_a_refund_twice_changes_nothing(client, db):
+    _, ws, _ = workspace(db)
+    staff = sa(db)
+    inv = invoice(db, ws, amount=1_000_000)
+    oid = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=400_000).json()[
+        "data"
+    ]["override"]["id"]
+    assert complete(client, staff, ws, oid).status_code == 200
+    again = complete(client, staff, ws, oid)
+    assert again.status_code == 200 and again.json()["data"]["replayed"] is True
+    db.refresh(inv)
+    assert inv.refunded_minor == 400_000 and inv.refund_pending_minor == 0
+    assert db.query(AuditLog).filter_by(action="billing.refund.completed").count() == 1
+
+
+def test_complete_refund_rules(client, db):
+    _, ws, _ = workspace(db)
+    _, other, _ = workspace(db)
+    staff = sa(db)
+    inv = invoice(db, ws)
+    oid = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=100).json()["data"][
+        "override"
+    ]["id"]
+    credit_id = act(client, staff, ws, "credit", credits=5).json()["data"]["override"]["id"]
+    for target, override_id in ((other, oid), (ws, credit_id), (ws, str(uuid.uuid4()))):
+        r = complete(client, staff, target, override_id)
+        assert r.status_code == 404 and r.json()["error"]["code"] == "REFUND_NOT_FOUND"
+    assert complete(client, staff, ws, oid, reason="short").status_code == 422
+    wrong = complete(client, staff, ws, oid, totp_code="000000")
+    assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "STEP_UP_INVALID"
+    admin = mk_staff(db, StaffRole.admin, scopes=("support",))
+    hidden = client.post(f"{S}/billing/{ws.id}/refunds/{oid}/complete", json={}, headers=hdr(admin))
+    assert hidden.status_code == 404 and hidden.json() == {"detail": "Not Found"}
+    db.refresh(inv)
+    assert inv.refund_pending_minor == 100 and inv.refunded_minor == 0
 
 
 def test_cannot_refund_more_than_the_invoice(client, db):
@@ -154,7 +225,7 @@ def test_cannot_refund_more_than_the_invoice(client, db):
     r = act(client, staff, ws, "refund", invoice_id=str(inv.id), amount_minor=200_001)
     assert r.status_code == 422 and r.json()["error"]["code"] == "REFUND_EXCEEDS_INVOICE"
     db.refresh(inv)
-    assert inv.refunded_minor == 300_000
+    assert inv.refund_pending_minor == 300_000 and inv.refunded_minor == 0  # pending counts
     assert db.query(BillingOverride).filter_by(kind="refund").count() == 1
 
 
@@ -191,7 +262,7 @@ def test_refund_replay_applies_once(client, db):
     assert again.json()["data"]["replayed"] is True
     assert again.json()["data"]["override"]["id"] == first.json()["data"]["override"]["id"]
     db.refresh(inv)
-    assert inv.refunded_minor == 600_000
+    assert inv.refund_pending_minor == 600_000
     assert db.query(AuditLog).filter_by(action="billing.refund.issued").count() == 1
 
 
@@ -438,7 +509,7 @@ def test_a_replay_with_different_values_is_refused(client, db):
     r = act(client, staff, ws, "refund", request_id=rid, invoice_id=str(inv.id), amount_minor=999)
     assert r.status_code == 409 and r.json()["error"]["code"] == "REQUEST_ID_REUSED"
     db.refresh(inv)
-    assert inv.refunded_minor == 100
+    assert inv.refund_pending_minor == 100
 
 
 def test_buying_a_plan_while_comped_activates_it_instead_of_refunding(client, db):
