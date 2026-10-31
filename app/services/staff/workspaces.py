@@ -201,6 +201,7 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
             BillingSubscription.plan_key,
             BillingSubscription.interval,
             BillingSubscription.status,
+            BillingSubscription.comped,
             BillingSubscription.trial_ends_at,
             BillingSubscription.current_period_end,
             BillingSubscription.cancel_at_period_end,
