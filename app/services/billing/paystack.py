@@ -15,6 +15,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.logger import log
 from app.services.finance.payments.http import http_client
 
 BASE_URL = "https://api.paystack.co"
@@ -101,6 +102,8 @@ def _request(
     except ValueError:
         raise PaystackRejected() from None
     if resp.status_code >= 400 or not isinstance(body, dict) or body.get("status") is not True:
+        reason = body.get("message") if isinstance(body, dict) else None
+        log.warning(f"billing: Paystack refused {method} {path} ({resp.status_code}): {reason}")
         raise PaystackRejected()
     return body
 
@@ -185,7 +188,9 @@ def refund(transaction_reference: str) -> None:
 
 
 def list_subscriptions(customer_code: str) -> list[dict[str, Any]]:
-    body = _request("GET", "/subscription", params={"customer": customer_code})
+    # This filter takes the numeric customer id; given a customer code Paystack returns an empty list.
+    customer = _data(_request("GET", f"/customer/{quote(customer_code, safe='')}"))
+    body = _request("GET", "/subscription", params={"customer": customer.get("id")})
     data = body.get("data")
     return [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
 
