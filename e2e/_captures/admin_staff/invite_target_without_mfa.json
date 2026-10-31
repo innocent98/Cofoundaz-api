@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "STAFF_MFA_REQUIRED",
+    "message": "Staff must have an authenticator app turned on. Ask them to enable it first.",
+    "field_errors": []
+  }
+}

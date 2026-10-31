@@ -29,7 +29,9 @@ def get_current_user(
             credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         user_id = payload.get("sub")
-        if not user_id:
+        # Access tokens carry no `typ`. Other short-lived tokens signed with the same key (the
+        # calendar OAuth state, which travels in a URL) also carry `sub`: never accept them here.
+        if not user_id or "typ" in payload:
             raise Unauthorized()
         subject = uuid.UUID(user_id)
     except (jwt.PyJWTError, ValueError) as exc:

@@ -9,10 +9,11 @@ import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
+from starlette.exceptions import HTTPException
 
 from app.api.staff_deps import require_staff
 from app.core.config import settings
-from app.core.errors import Forbidden, NotFound
+from app.core.errors import Forbidden
 from app.core.redis import get_redis
 from app.core.security import create_access_token
 from app.db.models.audit import AuditLog
@@ -83,7 +84,51 @@ def test_unknown_callers_get_the_same_404_as_an_unknown_route(client, db):
         for url in (f"{S}/staff", f"{S}/audit", f"{A}/me"):
             r = client.get(url, headers=headers)
             assert r.status_code == 404, (url, headers)
-            assert r.json()["error"]["code"] == "NOT_FOUND"
+            assert r.json() == expected.json() == {"detail": "Not Found"}
+    # Guard runs before body and query validation, so a bad request doesn't reveal the route.
+    for r in (
+        client.post(f"{S}/staff", json={"nonsense": 1}),
+        client.post(f"{S}/staff/not-a-uuid/revoke", json={}, headers=hdr(plain)),
+        client.get(f"{S}/audit/export"),
+        client.get(f"{S}/audit?limit=9999", headers=hdr(plain)),
+    ):
+        assert r.status_code == 404 and r.json() == expected.json()
+
+
+def test_staff_routes_hide_wrong_methods_bad_json_and_the_schema(client, db):
+    plain = mk_user(db)
+    expected = client.get("/api/v1/definitely-not-a-route").json()
+    for r in (
+        client.delete(f"{S}/staff"),
+        client.put(f"{A}/me", headers=hdr(plain)),
+        client.post(
+            f"{S}/staff", content="{not json", headers={"content-type": "application/json"}
+        ),
+    ):
+        assert r.status_code == 404 and r.json() == expected
+    paths = client.get("/api/v1/openapi.json").json()["paths"]
+    assert not [p for p in paths if "/admin" in p or "/super-admin" in p]
+    assert client.get("/api/v1/health").status_code != 404  # other routers still documented/served
+
+
+def test_tokens_with_a_typ_claim_are_not_access_tokens(client, db):
+    """Other short-lived tokens signed with the same key (calendar OAuth state) carry `sub`."""
+    import jwt
+
+    sa, _ = mk_staff(db)
+    token = jwt.encode(
+        {
+            "typ": "calendar_state",
+            "sub": str(sa.id),
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+    h = {"Authorization": f"Bearer {token}"}
+    assert client.get(f"{A}/me", headers=h).status_code == 404
+    assert client.get("/api/v1/auth/me", headers=h).status_code == 401
+    assert client.get(f"{A}/me", headers=hdr(sa)).status_code == 200
 
 
 @pytest.mark.parametrize(
@@ -146,7 +191,7 @@ def test_scope_check(db):
         require_staff("content")(user=admin, db=db)
     assert require_staff("content")(user=sa, db=db).is_super_admin
     assert _staff_context(db, sa).is_super_admin
-    with pytest.raises(NotFound):
+    with pytest.raises(HTTPException):
         require_staff()(user=None, db=db)
 
 
@@ -255,7 +300,7 @@ def test_step_up_wrong_code_replay_and_lockout(client, db):
     replay = invite(client, sa, other, c=good)  # same code again inside its window
     assert replay.status_code == 403 and replay.json()["error"]["code"] == "STEP_UP_INVALID"
     # Five strikes lock further attempts, even with a fresh valid code.
-    for _ in range(4):  # the replay was strike 1; a success earlier reset the count
+    for _ in range(4):  # the replay was attempt 1 (a success earlier reset the count)
         invite(client, sa, other, c="000000")
     locked = invite(client, sa, other, c=code(sa, 1))
     assert locked.status_code == 429 and locked.json()["error"]["code"] == "TOO_MANY_ATTEMPTS"
@@ -382,23 +427,54 @@ def test_revoke_guards(client, db):
     assert client.get(f"{S}/staff", headers=hdr(sa2)).status_code == 404
 
 
-def test_last_super_admin_cannot_be_revoked(client, db):
-    sa, sa_row = mk_staff(db)
-    ad, _ = mk_staff(db, StaffRole.admin, ["support"])
-    # Make an in-flight revoke of the sole Super Admin by a second one who is itself revoked mid-way:
-    # exercise the service directly, as the route forbids self-revoke.
+def test_actor_revoked_mid_request_cannot_finish_a_revoke(db):
+    """The guard read the actor's row unlocked; revoke_staff re-checks it under the lock."""
     from app.api.staff_deps import StaffContext
-    from app.core.errors import AppError
     from app.services.staff.access import revoke_staff
 
-    other, other_row = mk_staff(db)
-    other_row.revoked_at = datetime.now(UTC)
+    _, victim_row = mk_staff(db)
+    actor, actor_row = mk_staff(db)
+    ctx = StaffContext(user=actor, staff=actor_row)
+    actor_row.revoked_at = datetime.now(UTC)  # revoked by someone else after the guard passed
     db.flush()
-    ctx = StaffContext(user=other, staff=other_row)
+    with pytest.raises(HTTPException):
+        revoke_staff(db, ctx, staff_id=victim_row.id, reason=REASON, ip=None, user_agent=None)
+    assert victim_row.revoked_at is None
+
+
+def test_concurrent_invite_insert_conflict_is_409(db, monkeypatch):
+    """Two invites of the same new person: the loser hits the unique index, not a 500."""
+    from app.api.staff_deps import StaffContext
+    from app.core.errors import AppError
+    from app.services.staff import access
+
+    sa, sa_row = mk_staff(db)
+    target = mk_user(db)
+    db.add(PlatformStaff(user_id=target.id, role=StaffRole.admin, scopes=["support"]))
+    db.flush()
+    real_first = access.Session.query  # the winner's row is invisible to the loser's first read
+    calls = {"n": 0}
+
+    def hide_once(self, *a, **k):
+        q = real_first(self, *a, **k)
+        calls["n"] += 1
+        if a and a[0] is PlatformStaff and calls["n"] == 1:
+            return q.filter(PlatformStaff.id.is_(None))
+        return q
+
+    monkeypatch.setattr(access.Session, "query", hide_once)
     with pytest.raises(AppError) as e:
-        revoke_staff(db, ctx, staff_id=sa_row.id, reason=REASON, ip=None, user_agent=None)
-    assert e.value.code == "LAST_SUPER_ADMIN" and e.value.http_status == 409
-    assert sa_row.revoked_at is None and ad  # unchanged
+        access.invite_staff(
+            db,
+            StaffContext(user=sa, staff=sa_row),
+            email=target.email,
+            role=StaffRole.admin,
+            scopes=["content"],
+            reason=REASON,
+            ip=None,
+            user_agent=None,
+        )
+    assert e.value.http_status == 409 and e.value.code == "ALREADY_STAFF"
 
 
 # ---------------- audit explorer ----------------

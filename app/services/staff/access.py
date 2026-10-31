@@ -5,7 +5,9 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException
 
 from app.api.staff_deps import StaffContext
 from app.core.errors import AppError
@@ -94,6 +96,11 @@ def invite_staff(
             user_id=target.id, role=role, scopes=list(scopes), invited_by=ctx.user.id
         )
         db.add(row)
+        try:
+            with db.begin_nested():
+                db.flush()
+        except IntegrityError as exc:  # a concurrent invite of the same person won the insert
+            raise _err("ALREADY_STAFF", "That person is already staff.", 409) from exc
     else:
         reinstated = True
         row.role, row.scopes = role, list(scopes)
@@ -129,12 +136,19 @@ def revoke_staff(
         db.query(PlatformStaff)
         .filter(
             PlatformStaff.revoked_at.is_(None),
-            (PlatformStaff.role == StaffRole.super_admin) | (PlatformStaff.id == staff_id),
+            (PlatformStaff.role == StaffRole.super_admin)
+            | (PlatformStaff.id == staff_id)
+            | (PlatformStaff.user_id == ctx.user.id),
         )
         .order_by(PlatformStaff.id)
         .with_for_update()
         .all()
     )
+    # The guard read the actor's row without a lock: re-check it now that it is locked, so a
+    # Super Admin revoked a moment ago can't finish a revoke of their own.
+    actor = next((r for r in locked if r.user_id == ctx.user.id), None)
+    if actor is None or actor.role != StaffRole.super_admin:
+        raise HTTPException(status_code=404, detail="Not Found")
     row = next((r for r in locked if r.id == staff_id), None)
     if row is None:
         existing = db.query(PlatformStaff).filter(PlatformStaff.id == staff_id).first()
@@ -143,9 +157,8 @@ def revoke_staff(
         raise _err("STAFF_NOT_FOUND", "No such staff member.", 404)
     if row.user_id == ctx.user.id:
         raise _err("CANNOT_REVOKE_SELF", "You can't revoke your own access.", 422)
-    others = [r for r in locked if r.role == StaffRole.super_admin and r.id != row.id]
-    if row.role == StaffRole.super_admin and not others:
-        raise _err("LAST_SUPER_ADMIN", "That is the last Super Admin; it can't be revoked.", 409)
+    # No "last Super Admin" check is needed: the actor is a locked, active Super Admin and can't
+    # revoke themselves, so whoever else is revoked, the actor remains.
     row.revoked_at = datetime.now(UTC)
     target = db.query(User.email).filter(User.id == row.user_id).scalar()
     write_audit(

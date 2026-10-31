@@ -9,15 +9,22 @@ staff who lack the scope (never a Super Admin) see a 403.
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_optional_user
-from app.core.errors import Forbidden, NotFound
+from app.core.errors import Forbidden
 from app.db.models.enums import MfaType, StaffRole, UserStatus
 from app.db.models.platform_staff import PlatformStaff
 from app.db.models.user import User
 from app.db.session import get_db
+
+
+def _hidden() -> HTTPException:
+    """Byte-for-byte what FastAPI answers for a route that doesn't exist (`{"detail": "Not
+    Found"}`), not the app's `{"error": ...}` envelope: a different body would give the routes away.
+    """
+    return HTTPException(status_code=404, detail="Not Found")
 
 
 @dataclass(frozen=True)
@@ -38,14 +45,14 @@ def _staff_context(db: Session, user: User | None) -> StaffContext:
         or user.mfa_type != MfaType.totp
         or not user.mfa_secret
     ):
-        raise NotFound()
+        raise _hidden()
     staff = (
         db.query(PlatformStaff)
         .filter(PlatformStaff.user_id == user.id, PlatformStaff.revoked_at.is_(None))
         .first()
     )
     if staff is None:
-        raise NotFound()
+        raise _hidden()
     return StaffContext(user=user, staff=staff)
 
 
@@ -70,5 +77,5 @@ def require_super_admin(
 ) -> StaffContext:
     ctx = _staff_context(db, user)
     if not ctx.is_super_admin:
-        raise NotFound()
+        raise _hidden()
     return ctx

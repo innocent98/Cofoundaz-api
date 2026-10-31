@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "content_type": "text/csv; charset=utf-8",
+  "content_disposition": "attachment; filename=\"audit-log.csv\"",
+  "body": "when,actor,action,workspace_id,entity_type,entity_id,reason\r\n2026-10-31T12:43:00.377277+00:00,delivered+e2e-ff8c41fb21a4@resend.dev,staff.reinstated,,platform_staff,00a50a9f-83b5-4789-9758-f5dd4560e20c,Back on the content team\r\n2026-10-31T12:42:00.079587+00:00,delivered+e2e-ff8c41fb21a4@resend.dev,staff.revoked,,platform_staff,00a50a9f-83b5-4789-9758-f5dd4560e20c,Moved to another team\r\n2026-10-31T12:39:42.648082+00:00,delivered+e2e-ff8c41fb21a4@resend.dev,staff.invited,,platform_staff,00a50a9f-83b5-4789-9758-f5dd4560e20c,Onboarding a support lead\r\n2026-10-31T12:39:41.595969+00:00,,staff.bootstrapped,,platform_staff,30395551-4498-49c2-aab3-e8169fe4d209,Created by the create_super_admin command on the server.\r\n"
+}

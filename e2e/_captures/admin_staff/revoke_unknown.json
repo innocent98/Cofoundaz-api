@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "STAFF_NOT_FOUND",
+    "message": "No such staff member.",
+    "field_errors": []
+  }
+}

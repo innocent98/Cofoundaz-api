@@ -1,0 +1,69 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "ce7fd498-d8c7-447a-b910-b28f07454314",
+        "created_at": "2026-10-31T12:43:00.377277+00:00",
+        "action": "staff.reinstated",
+        "actor_user_id": "e5c34d48-9d41-4a01-ba44-34b34ce128bc",
+        "actor_email": "delivered+e2e-ff8c41fb21a4@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_staff",
+        "entity_id": "00a50a9f-83b5-4789-9758-f5dd4560e20c",
+        "reason": "Back on the content team",
+        "details": {
+          "role": "admin",
+          "email": "delivered+e2e-a5de604fd277@resend.dev",
+          "scopes": [
+            "content"
+          ]
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "dbae4e87-5cbe-49d8-aeec-fb1ee49f7200",
+        "created_at": "2026-10-31T12:42:00.079587+00:00",
+        "action": "staff.revoked",
+        "actor_user_id": "e5c34d48-9d41-4a01-ba44-34b34ce128bc",
+        "actor_email": "delivered+e2e-ff8c41fb21a4@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_staff",
+        "entity_id": "00a50a9f-83b5-4789-9758-f5dd4560e20c",
+        "reason": "Moved to another team",
+        "details": {
+          "role": "admin",
+          "email": "delivered+e2e-a5de604fd277@resend.dev",
+          "scopes": [
+            "moderation",
+            "support"
+          ]
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "e0f07b07-4f85-4f81-988b-5e80128ec43f",
+        "created_at": "2026-10-31T12:39:42.648082+00:00",
+        "action": "staff.invited",
+        "actor_user_id": "e5c34d48-9d41-4a01-ba44-34b34ce128bc",
+        "actor_email": "delivered+e2e-ff8c41fb21a4@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_staff",
+        "entity_id": "00a50a9f-83b5-4789-9758-f5dd4560e20c",
+        "reason": "Onboarding a support lead",
+        "details": {
+          "role": "admin",
+          "email": "delivered+e2e-a5de604fd277@resend.dev",
+          "scopes": [
+            "moderation",
+            "support"
+          ]
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": "MjAyNi0xMC0zMVQxMjozOTo0Mi42NDgwODIrMDA6MDB8ZTBmMDdiMDctNGY4NS00ZjgxLTk4OGItNWU4MDEyOGVjNDNm",
+    "total_estimate": null
+  }
+}

@@ -11,9 +11,9 @@ from app.core.errors import AppError
 from app.core.redis import get_redis
 from app.db.models.user import User
 from app.services.auth import mfa
-from app.services.auth.throttle import assert_not_locked, clear, record_failure
+from app.services.auth.throttle import MAX_FAILURES, WINDOW_SECONDS
 
-STEP_UP_REPLAY_TTL = 90  # seconds; longer than the code's ~60 s validity
+STEP_UP_REPLAY_TTL = 150  # seconds; longer than the ~90 s a code stays acceptable (3 steps)
 
 
 class StepUpInvalid(AppError):  # noqa: N818
@@ -23,21 +23,25 @@ class StepUpInvalid(AppError):  # noqa: N818
 
 
 def verify_step_up(user: User, code: str) -> None:
+    redis = get_redis()
     key = f"staff_stepup_fail:{user.id}"
-    assert_not_locked(key)
+    # Count the attempt first, atomically, so parallel guesses can't all slip under the limit.
+    attempts = int(redis.incr(key))  # type: ignore[arg-type]
+    redis.expire(key, WINDOW_SECONDS)
+    if attempts > MAX_FAILURES:
+        raise AppError(
+            code="TOO_MANY_ATTEMPTS",
+            message="Too many attempts. Try again in 15 minutes.",
+            http_status=429,
+        )
     try:
         ok = bool(user.mfa_secret) and mfa.verify_totp(
             mfa.decrypt_secret(user.mfa_secret or ""), code
         )
     except InvalidToken:
         ok = False
-    if not ok:
-        record_failure(key)
-        raise StepUpInvalid()
-    first_use = get_redis().set(
+    if not ok or not redis.set(
         f"staff_stepup_used:{user.id}:{code}", "1", nx=True, ex=STEP_UP_REPLAY_TTL
-    )
-    if not first_use:
-        record_failure(key)
+    ):
         raise StepUpInvalid()
-    clear(key)
+    redis.delete(key)
