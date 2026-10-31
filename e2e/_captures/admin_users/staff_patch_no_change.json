@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_CHANGE",
+    "message": "That is already their role and scopes.",
+    "field_errors": []
+  }
+}

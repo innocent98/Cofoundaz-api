@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_VERIFIED",
+    "message": "That account has already verified its email.",
+    "field_errors": []
+  }
+}

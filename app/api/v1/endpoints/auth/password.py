@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import AppError, EmailDeliveryFailed
+from app.core.errors import AppError, EmailDeliveryFailed, TokenInvalid
 from app.core.logger import log
 from app.core.redis import get_redis
 from app.core.security import get_password_hash, verify_password
@@ -72,6 +72,9 @@ def reset(
 ) -> dict[str, Any]:
     validate_password_strength(payload.password)
     user = consume_auth_token(db, AuthTokenPurpose.password_reset, payload.token)
+    # A token that survived a suspension (issued in the same instant) must not change a password.
+    if user.status == UserStatus.disabled:
+        raise TokenInvalid()
     user.password_hash = get_password_hash(payload.password)
     revoke_all_for_user(db, user.id)  # force re-login everywhere
     write_audit(

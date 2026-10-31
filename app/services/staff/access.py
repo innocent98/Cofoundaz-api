@@ -25,7 +25,7 @@ def serialize_staff(db: Session, rows: list[PlatformStaff]) -> list[dict[str, An
     ids = {r.user_id for r in rows} | {r.invited_by for r in rows if r.invited_by}
     users = (
         {
-            u.id: (u.email, p.full_name if p else None)
+            u.id: (u.email, p.full_name if p else None, u.last_login_at)
             for u, p in db.query(User, UserProfile)
             .outerjoin(UserProfile, UserProfile.user_id == User.id)
             .filter(User.id.in_(ids))
@@ -38,11 +38,18 @@ def serialize_staff(db: Session, rows: list[PlatformStaff]) -> list[dict[str, An
         {
             "id": str(r.id),
             "user_id": str(r.user_id),
-            "email": users.get(r.user_id, (None, None))[0],
-            "full_name": users.get(r.user_id, (None, None))[1],
+            "email": users.get(r.user_id, (None, None, None))[0],
+            "full_name": users.get(r.user_id, (None, None, None))[1],
             "role": r.role.value,
             "scopes": list(r.scopes),
-            "invited_by_email": users.get(r.invited_by, (None, None))[0] if r.invited_by else None,
+            "last_login_at": (
+                users[r.user_id][2].isoformat()
+                if r.user_id in users and users[r.user_id][2]
+                else None
+            ),
+            "invited_by_email": (
+                users.get(r.invited_by, (None, None, None))[0] if r.invited_by else None
+            ),
             "created_at": r.created_at.isoformat(),
             "revoked_at": r.revoked_at.isoformat() if r.revoked_at else None,
         }
@@ -121,17 +128,9 @@ def invite_staff(
     return serialize_staff(db, [row])[0]
 
 
-def revoke_staff(
-    db: Session,
-    ctx: StaffContext,
-    *,
-    staff_id: uuid.UUID,
-    reason: str,
-    ip: str | None,
-    user_agent: str | None,
-) -> dict[str, Any]:
-    # Lock every active Super Admin row (plus the target) so two concurrent revokes can't each
-    # see "another Super Admin remains" and leave none.
+def _lock_for_change(db: Session, ctx: StaffContext, staff_id: uuid.UUID) -> PlatformStaff:
+    """Row-lock every active Super Admin, the target and the actor, re-check the actor under the
+    lock (the guard read it unlocked), and return the active target row."""
     locked = (
         db.query(PlatformStaff)
         .filter(
@@ -144,8 +143,6 @@ def revoke_staff(
         .with_for_update()
         .all()
     )
-    # The guard read the actor's row without a lock: re-check it now that it is locked, so a
-    # Super Admin revoked a moment ago can't finish a revoke of their own.
     actor = next((r for r in locked if r.user_id == ctx.user.id), None)
     if actor is None or actor.role != StaffRole.super_admin:
         raise HTTPException(status_code=404, detail="Not Found")
@@ -155,6 +152,19 @@ def revoke_staff(
         if existing is not None:
             raise _err("ALREADY_REVOKED", "That person's staff access is already revoked.", 409)
         raise _err("STAFF_NOT_FOUND", "No such staff member.", 404)
+    return row
+
+
+def revoke_staff(
+    db: Session,
+    ctx: StaffContext,
+    *,
+    staff_id: uuid.UUID,
+    reason: str,
+    ip: str | None,
+    user_agent: str | None,
+) -> dict[str, Any]:
+    row = _lock_for_change(db, ctx, staff_id)
     if row.user_id == ctx.user.id:
         raise _err("CANNOT_REVOKE_SELF", "You can't revoke your own access.", 422)
     # No "last Super Admin" check is needed: the actor is a locked, active Super Admin and can't
@@ -169,6 +179,41 @@ def revoke_staff(
         entity_id=row.id,
         reason=reason,
         details={"email": target, "role": row.role.value, "scopes": list(row.scopes)},
+        ip=ip,
+        user_agent=user_agent,
+    )
+    db.commit()
+    return serialize_staff(db, [row])[0]
+
+
+def update_staff(
+    db: Session,
+    ctx: StaffContext,
+    *,
+    staff_id: uuid.UUID,
+    role: StaffRole,
+    scopes: Sequence[str],
+    reason: str,
+    ip: str | None,
+    user_agent: str | None,
+) -> dict[str, Any]:
+    row = _lock_for_change(db, ctx, staff_id)
+    if row.user_id == ctx.user.id:
+        raise _err("CANNOT_EDIT_SELF", "You can't change your own role or scopes.", 422)
+    before = {"role": row.role.value, "scopes": list(row.scopes)}
+    after = {"role": role.value, "scopes": list(scopes)}
+    if before == after:
+        raise _err("NO_CHANGE", "That is already their role and scopes.", 422)
+    row.role, row.scopes = role, list(scopes)
+    target = db.query(User.email).filter(User.id == row.user_id).scalar()
+    write_audit(
+        db,
+        "staff.updated",
+        actor_user_id=ctx.user.id,
+        entity_type="platform_staff",
+        entity_id=row.id,
+        reason=reason,
+        details={"email": target, "from": before, "to": after},
         ip=ip,
         user_agent=user_agent,
     )

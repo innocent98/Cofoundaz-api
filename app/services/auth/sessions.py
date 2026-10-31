@@ -11,6 +11,7 @@ from app.api.deps import Unauthorized
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.auth import AuthSession
+from app.db.models.enums import UserStatus
 from app.db.models.user import User
 
 
@@ -89,7 +90,9 @@ def rotate_refresh(
         raise Unauthorized()
 
     user = db.query(User).filter(User.id == session.user_id).first()
-    if user is None:
+    # A refresh in flight while staff suspend the account must not mint a new session row that
+    # the suspension's revoke-all never saw.
+    if user is None or user.deleted_at is not None or user.status == UserStatus.disabled:
         raise Unauthorized()
 
     access, raw = issue_token_pair(

@@ -1,0 +1,44 @@
+{
+  "data": {
+    "id": "39d2aada-9f02-495f-bf3a-5f72a65da00f",
+    "name": "NovaPay",
+    "industry": "Fintech",
+    "stage": "idea",
+    "country": null,
+    "created_at": "2026-10-31T13:37:40.142587+00:00",
+    "owner_email": "delivered+e2e-d9aefb27dbf1@resend.dev",
+    "onboarding_completed_at": "2026-10-31T13:37:40.212583+00:00",
+    "health_score": null,
+    "health_band": null,
+    "members": [
+      {
+        "user_id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
+        "email": "delivered+e2e-d9aefb27dbf1@resend.dev",
+        "full_name": "Ada Obi",
+        "role": "founder",
+        "status": "active",
+        "joined_at": "2026-10-31T13:37:40.154264+00:00"
+      }
+    ],
+    "subscription": {
+      "plan_key": "starter",
+      "plan_name": "Starter",
+      "interval": "monthly",
+      "status": "free",
+      "trial_ends_at": null,
+      "current_period_end": null,
+      "cancel_at_period_end": false,
+      "grace_ends_at": null
+    },
+    "usage": {
+      "ai_credits_30d": 0,
+      "ai_credits_limit": 500,
+      "seats_used": 1,
+      "seats_limit": 1,
+      "storage_mb": 0.0,
+      "storage_limit_mb": 5120
+    },
+    "integrations": []
+  },
+  "meta": null
+}

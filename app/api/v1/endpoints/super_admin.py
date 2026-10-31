@@ -9,7 +9,7 @@ from app.api.staff_deps import StaffContext, require_super_admin
 from app.core.envelope import Meta, success_response
 from app.db.session import get_db
 from app.platform.audit import write_audit
-from app.schemas.staff import Reason, StaffInviteRequest, StaffRevokeRequest
+from app.schemas.staff import Reason, StaffInviteRequest, StaffRevokeRequest, StaffUpdateRequest
 from app.services.staff import access, audit_explorer
 from app.services.staff.stepup import verify_step_up
 
@@ -38,6 +38,25 @@ def invite_staff(
         db,
         ctx,
         email=payload.email,
+        role=payload.role,
+        scopes=payload.scopes,
+        reason=payload.reason,
+        ip=ip,
+        user_agent=ua,
+    )
+    return success_response(row)
+
+
+@router.patch("/staff/{staff_id}")
+def update_staff(
+    staff_id: uuid.UUID, payload: StaffUpdateRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = access.update_staff(
+        db,
+        ctx,
+        staff_id=staff_id,
         role=payload.role,
         scopes=payload.scopes,
         reason=payload.reason,

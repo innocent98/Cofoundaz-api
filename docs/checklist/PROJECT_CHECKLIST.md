@@ -3780,3 +3780,18 @@ Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-AD
 ### Deferred follow-ups (slice A)
 - [ ] Emailed staff invite for people without an account yet
 - [ ] Block TRUNCATE on `audit_log`; separate immutable audit store; hardware-key MFA
+
+### Admin slice B: Users, Workspaces, Dashboard KPIs (2026-10-31, branch `feature/admin-users-workspaces`, no migration, PR pending)
+
+Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `docs/sop/2026-10-31-admin-users-workspaces.md`, FE guide `docs/fe-integration-guide-admin-users.md` (and PATCH + `last_login_at` in `fe-integration-guide-admin-staff.md`).
+- [x] Users: search (email, name, workspace, ids), filters, profile with sessions and subscription, `can` flags
+- [x] Suspend (signs out at once, blocks sign-in, kills reset and verification links), unsuspend (restores the right state)
+- [x] Send password reset, resend verification (60 s cooldown, send-failure rollback)
+- [x] A fresh code and a reason on every staff mutation (P1); staff-on-staff limits (P2)
+- [x] Workspaces list and read-only detail (P11)
+- [x] Dashboard KPIs with the P3 definitions (deltas only where history exists)
+- [x] `PATCH /super-admin/staff/{id}` (P9) and `last_login_at` on staff rows (S14)
+- [x] Suspension also holds at MFA challenge, refresh and password reset; `POST /auth/verify` no longer lifts it
+- [x] Unit tests, live e2e journey, Opus review (no High or Medium; Lows fixed)
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
