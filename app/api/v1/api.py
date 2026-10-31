@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     mission,
     notifications,
     payment_webhooks,
+    platform_status,
     roadmap,
     sales,
     sales_sequences,
@@ -44,6 +45,7 @@ register_health_triggers()
 api_router = APIRouter()
 
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(platform_status.router, prefix="/platform", tags=["platform"])
 api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(onboarding_router, prefix="/onboarding", tags=["onboarding"])

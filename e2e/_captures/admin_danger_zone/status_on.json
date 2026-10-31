@@ -1,0 +1,10 @@
+{
+  "data": {
+    "maintenance": {
+      "enabled": true,
+      "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+      "since": "2026-10-31T15:50:00.761568+00:00"
+    }
+  },
+  "meta": null
+}

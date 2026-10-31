@@ -13,6 +13,7 @@ from app.core.security import create_access_token
 from app.db.models.auth import AuthSession
 from app.db.models.enums import UserStatus
 from app.db.models.user import User
+from app.platform.state import lock_session_issue
 
 
 def hash_token(raw: str) -> str:
@@ -31,6 +32,7 @@ def issue_token_pair(
     user_agent: str | None = None,
     family_id: uuid.UUID | None = None,
 ) -> tuple[str, str]:
+    lock_session_issue(db)
     raw = _new_refresh()
     session = AuthSession(
         user_id=user.id,
@@ -53,6 +55,7 @@ def rotate_refresh(
     ip: str | None = None,
     user_agent: str | None = None,
 ) -> tuple[str, str, User]:
+    lock_session_issue(db)  # before the claim below, so it can't deadlock with a global sign-out
     session = (
         db.query(AuthSession)
         .filter(AuthSession.refresh_token_hash == hash_token(raw_refresh))

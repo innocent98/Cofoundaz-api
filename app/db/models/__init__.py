@@ -82,6 +82,7 @@ from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.notification_preference import NotificationPreference  # noqa: F401
+from app.db.models.platform_setting import PlatformSetting  # noqa: F401
 from app.db.models.platform_staff import PlatformStaff  # noqa: F401
 from app.db.models.roadmap import (  # noqa: F401
     Roadmap,
@@ -115,6 +116,7 @@ from app.db.models.sales_sequences import (  # noqa: F401
     SequenceSend,
 )
 from app.db.models.scheduled_run import ScheduledRun  # noqa: F401
+from app.db.models.staff_approval import StaffApprovalRequest  # noqa: F401
 from app.db.models.startup import Startup, StartupProfile  # noqa: F401
 from app.db.models.user import User, UserProfile  # noqa: F401
 from app.db.models.validation import (  # noqa: F401

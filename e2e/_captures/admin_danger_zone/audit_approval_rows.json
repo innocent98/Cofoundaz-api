@@ -1,0 +1,150 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "ade21418-fa5f-4bd7-b1b5-fa281fe68975",
+        "created_at": "2026-10-31T15:50:30.733108+00:00",
+        "action": "approval.approved",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "ea9c31ab-f7af-485d-b0de-59e23c40bbea",
+        "reason": "Reviewed and agreed on the call",
+        "details": {
+          "action": "global_signout",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "58cce910-ad48-4d4f-bb7a-cc1124ff5e9e",
+        "created_at": "2026-10-31T15:50:30.641620+00:00",
+        "action": "approval.requested",
+        "actor_user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+        "actor_email": "delivered+e2e-080feeca571c@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "ea9c31ab-f7af-485d-b0de-59e23c40bbea",
+        "reason": "Suspected leaked refresh token, signing everyone out",
+        "details": {
+          "action": "global_signout",
+          "message": null,
+          "expires_at": "2026-10-31T16:50:30.661033+00:00",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740",
+          "designated_approver": null
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "142922c1-ed44-445f-bdc4-dcf4f6a6528d",
+        "created_at": "2026-10-31T15:50:00.741649+00:00",
+        "action": "approval.approved",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "48e76c22-7779-45b0-8fc9-d22ce065905d",
+        "reason": "Reviewed and agreed on the call",
+        "details": {
+          "action": "maintenance_enable",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "ef78e050-568c-4ab5-9e72-487025b3e1c7",
+        "created_at": "2026-10-31T15:50:00.700231+00:00",
+        "action": "approval.requested",
+        "actor_user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+        "actor_email": "delivered+e2e-080feeca571c@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "48e76c22-7779-45b0-8fc9-d22ce065905d",
+        "reason": "Planned database upgrade window",
+        "details": {
+          "action": "maintenance_enable",
+          "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+          "expires_at": "2026-10-31T16:50:00.716230+00:00",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740",
+          "designated_approver": null
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "006cf81b-d504-467d-a575-0896efb30f4c",
+        "created_at": "2026-10-31T15:49:30.452794+00:00",
+        "action": "approval.cancelled",
+        "actor_user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+        "actor_email": "delivered+e2e-080feeca571c@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "c5bf0dbc-4904-4e61-ad7d-1e547a3b79bf",
+        "reason": "Wrong time, asking again later",
+        "details": {
+          "action": "maintenance_enable",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "5d78b372-dfbe-4b52-9040-70eb787b3d95",
+        "created_at": "2026-10-31T15:49:00.199313+00:00",
+        "action": "approval.requested",
+        "actor_user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+        "actor_email": "delivered+e2e-080feeca571c@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "c5bf0dbc-4904-4e61-ad7d-1e547a3b79bf",
+        "reason": "Planned database upgrade window",
+        "details": {
+          "action": "maintenance_enable",
+          "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+          "expires_at": "2026-10-31T16:49:00.215293+00:00",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740",
+          "designated_approver": null
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "ba684a38-80ee-48d3-8d35-ab849a7e5344",
+        "created_at": "2026-10-31T15:48:30.914372+00:00",
+        "action": "approval.rejected",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "faef240e-3fff-470c-bb4e-95b367ac118e",
+        "reason": "Not tonight, the release is not ready",
+        "details": {
+          "action": "maintenance_enable",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "10658ce8-6903-41aa-8860-2971a1a72717",
+        "created_at": "2026-10-31T15:48:18.717689+00:00",
+        "action": "approval.requested",
+        "actor_user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+        "actor_email": "delivered+e2e-080feeca571c@resend.dev",
+        "workspace_id": null,
+        "entity_type": "staff_approval_request",
+        "entity_id": "faef240e-3fff-470c-bb4e-95b367ac118e",
+        "reason": "Planned database upgrade window",
+        "details": {
+          "action": "maintenance_enable",
+          "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+          "expires_at": "2026-10-31T16:48:18.722856+00:00",
+          "requested_by": "427e4d72-2f7f-4491-b10a-cbda93338740",
+          "designated_approver": "2cbb7dff-38d6-4293-9500-7e84bea541de"
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

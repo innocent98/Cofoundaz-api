@@ -1,9 +1,10 @@
+import uuid
 from collections.abc import Sequence
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints, model_validator
 
-from app.db.models.enums import StaffRole
+from app.db.models.enums import ApprovalAction, StaffRole
 
 AdminScope = Literal["support", "content", "moderation"]
 Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)]
@@ -63,4 +64,23 @@ class StaffActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reason: Reason
+    totp_code: TotpCode
+
+
+MaintenanceMessage = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=280)
+]
+
+
+class ApprovalCreateRequest(BaseModel):
+    """Ask a different Super Admin to approve maintenance mode or a global sign-out."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: ApprovalAction
+    reason: Reason
+    # What founders see while maintenance is on. Only for `maintenance_enable`.
+    message: MaintenanceMessage | None = None
+    # Send the request to one Super Admin; leave out for any other Super Admin to answer.
+    approver_user_id: uuid.UUID | None = None
     totp_code: TotpCode
