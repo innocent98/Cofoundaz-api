@@ -747,7 +747,9 @@ in their timezone.
 }
 ```
 
-Notifications these produce (in-app, type `calendar.reminder`): "Meeting starting in 15 minutes: {title}", "Milestone deadline
+Meeting reminders use type `calendar.meeting.reminder` and also go by email: a new **Calendar** row in the notification preferences, on by default, delivered at once even for users on a digest, and skipped in quiet hours. The email was tested with unit tests only, not captured live. Other reminders stay in-app.
+
+Notifications these produce (in-app, type `calendar.reminder` except meetings): "Meeting starting in 15 minutes: {title}", "Milestone deadline
 tomorrow: {title}", "Deadline tomorrow: {title}", and "Milestone in 7 days: {title}". A reminder is never sent more than 12 hours late.
 **Not captured live** (needs a wait for the clock): the scheduler firing; it is covered by unit tests that drive the scheduler tick with a fake clock.
 

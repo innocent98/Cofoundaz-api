@@ -280,6 +280,9 @@ SPECS: dict[str, NotifSpec] = {
     "calendar.reminder": NotifSpec(
         _payload_users, _calendar_reminder_title, lambda _p: "Open calendar"
     ),
+    "calendar.meeting.reminder": NotifSpec(
+        _payload_users, _calendar_reminder_title, lambda _p: "Open calendar"
+    ),
     "calendar.meeting.invited": NotifSpec(
         _payload_users,
         lambda p: f"You're invited: {p.get('title') or 'a meeting'} · {p.get('date') or ''}".rstrip(

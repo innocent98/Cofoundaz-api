@@ -20,7 +20,12 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.email import EmailMessage, get_email_sender
 from app.services.notifications.audience import audience_filter
-from app.services.notifications.categories import CRITICAL_TYPES, category_for, module_for
+from app.services.notifications.categories import (
+    CRITICAL_TYPES,
+    TIME_SENSITIVE_TYPES,
+    category_for,
+    module_for,
+)
 from app.services.notifications.preferences import email_enabled
 
 TOP_PER_MODULE = 3
@@ -63,7 +68,7 @@ def _gather(db: Session, row: NotificationPreference, since: datetime) -> list[N
             Notification.startup_id == row.startup_id,
             Notification.created_at > since,
             Notification.archived_at.is_(None),
-            Notification.type.notin_(sorted(CRITICAL_TYPES)),
+            Notification.type.notin_(sorted(CRITICAL_TYPES | TIME_SENSITIVE_TYPES)),
             audience_filter(role),
         )
         .order_by(Notification.created_at.desc())

@@ -55,7 +55,7 @@ def handle_reminder(db: Session, job: Job) -> None:
     p = job.payload
     event_bus.publish(
         db,
-        "calendar.reminder",
+        "calendar.meeting.reminder" if p["kind"] == "meeting" else "calendar.reminder",
         {
             "startup_id": p["startup_id"],
             "kind": p["kind"],

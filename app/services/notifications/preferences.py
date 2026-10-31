@@ -11,6 +11,7 @@ from app.services.notifications.categories import (
     CATEGORY_DEFAULTS,
     CATEGORY_META,
     CRITICAL_TYPES,
+    TIME_SENSITIVE_TYPES,
     category_for,
     is_critical,
 )
@@ -162,6 +163,6 @@ def email_route(
     row = _row(db, user_id, startup_id)
     if in_quiet_hours(row, now or datetime.now(UTC)):
         return "skip"
-    if row is not None and row.digest_mode != "realtime":
+    if row is not None and row.digest_mode != "realtime" and event not in TIME_SENSITIVE_TYPES:
         return "digest"
     return "now"
