@@ -1,6 +1,6 @@
 # Admin slice C: Billing overrides (refund, credit, extend trial, comp)
 
-**What shipped:** Super Admin billing overrides under `/api/v1/super-admin/billing/{workspace_id}`: `GET` (overview), `POST refund`, `POST credit`, `POST extend-trial`, `POST comp`. Branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, stacked on slice B (API #206, merges first). Spec section 4 slice C, D-ADM-6, P1; PRD 26.6. FE guide `docs/fe-integration-guide-admin-billing.md`.
+**What shipped:** Super Admin billing overrides under `/api/v1/super-admin/billing/{workspace_id}`: `GET` (overview), `POST refund`, `POST credit`, `POST extend-trial`, `POST comp`. Branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, on develop after slice B (API #206, merged). Spec section 4 slice C, D-ADM-6, P1; PRD 26.6. FE guide `docs/fe-integration-guide-admin-billing.md`.
 
 **Why:** staff needed to fix a billing problem (goodwill refund, a trial that ran out too soon, a gifted plan) without database access, with a reason and an audit row each time. The PRD says Stripe; billing here is Paystack (D-ADM-6), so refunds and credits are internal entries first.
 

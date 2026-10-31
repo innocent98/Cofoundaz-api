@@ -3796,7 +3796,7 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 - [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
 
-### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, stacked on #206, PR draft)
+### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, on develop after #206 merged, PR draft)
 
 Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan for N days, refund = internal entry. SOP `docs/sop/2026-10-31-admin-billing-overrides.md`, FE guide `docs/fe-integration-guide-admin-billing.md`.
 - [x] `billing_overrides` ledger + `comped` + `refunded_minor` (migration 0084, refund cap check)
