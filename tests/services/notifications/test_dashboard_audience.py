@@ -82,6 +82,7 @@ DIRECT = {
     # Calendar: the sender names the users (creator, invitees, or founders and team members for
     # milestones); see tests/api/test_calendar_feed_reminders.py and test_calendar_meetings.py
     "calendar.reminder",
+    "calendar.meeting.reminder",
     "calendar.meeting.invited",
     "calendar.meeting.summary_ready",
 }

@@ -6,6 +6,7 @@ import pytest
 
 from app.db.models.calendar import CalendarEvent
 from app.db.models.enums import CalendarEventType, MembershipRole
+from app.db.models.job import Job
 from app.db.models.marketing import ContentCalendarEntry
 from app.db.models.notification import Notification
 from app.services.calendar import reminders
@@ -286,14 +287,46 @@ def test_meeting_reminder_fires_once_at_15_minutes_to_the_right_people(client, d
     )
     assert scheduler.scheduler_tick(db, now=now) >= 1
     runner.run_once(db)
-    rows = db.query(Notification).filter_by(type="calendar.reminder").all()
+    rows = db.query(Notification).filter_by(type="calendar.meeting.reminder").all()
     assert {r.user_id for r in rows} == {users[F].id, users[TM].id}
     assert rows[0].title == "Meeting starting in 15 minutes: Investor sync"
     # A second tick in the same window claims nothing new.
     before = scheduler.scheduler_tick(db, now=now + timedelta(minutes=1))
     runner.run_once(db)
-    assert db.query(Notification).filter_by(type="calendar.reminder").count() == 2
+    assert db.query(Notification).filter_by(type="calendar.meeting.reminder").count() == 2
     assert before >= 0 and m["id"]
+
+
+def test_meeting_reminder_is_emailed_even_on_a_digest(client, db, cal):
+    startup, users, _ = cal
+    now = datetime.now(UTC).replace(second=0, microsecond=0)
+    client.put(
+        "/api/v1/notifications/preferences",
+        headers=h(users[F], startup),
+        json={"digest_mode": "daily"},
+    )
+    _meeting_at(client, startup, users[F], now + timedelta(minutes=14))
+    scheduler.scheduler_tick(db, now=now)
+    runner.run_once(db)
+    assert db.query(Job).filter_by(type="email.notification").count() == 1
+
+
+def test_deadline_reminder_stays_in_app(client, db, cal):
+    startup, users, _ = cal
+    now = datetime.combine(TODAY, datetime.min.time(), tzinfo=UTC) + timedelta(hours=8, minutes=5)
+    client.post(
+        f"{BASE}/events",
+        headers=h(users[F], startup),
+        json={
+            "title": "File VAT",
+            "type": "deadline",
+            "event_date": str(TODAY + timedelta(days=1)),
+        },
+    )
+    scheduler.scheduler_tick(db, now=now)
+    runner.run_once(db)
+    assert db.query(Notification).filter_by(type="calendar.reminder").count() >= 1
+    assert db.query(Job).filter_by(type="email.notification").count() == 0
 
 
 def test_no_reminder_too_early_or_after_the_start(client, db, cal):
@@ -303,7 +336,7 @@ def test_no_reminder_too_early_or_after_the_start(client, db, cal):
     _meeting_at(client, startup, users[F], now - timedelta(minutes=5), title="Started")
     scheduler.scheduler_tick(db, now=now)
     runner.run_once(db)
-    assert db.query(Notification).filter_by(type="calendar.reminder").count() == 0
+    assert db.query(Notification).filter_by(type="calendar.meeting.reminder").count() == 0
 
 
 def test_edited_offsets_are_honoured(client, db, cal):
@@ -318,7 +351,7 @@ def test_edited_offsets_are_honoured(client, db, cal):
     scheduler.scheduler_tick(db, now=now)
     runner.run_once(db)
     assert (
-        db.query(Notification).filter_by(type="calendar.reminder").one().title
+        db.query(Notification).filter_by(type="calendar.meeting.reminder").one().title
         == "Meeting starting in 1 hour: Investor sync"
     )
 

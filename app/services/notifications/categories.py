@@ -19,6 +19,7 @@ CATEGORIES: tuple[str, ...] = (
     "academy",
     "ai_insights",
     "billing",
+    "calendar",
 )
 
 # Titles and one-line descriptions for the Preferences grid (the API is the source, the FE renders).
@@ -35,6 +36,7 @@ CATEGORY_META: dict[str, tuple[str, str]] = {
     "academy": ("Academy", "Courses completed and recommended."),
     "ai_insights": ("AI & insights", "Your daily briefing and KPI alerts."),
     "billing": ("Billing", "Plan changes and usage."),
+    "calendar": ("Calendar", "Meeting reminders."),
 }
 
 EVENT_CATEGORY: dict[str, str] = {
@@ -62,6 +64,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "roadmap.milestone.overdue": "roadmap_missions",
     "roadmap.milestone.due_soon": "roadmap_missions",
     "assessment.quarterly.due": "health_assessment",
+    "calendar.meeting.reminder": "calendar",
 }
 
 # Types not listed above are classified by their prefix, so a new module's events (Billing, ...)
@@ -83,7 +86,15 @@ PREFIX_CATEGORY: dict[str, str] = {
 CATEGORY_DEFAULTS: dict[str, bool] = {
     **dict.fromkeys(CATEGORIES, False),
     **dict.fromkeys(
-        ("documents", "business", "roadmap_missions", "health_assessment", "team", "billing"),
+        (
+            "documents",
+            "business",
+            "roadmap_missions",
+            "health_assessment",
+            "team",
+            "billing",
+            "calendar",
+        ),
         True,
     ),
 }
@@ -124,6 +135,8 @@ FILTER_TYPES: dict[str, frozenset[str]] = {
         }
     ),
 }
+# Useless once batched, so these skip the digest. Unlike critical types they keep every switch.
+TIME_SENSITIVE_TYPES: frozenset[str] = frozenset({"calendar.meeting.reminder"})
 FILTERS: tuple[str, ...] = ("all", "unread", "urgent", "mentions", "ai", "deadlines", "billing")
 
 _MODULE_BY_PREFIX: dict[str, str] = {
