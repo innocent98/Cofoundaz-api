@@ -99,7 +99,9 @@ def test_staff_access_journey(http: httpx.Client, make_verified_user, capture, c
     capture("admin_staff", "admin_me_super_admin", r)
 
     r = http.get(f"{S}/staff", headers=sa)
-    assert r.status_code == 200 and len(r.json()["data"]) == 1
+    # The e2e database is shared by every staff journey, so look for this owner, not "the only row".
+    assert r.status_code == 200
+    assert [s["email"] for s in r.json()["data"]].count(owner["email"]) == 1
     capture("admin_staff", "staff_list_first", r)
 
     # ---- invite: eligibility ---------------------------------------------------------------
@@ -168,7 +170,11 @@ def test_staff_access_journey(http: httpx.Client, make_verified_user, capture, c
     )
     assert r.status_code == 422
     capture("admin_staff", "revoke_reason_too_short", r)
-    self_id = http.get(f"{S}/staff", headers=sa).json()["data"][0]["id"]
+    self_id = next(
+        s["id"]
+        for s in http.get(f"{S}/staff", headers=sa).json()["data"]
+        if s["email"] == owner["email"]
+    )
     r = http.post(
         f"{S}/staff/{self_id}/revoke",
         json={"reason": "Trying to remove myself", "totp_code": owner_app.fresh()},
