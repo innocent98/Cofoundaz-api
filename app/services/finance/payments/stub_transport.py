@@ -38,6 +38,7 @@ def _bearer(request: httpx.Request) -> str:
 PS_TX: dict[str, dict[str, object]] = {}
 PS_ABANDONED: set[str] = set()
 PS_SUBS: dict[str, list[dict[str, Any]]] = {}
+PS_CUSTOMER_IDS: dict[str, int] = {}  # customer code -> Paystack's numeric customer id
 
 
 def _customer_code(email: str) -> str:
@@ -121,7 +122,31 @@ def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | Non
                 },
             },
         )
+    return _paystack_subscriptions(path, request, body)
+
+
+def _paystack_subscriptions(
+    path: str, request: httpx.Request, body: dict[str, Any]
+) -> httpx.Response | None:
+    if path.startswith("/customer/") and request.method == "GET":
+        customer = path.rsplit("/", 1)[1]
+        cid = PS_CUSTOMER_IDS.setdefault(customer, 9000 + len(PS_CUSTOMER_IDS))
+        return _json(
+            200,
+            {
+                "status": True,
+                "message": "Customer retrieved",
+                "data": {"id": cid, "customer_code": customer},
+            },
+        )
     if path == "/subscription" and request.method == "POST":
+        existing = PS_SUBS.get(str(body["customer"]), [])
+        if any(
+            r["plan"]["plan_code"] == body["plan"] and r["status"] == "active" for r in existing
+        ):
+            return _json(
+                400, {"status": False, "message": "This subscription is already in place."}
+            )
         code = "SUB_stub_" + format(len(PS_SUBS.get(str(body["customer"]), [])) + 1, "04d")
         row = {
             "subscription_code": code,
@@ -134,9 +159,16 @@ def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | Non
             200, {"status": True, "message": "Subscription successfully created", "data": row}
         )
     if path == "/subscription" and request.method == "GET":
-        rows = PS_SUBS.get(str(request.url.params.get("customer")), [])
+        # Paystack filters by numeric id: a customer code matches nothing.
+        wanted = str(request.url.params.get("customer"))
+        codes = [code for code, cid in PS_CUSTOMER_IDS.items() if str(cid) == wanted]
+        rows = PS_SUBS.get(codes[0], []) if codes else []
         return _json(200, {"status": True, "message": "Subscriptions retrieved", "data": rows})
     if path == "/subscription/disable":
+        for rows in PS_SUBS.values():
+            for row in rows:
+                if row["subscription_code"] == body.get("code"):
+                    row["status"] = "non-renewing"
         return _json(200, {"status": True, "message": "Subscription disabled successfully"})
     return None
 

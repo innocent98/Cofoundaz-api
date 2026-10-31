@@ -296,6 +296,35 @@ def test_cancel_resume_and_expiry(client, db):
     assert d["plan"]["key"] == "starter" and d["status"] == "canceled"
 
 
+def _unlink(db, startup):
+    """The state a missed `subscription.create` webhook leaves behind."""
+    sub = db.query(BillingSubscription).filter_by(startup_id=startup.id).one()
+    sub.paystack_subscription_code = sub.paystack_email_token = None
+    db.flush()
+    return sub
+
+
+def test_cancel_stops_an_unlinked_subscription_at_paystack(client, db):
+    _, startup, h = workspace(db)
+    _subscribe(client, db, h)
+    _unlink(db, startup)
+    assert client.post(f"{B}/subscription/cancel", json={}, headers=h).status_code == 200
+    rows = [r for v in stub_transport.PS_SUBS.values() for r in v]
+    assert [r["status"] for r in rows] == ["non-renewing"]
+
+
+def test_resume_adopts_a_subscription_still_active_at_paystack(client, db):
+    _, startup, h = workspace(db)
+    _subscribe(client, db, h)
+    sub = _unlink(db, startup)
+    sub.cancel_at_period_end = True  # canceled here before cancel looked the subscription up
+    db.flush()
+    r = client.post(f"{B}/subscription/resume", headers=h)
+    assert r.status_code == 200 and r.json()["data"]["cancel_at_period_end"] is False
+    rows = [r for v in stub_transport.PS_SUBS.values() for r in v]
+    assert len(rows) == 1 and sub.paystack_subscription_code == rows[0]["subscription_code"]
+
+
 def test_trial_is_once_and_expires(client, db):
     _, startup, h = workspace(db)
     t = client.post(f"{B}/trial", headers=h)
