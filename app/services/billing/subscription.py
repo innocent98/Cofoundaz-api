@@ -90,6 +90,7 @@ def _to_free(sub: BillingSubscription, *, status: str = "free") -> None:
     sub.payment_failed_at = None
     sub.paystack_subscription_code = None
     sub.paystack_email_token = None
+    sub.comped = False
     sub.trial_ends_at = None
     sub.current_period_start = None
     sub.current_period_end = None
@@ -189,6 +190,7 @@ def serialize(db: Session, sub: BillingSubscription) -> dict[str, Any]:
         ),
         "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
         "trial_available": sub.trial_used_at is None and not is_paid(sub),
+        "comped": sub.comped,
         "cancel_at_period_end": sub.cancel_at_period_end,
         "cancel_reason": sub.cancel_reason,
         "pending_change": (

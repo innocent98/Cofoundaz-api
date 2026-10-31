@@ -256,6 +256,7 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
             "status": sub.status if sub else "free",
             "trial_ends_at": _iso(sub.trial_ends_at) if sub else None,
             "current_period_end": _iso(sub.current_period_end) if sub else None,
+            "comped": bool(sub.comped) if sub else False,
             "cancel_at_period_end": bool(sub.cancel_at_period_end) if sub else False,
             "grace_ends_at": _iso(sub.grace_ends_at) if sub else None,
         },
@@ -323,6 +324,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
             Startup.deleted_at.is_(None),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
+            BillingSubscription.comped.is_(False),
         )
         .scalar()
         or 0
@@ -341,6 +343,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
             Startup.deleted_at.is_(None),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
+            BillingSubscription.comped.is_(False),
         )
         .group_by(
             BillingSubscription.interval,

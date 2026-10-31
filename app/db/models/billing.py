@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
@@ -81,6 +82,9 @@ class BillingSubscription(UUIDMixin, TimestampMixin, Base):
     )
     paystack_email_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     usage_alert_cycle: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # A complimentary plan granted by staff (D-ADM-6): active, no Paystack link, lapses at the
+    # period end. Not revenue, so MRR and paid conversion skip it.
+    comped: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
 
 class BillingPaymentMethod(UUIDMixin, TimestampMixin, Base):
@@ -125,6 +129,15 @@ class BillingInvoice(UUIDMixin, TimestampMixin, Base):
     reference: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     plan_key: Mapped[str | None] = mapped_column(String(20), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Kobo refunded by staff so far (internal entries, D-ADM-6); `status` flips to refunded at 100%.
+    refunded_minor: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    __table_args__ = (
+        CheckConstraint(
+            "refunded_minor >= 0 AND refunded_minor <= amount_minor",
+            name="ck_billing_invoices_refund_bounds",
+        ),
+    )
 
 
 class BillingAddonPurchase(UUIDMixin, TimestampMixin, Base):
@@ -190,3 +203,36 @@ class BillingOperation(UUIDMixin, TimestampMixin, Base):
     initiated_by: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
+
+
+class BillingOverride(UUIDMixin, TimestampMixin, Base):
+    """A Super Admin billing override (PRD 26.6, D-ADM-6): refund, credit, extend trial or comp.
+    `request_id` is the caller's idempotency key: a replay returns this row instead of applying
+    the override twice."""
+
+    __tablename__ = "billing_overrides"
+
+    request_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), unique=True, nullable=False)
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # refund|credit|trial|comp
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("billing_invoices.id"), nullable=True
+    )
+    amount_minor: Mapped[int | None] = mapped_column(Integer, nullable=True)  # refund, kobo
+    credits: Mapped[int | None] = mapped_column(Integer, nullable=True)  # AI credits
+    days: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # trial extension / comp length
+    plan_key: Mapped[str | None] = mapped_column(String(20), nullable=True)  # comp
+    # refund only: "pending" = recorded here, no money has moved at Paystack yet
+    provider_refund: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
