@@ -1,0 +1,12 @@
+{
+  "data": {
+    "user_id": "536b71ef-0f16-4e91-aaac-b9edc9c7efbc",
+    "email": "delivered+e2e-bef18b5eedda@resend.dev",
+    "role": "admin",
+    "scopes": [
+      "content",
+      "support"
+    ]
+  },
+  "meta": null
+}

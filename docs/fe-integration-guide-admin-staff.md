@@ -43,6 +43,7 @@ Query: `include_revoked` (default `true`). `staff_list_two`:
 
 - `id` is the staff row (use it for revoke); `user_id` is the account. Oldest first. A revoked row has `revoked_at` set (ISO string), active has `null`.
 - `full_name` is `null` when the person never set one; `invited_by_email` is `null` for the first Super Admin.
+- **Slice B added `last_login_at`** to every staff row (ISO string, or `null` if they never signed in): the console's "Last access" column. Live example: `e2e/_captures/admin_users/staff_list_with_last_login.json`; the captured rows in this guide predate the field.
 
 ### `POST /super-admin/staff` (Super Admin, step-up): invite or reinstate
 
@@ -83,6 +84,20 @@ Request: `{"reason":"Moved to another team","totp_code":"123456"}`. Success 200,
 | `revoke_reason_too_short` | 422 | validation envelope on `reason` |
 
 There is no "last Super Admin" error: you cannot revoke yourself, so at least one Super Admin always remains. Hide the revoke button on your own row.
+
+### `PATCH /super-admin/staff/{staff_id}` (Super Admin, step-up): change role or scopes
+
+Added in slice B (gap P9); its captures are in `e2e/_captures/admin_users/`. Body is the invite body without `email`: `{"role":"admin","scopes":["support","content"],"reason":"Adding the content scope","totp_code":"123456"}` (same rules: Admin needs at least one scope, Super Admin none, reason 10+, fresh code). Success 200 returns the staff row (`staff_patch_ok`): `"scopes":["content","support"]`, with `last_login_at` (see the list note). The person's access changes on their next request (`admin_me_after_patch`: `"scopes":["content","support"]`).
+
+| Capture | Status | Body |
+|---|---|---|
+| `staff_patch_self` | 422 | `{"error":{"code":"CANNOT_EDIT_SELF","message":"You can't change your own role or scopes.","field_errors":[]}}` |
+| `staff_patch_no_change` | 422 | `{"error":{"code":"NO_CHANGE","message":"That is already their role and scopes.","field_errors":[]}}` |
+| `staff_patch_admin_without_scopes` | 422 | validation envelope, `field_errors: [{"field":"","message":"Value error, An Admin needs at least one scope."}]` |
+| `staff_patch_wrong_code` | 403 | `STEP_UP_INVALID` (as for invite) |
+| `staff_patch_as_admin_404` | 404 | `{"detail":"Not Found"}` (an Admin cannot reach it) |
+
+A revoked staff row: 409 `ALREADY_REVOKED` (reinstate by inviting again); unknown id 404 `STAFF_NOT_FOUND` (unit-tested for PATCH; captured live for revoke). The audit action is `staff.updated` with `details.from` and `details.to` (`audit_staff_updated`).
 
 ### `GET /super-admin/audit` (Super Admin)
 

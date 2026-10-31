@@ -2,29 +2,29 @@
   "data": {
     "users": [
       {
-        "id": "5f4b6b0f-a80b-4ca8-8987-f695f49d252f",
-        "email": "delivered+pending-47630b2dd903@resend.dev",
+        "id": "8151f29b-a795-4b12-81a5-7df58e2495c6",
+        "email": "delivered+pending-dbe8e07d2110@resend.dev",
         "full_name": null,
         "status": "pending_verification",
         "email_verified": false,
-        "created_at": "2026-10-31T13:33:55.186127+00:00",
+        "created_at": "2026-10-31T13:37:40.241123+00:00",
         "last_login_at": null,
         "activity": "dormant",
         "workspace_count": 0,
         "primary_workspace": null
       },
       {
-        "id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
-        "email": "delivered+e2e-03a1fb2142b4@resend.dev",
+        "id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
+        "email": "delivered+e2e-d9aefb27dbf1@resend.dev",
         "full_name": "Ada Obi",
         "status": "active",
         "email_verified": true,
-        "created_at": "2026-10-31T13:33:54.555667+00:00",
-        "last_login_at": "2026-10-31T13:33:54.827330+00:00",
+        "created_at": "2026-10-31T13:37:39.610949+00:00",
+        "last_login_at": "2026-10-31T13:37:39.891539+00:00",
         "activity": "active",
         "workspace_count": 1,
         "primary_workspace": {
-          "workspace_id": "9d99b28b-d4c9-47e8-a677-e0188b82d54e",
+          "workspace_id": "39d2aada-9f02-495f-bf3a-5f72a65da00f",
           "workspace_name": "NovaPay",
           "role": "founder",
           "plan_key": "starter",
@@ -34,7 +34,7 @@
     ]
   },
   "meta": {
-    "next_cursor": "MjAyNi0xMC0zMVQxMzozMzo1NC41NTU2NjcrMDA6MDB8YmI4MmQyZTItMGM0MS00NDVjLTk2YjItY2JhM2E0MGIyNTcy",
+    "next_cursor": "MjAyNi0xMC0zMVQxMzozNzozOS42MTA5NDkrMDA6MDB8OGExNTY2NGUtN2JlMC00ZmRhLWIzYzktYWM1OGNiOTgwNDlm",
     "total_estimate": null
   }
 }

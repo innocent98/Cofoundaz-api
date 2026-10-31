@@ -2,62 +2,62 @@
   "data": {
     "entries": [
       {
-        "id": "c442894f-14ad-4298-8234-a1a9eae232aa",
-        "created_at": "2026-10-31T13:35:00.535575+00:00",
+        "id": "e8c5704e-dfff-48d6-920e-9680279e9f2b",
+        "created_at": "2026-10-31T13:39:00.921811+00:00",
         "action": "user.verification_resent",
-        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
-        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "actor_user_id": "536b71ef-0f16-4e91-aaac-b9edc9c7efbc",
+        "actor_email": "delivered+e2e-bef18b5eedda@resend.dev",
         "workspace_id": null,
         "entity_type": "user",
-        "entity_id": "5f4b6b0f-a80b-4ca8-8987-f695f49d252f",
+        "entity_id": "8151f29b-a795-4b12-81a5-7df58e2495c6",
         "reason": "Support ticket 4821 follow-up",
         "details": {
-          "email": "delivered+pending-47630b2dd903@resend.dev"
+          "email": "delivered+pending-dbe8e07d2110@resend.dev"
         },
         "ip": "127.0.0.1"
       },
       {
-        "id": "c060d092-7d1e-47f0-9031-1ca84c2f97de",
-        "created_at": "2026-10-31T13:34:30.330280+00:00",
+        "id": "bd69a062-5269-4550-a3a0-3ee240a131cc",
+        "created_at": "2026-10-31T13:38:30.593305+00:00",
         "action": "user.password_reset_sent",
-        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
-        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "actor_user_id": "536b71ef-0f16-4e91-aaac-b9edc9c7efbc",
+        "actor_email": "delivered+e2e-bef18b5eedda@resend.dev",
         "workspace_id": null,
         "entity_type": "user",
-        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "entity_id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
         "reason": "Support ticket 4821 follow-up",
         "details": {
-          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+          "email": "delivered+e2e-d9aefb27dbf1@resend.dev"
         },
         "ip": "127.0.0.1"
       },
       {
-        "id": "6bac83fe-5600-4c8b-89f2-b75ff5a6e7c1",
-        "created_at": "2026-10-31T13:34:00.893734+00:00",
+        "id": "ccca8a2c-8fee-4c76-b93c-1a9a06d3adcd",
+        "created_at": "2026-10-31T13:38:00.057032+00:00",
         "action": "user.unsuspended",
-        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
-        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "actor_user_id": "536b71ef-0f16-4e91-aaac-b9edc9c7efbc",
+        "actor_email": "delivered+e2e-bef18b5eedda@resend.dev",
         "workspace_id": null,
         "entity_type": "user",
-        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "entity_id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
         "reason": "Reviewed, reinstating the account",
         "details": {
-          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+          "email": "delivered+e2e-d9aefb27dbf1@resend.dev"
         },
         "ip": "127.0.0.1"
       },
       {
-        "id": "78012f01-a574-4d9b-9d09-bf28e87c112e",
-        "created_at": "2026-10-31T13:33:55.557592+00:00",
+        "id": "d92baa96-f9ab-4bc2-b164-bed985e0b848",
+        "created_at": "2026-10-31T13:37:40.597408+00:00",
         "action": "user.suspended",
-        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
-        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "actor_user_id": "536b71ef-0f16-4e91-aaac-b9edc9c7efbc",
+        "actor_email": "delivered+e2e-bef18b5eedda@resend.dev",
         "workspace_id": null,
         "entity_type": "user",
-        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "entity_id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
         "reason": "Abuse report 17 confirmed",
         "details": {
-          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+          "email": "delivered+e2e-d9aefb27dbf1@resend.dev"
         },
         "ip": "127.0.0.1"
       }
