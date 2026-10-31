@@ -7,9 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext, require_super_admin
 from app.core.envelope import Meta, success_response
+from app.core.errors import AppError
 from app.db.session import get_db
 from app.platform.audit import write_audit
+from app.schemas.flags import FlagCreateRequest, FlagUpdateRequest
 from app.schemas.staff import Reason, StaffInviteRequest, StaffRevokeRequest, StaffUpdateRequest
+from app.services import flags
 from app.services.staff import access, audit_explorer
 from app.services.staff.stepup import verify_step_up
 
@@ -74,6 +77,60 @@ def revoke_staff(
     ip, ua = _client(request)
     row = access.revoke_staff(
         db, ctx, staff_id=staff_id, reason=payload.reason, ip=ip, user_agent=ua
+    )
+    return success_response(row)
+
+
+@router.get("/flags")
+def list_flags(ctx: _Ctx, db: _Db) -> dict[str, Any]:
+    return success_response(flags.list_flags(db))
+
+
+@router.get("/flags/{key}/impact")
+def flag_impact(
+    key: str,
+    ctx: _Ctx,
+    db: _Db,
+    enabled: bool | None = None,
+    rollout_pct: Annotated[int | None, Query(ge=0, le=100)] = None,
+) -> dict[str, Any]:
+    return success_response(flags.impact(db, key=key, enabled=enabled, rollout_pct=rollout_pct))
+
+
+@router.post("/flags", status_code=201)
+def create_flag(payload: FlagCreateRequest, request: Request, ctx: _Ctx, db: _Db) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = flags.create_flag(
+        db,
+        ctx,
+        key=payload.key,
+        name=payload.name,
+        description=payload.description,
+        stage=payload.stage,
+        enabled=payload.enabled,
+        rollout_pct=payload.rollout_pct,
+        allowlist=payload.workspace_allowlist,
+        reason=payload.reason,
+        ip=ip,
+        user_agent=ua,
+    )
+    return success_response(row)
+
+
+@router.patch("/flags/{key}")
+def update_flag(
+    key: str, payload: FlagUpdateRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    changes = payload.model_dump(exclude={"reason", "totp_code"}, exclude_unset=True)
+    if not changes:
+        raise AppError(
+            code="NO_CHANGE", message="Send at least one field to change.", http_status=422
+        )
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = flags.update_flag(
+        db, ctx, key=key, changes=changes, reason=payload.reason, ip=ip, user_agent=ua
     )
     return success_response(row)
 
