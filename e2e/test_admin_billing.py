@@ -239,18 +239,55 @@ def test_admin_billing_journey(http: httpx.Client, base_url, make_verified_user,
     capture("admin_billing", "refund_over_invoice", r)
     r = act(pay_ws, "refund", {"invoice_id": inv["id"], "amount_minor": 1_400_000})
     assert r.status_code == 200
-    assert r.json()["data"]["invoice"]["status"] == "refunded"
-    capture("admin_billing", "refund_full_ok", r)
+    d = r.json()["data"]
+    assert d["invoice"]["status"] == "paid" and d["invoice"]["refund_pending_minor"] == 2_400_000
+    capture("admin_billing", "refund_full_recorded", r)
+    second_id = d["override"]["id"]
     r = act(pay_ws, "refund", {"invoice_id": inv["id"], "amount_minor": 100})
-    assert r.status_code == 409 and r.json()["error"]["code"] == "INVOICE_NOT_REFUNDABLE"
-    capture("admin_billing", "refund_already_refunded", r)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "REFUND_EXCEEDS_INVOICE"
+    capture("admin_billing", "refund_nothing_left", r)
     r = act(free_ws, "refund", {"invoice_id": inv["id"], "amount_minor": 100})
     assert r.status_code == 404 and r.json()["error"]["code"] == "INVOICE_NOT_FOUND"
     capture("admin_billing", "refund_invoice_of_another_workspace", r)
+    # nothing the founder can see has changed: a recorded refund is not a refund until it is done
+    r = payer.get(f"{B}/invoices", headers=ph)
+    assert r.json()["data"][0]["status"] == "paid" and r.json()["data"][0]["refunded_minor"] == 0
+    capture("admin_billing", "founder_invoices_refund_pending", r)
+
+    # ---- mark the refunds done (after making them in Paystack) --------------------------------
+    def complete(ws_id, override_id, reason="Refunded in the Paystack dashboard", code=None):
+        who, app = team[next(turn) % len(team)]
+        return http.post(
+            f"{S}/billing/{ws_id}/refunds/{override_id}/complete",
+            json={"reason": reason, "totp_code": code or app.fresh()},
+            headers=who,
+        )
+
+    r = complete(free_ws, first_id)
+    assert r.status_code == 404 and r.json()["error"]["code"] == "REFUND_NOT_FOUND"
+    capture("admin_billing", "refund_complete_other_workspace", r)
+    r = complete(pay_ws, first_id)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["override"]["provider_refund"] == "done"
+    capture("admin_billing", "refund_complete_partial", r)
+    r = payer.get(f"{B}/invoices", headers=ph)
+    assert r.json()["data"][0]["status"] == "paid"
+    assert r.json()["data"][0]["refunded_minor"] == 1_000_000
+    capture("admin_billing", "founder_invoices_partial_done", r)
+    r = complete(pay_ws, first_id)
+    assert r.status_code == 200 and r.json()["data"]["replayed"] is True
+    capture("admin_billing", "refund_complete_replay", r)
+    r = complete(pay_ws, second_id)
+    assert r.status_code == 200
+    assert r.json()["data"]["invoice"]["status"] == "refunded"
+    capture("admin_billing", "refund_complete_full", r)
     r = payer.get(f"{B}/invoices", headers=ph)
     assert r.json()["data"][0]["status"] == "refunded"
     assert r.json()["data"][0]["refunded_minor"] == 2_400_000
     capture("admin_billing", "founder_invoices_after", r)
+    r = act(pay_ws, "refund", {"invoice_id": inv["id"], "amount_minor": 100})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "INVOICE_NOT_REFUNDABLE"
+    capture("admin_billing", "refund_already_refunded", r)
     r = payer.get(f"{B}/subscription", headers=ph)
     assert r.json()["data"]["status"] == "active" and r.json()["data"]["plan"]["key"] == "growth"
     capture("admin_billing", "founder_subscription_after_refund", r)
@@ -321,7 +358,11 @@ def test_admin_billing_journey(http: httpx.Client, base_url, make_verified_user,
     )
     assert r.status_code == 200, r.text
     actions = {e["action"] for e in r.json()["data"]["entries"]}
-    assert {"billing.refund.issued", "billing.credit.applied"} <= actions
+    assert {
+        "billing.refund.issued",
+        "billing.refund.completed",
+        "billing.credit.applied",
+    } <= actions
     capture("admin_billing", "audit_for_workspace", r)
     r = http.get(f"{S}/billing/{pay_ws}", headers=sa)
     assert [o["kind"] for o in r.json()["data"]["overrides"]].count("refund") == 2

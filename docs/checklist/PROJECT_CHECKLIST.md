@@ -3800,7 +3800,7 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 
 Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan for N days, refund = internal entry. SOP `docs/sop/2026-10-31-admin-billing-overrides.md`, FE guide `docs/fe-integration-guide-admin-billing.md`.
 - [x] `billing_overrides` ledger + `comped` + `refunded_minor` (migration 0084, refund cap check)
-- [x] Refund (partial/full, over-refund guard, invoice flips to `refunded`, receipt line)
+- [x] Refund recorded as pending (partial/full, over-refund guard incl. pending); founder sees it only after staff mark it done, then the invoice flips to `refunded` (Adebayo "Accept all four")
 - [x] Credit (AI credits visible in Usage at once)
 - [x] Extend trial (1-60 days, 90-day cap)
 - [x] Comp (lapses by itself; founder cancel/resume/change blocked; MRR excludes it)
@@ -3808,5 +3808,5 @@ Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan f
 - [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
 - [ ] CI green, #206 merged first, then re-chain 0084 on develop's head and merge develop in
 - [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
-- [ ] Follow-ups: Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
+- [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
 

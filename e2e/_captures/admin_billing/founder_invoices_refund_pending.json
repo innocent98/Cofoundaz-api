@@ -1,0 +1,16 @@
+{
+  "data": [
+    {
+      "id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
+      "number": "CFZ-2026-0001",
+      "kind": "subscription",
+      "description": "Growth plan, monthly",
+      "amount_minor": 2400000,
+      "refunded_minor": 0,
+      "currency": "NGN",
+      "status": "paid",
+      "date": "2026-10-31T15:24:44+00:00"
+    }
+  ],
+  "meta": null
+}

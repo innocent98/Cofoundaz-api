@@ -1,7 +1,7 @@
 {
   "data": {
     "workspace": {
-      "id": "edb5de9d-0515-4903-870c-c8c684312f2a",
+      "id": "b39847c5-ced1-49de-b6d7-27e7e4ce3869",
       "name": "PayCo"
     },
     "subscription": {
@@ -13,8 +13,8 @@
       "status": "active",
       "price_minor": 2400000,
       "currency": "NGN",
-      "current_period_start": "2026-10-31T14:46:29+00:00",
-      "renews_at": "2026-11-30T14:46:29+00:00",
+      "current_period_start": "2026-10-31T15:24:44+00:00",
+      "renews_at": "2026-11-30T15:24:44+00:00",
       "ends_at": null,
       "trial_ends_at": null,
       "trial_available": false,
@@ -27,70 +27,72 @@
     },
     "invoices": [
       {
-        "id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+        "id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
         "number": "CFZ-2026-0001",
         "kind": "subscription",
         "description": "Growth plan, monthly",
         "amount_minor": 2400000,
         "refunded_minor": 2400000,
+        "refund_pending_minor": 0,
         "refundable_minor": 0,
         "currency": "NGN",
         "status": "refunded",
-        "paid_at": "2026-10-31T14:46:29+00:00"
+        "paid_at": "2026-10-31T15:24:44+00:00"
       }
     ],
     "credits_granted_total": 500,
     "overrides": [
       {
-        "id": "0f1ed8d7-f413-4bc7-9ebc-c2e62953400c",
-        "request_id": "f099e1dd-57cd-4efe-bc9e-9b3182ff7cab",
+        "id": "4c7afbf6-5300-4bee-9f75-ae11302c3fb6",
+        "request_id": "5c995e53-5789-4e41-9308-d040e0140434",
         "kind": "credit",
         "reason": "Goodwill after a failed renewal",
-        "actor_email": "delivered+e2e-aa8a0752570d@resend.dev",
+        "actor_email": "delivered+e2e-e497acf2eaed@resend.dev",
         "invoice_id": null,
         "amount_minor": null,
         "credits": 500,
         "days": null,
         "plan_key": null,
         "provider_refund": null,
+        "completed_at": null,
         "details": {},
-        "created_at": "2026-10-31T14:46:30.187188+00:00"
+        "created_at": "2026-10-31T15:25:01.386557+00:00"
       },
       {
-        "id": "7e5ed0a8-8136-41b7-a6c9-b80b837bab1c",
-        "request_id": "5450ff53-9e57-4c44-a43b-91bbb2c9c431",
+        "id": "147812c2-594b-4659-9c5f-080de2ee2ed4",
+        "request_id": "d40fd7c8-90b4-43bf-aa3d-87cfe60eccce",
         "kind": "refund",
         "reason": "Goodwill after a failed renewal",
-        "actor_email": "delivered+e2e-46655f58bea4@resend.dev",
-        "invoice_id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+        "actor_email": "delivered+e2e-e497acf2eaed@resend.dev",
+        "invoice_id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
         "amount_minor": 1400000,
         "credits": null,
         "days": null,
         "plan_key": null,
-        "provider_refund": "pending",
+        "provider_refund": "done",
+        "completed_at": "2026-10-31T15:25:01.015665+00:00",
         "details": {
-          "invoice_number": "CFZ-2026-0001",
-          "invoice_status_after": "refunded"
+          "invoice_number": "CFZ-2026-0001"
         },
-        "created_at": "2026-10-31T14:46:30.064923+00:00"
+        "created_at": "2026-10-31T15:24:44.651701+00:00"
       },
       {
-        "id": "90617674-0fb5-4685-a5c4-834d4a8c35c9",
-        "request_id": "86b2235d-700c-47aa-890b-1a18a9515314",
+        "id": "4d4fab41-95d6-4576-8394-94815be06b07",
+        "request_id": "18eb148a-5c74-423c-84f7-6a559b32de04",
         "kind": "refund",
         "reason": "Goodwill after a failed renewal",
-        "actor_email": "delivered+e2e-0b8429e2df34@resend.dev",
-        "invoice_id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+        "actor_email": "delivered+e2e-e2803713042a@resend.dev",
+        "invoice_id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
         "amount_minor": 1000000,
         "credits": null,
         "days": null,
         "plan_key": null,
-        "provider_refund": "pending",
+        "provider_refund": "done",
+        "completed_at": "2026-10-31T15:24:44.835512+00:00",
         "details": {
-          "invoice_number": "CFZ-2026-0001",
-          "invoice_status_after": "paid"
+          "invoice_number": "CFZ-2026-0001"
         },
-        "created_at": "2026-10-31T14:46:30.004213+00:00"
+        "created_at": "2026-10-31T15:24:44.532141+00:00"
       }
     ]
   },

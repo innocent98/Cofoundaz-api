@@ -2,34 +2,35 @@
   "data": {
     "replayed": false,
     "override": {
-      "id": "90617674-0fb5-4685-a5c4-834d4a8c35c9",
-      "request_id": "86b2235d-700c-47aa-890b-1a18a9515314",
+      "id": "4d4fab41-95d6-4576-8394-94815be06b07",
+      "request_id": "18eb148a-5c74-423c-84f7-6a559b32de04",
       "kind": "refund",
       "reason": "Goodwill after a failed renewal",
-      "actor_email": "delivered+e2e-0b8429e2df34@resend.dev",
-      "invoice_id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+      "actor_email": "delivered+e2e-e2803713042a@resend.dev",
+      "invoice_id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
       "amount_minor": 1000000,
       "credits": null,
       "days": null,
       "plan_key": null,
       "provider_refund": "pending",
+      "completed_at": null,
       "details": {
-        "invoice_number": "CFZ-2026-0001",
-        "invoice_status_after": "paid"
+        "invoice_number": "CFZ-2026-0001"
       },
-      "created_at": "2026-10-31T14:46:30.004213+00:00"
+      "created_at": "2026-10-31T15:24:44.532141+00:00"
     },
     "invoice": {
-      "id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+      "id": "045a32b5-689f-4c5f-b0b6-13ee24ff1c44",
       "number": "CFZ-2026-0001",
       "kind": "subscription",
       "description": "Growth plan, monthly",
       "amount_minor": 2400000,
-      "refunded_minor": 1000000,
+      "refunded_minor": 0,
+      "refund_pending_minor": 1000000,
       "refundable_minor": 1400000,
       "currency": "NGN",
       "status": "paid",
-      "paid_at": "2026-10-31T14:46:29+00:00"
+      "paid_at": "2026-10-31T15:24:44+00:00"
     }
   },
   "meta": null

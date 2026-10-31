@@ -2,22 +2,23 @@
   "data": {
     "replayed": false,
     "override": {
-      "id": "b5d5aa2c-154d-4d77-bea9-d87f679e61e7",
-      "request_id": "036fde68-a86c-46ff-875e-80c9b05dc0b6",
+      "id": "b9010f20-8430-4540-b520-24e11a5f0459",
+      "request_id": "7cbd6200-f78f-4529-ba30-704bc7726a9a",
       "kind": "trial",
       "reason": "Goodwill after a failed renewal",
-      "actor_email": "delivered+e2e-0b8429e2df34@resend.dev",
+      "actor_email": "delivered+e2e-6207fd03e022@resend.dev",
       "invoice_id": null,
       "amount_minor": null,
       "credits": null,
       "days": 7,
       "plan_key": null,
       "provider_refund": null,
+      "completed_at": null,
       "details": {
-        "trial_ends_at_after": "2026-11-21T14:46:30.264066+00:00",
-        "trial_ends_at_before": "2026-11-14T14:46:30.264066+00:00"
+        "trial_ends_at_after": "2026-11-21T15:25:30.726982+00:00",
+        "trial_ends_at_before": "2026-11-14T15:25:30.726982+00:00"
       },
-      "created_at": "2026-10-31T14:47:00.395710+00:00"
+      "created_at": "2026-10-31T15:25:30.763481+00:00"
     },
     "subscription": {
       "plan": {
@@ -28,10 +29,10 @@
       "status": "trialing",
       "price_minor": 2400000,
       "currency": "NGN",
-      "current_period_start": "2026-10-31T14:46:30.264066+00:00",
+      "current_period_start": "2026-10-31T15:25:30.726982+00:00",
       "renews_at": null,
-      "ends_at": "2026-11-21T14:46:30.264066+00:00",
-      "trial_ends_at": "2026-11-21T14:46:30.264066+00:00",
+      "ends_at": "2026-11-21T15:25:30.726982+00:00",
+      "trial_ends_at": "2026-11-21T15:25:30.726982+00:00",
       "trial_available": false,
       "comped": false,
       "cancel_at_period_end": false,
