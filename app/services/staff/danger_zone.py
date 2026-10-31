@@ -46,9 +46,11 @@ def _already_pending() -> AppError:
     )
 
 
-def _active_super_admins(db: Session) -> list[tuple[uuid.UUID, str, str | None]]:
+def _active_super_admins(
+    db: Session, only: uuid.UUID | None = None
+) -> list[tuple[uuid.UUID, str, str | None]]:
     """(user id, email, name) of every Super Admin who could pass the staff guard right now."""
-    rows = (
+    q = (
         db.query(User.id, User.email, UserProfile.full_name)
         .join(PlatformStaff, PlatformStaff.user_id == User.id)
         .outerjoin(UserProfile, UserProfile.user_id == User.id)
@@ -62,9 +64,41 @@ def _active_super_admins(db: Session) -> list[tuple[uuid.UUID, str, str | None]]
             User.mfa_secret.is_not(None),
         )
         .order_by(User.email)
+    )
+    if only is not None:
+        q = q.filter(User.id == only)
+    return [(r[0], r[1], r[2]) for r in q.all()]
+
+
+def _require_active_actor(db: Session, ctx: StaffContext) -> None:
+    """Re-read the caller against the full guard conditions (the guard's copy may be stale)."""
+    if not _active_super_admins(db, only=ctx.user.id):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+def cancel_open_requests_of(
+    db: Session, user_id: uuid.UUID, *, actor: uuid.UUID, reason: str
+) -> int:
+    """Close every open request a person made or was asked to answer, when they lose Super Admin
+    access, so a later reinstatement can't bring an old request back to life."""
+    rows = (
+        db.query(StaffApprovalRequest)
+        .filter(
+            StaffApprovalRequest.status == ApprovalStatus.pending,
+            (StaffApprovalRequest.requested_by == user_id)
+            | (StaffApprovalRequest.designated_approver == user_id),
+        )
+        .with_for_update()
         .all()
     )
-    return [(r[0], r[1], r[2]) for r in rows]
+    for req in rows:
+        req.status = ApprovalStatus.cancelled
+        req.decided_by = actor
+        req.decided_at = datetime.now(UTC)
+        req.decision_reason = reason
+        _audit_request(db, "approval.cancelled", req, actor=actor, reason=reason)
+    db.flush()
+    return len(rows)
 
 
 def _person(users: dict[uuid.UUID, tuple[str, str | None]], uid: uuid.UUID | None) -> Any:
@@ -372,9 +406,9 @@ def _run_action(
         .scalar()
     )
     cutoff = state.set_session_cutoff(db, actor_id=ctx.user.id)
-    db.query(AuthSession).filter(AuthSession.revoked_at.is_(None)).update(
-        {AuthSession.revoked_at: cutoff}, synchronize_session=False
-    )
+    db.query(AuthSession).filter(
+        AuthSession.revoked_at.is_(None), AuthSession.expires_at >= cutoff
+    ).update({AuthSession.revoked_at: cutoff}, synchronize_session=False)
     write_audit(
         db,
         "platform.global_signout",
@@ -398,6 +432,7 @@ def decide(
     ip: str | None,
     user_agent: str | None,
 ) -> dict[str, Any]:
+    _require_active_actor(db, ctx)
     req = _load_pending(db, request_id)
     if req.requested_by == ctx.user.id:
         raise _err(
@@ -416,7 +451,11 @@ def decide(
     if me is None or me.role != StaffRole.super_admin:  # revoked or demoted since the guard ran
         raise HTTPException(status_code=404, detail="Not Found")
     requester = staff.get(req.requested_by)
-    if approve and (requester is None or requester.role != StaffRole.super_admin):
+    if approve and (
+        requester is None
+        or requester.role != StaffRole.super_admin
+        or not _active_super_admins(db, only=req.requested_by)
+    ):
         raise _err(
             "REQUESTER_NOT_ACTIVE",
             "The person who asked is no longer an active Super Admin, so this can't run.",
@@ -451,6 +490,7 @@ def cancel(
     ip: str | None,
     user_agent: str | None,
 ) -> dict[str, Any]:
+    _require_active_actor(db, ctx)
     req = _load_pending(db, request_id)
     if req.requested_by != ctx.user.id:
         raise _err("NOT_YOUR_REQUEST", "Only the person who asked can cancel a request.", 403)

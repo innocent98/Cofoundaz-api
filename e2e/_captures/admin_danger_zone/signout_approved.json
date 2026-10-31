@@ -1,0 +1,29 @@
+{
+  "data": {
+    "id": "ea9c31ab-f7af-485d-b0de-59e23c40bbea",
+    "action": "global_signout",
+    "status": "approved",
+    "reason": "Suspected leaked refresh token, signing everyone out",
+    "message": null,
+    "requested_by": {
+      "user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+      "email": "delivered+e2e-080feeca571c@resend.dev",
+      "full_name": null
+    },
+    "designated_approver": null,
+    "decided_by": {
+      "user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+      "email": "delivered+e2e-db22e25ae38e@resend.dev",
+      "full_name": null
+    },
+    "decided_at": "2026-10-31T15:50:30.757628+00:00",
+    "decision_reason": "Reviewed and agreed on the call",
+    "outcome": {
+      "signed_out_at": "2026-10-31T15:50:30.753104+00:00",
+      "sessions_signed_out": 7
+    },
+    "expires_at": "2026-10-31T16:50:30.661033+00:00",
+    "created_at": "2026-10-31T15:50:30.641620+00:00"
+  },
+  "meta": null
+}

@@ -1,0 +1,10 @@
+{
+  "data": {
+    "maintenance": {
+      "enabled": false,
+      "message": null,
+      "since": null
+    }
+  },
+  "meta": null
+}

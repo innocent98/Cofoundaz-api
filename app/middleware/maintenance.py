@@ -5,7 +5,10 @@ While `platform_settings.maintenance.enabled` is on, every request that is not a
 Reads keep working, so founders can still see their data.
 
 The allow-list is what keeps the platform recoverable and keeps money from being lost:
-- `/auth`: anyone can still sign in, and staff can sign back in after a global sign-out.
+- `/auth/...` sign-in and recovery (login, refresh, logout, MFA challenge, OAuth, forgot/reset,
+  email verify): anyone can still sign in, and staff can sign back in after a global sign-out.
+  Signup, profile, avatar and MFA setup are blocked like any other write.
+- Sales one-click unsubscribe and the notification stream ticket.
 - `/admin` and `/super-admin`: the staff consoles, so maintenance can be switched off.
 - `/health`: liveness and readiness probes.
 - `/webhooks`: Paystack, payment-provider and Mono events. A 503 here would make the provider
@@ -17,6 +20,7 @@ Background jobs (the worker, scheduled runs) don't pass through HTTP and are not
 from collections.abc import Awaitable, Callable
 
 from fastapi import Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -31,7 +35,18 @@ RETRY_AFTER_SECONDS = "60"
 
 _API = settings.API_V1_STR
 ALLOWED_PREFIXES = (
-    f"{_API}/auth",
+    # Sign-in and recovery only. Signup, profile, avatar and MFA setup are ordinary writes.
+    f"{_API}/auth/login",
+    f"{_API}/auth/refresh",
+    f"{_API}/auth/logout",
+    f"{_API}/auth/mfa/challenge",
+    f"{_API}/auth/oauth",
+    f"{_API}/auth/forgot",
+    f"{_API}/auth/reset",
+    f"{_API}/auth/verify",
+    # One-click unsubscribe (RFC 8058) must be honoured, and SSE clients need to reconnect.
+    f"{_API}/public/sales/unsubscribe",
+    f"{_API}/notifications/stream-ticket",
     f"{_API}/admin",
     f"{_API}/super-admin",
     f"{_API}/health",
@@ -62,7 +77,7 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
         if request.method in SAFE_METHODS or is_allowed_during_maintenance(request.url.path):
             return await call_next(request)
         try:
-            state = _state(request)
+            state = await run_in_threadpool(_state, request)
         except Exception:  # noqa: BLE001 - a failed lookup must not take the platform down
             log.exception("maintenance check failed; letting the request through")
             return await call_next(request)

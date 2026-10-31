@@ -12,7 +12,8 @@ from app.core.redis import get_redis
 from app.core.security import create_access_token, get_password_hash
 from app.db.models.audit import AuditLog
 from app.db.models.auth import AuthSession
-from app.db.models.enums import ApprovalStatus, StaffRole, UserStatus
+from app.db.models.enums import ApprovalStatus, MfaType, StaffRole, UserStatus
+from app.db.models.platform_staff import PlatformStaff
 from app.db.models.staff_approval import StaffApprovalRequest
 from app.middleware import maintenance as maintenance_mw
 from app.platform import state
@@ -440,7 +441,14 @@ def test_a_failed_lookup_lets_requests_through(client, db, monkeypatch):
     ("path", "allowed"),
     [
         ("/api/v1/auth/login", True),
-        ("/api/v1/auth", True),
+        ("/api/v1/auth/mfa/challenge", True),
+        ("/api/v1/auth/refresh", True),
+        ("/api/v1/auth/signup", False),
+        ("/api/v1/auth/me/avatar", False),
+        ("/api/v1/auth/mfa/totp/setup", False),
+        ("/api/v1/auth", False),
+        ("/api/v1/public/sales/unsubscribe/tok", True),
+        ("/api/v1/notifications/stream-ticket", True),
         ("/api/v1/super-admin/approvals", True),
         ("/api/v1/admin/me", True),
         ("/api/v1/health/ready", True),
@@ -573,3 +581,56 @@ def test_a_refresh_token_minted_after_the_sign_out_survives_a_second_sign_out_on
     answer(client, b, rid2)
     assert client.get("/api/v1/auth/me", headers=h).status_code == 401
     assert client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).status_code == 401
+
+
+def test_a_requester_whose_account_no_longer_passes_the_guard_cannot_have_a_request_run(
+    client, db, two
+):
+    a, b = two
+    rid = ask(client, a, action="global_signout").json()["data"]["id"]
+    a.mfa_type = MfaType.none  # they turned their authenticator off
+    db.flush()
+    r = answer(client, b, rid)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "REQUESTER_NOT_ACTIVE"
+    assert audits(db, "platform.global_signout") == []
+
+
+def test_losing_super_admin_access_closes_open_requests_for_good(client, db, two):
+    a, b = two
+    c, _ = mk_staff(db)
+    rid = ask(client, a).json()["data"]["id"]
+    to_c = ask(client, b, action="global_signout", approver_user_id=str(c.id)).json()["data"]["id"]
+    staff_id = db.query(PlatformStaff.id).filter(PlatformStaff.user_id == a.id).scalar()
+    r = client.post(f"{S}/staff/{staff_id}/revoke", json=body(c), headers=hdr(c))
+    assert r.status_code == 200, r.text
+    assert db.get(StaffApprovalRequest, rid).status == ApprovalStatus.cancelled
+    assert db.get(StaffApprovalRequest, to_c).status == ApprovalStatus.pending
+    c_staff = db.query(PlatformStaff.id).filter(PlatformStaff.user_id == c.id).scalar()
+    r = client.post(f"{S}/staff/{c_staff}/revoke", json=body(b), headers=hdr(b))
+    assert r.status_code == 200, r.text
+    assert db.get(StaffApprovalRequest, to_c).status == ApprovalStatus.cancelled
+    assert len(audits(db, "approval.cancelled")) == 2
+
+
+def test_a_caller_who_lost_access_gets_the_plain_404_before_anything_else(client, db, two):
+    a, b = two
+    rid = ask(client, a).json()["data"]["id"]
+    b.mfa_type = MfaType.none
+    db.flush()
+    for verb in ("approve", "reject", "cancel"):
+        r = client.post(
+            f"{S}/approvals/{rid}/{verb}",
+            json={"reason": OTHER, "totp_code": "000000"},
+            headers=hdr(b),
+        )
+        assert r.status_code == 404 and r.json() == {"detail": "Not Found"}
+
+
+def test_an_open_event_stream_closes_after_a_global_sign_out(monkeypatch):
+    from app.api.v1.endpoints import notifications as n
+
+    monkeypatch.setattr(n, "session_cutoff_ts", lambda _db: 100.0)
+    assert n._signed_out_since(99.0) is True
+    assert n._signed_out_since(101.0) is False
+    monkeypatch.setattr(n, "session_cutoff_ts", lambda _db: None)
+    assert n._signed_out_since(0.0) is False

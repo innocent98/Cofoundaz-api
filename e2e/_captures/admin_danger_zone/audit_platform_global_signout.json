@@ -1,0 +1,26 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "0383b10a-e3f4-4148-a278-359a340f65d4",
+        "created_at": "2026-10-31T15:50:30.733108+00:00",
+        "action": "platform.global_signout",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_setting",
+        "entity_id": null,
+        "reason": "Suspected leaked refresh token, signing everyone out",
+        "details": {
+          "request_id": "ea9c31ab-f7af-485d-b0de-59e23c40bbea",
+          "sessions_signed_out": 7
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

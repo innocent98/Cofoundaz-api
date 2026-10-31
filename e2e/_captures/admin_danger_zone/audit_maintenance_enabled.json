@@ -1,0 +1,26 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "e3e480c4-4441-4ead-8482-c4c5521daa16",
+        "created_at": "2026-10-31T15:50:00.741649+00:00",
+        "action": "maintenance.enabled",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_setting",
+        "entity_id": null,
+        "reason": "Planned database upgrade window",
+        "details": {
+          "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+          "request_id": "48e76c22-7779-45b0-8fc9-d22ce065905d"
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}
