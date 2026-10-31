@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PLAN_COMPLIMENTARY",
+    "message": "This plan is complimentary and ends on its own date. Choose a paid plan at checkout to keep it after that.",
+    "field_errors": []
+  }
+}

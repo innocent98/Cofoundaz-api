@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "reason",
+        "message": "String should have at least 10 characters"
+      }
+    ]
+  }
+}

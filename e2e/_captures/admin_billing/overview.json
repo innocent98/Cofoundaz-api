@@ -1,0 +1,46 @@
+{
+  "data": {
+    "workspace": {
+      "id": "edb5de9d-0515-4903-870c-c8c684312f2a",
+      "name": "PayCo"
+    },
+    "subscription": {
+      "plan": {
+        "key": "growth",
+        "name": "Growth"
+      },
+      "interval": "monthly",
+      "status": "active",
+      "price_minor": 2400000,
+      "currency": "NGN",
+      "current_period_start": "2026-10-31T14:46:29+00:00",
+      "renews_at": "2026-11-30T14:46:29+00:00",
+      "ends_at": null,
+      "trial_ends_at": null,
+      "trial_available": false,
+      "comped": false,
+      "cancel_at_period_end": false,
+      "cancel_reason": null,
+      "pending_change": null,
+      "payment_issue": null,
+      "enforcement": false
+    },
+    "invoices": [
+      {
+        "id": "e78ff53c-d3a8-4404-b2d8-68f59fffaa78",
+        "number": "CFZ-2026-0001",
+        "kind": "subscription",
+        "description": "Growth plan, monthly",
+        "amount_minor": 2400000,
+        "refunded_minor": 0,
+        "refundable_minor": 2400000,
+        "currency": "NGN",
+        "status": "paid",
+        "paid_at": "2026-10-31T14:46:29+00:00"
+      }
+    ],
+    "credits_granted_total": 0,
+    "overrides": []
+  },
+  "meta": null
+}

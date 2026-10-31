@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "REFUND_EXCEEDS_INVOICE",
+    "message": "That is more than is left to refund on this invoice (1400000 kobo).",
+    "field_errors": [
+      {
+        "field": "amount_minor",
+        "message": "at most 1400000"
+      }
+    ]
+  }
+}

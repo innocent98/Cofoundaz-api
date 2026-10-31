@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVOICE_NOT_FOUND",
+    "message": "No invoice with that id in this workspace.",
+    "field_errors": []
+  }
+}
