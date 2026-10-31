@@ -1,7 +1,7 @@
 """Billing overrides (Admin slice C): billing_overrides, comped flag, invoice refunded_minor
 
-Revision ID: 0084_billing_overrides
-Revises: 0083_platform_staff
+Revision ID: 0085_billing_overrides
+Revises: 0084_feature_flags
 Create Date: 2026-10-31
 
 Adds the `billing_overrides` ledger (refund, credit, trial extension, comp; `request_id` unique so
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0084_billing_overrides"
-down_revision = "0083_platform_staff"
+revision = "0085_billing_overrides"
+down_revision = "0084_feature_flags"
 branch_labels = None
 depends_on = None
 

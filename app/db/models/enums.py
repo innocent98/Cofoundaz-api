@@ -579,3 +579,11 @@ class DraftStatus(enum.StrEnum):
 class StaffRole(enum.StrEnum):
     admin = "admin"
     super_admin = "super_admin"
+
+
+class FlagStage(enum.StrEnum):
+    """A product label shown on the flag card. It does not change who gets the feature."""
+
+    beta = "beta"
+    ga = "ga"
+    internal = "internal"

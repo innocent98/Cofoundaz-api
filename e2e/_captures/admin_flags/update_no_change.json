@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_CHANGE",
+    "message": "Those are already this flag's settings.",
+    "field_errors": []
+  }
+}

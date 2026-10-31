@@ -1,6 +1,6 @@
 # Admin slice C: Billing overrides (refund, credit, extend trial, comp)
 
-**What shipped:** Super Admin billing overrides under `/api/v1/super-admin/billing/{workspace_id}`: `GET` (overview), `POST refund`, `POST refunds/{override_id}/complete`, `POST credit`, `POST extend-trial`, `POST comp`. Branch `feature/admin-billing-overrides`, migration `0084_billing_overrides`, on develop after slice B (API #206, merged). Spec section 4 slice C, D-ADM-6, P1; PRD 26.6. FE guide `docs/fe-integration-guide-admin-billing.md`.
+**What shipped:** Super Admin billing overrides under `/api/v1/super-admin/billing/{workspace_id}`: `GET` (overview), `POST refund`, `POST refunds/{override_id}/complete`, `POST credit`, `POST extend-trial`, `POST comp`. Branch `feature/admin-billing-overrides`, migration `0085_billing_overrides`, on develop after slice B (API #206, merged). Spec section 4 slice C, D-ADM-6, P1; PRD 26.6. FE guide `docs/fe-integration-guide-admin-billing.md`.
 
 **Why:** staff needed to fix a billing problem (goodwill refund, a trial that ran out too soon, a gifted plan) without database access, with a reason and an audit row each time. The PRD says Stripe; billing here is Paystack (D-ADM-6), so refunds and credits are internal entries first.
 
@@ -20,7 +20,7 @@
 
 **What's involved**
 - `app/services/staff/billing_overrides.py` (new), `app/api/v1/endpoints/super_admin.py`, `app/schemas/staff.py`.
-- `app/db/models/billing.py` (`BillingOverride`, `comped`, `refunded_minor`), `alembic/versions/0084_billing_overrides.py`.
+- `app/db/models/billing.py` (`BillingOverride`, `comped`, `refunded_minor`), `alembic/versions/0085_billing_overrides.py`.
 - `app/services/billing/{flows,subscription,usage,webhook,receipt}.py`, `app/api/v1/endpoints/billing.py`, `app/services/staff/{users,workspaces}.py`.
 - Tests `tests/api/test_staff_billing.py`; slice B key-set assertions updated for `comped`; live journey `e2e/test_admin_billing.py` (captures `e2e/_captures/admin_billing/`).
 
