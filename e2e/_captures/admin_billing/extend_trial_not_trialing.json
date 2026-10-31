@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_TRIALING",
+    "message": "Only a workspace that is on a trial can have it extended.",
+    "field_errors": []
+  }
+}

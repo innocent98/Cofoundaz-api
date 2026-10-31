@@ -11,9 +11,19 @@ from app.core.errors import AppError
 from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.schemas.flags import FlagCreateRequest, FlagUpdateRequest
-from app.schemas.staff import Reason, StaffInviteRequest, StaffRevokeRequest, StaffUpdateRequest
+from app.schemas.staff import (
+    CompleteRefundRequest,
+    CompRequest,
+    CreditRequest,
+    ExtendTrialRequest,
+    Reason,
+    RefundRequest,
+    StaffInviteRequest,
+    StaffRevokeRequest,
+    StaffUpdateRequest,
+)
 from app.services import flags
-from app.services.staff import access, audit_explorer
+from app.services.staff import access, audit_explorer, billing_overrides
 from app.services.staff.stepup import verify_step_up
 
 router = APIRouter()
@@ -205,4 +215,112 @@ def audit_explorer_export(
         content=body,
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="audit-log.csv"'},
+    )
+
+
+# ---------------------------------------------------------------- billing overrides (D-ADM-6)
+
+
+@router.get("/billing/{workspace_id}")
+def billing_overview(workspace_id: uuid.UUID, ctx: _Ctx, db: _Db) -> dict[str, Any]:
+    return success_response(billing_overrides.overview(db, workspace_id))
+
+
+@router.post("/billing/{workspace_id}/refund")
+def billing_refund(
+    workspace_id: uuid.UUID, payload: RefundRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.refund(
+            db,
+            ctx,
+            workspace_id,
+            request_id=payload.request_id,
+            invoice_id=payload.invoice_id,
+            amount_minor=payload.amount_minor,
+            reason=payload.reason,
+            ip=ip,
+            ua=ua,
+        )
+    )
+
+
+@router.post("/billing/{workspace_id}/refunds/{override_id}/complete")
+def billing_complete_refund(
+    workspace_id: uuid.UUID,
+    override_id: uuid.UUID,
+    payload: CompleteRefundRequest,
+    request: Request,
+    ctx: _Ctx,
+    db: _Db,
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.complete_refund(
+            db, ctx, workspace_id, override_id, reason=payload.reason, ip=ip, ua=ua
+        )
+    )
+
+
+@router.post("/billing/{workspace_id}/credit")
+def billing_credit(
+    workspace_id: uuid.UUID, payload: CreditRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.credit(
+            db,
+            ctx,
+            workspace_id,
+            request_id=payload.request_id,
+            credits=payload.credits,
+            reason=payload.reason,
+            ip=ip,
+            ua=ua,
+        )
+    )
+
+
+@router.post("/billing/{workspace_id}/extend-trial")
+def billing_extend_trial(
+    workspace_id: uuid.UUID, payload: ExtendTrialRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.extend_trial(
+            db,
+            ctx,
+            workspace_id,
+            request_id=payload.request_id,
+            days=payload.days,
+            reason=payload.reason,
+            ip=ip,
+            ua=ua,
+        )
+    )
+
+
+@router.post("/billing/{workspace_id}/comp")
+def billing_comp(
+    workspace_id: uuid.UUID, payload: CompRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        billing_overrides.comp(
+            db,
+            ctx,
+            workspace_id,
+            request_id=payload.request_id,
+            plan_key=payload.plan_key,
+            days=payload.days,
+            reason=payload.reason,
+            ip=ip,
+            ua=ua,
+        )
     )
