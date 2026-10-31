@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     documents,
     finance,
     finance_integrations,
+    flags,
     health,
     health_score,
     invitations,
@@ -76,6 +77,7 @@ api_router.include_router(team.router, prefix="/team", tags=["team"])
 api_router.include_router(workspace.router, prefix="/workspace", tags=["workspace"])
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(billing.webhook_router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(flags.router, prefix="/flags", tags=["flags"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"], include_in_schema=False)
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False

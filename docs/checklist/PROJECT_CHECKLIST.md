@@ -3772,10 +3772,21 @@ Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-AD
 ### Slices still ahead
 - [ ] B: Users, Workspaces (read-only), Dashboard KPIs
 - [ ] C: Billing overrides (refund, credit, extend trial, comp)
-- [ ] D: Feature flags
+- [x] D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, PR pending; see Admin slice D below)
 - [ ] E: Maintenance mode + global sign-out with a second approver
 - [ ] FE for both consoles (after the API slices)
 - [ ] Next: tickets, content CMS, reported issues; after Marketplace: expert vetting
+
+### Admin slice D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, migration 0084, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-feature-flags.md`, FE guide `docs/fe-integration-guide-admin-flags.md`.
+- [x] `feature_flags` table (key, name, description, stage beta/ga/internal, enabled, rollout %, workspace allow-list)
+- [x] Stable bucketing and `is_enabled(db, key, workspace_id)`; unknown flag is off
+- [x] Super Admin list, create, update, impact preview; step-up, reason, audit row on each write
+- [x] `GET /flags`: the app's on-only map for the current workspace
+- [x] Unit tests (26), live e2e journey safe for the shared e2e database, Opus review (no High; Mediums fixed)
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: check-before-step-up ordering, flag archive/delete, plan/stage targeting (P7b), wiring features to flags
 
 ### Deferred follow-ups (slice A)
 - [ ] Emailed staff invite for people without an account yet

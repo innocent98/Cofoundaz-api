@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FLAG_KEY_EXISTS",
+    "message": "A flag with that key already exists.",
+    "field_errors": []
+  }
+}

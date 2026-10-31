@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNKNOWN_WORKSPACE",
+    "message": "No such workspace: 289107e2-e85a-4036-a27f-8a6b85163506.",
+    "field_errors": []
+  }
+}
