@@ -729,3 +729,151 @@ def test_staff_list_now_carries_last_login(client, db):
     rows = client.get("/api/v1/super-admin/staff", headers=hdr(sa)).json()["data"]
     assert rows[0]["last_login_at"].startswith("2026-10-30T09:00")
     assert json.dumps(rows)
+
+
+# ---------------------------------------------------------------- suspension holds on every sign-in path
+
+
+def test_mfa_ticket_issued_before_suspension_gives_no_session(client, db):
+    staff = mk_staff(db)
+    u = mk_user(db, mfa_on=True, email="ticket@example.com")
+    ticket = mfa.issue_mfa_ticket(u.id)
+    assert post(client, staff, f"/users/{u.id}/suspend").status_code == 200
+    r = client.post(
+        "/api/v1/auth/mfa/challenge",
+        json={"mfa_ticket": ticket, "code": pyotp.TOTP(u.test_secret).now()},
+    )
+    assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_INVALID_CODE"
+    assert db.query(AuthSession).filter_by(user_id=u.id, revoked_at=None).count() == 0
+
+
+def test_refresh_after_suspension_is_refused_and_mints_nothing(client, db):
+    staff = mk_staff(db)
+    u = mk_user(db, email="refresh@example.com")
+    login = client.post(
+        "/api/v1/auth/login", json={"email": "refresh@example.com", "password": "password1"}
+    )
+    refresh = login.json()["data"]["refresh_token"]
+    # a refresh in flight: the session row exists and is live when the suspension lands
+    u.status = UserStatus.disabled
+    db.flush()
+    before = db.query(AuthSession).filter_by(user_id=u.id).count()
+    r = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    assert r.status_code == 401
+    assert db.query(AuthSession).filter_by(user_id=u.id).count() == before
+    assert staff
+
+
+def test_password_reset_token_cannot_be_used_by_a_suspended_user(client, db):
+    from app.services.auth.tokens import issue_auth_token
+
+    u = mk_user(db, email="late-reset@example.com")
+    raw = issue_auth_token(db, u, AuthTokenPurpose.password_reset, timedelta(hours=1))
+    u.status = UserStatus.disabled  # suspended after the token was issued
+    db.flush()
+    hash_before = u.password_hash
+    r = client.post(
+        "/api/v1/auth/password/reset", json={"token": raw, "password": "Brand-new-pw-1"}
+    )
+    assert r.status_code == 400 and r.json()["error"]["code"] == "TOKEN_INVALID"
+    db.refresh(u)
+    assert u.password_hash == hash_before
+
+
+def test_admin_cannot_see_a_staff_members_sessions_or_phone(client, db):
+    admin = mk_staff(db)
+    sa = mk_staff(db, StaffRole.super_admin)
+    sa.profile.phone = "+2348000000000"
+    db.add(
+        AuthSession(
+            user_id=sa.id,
+            refresh_token_hash=uuid.uuid4().hex,
+            family_id=uuid.uuid4(),
+            ip="10.9.9.9",
+            user_agent="UA/x",
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+    )
+    db.flush()
+    as_admin = client.get(f"{A}/users/{sa.id}", headers=hdr(admin)).json()["data"]
+    assert as_admin["sessions"] == [] and as_admin["phone"] is None
+    other_sa = mk_staff(db, StaffRole.super_admin)
+    as_sa = client.get(f"{A}/users/{sa.id}", headers=hdr(other_sa)).json()["data"]
+    assert as_sa["sessions"][0]["ip"] == "10.9.9.9" and as_sa["phone"] == "+2348000000000"
+
+
+# ---------------------------------------------------------------- P9: edit a staff member without revoking
+
+
+def patch_staff(client, actor, staff_id, role, scopes, reason="Moving to the content team"):
+    r = get_redis()
+    for k in r.scan_iter("staff_stepup_used:*"):
+        r.delete(k)
+    body = {
+        "role": role,
+        "scopes": scopes,
+        "reason": reason,
+        "totp_code": pyotp.TOTP(actor.test_secret).now(),
+    }
+    return client.patch(f"/api/v1/super-admin/staff/{staff_id}", json=body, headers=hdr(actor))
+
+
+def test_update_staff_changes_scopes_and_audits(client, db):
+    sa = mk_staff(db, StaffRole.super_admin)
+    ad = mk_staff(db, scopes=("support",))
+    row = db.query(PlatformStaff).filter_by(user_id=ad.id).one()
+    r = patch_staff(client, sa, row.id, "admin", ["moderation", "content", "content"])
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert (
+        d["id"] == str(row.id) and d["role"] == "admin" and d["scopes"] == ["content", "moderation"]
+    )
+    # the change is live on the next request
+    assert client.get(f"{A}/users", headers=hdr(ad)).status_code == 403  # lost `support`
+    log = db.query(AuditLog).filter_by(action="staff.updated").one()
+    assert log.actor_user_id == sa.id and log.reason == "Moving to the content team"
+    assert log.details == {
+        "email": ad.email,
+        "from": {"role": "admin", "scopes": ["support"]},
+        "to": {"role": "admin", "scopes": ["content", "moderation"]},
+    }
+    promoted = patch_staff(client, sa, row.id, "super_admin", [], "Promoting after training")
+    assert promoted.status_code == 200 and promoted.json()["data"]["role"] == "super_admin"
+    assert (
+        client.get(f"{A}/users", headers=hdr(ad)).status_code == 200
+    )  # a Super Admin passes all scopes
+    demoted = patch_staff(client, sa, row.id, "admin", ["support"], "Back to support only")
+    assert demoted.status_code == 200 and demoted.json()["data"]["scopes"] == ["support"]
+
+
+def test_update_staff_guards_and_errors(client, db):
+    sa = mk_staff(db, StaffRole.super_admin)
+    ad = mk_staff(db, scopes=("support",))
+    row = db.query(PlatformStaff).filter_by(user_id=ad.id).one()
+    own = db.query(PlatformStaff).filter_by(user_id=sa.id).one()
+    r = patch_staff(client, sa, own.id, "admin", ["support"])
+    assert r.status_code == 422 and r.json()["error"]["code"] == "CANNOT_EDIT_SELF"
+    r = patch_staff(client, sa, row.id, "admin", ["support"])
+    assert r.status_code == 422 and r.json()["error"]["code"] == "NO_CHANGE"
+    r = patch_staff(client, sa, uuid.uuid4(), "admin", ["support"])
+    assert r.status_code == 404 and r.json()["error"]["code"] == "STAFF_NOT_FOUND"
+    row.revoked_at = datetime.now(UTC)
+    db.flush()
+    r = patch_staff(client, sa, row.id, "admin", ["content"])
+    assert r.status_code == 409 and r.json()["error"]["code"] == "ALREADY_REVOKED"
+    row.revoked_at = None
+    db.flush()
+    for role, scopes in (("admin", []), ("super_admin", ["support"]), ("admin", ["root"])):
+        assert patch_staff(client, sa, row.id, role, scopes).status_code == 422
+    assert patch_staff(client, sa, row.id, "admin", ["content"], "short").status_code == 422
+    bad = client.patch(
+        f"/api/v1/super-admin/staff/{row.id}",
+        json={"role": "admin", "scopes": ["content"], "reason": REASON, "totp_code": "000000"},
+        headers=hdr(sa),
+    )
+    assert bad.status_code == 403 and bad.json()["error"]["code"] == "STEP_UP_INVALID"
+    db.refresh(row)
+    assert row.scopes == ["support"]
+    # an Admin cannot reach it at all
+    hidden = patch_staff(client, ad, row.id, "super_admin", [])
+    assert hidden.status_code == 404 and hidden.json() == {"detail": "Not Found"}

@@ -1,0 +1,180 @@
+{
+  "data": {
+    "window_days": 30,
+    "generated_at": "2026-10-31T13:35:30.870379+00:00",
+    "total_workspaces": {
+      "value": 1,
+      "new_in_window": 1,
+      "new_in_previous_window": 0
+    },
+    "activation_rate": {
+      "percent": 100.0,
+      "previous_percent": null,
+      "cohort": 1,
+      "activated": 1
+    },
+    "paid_conversion": {
+      "percent": 0.0,
+      "paying_workspaces": 0,
+      "previous_percent": null
+    },
+    "mrr": {
+      "minor": 0,
+      "currency": "NGN",
+      "previous_minor": null
+    },
+    "signups_series": [
+      {
+        "date": "2026-10-02",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-03",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-04",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-05",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-06",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-07",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-08",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-09",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-10",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-11",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-12",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-13",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-14",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-15",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-16",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-17",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-18",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-19",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-20",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-21",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-22",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-23",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-24",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-25",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-26",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-27",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-28",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-29",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-30",
+        "signups": 0,
+        "activations": 0
+      },
+      {
+        "date": "2026-10-31",
+        "signups": 4,
+        "activations": 1
+      }
+    ]
+  },
+  "meta": null
+}

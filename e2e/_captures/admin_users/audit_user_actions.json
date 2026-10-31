@@ -1,0 +1,70 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "c442894f-14ad-4298-8234-a1a9eae232aa",
+        "created_at": "2026-10-31T13:35:00.535575+00:00",
+        "action": "user.verification_resent",
+        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
+        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "workspace_id": null,
+        "entity_type": "user",
+        "entity_id": "5f4b6b0f-a80b-4ca8-8987-f695f49d252f",
+        "reason": "Support ticket 4821 follow-up",
+        "details": {
+          "email": "delivered+pending-47630b2dd903@resend.dev"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "c060d092-7d1e-47f0-9031-1ca84c2f97de",
+        "created_at": "2026-10-31T13:34:30.330280+00:00",
+        "action": "user.password_reset_sent",
+        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
+        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "workspace_id": null,
+        "entity_type": "user",
+        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "reason": "Support ticket 4821 follow-up",
+        "details": {
+          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "6bac83fe-5600-4c8b-89f2-b75ff5a6e7c1",
+        "created_at": "2026-10-31T13:34:00.893734+00:00",
+        "action": "user.unsuspended",
+        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
+        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "workspace_id": null,
+        "entity_type": "user",
+        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "reason": "Reviewed, reinstating the account",
+        "details": {
+          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "78012f01-a574-4d9b-9d09-bf28e87c112e",
+        "created_at": "2026-10-31T13:33:55.557592+00:00",
+        "action": "user.suspended",
+        "actor_user_id": "d14e8bde-fa85-4282-8f4e-c793dfbafd42",
+        "actor_email": "delivered+e2e-8fdf5bab2805@resend.dev",
+        "workspace_id": null,
+        "entity_type": "user",
+        "entity_id": "bb82d2e2-0c41-445c-96b2-cba3a40b2572",
+        "reason": "Abuse report 17 confirmed",
+        "details": {
+          "email": "delivered+e2e-03a1fb2142b4@resend.dev"
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

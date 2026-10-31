@@ -9,7 +9,7 @@ from app.core.envelope import success_response
 from app.core.errors import AppError, MfaInvalidCode
 from app.core.security import verify_password
 from app.db.models.auth import MfaBackupCode
-from app.db.models.enums import MfaType
+from app.db.models.enums import MfaType, UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.audit import write_audit
@@ -151,7 +151,13 @@ def challenge(
     if user_id is None:
         raise MfaInvalidCode()
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.mfa_secret:
+    # A ticket issued before a suspension (or deletion) must not turn into a session.
+    if (
+        user is None
+        or user.deleted_at is not None
+        or user.status == UserStatus.disabled
+        or not user.mfa_secret
+    ):
         raise MfaInvalidCode()
     ip = request.client.host if request.client else None
     ok = mfa.verify_totp(

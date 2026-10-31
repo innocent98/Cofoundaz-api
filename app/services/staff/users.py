@@ -318,13 +318,17 @@ def user_profile(db: Session, ctx: StaffContext, user_id: uuid.UUID) -> dict[str
         )
     ]
     staff = _staff_row(db, user_id)
+    # A staff member's sign-in places and phone are not for an Admin's eyes (P2).
+    hide = staff is not None and not ctx.is_super_admin
+    if hide:
+        sessions = []
     return {
         "id": str(row.id),
         "email": row.email,
         "full_name": row.full_name,
         "role_title": row.role_title,
         "country": row.country,
-        "phone": row.phone,
+        "phone": None if hide else row.phone,
         "status": row.status.value,
         "email_verified": row.email_verified_at is not None,
         "two_factor": row.mfa_type == MfaType.totp,
