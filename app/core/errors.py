@@ -1,8 +1,10 @@
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.envelope import error_response
 
@@ -221,7 +223,29 @@ class DependencyCycle(AppError):  # noqa: N818
     message = "That change would create a dependency loop."
 
 
+# The staff consoles must look like routes that don't exist to anyone who isn't staff. The guard
+# handles auth; these cover what runs before a guard can: the router's 405 for a wrong method and
+# the body parser's malformed-JSON error.
+_STAFF_PREFIXES = ("/api/v1/admin", "/api/v1/super-admin")
+
+
+def _is_staff_path(request: Request) -> bool:
+    return any(
+        request.url.path == p or request.url.path.startswith(p + "/") for p in _STAFF_PREFIXES
+    )
+
+
+def _hidden_404() -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+
 def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(request: Request, exc: StarletteHTTPException) -> Response:
+        if exc.status_code == 405 and _is_staff_path(request):
+            return _hidden_404()
+        return await http_exception_handler(request, exc)
+
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(
@@ -230,7 +254,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+        if _is_staff_path(request) and any(e["type"] == "json_invalid" for e in exc.errors()):
+            return _hidden_404()
         field_errors = [
             {"field": ".".join(str(p) for p in e["loc"] if p != "body"), "message": e["msg"]}
             for e in exc.errors()

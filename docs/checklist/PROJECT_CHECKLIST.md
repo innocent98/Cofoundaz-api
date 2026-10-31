@@ -3752,3 +3752,31 @@ Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
   - [ ] FE wiring + live re-walk; verify tone with the real model
 - [ ] Deferred: "What I remember" / Forget / Clear all (needs a memory store)
 
+
+## 🟢 Admin + Super Admin portals (Modules 25, 26): slice A built (2026-10-31, branch `feature/admin-staff-access`, migration `0083_platform_staff`, PR pending)
+
+Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-ADM-1..13). Slice A blocks every other admin slice. SOP `docs/sop/2026-10-31-admin-staff-access.md`, FE guide `docs/fe-integration-guide-admin-staff.md`.
+
+### Slice A: staff access, staff routes, audit explorer (API)
+- [x] `platform_staff` table + migration 0083 (role, scopes[], invited_by, revoked_at)
+- [x] `require_staff(scope)` / `require_super_admin`: role read from the DB per request, TOTP required, non-staff get the unknown-route 404
+- [x] Fresh single-use TOTP step-up on each Super Admin mutation (window recorded in the SOP)
+- [x] `/super-admin/staff` list, invite (and reinstate), revoke; required reason on every mutation via `write_audit`
+- [x] `python -m app.scripts.create_super_admin <email>`
+- [x] `audit_log` append-only trigger (checked first: no job or test deletes rows)
+- [x] `/super-admin/audit` explorer (actor, action, workspace, date filters, cursor) + audited CSV export
+- [x] `get_current_user` rejects tokens with a `typ` claim (calendar OAuth state could be used as a bearer token)
+- [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
+- [ ] CI green on the PR, merged by Adebayo
+
+### Slices still ahead
+- [ ] B: Users, Workspaces (read-only), Dashboard KPIs
+- [ ] C: Billing overrides (refund, credit, extend trial, comp)
+- [ ] D: Feature flags
+- [ ] E: Maintenance mode + global sign-out with a second approver
+- [ ] FE for both consoles (after the API slices)
+- [ ] Next: tickets, content CMS, reported issues; after Marketplace: expert vetting
+
+### Deferred follow-ups (slice A)
+- [ ] Emailed staff invite for people without an account yet
+- [ ] Block TRUNCATE on `audit_log`; separate immutable audit store; hardware-key MFA

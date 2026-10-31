@@ -574,3 +574,8 @@ class DraftStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
+
+
+class StaffRole(enum.StrEnum):
+    admin = "admin"
+    super_admin = "super_admin"

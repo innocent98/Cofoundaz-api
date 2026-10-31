@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_STAFF",
+    "message": "That person is already staff.",
+    "field_errors": []
+  }
+}
