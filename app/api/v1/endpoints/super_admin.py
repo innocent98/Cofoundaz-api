@@ -7,10 +7,18 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext, require_super_admin
 from app.core.envelope import Meta, success_response
+from app.db.models.enums import ApprovalStatus
 from app.db.session import get_db
 from app.platform.audit import write_audit
-from app.schemas.staff import Reason, StaffInviteRequest, StaffRevokeRequest, StaffUpdateRequest
-from app.services.staff import access, audit_explorer
+from app.schemas.staff import (
+    ApprovalCreateRequest,
+    Reason,
+    StaffActionRequest,
+    StaffInviteRequest,
+    StaffRevokeRequest,
+    StaffUpdateRequest,
+)
+from app.services.staff import access, audit_explorer, danger_zone
 from app.services.staff.stepup import verify_step_up
 
 router = APIRouter()
@@ -76,6 +84,86 @@ def revoke_staff(
         db, ctx, staff_id=staff_id, reason=payload.reason, ip=ip, user_agent=ua
     )
     return success_response(row)
+
+
+@router.get("/danger-zone")
+def danger_zone_overview(ctx: _Ctx, db: _Db) -> dict[str, Any]:
+    return success_response(danger_zone.overview(db, ctx))
+
+
+@router.get("/approvals")
+def list_approvals(
+    ctx: _Ctx,
+    db: _Db,
+    status: ApprovalStatus | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    rows, next_cursor = danger_zone.list_requests(db, status=status, limit=limit, cursor=cursor)
+    return success_response({"requests": rows}, Meta(next_cursor=next_cursor))
+
+
+@router.post("/approvals", status_code=201)
+def request_approval(
+    payload: ApprovalCreateRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = danger_zone.request_action(
+        db,
+        ctx,
+        action=payload.action,
+        reason=payload.reason,
+        message=payload.message,
+        approver_user_id=payload.approver_user_id,
+        ip=ip,
+        user_agent=ua,
+    )
+    return success_response(row)
+
+
+@router.post("/approvals/{request_id}/approve")
+def approve_request(
+    request_id: uuid.UUID, payload: StaffActionRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = danger_zone.decide(
+        db, ctx, request_id, approve=True, reason=payload.reason, ip=ip, user_agent=ua
+    )
+    return success_response(row)
+
+
+@router.post("/approvals/{request_id}/reject")
+def reject_request(
+    request_id: uuid.UUID, payload: StaffActionRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = danger_zone.decide(
+        db, ctx, request_id, approve=False, reason=payload.reason, ip=ip, user_agent=ua
+    )
+    return success_response(row)
+
+
+@router.post("/approvals/{request_id}/cancel")
+def cancel_request(
+    request_id: uuid.UUID, payload: StaffActionRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    row = danger_zone.cancel(db, ctx, request_id, reason=payload.reason, ip=ip, user_agent=ua)
+    return success_response(row)
+
+
+@router.post("/maintenance/disable")
+def disable_maintenance(
+    payload: StaffActionRequest, request: Request, ctx: _Ctx, db: _Db
+) -> dict[str, Any]:
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    new = danger_zone.disable_maintenance(db, ctx, reason=payload.reason, ip=ip, user_agent=ua)
+    return success_response({"maintenance": new})
 
 
 @router.get("/audit")

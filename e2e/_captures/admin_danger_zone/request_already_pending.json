@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "APPROVAL_ALREADY_PENDING",
+    "message": "You already have an open request for this. Cancel it or wait for an answer.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANNOT_DECIDE_OWN_REQUEST",
+    "message": "A different Super Admin has to answer your request. You can cancel it instead.",
+    "field_errors": []
+  }
+}

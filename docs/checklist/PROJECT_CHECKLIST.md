@@ -3795,3 +3795,15 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 - [x] Unit tests, live e2e journey, Opus review (no High or Medium; Lows fixed)
 - [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
+
+### Admin slice E: maintenance mode and global sign-out (2026-10-31, branch `feature/admin-danger-zone`, migration `0085_admin_danger_zone`, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-guide-admin-danger-zone.md`. Chained on 0083: re-chain after slices C and D (both 0084).
+- [x] Approval requests: request, approve, reject, cancel, expiry (1 h), list; requester never decides; step-up, reason, audit on each
+- [x] Maintenance mode: one middleware, allow-list (sign-in, staff, health, webhooks), 503 `MAINTENANCE_MODE`; public `GET /platform/status`
+- [x] Switching it off: any one Super Admin alone (never needs a second person)
+- [x] Global sign-out: revokes all sessions, kills existing access tokens (`iat` cutoff), staff sign back in; open streams close
+- [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
+- [ ] CI green on the PR, merged by Adebayo; re-chain migration after C and D
+- [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out
+

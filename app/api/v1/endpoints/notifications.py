@@ -26,6 +26,7 @@ from app.platform.realtime import (
     consume_stream_ticket,
     mint_stream_ticket,
 )
+from app.platform.state import session_cutoff_ts
 from app.schemas.notification import PreferencesUpdate
 from app.services.notifications.preferences import (
     SCHEDULE_FIELDS,
@@ -246,6 +247,15 @@ def _unread(user_id: str, startup_id: str, role: MembershipRole) -> int:
         db.close()
 
 
+def _signed_out_since(started_at: float) -> bool:
+    db = SessionLocal()
+    try:
+        cutoff = session_cutoff_ts(db)
+    finally:
+        db.close()
+    return cutoff is not None and cutoff >= started_at
+
+
 async def _event_stream(request: Request, startup_id: str, user_id: str) -> AsyncIterator[str]:
     role = await run_in_threadpool(_membership_role, user_id, startup_id)
     if role is None:
@@ -255,6 +265,7 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
     yield _sse("unread", {"unread": n})
     channels = (channel_for(startup_id, user_id), activity_channel(startup_id))
     last_check = time.monotonic()
+    started_at = time.time()
     async with realtime.subscription(*channels) as pubsub:
         while not await request.is_disconnected():
             # The stream carries workspace-wide activity, so a member removed while connected
@@ -265,6 +276,9 @@ async def _event_stream(request: Request, startup_id: str, user_id: str) -> Asyn
                 role = await run_in_threadpool(_membership_role, user_id, startup_id)
                 if role is None:
                     yield _sse("revoked", {"reason": "membership_inactive"})
+                    return
+                if await run_in_threadpool(_signed_out_since, started_at):
+                    yield _sse("revoked", {"reason": "signed_out"})  # global sign-out
                     return
                 last_check = time.monotonic()
             msg = await pubsub.get_message(
