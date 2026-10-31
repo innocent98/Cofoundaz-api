@@ -24,7 +24,7 @@
 - `app/api/v1/endpoints/super_admin.py` (`/danger-zone`, `/approvals`, `/maintenance/disable`), `platform_status.py`, `app/schemas/staff.py`.
 - `app/api/deps.py`, `app/core/security.py`, `app/services/auth/sessions.py`, `notifications.py`, `access.py` (cancel open requests on revoke/demote).
 - Models `platform_setting.py`, `staff_approval.py`; migration `0085_admin_danger_zone`.
-- Tests `tests/api/test_staff_danger_zone.py`; live journey `e2e/test_admin_danger_zone.py` (captures `e2e/_captures/admin_danger_zone/`).
+- Tests `tests/api/test_staff_danger_zone.py`; live journey `e2e/test_zz_admin_danger_zone.py` (captures `e2e/_captures/admin_danger_zone/`).
 
 **Verification:** see the PR. Three Opus reviews (approval flow, middleware, sign-out) found no High; Medium and Low findings fixed as listed above.
 

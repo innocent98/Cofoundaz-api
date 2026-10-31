@@ -1,5 +1,8 @@
 """Live: Admin slice E. Maintenance mode and global sign-out, each with a second Super Admin approving.
 
+The file name sorts last on purpose: it leaves two more Super Admins in the shared staff table, and
+`test_admin_staff.py` still asserts it starts with exactly one. Do not rename it earlier.
+
 One real server, SHARED with every other journey, so this test is built to be harmless to them:
 - it never asserts how many staff or requests exist (other journeys leave their own);
 - maintenance mode is forced OFF before it starts and again in `finally`, even if an assert fails,
