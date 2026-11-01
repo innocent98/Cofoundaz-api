@@ -1,3 +1,5 @@
+import uuid
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -5,13 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import LEGAL_ROLES, MembershipRole
+from app.db.models.enums import LEGAL_ROLES, IpAssetStatus, IpAssetType, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.legal import FormationStepPatch
+from app.schemas.legal import FormationStepPatch, IpAssetCreate, IpAssetUpdate
 from app.services.legal import formation as formation_svc
+from app.services.legal import ip as ip_svc
 from app.services.legal.catalog import JURISDICTIONS
 
 router = APIRouter()
@@ -75,3 +78,74 @@ def set_formation_step(
             db, startup_id=membership.startup_id, jurisdiction=payload.jurisdiction
         )
     )
+
+
+# --- ip assets ---------------------------------------------------------------------------------
+
+
+def _today() -> date:
+    """The derived statuses and the reminders share one clock (spec D4)."""
+    return datetime.now(UTC).date()
+
+
+@router.post("/ip-assets", response_model=dict[str, Any])
+def create_ip_asset(
+    payload: IpAssetCreate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = ip_svc.create_asset(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    db.commit()
+    return success_response(ip_svc.serialize_asset(row, today=_today()))
+
+
+@router.get("/ip-assets", response_model=dict[str, Any])
+def list_ip_assets(
+    type: IpAssetType | None = None,
+    status: IpAssetStatus | None = None,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = ip_svc.list_assets(db, startup_id=membership.startup_id, type=type, status=status)
+    today = _today()
+    return success_response({"ip_assets": [ip_svc.serialize_asset(r, today=today) for r in rows]})
+
+
+@router.get("/ip-assets/{asset_id}", response_model=dict[str, Any])
+def get_ip_asset(
+    asset_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = ip_svc.get_asset(db, startup_id=membership.startup_id, asset_id=asset_id)
+    return success_response(ip_svc.serialize_asset(row, today=_today()))
+
+
+@router.patch("/ip-assets/{asset_id}", response_model=dict[str, Any])
+def update_ip_asset(
+    asset_id: uuid.UUID,
+    payload: IpAssetUpdate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = ip_svc.update_asset(db, startup_id=membership.startup_id, asset_id=asset_id, data=payload)
+    db.commit()
+    return success_response(ip_svc.serialize_asset(row, today=_today()))
+
+
+@router.delete("/ip-assets/{asset_id}", response_model=dict[str, Any])
+def delete_ip_asset(
+    asset_id: uuid.UUID,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    ip_svc.delete_asset(db, startup_id=membership.startup_id, asset_id=asset_id)
+    db.commit()
+    return success_response({"deleted": True})
