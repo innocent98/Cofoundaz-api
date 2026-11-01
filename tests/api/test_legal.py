@@ -152,6 +152,132 @@ def test_progress_is_per_workspace(client, db):
     assert all(s["completed"] is False for s in theirs.json()["data"]["steps"])
 
 
+# --- ip assets ---------------------------------------------------------------------------------
+
+
+def _ip_body(**kw):
+    body = {
+        "type": "trademark",
+        "name": "Kolo (wordmark)",
+        "jurisdiction": "Nigeria",
+        "status": "filed",
+    }
+    body.update(kw)
+    return body
+
+
+def test_ip_asset_crud_roundtrip(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(f"{BASE}/ip-assets", json=_ip_body(renewal_on="2027-02-01"), headers=h)
+    assert created.status_code == 200, created.text
+    data = created.json()["data"]
+    aid = data["id"]
+    # ISO date on the wire, never the mock's "Renews Feb 2027".
+    assert data["renewal_on"] == "2027-02-01"
+    assert data["status"] == "filed" and data["derived_status"] == "filed"
+    assert data["type"] == "trademark"  # lowercase, not the mock's "Trademark"
+
+    listed = client.get(f"{BASE}/ip-assets", headers=h)
+    assert listed.status_code == 200
+    assert any(a["id"] == aid for a in listed.json()["data"]["ip_assets"])
+
+    one = client.get(f"{BASE}/ip-assets/{aid}", headers=h)
+    assert one.status_code == 200 and one.json()["data"]["name"] == "Kolo (wordmark)"
+
+    patched = client.patch(f"{BASE}/ip-assets/{aid}", json={"status": "registered"}, headers=h)
+    assert patched.status_code == 200
+    assert patched.json()["data"]["status"] == "registered"
+
+    cleared = client.patch(f"{BASE}/ip-assets/{aid}", json={"renewal_on": None}, headers=h)
+    assert cleared.json()["data"]["renewal_on"] is None
+
+    deleted = client.delete(f"{BASE}/ip-assets/{aid}", headers=h)
+    assert deleted.status_code == 200
+    assert deleted.json()["data"] == {"deleted": True}
+    assert client.get(f"{BASE}/ip-assets/{aid}", headers=h).status_code == 404
+
+
+def test_a_past_renewal_reads_as_expired(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(
+        f"{BASE}/ip-assets",
+        json=_ip_body(status="registered", renewal_on="2020-01-01"),
+        headers=h,
+    )
+    data = created.json()["data"]
+    # `expired` is derived, never stored: the raw status is untouched (spec D9).
+    assert data["status"] == "registered"
+    assert data["derived_status"] == "expired"
+
+
+def test_an_empty_register_lists_nothing(client, db):
+    _u, _s, h = _member(db)
+    r = client.get(f"{BASE}/ip-assets", headers=h)
+    assert r.status_code == 200 and r.json()["data"]["ip_assets"] == []
+
+
+def test_ip_list_filters(client, db):
+    _u, _s, h = _member(db)
+    client.post(f"{BASE}/ip-assets", json=_ip_body(name="A mark"), headers=h)
+    client.post(
+        f"{BASE}/ip-assets",
+        json=_ip_body(name="A domain", type="domain", status="registered"),
+        headers=h,
+    )
+    by_type = client.get(f"{BASE}/ip-assets?type=domain", headers=h)
+    assert [a["name"] for a in by_type.json()["data"]["ip_assets"]] == ["A domain"]
+    by_status = client.get(f"{BASE}/ip-assets?status=registered", headers=h)
+    assert [a["name"] for a in by_status.json()["data"]["ip_assets"]] == ["A domain"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"status": "expired"},  # not a stored value (spec D9)
+        {"type": "slogan"},  # not one of the four
+        {"name": ""},
+        {"jurisdiction": ""},
+        {"renewal_on": "not-a-date"},
+    ],
+)
+def test_bad_ip_bodies_are_422(client, db, body):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/ip-assets", json=_ip_body(**body), headers=h)
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_ip_cross_tenant_ids_are_404(client, db):
+    _u, _s, h = _member(db)
+    _other_u, _other_s, other_h = _member(db)
+    theirs = client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=other_h).json()["data"]["id"]
+    assert client.get(f"{BASE}/ip-assets/{theirs}", headers=h).status_code == 404
+    assert (
+        client.patch(f"{BASE}/ip-assets/{theirs}", json={"name": "X"}, headers=h).status_code == 404
+    )
+    assert client.delete(f"{BASE}/ip-assets/{theirs}", headers=h).status_code == 404
+
+
+def test_a_legal_advisor_reads_but_cannot_write_ip(client, db):
+    owner = create_user(db, email_verified_at=datetime.now(UTC))
+    startup = create_startup(db, owner=owner, stage=StartupStage.validation)
+    create_membership(db, owner, startup, role=MembershipRole.founder)
+    db.flush()
+    _u, _s, advisor_h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
+
+    assert client.get(f"{BASE}/ip-assets", headers=advisor_h).status_code == 200
+    assert client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=advisor_h).status_code == 403
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_touch_ip(client, db, role):
+    owner = create_user(db, email_verified_at=datetime.now(UTC))
+    startup = create_startup(db, owner=owner, stage=StartupStage.validation)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    assert client.get(f"{BASE}/ip-assets", headers=h).status_code == 403
+    assert client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=h).status_code == 403
+
+
 # --- RBAC -------------------------------------------------------------------------------------
 
 
