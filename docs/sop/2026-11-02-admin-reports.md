@@ -1,6 +1,6 @@
 # Admin Reported issues: founder "report this" and staff moderation
 
-**What shipped:** the API for reported content. Any workspace member reports one AI Co-Founder reply or one comment; staff with the `moderation` scope (and Super Admin) work a queue with tabs, filters and search, and can dismiss, escalate, remove (soft-hide) or restore. Branch `feature/admin-reports`, migration `0088_content_reports` (on `0087_support_tickets`, so it re-chains after the Tickets PR #211). PRD 25.5, gap row A21. PR: see the checklist entry.
+**What shipped:** the API for reported content. Any workspace member reports one AI Co-Founder reply or one comment; staff with the `moderation` scope (and Super Admin) work a queue with tabs, filters and search, and can dismiss, escalate, remove (soft-hide) or restore. Branch `feature/admin-reports`, migration `0088_content_reports` (on `0087_support_tickets`, rebased after the Tickets PR #211 merged). PRD 25.5, gap row A21. PR: see the checklist entry.
 
 **Why:** the Reports tab was a mock and no founder-side action existed to feed it. Moderation also needs a safe way to see what was reported without giving staff the chat, journal or documents (D-ADM-9).
 

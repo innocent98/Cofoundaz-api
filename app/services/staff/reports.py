@@ -185,6 +185,7 @@ def _load_with_siblings(
         .filter(ContentReport.item_type == first.item_type, ContentReport.item_id == first.item_id)
         .order_by(ContentReport.id)
         .with_for_update()
+        .populate_existing()  # reload what the unlocked read above may have left stale
         .all()
     )
     return next(x for x in rows if x.id == report_id), rows

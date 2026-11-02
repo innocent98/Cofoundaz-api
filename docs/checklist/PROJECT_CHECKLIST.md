@@ -3846,7 +3846,7 @@ SOP `docs/sop/2026-11-02-admin-tickets.md`, FE guide `docs/fe-integration-guide-
 
 ### Admin Reported issues: founder "report this" + staff moderation queue (2026-11-02, branch `feature/admin-reports`, migration `0088_content_reports` on `0087`, PR pending)
 
-SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-admin-reports.md`, calls R1 to R12 in the SOP. PRD 25.5, gap row A21. Re-chains after Tickets (#211).
+SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-admin-reports.md`, calls R1 to R12 in the SOP. PRD 25.5, gap row A21. Rebased on develop after Tickets (#211).
 - [x] Models + migration 0088 (content reports, removed-by-moderation flag on comments and AI messages)
 - [x] Founder: report an AI reply or a comment (reason, note), one live report per item, rate limit, `GET /reports/mine`
 - [x] Staff (`moderation` scope + Super Admin): queue tabs Open / Escalated / Closed, filters, search, detail with the snippet only; dismiss, escalate (reason), remove and restore (step-up); only a Super Admin decides escalations; audit row per action
