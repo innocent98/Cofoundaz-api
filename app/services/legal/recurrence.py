@@ -34,4 +34,6 @@ def next_due_on(due_on: date, recurrence: Recurrence, anchor_day: int) -> date |
     months = MONTHS.get(recurrence)
     if months is None:
         return None
-    return due_on + relativedelta(months=+months, day=anchor_day)
+    # Annotated because relativedelta's __radd__ is untyped, so the sum is Any to mypy.
+    nxt: date = due_on + relativedelta(months=+months, day=anchor_day)
+    return nxt

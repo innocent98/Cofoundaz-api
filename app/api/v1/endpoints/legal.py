@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -244,3 +244,28 @@ def delete_compliance_item(
     compliance_svc.delete_item(db, startup_id=membership.startup_id, item_id=item_id)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.post("/compliance-items/{item_id}/proof", response_model=dict[str, Any])
+async def upload_compliance_proof(
+    item_id: uuid.UUID,
+    file: UploadFile = File(...),  # noqa: B008
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Attach or replace the proof of filing (multipart).
+
+    Reads one byte past the cap so an oversized file is refused without buffering all of it.
+    """
+    content = await file.read(compliance_svc.MAX_PROOF_BYTES + 1)
+    row = compliance_svc.attach_proof(
+        db,
+        startup_id=membership.startup_id,
+        item_id=item_id,
+        content_type=file.content_type,
+        size_bytes=len(content),
+        content=content,
+    )
+    db.commit()
+    return success_response(compliance_svc.serialize_item(row, today=_today()))
