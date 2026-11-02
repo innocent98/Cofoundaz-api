@@ -1,0 +1,153 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good afternoon",
+      "first_name": "Ada",
+      "startup_name": "NovaPay"
+    },
+    "health": {
+      "status": "pending_assessment",
+      "score": null,
+      "band": null,
+      "message": "Complete your kickoff assessment to generate your Health Score.",
+      "dimensions": [],
+      "top_recommendations": []
+    },
+    "mission": {
+      "mission_date": "2026-10-20",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [
+        {
+          "id": "901ff10f-a004-4220-ba5d-03c0b2da52a9",
+          "roadmap_task_id": "85e52128-ddac-4d6b-898c-a208c46c911e",
+          "title": "Describe the problem in one paragraph",
+          "reason": "From your 'Write your problem statement' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 0,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "0dae1eb5-b573-482c-9fcf-31ef14878ab3",
+            "title": "Write your problem statement",
+            "due_on": "2026-10-27"
+          }
+        },
+        {
+          "id": "a0a059a5-b2bb-497f-9a8b-f45787838e0d",
+          "roadmap_task_id": "92a8a46c-ef03-4089-a882-67af7abe08db",
+          "title": "List who has this problem",
+          "reason": "From your 'Write your problem statement' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 1,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "0dae1eb5-b573-482c-9fcf-31ef14878ab3",
+            "title": "Write your problem statement",
+            "due_on": "2026-10-27"
+          }
+        },
+        {
+          "id": "204d0db6-320e-4415-9940-8c207ee56294",
+          "roadmap_task_id": "0cf1283f-bc2d-4771-97bb-aa0b6d4a1540",
+          "title": "Draft a one-page concept",
+          "reason": "From your 'Sketch the solution' milestone.",
+          "effort": "medium",
+          "status": "todo",
+          "order": 2,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "a73ea601-17f5-4f5e-8ae9-15c95f2dea1a",
+            "title": "Sketch the solution",
+            "due_on": "2026-11-10"
+          }
+        }
+      ],
+      "empty_reason": null
+    },
+    "mission_status": "ok",
+    "upcoming": [
+      {
+        "id": "0dae1eb5-b573-482c-9fcf-31ef14878ab3",
+        "title": "Write your problem statement",
+        "due_on": "2026-10-27",
+        "milestone_id": "0dae1eb5-b573-482c-9fcf-31ef14878ab3"
+      }
+    ],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "tasks_trend": {
+        "delta": null,
+        "series": []
+      },
+      "metrics": {
+        "revenue": {
+          "status": "ok",
+          "value_minor": 67666667,
+          "currency": "NGN",
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "runway": {
+          "status": "not_burning",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": 0,
+          "cash_on_hand_minor": 154000000,
+          "currency": "NGN",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "pipeline": {
+          "status": "not_built",
+          "value_minor": null,
+          "currency": null
+        },
+        "campaign_ctr": {
+          "status": "ok",
+          "ctr_percent": 2.5,
+          "impressions": 2000,
+          "clicks": 50,
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": false
+    },
+    "briefing": {
+      "status": "empty",
+      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace.",
+      "id": null,
+      "actions": []
+    },
+    "risks": {
+      "status": "empty",
+      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you.",
+      "items": []
+    },
+    "opportunities": {
+      "status": "empty",
+      "message": "Opportunities I spot (grants, quick wins, market signals) will show up here.",
+      "items": []
+    }
+  },
+  "meta": null
+}

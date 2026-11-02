@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_VALIDATION_DATA",
+    "message": "Log a customer interview or an assumption in Validation first.",
+    "field_errors": []
+  }
+}

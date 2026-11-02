@@ -12,6 +12,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.services.business.canvas_defs import empty_blocks
+from app.services.business.export import CANVAS_TITLES, RECORD_TITLES
 from app.services.business.records import (
     _record,
     create_record,
@@ -19,7 +20,12 @@ from app.services.business.records import (
     update_record,
     validate,
 )
-from app.services.business.service import get_or_create_canvas, save_canvas, validate_blocks
+from app.services.business.service import (
+    display_name,
+    get_or_create_canvas,
+    save_canvas,
+    validate_blocks,
+)
 
 
 def _parse_canvas_type(target: dict) -> CanvasType:
@@ -89,6 +95,12 @@ def create_suggestion(
     )
     db.add(row)
     db.flush()
+    author = db.get(User, membership.user_id)
+    artifact = (
+        CANVAS_TITLES[CanvasType(target["canvas_type"])]
+        if "canvas_type" in target
+        else RECORD_TITLES[RecordKind(target["kind"])]
+    )
     event_bus.publish(
         db,
         "business.suggestion.created",
@@ -97,6 +109,8 @@ def create_suggestion(
             "suggestion_id": str(row.id),
             "op": op.value,
             "created_by": str(membership.user_id),
+            "author_name": display_name(author) if author else None,
+            "artifact": artifact,
         },
     )
     return row
@@ -182,12 +196,25 @@ def _apply(db: Session, membership: Membership, s: BusinessSuggestion) -> None:
         ctype = CanvasType(s.target["canvas_type"])
         canvas = get_or_create_canvas(db, startup, ctype)
         assert s.base_version is not None  # nosec B101 - always set for canvas_update
-        save_canvas(db, canvas, (s.payload or {}).get("blocks", {}), s.base_version)
+        save_canvas(
+            db,
+            canvas,
+            (s.payload or {}).get("blocks", {}),
+            s.base_version,
+            user_id=s.author_id,  # the change is the consultant's; the founder approved it
+            source="suggestion",
+        )
     elif s.op == SuggestionOp.record_create:
-        create_record(db, startup, RecordKind(s.target["kind"]), (s.payload or {})["data"])
+        create_record(
+            db,
+            startup,
+            RecordKind(s.target["kind"]),
+            (s.payload or {})["data"],
+            user_id=s.author_id,
+        )
     elif s.op == SuggestionOp.record_update:
         rec = _record(db, membership, RecordKind(s.target["kind"]), s.target["record_id"])
-        update_record(db, rec, (s.payload or {})["data"])
+        update_record(db, rec, (s.payload or {})["data"], user_id=s.author_id)
     elif s.op == SuggestionOp.record_delete:
         rec = _record(db, membership, RecordKind(s.target["kind"]), s.target["record_id"])
         delete_record(db, rec)

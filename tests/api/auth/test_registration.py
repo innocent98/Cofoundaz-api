@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 
 from app.api.v1.endpoints.auth import registration as registration_module
+from app.core.errors import EmailDeliveryFailed
 from app.core.redis import get_redis
 from app.db.models.enums import AuthTokenPurpose, UserStatus
 from app.db.models.user import User
@@ -30,6 +31,34 @@ def test_signup_creates_pending_user(client, db):
     assert body["user"]["email"] == "New@x.com"
     u = db.query(User).filter(User.email == "New@x.com").one()
     assert u.status == UserStatus.pending_verification
+
+
+class _FailingSender:
+    def send(self, msg):
+        raise EmailDeliveryFailed()
+
+
+def test_signup_email_provider_failure_is_an_enveloped_503(client, monkeypatch):
+    """Resend rejecting the send (unverified domain, quota, outage) must give the FE a
+    typed, retryable error - not a bare-text 500."""
+    monkeypatch.setattr(registration_module, "get_email_sender", lambda: _FailingSender())
+    r = client.post(
+        "/api/v1/auth/signup", json={"email": "mailfail@x.com", "password": "password1"}
+    )
+    assert r.status_code == 503, r.text
+    assert r.json()["error"]["code"] == "EMAIL_DELIVERY_FAILED"
+
+
+def test_resend_stays_generic_when_email_provider_fails(client, db, monkeypatch):
+    """A delivery failure only happens for a real pending account, so surfacing it would
+    leak which emails are registered. The response must stay identical."""
+    create_user(db, email="pending-fail@x.com", status=UserStatus.pending_verification)
+    db.flush()
+    get_redis().delete("verify_resend_cooldown:pending-fail@x.com")
+    monkeypatch.setattr(registration_module, "get_email_sender", lambda: _FailingSender())
+    r = client.post("/api/v1/auth/verify/resend", json={"email": "pending-fail@x.com"})
+    assert r.status_code == 200, r.text
+    assert r.json()["data"] == {"sent": True}
 
 
 def test_signup_weak_password(client):

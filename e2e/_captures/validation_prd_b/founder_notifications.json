@@ -1,0 +1,21 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "e9211114-e7f6-48ce-8e26-c14af9081891",
+        "type": "validation.insight.detected",
+        "title": "New pattern detected in customer feedback: [stub-llm] theme",
+        "body": "See insight",
+        "data": {
+          "theme": "[stub-llm] theme",
+          "insight_id": "89f2905e-b903-457f-ac2c-93469e859840",
+          "startup_id": "b295192d-9830-46f6-83cb-bde5623c60c1"
+        },
+        "read": false,
+        "created_at": "2026-10-19T21:57:24.795270+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

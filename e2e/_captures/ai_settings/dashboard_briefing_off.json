@@ -1,0 +1,157 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good morning",
+      "first_name": "Ada",
+      "startup_name": "Cofoundaz"
+    },
+    "health": {
+      "status": "pending_assessment",
+      "score": null,
+      "band": null,
+      "message": "Complete your kickoff assessment to generate your Health Score.",
+      "dimensions": [],
+      "top_recommendations": []
+    },
+    "mission": {
+      "mission_date": "2026-10-30",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [
+        {
+          "id": "7377d6a1-86d9-406e-8cc0-67acc07e5fce",
+          "roadmap_task_id": "4ad13c5c-216b-44e1-8d94-edd85bd7b88d",
+          "title": "Describe the problem in one paragraph",
+          "reason": "From your 'Write your problem statement' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 0,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "7ccdd58c-f8fd-4929-970b-6c454026ec3c",
+            "title": "Write your problem statement",
+            "due_on": "2026-11-06"
+          }
+        },
+        {
+          "id": "bac6f239-44f7-4527-9375-0e581caad58b",
+          "roadmap_task_id": "4a14a970-ca6d-4ee6-bdf7-264fb3398c17",
+          "title": "List who has this problem",
+          "reason": "From your 'Write your problem statement' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 1,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "7ccdd58c-f8fd-4929-970b-6c454026ec3c",
+            "title": "Write your problem statement",
+            "due_on": "2026-11-06"
+          }
+        },
+        {
+          "id": "831a0588-97c3-4feb-b3ed-c6285ed829ab",
+          "roadmap_task_id": "eaca1d14-f297-4d62-b04a-44afc1815d4e",
+          "title": "Draft a one-page concept",
+          "reason": "From your 'Sketch the solution' milestone.",
+          "effort": "medium",
+          "status": "todo",
+          "order": 2,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "3813381d-a1eb-4e32-9614-44d20ef9d1f9",
+            "title": "Sketch the solution",
+            "due_on": "2026-11-20"
+          }
+        }
+      ],
+      "empty_reason": null
+    },
+    "mission_status": "ok",
+    "upcoming": [
+      {
+        "id": "7ccdd58c-f8fd-4929-970b-6c454026ec3c",
+        "title": "Write your problem statement",
+        "due_on": "2026-11-06",
+        "milestone_id": "7ccdd58c-f8fd-4929-970b-6c454026ec3c"
+      }
+    ],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "tasks_trend": {
+        "delta": null,
+        "series": []
+      },
+      "metrics": {
+        "revenue": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "runway": {
+          "status": "no_data",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "pipeline": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": false
+    },
+    "briefing": {
+      "status": "off",
+      "message": null,
+      "id": null,
+      "actions": []
+    },
+    "risks": {
+      "status": "off",
+      "message": null,
+      "items": []
+    },
+    "opportunities": {
+      "status": "off",
+      "message": null,
+      "items": []
+    }
+  },
+  "meta": null
+}

@@ -1,0 +1,160 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good morning",
+      "first_name": "Ada",
+      "startup_name": "NovaPay"
+    },
+    "health": {
+      "status": "pending_assessment",
+      "score": null,
+      "band": null,
+      "message": "Complete your kickoff assessment to generate your Health Score.",
+      "dimensions": [],
+      "top_recommendations": []
+    },
+    "mission": {
+      "mission_date": "2026-10-21",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [
+        {
+          "id": "f92ecaae-b4b1-4b94-a9a2-0da6bbb34309",
+          "roadmap_task_id": "7c5baa73-d23e-4abf-93c7-c4c0091c893e",
+          "title": "Run 10 customer interviews",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "medium",
+          "status": "todo",
+          "order": 0,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "59dc3f5d-b7b4-4c34-8885-353147d6fe94",
+            "title": "Validate demand",
+            "due_on": "2026-11-04"
+          }
+        },
+        {
+          "id": "9ed7651c-3364-47bb-b86f-4800b07e2ea6",
+          "roadmap_task_id": "fffd6ccd-d730-4c4c-a0a8-00a4055f575f",
+          "title": "Synthesize problem hypotheses",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 1,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "59dc3f5d-b7b4-4c34-8885-353147d6fe94",
+            "title": "Validate demand",
+            "due_on": "2026-11-04"
+          }
+        },
+        {
+          "id": "6777bc7b-3323-4c2d-886a-0ec8af5ab98d",
+          "roadmap_task_id": "ddc843c5-51b7-4daf-9f7a-334ca8284d60",
+          "title": "Draft 3 pricing options",
+          "reason": "From your 'Pricing test' milestone.",
+          "effort": "small",
+          "status": "todo",
+          "order": 2,
+          "completed_at": null,
+          "reject_reason": null,
+          "milestone": {
+            "id": "139104d0-03ed-4b44-b5dd-539fea813405",
+            "title": "Pricing test",
+            "due_on": "2026-11-25"
+          }
+        }
+      ],
+      "empty_reason": null
+    },
+    "mission_status": "ok",
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "tasks_trend": {
+        "delta": null,
+        "series": [
+          {
+            "period": "2026-10-21",
+            "value": 0
+          }
+        ]
+      },
+      "metrics": {
+        "revenue": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "runway": {
+          "status": "no_data",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "pipeline": {
+          "status": "ok",
+          "value_minor": 80000000,
+          "currency": "NGN",
+          "trend": {
+            "delta": null,
+            "series": [
+              {
+                "period": "2026-10-21",
+                "value": 80000000
+              }
+            ]
+          }
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": false
+    },
+    "briefing": {
+      "status": "empty",
+      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace.",
+      "id": null,
+      "actions": []
+    },
+    "risks": {
+      "status": "empty",
+      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you.",
+      "items": []
+    },
+    "opportunities": {
+      "status": "empty",
+      "message": "Opportunities I spot (grants, quick wins, market signals) will show up here.",
+      "items": []
+    }
+  },
+  "meta": null
+}

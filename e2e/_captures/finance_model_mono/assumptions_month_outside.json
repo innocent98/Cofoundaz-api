@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "capex[0].month",
+        "message": "Choose a month between 2026-11 and 2029-10."
+      }
+    ]
+  }
+}

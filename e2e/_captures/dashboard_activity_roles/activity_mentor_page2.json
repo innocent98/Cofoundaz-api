@@ -1,0 +1,34 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "ea37925c-b546-44b9-a855-495052d3ce03",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "2b73141d-6173-4997-ad0e-336a4e57ad09",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "d6cd3956-c241-43ca-a5b6-190c6db839dc",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:52.734624+00:00"
+      },
+      {
+        "id": "562435d1-eaf1-41d3-b1fc-0f05bb8d0563",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "6cc4034d-8a90-4dc2-8c3c-c69dbf2e159d",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "9f252c99-bb2c-428a-880d-a6423a1fd2ad",
+          "name": null
+        },
+        "created_at": "2026-10-20T17:02:51.917584+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

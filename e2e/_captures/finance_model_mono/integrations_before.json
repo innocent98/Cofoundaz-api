@@ -1,0 +1,36 @@
+{
+  "data": {
+    "encryption_configured": true,
+    "providers": [
+      {
+        "provider": "paystack",
+        "label": "Paystack",
+        "key_hint": "Starts with sk_test_ or sk_live_",
+        "kind": "payments",
+        "connection": null,
+        "connect_config": null
+      },
+      {
+        "provider": "flutterwave",
+        "label": "Flutterwave",
+        "key_hint": "Starts with FLWSECK_TEST- or FLWSECK-",
+        "kind": "payments",
+        "connection": null,
+        "connect_config": null
+      },
+      {
+        "provider": "mono",
+        "label": "Bank (Mono)",
+        "key_hint": "Link your bank account with Mono Connect",
+        "kind": "bank",
+        "connection": null,
+        "connect_config": {
+          "configured": true,
+          "public_key": "test_pk_e2e_stub_key",
+          "sandbox": true
+        }
+      }
+    ]
+  },
+  "meta": null
+}

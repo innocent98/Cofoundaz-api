@@ -1,0 +1,36 @@
+{
+  "data": {
+    "id": "c0ad3028-21f1-49c1-9471-106ecc924c0a",
+    "kind": "custom",
+    "title": "Cofoundaz PRD A: SWOT",
+    "status": "draft",
+    "ai_generated": false,
+    "folder": null,
+    "template_key": null,
+    "version": 1,
+    "updated_at": "2026-10-19T11:08:26.390797+00:00",
+    "sections": [
+      {
+        "id": "2bad5c90-916d-421f-92ac-9b9637fe9741",
+        "body": "- Founder-market fit",
+        "heading": "Strengths"
+      },
+      {
+        "id": "ca633410-aa0d-426c-837a-7c24aeca4c05",
+        "body": "",
+        "heading": "Weaknesses"
+      },
+      {
+        "id": "5d8792a4-28fa-4b04-a415-d7d4c553a992",
+        "body": "",
+        "heading": "Opportunities"
+      },
+      {
+        "id": "2a474e29-2a90-4f0d-a03f-eae40acdd4ea",
+        "body": "",
+        "heading": "Threats"
+      }
+    ]
+  },
+  "meta": null
+}

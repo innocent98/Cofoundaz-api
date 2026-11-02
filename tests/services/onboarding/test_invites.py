@@ -24,6 +24,7 @@ def test_intra_batch_duplicate_emails_dedupe_under_autoflush_false(db):
         ],
     )
 
-    assert result == {"created": ["dup@x.com"], "skipped": ["dup@x.com"]}
+    assert (result.created, result.skipped) == (["dup@x.com"], ["dup@x.com"])
+    assert [m.to for m in result.outbox] == ["dup@x.com"]  # queued, not yet sent
     rows = db.query(Invitation).filter(Invitation.email == "dup@x.com").all()
     assert len(rows) == 1

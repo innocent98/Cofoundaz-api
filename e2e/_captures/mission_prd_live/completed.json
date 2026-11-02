@@ -1,0 +1,22 @@
+{
+    "data": {
+        "items": [
+            {
+                "id": "847a7c81-02ce-480d-ba45-2e697374a3dd",
+                "title": "Mission walk: test task",
+                "completed_at": "2026-10-18T00:23:53.858103+00:00",
+                "mission_date": "2026-10-18",
+                "milestone": null
+            },
+            {
+                "id": "e97231fc-3270-4cba-9f6e-ac954e0af598",
+                "title": "Dash-live probe 3",
+                "completed_at": "2026-10-17T23:22:23.316708+00:00",
+                "mission_date": "2026-10-17",
+                "milestone": null
+            }
+        ],
+        "next_cursor": null
+    },
+    "meta": null
+}

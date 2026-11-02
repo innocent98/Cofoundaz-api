@@ -1,0 +1,145 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "9b848f6e-9261-4bed-a359-c6ab80df12e7",
+        "type": "finance.runway.low",
+        "title": "Runway below 6 months, review recommended",
+        "body": "Open Finance",
+        "data": {
+          "href": "/finance/runway",
+          "currency": "NGN",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "monthly_burn": 29946250,
+          "runway_months": 0.3
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:21.079704+00:00"
+      },
+      {
+        "id": "4be8b5ee-54bf-4b69-a9fc-a6905f9825d3",
+        "type": "finance.runway.updated",
+        "title": "Your runway is now 0.3 months",
+        "body": "Open Finance",
+        "data": {
+          "band": "low",
+          "href": "/finance/runway",
+          "currency": "NGN",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "monthly_burn": 29946250,
+          "runway_months": 0.3
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:21.079704+00:00"
+      },
+      {
+        "id": "cc79ab8d-5d73-4b8d-91cf-d71333b1dcbc",
+        "type": "finance.invoice.paid",
+        "title": "Invoice paid: INV-2026-001 \ud83c\udf89",
+        "body": "View invoice",
+        "data": {
+          "href": "/finance/invoices",
+          "number": "INV-2026-001",
+          "currency": "NGN",
+          "paid_via": null,
+          "invoice_id": "9b9e99ff-a2ce-4493-ad17-5ee62d7a0b50",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "client_name": "Chidi Okafor Stores",
+          "amount_minor": 161250
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:20.900710+00:00"
+      },
+      {
+        "id": "4ee89476-46e9-4d9a-ab85-1de6746fdf67",
+        "type": "finance.invoice.overdue",
+        "title": "Invoice overdue: INV-2026-002 \u00b7 Ngozi Bello Ltd \u00b7 NGN 1,612.50",
+        "body": "Send reminder",
+        "data": {
+          "href": "/finance/invoices",
+          "due_on": "2026-10-18",
+          "number": "INV-2026-002",
+          "currency": "NGN",
+          "invoice_id": "deeebb35-d797-4dfa-a56a-78bb45bbed5c",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "client_name": "Ngozi Bello Ltd",
+          "amount_minor": 161250
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:20.538729+00:00"
+      },
+      {
+        "id": "97a86de4-1ada-4b8f-8737-40d99b82fa86",
+        "type": "finance.invoice.overdue",
+        "title": "Invoice overdue: INV-2026-001 \u00b7 Chidi Okafor Stores \u00b7 NGN 1,612.50",
+        "body": "Send reminder",
+        "data": {
+          "href": "/finance/invoices",
+          "due_on": "2026-10-18",
+          "number": "INV-2026-001",
+          "currency": "NGN",
+          "invoice_id": "9b9e99ff-a2ce-4493-ad17-5ee62d7a0b50",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "client_name": "Chidi Okafor Stores",
+          "amount_minor": 161250
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:20.508050+00:00"
+      },
+      {
+        "id": "50d00a8c-6d0d-4d06-adf3-273e8a9ef154",
+        "type": "mission.ready",
+        "title": "Your mission for today is ready",
+        "body": "Run 10 customer interviews",
+        "data": {
+          "mission_id": "b81bd187-2e61-497f-a635-e3f055855f25",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "first_task_title": "Run 10 customer interviews"
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:19.713267+00:00"
+      },
+      {
+        "id": "f6dfed5f-b4b6-4792-9b23-e80cc3501d67",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "3e7de256-48ec-4e35-8bdc-6306384e16c1",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318"
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:16.724283+00:00"
+      },
+      {
+        "id": "aeffcaf1-4cf5-46cb-8fc5-bc636f5ae87d",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "accountant",
+          "user_id": "bd42ea97-77c9-4886-b16b-35150b7d9139",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318"
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:16.025944+00:00"
+      },
+      {
+        "id": "04bca0fa-3662-41ea-abf4-dafd95ca902e",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "f50e57f3-c141-424f-a7e0-1a37cceb0532",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318"
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:15.430299+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

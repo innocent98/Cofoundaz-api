@@ -1,0 +1,24 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "0aab2096-3db2-49b5-ace6-15450d26beaf",
+      "type": "ai.documents.template_draft",
+      "status": "succeeded",
+      "result": {
+        "failed": [],
+        "reason": null,
+        "status": "ready",
+        "drafted": [
+          "executive_summary",
+          "go_to_market",
+          "financials"
+        ],
+        "skipped": [],
+        "document_version": 2
+      },
+      "error": null
+    },
+    "meta": null
+  }
+}

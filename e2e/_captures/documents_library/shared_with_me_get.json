@@ -1,0 +1,31 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+      "title": "Seed pitch narrative v2",
+      "kind": "custom",
+      "status": "final",
+      "version": 4,
+      "updated_at": "2026-10-25T11:02:18.285772+00:00",
+      "permission": "view",
+      "workspace": {
+        "id": "cd502d97-1ba7-40cc-8663-f618febbc678",
+        "name": "LibraryCo"
+      },
+      "shared_by": {
+        "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+        "name": "Ada Founder"
+      },
+      "shared_at": "2026-10-25T11:02:18.500602+00:00",
+      "sections": [
+        {
+          "id": "b5ae0963-295b-4472-8fdb-095d0bdabf7d",
+          "body": "Founders lose track of paperwork",
+          "heading": "Problem"
+        }
+      ]
+    },
+    "meta": null
+  }
+}

@@ -172,10 +172,10 @@ briefing gate immediately, so `briefing`/`risks`/`opportunities` read `"generati
 |---|---|---|
 | `greeting` | always | `salutation` is time-of-day derived (morning/afternoon/evening, server clock — see the workspace-timezone caveat below); `first_name` is parsed from the caller's profile `full_name` (first space-separated token) and can be `""` if no profile name is set. |
 | `health` | real when an assessment has completed, else the pending shape | Same payload shape as `GET /health-score` — see `docs/fe-integration-guide-health-score.md`. **This section is `null` if wrapped-in and the underlying section throws — see the error-marker trap below**, not because the health data itself is empty. |
-| `mission` | real once a roadmap exists (which it does post-onboarding), **`null` if the workspace has no roadmap** | Same task shape as `GET /missions/today` — see `docs/fe-integration-guide-mission.md` §1. Calling `/dashboard/summary` may lazily generate today's mission (see above). |
+| `mission` + `mission_status` | **founder / team member only** (others: `null` + `"restricted"`, 2026-10-20). Real once a roadmap exists (which it does post-onboarding), **`null` if the workspace has no roadmap** | Same task shape as `GET /missions/today` — see `docs/fe-integration-guide-mission.md` §1. Calling `/dashboard/summary` may lazily generate today's mission (see above). |
 | `upcoming` | a list, **`[]` in this capture** — see the honesty note below | Roadmap milestones due in the next 7 days, not yet `done`. |
 | `kpis.tasks_done_this_week` | **live** — the only real KPI in v1 | Mission tasks completed in the trailing 7 days (by `completed_at`, not by which day's mission they were assigned to). |
-| `kpis.revenue` / `runway` / `pipeline_value` / `campaign_performance` | **always `null` in v1** | No financial/CRM/campaign module exists yet — Modules 09–11. Render these as "coming soon" placeholders, not as "$0". |
+| `kpis.revenue` / `runway` / `pipeline_value` / `campaign_performance` | **legacy, always `null`** | Superseded (2026-10-17) by `kpis.metrics.*`, the real Finance/Marketing figures with a per-tile `status`. See `fe-integration-guide-dashboard-kpis.md`. These scalars stay `null` for backward compatibility only; don't read them. |
 | `calibration.assessment_complete` | real, boolean | `true` once the founder has completed the kickoff assessment (any completed `Assessment` row) — **nested under `calibration`, not a top-level field** (see the nesting trap below). **`calibration` itself can also be `{"error": true}`** on a rare DB error, same as `health`/`mission`/`upcoming`/`kpis` — check for the error shape before reading `assessment_complete` (see the error-marker trap below). |
 | `briefing` / `risks` / `opportunities` | **dynamic as of 2026-09-19** — `status` is `"empty"`, `"generating"`, or `"ready"` | Module 03's dashboard AI briefing. **`status: "generating"` in this capture** — see the "AI daily briefing" subsection below for the full state machine, both other states' verbatim payloads, and why the FE should re-fetch this endpoint shortly after first load. |
 
@@ -183,6 +183,10 @@ briefing gate immediately, so `briefing`/`risks`/`opportunities` read `"generati
 
 - **The envelope wraps everything in `{"data": …, "meta": null}`.** `meta` is always `null` on
   this endpoint (no pagination). Read every field below `data`, not at the top level.
+- **`mission` is `null` for roles without mission access (2026-10-20, D-MIS-8).** Only founder and
+  team member get Today's Mission; everyone else gets `mission: null` plus the new top-level
+  `mission_status: "restricted"` (`"ok"` otherwise). Check `mission_status` first. See
+  `docs/fe-integration-guide-dashboard-role-leaks.md`.
 - **`mission` can be `null`.** If the caller's workspace has no roadmap yet (rare — onboarding
   generates one inline — but possible), `mission` is `null`, not an object with empty `tasks`.
   Branch on `data.mission === null` before reading `data.mission.tasks`.
@@ -218,6 +222,11 @@ across a few polls is normal (worker latency), not an error — the model has a 
 reserved in the DB enum for future use, but nothing writes it today; an LLM error currently
 raises inside the job and relies on the job runner's own retry, leaving the row on
 `"generating"` until a retry succeeds.
+
+> **AI budget note:** if the workspace is over its daily LLM token budget, `ai.dashboard.briefing`
+> is skipped and the section stays in its `generating` state until budget resets or it's
+> re-triggered (see `docs/fe-integration-guide-ai-status.md` — `GET /ai/status` reports
+> `over_budget`).
 
 Captured **verbatim** from `e2e/_captures/dashboard_ai_briefing/summary_generating.json` — right
 after the kickoff assessment completes, before the `ai.dashboard.briefing` job has run:
@@ -304,6 +313,10 @@ FE needing to know that `id` happens to *be* a milestone id in this particular s
 ---
 
 ## 2. `GET /api/v1/dashboard/activity` — team activity feed
+
+> **Filtered by role since 2026-10-20** (mission rows founder + team member only, finance rows `FINANCE_ROLES`,
+> marketing rows `MARKETING_ROLES`), and so is the live `activity.created` event. Same shapes; see
+> `docs/fe-integration-guide-dashboard-role-leaks.md` section 5. A cursor page across hidden rows is now captured live there.
 
 Keyset-paginated, newest-first. Query params: `cursor` (opaque string, omit for the first page),
 `limit` (int, **server-clamped to 1–50** even if you request more or less — both by FastAPI's

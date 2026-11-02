@@ -1,7 +1,79 @@
 {
   "data": [
     {
-      "id": "540c4189-a8ee-40af-a5c9-011461cca1b5",
+      "id": "4dd058c7-91a4-4a72-8abc-da832d4272a8",
+      "dimension": "money",
+      "key": "live.money.transactions_30d",
+      "title": "Track your money in and out",
+      "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+      "estimated_lift": 10,
+      "effort": "low",
+      "status": "pending",
+      "priority": 1,
+      "href": "/finance"
+    },
+    {
+      "id": "e7004699-1cd2-48c4-9f34-8a356051764d",
+      "dimension": "legal",
+      "key": "live.legal.signatures_complete",
+      "title": "Get your key agreements signed",
+      "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+      "estimated_lift": 10,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 2,
+      "href": "/documents/signatures"
+    },
+    {
+      "id": "13ac1f89-88d6-4af1-a5a4-101788dfb0de",
+      "dimension": "product",
+      "key": "live.product.roadmap_progress",
+      "title": "Close out your next roadmap tasks",
+      "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+      "estimated_lift": 5,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 3,
+      "href": "/roadmap"
+    },
+    {
+      "id": "fd5536c7-17cd-43f2-812a-fbe44491b18c",
+      "dimension": "product",
+      "key": "live.product.mission_completion",
+      "title": "Complete your daily missions",
+      "body": "Finish today's mission. Consistent execution on the highest-leverage tasks compounds fast.",
+      "estimated_lift": 5,
+      "effort": "low",
+      "status": "pending",
+      "priority": 4,
+      "href": "/mission"
+    },
+    {
+      "id": "0ff90063-47a2-4898-b61f-e71280354085",
+      "dimension": "market",
+      "key": "live.market.assumptions_tested",
+      "title": "Test your riskiest assumption",
+      "body": "Pick the assumption that would sink you if wrong and run a quick experiment to validate or kill it.",
+      "estimated_lift": 5,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 5,
+      "href": "/validation/assumptions"
+    },
+    {
+      "id": "7e9f8403-7356-44ae-9c29-e3c9237ed882",
+      "dimension": "market",
+      "key": "live.market.interviews_30d",
+      "title": "Talk to customers this month",
+      "body": "Log a few customer interviews. Real conversations beat assumptions every time.",
+      "estimated_lift": 5,
+      "effort": "medium",
+      "status": "pending",
+      "priority": 6,
+      "href": "/validation/interviews"
+    },
+    {
+      "id": "b0e6c3ba-0465-466a-9b69-c7040e793a6e",
       "dimension": "legal",
       "key": "legal.incorporate",
       "title": "Complete incorporation",
@@ -9,10 +81,11 @@
       "estimated_lift": 9,
       "effort": "high",
       "status": "pending",
-      "priority": 1
+      "priority": 7,
+      "href": "/documents"
     },
     {
-      "id": "6508b8ab-5b9f-418d-9d9b-dc19ddcb1739",
+      "id": "1a98427f-56b4-44d2-aec1-9c4f8259eeed",
       "dimension": "legal",
       "key": "legal.founder_agreement",
       "title": "Sign a founders' agreement",
@@ -20,10 +93,11 @@
       "estimated_lift": 7,
       "effort": "medium",
       "status": "pending",
-      "priority": 2
+      "priority": 8,
+      "href": "/documents"
     },
     {
-      "id": "432a3b4a-1e20-41b2-812d-32bf8cc9c288",
+      "id": "d1c73aa1-3a4a-404e-bc24-ebed021caf1b",
       "dimension": "product",
       "key": "product.define_mvp",
       "title": "Define your MVP scope",
@@ -31,10 +105,11 @@
       "estimated_lift": 8,
       "effort": "medium",
       "status": "pending",
-      "priority": 3
+      "priority": 9,
+      "href": "/roadmap"
     },
     {
-      "id": "89e17d21-4d94-4af6-a313-c1d7144954fc",
+      "id": "afe17a68-8655-43c3-843b-843a06fca00c",
       "dimension": "product",
       "key": "product.user_feedback_loop",
       "title": "Set up a user feedback loop",
@@ -42,10 +117,11 @@
       "estimated_lift": 6,
       "effort": "low",
       "status": "pending",
-      "priority": 4
+      "priority": 10,
+      "href": "/roadmap"
     },
     {
-      "id": "2c71aca4-893d-4ccc-8741-703180a55da3",
+      "id": "d8608909-b79a-4072-b4e3-f0c9cacf8af0",
       "dimension": "market",
       "key": "market.icp_definition",
       "title": "Write a one-page ICP",
@@ -53,10 +129,11 @@
       "estimated_lift": 7,
       "effort": "low",
       "status": "pending",
-      "priority": 5
+      "priority": 11,
+      "href": "/validation"
     },
     {
-      "id": "efd3758b-d544-4009-85ec-dbf0e1e3a262",
+      "id": "2990ed9f-49f3-4b21-945f-363cee549402",
       "dimension": "money",
       "key": "money.runway_model",
       "title": "Build a 12-month runway model",
@@ -64,10 +141,11 @@
       "estimated_lift": 8,
       "effort": "medium",
       "status": "pending",
-      "priority": 6
+      "priority": 12,
+      "href": "/finance"
     },
     {
-      "id": "9655aa50-abf0-4165-b760-0f014c0574bb",
+      "id": "d09080dc-f76f-417d-b63d-9c3294bc1bd3",
       "dimension": "market",
       "key": "market.competitor_map",
       "title": "Map your top 5 competitors",
@@ -75,10 +153,11 @@
       "estimated_lift": 5,
       "effort": "low",
       "status": "pending",
-      "priority": 7
+      "priority": 13,
+      "href": "/validation"
     },
     {
-      "id": "750b381b-7291-4fc4-a6a9-9237e7900905",
+      "id": "09145485-1cbe-4c7a-b6d7-562620dc5f50",
       "dimension": "team",
       "key": "team.roles_clarity",
       "title": "Clarify founder roles & equity",
@@ -86,10 +165,11 @@
       "estimated_lift": 7,
       "effort": "medium",
       "status": "pending",
-      "priority": 8
+      "priority": 14,
+      "href": "/team"
     },
     {
-      "id": "658abf20-8235-4563-bd09-65b88f570156",
+      "id": "2bdb847d-9369-4a77-8b85-b6d9a6abfc36",
       "dimension": "money",
       "key": "money.pricing_experiment",
       "title": "Run a pricing experiment",
@@ -97,7 +177,8 @@
       "estimated_lift": 6,
       "effort": "medium",
       "status": "pending",
-      "priority": 9
+      "priority": 15,
+      "href": "/finance"
     }
   ],
   "meta": null

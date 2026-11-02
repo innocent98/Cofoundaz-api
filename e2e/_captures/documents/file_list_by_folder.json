@@ -2,13 +2,22 @@
   "data": {
     "files": [
       {
-        "id": "afcd17ef-3203-404c-8593-2e305af6f715",
+        "id": "83d3484c-2156-4d31-866a-a5e3480e8521",
         "filename": "nda.pdf",
         "content_type": "application/pdf",
+        "mime": "application/pdf",
         "size_bytes": 46,
         "folder": "Legal",
-        "url": "var/storage/documents/e48dc2d7-4788-4945-866e-c319004f7c01/9a0900b504664b61bc84e73c634ae49c.pdf",
-        "uploaded_at": "2026-09-10T16:21:19.662384+00:00"
+        "tags": [],
+        "owner": {
+          "id": "83fa02c8-5efd-4555-bbc7-46496255f384",
+          "name": "Ada Founder"
+        },
+        "share_count": 0,
+        "scan_status": "clean",
+        "uploaded_at": "2026-10-25T11:02:21.587949+00:00",
+        "trashed_at": null,
+        "purges_at": null
       }
     ]
   },

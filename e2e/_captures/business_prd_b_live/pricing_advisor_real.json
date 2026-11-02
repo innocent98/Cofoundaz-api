@@ -1,0 +1,54 @@
+{
+    "data": {
+        "id": "4df4a8d1-7ff1-4149-9ea8-b910c0de772f",
+        "type": "ai.business.pricing_advisor",
+        "status": "succeeded",
+        "result": {
+            "advice": {
+                "tiers": [
+                    {
+                        "name": "Basic",
+                        "price": "NGN 0/month",
+                        "features": [
+                            "Core payment acceptance",
+                            "Standard settlement",
+                            "Basic transaction history"
+                        ]
+                    },
+                    {
+                        "name": "Trader",
+                        "price": "NGN 2,000/month",
+                        "features": [
+                            "All Basic features",
+                            "Enhanced transaction reporting",
+                            "Priority customer support",
+                            "Faster settlement options"
+                        ]
+                    },
+                    {
+                        "name": "Business",
+                        "price": "NGN 5,000/month",
+                        "features": [
+                            "All Trader features",
+                            "Multiple staff accounts",
+                            "Advanced reporting",
+                            "Higher support priority"
+                        ]
+                    }
+                ],
+                "rationale": "Use a tiered monthly subscription with no setup fee, matching Moniepoint's NGN 0 setup position and the NGN 2,000 monthly price traders already consider fair. The free tier reduces adoption friction at the idea stage, while the NGN 2,000 Trader tier should be the initial target. These are starting-point prices to validate through interviews and early pilots, especially since transaction volume and willingness to pay for faster settlement or premium support are not yet known.",
+                "wtp_questions": [
+                    "What specific NovaPay features would make you switch from Moniepoint?",
+                    "Would you prefer a monthly subscription, per-transaction fee, or a combination? Why?",
+                    "At what monthly price would NovaPay feel like a bargain, fair value, expensive, and too expensive?",
+                    "How much do payment errors, downtime, or delayed settlements currently cost your business each month?",
+                    "Would you pay more for faster settlement, transaction reporting, inventory tools, or access to business credit?"
+                ],
+                "recommended_model": "tiered"
+            },
+            "status": "ready"
+        },
+        "error": null
+    },
+    "meta": null
+}

@@ -156,7 +156,9 @@ def test_email_delivery_and_preferences(
         # `document.shared` event. The registry (Slice 1, unchanged) creates
         # B's in-app row AND (Slice 2, new) enqueues an `email.notification`
         # job for B, since B's "documents" category is ON by default.
-        created = a.post("/api/v1/documents", headers=wh_a, json={"template_key": "one_pager"})
+        # D-DOC-1: `document.shared` goes to the document's OWNER (never the whole workspace),
+        # so B (a team member) creates the document and founder A shares it.
+        created = b.post("/api/v1/documents", headers=wh_b, json={"template_key": "one_pager"})
         assert created.status_code == 201, created.text
         doc_id = created.json()["data"]["id"]
 

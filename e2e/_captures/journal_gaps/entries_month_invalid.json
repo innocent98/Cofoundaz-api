@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "month must look like 2026-09.",
+    "field_errors": [
+      {
+        "field": "month",
+        "message": "Use YYYY-MM."
+      }
+    ]
+  }
+}

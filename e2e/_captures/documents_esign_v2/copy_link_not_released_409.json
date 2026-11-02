@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "SIGNER_NOT_RELEASED",
+      "message": "This signer's turn hasn't come yet: their link is released when the signer before them signs.",
+      "field_errors": []
+    }
+  }
+}

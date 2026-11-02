@@ -1,0 +1,53 @@
+{
+  "data": {
+    "assessment_id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+    "status": "completed",
+    "dimension_scores": {
+      "product": 78,
+      "market": 75,
+      "money": 71,
+      "legal": 100,
+      "team": 75
+    },
+    "overall_provisional": 80,
+    "narrative": "Your strongest area is legal (100). Focus next on money (71).",
+    "health": {
+      "score": 80,
+      "previous_score": null,
+      "delta": null,
+      "dimensions": [
+        {
+          "key": "product",
+          "score": 78,
+          "previous": null,
+          "delta": null
+        },
+        {
+          "key": "market",
+          "score": 75,
+          "previous": null,
+          "delta": null
+        },
+        {
+          "key": "money",
+          "score": 71,
+          "previous": null,
+          "delta": null
+        },
+        {
+          "key": "legal",
+          "score": 100,
+          "previous": null,
+          "delta": null
+        },
+        {
+          "key": "team",
+          "score": 75,
+          "previous": null,
+          "delta": null
+        }
+      ]
+    }
+  },
+  "meta": null
+}

@@ -1,0 +1,25 @@
+{
+  "data": {
+    "id": "1e11e128-d90f-49f0-a6b1-07d2c3ec0105",
+    "startup_id": "6e6ad325-212b-4bae-83cc-de61d79fd0a6",
+    "name": "Q4 launch push",
+    "objective": "launch",
+    "budget": 50000,
+    "channel_mix": {
+      "email": 60.0,
+      "search": 40.0
+    },
+    "status": "paused",
+    "metrics": {},
+    "segment_ids": [
+      "cae793ce-890c-47bc-9952-501b8f7cd4c4"
+    ],
+    "period_start": null,
+    "period_end": null,
+    "launched_at": "2026-09-30T08:33:04.935405Z",
+    "completed_at": null,
+    "created_at": "2026-09-30T08:33:04.914353Z",
+    "updated_at": "2026-09-30T08:33:04.942746Z"
+  },
+  "meta": null
+}

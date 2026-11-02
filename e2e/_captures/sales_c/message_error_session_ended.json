@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SESSION_ENDED",
+    "message": "This practice session has ended.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "data": {
+    "invoices": [
+      {
+        "id": "739fb635-6d37-43e3-a9d9-0ccfd34be652",
+        "number": "INV-2026-002",
+        "client_name": "Beta Foods",
+        "client_email": "delivered+inv-48eb44fadeaf@resend.dev",
+        "line_items": [
+          {
+            "description": "Consulting",
+            "quantity": 2,
+            "unit_price_minor": 7000,
+            "amount_minor": 14000
+          }
+        ],
+        "subtotal_minor": 14000,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 14000,
+        "currency": "NGN",
+        "terms": "due_on_receipt",
+        "status": "draft",
+        "issued_on": null,
+        "due_on": null,
+        "paid_at": null,
+        "auto_remind": false,
+        "transaction_id": null,
+        "pay_url": null,
+        "pay_provider": null,
+        "paid_via": null,
+        "created_at": "2026-10-21T13:02:20.003918Z",
+        "updated_at": "2026-10-21T13:02:20.003918Z"
+      }
+    ]
+  },
+  "meta": null
+}

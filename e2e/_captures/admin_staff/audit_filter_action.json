@@ -1,0 +1,30 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "dbae4e87-5cbe-49d8-aeec-fb1ee49f7200",
+        "created_at": "2026-10-31T12:42:00.079587+00:00",
+        "action": "staff.revoked",
+        "actor_user_id": "e5c34d48-9d41-4a01-ba44-34b34ce128bc",
+        "actor_email": "delivered+e2e-ff8c41fb21a4@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_staff",
+        "entity_id": "00a50a9f-83b5-4789-9758-f5dd4560e20c",
+        "reason": "Moved to another team",
+        "details": {
+          "role": "admin",
+          "email": "delivered+e2e-a5de604fd277@resend.dev",
+          "scopes": [
+            "moderation",
+            "support"
+          ]
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

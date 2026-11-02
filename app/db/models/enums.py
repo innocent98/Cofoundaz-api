@@ -42,6 +42,38 @@ class MembershipRole(enum.StrEnum):
     investor = "investor"
 
 
+# Module access sets, single-sourced so the dashboard KPI tiles can't drift from the module
+# routes they summarise (an investor must not read revenue off the dashboard when the Finance
+# route itself would 403 them).
+FINANCE_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member, MembershipRole.accountant}
+)
+MARKETING_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+SALES_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+# D1/D4: the legal module's reader set. A legal advisor reads all three Slice 1 surfaces and
+# writes none of them. One definition, shared by the routes and the notification AUDIENCE map, so
+# a reminder naming a filing can never reach a role the route itself would 403.
+LEGAL_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member, MembershipRole.legal_advisor}
+)
+# D-MIS-8: Today's Mission reads (and the AI briefing, which is built from the same workspace
+# data) are founder + team member only. One definition, shared by routes, search and notifications.
+MISSION_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+BRIEFING_ROLES: frozenset[MembershipRole] = MISSION_ROLES
+# D-DOC-1: until per-person grants land (BE-B), every Documents read and write (documents, files,
+# shares, signature requests, templates) is founder + team member only. Single-sourced for routes,
+# search, activity and notifications so none can drift from the route gate.
+DOCUMENT_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+
+
 class MembershipStatus(enum.StrEnum):
     active = "active"
     suspended = "suspended"
@@ -185,6 +217,11 @@ class DocumentKind(enum.StrEnum):
     financial_model = "financial_model"
     meeting_notes = "meeting_notes"
     one_pager = "one_pager"
+    # Legal drafts (D-DOC-4): structured templates with a not-legal-advice disclaimer.
+    nda = "nda"
+    contractor_agreement = "contractor_agreement"
+    founder_agreement = "founder_agreement"
+    safe = "safe"
     custom = "custom"
 
 
@@ -196,6 +233,14 @@ class DocumentStatus(enum.StrEnum):
 class ShareAccess(enum.StrEnum):
     view = "view"
     comment = "comment"
+
+
+class ScanStatus(enum.StrEnum):
+    """Malware-scan state of an uploaded Documents file; only `clean` may be signed or shared."""
+
+    pending = "pending"
+    clean = "clean"
+    blocked = "blocked"
 
 
 class SignatureRequestStatus(enum.StrEnum):
@@ -210,6 +255,13 @@ class CourseLevel(enum.StrEnum):
     advanced = "advanced"
 
 
+class ReviewStatus(enum.StrEnum):
+    """Editorial state of Academy content: everything starts as a draft until it is reviewed."""
+
+    draft = "draft"
+    reviewed = "reviewed"
+
+
 class BusinessPlanStatus(enum.StrEnum):
     generating = "generating"
     complete = "complete"
@@ -220,3 +272,367 @@ class BriefingStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
+
+
+class ChatMessageRole(enum.StrEnum):
+    user = "user"
+    assistant = "assistant"
+
+
+class ChatMessageStatus(enum.StrEnum):
+    # user turns are `ready` immediately; an assistant turn starts `generating`
+    # (Pattern B: the POST enqueues ai.cofounder.reply; the FE polls) and ends
+    # `ready` or `failed` (LLM error / over budget).
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
+class EnrichmentStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+
+
+class ContentStatus(enum.StrEnum):
+    draft = "draft"
+    scheduled = "scheduled"
+    published = "published"
+
+
+class ChannelStatus(enum.StrEnum):
+    active = "active"
+    testing = "testing"
+    paused = "paused"
+    not_started = "not_started"
+
+
+class ChannelKey(enum.StrEnum):
+    organic_social = "organic_social"
+    paid_social = "paid_social"
+    search = "search"
+    email = "email"
+    content_seo = "content_seo"
+    partnerships = "partnerships"
+    events = "events"
+    referral = "referral"
+
+
+class CampaignObjective(enum.StrEnum):
+    awareness = "awareness"
+    leads = "leads"
+    sales = "sales"
+    launch = "launch"
+
+
+class CampaignStatus(enum.StrEnum):
+    draft = "draft"
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+
+
+class CopyPlatform(enum.StrEnum):
+    """Where a piece of copy will run; picks the length limit (see services/marketing/platforms)."""
+
+    x = "x"
+    instagram = "instagram"
+    linkedin = "linkedin"
+    facebook = "facebook"
+    whatsapp = "whatsapp"
+    google_ads_headline = "google_ads_headline"
+    google_ads_description = "google_ads_description"
+    email_subject = "email_subject"
+
+
+class FitLevel(enum.StrEnum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class MarketingGenerationKind(enum.StrEnum):
+    copy = "copy"
+    plan_week = "plan_week"
+    channel_plan = "channel_plan"
+    channel_fit = "channel_fit"
+    content_gap = "content_gap"
+
+
+class MarketingGenerationStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
+class AssetType(enum.StrEnum):
+    ad = "ad"
+    social_post = "social_post"
+    email = "email"
+    landing_headline = "landing_headline"
+    product_description = "product_description"
+
+
+class CopyTone(enum.StrEnum):
+    bold = "bold"
+    friendly = "friendly"
+    expert = "expert"
+    playful = "playful"
+
+
+class RiskLevel(enum.StrEnum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class AssumptionStatus(enum.StrEnum):
+    untested = "untested"
+    testing = "testing"
+    validated = "validated"
+    invalidated = "invalidated"
+
+
+class ExperimentType(enum.StrEnum):
+    smoke_test = "smoke_test"
+    landing_page = "landing_page"
+    ad_test = "ad_test"
+    other = "other"
+
+
+class ExperimentStatus(enum.StrEnum):
+    draft = "draft"
+    live = "live"
+    ended = "ended"
+
+
+class InterviewVerdict(enum.StrEnum):
+    supports = "supports"
+    contradicts = "contradicts"
+    neutral = "neutral"
+
+
+class SurveyStatus(enum.StrEnum):
+    draft = "draft"
+    open = "open"
+    closed = "closed"
+
+
+class MarketingMetricName(enum.StrEnum):
+    visits = "visits"
+    impressions = "impressions"
+    clicks = "clicks"
+    conversions = "conversions"
+    spend = "spend"
+
+
+class TransactionDirection(enum.StrEnum):
+    inflow = "in"
+    outflow = "out"
+
+
+class TransactionSource(enum.StrEnum):
+    manual = "manual"
+    bank = "bank"
+    accounting = "accounting"
+    paystack = "paystack"
+    flutterwave = "flutterwave"
+    invoice = "invoice"
+    expense = "expense"
+
+
+class ConnectionStatus(enum.StrEnum):
+    active = "active"
+    needs_attention = "needs_attention"
+    disconnected = "disconnected"
+
+
+class PaymentProvider(enum.StrEnum):
+    paystack = "paystack"
+    flutterwave = "flutterwave"
+
+
+class InvoiceStatus(enum.StrEnum):
+    draft = "draft"
+    sent = "sent"
+    paid = "paid"
+
+
+class InvoiceTerms(enum.StrEnum):
+    net_15 = "net_15"
+    net_30 = "net_30"
+    due_on_receipt = "due_on_receipt"
+
+
+class FinancialModelStatus(enum.StrEnum):
+    generating = "generating"
+    complete = "complete"
+    failed = "failed"
+
+
+class CalendarEventType(enum.StrEnum):
+    milestone = "milestone"
+    meeting = "meeting"
+    deadline = "deadline"
+    task = "task"
+
+
+class LeadSource(enum.StrEnum):
+    manual = "manual"
+    csv = "csv"
+    referral = "referral"
+    inbound = "inbound"
+    event = "event"
+    other = "other"
+
+
+class LeadStatus(enum.StrEnum):
+    new = "new"
+    working = "working"
+    qualified = "qualified"
+    disqualified = "disqualified"
+    converted = "converted"
+
+
+class StageKind(enum.StrEnum):
+    open = "open"
+    won = "won"
+    lost = "lost"
+
+
+class ActivityKind(enum.StrEnum):
+    call = "call"
+    email = "email"
+    meeting = "meeting"
+    note = "note"
+
+
+class ClosedReason(enum.StrEnum):
+    price = "price"
+    timing = "timing"
+    competitor = "competitor"
+    no_budget = "no_budget"
+    ghosted = "ghosted"
+    other = "other"
+
+
+class CoachDifficulty(enum.StrEnum):
+    friendly = "friendly"
+    neutral = "neutral"
+    tough = "tough"
+
+
+class CoachSessionStatus(enum.StrEnum):
+    # `scoring` while the scorecard job runs; `ended` once it finished (scorecard present) or
+    # failed (scorecard null + scorecard_error set; ending again retries).
+    active = "active"
+    scoring = "scoring"
+    ended = "ended"
+
+
+class CallPrepStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
+class SequenceStatus(enum.StrEnum):
+    active = "active"
+    paused = "paused"
+    archived = "archived"
+
+
+class EnrollmentStatus(enum.StrEnum):
+    active = "active"
+    completed = "completed"
+    replied = "replied"
+    unsubscribed = "unsubscribed"
+    bounced = "bounced"
+    stopped = "stopped"
+
+
+class SendStatus(enum.StrEnum):
+    # `pending` is a reservation made BEFORE the SMTP call (at-most-once); `unknown` is a
+    # reservation that was never confirmed (the worker died mid-send): never resent.
+    pending = "pending"
+    sent = "sent"
+    failed = "failed"
+    bounced = "bounced"
+    unknown = "unknown"
+
+
+class SendKind(enum.StrEnum):
+    sequence = "sequence"
+    follow_up = "follow_up"
+
+
+class SuppressionReason(enum.StrEnum):
+    unsubscribed = "unsubscribed"
+    bounced = "bounced"
+    complained = "complained"
+
+
+class DraftKind(enum.StrEnum):
+    sequence_step = "sequence_step"
+    follow_up = "follow_up"
+
+
+class DraftStatus(enum.StrEnum):
+    generating = "generating"
+    ready = "ready"
+    failed = "failed"
+
+
+class StaffRole(enum.StrEnum):
+    admin = "admin"
+    super_admin = "super_admin"
+
+
+class FlagStage(enum.StrEnum):
+    """A product label shown on the flag card. It does not change who gets the feature."""
+
+    beta = "beta"
+    ga = "ga"
+    internal = "internal"
+
+
+class ApprovalAction(enum.StrEnum):
+    """What a Super Admin may ask a second Super Admin to approve (Admin slice E)."""
+
+    maintenance_enable = "maintenance_enable"
+    global_signout = "global_signout"
+
+
+class ApprovalStatus(enum.StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    expired = "expired"
+    cancelled = "cancelled"
+
+
+class IpAssetType(enum.StrEnum):
+    trademark = "trademark"
+    patent = "patent"
+    copyright = "copyright"
+    domain = "domain"
+
+
+class IpAssetStatus(enum.StrEnum):
+    # Three values, not four. The FE table displays "Expired", but its add drawer cannot create
+    # it: expiry is a consequence of renewal_on passing, so it is derived, never stored (D9).
+    drafting = "drafting"
+    filed = "filed"
+    registered = "registered"
+
+
+class ComplianceStatus(enum.StrEnum):
+    # Stored. `upcoming`, `due_soon` and `overdue` are derived from due_on against today (D12).
+    open = "open"
+    done = "done"
+
+
+class Recurrence(enum.StrEnum):
+    none = "none"
+    monthly = "monthly"
+    quarterly = "quarterly"
+    annually = "annually"

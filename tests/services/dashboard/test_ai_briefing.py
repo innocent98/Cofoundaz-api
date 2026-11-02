@@ -3,22 +3,63 @@ from app.services.dashboard.ai_briefing import (
     build_dashboard_briefing_messages,
     dashboard_briefing_schema,
 )
+from tests.factories import create_startup, create_user
 
 
 def test_schema_shape():
     s = dashboard_briefing_schema()
     assert s["type"] == "object"
     assert s["additionalProperties"] is False
-    assert s["required"] == ["briefing", "risks", "opportunities"]
-    for k in ("briefing", "risks", "opportunities"):
-        assert s["properties"][k]["type"] == "string"
+    assert s["required"] == ["briefing", "risks", "opportunities", "actions"]
+    assert s["properties"]["briefing"]["type"] == "string"
+    risk = s["properties"]["risks"]["items"]
+    assert risk["required"] == ["severity", "text", "module"]
+    assert risk["additionalProperties"] is False
+    action = s["properties"]["actions"]
+    assert (action["minItems"], action["maxItems"]) == (1, 3)
+    assert action["items"]["properties"]["kind"]["enum"] == ["task", "navigate"]
 
 
 def test_schema_is_stub_fillable():
     out = StubLLMClient().complete_json([], schema=dashboard_briefing_schema(), max_tokens=10)
     assert "[stub-llm]" in out["briefing"]
-    assert "[stub-llm]" in out["risks"]
-    assert "[stub-llm]" in out["opportunities"]
+    assert out["risks"][0]["severity"] == "high"
+    assert "[stub-llm]" in out["risks"][0]["text"]
+    assert out["actions"][0]["kind"] == "task"
+
+
+def test_builder_includes_finance_context_when_known():
+    msgs = build_dashboard_briefing_messages(
+        name="N",
+        industry=None,
+        stage=None,
+        health_band=None,
+        mission_total=0,
+        mission_done=0,
+        upcoming_count=0,
+        tasks_done_week=0,
+        runway_months=4.5,
+        runway_status="ok",
+        monthly_revenue="10,000 NGN",
+    )
+    assert "Runway: 4.5 months" in msgs[1].content
+    assert "10,000 NGN" in msgs[1].content
+
+
+def test_builder_says_not_tracked_without_finance():
+    msgs = build_dashboard_briefing_messages(
+        name="N",
+        industry=None,
+        stage=None,
+        health_band=None,
+        mission_total=0,
+        mission_done=0,
+        upcoming_count=0,
+        tasks_done_week=0,
+        runway_status="no_data",
+    )
+    assert "Runway: no_data" in msgs[1].content
+    assert "not tracked" in msgs[1].content
 
 
 def test_builder_is_pii_free_and_includes_context():
@@ -26,7 +67,6 @@ def test_builder_is_pii_free_and_includes_context():
         name="Cofoundaz",
         industry="Fintech",
         stage="idea",
-        health_score=31,
         health_band="at_risk",
         mission_total=3,
         mission_done=1,
@@ -36,5 +76,38 @@ def test_builder_is_pii_free_and_includes_context():
     assert [m.role for m in msgs] == ["system", "user"]
     body = msgs[1].content
     assert "Cofoundaz" in body and "Fintech" in body
-    assert "31" in body and "at_risk" in body
+    assert "at_risk" in body
     assert "3" in body and "1" in body  # mission counts present
+
+
+def test_prompt_never_carries_the_health_score_number():
+    """The card shows the live score; prose that quoted a stale one contradicted it (88 vs 95)."""
+    msgs = build_dashboard_briefing_messages(
+        name="Cofoundaz",
+        industry="Fintech",
+        stage="idea",
+        health_band="strong",
+        mission_total=5,
+        mission_done=2,
+        upcoming_count=0,
+        tasks_done_week=7,
+    )
+    assert "Health score" not in msgs[1].content
+    assert "strong" in msgs[1].content
+    assert "Health Score number" in msgs[0].content
+
+
+def test_context_has_no_health_score_key(db):
+    from app.db.models.health_score import HealthScore
+    from app.services.dashboard.service import gather_briefing_context
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    db.add(
+        HealthScore(startup_id=s.id, score=88, band="strong", dimension_scores={}, config_version=1)
+    )
+    db.flush()
+    ctx = gather_briefing_context(db, s)
+    assert "health_score" not in ctx
+    assert ctx["health_band"] == "strong"
+    assert "88" not in str(build_dashboard_briefing_messages(**ctx)[1].content)

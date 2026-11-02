@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This transaction is managed by an expense; edit or delete the expense instead.",
+    "field_errors": [
+      {
+        "field": "source",
+        "message": "This transaction is managed by an expense; edit or delete the expense instead."
+      }
+    ]
+  }
+}

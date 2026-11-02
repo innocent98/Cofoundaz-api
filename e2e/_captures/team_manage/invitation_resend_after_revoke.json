@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVITATION_NOT_PENDING",
+    "message": "This invitation was already accepted or revoked.",
+    "field_errors": []
+  }
+}

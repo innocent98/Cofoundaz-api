@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "id": "fbad42a4-2627-4d9e-935c-0523c43aeb2e",
+      "brand": "visa",
+      "last4": "4081",
+      "exp_month": "12",
+      "exp_year": "2030",
+      "bank": "TEST BANK",
+      "is_default": true
+    }
+  ],
+  "meta": null
+}

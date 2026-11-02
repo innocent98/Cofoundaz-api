@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "points.0",
+        "message": "Value error, Record a metric against a channel or a campaign, not both."
+      }
+    ]
+  }
+}

@@ -1,0 +1,342 @@
+import uuid
+from datetime import date, datetime
+from typing import Any
+
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+from app.db.mixins import TimestampMixin, UUIDMixin
+from app.db.models.enums import (
+    CampaignObjective,
+    CampaignStatus,
+    ChannelKey,
+    ChannelStatus,
+    ContentStatus,
+    FitLevel,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
+    MarketingMetricName,
+)
+
+
+class ContentCalendarEntry(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "content_calendar"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    channel: Mapped[ChannelKey] = mapped_column(
+        Enum(ChannelKey, native_enum=False, length=20), nullable=False
+    )
+    status: Mapped[ContentStatus] = mapped_column(
+        Enum(ContentStatus, native_enum=False, length=12),
+        nullable=False,
+        default=ContentStatus.draft,
+    )
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    media_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Marketing-scoped upload (`marketing_media`), never the all-roles Documents storage.
+    media_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketing_media.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MarketingMedia(UUIDMixin, TimestampMixin, Base):
+    """An image attached to a calendar post. Kept apart from `document_files` on purpose:
+    Documents are readable by every role, unpublished campaign assets must not be."""
+
+    __tablename__ = "marketing_media"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    url: Mapped[str] = mapped_column(String(1000), nullable=False)
+
+
+class MarketingChannel(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "marketing_channels"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    key: Mapped[ChannelKey] = mapped_column(
+        Enum(ChannelKey, native_enum=False, length=20), nullable=False
+    )
+    status: Mapped[ChannelStatus] = mapped_column(
+        Enum(ChannelStatus, native_enum=False, length=12),
+        nullable=False,
+        default=ChannelStatus.not_started,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_fit_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fit_note_generated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    fit_level: Mapped[FitLevel | None] = mapped_column(
+        Enum(FitLevel, native_enum=False, length=10), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("startup_id", "key", name="uq_marketing_channel_startup_key"),
+    )
+
+
+class AudienceSegment(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "audience_segments"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    est_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    persona_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("business_records.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+
+class Campaign(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "campaigns"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    objective: Mapped[CampaignObjective] = mapped_column(
+        Enum(CampaignObjective, native_enum=False, length=12), nullable=False
+    )
+    budget: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    channel_mix: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[CampaignStatus] = mapped_column(
+        Enum(CampaignStatus, native_enum=False, length=12),
+        nullable=False,
+        default=CampaignStatus.draft,
+    )
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    launched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CampaignSegment(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "campaign_segments"
+
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    segment_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("audience_segments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    __table_args__ = (UniqueConstraint("campaign_id", "segment_id", name="uq_campaign_segment"),)
+
+
+class MarketingAiGeneration(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "marketing_ai_generations"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    kind: Mapped[MarketingGenerationKind] = mapped_column(
+        Enum(MarketingGenerationKind, native_enum=False, length=12), nullable=False, index=True
+    )
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[MarketingGenerationStatus] = mapped_column(
+        Enum(MarketingGenerationStatus, native_enum=False, length=12),
+        nullable=False,
+        default=MarketingGenerationStatus.generating,
+    )
+    output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class SeoKeyword(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "seo_keywords"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    keyword: Mapped[str] = mapped_column(String(200), nullable=False)
+    volume: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    difficulty: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_page: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # When volume / difficulty / rank were last typed in (they are manual estimates, D-MKT-8).
+    metrics_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class TrackedPage(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "tracked_pages"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    checklist: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+    __table_args__ = (UniqueConstraint("startup_id", "url", name="uq_tracked_page_startup_url"),)
+
+
+class BrandPositioning(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "brand_positioning"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    audience: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    need: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    product: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    differentiator: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    statement: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class MarketingMetric(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "marketing_metrics"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ts: Mapped[date] = mapped_column(Date, nullable=False)
+    channel: Mapped[ChannelKey | None] = mapped_column(
+        Enum(ChannelKey, native_enum=False, length=20), nullable=True
+    )
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    metric: Mapped[MarketingMetricName] = mapped_column(
+        Enum(MarketingMetricName, native_enum=False, length=12), nullable=False
+    )
+    value: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (Index("ix_marketing_metrics_startup_ts", "startup_id", "ts"),)
+
+
+class CampaignReadout(UUIDMixin, TimestampMixin, Base):
+    """The weekly AI readout of one active campaign (PRD 10: "AI weekly readout card").
+    One row per campaign per ISO week."""
+
+    __tablename__ = "campaign_readouts"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[MarketingGenerationStatus] = mapped_column(
+        Enum(MarketingGenerationStatus, native_enum=False, length=12),
+        nullable=False,
+        default=MarketingGenerationStatus.generating,
+    )
+    output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "week_start", name="uq_campaign_readout_week"),
+    )

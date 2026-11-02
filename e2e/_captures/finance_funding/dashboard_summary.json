@@ -1,0 +1,101 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good afternoon",
+      "first_name": "Ada",
+      "startup_name": "Funded Co 03aa04"
+    },
+    "health": {
+      "status": "pending_assessment",
+      "score": null,
+      "band": null,
+      "message": "Complete your kickoff assessment to generate your Health Score.",
+      "dimensions": [],
+      "top_recommendations": []
+    },
+    "mission": {
+      "mission_date": "2026-10-24",
+      "status": "pending",
+      "streak": 0,
+      "tasks": [],
+      "empty_reason": "weekend_off"
+    },
+    "mission_status": "ok",
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": 0,
+      "tasks_trend": {
+        "delta": null,
+        "series": []
+      },
+      "metrics": {
+        "revenue": {
+          "status": "ok",
+          "value_minor": 500000,
+          "currency": "NGN",
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "runway": {
+          "status": "ok",
+          "months": 27.0,
+          "is_low": false,
+          "monthly_burn_minor": 1000000,
+          "cash_on_hand_minor": 27000000,
+          "currency": "NGN",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "pipeline": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": false
+    },
+    "briefing": {
+      "status": "empty",
+      "message": "I'll have your first briefing ready tomorrow morning once I've seen a full day of your workspace.",
+      "id": null,
+      "actions": []
+    },
+    "risks": {
+      "status": "empty",
+      "message": "No open risks. I'm watching runway, deadlines, and pipeline for you.",
+      "items": []
+    },
+    "opportunities": {
+      "status": "empty",
+      "message": "Opportunities I spot (grants, quick wins, market signals) will show up here.",
+      "items": []
+    }
+  },
+  "meta": null
+}

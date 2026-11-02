@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+from app.api.v1.endpoints.auth import password as password_module
+from app.core.errors import EmailDeliveryFailed
 from app.core.redis import get_redis
 from app.core.security import get_password_hash, verify_password
 from app.db.models.auth import AuthSession, AuthToken
@@ -13,6 +15,30 @@ def test_forgot_is_generic_for_unknown(client):
     r = client.post("/api/v1/auth/password/forgot", json={"email": "ghost@x.com"})
     assert r.status_code == 200
     assert r.json()["data"]["sent"] is True
+
+
+def test_forgot_stays_generic_when_email_provider_fails(client, db, monkeypatch):
+    """Only a real account reaches the send, so a provider failure must not change the
+    response (no enumeration signal) and must not leave an undelivered token behind."""
+
+    class _FailingSender:
+        def send(self, msg):
+            raise EmailDeliveryFailed()
+
+    u = create_user(db, email="forgot-fail@x.com", status=UserStatus.active)
+    db.flush()
+    get_redis().delete("password_reset_cooldown:forgot-fail@x.com")
+    unknown = client.post("/api/v1/auth/password/forgot", json={"email": "nobody-here@x.com"})
+    monkeypatch.setattr(password_module, "get_email_sender", lambda: _FailingSender())
+    r = client.post("/api/v1/auth/password/forgot", json={"email": "forgot-fail@x.com"})
+    assert r.status_code == 200, r.text
+    assert r.json() == unknown.json()
+    tokens = (
+        db.query(AuthToken)
+        .filter(AuthToken.user_id == u.id, AuthToken.purpose == AuthTokenPurpose.password_reset)
+        .count()
+    )
+    assert tokens == 0
 
 
 def test_forgot_disabled_account_is_generic_and_issues_no_token(client, db):

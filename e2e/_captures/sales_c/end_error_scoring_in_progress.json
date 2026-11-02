@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SCORING_IN_PROGRESS",
+    "message": "The scorecard is already being written.",
+    "field_errors": []
+  }
+}

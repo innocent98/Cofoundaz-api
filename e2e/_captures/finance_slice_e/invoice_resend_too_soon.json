@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RESEND_TOO_SOON",
+    "message": "This invoice was emailed a moment ago. Try again in 60 seconds.",
+    "field_errors": []
+  }
+}

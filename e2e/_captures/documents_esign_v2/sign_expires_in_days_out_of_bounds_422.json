@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Please check the highlighted fields.",
+      "field_errors": [
+        {
+          "field": "expires_in_days",
+          "message": "Input should be less than or equal to 365"
+        }
+      ]
+    }
+  }
+}

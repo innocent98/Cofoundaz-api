@@ -9,6 +9,7 @@ from app.services.documents.files import (
     delete_file,
     get_file,
     list_files,
+    purge_object,
     serialize_file,
     upload_file,
 )
@@ -37,7 +38,8 @@ def test_upload_persists_row_and_writes_asset(db, tmp_path, monkeypatch):
         content=b"%PDF-1.4",
         folder="Legal",
     )
-    assert f.filename == "nda.pdf" and f.size_bytes == 8 and f.url
+    assert f.filename == "nda.pdf" and f.size_bytes == 8
+    assert f.url is None and f.is_private  # private from the first byte, no public URL
     assert (tmp_path / f.storage_key).read_bytes() == b"%PDF-1.4"
 
 
@@ -87,8 +89,10 @@ def test_delete_removes_row_and_asset(db, tmp_path, monkeypatch):
     )
     key_path = tmp_path / f.storage_key
     assert key_path.exists()
-    delete_file(db, f)
+    target = delete_file(db, f)
     assert db.query(DocumentFile).filter_by(id=f.id).first() is None
+    assert key_path.exists()  # the object outlives the row until the caller has committed
+    purge_object(target)
     assert not key_path.exists()
 
 
@@ -106,5 +110,5 @@ def test_serialize_shape(db, tmp_path, monkeypatch):
     )
     out = serialize_file(f)
     assert out["filename"] == "x.pdf" and out["content_type"] == "application/pdf"
-    assert out["size_bytes"] == 3 and out["folder"] == "F" and out["url"]
+    assert out["size_bytes"] == 3 and out["folder"] == "F" and "url" not in out
     assert "storage_key" not in out  # internal, not exposed

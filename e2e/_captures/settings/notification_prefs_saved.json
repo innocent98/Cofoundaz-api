@@ -1,0 +1,20 @@
+{
+  "data": {
+    "master_email": true,
+    "categories": {
+      "documents": true,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true
+    },
+    "digest_mode": "weekly",
+    "digest_time": "07:30",
+    "digest_day": 4,
+    "quiet_enabled": true,
+    "quiet_from": "21:00",
+    "quiet_until": "06:30",
+    "timezone": "Africa/Lagos"
+  },
+  "meta": null
+}

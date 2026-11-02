@@ -1,0 +1,78 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "0c5f25b4-b232-4d96-9702-ee7f57078748",
+        "sequence_id": "d963c6b9-7624-40f6-892b-8ada260ddba5",
+        "lead_id": null,
+        "contact_id": "7f0d5cfd-34ec-47b9-ac9c-c3d1749c053d",
+        "email": "ada-820fa3ad@prospect.example",
+        "first_name": "Ada",
+        "last_name": "Test",
+        "company": "",
+        "sender_name": "delivered+team_member-de7e9dc783eb",
+        "sender_email": "delivered+team_member-de7e9dc783eb@resend.dev",
+        "status": "active",
+        "stopped_reason": null,
+        "current_step": 1,
+        "next_send_at": "2026-10-25T13:56:49.653129Z",
+        "created_at": "2026-10-22T13:56:49.528007Z"
+      },
+      {
+        "id": "655c1443-4947-4077-a95a-a926cf286964",
+        "sequence_id": "d963c6b9-7624-40f6-892b-8ada260ddba5",
+        "lead_id": "f33ca44d-1fad-4c4e-9f74-3f8931c9534c",
+        "contact_id": null,
+        "email": "dayo-820fa3ad@prospect.example",
+        "first_name": "Dayo",
+        "last_name": "Lead",
+        "company": "Dayo Co",
+        "sender_name": "delivered+team_member-de7e9dc783eb",
+        "sender_email": "delivered+team_member-de7e9dc783eb@resend.dev",
+        "status": "active",
+        "stopped_reason": null,
+        "current_step": 1,
+        "next_send_at": "2026-10-25T13:56:49.702959Z",
+        "created_at": "2026-10-22T13:56:49.528007Z"
+      },
+      {
+        "id": "6f152971-c520-4483-a268-e0d507f57bd0",
+        "sequence_id": "d963c6b9-7624-40f6-892b-8ada260ddba5",
+        "lead_id": null,
+        "contact_id": "3f25394f-af02-4059-b499-c11431f1064d",
+        "email": "chi-820fa3ad@prospect.example",
+        "first_name": "Chi",
+        "last_name": "Test",
+        "company": "",
+        "sender_name": "delivered+team_member-de7e9dc783eb",
+        "sender_email": "delivered+team_member-de7e9dc783eb@resend.dev",
+        "status": "active",
+        "stopped_reason": null,
+        "current_step": 1,
+        "next_send_at": "2026-10-25T13:56:49.727612Z",
+        "created_at": "2026-10-22T13:56:49.528007Z"
+      },
+      {
+        "id": "95374ce3-fcac-40b9-8c3f-46736d90ce97",
+        "sequence_id": "d963c6b9-7624-40f6-892b-8ada260ddba5",
+        "lead_id": null,
+        "contact_id": "a0e5e1f6-4503-41b1-aac4-83272014ce2c",
+        "email": "bayo-820fa3ad@prospect.example",
+        "first_name": "Bayo",
+        "last_name": "Test",
+        "company": "",
+        "sender_name": "delivered+team_member-de7e9dc783eb",
+        "sender_email": "delivered+team_member-de7e9dc783eb@resend.dev",
+        "status": "active",
+        "stopped_reason": null,
+        "current_step": 1,
+        "next_send_at": "2026-10-25T13:56:49.759290Z",
+        "created_at": "2026-10-22T13:56:49.528007Z"
+      }
+    ],
+    "total": 4,
+    "limit": 50,
+    "offset": 0
+  },
+  "meta": null
+}

@@ -1,0 +1,36 @@
+{
+    "data": {
+        "mission_date": "2026-10-18",
+        "status": "complete",
+        "streak": 1,
+        "tasks": [
+            {
+                "id": "60b9a252-f6fa-407c-b6ff-04ed23b6306b",
+                "roadmap_task_id": null,
+                "title": "Define today's first customer-validation task",
+                "reason": null,
+                "effort": "medium",
+                "status": "rejected",
+                "order": 0,
+                "completed_at": null,
+                "reject_reason": "Doesn't apply",
+                "milestone": null
+            },
+            {
+                "id": "847a7c81-02ce-480d-ba45-2e697374a3dd",
+                "roadmap_task_id": null,
+                "title": "Mission walk: test task",
+                "reason": null,
+                "effort": "medium",
+                "status": "done",
+                "order": 1,
+                "completed_at": "2026-10-18T00:23:53.858103+00:00",
+                "reject_reason": null,
+                "milestone": null
+            }
+        ],
+        "empty_reason": null,
+        "assigned_to_me": []
+    },
+    "meta": null
+}

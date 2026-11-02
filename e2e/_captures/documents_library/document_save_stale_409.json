@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "DOCUMENT_VERSION_CONFLICT",
+      "message": "This document was changed elsewhere. Reload and reapply your edits.",
+      "field_errors": []
+    }
+  }
+}

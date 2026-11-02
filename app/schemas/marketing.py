@@ -1,0 +1,513 @@
+import uuid
+from datetime import date, datetime
+from typing import Any
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.db.models.enums import (
+    AssetType,
+    CampaignObjective,
+    CampaignStatus,
+    ChannelKey,
+    ChannelStatus,
+    ContentStatus,
+    CopyPlatform,
+    CopyTone,
+    FitLevel,
+    MarketingGenerationKind,
+    MarketingGenerationStatus,
+    MarketingMetricName,
+)
+
+
+class CalendarEntryCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    channel: ChannelKey
+    status: ContentStatus = ContentStatus.draft
+    body: str | None = None
+    media_ref: str | None = Field(default=None, max_length=500)
+    media_id: uuid.UUID | None = None
+    campaign_id: uuid.UUID | None = None
+    scheduled_at: datetime | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _title_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be blank.")
+        return v
+
+
+class CalendarEntryUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
+    channel: ChannelKey | None = None
+    status: ContentStatus | None = None
+    body: str | None = None
+    media_ref: str | None = Field(default=None, max_length=500)
+    media_id: uuid.UUID | None = None
+    campaign_id: uuid.UUID | None = None
+    scheduled_at: datetime | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _title_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Title cannot be blank.")
+        return v
+
+
+class MediaResponse(BaseModel):
+    id: uuid.UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    created_at: datetime
+
+
+class CalendarEntryResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    created_by: uuid.UUID | None
+    title: str
+    channel: ChannelKey
+    status: ContentStatus
+    body: str | None
+    media_ref: str | None
+    media_id: uuid.UUID | None = None
+    media: MediaResponse | None = None
+    campaign_id: uuid.UUID | None = None
+    scheduled_at: datetime | None
+    published_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChannelUpdate(BaseModel):
+    status: ChannelStatus | None = None
+    notes: str | None = None
+
+
+class ChannelStats(BaseModel):
+    """Last 30 days of numbers recorded against this channel (channel-scoped points only)."""
+
+    visits: int = 0
+    impressions: int = 0
+    clicks: int = 0
+    conversions: int = 0
+    spend: int = 0
+    has_data: bool = False
+
+
+class ChannelResponse(BaseModel):
+    id: uuid.UUID
+    key: ChannelKey
+    status: ChannelStatus
+    notes: str | None
+    ai_fit_note: str | None = None
+    fit_level: FitLevel | None = None
+    fit_note_generated_at: datetime | None = None
+    stats_30d: ChannelStats | None = None
+
+
+class OverviewResponse(BaseModel):
+    scheduled_this_week: int
+    active_channels: int
+    active_campaigns: int | None = None
+    top_channel_by_conversions: str | None = None
+    ai_content_ideas: int | None = None
+
+
+SEGMENT_TEXT_ATTRIBUTES = ("location", "business_type", "company_size", "income_band")
+SEGMENT_ATTRIBUTES = (*SEGMENT_TEXT_ATTRIBUTES, "channel_acquired", "behaviour_tags")
+
+
+def validate_segment_definition(v: dict[str, Any]) -> dict[str, Any]:
+    """D-MKT-5: a segment is a few known attributes, shown as chips. Unknown keys and wrong shapes
+    are rejected, blanks dropped, so the FE can render every definition it reads back."""
+    clean: dict[str, Any] = {}
+    for key, value in v.items():
+        if key not in SEGMENT_ATTRIBUTES:
+            raise ValueError(
+                f"Unknown attribute '{key}'. Use one of: {', '.join(SEGMENT_ATTRIBUTES)}."
+            )
+        if key == "behaviour_tags":
+            if not isinstance(value, list) or len(value) > 10:
+                raise ValueError("behaviour_tags must be a list of at most 10 tags.")
+            tags = []
+            for t in value:
+                if not isinstance(t, str) or len(t.strip()) > 40:
+                    raise ValueError("Each behaviour tag must be text of at most 40 characters.")
+                if t.strip():
+                    tags.append(t.strip())
+            if tags:
+                clean[key] = list(dict.fromkeys(tags))
+            continue
+        if not isinstance(value, str) or len(value.strip()) > 100:
+            raise ValueError(f"{key} must be text of at most 100 characters.")
+        if key == "channel_acquired" and value.strip() not in {c.value for c in ChannelKey}:
+            raise ValueError("channel_acquired must be one of the marketing channels.")
+        if value.strip():
+            clean[key] = value.strip()
+    return clean
+
+
+class SegmentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    definition: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("definition")
+    @classmethod
+    def _valid_definition(cls, v: dict[str, Any]) -> dict[str, Any]:
+        return validate_segment_definition(v)
+
+    est_size: int | None = Field(default=None, ge=0)
+    persona_id: uuid.UUID | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be blank.")
+        return v
+
+
+class SegmentUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    definition: dict[str, Any] | None = None
+
+    @field_validator("definition")
+    @classmethod
+    def _valid_definition(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return None if v is None else validate_segment_definition(v)
+
+    est_size: int | None = Field(default=None, ge=0)
+    persona_id: uuid.UUID | None = None
+
+
+class SegmentResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    name: str
+    definition: dict[str, Any]
+    est_size: int | None
+    persona_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+def _validate_channel_mix(v: dict[str, float]) -> dict[str, float]:
+    valid = {c.value for c in ChannelKey}
+    for key, pct in v.items():
+        if key not in valid:
+            raise ValueError(f"Unknown channel: {key}")
+        if not 0 <= pct <= 100:
+            raise ValueError(f"channel_mix[{key}] must be between 0 and 100.")
+    return v
+
+
+class CampaignCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    objective: CampaignObjective
+    budget: int = Field(default=0, ge=0)
+    channel_mix: dict[str, float] = Field(default_factory=dict)
+    segment_ids: list[uuid.UUID] = Field(default_factory=list)
+    period_start: date | None = None
+    period_end: date | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be blank.")
+        return v
+
+    @field_validator("channel_mix")
+    @classmethod
+    def _valid_channel_mix(cls, v: dict[str, float]) -> dict[str, float]:
+        return _validate_channel_mix(v)
+
+
+class CampaignUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    objective: CampaignObjective | None = None
+    budget: int | None = Field(default=None, ge=0)
+    channel_mix: dict[str, float] | None = None
+    status: CampaignStatus | None = None
+    segment_ids: list[uuid.UUID] | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+
+    @field_validator("channel_mix")
+    @classmethod
+    def _valid_channel_mix(cls, v: dict[str, float] | None) -> dict[str, float] | None:
+        if v is None:
+            return v
+        return _validate_channel_mix(v)
+
+
+class CampaignResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    name: str
+    objective: CampaignObjective
+    budget: int
+    channel_mix: dict[str, float]
+    status: CampaignStatus
+    metrics: dict[str, Any]
+    segment_ids: list[uuid.UUID]
+    period_start: date | None
+    period_end: date | None
+    launched_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChannelPlanRequest(BaseModel):
+    objective: CampaignObjective
+    budget: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional monthly budget in cents (matches campaign budget).",
+    )
+
+
+class CopyGenerateRequest(BaseModel):
+    asset_type: AssetType
+    channel: ChannelKey | None = None
+    audience_segment_id: uuid.UUID | None = None
+    tone: CopyTone
+    key_message: str = Field(min_length=1, max_length=2000)
+    cta: str | None = Field(default=None, max_length=200)
+    campaign_id: uuid.UUID | None = None
+    platform: CopyPlatform | None = None
+
+
+class RefineRequest(BaseModel):
+    variant_index: int = Field(ge=0, le=2)
+    instruction: str = Field(min_length=1, max_length=500)
+
+    @field_validator("instruction")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Instruction cannot be blank.")
+        return v
+
+
+class PlatformInfo(BaseModel):
+    key: CopyPlatform
+    label: str
+    limit: int
+    kind: str
+
+
+class GenerationResponse(BaseModel):
+    id: uuid.UUID
+    startup_id: uuid.UUID
+    campaign_id: uuid.UUID | None = None
+    kind: MarketingGenerationKind
+    status: MarketingGenerationStatus
+    inputs: dict[str, Any]
+    output: dict[str, Any]
+    error: str | None
+    stale: bool | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class KeywordCreate(BaseModel):
+    keyword: str = Field(min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+
+class KeywordUpdate(BaseModel):
+    keyword: str | None = Field(default=None, min_length=1, max_length=200)
+    volume: str | None = Field(default=None, max_length=20)
+    difficulty: int | None = Field(default=None, ge=0, le=100)
+    current_rank: int | None = Field(default=None, ge=0)
+    target_page: str | None = Field(default=None, max_length=500)
+
+    @field_validator("keyword")
+    @classmethod
+    def _keyword_not_explicit_null(cls, v: str | None) -> str | None:
+        if v is None:
+            raise ValueError("keyword may not be null")
+        return v
+
+
+class KeywordResponse(BaseModel):
+    id: uuid.UUID
+    keyword: str
+    volume: str | None
+    difficulty: int | None
+    current_rank: int | None
+    target_page: str | None
+    # volume / difficulty / rank are typed in by hand (no SEO data provider): say so, and when.
+    source: str = "manual"
+    metrics_updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TrackedPageCreate(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+
+
+class TrackedPageUpdate(BaseModel):
+    checklist: dict[str, bool] = Field(default_factory=dict)
+
+
+class TrackedPageResponse(BaseModel):
+    id: uuid.UUID
+    url: str
+    checklist: dict[str, bool]
+    completed: int
+    total: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PositioningUpsert(BaseModel):
+    audience: str | None = Field(default=None, max_length=300)
+    need: str | None = Field(default=None, max_length=300)
+    product: str | None = Field(default=None, max_length=300)
+    category: str | None = Field(default=None, max_length=300)
+    differentiator: str | None = Field(default=None, max_length=300)
+
+
+class PositioningResponse(BaseModel):
+    audience: str | None
+    need: str | None
+    product: str | None
+    category: str | None
+    differentiator: str | None
+    statement: str | None
+
+
+class MetricPoint(BaseModel):
+    ts: date
+    channel: ChannelKey | None = None
+    campaign_id: uuid.UUID | None = None
+    metric: MarketingMetricName
+    # Upper bound = Postgres int32 max, so an oversized value is a 422 (not a 500 at flush).
+    value: int = Field(ge=0, le=2_147_483_647)
+
+    @model_validator(mode="after")
+    def _one_scope(self) -> "MetricPoint":
+        # D-MKT-7: each number is recorded at exactly one scope (a channel, a campaign, or the
+        # whole workspace). A point at two scopes would be counted twice in the funnel.
+        if self.channel is not None and self.campaign_id is not None:
+            raise ValueError("Record a metric against a channel or a campaign, not both.")
+        return self
+
+
+class MetricRow(BaseModel):
+    id: uuid.UUID
+    ts: date
+    metric: MarketingMetricName
+    value: int
+    channel: ChannelKey | None
+    campaign_id: uuid.UUID | None
+    campaign_name: str | None
+    created_at: datetime
+
+
+class MetricsIngest(BaseModel):
+    # Bound the batch so one request can't insert an unbounded number of rows.
+    points: list[MetricPoint] = Field(default_factory=list, max_length=1000)
+
+
+class TrafficPoint(BaseModel):
+    week_start: date
+    visits: int
+
+
+class ChannelCac(BaseModel):
+    """`spend`/`conversions` are the totals the CAC is computed from. They include the share of
+    campaign-scoped numbers attributed by the campaign's `channel_mix` (D-MKT-7); that share is
+    broken out in `attributed_*`, and `estimated` is true whenever it is non-zero."""
+
+    channel: ChannelKey
+    spend: int
+    conversions: int
+    cac: int | None
+    attributed_spend: int = 0
+    attributed_conversions: int = 0
+    estimated: bool = False
+
+
+class Funnel(BaseModel):
+    impressions: int
+    clicks: int
+    conversions: int
+    click_through_rate: float
+    conversion_rate: float
+
+
+class LeaderboardRow(BaseModel):
+    campaign_id: uuid.UUID
+    name: str
+    clicks: int
+    conversions: int
+    spend: int
+    cac: int | None
+
+
+class AnalyticsResponse(BaseModel):
+    range: str
+    traffic_by_week: list[TrafficPoint]
+    cac_by_channel: list[ChannelCac]
+    funnel: Funnel
+    leaderboard: list[LeaderboardRow]
+
+
+class CampaignStats(BaseModel):
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+    click_through_rate: float
+    conversion_rate: float
+
+
+class PerformancePoint(BaseModel):
+    date: date
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+
+
+class PerformanceChannel(BaseModel):
+    channel: ChannelKey
+    share_percent: float
+    impressions: int
+    clicks: int
+    conversions: int
+    spend: int
+    estimated: bool
+
+
+class CampaignPerformance(BaseModel):
+    campaign_id: uuid.UUID
+    name: str
+    range: str
+    totals: CampaignStats
+    series: list[PerformancePoint]
+    by_channel: list[PerformanceChannel]
+
+
+class ReadoutResponse(BaseModel):
+    id: uuid.UUID
+    campaign_id: uuid.UUID
+    week_start: date
+    status: MarketingGenerationStatus
+    output: dict[str, Any]
+    figures: dict[str, Any] | None = None
+    error: str | None
+    created_at: datetime

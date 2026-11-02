@@ -1,0 +1,5 @@
+{
+  "pages": 3,
+  "first_page_text": "Founders agreement (e2e)",
+  "certificate_text": "Cofoundaz signature certificate\nCertificate page 2\nThese are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's\nemail, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature\nand is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction;\ntake legal advice for high-stakes agreements.\n"
+}

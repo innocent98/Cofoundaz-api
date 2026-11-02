@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "335f5ba2-1460-4e86-a1c9-1ecec66b7c64",
+    "mode": "roleplay",
+    "deal_id": null,
+    "deal_name": null,
+    "scenario": "Cold call to a bakery chain about card readers",
+    "persona": "Busy owner",
+    "difficulty": "neutral",
+    "status": "active",
+    "scorecard": null,
+    "scorecard_error": null,
+    "created_at": "2026-10-21T12:30:34.164924+00:00",
+    "ended_at": null,
+    "messages": []
+  },
+  "meta": null
+}

@@ -16,7 +16,424 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_Last reconciled: 2026-09-19 · **Module 03 (AI Co-Founder) Dashboard AI Briefing** shipped on
+_Funding is not revenue (2026-10-24): branch `fix/funding-not-revenue` — D-FIN-11: `Funding`-category inflows stay in cash on hand, the cash-flow chart and paid-in capital, but are out of `monthly_revenue`, `monthly_burn`/runway, the dashboard Revenue/Runway tiles, the AI briefing figure and a new model's `revenue_0_minor` (one change in `cashflow._trailing_3mo_totals`). No migration, no shape change. Live journey `e2e/test_finance_funding_not_revenue.py`; SOP `docs/sop/2026-10-24-funding-not-revenue.md`; FE guide `docs/fe-integration-guide-finance-funding.md` (cash-flow guide updated). FE follow-up: Funding nudge on large one-off inflows, card labels._
+
+_Profile name (2026-10-24): branch `feature/profile-name-update` — `PATCH /auth/me` `{full_name}` (trimmed, 1-120 chars, no control chars, unknown fields ignored) returns the `GET /auth/me` shape; invited members had no way to set a name (Academy re-walk D2). Live captures `e2e/_captures/profile/`; FE guide `docs/fe-integration-guide-profile.md`; SOP `docs/sop/2026-10-24-profile-name-update.md`._
+
+_Academy BE (2026-10-22): branch `feature/academy-be` (migration `0069_academy_content`, chained on `0068_sales_sequences` after #171/#172 merged) — Module 17 BE gaps 1, 2, 4 to 10, 13, 14, 16, 17, 20, 23, 24: real content in `content/academy/` (8 courses, 24 lessons, 6 paths, 10 articles, all `draft`) loaded by `python -m app.services.learning.content`, YouTube video object, certificate PDF + `CFZ-XXXX-XXXX-XXXX` + public `GET /verify/{code}` + LinkedIn URL, private notes, resume position, per-hero-course AI reasons, notifications, search. Live e2e + FE guide `docs/fe-integration-guide-academy.md`; SOP `docs/sop/2026-10-22-academy-be.md`. PR: see below. FE slice and re-walk next._
+
+_Sales Hub slice B (2026-10-22): branch `feature/sales-sequences` — sequences + real SMTP sending (cPanel mailbox), IMAP bounce poller, signed unsubscribe, suppression, caps, auto-pause, AI step drafts, deal follow-up send; migration `0068_sales_sequences`; live-verified against a fake SMTP server and a synthetic DSN, **real mailbox delivery and real bounce reading NOT verified live**. SOP `docs/sop/2026-10-22-sales-sequences.md`; FE guide `docs/fe-integration-guide-sales-sequences.md`. PR open, not merged._
+
+_Sales Hub slice C (2026-10-21): branch `feature/sales-coach-analytics` — AI role-play coach + scorecard, call prep, Sales analytics BE; migration `0064_sales_coach`; mentor 403 + over-budget states live-verified with the stub LLM (real model not yet checked). SOP `docs/sop/2026-10-21-sales-coach-analytics.md`; FE guide `docs/fe-integration-guide-sales-coach-analytics.md`. Built, awaiting review and merge._
+
+_Finance D9 + D10 fixes (2026-10-24): branch `fix/finance-d9-d10` (no migration) — closes the two API defects of the final Finance re-check. D9: chat replies no longer stay `generating` (a failing last attempt ends the turn `failed` with a founder-visible message and an `ai.cofounder.reply.failed` event; turns older than `AI_REPLY_STALE_SECONDS` are failed on read and on the next send); the empty completion came from reasoning tokens exhausting the 800 cap, so chat now uses `LLM_CHAT_MAX_TOKENS=3000`, the client retries once with 4x the budget on `finish_reason=length`, and logs `finish_reason`. D10: every imported ledger source (bank, accounting, Paystack, Flutterwave) is category-only, PATCH and DELETE give the shared 422. Live e2e `e2e/test_finance_d9_d10.py`. **Not live-verified**: the real model answering the "levers" question (lead verifies). SOP `docs/sop/2026-10-24-finance-d9-d10.md`. PR open, not merged._
+
+_Finance slice (e) (2026-10-24): branch `feature/finance-slice-e` (migration `0071_finance_slice_e`, after `0070_finance_model_mono`) — closes the five API asks of the Finance re-walk. Runway reads the Financial Model's hiring and one-off rows (D-FIN-12; `model_rows` in the runway response; `PUT /finance/runway/assumptions` now 422s on `hiring_plan`, `one_offs`, `capex` and unknown fields). Invoices: `account_id` client picker (workspace-validated), `notes`, `payment_details`, `POST /finance/invoices/{id}/resend` (60 s cooldown + 10/min). Advisor: numbers-only finance paragraph for Finance roles only. XLSX: transactions and model exports, no new dependency. D2: missing receipt file answers 410 `RECEIPT_FILE_MISSING` and clears `has_receipt`. Unit 3998 passed at 97.00%; live e2e `e2e/test_finance_slice_e.py` (full e2e 92 passed). **Not live-verified**: Cloudinary receipts, the Advisor's model reply, rate limits over real time. SOP `docs/sop/2026-10-24-finance-slice-e.md`; FE guide `docs/fe-integration-guide-finance-slice-e.md`. PR open, not merged._
+
+_Finance model + Mono (2026-10-24): branch `feature/finance-model-mono` (migration `0070_finance_model_mono`, parent `0069_academy_content`, so it merges after Academy #173) — Finance BE slice (d), closes gap rows 11, 12 and 13 of `cofoundaz/docs/checklist/finance-prd-gaps.md` (BE; FE parts open) and adds the Mono bank adapter (sandbox only). Model: founder-editable assumptions (`PATCH /finance/model/{id}/assumptions`, growth, COGS, opex growth, AR/AP days, start revenue/costs, hiring plan, one-offs, capex with depreciation) and `POST /finance/model/{id}/recalculate` (deterministic, no AI call, optional `refresh_actuals`); 36 months with a yearly rollup (D-FIN-8); a real balance sheet (paid-in capital from `Funding` ledger rows, totals, `Balance check` row, `balance_check` in the API). Mono: founder-only connect from a Mono Connect `code`, account id Fernet-encrypted (D-FIN-9), sync into the ledger as `bank` rows, webhook secret check, sandbox keys only unless `MONO_ALLOW_LIVE`; D-FIN-10: bank credits naming Paystack are tagged `Paystack payout` and left out of revenue, money in and cash. **Not live-verified**: the real Mono sandbox (lead's FE walk), Mono response shapes and amount unit, real webhooks. SOP `docs/sop/2026-10-24-finance-model-mono.md`; FE guide `docs/fe-integration-guide-finance-model-mono.md`. Gap rows 11-13 BE done; FE still open._
+
+_Finance ledger correctness (2026-10-22): branch `feature/finance-ledger-correctness` (migration `0067_finance_ledger_correctness`, after `0066` on `develop`) — Finance BE slice (c), closes gap rows 2 (SECURITY), 3, 15, 17, 18, 19, 28, 29 and 30 of `cofoundaz/docs/checklist/finance-prd-gaps.md` (BE; FE parts open): private receipts (Cloudinary `authenticated` / local never served statically; only `GET /finance/expenses/{id}/receipt` returns a 5 minute signed link; legacy rows privatised on first open), magic-byte upload check, `409` while a model is generating (row lock plus partial unique index), `GET /finance/categories` and case-folded category normalisation, D-FIN-3 budget actuals from every outflow with unbudgeted rows and variance fields, `limit`/`cursor` pagination on transactions, expenses and invoices, NGN only and positive amounts. Unit 3577 passed at 97.46% coverage; live e2e `e2e/test_finance_ledger_correctness.py` (33 captures). **Not live-verified**: real Cloudinary (upload, signed URL, legacy move) and 5 minute expiry over real time. SOP `docs/sop/2026-10-22-finance-ledger-correctness.md`; FE guide `docs/fe-integration-guide-finance-ledger.md`. PR pending. Slice (d) model shipped separately (entry above)._
+
+_Finance invoice automation (2026-10-21): branch `feature/finance-invoice-automation` (migration `0066_finance_invoice_automation`, stacked on `feature/finance-payments-core`) — Finance BE slice (b), closes gap rows 8, 9, 10 and 24 of `cofoundaz/docs/checklist/finance-prd-gaps.md` (BE; FE parts open): invoice PDF (`GET /finance/invoices/{id}/pdf`, also attached to the invoice and reminder emails), daily overdue scan (one-shot `finance.invoice.overdue` notification, automatic client reminders every 7 days up to 8, `POST /finance/invoices/{id}/remind` with a 24 hour gap), `finance.invoice.paid` and `finance.runway.updated` events with in-app notifications for founder, team member and accountant, NGN-only invoices (D-FIN-6; D-FIN-5 recurring stays a label). Live e2e (`e2e/test_invoice_automation.py`, 36 captures; 87 e2e passed) and full unit suite 3468 passed at 97.41% coverage; the 7 day spacing, the cap of 8 and real attachment delivery are not live-verified. SOP `docs/sop/2026-10-21-finance-invoice-automation.md`; FE guide `docs/fe-integration-guide-finance-invoices-automation.md`. PR pending. Slices (c) ledger correctness and (d) model still ahead._
+
+_Finance payments core (2026-10-21): branch `feature/finance-payments-core` (migration `0065_finance_payments_core`, stacked on `feature/sales-coach-analytics`) — Finance BE slice (a): `PaymentProvider` interface with Paystack and Flutterwave adapters, founder-only Fernet-encrypted key custody (`FINANCE_CONNECTIONS_ENCRYPTION_KEY`), `/finance/integrations` connect/sync/disconnect, idempotent NGN import (charge, fee, refund), hourly sync with row locks, invoice pay links, signed per-workspace webhooks that mark invoices paid. Live e2e uses a stub provider transport; real Paystack/Flutterwave shapes are NOT live-verified. SOP `docs/sop/2026-10-21-finance-payments-core.md`; FE guide `docs/fe-integration-guide-finance-payments.md`. Slice (b) invoice automation is shipped (entry above); (c) ledger correctness and (d) model still ahead. PR open, not merged._
+
+_Sales Hub slice A (2026-10-21): branch `feature/sales-crm-core` — CRM core BE (stages, settings, accounts, contacts, leads + CSV import + convert, deals + stage moves, activities, stall scheduler + won/stalled notifications, overview, live Dashboard `pipeline` KPI, search, activity feed), migration `0063_sales_crm_core`, mentor 403 live-verified. SOP `docs/sop/2026-10-21-sales-crm-core.md`; FE guide `docs/fe-integration-guide-sales-crm.md`. Built, awaiting review and merge (PR to `develop` pending). Module 11 is now 🟡 open: FE-A, slice B, slice C planned._
+
+_Marketing re-walk BE fixes (2026-10-21): branch `fix/marketing-rewalk-be` — overview idea count = newest ready run, plan-week `scheduled_at` never in the past, search hrefs to the item, content-gap `stale` flag, `GET /marketing/media/{id}/file`. SOP `docs/sop/2026-10-21-marketing-rewalk-be.md`; FE guide §15. PR to `develop` pending._
+
+_Marketing readout figures (2026-10-21): branch `fix/marketing-readout-figures` — weekly readout figures (spend, impressions, clicks, CTR, conversions, CAC, week-on-week) computed in Python and formatted in ₦; the model only quotes them; prose is number-verified (retry once, then template); `figures` returned beside `output`. SOP `docs/sop/2026-10-21-marketing-readout-figures.md`; FE guide §11 updated. No real-model run yet. PR to `develop` pending._
+
+_Notifications read filter (2026-10-21): branch `fix/notifications-read-filter` — every notification read path (list, unread-count, mark-read, read-all, stream initial unread) now filters by the member's current role via the single `AUDIENCE` map shared with fan-out; legacy rows hidden, not deleted. SOP `docs/sop/2026-10-21-notifications-read-filter.md`; FE guide `docs/fe-integration-guide-notifications-read-filter.md`. Closes FE re-walk gaps 12 / A5. PR to `develop` pending._
+
+_Last reconciled: 2026-10-17 (late) · **Dashboard KPIs BE** shipped on `feat/dashboard-kpis` (Module 02: real
+revenue/runway/CTR tiles, see the Module 02 section). PR to `develop` pending._
+
+_Previous reconcile: 2026-10-17 · **python-jose → PyJWT migration MERGED** (PR #122, `bbd21f2`): pip-audit is clean with an
+**empty** ignore file. **Module 13 Legal & Compliance assigned to Victoria** (issue #124, brief PR #123 `25f71da`); its
+six brainstorming checkpoints were settled on #125 (2026-10-15) and she's now writing the spec. **Infra blockers:**
+GitHub Actions jobs aren't starting (account billing/spending limit; every job fails in ~2s with 0 steps, still true
+2026-10-17), so nothing merged since 10-12 has passed CI post-merge or been staging-verified (last green staging CD
+`2ad0698`, 2026-10-02). DNS is fixed: the stale `ns1.cloudoon.com` was dropped from the `.com` delegation, though it
+still appears in the zone's own NS records. Tally unchanged: 15 complete · 1 open (12) · 10 not started._
+
+_Previous reconcile: 2026-10-12 · **Module 19 (Calendar) MERGED to `develop` via PR #119** (merge commit `6a5ab90`;
+migration `0046_calendar`, single head; built by Victoria). Its FE guide was regenerated from 17 live e2e captures before
+merge (e2e 66/66). The repo-wide red Security gate (`python-jose` **CVE-2026-85394**, Critical, no fix) was cleared by a
+documented suppression in PR #120 (`9b6f8b9`, review date 2026-11-10); the real fix, the python-jose → PyJWT migration,
+is the top backlog item. **Current module tally (supersedes the older counts below): 15 fully complete** (01–10, 17, 18,
+19, 20, 21), **1 open** (12 Finance — 6/6 in-scope slices merged, Slice 6 Integrations deferred), **10 not started**
+(11 · 13–16 · 22–26)._
+
+_Previous reconcile: 2026-10-02 · **Module 12 (Finance Hub) Slice 5 (Financial Model) SHIPPED & MERGED to `develop`
+via PR #113** (merge commit `3c2ac4d`; a `urllib3 2.7.0 → 2.8.0` CVE bump — `CVE-2026-97687/88/89`, commit `9845f3b`
+— landed during PR CI to clear the Security check). **MODULE 12 IS NOW 6 OF 6 IN-SCOPE SLICES BUILT & MERGED**
+(1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets, 5 Financial Model).
+The **Integrations slice (Slice 6)** (external bank / accounting / Stripe connectors — needs OAuth infrastructure) is
+the deferred external-connectors slice from the module design and is **formally deferred for now** (lead decision
+2026-10-02) — deferred, **not cut**: it stays tracked and the module remains 🟡 Open until Slice 6 is built or
+formally cut. Slice 5 adds a `financial_models` table, **3 endpoints under
+`/finance/model`** (`POST /generate` → **202** `{id, status: "generating"}`, `GET /model` latest — `{status: "none"}`
+when never generated, `GET /model/{id}`), an **`ai.finance.model` worker** (reads actuals → LLM picks six bounded,
+validated/clamped assumptions → deterministic engine computes P&L, cash flow and balance sheet → `complete`; AI budget
+exhausted → `failed` with `error`), and a **pure integer 3-statement engine whose balance sheet balances exactly every
+month** (net-income / ΔAR / ΔAP linkage + a paid-in-capital plug; 20k-case fuzz in review). Migration
+`0045_finance_model` (1 new table; single alembic head; `origin/develop` re-checked, still tops out at `0044`), 3 new
+routes, same RBAC as Slices 1–4b. Slice-5 unit tests **60 passed**; full unit suite 2077 passed + 2 pre-existing failures
+from the over-quota real Resend key (unrelated auth/onboarding tests; pass with `EMAIL_BACKEND=console`); live e2e
+**65/65 passed** (`e2e/test_financial_model.py::test_financial_model_journey`, 5 captures; captured balance sheet
+asserted balanced in all 12 months; no Resend-429 flake on the final run). **Semantics called out in the FE guide:**
+202 + poll; statements `null` until `complete`; `months` top-level only (statements are `{rows}`); minor units + the
+2^53 note; `failed` must be surfaced; negative cash is a signal, not a bug; sensitivity is client-side;
+**XLSX export deferred (Export button FE-only)**. SOP: `docs/sop/2026-09-30-finance-slice5.md`. FE guide:
+`docs/fe-integration-guide-finance-model.md` (new; every body pasted from the captures, unit-only claims labelled).
+**Module tally: 13 fully complete, Module 12 now built-and-merged through Slice 5 (6 of 6 in-scope slices; only the
+deferred Slice 6 Integrations/connectors work remains, deferred-for-now per the 2026-10-02 lead decision) so it stays
+under 🟡 Open until Slice 6 is built or formally cut, 12 not started.**
+
+_Previously: 2026-09-30 · **Module 12 (Finance Hub) Slice 4b (Budgets) shipped, on branch
+`feat/module-12-finance-slice4b` (off `develop` after Slice 4a merged as PR #111; not yet merged, no PR opened yet) —
+MODULE 12 IS NOW 5 OF 6 SLICES DONE** (1 Cash Flow, 2 Runway, 3 Invoices, 4a Expenses, 4b Budgets; **Slice 5 Financial
+Model** and **Slice 6 Integrations** remain open). Slice 4b adds a `budgets` table (`category` + `period_month` +
+**BIGINT** `limit_minor` + `currency` + `notes`, unique per `(startup, category, month)`), **7 endpoints under
+`/finance/budgets`** (create, list `?month=` — required, get, `PATCH` limit/notes, `DELETE`, `POST draft-from-actuals`,
+`POST copy-last-month`), and — the point of the slice — **actuals are derived on every read** from Slice 4a's expenses via
+the shared `expense_category_totals` (one grouped query for the whole list): `spent_minor` / `variance_minor` /
+`over_budget` / `percent_used` (`null` at a zero limit) are never stored or writable. **Expenses only** — a manual
+outflow transaction does not count toward a budget. A "department" card is a `category`, matched **case- and
+whitespace-exact**. The two seeders **skip categories already budgeted** (never overwrite) and return only what they
+created; `draft-from-actuals` sets each limit to last month's category expense total, `copy-last-month` copies last
+month's budgets (year rollover handled). `limit_minor` is 64-bit because budgets are aggregates. Migration
+`0044_finance_budgets` (1 new table; single alembic head; up/down/up round-trip clean; `origin/develop` re-checked, still
+tops out at `0043`), 7 new routes, same RBAC as Slices 1–4a. Full unit suite **2019 passed** (with
+`EMAIL_BACKEND=console`; the local `.env` Resend key is over quota, which fails an unrelated auth test on a plain
+run); live e2e **64/64 passed** (`e2e/test_budgets.py::test_finance_budgets_journey`, 29 new captures; no Resend-429
+flake this run); black / isort / ruff / mypy clean. **Semantics called out in the FE guide:** derived fields are never
+sent; spent = expenses only; category is the department and matches exactly (share one category picker with
+Expenses); seeders skip existing and return only-created (refetch the list); money is minor units with a 64-bit
+limit; mixed currency **not** converted and `draft-from-actuals` labels new budgets `NGN`; **the over-budget flag is
+derived — there is no over-budget notification/event this slice.** SOP: `docs/sop/2026-09-30-finance-slice4b.md`. FE
+guide: `docs/fe-integration-guide-finance-budgets.md` (new; every body pasted from the captures, unit-only and
+source-only claims labelled).
+**Module tally unchanged: 13 fully complete, 1 open (12 — Slices 1–3, 4a and 4b of 6 done; 5 Financial Model and 6
+Integrations open), 12 not started.**
+
+_Previously: 2026-09-30 · **Module 12 (Finance Hub) Slice 4a (Expenses) shipped, on branch
+`feat/module-12-finance-slice4a` (off `develop` at `5b78cb0`; not yet merged, no PR opened yet).** Slice 4a adds an
+`expenses` table (`vendor`, free-text `category`, `expense_date`, integer minor-unit `amount_minor`, `currency`,
+`recurring` flag, `notes`, optional receipt), **8 endpoints under `/finance/expenses`** (create, list
+`?category=&month=&date_from=&date_to=&recurring=`, get, `summary?month=`, `PATCH`, `DELETE`,
+`POST`/`DELETE {id}/receipt`), and — the point of the slice — **every expense posts a 1:1 linked outflow into the
+Slice 1 ledger** (`source="expense"`), with **edit-sync** (the same ledger row is updated in place) and
+**delete-reverse**, refreshing the Slice 2 runway alert + `money.runway_live` signal, so **logging an expense moves
+Cash Flow and Runway** (the composition of Slices 1–4, mirroring Slice 3's paid-invoice inflow). `_reject_invoice_managed`
+was generalized to **`_reject_managed`**: `PATCH`/`DELETE /finance/transactions/{id}` on a `source="expense"` **or**
+`source="invoice"` row is a 422. **Receipts** (PNG / JPEG / PDF, ≤ 10 MB) go through the storage backend; replace
+deletes the old file and deleting the expense deletes the file. A **category summary** returns per-category totals +
+1-dp percents. Migration `0043_finance_expenses` (1 new table; single alembic head; `origin/develop` re-checked, still
+tops out at `0042`), 8 new routes, same RBAC as Slices 1–3. Full unit suite **1942 passed**; live e2e **63/63 passed**
+(`e2e/test_expenses.py::test_finance_expenses_journey`, 39 new captures; no Resend-429 flake this run; asserts
+cash 100M → 56M on four expenses, edit → 58M, delete → 78M, receipt files created/replaced/removed on disk); black /
+isort / ruff / mypy clean. **Semantics called out in the FE guide:** an expense IS an outflow (refetch cash-flow +
+runway after any write); **document once** — log a spend as an expense OR a manual transaction, never both, or it
+double-counts; hide edit/delete on ledger rows with `source == "expense"` or `"invoice"`; money is minor units;
+`category` is free text (case-sensitive grouping); summary `percent` is 1-dp rounded; `recurring` is a stored flag
+only (**no scheduler**); `receipt_url` is a filesystem path on local storage vs an `https` URL on Cloudinary;
+single-currency assumption (mixed currency **not** converted), `currency` not ISO-validated, **no idempotency key
+on money POSTs (module-wide)**, concurrent-PATCH desync (no row lock), storage delete happens before the DB commit.
+**Budgets (Slice 4b) are still open**, as are Slices 5 and 6. SOP: `docs/sop/2026-09-30-finance-slice4a.md`. FE guide:
+`docs/fe-integration-guide-finance-expenses.md` (new; every body pasted from the captures, unit-only and source-only
+claims labelled).
+**Module tally unchanged: 13 fully complete, 1 open (12 — Slices 1–3 and 4a of 6 done; 4b Budgets, 5, 6 open), 12 not
+started.**
+
+_Previously: 2026-09-30 · **Module 12 (Finance Hub) Slice 3 of 6 (Invoices) shipped, on branch
+`feat/module-12-finance-slice3` (off `develop` at `bb9ef1e`; not yet merged, no PR opened yet).** Slice 3 adds an
+`invoices` table (server-computed subtotal / tax / total in integer minor units with half-up rounding — a
+client-supplied total is ignored; `INV-<year>-<NNN>` numbering with SAVEPOINT retry; `terms` `net_15` /
+`net_30` / `due_on_receipt`), **8 endpoints under `/finance/invoices`** (create draft, list `?status=`, get,
+`PATCH`, `send`, `mark-paid`, `mark-unpaid`, `DELETE`), a **draft → sent → paid lifecycle with a DERIVED
+`overdue` status** (sent + `due_on` < today, never stored, not settable), an **idempotent mark-paid inflow**
+(row-locked; `source="invoice"`) with an **exact mark-unpaid reversal** that also refreshes the Slice 2
+runway alert + `money.runway_live` signal — so **paying an invoice moves Cash Flow and Runway** (the
+composition of Slices 1–3) — an **invoice-managed-transaction guard** (`PATCH`/`DELETE` on a
+`source="invoice"` ledger row is a 422 "unpay the invoice instead"), and the **`email.invoice_sent` worker
+job** that emails the client via Resend (amounts in **major** units). Migration `0042_finance_invoices`
+(1 new table; single alembic head), 8 new routes (**191 operations** in the OpenAPI schema now), same RBAC as
+Slices 1–2. Full unit suite **1725 passed** (+93); live e2e **61/61 passed**
+(`e2e/test_invoices.py::test_finance_invoices_journey`, 40 new captures; no Resend-429 flake this run; the
+journey uses the file email backend and proves the delivered email live); black / isort / ruff / mypy clean.
+**Semantics called out in the FE guide:** totals are server-computed (builder numbers advisory); `overdue`
+is derived — the FE must never PATCH a status; hide edit/delete on ledger rows with `source == "invoice"`;
+money is minor units in the API but the client email shows major units; send is async/best-effort; "Download
+PDF" is FE-only; single-currency assumption (mixed currency **not** converted), `currency` not ISO-validated,
+and the reminder/overdue **scheduler is deferred** (`auto_remind` is a stored flag only). SOP:
+`docs/sop/2026-09-29-finance-slice3.md`. FE guide: `docs/fe-integration-guide-finance-invoices.md` (new; every
+body pasted from the captures, unit-only claims and the DB-backdated overdue proof labelled).
+**Module tally unchanged: 13 fully complete, 1 open (12 — Slices 1–3 of 6 done), 12 not started.**
+_The "Health at a glance" counters below were last hand-reconciled at Module 08 and have drifted; only the
+figures quoted in this paragraph were re-measured this pass._
+
+_Previously: 2026-09-29 · **Module 12 (Finance Hub) Slice 2 of 6 (Runway & Scenarios) shipped, on branch
+`feat/module-12-finance-slice2` (off `develop` at `b973548`; not yet merged, no PR opened yet).** Slice 2 adds a
+`finance_runway_settings` row per workspace (3 editable assumptions — `mom_growth_percent`,
+`hiring_spend_minor`, `one_off_costs_minor` — plus the alert dedup state), **`GET /finance/runway` +
+`PUT /finance/runway/assumptions`** (one call: `assumptions` + `baseline` + `horizon_months: 12` + three
+scenarios `base`/`best`/`worst`, each with `runway_months`, `cash_out_date`, `avg_net_burn_minor` and a
+12-point `by_month`; the PUT is partial and returns the same recomputed shape), the **`finance.runway.low`
+event + in-app notification** (fires once per transition into low runway, recovery re-arms, in-app only,
+shares the `_runway_is_low` predicate with Slice 1's `runway_low` flag), and an **informational,
+non-scoring `money.runway_live` Health Score signal** (visible on `GET /health-score/dimensions/money`;
+`value: 0` is ambiguous between cash-positive and out-of-cash, called out in the FE guide) — migration
+`0040_finance_runway` (1 new table; single alembic head), 2 new routes (**183 operations** in the OpenAPI
+schema now), same RBAC as Slice 1. Full unit suite **1632 passed**; live e2e **60/60 passed**
+(`e2e/test_finance_runway.py::test_finance_runway_journey`, 21 new captures; no Resend-429 flake this run);
+black / isort / ruff / mypy clean. **Semantics called out in the FE guide:** the Runway screen's hiring /
+one-off inputs are ₦ **thousands** while the API is **kobo** (× / ÷ 100 000); scenario `runway_months` /
+`cash_out_date` are `null` when the balance never reaches zero inside the 12-month horizon and `0.0` when
+already out of cash; scenario runway differs from `GET /finance/cash-flow` runway (it applies the saved
+assumptions). SOP: `docs/sop/2026-09-29-finance-slice2.md`. FE guide:
+`docs/fe-integration-guide-finance-runway.md` (new; every body pasted from the captures, unit-only claims
+labelled). **Module tally unchanged: 13 fully complete, 1 open (12 — Slices 1–2 of 6 done), 12 not started.**
+
+_Previously: 2026-09-29 · **Module 12 (Finance Hub) Slice 1 of 6 (Cash Flow) shipped, on branch
+`feat/module-12-finance-slice1` (off `develop`; not yet merged, no PR opened yet) — MODULE 12 IS NOW
+OPEN.** Slice 1 adds a `transactions` ledger (`amount_minor` integer minor units + ISO `currency`;
+`direction` wire values `in`/`out`, enums stored by value; `source` always `manual` this slice),
+**transactions CRUD + inline categorize** (`POST/GET/PATCH/DELETE /finance/transactions`, filters
+`uncategorized` / `category` / `direction` / `date_from` / `date_to`; negative or over-int32 amount and an
+explicit `null` on a non-nullable PATCH field -> 422), and **`GET /finance/cash-flow`** (`cash_on_hand`,
+`monthly_burn`, `monthly_revenue`, null-safe `runway_months`, `runway_low` danger flag, `currency`, and a
+6-point zero-filled `by_month` series) — migration `0039_finance_transactions` (1 new table), a new
+`app/services/finance/` package, 5 new routes behind `require_role(founder, team_member, accountant)`.
+**FE cross-check:** the cash-flow read and money-in-minor-units are **FE-aligned**. Live e2e **59/59
+passed** (`e2e/test_finance.py::test_finance_cash_flow_journey`, 5 new captures). **Semantics called out
+in the FE guide:** `runway_months` is `null` both when not burning (healthy) and when out of cash while
+burning (critical) — the FE must drive the danger banner from `runway_low`, never render null as
+"healthy"; burn/revenue are a trailing-3-calendar-month average (÷ 3), so a startup younger than 3
+months is diluted; future-dated transactions are excluded from the summary; multi-currency is **not
+converted** (single-currency workspaces only). SOP: `docs/sop/2026-09-29-finance-slice1.md`. FE guide:
+`docs/fe-integration-guide-finance-cashflow.md` (new; every success body pasted from the captures,
+uncaptured shapes labelled). **Module 12 moves from not started to open: 13 modules fully complete, 1
+open (12), 12 not started** (26 total; 09 Validation Hub is still with the junior, in review as PR #103).
+
+_Previously: 2026-09-29 · **Module 10 (Marketing Hub) Slice 5 of 5 (Performance Analytics) shipped, on
+branch `feat/module-10-marketing-slice5` (off Slice 4's merge, PR #105; not yet merged, no PR opened
+yet) — MODULE 10 IS NOW FULLY COMPLETE, all 5 slices.** Slice 5 adds a `marketing_metrics` time-series
+store (optional `channel` / `campaign_id` dimensions; new `MarketingMetricName` enum — `visits`,
+`impressions`, `clicks`, `conversions`, `spend`; `spend`/`cac` in cents), **`POST /marketing/metrics`**
+bulk ingestion (validated: enum/negative/int32-bounded `value`/foreign `campaign_id` -> 422, batch
+capped at 1000), **`GET /marketing/analytics?range=7d|30d|90d`** (four widgets: `traffic_by_week`,
+`cac_by_channel`, `funnel`, conversions-desc `leaderboard`; range-filtered SQL, UTC cutoff inclusive of
+today, empty/zero-safe 1-dp percentage rates, tenant-scoped leaderboard join), and the **Overview
+fills** — `top_channel_by_conversions`, `ai_content_ideas` and `active_campaigns` are now real values
+instead of `null` — migration `0038_marketing_metrics` (1 new table), 2 new routes behind the existing
+`require_role(founder, team_member)`. **FE cross-check:** the analytics read + Overview fills are
+**FE-aligned**; ingestion has **no FE screen yet (API-first, provisional)**. Live e2e **58/58 passed**
+(`e2e/test_marketing.py::test_marketing_analytics_journey`, 3 new captures). **Semantics called out in
+the FE guide:** metrics are additive and the funnel sums all rows regardless of scope (ingesting the
+same events at two scopes double-counts it — visible in the sample capture, `conversion_rate` 8.1);
+`traffic_by_week` omits empty weeks (FE must gap-fill); ranges are the last N days inclusive of today
+in UTC; the FE leaderboard reads `analytics.leaderboard`, not `campaign.metrics` (which stays `{}`).
+SOP: `docs/sop/2026-09-29-marketing-slice5.md`. FE guide:
+`docs/fe-integration-guide-marketing-analytics.md` (new; every success body pasted from the captures,
+uncaptured shapes labelled). **Module 10 moves from open to fully complete: 13 modules fully complete,
+0 open, 13 not started** (26 total; 09 Validation Hub is still with the junior, in review as PR #103).
+Slice 4 (SEO Tools) has since merged (PR #105).
+
+_Previously: 2026-09-29 · **Module 10 (Marketing Hub) Slice 4 of 5 (SEO Tools) shipped, on branch
+`feat/module-10-marketing-slice4` (off Slice 3b's merge point, PR #104; not yet merged, no PR opened
+yet):** four sub-features under `/marketing` — a **keyword tracker** (manual metrics; `volume` is a
+string to match the FE `SEOKeyword` type), an **on-page checklist** (tracked pages carrying a fixed
+8-item boolean checklist, merge-toggled, duplicate url per workspace -> 422 via SAVEPOINT), **brand
+positioning** (1 record per workspace, server-composed `statement`, `null` when all parts blank), and
+**AI content-gap suggestions** (new `content_gap` kind on `marketing_ai_generations`, worker
+`ai.marketing.content_gap` grounded in tracked keywords, same `POST -> 202 -> poll` seam) — migration
+`0037_seo_tools` (3 new tables), 13 new routes behind the existing `require_role(founder,
+team_member)`. **FE cross-check:** keyword tracker + positioning are **FE-aligned** to the current
+UI; the on-page checklist + content-gap have **no FE screen yet (build-ahead, shapes provisional)**
+and are flagged as such in the FE guide. Live e2e **57/57 passed**
+(`e2e/test_marketing.py::test_marketing_seo_journey`, 8 new captures). SOP:
+`docs/sop/2026-09-29-marketing-slice4.md`. FE guide: `docs/fe-integration-guide-marketing-seo.md`
+(new; every success body pasted from the captures, uncaptured shapes labelled). Slice 5
+(Performance Analytics) remains planned. **Module 10 remains open (Slice 4 of 5 done): 12 modules
+fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-28 · **Module 10 (Marketing Hub) Slice 3b of 5 shipped, on branch
+`feat/module-10-marketing-slice3b` (off Slice 3a; not yet merged, no PR opened yet):** the second
+half of the AI layer — an **AI channel-plan recommender** (standalone `objective` + `budget?` →
+an 8-channel percentage split always summing to 100 + rationale, for the campaign wizard) and
+**per-channel AI fit notes** (one LLM call → a fit note for all 8 channels, persisted onto the
+channel rows and surfaced inline on `GET /marketing/channels`) — two new `kind` values
+(`channel_plan`/`channel_fit`) on Slice 3a's `marketing_ai_generations` table, plus two nullable
+columns on `marketing_channels` (migration `0036_channel_fit_notes`), 4 new `/marketing` endpoints
+behind the same `require_role(founder, team_member)` dependency, same `POST -> 202 -> poll` async
+pattern, metered via the same `llm_budget` guard. `normalize_channel_mix` guarantees the FE always
+gets integers summing to exactly 100 (largest-remainder rounding, even-split fallback when nothing
+valid — this is what the stub-provider capture actually exercises). Also closes a Slice 3a review
+follow-up: `plan_week_schema()`'s `channel` field now enum-constrains to `ChannelKey`, so
+`plan_week`'s `output.entries` is no longer silently empty under the stub provider. `Overview.
+ai_content_ideas` stays deferred (design decision D5 — least-defined AI surface in the PRD); the
+pre-existing `Overview.active_campaigns: null` gap (Slice 2 leftover) noted but out of scope here.
+Slice 4 (SEO Tools) and Slice 5 (Performance Analytics) remain deferred. Per-task unit tests green
+(60 passed on the focused `tests/api/` slice); live e2e **56/56 passed**
+(`e2e/test_marketing.py::test_marketing_channel_ai_journey`, 5 new captures alongside Slices 1–3a's
+19, plus a refreshed `plan_week_ready.json`). SOP: `docs/sop/2026-09-28-marketing-slice3b.md`. FE
+guide: `docs/fe-integration-guide-marketing-channel-ai.md` (new, cross-references the Slice 1/2/3a
+guides and `docs/fe-integration-guide-ai-status.md`); `docs/fe-integration-guide-marketing-copy.md`
+updated for the now-populated `plan_week` capture. **Module 10 remains open (Slice 3b of 5 done):
+12 modules fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-24 · **Module 10 (Marketing Hub) Slice 3a of 5 shipped, on branch
+`feat/module-10-marketing-slice3a` (off Slice 2; not yet merged, no PR opened yet):** the first
+half of the AI Content Assistant — AI **copy generation** (asset-type + tone-directed ad/social/
+email copy, up to 3 variants) and AI **plan-week** (a proposed 7-day content calendar, up to 7
+entries) — `marketing_ai_generations` table (migration `0035_marketing_ai_generations`,
+kind-discriminated `copy`/`plan_week`), 5 new `/marketing` endpoints behind the same
+`require_role(founder, team_member)` dependency Slices 1–2 built, both flows on the same
+`POST -> 202 -> poll` async pattern every other AI feature in this API uses, metered via the
+existing `llm_budget` guard (`error: "over_budget"` on exhaustion, same shape as every other AI
+consumer). Copy truncates the model's variants to 3; plan-week drops any entry whose `channel`
+isn't a valid `ChannelKey` — under the stub LLM provider this legitimately empties `plan_week`'s
+`output.entries` (documented explicitly in the FE guide, not a bug; **resolved in Slice 3b**, see
+above). Slice 3b (AI channel-plan recommender + fit notes), Slice 4 (SEO Tools), and Slice 5
+(Performance Analytics) remain deferred to later slices. Unit **1490 passed**; live e2e **55/55
+passed** (`e2e/test_marketing.py::test_marketing_ai_generation_journey`, 5 new captures alongside
+Slices 1–2's 14). SOP: `docs/sop/2026-09-24-marketing-slice3a.md`. FE guide:
+`docs/fe-integration-guide-marketing-copy.md` (new, cross-references the Slice 1/2 guides and
+`docs/fe-integration-guide-ai-status.md`). **Module 10 remains open (Slice 3a of 5 done): 12
+modules fully complete, 1 open, 13 not started — unchanged counts.**_
+
+_Previously: 2026-09-24 · **Module 10 (Marketing Hub) Slice 2 of 5 shipped, on branch
+`feat/module-10-marketing-slice2` (off Slice 1; not yet merged, no PR opened yet):** Campaigns +
+Audience Segments — `campaigns`/`audience_segments`/`campaign_segments` tables (migration
+`0034_campaigns_segments`), 11 new `/marketing` endpoints (6 segment + 5 campaign routes) behind
+the same `require_role(founder, team_member)` dependency Slice 1 built, a guarded
+`draft→active→paused/completed` campaign lifecycle (`_TRANSITIONS` table, illegal moves 422,
+re-issuing the current status a silent no-op, the whole `PATCH` atomic — a reviewer-caught
+partial-write gap was fixed in `79aae4d` during the build), `channel_mix` as `{ChannelKey: percent}`
+against a cents `budget` (FE derives spend), and `marketing.campaign.launched`/`.completed`
+events wired to in-app notifications via the existing Module 20 registry pattern (no email,
+matching Slice 1's precedent). `metrics` stays `{}` until Slice 5; AI content generation, SEO
+tools, and performance analytics remain deferred to Slices 3–5. Unit **1472 passed**; live e2e
+**54/54 passed** (`e2e/test_marketing.py::test_marketing_campaigns_journey`, 7 new captures
+alongside Slice 1's 7). SOP: `docs/sop/2026-09-24-marketing-slice2.md`. FE guide:
+`docs/fe-integration-guide-marketing-campaigns.md` (new, cross-references Slice 1's calendar
+guide). **Module 10 remains open (Slice 2 of 5 done): 12 modules fully complete, 1 open, 13 not
+started — unchanged counts, Module 10 was already counted open since Slice 1.**_
+
+_Previously: 2026-09-24 · **Module 10 (Marketing Hub) Slice 1 of 5 shipped, on branch
+`feat/module-10-marketing-slice1` (not yet merged, no PR opened yet):** the Content Calendar +
+Channels + Overview CRUD spine — `content_calendar`/`marketing_channels` tables (migration
+`0033_marketing_calendar_channels`), 8 `/marketing` endpoints behind
+`require_role(founder, team_member)`, a fixed 8-key lazy-seeded Channels board, and a
+`marketing.post.published` event wired to an in-app notification via the existing Module 20
+registry pattern. AI content generation, campaigns, SEO tools, and performance analytics are
+explicitly deferred to Slices 2–5 (Overview's `active_campaigns`/`top_channel_by_conversions`/
+`ai_content_ideas` stay `null` until each lands). Unit **1446 passed**; live e2e **53/53 passed**
+(`e2e/test_marketing.py`, 7 captures). SOP: `docs/sop/2026-09-24-marketing-slice1.md`. FE guide:
+`docs/fe-integration-guide-marketing-calendar.md` (new). **Module 10 moves from not-started to
+open (in progress): 12 modules fully complete, 1 open, 13 not started.**_
+
+_Previously: 2026-09-23 · **Two more Module-03-deferred AI consumers shipped, on branch
+`feat/module-03-deferred-ai-upgrades` (not yet merged, no PR opened yet):** the Learning
+Academy's (Module 17) shelf-level `recommendation_reason` on `GET /learning/recommendations`
+(migration `0031_learning_recommendations`, `ai.learning.recommendations` worker) and the
+Founder Journal's (Module 21) daily `prompt` on `GET /journal/prompts/today` (migration
+`0032_journal_prompts`, `ai.journal.prompt` worker, grounded only in operational signals —
+never journal content or mood). Both follow the same lazy-generate-then-upgrade pattern as the
+dashboard briefing/mission-reason/health-recommendation/roadmap-rationale/onboarding-panel
+upgrades already shipped under Module 03. **Module 03 itself has no remaining open follow-ups**
+(unchanged by this pass — these two consumers live in Modules 17/21, not Module 03's own
+section); this pass also fixed stale drift on the Module 17/21 checkboxes below (Module 21 had
+never been flipped to `[x]` despite being merged and already counted complete in the Snapshot).
+**Module 09 (Validation Hub) remains unstarted, still with the junior** — untouched by this
+pass. SOP: `docs/sop/2026-09-23-deferred-ai-upgrades.md`. FE guides:
+`docs/fe-integration-guide-learning-recommendations.md` (new),
+`docs/fe-integration-guide-journal.md` (§1 extended). **Counts unchanged: 12 modules fully
+complete, 0 open, 14 not started.**_
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder)'s deferred infra follow-ups reconciled —
+2 of 3 shipped, 1 dropped won't-do.** Merged (**PR #95**, commits `40996dd` →
+`fa6f0cc`) — a per-workspace daily LLM token budget
+(`llm_usage_daily` ledger + migration `0030`, `LLM_DAILY_TOKEN_BUDGET` config — default `15000`,
+`≤0` = unlimited kill-switch — enforced via `metered_complete`/`metered_complete_json` across all 8
+`ai.py` AI handlers + the business-plan generator, skip-and-keep-templated on over-budget) and a
+new workspace-scoped `GET /ai/status` endpoint (today's token usage vs. budget, `over_budget`,
+`resets_at`, recent failed AI-enrichment jobs). Of Slice 1's 3 named infra items: **✅ per-workspace
+LLM budget/rate-limiting** is done (token-volume budgeting; call-*rate* limiting specifically was
+not built — see the SOP Follow-ups) and **✅ the enrichment-status signal** is done (workspace-level
+via `/ai/status`; not a per-field/per-record marker — see the SOP Follow-ups). The third,
+a non-OpenAI/Anthropic `LLMClient` provider implementation, is **dropped won't-do (OpenAI-only,
+2026-09-21)** — a scope decision, not a build. **Module 03 now has no remaining open follow-ups.**
+SOP: `docs/sop/2026-09-21-llm-budget-ai-status.md`. FE guide:
+`docs/fe-integration-guide-ai-status.md`. **Counts unchanged (Module 03 was already complete): 12
+modules fully complete, 0 open, 14 not started.**_
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder) marked COMPLETE** — owner decision. All
+seven build slices (PR #72, #77, #81, #83, #87, #90, #92) and all six AI consumers (assessment
+narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing,
+roadmap rationale, onboarding panel), plus the LLM seam itself, are shipped. The three items Slice
+1's Deferred list still carries **unbuilt** — a non-OpenAI/Anthropic `LLMClient` provider
+implementation, per-workspace LLM budget/rate limiting, and a structured "AI enrichment failed /
+still templated" signal for FE/operator — are, by owner decision, **scoped out of Module 03's
+completion** and reclassified as non-blocking **deferred follow-ups**: still `- [ ]`, still listed
+in the Module 03 section (Slice 1's Deferred bullet) and in the Snapshot below — not built, not
+deleted, not checked off. **Counts: 12 modules fully complete, 0 open, 14 not started.**
+Checklist-only reconcile — no code, migration, or test changed in this pass._
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder) Onboarding AI Panel** shipped on branch
+`feat/onboarding-ai-panel` (7 tasks, migration `0029_startup_profile_ai_panel`), PR to `develop` to
+follow — the sixth and last of six Module-03-deferred AI consumers now built, across the seventh
+and final Module-03 build slice: completing the
+founder's onboarding signals (industry + stage + goals, the last of which to land via `PATCH
+/onboarding/state`) now writes a templated `StartupProfile.ai_panel` (nullable Text) **synchronously
+in that same request**, then enqueues a new `ai.onboarding.panel` worker job that overwrites it with
+LLM prose within seconds; `GET`/`PATCH /onboarding/state` both expose the current value flat under
+`data.ai_panel` (no field-nesting asymmetry, unlike the assessment narrative). This is a **one-shot,
+generate-once** trigger — once `ai_panel` is non-null it is never regenerated, even if the founder
+later edits industry/stage/goals (a real, separate follow-up, not started here). As a same-branch
+cleanup, the dead, never-consumed `app/platform/ai.py` (`AIPanel`/`StubAIPanel`) platform seam was
+retired — zero consumers existed anywhere in the repo; its wording lives on as the new
+`_templated_panel()` helper. Proven live end to end (`e2e/test_onboarding_ai_panel.py`, 2 captures):
+sign up → complete the three signals (templated `ai_panel` asserted, NOT `[stub-llm]`) →
+in-process worker drain → `GET /onboarding/state` (AI-authored `[stub-llm]` `ai_panel` asserted),
+over real HTTP (51 e2e passed total, no regression). **This closes the Module-03 AI-consumer set —
+all six named consumers (assessment narrative, canvas/records `ai_fill`, mission reason + health
+recommendations, dashboard briefing, roadmap rationale, onboarding panel) are now shipped, across
+seven build slices.** At the time of this shipment, Module 03 itself remained open solely for
+Slice 1's infra Deferred items. **Reconciled 2026-09-21 (see the banner above): the owner has since
+scoped those 3 infra items (non-OpenAI/Anthropic provider implementation, per-workspace LLM
+budget/rate limiting, a structured "AI enrichment failed / still templated" signal) out of Module
+03's completion as non-blocking deferred follow-ups, and marked Module 03 COMPLETE. Current counts:
+12 modules fully complete, 0 open, 14 not started — see Snapshot.** SOP:
+`docs/sop/2026-09-21-onboarding-ai-panel.md`; FE guide (new, focused):
+`docs/fe-integration-guide-onboarding-ai-panel.md`._
+
+_Previously: 2026-09-21 · **Module 03 (AI Co-Founder) Roadmap Re-plan Rationale** shipped on
+branch `feat/roadmap-replan-rationale` (7 tasks, migration `0028_roadmap_replan_rationale`), merged
+(PR #90) — the fifth of six Module-03-deferred AI consumers now built: applying a
+roadmap re-plan (`POST /replan/apply`) now writes a holistic, AI-authored `rationale` onto the new
+`RoadmapReplan.rationale` column (nullable Text) — a **templated fallback written synchronously**
+(so `apply`'s response never has to wait on the LLM) that a new `ai.roadmap.rationale` worker job
+then overwrites with LLM prose within seconds; `GET /replan/history` exposes the current value on
+every row (`null` for any pre-existing row, no backfill). **`apply`'s `rationale` is always the
+templated value, never AI-authored** — the FE must re-fetch `GET /replan/history` to see the
+upgrade; this nuance is called out explicitly in the FE guide. Uses the free-text `complete()`
+seam (Slice 1), not the structured `complete_json` mode (Slice 2) — a holistic rationale is prose,
+not typed fields, same choice §08.11's plan generator made. As a same-branch cleanup, the dead
+`roadmap.replan` job enqueued at assessment-complete (no handler was ever registered for it) was
+also removed; assessment completion still enqueues `ai.assessment.narrative` and
+`ai.health.recommendations`. Proven live end to end (`e2e/test_roadmap_replan_rationale.py`, 2
+captures): force a slip → preview → apply (templated `rationale` asserted) → in-process worker
+drain → `GET /replan/history` (AI-authored `[stub-llm]` `rationale` asserted), over real HTTP (50
+e2e passed total, no regression; 1,311 unit passed; single alembic head, no migration drift).
+**This does NOT complete Module 03**: only one Module-03-deferred AI consumer remains unbuilt —
+**the onboarding AI panel**. **Counts unchanged: still 11 modules fully complete, 1 open (03), 14
+not started.** SOP: `docs/sop/2026-09-21-roadmap-replan-rationale.md`; FE guide (extended):
+`docs/fe-integration-guide-roadmap.md` (§9)._
+
+_Previously: 2026-09-19 · **Module 03 (AI Co-Founder) Dashboard AI Briefing** shipped on
 branch `feat/dashboard-ai-briefing` (5 tasks, migration `0027_daily_briefings`), PR to `develop`
 to follow — the third of five Module-03-deferred AI consumers now built: the dashboard's
 `briefing`/`risks`/`opportunities` panel (previously permanently static — see Module 02's own
@@ -137,13 +554,16 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ## Snapshot
 
-**PRD module tally: 26 total** — **11 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (started, not finished): **03 AI Co-Founder** — Slice 1 (LLM seam + assessment narrative) merged (PR #72); Slice 2 (structured output + canvas ai-fill worker) merged (PR #77); Slice 3 (typed records ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — the mission reason line, health-score recommendations, and the dashboard AI briefing are now AI-upgraded/live, but the onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still remain unbuilt. **14 not started** (09–16 · 19 · 22–26) — of these, 09 Validation Hub is assigned to the junior (handoff + issue #62) but has no code yet.
+> ⚠️ The tally prose below predates 2026-10-12 and undercounts (it still lists 09 and 19 as not
+> started). The **current tally is in the _Last reconciled_ note at the top**: 15 complete · 1 open · 10 not started.
+
+**PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — **Slices 1–3, 4a, 4b and 5 done — 6 of 6 in-scope slices BUILT; only the deferred Integrations/external-connectors work remains** (Slice 5 Financial Model on `feat/module-12-finance-slice5`, migration `0045_finance_model`, PR pending); earlier: Slices 1–3, 4a and 4b done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); Integrations (external connectors) deferred; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
 | State | Count | Modules |
 |---|---|---|
-| ✅ Fully complete | 11 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37). Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
-| 🟡 Open (started, not finished) | 1 module | **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87) — SOP `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). The last unconsumed ai-fill job type closed in Slice 3; the mission reason line and health-score recommendations were AI-upgraded in Slice 4; the dashboard AI briefing is now live (Slice 5) — only the onboarding AI panel and roadmap replan rationale remain unbuilt — no Business Builder scope blocks this anymore: §08.11 shipped directly on Slice 1's free-text seam (`complete()`), without needing Slice 2's structured-output mode or Slice 3's records worker. |
-| ⬜ Not started | 14 modules | Validation Hub (09) · Marketing Hub (10) · Sales Hub (11) · Finance Hub (12) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
+| ✅ Fully complete | 13 modules (+spine) | Foundation/Tenancy spine · Auth+Onboarding (01) · Founder Dashboard (02) · Today's Mission (04) · Roadmap (05, all 3 slices) · Health Score (06) · Assessment (07) · **Business Builder (08, all 4 slices — §08.11 AI Business Plan Generator; `feat/ai-business-plan-generator`, merged (PR #79))** · **AI Co-Founder (03)** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2 (structured output + `business.canvas.ai_fill` worker, PR #77) merged; Slice 3 (`business.{kind}.ai_fill` typed-records worker) merged (PR #81); Slice 4 (`ai.mission.reason` + `ai.health.recommendations` workers) merged (PR #83); Slice 5 (`ai.dashboard.briefing` worker + `daily_briefings` table, migration `0027`) merged (PR #87); Slice 6 (`ai.roadmap.rationale` worker + `roadmap_replans.rationale`, migration `0028`) merged (PR #90); Slice 7 (`ai.onboarding.panel` worker + `startup_profiles.ai_panel`, migration `0029`) merged (PR #92) — SOP `docs/sop/2026-09-21-onboarding-ai-panel.md` (Slice 7), `docs/sop/2026-09-21-roadmap-replan-rationale.md` (Slice 6), `docs/sop/2026-09-19-dashboard-ai-briefing.md` (Slice 5), `docs/sop/2026-09-19-mission-health-ai.md` (Slice 4), `docs/sop/2026-09-19-records-ai-fill.md` (Slice 3), `docs/sop/2026-09-19-llm-structured-output-canvas-fill.md` (Slice 2), `docs/sop/2026-09-19-llm-seam-assessment-narrative.md` (Slice 1). All six named Module-03 AI consumers are shipped, across seven build slices (§08.11 shipped directly on Slice 1's free-text seam) — **complete; of the 3 named infra items, 2 (per-workspace LLM budget + workspace-level `GET /ai/status`) shipped 2026-09-21, merged (PR #95) and the third (non-OpenAI provider impl) is dropped won't-do (OpenAI-only, 2026-09-21) — no remaining open follow-ups in the Module 03 section** · **Learning Academy (17; PR #59)** · **Documents & Templates (18, all 4 slices; PRs #48/#50/#53/#55)** · **Notifications (20, all 4 slices; PRs #58/#60/#71/#74)** · Founder Journal (21; PR #37) · **Marketing Hub (10, all 5 slices — MODULE 10 COMPLETE)** — Slice 1 Content Calendar + Channels + Overview CRUD spine (migration `0033_marketing_calendar_channels`, PR #100) + Slice 2 Campaigns + Audience Segments (`0034_campaigns_segments`, PR #101) + Slice 3a AI copy generation + plan-week (`0035_marketing_ai_generations`, PR #102) + Slice 3b AI channel-plan recommender + fit notes (`0036_channel_fit_notes`, PR #104) + Slice 4 SEO Tools (`0037_seo_tools`, PR #105) merged to `develop`; Slice 5 Performance Analytics (`0038_marketing_metrics`, `feat/module-10-marketing-slice5`) built, PR pending — SOPs `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` + `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`. Also merged: Resend email backend (PR #54; live+verified on staging). Core spine + Dashboard also on `main` (PR #38). |
+| 🟡 Open (started, not finished) | 1 module | **Finance Hub (12)** — Slices 1–3, 4a and 4b done (Slice 1 Cash Flow: transactions ledger + CRUD/categorize + cash-flow summary, migration `0039_finance_transactions`, `feat/module-12-finance-slice1`; Slice 2 Runway & Scenarios: persisted assumptions + 3-scenario projection + `finance.runway.low` alert + informational `money.runway_live` signal, migration `0040_finance_runway`, `feat/module-12-finance-slice2`; Slice 3 Invoices: server-computed totals + `INV-<year>-<NNN>` numbering + draft→sent→paid lifecycle with derived `overdue` + idempotent paid-inflow into Cash Flow/Runway with exact reversal + client email, migration `0042_finance_invoices`, `feat/module-12-finance-slice3`; Slice 4a Expenses: 1:1 expense↔outflow with edit-sync/delete-reverse into Cash Flow/Runway + generalized managed-transaction guard (`source` expense/invoice → 422) + receipts via storage + category summary, migration `0043_finance_expenses`, `feat/module-12-finance-slice4a`, PR #111; Slice 4b Budgets: per-category monthly limits (BIGINT `limit_minor`) with actuals **derived on read from expenses** (`spent`/`variance`/`over_budget`/`percent_used`, expenses-only, exact category match) + draft-from-actuals + copy-last-month seeders (skip-existing, year rollover), migration `0044_finance_budgets`, `feat/module-12-finance-slice4b`, PR pending); Slice 5 Financial Model: async AI job (202 + poll) — LLM sets six bounded/validated assumptions, a deterministic integer engine computes P&L / cash flow / balance sheet with an exact balance invariant (paid-in-capital plug), actuals-seeded, over-budget → `failed`, XLSX export deferred, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending; the Integrations (external connectors) slice is deferred — **Module 12 is 6 of 6 in-scope slices BUILT**, see the Module 12 section below. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice{4a,4b,5}.md`, FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses,budgets,model}.md`. |
+| ⬜ Not started | 12 modules | Validation Hub (09) · Sales Hub (11, slice A built, in review; see its section) · Legal & Compliance (13) · Funding Hub (14) · Investor Readiness (15) · Marketplace (16) · Calendar & Milestones (19) · Analytics & Reports (22) · Team Collaboration (23) · Subscription & Billing (24, payment-provider-gated) · Admin Portal (25) · Super Admin Portal (26) |
 
 **Health at a glance:** **132 endpoints** (directly counted from the OpenAPI schema's
 path×method operations, `app.openapi()["paths"]` — 110 paths, 132 operations, **up from 108
@@ -213,7 +633,9 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
 - [x] `GET /invitations/{token}` (public preview)
 - [x] `POST /invitations/accept` (email-bound)
 - [x] Live E2E onboarding journey + SOP
-- [ ] _Deferred:_ onboarding AI panel (Module 03) · real notification delivery (Module 20)
+- [ ] _Deferred:_ ~~onboarding AI panel (Module 03)~~ now shipped via **Module 03 Slice 7**
+      (`ai.onboarding.panel`, 2026-09-21 — templated instant value + AI-upgrade-second, one-shot on
+      signals-complete — see that module's own section) · real notification delivery (Module 20)
 
 ## ✅ Module 07 — Startup Assessment — *shipped (PR #4)*
 
@@ -228,6 +650,18 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
 - [x] `GET /assessments` · `GET /assessments/{id}` · `GET /assessments/compare`
 - [x] Race-safety on all 3 write paths + concurrency tests
 - [x] Live E2E adaptive journey + SOP
+- [x] **PRD gaps (BE), branch `feat/assessment-prd`, 2026-10-20** — SOP `docs/sop/2026-10-20-assessment-prd.md`,
+      FE guide `docs/fe-integration-guide-assessment-prd.md`, migration `0060_assessment_stage_at_time`
+      (chains from `0058`; re-point if Legal's `0059` merges first)
+  - [x] Row 5 (security, D-ASM-1): list / detail / compare gated to founder + team member, others 403
+  - [x] Row 6 (security): `assessment.completed` to founders + team members minus completer; `assessment.quarterly.due` to founders only
+  - [x] Row 7 (D-ASM-2): `progress {answered, remaining, pct}` on start / next-question / answers / in-progress list rows
+  - [x] Row 8: `GET /assessments?status=in_progress|completed` (422 otherwise)
+  - [x] Row 9 (D-ASM-4): `/complete` returns `health {score, previous_score, delta, dimensions[]}`
+  - [x] Row 11: detail `answers` grouped by dimension with prompt, human label, `changed` / `changed_from`
+  - [x] Row 12 (D-ASM-3): `assessments.stage_at_time` snapshot at completion, on list + detail
+  - [x] Row 13: `meta.quarterly_due` (same rule as the cron) + quarterly notification CTA "Start re-assessment" with `href` `/assessment`
+  - [ ] _Open:_ gap-list rows outside this slice (FE parts, rows not assigned here); wider notification-audience review: ~~non-assessment types still reach mentors~~ done for mission / briefing / finance / marketing in the Dashboard role-leaks fix (2026-10-20)
 - [ ] _Deferred:_ AI-generated narrative (Modules 03/06) · ~~quarterly re-assessment cron~~ now
       fires via **Module 20 Slice 3** (`assessment.quarterly.due`, ≥ `QUARTERLY_REASSESS_DAYS`
       since the last completed assessment — see that module's own section)
@@ -301,7 +735,13 @@ _Decomposed in brainstorming: each slice = its own spec → plan → build → P
 - [x] `GET /roadmap/replan/history` + tree `roadmap.drift.slipped_count` + per-milestone `replanned` marker
 - [x] Live E2E (26 passed) + smoke surface — `e2e/test_roadmap_replan.py`
 - [x] SOP + FE integration guide update + checklist reconcile — `docs/sop/2026-08-26-roadmap-replan.md`, `docs/fe-integration-guide-roadmap.md` (updated)
-- [ ] _Deferred:_ AI-authored rationale (Module 03) · notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job permanently unconsumed (by design) · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids` not deduped on apply — see SOP Follow-ups
+- [ ] _Deferred:_ ~~AI-authored rationale (Module 03)~~ now shipped via **Module 03 Slice 6**
+      (`ai.roadmap.rationale`, 2026-09-21 — a holistic `rationale` field, not an upgrade of the
+      per-change `reason` strings below, which remain templated — see that module's own section) ·
+      notification on `roadmap.replanned` (Module 20) · `roadmap.replan` job's enqueue **removed**
+      2026-09-21 (dead code — no handler was ever registered for it; see Module 03 Slice 6's SOP)
+      · phase/task dates not shifted in v1 · `_milestone_precedence` unscoped query · `change_ids`
+      not deduped on apply — see SOP Follow-ups
 
 ---
 
@@ -335,6 +775,124 @@ _A daily 1–3 task mission generated lazily-on-read from the founder's roadmap 
       notification still deferred to Module 20 Slice 4 · ~~AI-authored reason line~~ now shipped
       via **Module 03 Slice 4** (`ai.mission.reason`, 2026-09-19 — see that module's own section) ·
       real `mission.*` event delivery (Module 20) · workspace-timezone base date
+
+## ✅ Module 08 — Business Builder: PRD completion, BE (2026-10-19; FE in session `fe-bb-prd`; gap list `cofoundaz/docs/checklist/business-builder-prd-gaps.md`, 21 rows)
+Slice (a), branch `feat/business-builder-prd-a`:
+- [x] Canvas `updated_by`/`updated_at`; version snapshots per save (cap 50, sources manual/ai/suggestion/restore), list/detail/restore (D-BB-1), migration 0052
+- [x] Export canvas/record list → Module 18 Document, 422 `NOTHING_TO_EXPORT` (D-BB-2)
+- [x] Suggestions consultant-only (D-BB-3); founder-only notification "{name} suggested changes to {artifact}" + "Review suggestions"; plan notification PRD copy
+- [x] Overview `updated_at` + Business Plan row; record `updated_by`; record `fields[].type` repr leak fixed
+- [x] Fixed the Monday-only `test_streak_broken_by_gap` (pinned "today")
+- SOP `docs/sop/2026-10-19-business-builder-prd-a.md` · guide `docs/fe-integration-guide-business-builder-prd.md`
+Slice (b), branch `feat/business-builder-prd-b` (stacked on (a)):
+- [x] Comments on canvases (per block via `anchor`) and records on `/team/comments`, migration 0053; canvas body carries `id`
+- [x] Per-section AI assist, append-only + deduped (D-BB-4), result in the job
+- [x] Mission & Vision "Give me 3 options" job (never writes)
+- [x] Personas from validation notes (no interviewee names in prompts; 422 `NO_VALIDATION_DATA`; append + dedupe by name)
+- [x] Pricing AI advisor (WTP questions, model, tiers; merges competitor-record prices; advice only)
+- SOP `docs/sop/2026-10-19-business-builder-prd-b.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §9-15
+Slice (c), branch `feat/business-builder-prd-c` (stacked on (b)):
+- [x] Plan options (audience/length), readiness checklist, draft-missing, live stage progress, failed state (over budget / last-attempt failure), regenerate one section; migration 0054
+- [x] Revenue projection; "Send to financial model" → Finance 3-statement model starting revenue when there are no actuals (D-BB-5 revised), `revenue_source` in model assumptions
+- [x] Value Proposition fit-lines (`meta.fit_links`, text-matched, pruned on read)
+- SOP `docs/sop/2026-10-19-business-builder-prd-c.md` · guide `docs/fe-integration-guide-business-builder-prd.md` §16-19
+
+## 🟡 Module 10 — Marketing Hub: PRD completion, BE (2026-10-20; gap list `cofoundaz/docs/checklist/marketing-prd-gaps.md`, 35 rows; decisions D-MKT-1 full TM access, D-MKT-8 no external integrations)
+Slice (a), branch `claude/feat-marketing-prd-a` (PR #156):
+- [x] Scheduler flips due `scheduled` posts to `published` (status only), `marketing.post.published` + "Scheduled post published" / "Post published" copy (rows 3, 34)
+- [x] Notification CTA "See results" + `data.href` deep links (row 4 BE)
+- [x] Campaign list stats (CTR / conversion) in `metrics`, `GET /campaigns/{id}/performance` (rows 6, 7)
+- [x] `campaign_id` on posts and copy generations + filters (row 8)
+- [x] Metric list / delete, one scope per point, CAC by channel attributed by `channel_mix` and labelled estimated (rows 26, 27, D-MKT-7)
+- [x] Interim CSV export (row 25, D-MKT-6)
+- [x] Marketing-scoped post media (rows 2, 13), migration 0061
+- SOP `docs/sop/2026-10-20-marketing-prd-a.md` · guide `docs/fe-integration-guide-marketing-prd.md`
+Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR #157):
+- [x] AI context (Business Builder, personas, positioning, segments, channel fit) in all marketing prompts, placeholder ban with one retry (row 16)
+- [x] Copy Refine (new linked generation) + platform length limits with `lengths` / `over_limit` (rows 17, 18, D-MKT-3)
+- [x] Channel `fit_level` + `stats_30d` (row 20); channel auto-status Not started to Testing on launch (row 21, D-MKT-4)
+- [x] Weekly campaign readout job (numbers-only prompt) + "Campaign performance summary ready" notification (row 5)
+- [x] Keyword `source` / `metrics_updated_at` (row 22); segment definition validation + attributes route (row 24, D-MKT-5); one channel per post kept and tested (row 12, D-MKT-2)
+- [ ] Real-model capture of the AI parts (no key in the build session; stub-model e2e only), see the SOP
+- SOP `docs/sop/2026-10-20-marketing-prd-b.md` · guide `docs/fe-integration-guide-marketing-prd.md` §7-14
+
+## 🟡 Module 11 — Sales Hub (2026-10-21; spec `wt-sales-design/docs/superpowers/specs/2026-10-21-sales-design.md`, plan `docs/superpowers/plans/2026-10-21-sales-crm-core.md`; decisions D-SAL-1..10)
+Slice A (BE, CRM core), branch `feature/sales-crm-core` — **built, awaiting review and merge** (PR to `develop` pending):
+- [x] Migration `0063_sales_crm_core` (8 tables), enums, `SALES_ROLES` = founder + team member (D-SAL-2)
+- [x] Settings (`stall_days` 3-90, default 14) and editable pipeline stages: lazy seed, max 10, one won + one lost, soft delete only when empty (D-SAL-4)
+- [x] Accounts + contacts CRUD (http/https websites only, owners must be active members)
+- [x] Leads CRUD, two-step CSV import (Redis preview, duplicates + invalid rows reported), "Make it a deal" convert (D-SAL-6)
+- [x] Deals + stage moves + stage history; lost needs a reason, reopen clears closed fields (kobo, NGN)
+- [x] Activities CRUD (call / email / meeting / note), activity bumps the deal stall clock
+- [x] Stall scheduler + `sales.deal.stalled` and `sales.deal.won` (once per deal per day) notifications, founders + team members only (D-SAL-7)
+- [x] Overview (pipeline, weighted forecast, win rate), live Dashboard `pipeline` KPI, ⌘K search (deals, accounts, contacts, leads), activity-feed rows
+- [x] Permission sweep over the route table (mentor etc. 403); mentor 403 verified live
+- [x] Live e2e `e2e/test_sales_a.py` (66 captures in `e2e/_captures/sales_a/`)
+- [x] SOP `docs/sop/2026-10-21-sales-crm-core.md` · FE guide `docs/fe-integration-guide-sales-crm.md`
+- [ ] Opus review of the permission sweep and the stall scheduler; PR merged to `develop`
+Planned:
+- [ ] **FE-A**: Pipeline board, deal drawer, stage editor, Leads (+ CSV import), Accounts (+ account page, contact drawer, timeline)
+- [x] **Slice B (BE)**, branch `feature/sales-sequences` (2026-10-22), **built, awaiting review and merge**: sequences (1 to 10 steps, merge tags validated at save), enrollments (skip reasons, manual Mark replied / Stop, stop-on-stage-change, lead convert follows), real sending from a **cPanel mailbox over SMTP** (D-SAL-1, not Resend), IMAP bounce poller (idempotent by UIDVALIDITY+UID ledger), signed public unsubscribe + List-Unsubscribe headers, workspace suppression list enforced at send time, at-most-once sends (reservation row + `SKIP LOCKED` + lease), exact caps (hourly 30 global, 100/workspace/day, 1/recipient/day via advisory lock + ledger count), bounce-rate auto-pause + founder notification + resume, "Write with AI" step drafts, deal follow-up draft + one-time send; "not configured" state (no 500); migration `0068_sales_sequences` (**re-chain onto Finance `0067` before merge**); live e2e `e2e/test_sales_b.py`; SOP `docs/sop/2026-10-22-sales-sequences.md` · FE guide `docs/fe-integration-guide-sales-sequences.md`
+  - [ ] **Not verified live:** delivery through the real cPanel mailbox and reading real bounce mail over IMAP (needs the `SALES_OUTREACH_*` env on staging: one test send, one send to a dead address)
+  - [ ] Opus review of unsubscribe signing, locking and caps; PR merged to `develop`
+  - [ ] Complaint-based auto-pause / ARF reports (no complaint feed on a plain mailbox)
+  - [ ] Send windows (business hours / weekdays): not in the spec, not enforced; decide if wanted
+- [x] **Slice C (BE)**, branch `feature/sales-coach-analytics` (2026-10-21), **built, awaiting review and merge**: role-play coach (co-founder chat protocol: 202 + `generating` + poll, 409 while replying), end-session scorecard job (discovery / objection handling / next-step close, each /10 + feedback), call prep job (one in flight per deal, regenerate), `GET /sales/analytics` (funnel by stage position, avg cycle days, win/loss reasons, activity leaderboard, 12-month closed-won revenue); migration `0064_sales_coach` (3 tables; rechain if Finance's `0064` merges first); live e2e `e2e/test_sales_c.py` (36 captures, stub LLM); SOP `docs/sop/2026-10-21-sales-coach-analytics.md` · FE guide `docs/fe-integration-guide-sales-coach-analytics.md`
+  - [ ] Real-model walk (buyer realism, scorecard calibration, latency): stub only so far
+- [ ] **FE-BC**: Sequences, Coach, Analytics, unsubscribe page
+- [ ] Health Score sales signal (D-SAL-10, follow-up; needs per-stage targets)
+- [ ] CSV import honours the mapped `source` column (today every imported lead is `csv`)
+
+## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
+- [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)
+- [x] `GET /team/members`; `/team/comments` thread (create/list/edit/delete/resolve, mentions → notification), migration 0051
+- [x] "Milestone due soon" scheduler + PRD overdue copy; dev uvicorn graceful-shutdown cap (SSE reload hang)
+- SOP `docs/sop/2026-10-18-roadmap-prd.md` · guide `docs/fe-integration-guide-roadmap-prd.md`
+
+## ✅ Module 06 — Health Score: live signals, PRD completion (2026-10-18, branch `feat/health-live-signals`)
+- [x] Live-signal engine (10 signals, stage targets, blend with assessment, 14-day ramp), contributions in points
+- [x] Triggers: events (15-min throttle), finance writes (immediate), stale-on-read, nightly pass
+- [x] Live recommendations with `href`; AI rewrite only on new recs; real sparklines; PRD summary; drill-down target + link
+- [x] History `365d` + `/history/markers`; real benchmark percentiles; PRD drop/record notifications
+- [x] Fixed: refresh-on-read was rolled back; `updated_at` never advanced on upsert
+- SOP `docs/sop/2026-10-18-health-live-signals.md` · guide `docs/fe-integration-guide-health-live.md`
+
+## ✅ Module 04 — Today's Mission: PRD completion (2026-10-18, branch `feat/mission-prd`)
+- [x] Delivery time drives per-workspace generation + `mission.ready` (PRD copy, first-task body, not on rest days)
+- [x] `GET /missions/upcoming` (7-day projection) + `PUT /missions/upcoming/order` (`mission_rank`, migration 0050)
+- [x] `GET /missions/completed` (cursor log); history `current_streak`/`best_streak`; rest days don't break streaks
+- [x] Task `milestone` chip; today `empty_reason` + `assigned_to_me`; streak-milestone PRD copy
+- SOP `docs/sop/2026-10-18-mission-prd.md` · guide `docs/fe-integration-guide-mission-prd.md`
+
+## 🟡 Staging signup 500: unverified Resend domain (2026-10-21, branch `fix/staging-signup-500`)
+
+Staging CD has been red since #152: signup returned 500 because Resend un-verified `cofoundaz.com`
+(403 "domain is not verified"; the DKIM/SPF records are missing from the live DNS zone). SOP:
+`docs/sop/2026-10-21-staging-signup-500-email-delivery.md`.
+
+- [x] Root cause found with evidence (live Resend probe, DNS on ns2/ns3, env names unchanged apart from Google, code diff #151→#152 has nothing in auth)
+- [x] Code: provider refusal → enveloped `503 EMAIL_DELIVERY_FAILED` on signup; verify/resend and forgot stay generic (SAVEPOINT, no token left behind). TDD, unit + live local captures
+- [x] FE guide `docs/fe-integration-guide-auth-emails.md` §5a (live captures in `e2e/_captures/staging-signup-500/`)
+- [ ] PR to `develop` merged (Adebayo)
+- [ ] **Adebayo:** re-add the Resend DNS records for `cofoundaz.com` at the DNS host, then Verify in Resend, then re-run the failed `CD (staging)` run
+- [ ] _Deferred:_ a generic `Exception` handler, so any other unhandled error is also enveloped (it is plain-text 500 today)
+- [ ] _Deferred:_ a DKIM-record assertion in the deploy smoke checks
+
+## ✅ Module 02 — Founder Dashboard: role leaks (2026-10-20, branch `fix/dashboard-role-leaks`)
+
+_Rows 1-3, 8, 9 of the Dashboard re-walk (FE `docs/checklist/dashboard-rewalk.md`, PR #120). Rule D-MIS-8: Today's
+Mission reads are founder + team member only. SOP `docs/sop/2026-10-20-dashboard-role-leaks.md` · guide
+`docs/fe-integration-guide-dashboard-role-leaks.md`. PR number filled in when opened._
+
+- [x] Row 1: `GET /dashboard/summary` returns `mission: null` + `mission_status: "restricted"` to other roles; no lazy mission generation for them
+- [x] Row 2: search drops `mission_task` rows and the Today's Mission page for other roles; every other source/page audited (test-enforced)
+- [x] Row 3: notification audiences narrowed: `dashboard.briefing.ready`, `mission.ready|completed|streak.milestone` (core), `finance.runway.low` (finance roles), `marketing.*` (core); every registry spec has a declared audience (test-enforced)
+- [x] Row 8: briefing prompt no longer receives the Health Score number and is told not to state it
+- [x] Row 9: Assessment page in search for team members
+- [x] Follow-up: `GET /dashboard/activity` + live `activity.created` filtered by role (mission → core, finance → `FINANCE_ROLES`, marketing → `MARKETING_ROLES`, unclassified fails closed; SQL filter keeps cursor pages full) — PR #155 (branch `fix/dashboard-activity-feed-roles`), SOP `docs/sop/2026-10-20-dashboard-activity-roles.md`, guide section 5
+- [ ] _Open:_ `kpis.tasks_done_this_week` and `calibration.assessment_complete` still go to every role (see SOP follow-ups)
+- [ ] _Open:_ `assessment.completed` activity row is open to every role (matches the Health Score marker); lead decision whether it follows the assessment read gate
+- [ ] _Deferred:_ Health Score "Teammate joined" marker never fires (`MARKER_LABELS` expects `workspace.member.joined`, invitations write `member.joined`)
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
@@ -375,22 +933,56 @@ domain logic — plus one new durable primitive, `activity_log` + `write_activit
       briefing** (new `daily_briefings` table, lazy-on-read generation gated on assessment-
       complete, `ai.dashboard.briefing` worker) — see Module 03, below, and
       `docs/sop/2026-09-19-dashboard-ai-briefing.md`
-- [ ] _Deferred:_ financial KPIs (`revenue`/`runway`/`pipeline_value`/`campaign_performance`) →
-      Modules 09–11 · realtime activity delivery (websocket/push) → Module 20 · widget-level
+- [x] **Financial/marketing KPIs, shipped 2026-10-17** (branch `feat/dashboard-kpis`, SOP
+      `docs/sop/2026-10-17-dashboard-kpis.md`, guide `docs/fe-integration-guide-dashboard-kpis.md`):
+      `kpis.metrics.{revenue,runway,pipeline,campaign_ctr}`, each with a `status`, read from
+      Finance `cash_flow_summary` and Marketing metrics (30d CTR). Role-gated via shared
+      `FINANCE_ROLES`/`MARKETING_ROLES` (also adopted by those routes), with per-tile SAVEPOINT
+      isolation. Legacy scalars kept `null`. 2189 unit (97.43%) + 67 e2e green, 6 live captures.
+  - [x] Pipeline real once Sales (Module 11) has a backend (shape already final) — done in Sales slice A (2026-10-21, `feature/sales-crm-core`, PR pending)
+  - [ ] Revenue = all inflows (incl. raises), matching Finance. Needs a revenue category split
+  - [ ] Drop legacy `kpis.revenue/runway/pipeline_value/campaign_performance` after FE reads `metrics`
+  - [x] KPI deltas/sparklines + nightly `kpi_snapshots` + threshold alerts (2026-10-17, branch `feat/kpi-snapshots`,
+        migration `0049_kpi_snapshots`, SOP `docs/sop/2026-10-17-kpi-snapshots.md`)
+- [x] **Briefing v2, shipped 2026-10-17** (branch `feat/dashboard-briefing-v2`, stacked on #129; SOP
+      `docs/sop/2026-10-17-dashboard-briefing-v2.md`; guide `docs/fe-integration-guide-dashboard-briefing-v2.md`):
+      structured risks/opportunities rows + 1 to 3 actions (server-mapped hrefs), `POST /dashboard/briefing/{id}/actions/{n}/accept`
+      ("Do it" → today's mission, idempotent, row-locked), `mission.empty_reason`, briefing-ready notification,
+      blocks restricted to founder/TM. Migration `0048_briefing_structured`. **Fixed:** the worker never registered
+      notification subscribers (job-published events were silently dropped). 2210 unit (97.47%) + 67 e2e.
+- [x] **Global ⌘K search, shipped 2026-10-17** (`GET /search`, branch `feat/global-search`; SOP
+      `docs/sop/2026-10-17-global-search.md`; guide `docs/fe-integration-guide-search.md`): pages + 15 data sources,
+      each gated by its module's roles, private chats, literal LIKE, 5/source, 60/min.
+- [ ] Dashboard PRD gaps still open (see `cofoundaz/docs/checklist/dashboard-prd-gaps.md`): realtime activity,
+      KPI snapshots/deltas/threshold alerts
+- [ ] _Deferred:_ realtime activity delivery (websocket/push) → Module 20 · widget-level
       role/grant filtering · `kpi_snapshots` table deliberately not built (nothing to persist
       yet — `daily_briefings` now exists, see above) · `_section`'s swallowed exceptions have no
       Sentry capture · no dedicated `app/schemas/dashboard.py` (plain-dict responses) ·
       `write_activity` call sites are manual, not event-bus-driven · workspace-timezone base
       date — see SOP Follow-ups
 
-## 🟡 Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
+## ✅ Module 03 — AI Co-Founder — *Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
 (structured output + canvas ai-fill worker, PR #77) MERGED to `develop`; Slice 3 (typed records
 ai-fill worker) merged (PR #81); Slice 4 (mission reason + health recommendation AI upgrade)
-merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87) — no migration on Slices 2–4, migration
-`0027_daily_briefings` on Slice 5. The last unconsumed `ai_fill` job type is closed (Slice 3);
-the mission reason line and health-score recommendations are now AI-upgraded (Slice 4,
-2026-09-19); the dashboard AI briefing is now live (Slice 5, 2026-09-19) — only the **onboarding
-AI panel** and the **roadmap replan rationale** remain unbuilt*
+merged (PR #83); Slice 5 (dashboard AI briefing) merged (PR #87); Slice 6 (roadmap re-plan
+rationale) merged (PR #90); Slice 7 (onboarding AI panel) merged (PR #92) — no migration on
+Slices 2–4, migration `0027_daily_briefings` on Slice 5, migration
+`0028_roadmap_replan_rationale` on Slice 6, migration `0029_startup_profile_ai_panel` on Slice 7.
+The last unconsumed `ai_fill` job type is closed (Slice 3); the mission reason line and
+health-score recommendations are now AI-upgraded (Slice 4, 2026-09-19); the dashboard AI briefing
+is now live (Slice 5, 2026-09-19); the roadmap re-plan rationale is now live (Slice 6,
+2026-09-21); the **onboarding AI panel is now live (Slice 7, 2026-09-21) — all six named
+Module-03 AI consumers are shipped, across seven build slices.** **MODULE 03 COMPLETE** (owner
+decision, 2026-09-21) — not because every item underneath it is built, but because the 3 infra
+items Slice 1's Deferred list still carries (non-OpenAI/Anthropic `LLMClient` provider
+implementation, per-workspace LLM budget/rate limiting, and a structured "AI enrichment failed /
+still templated" signal) are scoped out of Module 03's completion as non-blocking deferred
+follow-ups. **Update 2026-09-21 (`feat/llm-budget-ai-status`):** 2 of these 3 are now shipped — a
+per-workspace daily LLM token budget and a workspace-level `GET /ai/status` endpoint — and the
+third (non-OpenAI provider) is dropped won't-do (OpenAI-only). Module 03 has no remaining open
+follow-ups; see Slice 1's Deferred bullet, updated below, and SOP
+`docs/sop/2026-09-21-llm-budget-ai-status.md`*
 
 _Slice 1: a provider-agnostic LLM seam (`app/platform/llm.py` — `LLMClient` Protocol,
 `OpenAILLMClient` fail-loud, `StubLLMClient` for tests/e2e, `get_llm_client()` factory switched on
@@ -432,9 +1024,23 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       replan rationale, Health Score recommendation reasons, Learning recommendations, Validation
       Hub insight synthesizer, Business Builder's typed-record `ai-fill` jobs) still unbuilt, now
       unblocked on infrastructure only
-- [ ] _Deferred:_ no Anthropic (or other non-OpenAI-compatible) provider implementation · no
-      per-workspace LLM budget/rate limiting · no structured "AI enrichment failed / still
-      templated" signal for the FE or an operator — see SOP Follow-ups
+- [x] **Deferred follow-ups (scoped out of Module 03 completion, 2026-09-21) — resolved
+      2026-09-21, merged (PR #95):** ✅
+      **per-workspace LLM daily token budget** — `llm_usage_daily` ledger + migration `0030`,
+      `LLM_DAILY_TOKEN_BUDGET` config (default `15000`, `≤0`=unlimited), `metered_complete`/
+      `metered_complete_json` enforced across all 8 `ai.py` handlers + the business-plan
+      generator (skip-and-keep-templated on over-budget); call-*rate* limiting (request
+      frequency, as opposed to token volume) was **not** built — still a genuine gap, tracked as
+      a follow-up in the SOP · ✅ **enrichment-status signal** — `GET /ai/status` (workspace-scoped:
+      token usage vs. budget, `over_budget`, `resets_at`, recent failed AI-enrichment jobs); this
+      is a workspace-level aggregate, not a per-field/per-record "still templated" marker on any
+      individual `MissionTask`/`HealthRecommendation`/etc. — that finer-grained signal is still
+      unbuilt, tracked as a follow-up in the SOP · **won't-do (2026-09-21, OpenAI-only):** a
+      non-Anthropic/non-OpenAI-compatible `LLMClient` provider implementation — a scope decision,
+      not a build; the existing `LLMClient` Protocol still supports adding one later if ever
+      needed. **No remaining open Module-03 follow-ups.** SOP:
+      `docs/sop/2026-09-21-llm-budget-ai-status.md`. FE guide:
+      `docs/fe-integration-guide-ai-status.md`.
 
 **Slice 2 — Structured Output + Canvas AI Fill** — *✅ MERGED to `develop` (PR #77;
 3 tasks, no migration)*
@@ -511,14 +1117,15 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       `docs/fe-integration-guide-ai-canvas-fill.md` (§5)
 - [ ] _Deferred:_ no top-up/"regenerate" mode for a kind that already has some records (whole-kind
       gate only) · mission reason line and health recommendations → **shipped in Slice 4, below**
-      (2026-09-19) · dashboard briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
-      panel and roadmap replan rationale (the remaining Module-03-deferred AI consumers) still
-      unbuilt · no structured "ai-fill failed / still empty" signal beyond the existing job
-      status · `create_record`'s position assignment still not race-safe (pre-existing gap,
-      unchanged) — see SOP Follow-ups
+      (2026-09-19) · dashboard briefing → **shipped in Slice 5, below** (2026-09-19) · roadmap
+      re-plan rationale → **shipped in Slice 6, below** (2026-09-21) · onboarding panel →
+      **shipped in Slice 7, below** (2026-09-21 — the last named Module-03 AI consumer) · no
+      structured "ai-fill failed /
+      still empty" signal beyond the existing job status · `create_record`'s position assignment
+      still not race-safe (pre-existing gap, unchanged) — see SOP Follow-ups
 
-**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ shipped on branch `work`
-(7 tasks, no migration); PR to `develop` to follow — 2026-09-19*
+**Slice 4 — Mission Reason + Health Recommendation AI Upgrade** — *✅ merged (PR #83)
+(7 tasks, no migration) — 2026-09-19*
 - [x] Design + implementation plan
       (`.superpowers/sdd/2026-09-19-module-03-mission-health-ai/`) — same async-upgrade pattern as
       Slices 1–3, reused twice, not redesigned · mission enqueue gated on task count (skip the
@@ -553,16 +1160,17 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
 - [x] SOP + FE integration guide extensions (both payloads pasted verbatim from live captures) +
       this checklist reconcile — `docs/sop/2026-09-19-mission-health-ai.md`,
       `docs/fe-integration-guide-mission.md`, `docs/fe-integration-guide-health-score.md`
-- [ ] _Deferred:_ dashboard AI briefing → **shipped in Slice 5, below** (2026-09-19) · onboarding
-      AI panel and roadmap replan rationale (the two remaining Module-03-deferred AI consumers)
-      still unbuilt · ~~the pre-existing `complete_assessment` same-transaction recompute no-op
-      (autoflush timing)~~ **fixed 2026-09-19**
-      (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured "AI upgrade pending / still templated" signal on either
-      `MissionTask` or `HealthRecommendation` · the live e2e only proves the single-item-rewrite
-      path (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
+- [ ] _Deferred:_ dashboard AI briefing → **shipped in Slice 5, below** (2026-09-19) · roadmap
+      re-plan rationale → **shipped in Slice 6, below** (2026-09-21) · onboarding AI panel →
+      **shipped in Slice 7, below** (2026-09-21 — the last named Module-03 AI consumer) · ~~the pre-existing
+      `complete_assessment` same-transaction recompute no-op (autoflush timing)~~ **fixed
+      2026-09-19** (`docs/sop/2026-09-19-complete-assessment-recompute-flush.md`) · no structured
+      "AI upgrade pending / still templated" signal on either `MissionTask` or
+      `HealthRecommendation` · the live e2e only proves the single-item-rewrite path
+      (deterministic stub); the multi-item path is unit-tested only — see SOP Follow-ups
 
-**Slice 5 — Dashboard AI Briefing** — *✅ shipped on branch `feat/dashboard-ai-briefing`
-(5 tasks, migration `0027_daily_briefings`); PR to `develop` to follow — 2026-09-19*
+**Slice 5 — Dashboard AI Briefing** — *✅ merged (PR #87)
+(5 tasks, migration `0027_daily_briefings`) — 2026-09-19*
 - [x] Design + implementation plan
       (`docs/superpowers/specs/2026-09-19-dashboard-ai-briefing-design.md`,
       `docs/superpowers/plans/2026-09-19-dashboard-ai-briefing.md`) — same async-upgrade pattern
@@ -595,13 +1203,110 @@ no new route, no migration. SOP: `docs/sop/2026-09-19-llm-seam-assessment-narrat
       verbatim from live captures, plus a callout distinguishing this feature's `[stub-llm]`
       markers from Slice 4's unrelated ones in the same capture) + this checklist reconcile —
       `docs/sop/2026-09-19-dashboard-ai-briefing.md`, `docs/fe-integration-guide-dashboard.md`
-- [ ] _Deferred:_ onboarding AI panel and roadmap replan rationale (the two remaining
-      Module-03-deferred AI consumers) still unbuilt · `briefing`/`risks`/`opportunities` remain
-      single prose strings, not structured lists · no 06:00 prewarm / scheduled regeneration
-      (purely lazy-on-read) · no intra-day regeneration once a day's row exists ·
-      `BriefingStatus.failed` defined but never written (no structured "generation failed" signal
-      to the FE) · the race-guard path is unit-covered only, not proven under real concurrency —
-      see SOP Follow-ups
+- [ ] _Deferred:_ roadmap re-plan rationale → **shipped in Slice 6, below** (2026-09-21) ·
+      onboarding AI panel → **shipped in Slice 7, below** (2026-09-21 — the last named Module-03
+      AI consumer) ·
+      `briefing`/`risks`/`opportunities` remain single prose strings, not structured lists · no
+      06:00 prewarm / scheduled regeneration (purely lazy-on-read) · no intra-day regeneration
+      once a day's row exists · `BriefingStatus.failed` defined but never written (no structured
+      "generation failed" signal to the FE) · the race-guard path is unit-covered only, not proven
+      under real concurrency — see SOP Follow-ups
+
+**Slice 6 — Roadmap Re-plan Rationale** — *✅ merged (PR #90)
+(7 tasks, migration `0028_roadmap_replan_rationale`) — 2026-09-21*
+- [x] Design + implementation plan
+      (`docs/superpowers/specs/2026-09-21-roadmap-replan-rationale-design.md`,
+      `docs/superpowers/plans/2026-09-21-roadmap-replan-rationale.md`) — same async-upgrade
+      pattern as Slices 1–5, applied to a new column on the existing `RoadmapReplan` row rather
+      than a new table · free-text `complete()` chosen over `complete_json` (a holistic rationale
+      is prose, not typed fields, same choice §08.11's plan generator made) · opportunistic
+      same-branch removal of the dead `roadmap.replan` enqueue (no handler ever existed for it)
+- [x] `roadmap_replans.rationale` (nullable `Text`) + migration `0028_roadmap_replan_rationale`
+      (chains off `0027_daily_briefings`, sole alembic head)
+- [x] `app/services/roadmap/ai_rationale.py` (new) — `build_roadmap_rationale_messages(*, stage,
+      name, industry, changes)` (PII-free: startup name/industry/stage + shifted milestones'
+      titles/dates/reasons only)
+- [x] `_templated_rationale(summary, snapshot)` + `apply_replan` wiring
+      (`app/services/roadmap/replan.py`) — writes the templated instant-fallback `rationale` into
+      the new `RoadmapReplan` row synchronously, enqueues `ai.roadmap.rationale` once per applied
+      re-plan, returns `rationale` in the apply result dict
+- [x] `handle_roadmap_rationale` (`app/worker/handlers/ai.py`), registered
+      `"ai.roadmap.rationale"` — re-fetches the replan row, one `complete()` call, overwrites
+      `rationale`, `db.flush()` only; benign no-op if the row is missing
+- [x] `GET /replan/history` (`app/api/v1/endpoints/roadmap.py`) — each row gains `"rationale":
+      r.rationale`; no new route, no status-code change
+- [x] Removed the dead `job_dispatcher.enqueue(db, "roadmap.replan", ...)` at
+      `app/services/assessment/service.py` (no handler was ever registered for it) — assessment
+      completion still enqueues `ai.assessment.narrative` + `ai.health.recommendations`;
+      `tests/api/assessment/test_complete.py` and
+      `tests/services/assessment/test_complete_concurrency.py` (incl. its docstring) updated to
+      assert the new completion-job set and that `roadmap.replan` is no longer enqueued
+- [x] Live E2E journey (`e2e/test_roadmap_replan_rationale.py`, 2 captures) proving force-a-slip →
+      preview → apply (templated `rationale` asserted) → in-process worker drain → `GET
+      /replan/history` (AI-authored `[stub-llm]` `rationale` asserted) end to end, over real HTTP,
+      zero network calls (`LLM_PROVIDER=stub`) + full e2e suite re-run green (50 e2e, no
+      regression); full non-e2e suite re-run — 1,311 passed; single alembic head, no drift
+- [x] SOP + FE integration guide extension (both `apply`/`history` payloads pasted verbatim from
+      live captures, incl. the apply-is-templated / history-is-AI-authored nuance called out
+      explicitly) + this checklist reconcile — `docs/sop/2026-09-21-roadmap-replan-rationale.md`,
+      `docs/fe-integration-guide-roadmap.md` (§9)
+- [ ] _Deferred:_ onboarding AI panel → **shipped in Slice 7, below** (2026-09-21 — the last named
+      Module-03 AI consumer) · per-change `reason` strings inside `changes[]` remain templated, not
+      AI-upgraded (only the holistic record-level `rationale` was added) · the `roadmap.replan`
+      job type is gone, not repurposed (Module 05 Slice 3's SOP had already ruled out ever
+      auto-draining it) · no structured "AI enrichment failed / still templated" signal · the
+      live e2e only proves the single-replan path; a re-plan with more than 3 shifted milestones
+      (the `_templated_rationale` "and N more" branch) is unit-tested only — see SOP Follow-ups
+
+**Slice 7 — Onboarding AI Panel** — *✅ merged (PR #92)
+(7 tasks, migration `0029_startup_profile_ai_panel`) — 2026-09-21*
+- [x] Design + implementation plan
+      (`.superpowers/sdd/2026-09-21-onboarding-ai-panel/`) — no PRD text for this slice (scope
+      came from the onboarding UI comp's existing calibration-panel concept) · one-shot
+      generate-once trigger lives in `apply_step`, gated on "`ai_panel` was null," since (unlike
+      every prior slice) there was no existing "apply"-style write path to piggyback on · dead
+      `app/platform/ai.py` (`AIPanel`/`StubAIPanel`) seam retired in the same branch, its wording
+      preserved as the new templated fallback
+- [x] `startup_profiles.ai_panel` (nullable `Text`) + migration
+      `0029_startup_profile_ai_panel` (chains off `0028_roadmap_replan_rationale`, sole alembic
+      head)
+- [x] `app/services/onboarding/ai_panel.py` (new) — `_templated_panel(industry, stage)` (instant
+      deterministic fallback, reuses the retired seam's wording) · `build_onboarding_panel_messages(*,
+      industry, stage, goals)` (PII-free — no founder name/role/country/phone)
+- [x] `_maybe_generate_ai_panel` (`app/services/onboarding/steps.py`), called at the end of every
+      `apply_step` — one-shot: no-ops once `ai_panel` is non-null, and until industry + stage +
+      goals are all set; writes the templated value + enqueues `ai.onboarding.panel` exactly once
+      · `serialize_state` (`app/services/onboarding/workspace.py`) gains `"ai_panel"`, shared
+      flat by both `GET`/`PATCH /onboarding/state` (no field-nesting asymmetry)
+- [x] `handle_onboarding_panel` (`app/worker/handlers/ai.py`), registered
+      `"ai.onboarding.panel"` — re-fetches the startup, one `complete()` call, overwrites
+      `ai_panel`, `db.flush()` only; benign no-op if the startup/profile is missing
+- [x] Retired the dead, never-consumed `app/platform/ai.py` (`AIPanel`/`StubAIPanel`) +
+      `tests/platform/test_ai.py` — confirmed zero consumers repo-wide before deletion
+- [x] Live E2E journey (`e2e/test_onboarding_ai_panel.py`, 2 captures) proving sign-up → complete
+      the three signals (templated `ai_panel` asserted) → in-process worker drain → `GET
+      /onboarding/state` (AI-authored `[stub-llm]` `ai_panel` asserted) end to end, over real
+      HTTP, zero network calls (`LLM_PROVIDER=stub`) + full e2e suite re-run green (51 e2e, no
+      regression)
+- [x] SOP + FE integration guide (new, focused; both `state_templated`/`state_after_drain`
+      payloads pasted verbatim from live captures) + this checklist reconcile —
+      `docs/sop/2026-09-21-onboarding-ai-panel.md`,
+      `docs/fe-integration-guide-onboarding-ai-panel.md`
+- [ ] _Deferred:_ **this closes the Module-03 AI-consumer set — all six named consumers are now
+      shipped, across seven build slices.** Module 03 itself is now marked **COMPLETE** (owner
+      decision, 2026-09-21) — the non-OpenAI/Anthropic provider implementation and per-workspace
+      LLM budget/rate limiting (named since Slice 1) were, at the time of this slice, still
+      unbuilt; **reconciled 2026-09-21 on `feat/llm-budget-ai-status`:** the per-workspace LLM
+      token budget and a workspace-level `GET /ai/status` enrichment-status endpoint are now
+      shipped, and the non-OpenAI provider item is dropped won't-do (OpenAI-only) — no remaining
+      open Module-03 follow-ups; see this module's own Slice 1 Deferred bullet and the Snapshot
+      above · no regenerate-on-edit (the one-shot guard is permanent; changing
+      industry/stage/goals after the panel exists does not re-trigger it) · no interactive chat
+      panel (a single one-time greeting, not a two-way conversation) · no *per-field* "AI
+      enrichment failed / still templated" signal specific to `ai_panel` (the new `/ai/status`
+      endpoint is a workspace-level aggregate, not a per-record marker) · the live e2e only
+      proves the single-panel happy path; the no-op paths (missing startup, LLM failure) are
+      unit-tested only — see SOP Follow-ups
 
 ## ✅ Module 08 — Business Builder — *all 4 slices — MODULE 08 COMPLETE (PR #39, PR #46, PR #47,
 `feat/ai-business-plan-generator` — Slice 4/§08.11 merged (PR #79)). Slice 4, the AI Business Plan
@@ -643,7 +1348,7 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
 - [x] `CANVAS_BLOCKS` block registry (`app/services/business/canvas_defs.py`) — 5 canvas types,
       `BlockDef{key,label,kind}`, `empty_blocks()` scaffold
 - [x] Canvas service — `get_or_create_canvas` (lazy-get/create) · `validate_blocks` (per-block-kind
-      422) · `save_canvas` (version check → full-replace merge, pinned by a dedicated test → 
+      422) · `save_canvas` (version check → full-replace merge, pinned by a dedicated test →
       `business.artifact.completed` on the not-complete→complete transition only) · `completion`
       (derived `filled_blocks`/`total_blocks`/`completion_pct`/`status`) · `overview`
 - [x] `GET /business-builder/overview` (member, read-only, creates no rows) · `GET
@@ -820,8 +1525,14 @@ SOP: `docs/sop/2026-09-08-business-builder-slice3.md`._
       fields a dashboard could chart) · no PDF/export format, Document markdown only ·
       regenerating a plan is just a fresh `POST` (no per-section regenerate, no diff against the
       previous version) · remaining Module 03 AI consumers (typed-record `ai_fill` → **shipped,
-      Module 03 Slice 3**, see above; onboarding AI panel, Mission/Roadmap/Health Score/Learning/
-      Validation Hub still unbuilt) — see SOP Follow-ups
+      Module 03 Slice 3**, see above; mission reason + health-score recommendations → **shipped,
+      Module 03 Slice 4**; dashboard briefing → **shipped, Module 03 Slice 5**; roadmap re-plan
+      rationale → **shipped, Module 03 Slice 6** (2026-09-21); onboarding AI panel → **shipped,
+      Module 03 Slice 7** (2026-09-21) — **all six named Module-03 AI consumers, across all seven
+      build slices, are now shipped**; Learning recommendations and
+      Validation Hub's insight synthesizer remain separately deferred, unblocked on
+      infrastructure only, not yet started — see `docs/sop/2026-09-19-llm-seam-assessment-narrative.md`
+      and `docs/sop/2026-09-19-ai-business-plan-generator.md`) — see SOP Follow-ups
 
 ## ✅ Module 18 — Documents & Templates — *all 4 slices MERGED — MODULE 18 COMPLETE: Slice 1
 (Library Core) PR #48 · Slice 2 (Upload & Files) PR #50 · Slice 3 (Sharing) PR #53 · Slice 4
@@ -883,6 +1594,102 @@ Plan Generator (§08.11, now shipped) calls — see that module's entry above. S
 - [ ] _Deferred:_ no per-section endpoints (always full-replace `PUT`) · no `folders`
       table/folder management UI · no user-authored templates (registry is read-only, in-code) —
       see SOP Follow-ups
+
+**Post-launch hardening — Documents BE-A (access + integrity)** — *built 2026-10-24 on
+`fix/documents-access`, PR to `develop` open (merge after `feature/finance-slice-e`; migration
+`0072_documents_scan_status`)* — SOP `docs/sop/2026-10-24-documents-be-a-access-integrity.md`; closes
+gap-list rows 1–6, 25, 37 (D-DOC-1..4)
+- [x] Every authenticated Documents route (documents, files, shares, signature requests, templates)
+      founder + team member only, reads included (`DOCUMENT_ROLES`); search + activity gated the same
+- [x] `document.shared` / `document.signature.*` audience = sender/owner; nothing in-app for `requested`
+- [x] Magic-byte sniffing, `text/markdown` allowed, 15 MB unchanged; `scan_status` + no-op scanner hook;
+      signing gated on `clean`
+- [x] File delete refused (409) while any signature request exists; FK no longer cascades
+- [x] `signed_ip` / `signed_user_agent` returned to editors
+- [x] Security review fixes: files stored private, no `url` anywhere, 5-minute signed download links
+      (editors `GET .../{id}/download`; signers `GET /sign/{token}/file` only while the token is
+      active), `files_backfill` job, migration trusts only signature-referenced files, rate limits on
+      all public Documents routes, row lock + post-commit object delete, no-op scanner warning,
+      public responses trimmed
+- [x] Tests: route × role matrix, integrity, sniff, scanner, notifications; live journey
+      `e2e/test_documents_access.py`; four FE guides updated from live captures
+- [x] _BE-B shipped below_ · [x] _BE-C shipped below_ · [x] _BE-D shipped below (#190, #191 merged)_
+- [ ] _Deferred:_ a real malware scanner behind `get_scanner()` · FE: hide Documents for non-F/TM roles (row 27)
+
+**Documents BE-B (library core)** — *built 2026-10-25 on `feature/documents-library-core`, PR to
+`develop` (migration `0073_documents_library_core`, after `0072`)* — SOP
+`docs/sop/2026-10-25-documents-be-b-library-core.md`, FE guide `docs/fe-integration-guide-documents-library.md`;
+closes gap-list rows 7, 8, 9, 11, 14, 20, 21, 22, 28 (D-DOC-1, D-DOC-3)
+- [x] Versions (row 7): `document_versions` snapshot on create / save / restore, list + get + restore
+      (restore = new version), `document.version.created` event, existing documents backfilled with their
+      current version
+- [x] Trash (row 8): soft delete for documents and files, `GET /documents/trash`, restore, permanent delete,
+      30-day daily purge job (`scheduled.documents.trash_purge`, self-managed worker handler); a file with a
+      signature request still cannot be trashed
+- [x] Rename / move / tag (row 9): `PATCH /documents/{id}` and `/files/{id}`, tags (10 max), nested folder
+      paths; download = BE-A's signed link
+- [x] Inline content route (row 11): `GET /documents/files/{id}/content` + `viewer` hint (BE: done; FE viewer open)
+- [x] Search (row 20): `q` over title / body / tags (documents) and name / tags (files), `tag` filter
+- [x] Folders (row 21): `document_folders`, create / rename (re-points the subtree and its items) / delete-if-empty,
+      counts + uncategorised + trash buckets, standard structure
+- [x] Summary fields (row 22): `owner`, `tags`, `share_count`, `mime`, `trashed_at`, `purges_at`
+- [x] Notifications (row 28): names + titles in copy, `href` in payloads, `document.version.created`,
+      `document.grant.created`
+- [x] Per-person grants + Shared with me (row 14, D-DOC-1): view / comment, by member or by email (binds on
+      verified sign-up or next call), owner / F+TM list + change + revoke, grantee-only `/documents/shared-with-me`
+      routes, comments, trashed / revoked invisible, token link unchanged ("anyone with the link")
+- [x] Tests: route × role matrix extended, library + grants + purge + notifications + migration tests, live
+      journey `e2e/test_documents_library.py`; one Opus access-control review, findings fixed
+- [ ] _Deferred:_ grants on files · "Can edit" grants · extracted text search for files · real malware scanner ·
+      revoking a member's grants when member removal ships · pruning old versions
+
+**Documents BE-C (templates, generator, export)** — *built 2026-10-25 on `feature/documents-templates-export`, PR to
+`develop` (migration `0074_documents_templates_export`, after `0073`; new dependency `python-docx`, so the shared stack needs
+`docker compose build api worker`)* — SOP `docs/sop/2026-10-25-documents-be-c-templates-export.md`, FE guide
+`docs/fe-integration-guide-documents-templates-export.md`; closes gap-list rows 12, 13, 18 (D-DOC-4)
+- [x] Export (row 12): `POST /documents/{id}/export` (`pdf` | `docx`) stores a private, scanned file with
+      `source_document_id` / `source_version`; same version + format returns the same file (200); F+TM only, trashed 404;
+      so an exported file can be sent for signature like an upload
+- [x] Generator (row 13): `GET /document-templates/{key}` returns `form` (auto-filled from the startup profile and Business
+      Builder, empty, AI-draftable); `POST /documents/templates/{key}/instantiate` creates the document; optional AI
+      section draft as worker job `ai.documents.template_draft` (metered, never overwrites text, fails visibly);
+      `POST /documents/{id}/ai-draft` retries (429 `AI_BUDGET_EXHAUSTED` over budget)
+- [x] Legal templates (row 18): categories Legal / Financial / Pitch / Operational; NDA, contractor agreement, founder
+      agreement and SAFE as structured drafts; `disclaimer` returned by the API and printed on exports (D-DOC-4)
+- [x] Summary fields: `type`, `disclaimer` (documents); `type`, `origin`, `source_*` (files)
+- [x] Tests: export, templates and AI-job tests, render unit tests, migration test, route × role matrix; live journey
+      `e2e/test_documents_templates_export.py`; one Opus review, findings fixed
+- [ ] _Deferred:_ sharing a file (token link / grant on files) · TrueType font for non-Latin PDF text · counsel-reviewed
+      clause text · executed-PDF stamping and DOCX signing (BE-D)
+
+**Documents BE-D (e-sign v2 + link shares)** — *✅ merged 2026-10-25 (#190 `0075`, review fixes #191 `0076`); worker storage volume fix `fix/worker-shared-storage`
+(migration `0075_documents_esign_v2`, after `0074`; new dependency `pypdf`, so the shared stack needs
+`docker compose build api worker`, and the **worker must run** for executed PDFs)* — SOP
+`docs/sop/2026-10-25-documents-be-d-esign-v2.md`, FE guide `docs/fe-integration-guide-documents-esign-v2.md`
+(live-captured); closes gap-list rows 15, 16 (minus field placement), 17, 31, 37 (D-DOC-2)
+- [x] Executed PDF (row 15): original pages + signature page + audit certificate (signers, emails, viewed / signed times, IP,
+      user agent, SHA-256, legal caveat); private `DocumentFile` (`origin: "executed"`); worker job
+      `documents.signature_finalize` (self-managed, resumable); emailed with the PDF to every signer and the sender;
+      editor link `GET .../signature-requests/{id}/executed`, signer link `GET /sign/{token}/executed` (90 days)
+- [x] Signing order (row 16): `sequential`, next link released and emailed only after the previous signature, waiting
+      signers unreachable; custom `message` (default sentence stored), header-injection safe; Viewed state (`viewed_at`)
+- [x] Request detail (rows 31, 37): `sent_at`, `expires_at`, per-signer `status` (waiting / pending / viewed / signed),
+      `notified_at` / `viewed_at` / `signed_at`, `signed_ip`, `signed_user_agent` (editors only), `document_hash`,
+      `executed`, `legal_caveat`; copy a signer's link again (derived token, hashed at rest, remind rotates)
+- [x] Link shares (row 17): "anyone with the link" (no email), custom `expires_at` or days or never, list / change expiry /
+      revoke / copy again, for documents **and uploaded files**; `GET /shared/{token}/file`; real `share_count` on files
+- [x] BE-C exports are signable (PDF export); **DOCX: require a PDF export first** (`422 PDF_REQUIRED`)
+- [x] Review fixes (migration `0076_documents_signer_link_audit`): row-lock on signing (no stuck-awaiting race), link-handout audit on detail + certificate, `LINK_NOT_RECOVERABLE`
+      for pre-v2 signers, `legacy` executed state, `expires_in_days` 1–365, per-party email claim, any malformed PDF is `PDF_UNREADABLE`
+- [x] Tests: API, worker through `run_once`, PDF, links, storage, migration, route × role matrix; live journey
+      `e2e/test_documents_esign_v2.py`
+- [x] Worker shares the uploads volume (`app_storage:/app/var/storage`) in both compose files: without it the finalize job
+      could not read the signed file in the containerised stack (found in the FE live walk; in-process tests could not see it)
+- [x] Stuck-job recovery (re-walk D2): `python -m app.services.documents.requeue_finalize [--dry-run]` re-queues completed v2
+      requests with no executed file or unsent emails (skips live jobs, idempotent); `executed.state: "failed"` when every finalize
+      job is dead; tests incl. `run_once`; live capture in the FE guide
+- [ ] _Deferred:_ **field placement** (needs the PDF viewer, row 11 FE, + Q2) · draw-a-signature · rebuild-executed action ·
+      reminder timers · real malware scanner · per-person grants on files
 
 **Slice 2 — Upload & Files** — *✅ merged to `develop` (PR #50, Tasks 1–5)*
 - [x] Scope + locked decisions (separate `document_files` table, not columns bolted onto
@@ -1366,9 +2173,199 @@ lead). SOP: `docs/sop/2026-09-14-learning-academy.md`._
 - [ ] _Deferred:_ **Replace the placeholder catalog with real content — REQUIRED before go-live** ·
       move the catalog into the DB when Module 25.4 lands · Health Score signal as a
       recommendation sort key · PDF rendering, sharing and a public certificate verification
-      endpoint (jobs are enqueued, nothing renders them) · private lesson notes · AI
-      recommendations + reason line (Module 03) · notifications (Module 20) · video hosting
+      endpoint (jobs are enqueued, nothing renders them) · private lesson notes ·
+      ~~AI recommendations + reason line (Module 03)~~ · notifications (Module 20) · video hosting
       (`video_ref` only) · un-completing a lesson — see SOP Follow-ups
+- [x] **AI shelf-level `recommendation_reason` (Module 03 deferred AI upgrade)** — shipped
+      2026-09-23 on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`,
+      `ai.learning.recommendations` worker). Struck through above; see its own reconcile entry
+      under "Upcoming" and SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`. Per-course reasons
+      and a Health-Score-weighted recommendation sort key remain unbuilt follow-ups.
+
+**Academy BE gaps (2026-10-22, branch `feature/academy-be`, migration `0069_academy_content`; PR pending):**
+- [x] D-ACA-1 content: `content/academy/` markdown (8 courses x 3 lessons covering all 6 stages, 6 stage paths, 10 articles; every file `review_status: draft`, exposed by the API) + idempotent loader `python -m app.services.learning.content` (validates, upserts by slug, prunes; wired into the prod `migrate` step; `content/` copied into the image) — gap 6
+- [x] Content review (2026-10-25): Adebayo approved all 48 files; every file is now `review_status: reviewed` (`chore/academy-content-reviewed`)
+- [x] Catalog moved to the DB (`academy_courses`, `academy_lessons`, `academy_paths`, `academy_articles`); `[Placeholder]` titles gone; course `description` + `outcomes` (gap 4); paths embed ordered courses with progress (gap 13)
+- [x] D-ACA-2 video: strict 11-character YouTube id, `video: {provider, id, embed_url}` or `null`, never `placeholder://` — gap 5 (BE half)
+- [x] D-ACA-5 certificates: `learning.certificate.generate` handler registered (jobs no longer fail "no handler"), reportlab PDF with QR, `GET /learning/certificates/{id}/pdf` owner only (404 for anyone else, 409 until rendered), `holder_name` + `CFZ-XXXX-XXXX-XXXX` credential ID, public rate-limited `GET /verify/{code}` (minimal fields), LinkedIn add-to-profile URL (`ACADEMY_LINKEDIN_ORG_ID` hook) — gaps 1, 7, 17
+- [x] Articles: `GET /learning/articles/{id}` reader with `related`, `?q=&tag=` filters — gap 8
+- [x] Private lesson notes `GET/PUT /learning/lessons/{id}/notes` (per user, never searched, never in prompts) — gaps 2, 14
+- [x] D-ACA-4 progress: optional `position_s`; course summary `last_lesson_id`, `next_lesson_id`, `position_s`; `continue_watching` only started courses — gap 16
+- [x] D-ACA-3 recommendations: stage + Assessment/Validation gaps, one reason per hero course, regenerated on stage or gap change, strict-schema walker test, fenced prompt inputs — gap 9
+- [x] Notifications `learning.course.completed` and `learning.course.recommended` (F + TM, in-app) — gap 10
+- [x] Global search indexes courses and articles (F + TM), never notes — gap 20
+- [x] Live e2e `e2e/test_learning.py` (captures + a real PDF), FE guide `docs/fe-integration-guide-academy.md`, SOP — gap 23
+- [x] Gap 24 decided: `learning.course.completed` stays an audit event + notification; no Roadmap or Health coupling
+- [ ] FE slice (rows 3, 11, 12, 15, 18, 19, 21, 22 and the FE halves of 4 to 8, 10, 13, 14, 17), then the live re-walk with a real video, a downloaded PDF and a LinkedIn link that opens
+- [x] LinkedIn company id `146743971` is the `ACADEMY_LINKEDIN_ORG_ID` default (2026-10-24, branch `chore/academy-linkedin-org-id`); certificates link the Cofoundaz page
+- [ ] Adebayo's review of the 8 courses and 10 articles (flip `review_status`), real videos (`video:` front-matter)
+- [ ] _Deferred:_ team-progress view, CMS (Module 25.4), embedded PDF font for non-Latin names, a revoke endpoint
+
+## 🟢 Module 09 — Validation Hub — *shipped on branch `feat/validation-hub`, in review (PR #103)*
+
+_The "prove it before you build it" workspace: assumptions on a four-column board (untested →
+testing → validated/invalidated), experiments and smoke tests with their metrics, interview notes,
+and surveys answered **by the public**. Sixteen member routes under `/api/v1/validation` for
+founders and team members only, plus **two unauthenticated routes** — read a survey form by token,
+and submit an answer set. Migration `0041_validation` (renumbered five times as 03/08/10/Finance-12 merged ahead).
+Spec `docs/superpowers/specs/2026-09-20-validation-hub-design.md` (D1–D10 agreed with the lead),
+plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
+`docs/sop/2026-09-24-validation-hub.md`._
+
+**Build (Tasks 1–7):**
+- [x] Scope + locked decisions D1–D10 agreed with the lead (token-addressed public endpoint with a
+      public read alongside it · 20/minute per-route rate limit · anonymous responses, repeats
+      allowed · MVP feedback cut from v1 · AI synthesizer and script generation stubbed as enqueued
+      jobs · JSONB question schema with caps · free assumption transitions, events only on a real
+      change · derived evidence counts · JSONB assumption links)
+- [x] Six enums + five models (`assumptions`, `experiments`, `interviews`, `surveys`,
+      `survey_responses`) + migration `0041_validation` (chains off `0040_finance_runway`, sole
+      alembic head, `alembic check` clean) — per-table `startup_id` indexes, unique
+      `surveys.token_hash`, CASCADE FKs, server-side defaults, **no `user_id` on responses**
+- [x] Question/answer validation (`app/services/validation/questions.py`) — types
+      `choice|scale|nps|open`, server-assigned stable ids kept across edits, caps of 50 questions,
+      20 options and 4 000 characters per open answer, a blank answer rejected for a required
+      question; every message safe to show the public
+- [x] Assumptions + experiments service — free status transitions publishing
+      `validation.assumption.validated|invalidated` only on an actual change into those states ·
+      `evidence_counts` derived on read from linked experiments and interviews · `link_ids`
+      rejecting assumptions outside the workspace (422) and dropping repeats · smoke-test
+      conversion returning 0.0 rather than dividing by zero, and capped at 100%
+- [x] Interviews + surveys service — filters by segment, verdict and assumption; survey token
+      minted on first open, only its SHA-256 hash stored, raw value returned **once**; analytics
+      with per-option counts (including unpicked options), scale/NPS counts + averages, answered
+      counts for open questions, and a completion rate that counts only non-blank answers
+- [x] Public surface (`app/services/validation/public.py`) copying Module 18's share/sign pattern —
+      uniform 404 for unknown/draft/closed, acknowledgement-only reply, nothing about the
+      respondent stored beyond `submitted_at`
+- [x] **`Limiter` moved from `app/main.py` to `app/core/rate_limit.py`** (behaviour unchanged) so
+      endpoint modules can carry per-route limits without a circular import; the public submit
+      routes each take one at `20/minute` — the project's first. `tests/api/test_rate_limit_key.py`
+      had its import updated to the new home
+- [x] 16 member routes + 2 public routes + schemas + router registration at `prefix="/validation"`;
+      write handlers commit
+- [x] Tests — 148 validation tests (models 6 · migration 2 · questions 9 · assumptions 8 ·
+      experiments 10 · interviews 6 · surveys 8 · public 7 · API 92) · full project suite **1,695
+      passed**, coverage **97.12%** (floor 95) · ruff / black / mypy clean
+- [x] Smoke openapi surface — the fourteen validation route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_validation.py`, written: onboard → assumption → survey built and
+      opened → **public form read and answered with no authentication** → wrong token 404 →
+      analytics → experiment + interview linked → assumption validated with evidence count 2; 12
+      captures) — **not yet run**; the e2e runner needs Poetry on the host, so CI runs it first
+- [x] SOP — `docs/sop/2026-09-24-validation-hub.md`
+- [x] **Review round 1 (2026-09-29, PR #103)** — rebased onto `develop` and renumbered
+      `0035_validation` → `0039_validation` off `0038_marketing_metrics` (single head restored) · PR
+      retargeted `main` → `develop` · later renumbered `0039_validation` → `0041_validation` off
+      `0040_finance_runway` after Finance Slices 1–2 merged · blank answers rejected for required open questions and
+      excluded from the completion rate · `link_ids` dedupes · `/scripts/generate` validates its
+      assumption links · explicit `20/minute` on the public read · conversion capped at 100%.
+      _Deferred with reasons:_ a live 429 test, and a size cap on an experiment's `config`/`metrics`
+      JSONB. _Noted:_ the public routes key their limit on source IP, so `X-Forwarded-For` must be
+      set and trusted behind nginx — see SOP Operate
+- [ ] FE integration guide (`docs/fe-integration-guide-validation.md`) — written from the response
+      builders with a provenance note; **regenerate from the real captures after the first e2e run**
+- [ ] _Deferred:_ AI Insight Synthesizer + interview-script generation (stubs enqueue
+      `validation.synthesize` / `validation.scripts.generate`, nothing drains them until Module 03)
+      · hosted smoke-test pages · MVP feedback + theme clustering (PRD 09.7) · a members-only route
+      to read raw open answers · delete routes · survey token rotation/expiry and response
+      de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
+      the validation events — see SOP Follow-ups
+
+## 🟡 Module 23 — Team — *started 2026-10-17: invitations only*
+- [x] `POST /team/invitations` (founder, any time, 1 to 20 rows, PRD roles; 10/min per user + 50/workspace/day) and a real
+      `/invite/{token}` link in the invitation email (previously token-only). Branch `feat/workspace-invites`; SOP
+      `docs/sop/2026-10-17-team-invitations.md`; guide `docs/fe-integration-guide-team-invitations.md`.
+- [ ] Members list / role change / remove / resend-revoke invite, grants matrix, team tasks, comments, directory (PRD 23.1 to 23.5)
+
+## ✅ Module 19 — Calendar — *MERGED to `develop` (PR #119, `6a5ab90`, 2026-10-12; migration `0046_calendar`)*
+
+_The planning layer: **events** of four types (milestone / meeting / deadline / task) on a
+per-workspace calendar, plus a **read-only projection of Roadmap's existing milestones**. Six
+routes under `/api/v1/calendar` for founders and team members only — **accountant is deliberately
+excluded**, unlike Finance. The single list endpoint (`date_from` + `date_to` + optional `type`)
+powers Month, Week **and** Agenda; grouping and formatting stay on the front end. Migration
+`0046_calendar` (one new table). Spec
+`docs/superpowers/specs/2026-10-05-module-19-calendar-design.md` (D1–D13 agreed with the lead),
+plan `docs/superpowers/plans/2026-10-06-module-19-calendar.md`, SOP
+`docs/sop/2026-10-06-calendar.md`._
+
+**Build (Tasks 1–5):**
+- [x] Scope + locked decisions D1–D13 agreed with the lead (milestones are a read-only Roadmap
+      projection, never a second table · no cross-module aggregation · external sync deferred ·
+      founder + team_member writes and reads · naive wall-clock dates and times · no domain events ·
+      `description` capped at 2 000 · `all_day` + a time → 422 · single events only · the
+      "+ Milestone" button creates a calendar **event**, not a roadmap milestone · `all_day`
+      declared, never inferred · the Milestones tab reads one store and writes to another)
+- [x] FE cross-check against the real prototype (`../cofoundaz`, cloned 2026-10-06) — the mock
+      contradicts the API in five places (time shown three different ways, a literal `'All day'`
+      string, `type` capitalized in Agenda but lowercase elsewhere, `dueDate` as pre-formatted
+      prose, and the Milestones tab mixing two stores); all five written into the FE guide
+- [x] One enum + one model (`calendar_events`) + migration `0046_calendar` (chains off
+      `0045_finance_model`, sole alembic head, `alembic check` clean) — `startup_id` and
+      `created_by` indexes plus a composite `(startup_id, event_date)` for the range query,
+      `created_by` **SET NULL** so a departing user does not take the team's calendar, naive
+      `Time` columns, `all_day` server-default `false`
+- [x] Events service (`app/services/calendar/service.py`) — range + type filtered list ordered
+      `event_date ASC, start_time ASC **NULLS FIRST**, created_at ASC` (untimed and all-day events
+      sort to the top of their day); `_check_times` shared between create and update, with update
+      validating the **merged** row so a partial PATCH cannot leave a state a create would refuse
+- [x] Milestones projection (`app/services/calendar/milestones.py`) — the three-table join
+      `RoadmapMilestone → RoadmapPhase → Roadmap` filtered on `Roadmap.startup_id`, which **is**
+      the tenancy boundary since `RoadmapMilestone` has no `startup_id`; `calendar_status` derived
+      from `status` + `due_on` in a deliberate order (done beats overdue beats in-progress).
+      Mirrors `_due_overdue_milestones` but deliberately drops its `Startup.deleted_at` join (that
+      function scans every workspace) and its config-dependent `_local(now)` clock
+- [x] 6 routes + schemas + router registration at `prefix="/calendar"`; write handlers commit;
+      `HH:MM` guaranteed by a `field_serializer` rather than by convention at each call site
+- [x] Tests — 61 calendar tests (models 6 · migration 2 · events service 20 · milestones service
+      16 · API 17) · ruff / black / mypy clean · single head `0046_calendar`
+- [x] Smoke openapi surface — the three calendar route shapes added to `e2e/test_smoke.py`
+- [ ] Live E2E journey (`e2e/test_calendar.py`, written: onboard → four events across a month
+      (timed, all-day, untimed, milestone-typed) → Month range → Week range → type filter → read
+      → move the time → clear it with an explicit null → all-day-plus-a-time 422 → merged-row PATCH
+      422 → delete → milestones projection → cross-tenant 404; 17 captures) — **not yet run**; the
+      e2e runner needs Poetry on the host, so CI runs it first
+- [x] Full project suite — **2,140 passed, 0 failed** (api 942 · services 600 ·
+      db/core/platform/worker 557 · Alembic round-trips 41), run in four parts because one
+      invocation now exceeds the driving tool's 30-minute limit; a single combined run also reached
+      93% with 2,011 passed and 0 failed before being stopped on time
+- [ ] Coverage figure — **not captured locally** (only printed at the end of a complete run, which
+      never finished inside the time limit); CI enforces the 95% floor on the PR and the number
+      goes into the SOP from there
+- [x] SOP — `docs/sop/2026-10-06-calendar.md`
+- [x] FE integration guide (`docs/fe-integration-guide-calendar.md`) — **regenerated from 17 live
+      captures** (`e2e/_captures/calendar/`, e2e 66/66, 2026-10-12); unit-only claims labelled, §5
+      verification table
+- [ ] _Follow-up:_ POST cross-field time-rule 422 returns `field: ""` + `"Value error, "` prefix
+      (PATCH names `start_time`); make create name the field so the modal can highlight it
+- [ ] _Deferred:_ multi-day events (one `event_date`, no `end_date`) · external Google/Outlook/Apple
+      sync, and with it the whole Sync tab · cross-module aggregation into the Agenda · the reminder
+      scheduler and its domain events · sync preferences · recurring events · unioning roadmap
+      milestones with milestone-typed events into one Milestones list (v2) · pagination or a span
+      cap on the events list · `tasksInfo`, `AgendaItemData.subtitle` and the quarter-count header
+      (no backend source) — see SOP Follow-ups
+
+### Module 19 — Calendar: PRD completion, BE (2026-10-27, branch `feature/calendar-be`, migration `0079_calendar_meetings_sync`)
+
+_Gap list `cofoundaz/docs/checklist/calendar-prd-gaps.md` (rows B1 to B13). Decisions D-CAL-1 to D-CAL-9 there. SOP
+`docs/sop/2026-10-27-calendar-be-meetings-sync.md`, FE guide `docs/fe-integration-guide-calendar-v2.md`. The earlier "Deferred" items
+for multi-day events, external sync and the reminder scheduler are now built (below). PR pending._
+
+- [x] Feed `GET /calendar/feed?date_from&date_to&layers` (milestone, compliance (empty until Legal), meeting, team, marketing, external, busy), 366-day cap
+- [x] Event fields: `end_date`, `timezone`, `location`, `video_url`, `visibility` (private = creator + invitees)
+- [x] Meetings: CRUD, attendees (internal by email match, external), agenda, invites with `.ics` (REQUEST/CANCEL, SEQUENCE), invited-only read for other roles
+- [x] AI summary (D-CAL-1, no bot): paste notes, summary + decisions + action items, per-item assignee, "Add all to tasks", retry after a failure
+- [x] Reminder rules (PRD defaults, founder edits, reset) + scheduler scan + 3 notifications (`calendar.reminder`, `.meeting.invited`, `.meeting.summary_ready`)
+- [x] Google sync: per-user OAuth with signed single-use state, Fernet tokens, refresh, `needs_attention`, pull (incremental + 410 resync), push (hash diff, edit, delete), direction + calendar picker, Sync now, disconnect + revoke, 15-minute worker job
+- [x] Milestones: `days_left`, `tasks_done/total`, `summary`
+- [x] Tests: 81 new (sync 32, meetings 26, feed/reminders 23) + live e2e `e2e/test_calendar_meetings_sync.py` against the in-process Google fake
+- [ ] **Real Google round trip with a test user** (cannot run headless; Adebayo) and Google verification (D-CAL-3)
+- [ ] _Deferred:_ Outlook sync (paths reserved), meeting bot, compliance layer data (Legal), dashboard Upcoming and global search reading the feed (B14), recurring events
+
+**Dev-environment note (2026-10-06):** the local dev database was still stamped `0038_validation`,
+the number Module 09 carried on its branch before being renumbered to `0041_validation` at merge,
+so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
+zero. The test suite builds its own schema from the models, so nothing was lost.
 
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
@@ -1804,23 +2801,518 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 
 ---
 
+## ✅ Module 10 — Marketing Hub — *ALL 5 SLICES SHIPPED — MODULE 10 COMPLETE (Slices 1–4 merged via PRs #100/#101/#102/#104/#105; Slice 5 built on `feat/module-10-marketing-slice5`, PR pending)*
+
+Content Calendar + Channels + Overview CRUD spine (Slice 1), then Campaigns + Audience Segments
+(Slice 2), then the full AI Content Assistant — AI copy generation + AI plan-week (Slice 3a),
+then the AI channel-plan recommender + per-channel fit notes (Slice 3b), then SEO Tools (Slice 4),
+then Performance Analytics (Slice 5). Follows the same slice
+discipline as Modules 03/08/18/20: CRUD spine first, AI layer seamed-and-deferred, analytics last.
+Migrations `0033_marketing_calendar_channels` → `0034_campaigns_segments` →
+`0035_marketing_ai_generations` → `0036_channel_fit_notes` → `0037_seo_tools` →
+`0038_marketing_metrics`. SOPs (Slice 4/5: `docs/sop/2026-09-29-marketing-slice4.md`,
+`docs/sop/2026-09-29-marketing-slice5.md`; FE guides `-seo.md` / `-analytics.md`):
+`docs/sop/2026-09-24-marketing-slice1.md`, `docs/sop/2026-09-24-marketing-slice2.md`,
+`docs/sop/2026-09-24-marketing-slice3a.md`, `docs/sop/2026-09-28-marketing-slice3b.md`. FE guides:
+`docs/fe-integration-guide-marketing-calendar.md`,
+`docs/fe-integration-guide-marketing-campaigns.md`,
+`docs/fe-integration-guide-marketing-copy.md`,
+`docs/fe-integration-guide-marketing-channel-ai.md` (all cross-referenced). Design specs:
+`docs/superpowers/specs/2026-09-24-module-10-marketing-slice1-design.md`,
+`docs/superpowers/specs/2026-09-24-module-10-marketing-slice2-design.md`,
+`docs/superpowers/specs/2026-09-28-module-10-marketing-slice3b-design.md`.
+
+- [x] **Slice 1 — Content Calendar + Channels core** — *shipped on `feat/module-10-marketing-slice1`
+      (commits `545f7f2`→`eef03d8`), unit **1446 passed**, e2e **53/53 passed***
+  - [x] Enums (`ContentStatus`, `ChannelStatus`, 8-value `ChannelKey`) + `ContentCalendarEntry`/
+        `MarketingChannel` models, migration `0033` (`content_calendar`, `marketing_channels`
+        tables — the PRD's `channels` name was reserved to avoid a future collision)
+  - [x] Calendar service: create/list (date-range + channel + status filters)/get/update/delete;
+        `status=scheduled` requires `scheduled_at` (422 otherwise, enforced identically on create
+        and update); publish transition (`PATCH status:"published"`) sets `published_at` once and
+        is idempotent on repeat (no re-fire, no duplicate notification)
+  - [x] Channels: fixed 8-key board, lazy-seeded on first `GET /marketing/channels`
+        (SAVEPOINT + re-select race guard, mirrors `get_or_create_enrollment`); `PATCH
+        /channels/{key}` updates status/notes but does **not** itself seed — 404s if called before
+        the workspace's first `GET /channels` (documented sharp edge, not a defect — see the SOP's
+        Follow-ups)
+  - [x] Overview stat strip: `scheduled_this_week` + `active_channels` computed live;
+        `active_campaigns`/`top_channel_by_conversions`/`ai_content_ideas` explicit `null`
+        constants naming which later slice fills each (S2/S5/S3)
+  - [x] `/marketing` endpoints (8 routes) behind `require_role(founder, team_member)`; every other
+        role gets 403 — no granular per-module "Marketing grant" yet (deferred, no per-module
+        grant infra exists anywhere in this codebase)
+  - [x] `marketing.post.published` domain event → in-app notification (`_members_minus_actor`,
+        "Scheduled post published: {title}") via the existing Module 20 event/registry pattern; no
+        email channel wired for this event in Slice 1
+  - [x] Tests: `tests/db/test_marketing_models.py` (2) + `tests/test_marketing_migration.py` (2) +
+        `tests/services/marketing/test_calendar_service.py` (8) +
+        `tests/services/marketing/test_channel_service.py` (4) + `tests/api/test_marketing.py`
+        (49 parametrized RBAC/CRUD cases) +
+        `tests/services/notifications/test_marketing_notification.py` (2) +
+        `e2e/test_marketing.py::test_marketing_journey` (7 live captures under
+        `e2e/_captures/marketing/`)
+- [x] **Slice 2 — Campaigns + Audience Segments** — *shipped on `feat/module-10-marketing-slice2`
+      (commits `9ff939c`→`76657e3`), unit **1472 passed**, e2e **54/54 passed***
+  - [x] Enums (`CampaignObjective` — 4 values, `CampaignStatus` — 4 values) + `AudienceSegment`/
+        `Campaign`/`CampaignSegment` models, migration `0034_campaigns_segments` (`audience_segments`,
+        `campaigns`, `campaign_segments` tables — id shortened from the brief's
+        `0034_marketing_campaigns_segments`, which exceeded Alembic's 32-char
+        `version_num` column limit)
+  - [x] Segments service: create/get/list/update/delete + used-by (`GET
+        /segments/{id}/campaigns`); `persona_id` validated as a `persona`-kind Business Builder
+        record (Module 08) in this workspace, one query covering both "wrong kind" and
+        "cross-tenant" as the same 422
+  - [x] Campaigns service: create/get/list/update/delete; `channel_mix` is `{ChannelKey: percent}`
+        (0–100, not required to sum to 100) against a cents `budget` — FE derives per-channel
+        spend; `segment_ids` validated per-workspace, join rows fully replaced (dedupe +
+        order-preserved) on every write that touches them
+  - [x] Guarded lifecycle: `_TRANSITIONS` table — `draft→active` (launches, sets `launched_at`)
+        and `active→completed` (sets `completed_at`) each fire a `marketing.campaign.*` event;
+        `active↔paused` silent; anything else → 422; re-issuing the current status is a silent
+        no-op; a reviewer-caught partial-write gap (fields from an illegal `PATCH` still landing
+        before the status check failed) was fixed in `79aae4d` — the whole `PATCH` is now atomic
+  - [x] `/marketing` endpoints (11 new routes: 6 segment + 5 campaign) behind the same
+        `require_role(founder, team_member)` dependency Slice 1 already built — no new RBAC wiring
+  - [x] `marketing.campaign.launched`/`marketing.campaign.completed` domain events → in-app
+        notifications (`_members_minus_actor`, `"Campaign launched: {name}"` /
+        `"Campaign completed: {name}"`) via the existing Module 20 event/registry pattern; no
+        email channel wired for either event, matching Slice 1's precedent
+  - [x] Tests: `tests/services/marketing/test_segments_service.py` (7) +
+        `tests/services/marketing/test_campaigns_service.py` (9) +
+        `tests/api/test_marketing_campaigns.py` (5) +
+        `tests/services/notifications/test_marketing_campaign_notification.py` (2) +
+        `e2e/test_marketing.py::test_marketing_campaigns_journey` (7 live captures under
+        `e2e/_captures/marketing/`, alongside Slice 1's 7)
+  - [x] `metrics` stays an explicit `{}` on every campaign — Slice 5 is what fills it
+- [x] **Slice 3a — AI Content Assistant: copy generation + plan-week** — *shipped on
+      `feat/module-10-marketing-slice3a` (commits `d7096e2`→`1ff400f`), unit **1490 passed**,
+      e2e **55/55 passed***
+  - [x] Enums (`MarketingGenerationKind`, `MarketingGenerationStatus`, 5-value `AssetType`,
+        4-value `CopyTone`) + unified `MarketingAiGeneration` model (kind-discriminated —
+        `copy`/`plan_week` share one table), migration `0035_marketing_ai_generations`
+  - [x] Prompt/schema builders (`app/services/marketing/ai_prompts.py`): `copy_schema` +
+        `build_copy_messages`, `plan_week_schema` + `build_plan_week_messages`
+  - [x] AI generation service: `create_copy_generation` (validates `audience_segment_id`
+        per-workspace), `create_plan_week_generation`, kind-scoped `get_generation` (a
+        `plan_week` id via the copy route, or vice versa, 404s), `list_copy_generations`
+        (copy-kind history only, no plan-week history endpoint)
+  - [x] `ai.marketing.copy` (fills up to 3 variants, truncated) + `ai.marketing.plan_week`
+        (fills up to 7 entries, dropping any with a `channel` outside `ChannelKey`) worker
+        handlers; shared over-budget failure path (`status:"failed"`, `error:"over_budget"`)
+        deduped across both in `fdde2b9`
+  - [x] `POST /marketing/copy/generate` + `GET /marketing/copy/generations` +
+        `GET /marketing/copy/generations/{id}` + `POST /marketing/calendar/plan-week` +
+        `GET /marketing/calendar/plan-week/{id}` (5 new routes) behind the same
+        `require_role(founder, team_member)` dependency; 403 asserted on both `{id}` GET routes
+        too, not just the mutating ones
+  - [x] Tests: `tests/services/marketing/test_ai_prompts.py` (5) +
+        `tests/services/marketing/test_ai_content_service.py` (7) +
+        `tests/worker/test_marketing_ai_handlers.py` (4) + `tests/api/test_marketing_ai.py` (5) +
+        `e2e/test_marketing.py::test_marketing_ai_generation_journey` (5 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] FE compositions documented (no new endpoints): Save-to-calendar/"Add all" =
+        `POST /marketing/calendar-entries` (S1) per kept plan-week entry; Write-with-AI =
+        `copy/generate` then `PATCH /marketing/calendar-entries/{id}` (S1)
+  - [x] `Overview.ai_content_ideas` stays an explicit `null` after 3a — unchanged by this slice;
+        deferred again by 3b (see below) — its meaning is still the least-defined AI surface in
+        the PRD
+- [x] **Slice 3b — AI channel-plan recommender + per-channel fit notes** — *shipped on
+      `feat/module-10-marketing-slice3b` (commits `39eb2d3`→`bc56aee`), unit tests green per-task
+      (60 passed on the focused `tests/api/` slice), e2e **56/56 passed***
+  - [x] `MarketingGenerationKind` gains `channel_plan`/`channel_fit` (fits the existing 12-char
+        column, no enum-length migration) + `marketing_channels.ai_fit_note`/
+        `fit_note_generated_at` columns, migration `0036_channel_fit_notes`
+  - [x] Prompt/schema builders: `channel_plan_schema` + `build_channel_plan_messages`,
+        `channel_fit_schema` + `build_channel_fit_messages`; `plan_week_schema()`'s `channel` field
+        gained an `enum` constraint (closes the Slice 3a review follow-up — plan-week entries no
+        longer silently empty under the stub provider)
+  - [x] AI generation service: `create_channel_plan_generation` (standalone, not tied to a
+        `campaign_id` — D1), `create_channel_fit_generation` (one job, all 8 channels — D2); both
+        reuse Slice 3a's kind-scoped `get_generation`/`serialize_generation` unchanged
+  - [x] `ai.marketing.channel_plan` (normalizes `channel_mix` to sum-to-100 via largest-remainder
+        rounding, even-split fallback when nothing valid, rejects non-finite/negative/bool values)
+        + `ai.marketing.channel_fit` (lazy-seeds the 8 channels before the budget check, writes
+        `ai_fit_note`/`fit_note_generated_at` per valid key, keeps a channel's prior note when its
+        key is omitted from the model's response) worker handlers
+  - [x] `POST /marketing/channel-plan/recommend` + `GET
+        /marketing/channel-plan/recommendations/{id}` + `POST /marketing/channels/fit-notes/generate`
+        + `GET /marketing/channels/fit-notes/{id}` (4 new routes) behind the same
+        `require_role(founder, team_member)` dependency; `GET /marketing/channels` now surfaces
+        `ai_fit_note`/`fit_note_generated_at` inline per card, no endpoint code change needed
+  - [x] Tests: `tests/db/test_marketing_channel_fit_columns.py` +
+        `tests/test_marketing_slice3b_migration.py` (4) +
+        `tests/services/marketing/test_ai_prompts.py` (10, 5 new) +
+        `tests/services/marketing/test_ai_content_service.py` (9, 2 new) +
+        `tests/worker/test_marketing_ai_handlers.py` (15, 11 new) +
+        `tests/api/test_marketing_ai.py` + `tests/api/test_marketing.py` (6 new across both) +
+        `e2e/test_marketing.py::test_marketing_channel_ai_journey` (5 live captures under
+        `e2e/_captures/marketing/`; refreshed Slice 3a's `plan_week_ready.json` in the same run)
+  - [x] `Overview.ai_content_ideas` stays an explicit `null` after 3b too (D5 — deliberately
+        deferred, not this slice's job); the pre-existing `Overview.active_campaigns: null` gap
+        (never wired up despite Slice 2 shipping campaigns) noted as out-of-scope-for-3b, tracked
+        in the follow-ups below
+- [x] **Slice 4 — SEO Tools** — *shipped on `feat/module-10-marketing-slice4` (commits
+      `050824d`→`00b5373`), e2e **57/57 passed*** (PRD 10.6). FE cross-check: **keyword tracker +
+      brand positioning are FE-aligned to the current UI; on-page checklist + AI content-gap are
+      build-ahead — no FE screen consumes them yet, shapes provisional.**
+  - [x] Enum `MarketingGenerationKind.content_gap` (11 chars, fits the 12-char column) + models
+        `SeoKeyword`/`TrackedPage`/`BrandPositioning`, migration `0037_seo_tools` (`seo_keywords`,
+        `tracked_pages` `UNIQUE(startup_id,url)`, `brand_positioning` `UNIQUE(startup_id)`)
+  - [x] **Keyword tracker** *(FE-aligned)* — `GET/POST /marketing/keywords`, `PATCH/DELETE
+        /marketing/keywords/{id}`; manual metrics; `volume` is a **string** (`"2.4K"`, matches FE
+        `SEOKeyword.volume`); `difficulty` 0–100 (out-of-range → 422); snake_case fields
+        (`current_rank`/`target_page`) mapped to FE camelCase; `PATCH {"keyword": null}` → 422
+        (fix `215b583`)
+  - [x] **On-page checklist** *(build-ahead, provisional)* — `GET/POST /marketing/seo/pages`,
+        `PATCH/DELETE /marketing/seo/pages/{id}`; fixed 8 items (`title_tag`, `meta_description`,
+        `h1`, `keyword_in_intro`, `image_alt`, `internal_links`, `url_slug`, `mobile_friendly`)
+        seeded all-false; `PATCH` merge-toggles a partial `{item: bool}` (unknown key → 422);
+        `completed`/`total` server-computed; duplicate url per workspace → 422 via SAVEPOINT
+        (fix `f7c1051`)
+  - [x] **Brand positioning** *(FE-aligned)* — `GET/PUT /marketing/positioning`; 1 row per
+        workspace; 5 fields + server-composed `statement`; `GET` before any `PUT` → 200 all-null
+        (never 404); all-blank `PUT` keeps `statement: null` (fix `6be03a6`); `PUT` is full-replace
+  - [x] **AI content-gap** *(build-ahead, provisional)* — `POST /marketing/seo/content-gaps/generate`
+        (202) → poll `GET /marketing/seo/content-gaps/{id}`, history `GET
+        /marketing/seo/content-gaps`; `ai.marketing.content_gap` worker grounded in the 10 most
+        recent tracked keywords; output `{gaps: [{title, target_keyword, angle}]}` (max 7);
+        `over_budget` failure via the shared helper; kind-mismatch → 404; "Write it" = FE
+        composition into `POST /marketing/copy/generate` (no new endpoint)
+  - [x] All routes behind the existing `require_role(founder, team_member)` (403 otherwise)
+  - [x] Tests: `tests/db/test_seo_models.py` + `tests/test_seo_tools_migration.py` +
+        `tests/services/marketing/test_ai_prompts.py` (+2) +
+        `tests/worker/test_marketing_ai_handlers.py` (+2) + `tests/api/test_marketing_seo.py` +
+        `e2e/test_marketing.py::test_marketing_seo_journey` (8 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] Docs: SOP `docs/sop/2026-09-29-marketing-slice4.md`; FE guide
+        `docs/fe-integration-guide-marketing-seo.md` (checklist + content-gap sections flagged
+        build-ahead/provisional)
+- [x] **Slice 5 — Performance Analytics** — *shipped on `feat/module-10-marketing-slice5`
+      (commits `05bc501`→`6a63054`, 2026-09-29), migration `0038_marketing_metrics`, e2e **58/58
+      passed*** — **completes Module 10**
+  - [x] `MarketingMetricName` enum (`visits`, `impressions`, `clicks`, `conversions`, `spend`) +
+        `MarketingMetric` model / `marketing_metrics` table (optional `channel` + `campaign_id`
+        dimensions, `Date` `ts`, int `value`; `spend`/`cac` in cents), migration
+        `0038_marketing_metrics`
+  - [x] `POST /marketing/metrics` — validated bulk ingest, returns `{"created": n}`; enum /
+        negative / `value` over int32 / foreign `campaign_id` → 422; batch capped at 1000 (fix
+        `d42df91`: 422 not 500). **API-first / provisional — no FE ingestion screen yet**
+  - [x] `GET /marketing/analytics?range=7d|30d|90d` (default `30d`) — `traffic_by_week`
+        (`date_trunc` week, empty weeks omitted), `cac_by_channel` (`cac` null at 0 conversions),
+        `funnel` (1-dp percentage rates, zero-safe), `leaderboard` (conversions-desc); UTC cutoff
+        inclusive of today; tenant-scoped leaderboard join (`7adec5b`); bad `range` → 422
+  - [x] Overview fills — `top_channel_by_conversions` (all-time, channel-scoped, else `null`),
+        `ai_content_ideas` (gaps in ready content-gap generations), `active_campaigns` (function-local
+        `analytics` import in `service.py` to avoid the service↔analytics cycle)
+  - [x] Documented data-model semantics: metrics additive + funnel sums all scopes (double-counts if
+        the same events are ingested at two scopes); `traffic_by_week` needs FE gap-fill; FE
+        leaderboard reads `analytics.leaderboard`, not `campaign.metrics` (stays `{}`)
+  - [x] All routes behind the existing `require_role(founder, team_member)` (403 otherwise)
+  - [x] Tests: `tests/db/test_marketing_metric_model.py` + `tests/test_marketing_metrics_migration.py`
+        + `tests/api/test_marketing_analytics.py` (17) +
+        `e2e/test_marketing.py::test_marketing_analytics_journey` (3 live captures under
+        `e2e/_captures/marketing/`)
+  - [x] Docs: SOP `docs/sop/2026-09-29-marketing-slice5.md`; FE guide
+        `docs/fe-integration-guide-marketing-analytics.md` (ingestion flagged API-first /
+        provisional)
+- [x] **✅ MODULE 10 COMPLETE — all 5 slices shipped** (Slices 1–4 merged to `develop`; Slice 5 PR
+      pending). Analytics export is not part of this module — it belongs to Module 22.
+
+**Deferred within the Slice 1 CRUD spine itself** (tracked in the Deferred follow-ups section
+below): auto-publish at `scheduled_at` (manual `PATCH` only today); multi-channel entries (single
+`ChannelKey` per entry today); media upload integration with Module 18 (`media_ref` is an
+untouched opaque string slot); granular per-module Marketing grant.
+
+**Deferred within Slice 3a itself** (tracked in the Deferred follow-ups section below): no inline
+"Refine" on a generation's output; no server-side link between a generation and the calendar
+entry it informs (FE compositions track that association client-side); no history-list endpoint
+for `plan_week` (unlike copy's). ~~stub-provider `plan_week` entries are always empty~~ **resolved
+in Slice 3b** — `plan_week_schema()`'s `channel` field now enum-constrains to `ChannelKey`, so
+`output.entries` is populated under the stub too; see the Slice 3b SOP.
+
+**Deferred within Slice 3b itself** (tracked in the Deferred follow-ups section below): no
+history-list endpoint for `channel_plan`/`channel_fit` (same YAGNI reasoning as plan-week); no
+server-side link between a channel-plan recommendation and the campaign it informs; inline
+"Refine" still unbuilt; stub-provider `channel_mix` is always the even-split fallback, never a
+differentiated recommendation (real-provider behavior unaffected — see the SOP).
+
+**Deferred within Slice 4 itself** (tracked in the Deferred follow-ups section below): no external
+SEO-provider sync (keyword metrics are manual); on-page checklist + content-gap have no FE screen
+yet (build-ahead, shapes provisional until the FE is built); partially-filled positioning `PUT`
+composes the template with blank gaps (untested edge).
+
+**Deferred within Slice 5 itself** (tracked in the Deferred follow-ups section below): analytics
+export (Module 22); ad-platform auto-ingestion; an FE ingestion screen (ingestion is API-first /
+provisional); funnel additive-scope guidance (double-counts when the same events are ingested at two
+scopes); metric dedupe/correction (ingestion is append-only); the `campaign.metrics` JSONB is now
+dead weight.
+
+**Deferred within the Slice 2 CRUD spine itself** (tracked in the Deferred follow-ups section
+below): segment rule execution against real data (`definition` is an opaque, unevaluated JSON
+blob; `est_size` is manually entered, not computed); no campaign Content step (attach/generate
+assets, link calendar entries); no `cancelled` terminal status (only `draft`/`active`/`paused`/
+`completed` exist, `completed` is the only terminal state).
+
+---
+
+## 🟡 Module 12 — Finance Hub — *IN-SCOPE BUILD COMPLETE: 6 of 6 slices SHIPPED — Slices 1–3, 4a, 4b and 5 (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR #112; Financial Model on `feat/module-12-finance-slice5`, PR pending); Integrations (external bank/accounting connectors) deferred*
+
+Follows the same slice discipline as Modules 03/08/10/18/20: ledger + read spine first, then the
+projections/AI layer, then the money-in/money-out documents, then integrations. PRD 12.x. Slice 1
+migration `0039_finance_transactions`; Slice 2 migration `0040_finance_runway`; Slice 3 migration
+`0042_finance_invoices`; Slice 4a migration `0043_finance_expenses`; Slice 4b migration `0044_finance_budgets`; Slice 5 migration `0045_finance_model`. SOPs:
+`docs/sop/2026-09-29-finance-slice1.md`, `docs/sop/2026-09-29-finance-slice2.md`,
+`docs/sop/2026-09-29-finance-slice3.md`, `docs/sop/2026-09-30-finance-slice4a.md`,
+`docs/sop/2026-09-30-finance-slice4b.md`, `docs/sop/2026-09-30-finance-slice5.md`. FE guides:
+`docs/fe-integration-guide-finance-cashflow.md`, `docs/fe-integration-guide-finance-runway.md`,
+`docs/fe-integration-guide-finance-invoices.md`, `docs/fe-integration-guide-finance-expenses.md`,
+`docs/fe-integration-guide-finance-budgets.md`, `docs/fe-integration-guide-finance-model.md`.
+Design specs / plans: `docs/superpowers/specs/2026-09-29-module-12-finance-slice{1,2,3}-design.md` +
+`docs/superpowers/specs/2026-09-30-module-12-finance-slice4{a,b}-design.md`,
+`docs/superpowers/plans/2026-09-29-module-12-finance-slice{1,2,3}.md` +
+`docs/superpowers/plans/2026-09-30-module-12-finance-slice4{a,b}.md`.
+
+- [x] **Slice 1 — Cash Flow (PRD 12.1)** — *shipped on `feat/module-12-finance-slice1` (commits
+      `540f2f0`→`1fea1c6` + docs), e2e **59/59 passed**, single alembic head `0039_finance_transactions`*
+  - [x] Enums (`TransactionDirection` `in`/`out`, `TransactionSource` `manual`/`bank`/`accounting`/
+        `stripe`) stored by value (`values_callable`) + `Transaction` model, migration `0039`
+        (`transactions` table; `(startup_id, date)` index; `external_ref` reserved for integrations)
+  - [x] Money as `amount_minor` (int, `0..2_147_483_647`) + ISO `currency`; `direction` carries the
+        sign; FE maps the code to a symbol (₦) and divides by 100
+  - [x] Transactions CRUD: `POST/GET/PATCH/DELETE /finance/transactions`; list filters
+        `uncategorized` / `category` / `direction` / `date_from` / `date_to`; inline categorize is a
+        PATCH; `source` forced to `manual`; explicit `null` on a non-nullable PATCH field -> 422
+        (`category` may be null); cross-tenant -> 404
+  - [x] `GET /finance/cash-flow`: `cash_on_hand`, `monthly_burn`, `monthly_revenue`,
+        `runway_months` (float | null), `runway_low`, `currency`, 6-point zero-filled `by_month`
+  - [x] Null-safe runway + `runway_low` fires when out of cash while burning; trailing-3-calendar-month
+        average (÷ 3); future-dated transactions excluded; UTC dates
+  - [x] RBAC `founder` / `team_member` / `accountant` (others 403); `_validation` in
+        `app/services/finance/errors.py`
+  - [x] Tests: model + migration + `tests/api/test_finance.py`; e2e `test_finance_cash_flow_journey`
+        with 5 captures
+  - [x] FE integration guide (captures verbatim) + SOP
+- [x] **Slice 2 — Runway & Scenarios (PRD 12.2)** — *shipped on `feat/module-12-finance-slice2` (commits
+      `d758e03`→`5db85c7` + docs), unit **1632 passed**, e2e **60/60 passed**, single alembic head
+      `0040_finance_runway`*
+  - [x] `FinanceRunwaySettings` model + migration `0040_finance_runway` (one row per workspace: 3
+        assumptions + `alert_is_low` / `alert_last_fired_at`; unique index on `startup_id`) — `66ce13c`
+  - [x] Scenario projection engine (`runway_math.py`, `scenario_config.py`): base / best (+10 pp,
+        costs × 0.90) / worst (−10 pp, costs × 1.15) over a 12-month horizon; fractional runway via
+        zero-crossing interpolation; `null` = never runs out, `0.0` = already out — `753a86f`
+  - [x] Shared `_runway_is_low` predicate (one source for `cash_flow_summary.runway_low` and the alert)
+  - [x] Projection uses true unclamped monthly costs + zero-cash runway fix; baseline-split
+        regression guard — `aa14810`, `f07379d`
+  - [x] `GET /finance/runway` + `PUT /finance/runway/assumptions` (partial update, returns the same
+        recomputed payload; growth `0..1000`, minor units `0..2_147_483_647`; explicit null → 422; GET
+        creates no row; first-writer race adopts the winner's row) — `c4fd43d`
+  - [x] `finance.runway.low` event + in-app notification: fires once on transition into low runway,
+        recovery re-arms, all active members, in-app only — `e054318`
+  - [x] Informational non-scoring `money.runway_live` Health-Score signal (`contribution` 0; refreshed on
+        transaction writes and rebuilt on Health Score recompute) — `02ff300`
+  - [x] Tests: scenarios (11), API (19), alert (3), signal (7), model (2), migration (1);
+        e2e `test_finance_runway_journey` with 21 captures (incl. fire-once, re-arm, out-of-cash)
+  - [x] FE integration guide (captures verbatim; ₦-thousands vs kobo trap, null vs `0.0`, signal value-0
+        ambiguity, notification rules) + SOP
+- [x] **Slice 3 — Invoices (PRD 12.3)** — *shipped on `feat/module-12-finance-slice3` (commits
+      `ddc8f38`→`df88409` + docs), unit **1725 passed**, e2e **61/61 passed**, single alembic head
+      `0042_finance_invoices`*
+  - [x] `Invoice` model + migration `0042_finance_invoices` (one table: FK `startup_id` CASCADE, FK
+        `transaction_id` SET NULL + unique, unique `(startup_id, number)`; `InvoiceStatus` `draft`/`sent`/`paid`,
+        `InvoiceTerms` `net_15`/`net_30`/`due_on_receipt`; `TransactionSource.invoice` needs no DDL) — `99348de`
+  - [x] Create/list/get with **server-computed totals** (client total ignored; subtotal = Σ qty×unit, tax
+        half-up, int32 cap → 422) + `INV-<year>-<NNN>` numbering (max+1, SAVEPOINT retry on collision) —
+        `fd418a9`, `18abebe`
+  - [x] Edit (draft only; `auto_remind` any time) / delete (draft only) / send (sets `issued_on` + `due_on`,
+        status `sent`, enqueues the email) with strict 422 state machine — `f3b6466`
+  - [x] **Derived `overdue`** (sent + `due_on` < today UTC; never stored, `?status=` filters on the derived
+        value, not settable via PATCH)
+  - [x] Mark-paid: **idempotent** inflow (row lock + `transaction_id` guard, `source="invoice"`, category
+        `Revenue`, dated paid-day) / mark-unpaid: **exact reversal** (deletes the inflow) — `9dbf23a`
+  - [x] Runway hook refresh on mark-paid/unpaid (alert + `money.runway_live` signal) — Cash Flow **and**
+        Runway move when an invoice is paid — `da0a73d`
+  - [x] Invoice-managed-transaction guard (`PATCH`/`DELETE` on a `source="invoice"` row → 422 "unpay the
+        invoice instead") — `2916c2c`
+  - [x] `email.invoice_sent` worker job (Resend/file backend; HTML-escaped, CRLF-stripped subject; amounts in
+        **major** units) — `50ac413`, `06d2bc1`
+  - [x] RBAC `founder` / `team_member` / `accountant` (others 403); cross-tenant 404
+  - [x] Tests: API (50), transitions (17), paid-cashflow (13), email (7), model (5), migration (1);
+        e2e `test_finance_invoices_journey` with 40 captures (lifecycle, paid→cash-flow+runway, reversal,
+        delivered email, guard 422s, derived overdue) — `df88409`
+  - [x] FE integration guide (captures verbatim; server totals, derived overdue, paid→cash-flow/runway,
+        invoice-managed txns, minor-vs-major money, FE-only PDF, limitations) + SOP
+- [x] **Slice 4a — Expenses (PRD 12.4, first half)** — *shipped on `feat/module-12-finance-slice4a` (commits
+      `d2133e2`→`c9552a1` + docs), unit **1942 passed**, e2e **63/63 passed**, single alembic head
+      `0043_finance_expenses`*
+  - [x] `Expense` model + migration `0043_finance_expenses` (one table: FK `startup_id` CASCADE, FK `created_by`
+        SET NULL, FK `transaction_id` SET NULL + unique, composite `(startup_id, expense_date)` index;
+        `TransactionSource.expense` needs no DDL) — `d2133e2`
+  - [x] Create/list/get with filters (`category` / `month` / `date_from` / `date_to` / `recurring`), int32 cap +
+        explicit-null-on-required 422 — `a442763`
+  - [x] **Every expense posts a 1:1 linked outflow** (`source="expense"`) into Cash Flow — cash-on-hand, burn,
+        by-month series, and Runway all move; runway alert + `money.runway_live` signal refreshed in the same
+        transaction — `a442763`, `159ef26`
+  - [x] Edit **syncs the same ledger row in place** (`transaction_id` stable) / delete **reverses the outflow** and
+        removes the receipt file; runway hooks on both — `bfaa66b`
+  - [x] **Generalized managed-transaction guard** `_reject_managed` (`PATCH`/`DELETE /finance/transactions/{id}` on
+        `source` `expense` or `invoice` → 422) — `bfaa66b`, `42905c6`
+  - [x] Category summary `GET /finance/expenses/summary?month=` (per-category totals + 1-dp percents, sorted total
+        desc; empty/all-zero month → `rows: []`; route declared before `/{id}`) — `a442763`
+  - [x] Receipts: `POST`/`DELETE /finance/expenses/{id}/receipt` (PNG/JPEG/PDF ≤ 10 MB, replace deletes old file
+        after saving the new, delete-cascade) via the storage backend — `b5c84b6`
+  - [x] RBAC `founder` / `team_member` / `accountant` (others 403); cross-tenant 404
+  - [x] Tests: API (27) + receipts (12) + services/cash-flow incl. `autoflush=False` (14) + model (4) + migration (1);
+        e2e `test_finance_expenses_journey` with 39 captures (create → outflow → cash-flow/runway, edit-sync,
+        delete-reverse, guard 422s, receipt create/replace/remove/cascade on disk) — `c9552a1`
+  - [x] FE integration guide (captures verbatim; expense→outflow→cash-flow/runway table, document-once rule,
+        managed transactions, receipts, summary rounding, limitations) + SOP
+- [x] **Slice 4b — Budgets (PRD 12.4, second half)** — *shipped on `feat/module-12-finance-slice4b` (commits
+      `d9f15f7`→`c652835`, e2e `6fb59fc`, + docs), unit **2019 passed**, e2e **64/64 passed**, single alembic head
+      `0044_finance_budgets`*
+  - [x] `Budget` model + migration `0044_finance_budgets` (one table: FK `startup_id` CASCADE, FK `created_by` SET
+        NULL, **BIGINT** `limit_minor`, unique `(startup_id, category, period_month)`, composite
+        `(startup_id, period_month)` index; up/down/up round-trip verified) — `d9f15f7`, `c652835`
+  - [x] CRUD: `POST` / `GET` (list `?month=` required, and one) / `PATCH` / `DELETE` `/finance/budgets`; duplicate (category, month)
+        → 422 with the session surviving (SAVEPOINT); `PATCH` only `limit_minor`/`notes`, explicit-null limit → 422;
+        cross-tenant 404 — `3936944`
+  - [x] **Actuals derived on read** via the shared `expense_category_totals` (one grouped query for the list;
+        `category_summary` refactored onto it — single source of truth with the Expenses summary):
+        `spent_minor` / `variance_minor` / `over_budget` / `percent_used` (`null` at a zero limit), **expenses only**
+        (a manual outflow does not count), category matched **case- and whitespace-exact** — `3936944`
+  - [x] `POST /budgets/draft-from-actuals` (limit = last month's category expense total, currency `NGN`) and
+        `POST /budgets/copy-last-month` (category/limit/currency, notes not copied): **skip already-budgeted
+        categories, never overwrite, return only-created**, `_prev_month` year rollover, per-insert savepoint against
+        a concurrent seeder — `53189ef`
+  - [x] **64-bit limit** (budgets are aggregates; a draft sum can exceed int32) — `c652835`
+  - [x] RBAC `founder` / `team_member` / `accountant` (others 403); cross-tenant 404
+  - [x] Tests: API (30 fn) + actuals (5) + seeding (13) + model (3) + migration (1) = 77 cases; e2e
+        `test_finance_budgets_journey` with 29 captures (draft → this-month expenses → derived spent/variance/
+        over_budget/percent, manual outflow + lower-case category NOT counted, create/PATCH flips `over_budget`,
+        zero limit, 5B limit, copy-last-month skip-existing, delete, error shapes) — `6fb59fc`
+  - [x] FE integration guide (captures verbatim; derived fields, expenses-only actuals, category-is-department
+        exact matching, seeder skip-existing/only-created, 64-bit limit, limitations) + SOP
+- [x] **Slice 5 — Financial Model (PRD 12.5)** — *shipped on `feat/module-12-finance-slice5` (commits
+      `2c7e963`→`74cbf8e`, + e2e + docs), slice unit tests **60 passed**, e2e **65/65 passed**, single alembic head
+      `0045_finance_model`*
+  - [x] `FinancialModel` model + `FinancialModelStatus` + migration `0045_finance_model` (one table) — `2c7e963`
+  - [x] Deterministic integer 3-statement engine (P&L / cash flow / balance sheet), **exact balance invariant** per
+        month (net-income / ΔAR / ΔAP linkage + paid-in-capital plug; asserted in-engine; 20k-case fuzz in review) — `e774e33`
+  - [x] Assumptions JSON schema + prompt builder + `validate_assumptions` (never raises; coerces + clamps the six
+        keys so bad LLM output cannot break the engine) — `02b0bb6`
+  - [x] `POST /finance/model/generate` (**202**), `GET /finance/model` (latest / `none`), `GET /finance/model/{id}`;
+        RBAC founder / team_member / accountant, cross-tenant 404 — `4c216a0`
+  - [x] `ai.finance.model` worker: actuals-seeded, metered LLM, engine, `complete`; over-budget → `failed`
+        consistently (never stuck `generating`) — `c8f157b`, `74cbf8e`
+  - [x] Live e2e `test_financial_model_journey` (none → 202 → generating → drain → complete → balance-sheet
+        balances live in all 12 months → by-id), 5 captures
+  - [x] FE integration guide (202 + poll, `failed` state, statement shape, minor units + 2^53 note, AI-assisted-but-
+        deterministic, client-side sensitivity, XLSX deferred) + SOP
+- [ ] **Slice 6 — Integrations (bank / accounting / Stripe)** *(**deferred** — the external-connectors slice from the
+      module design; needs OAuth infrastructure; uses the reserved `source` values and `external_ref`. Not part of the
+      Slice 1–5 in-scope build, which is complete.)*
+
+**Deferred within Slice 5 itself** (tracked in the Deferred follow-ups section below): XLSX export (`openpyxl`);
+36-month horizon; server-side sensitivity; itemised opex; bank-account actuals (via the Integrations slice); no
+concurrent-generation dedup; currency hardcoded `NGN`; paid-in-capital plug is a pragmatic startup model (not full
+GAAP); trailing-window revenue counts financing inflows; the `failed` path, RBAC 403 and cross-tenant 404 are
+unit-verified only (stub-LLM e2e always completes).
+
+**Deferred within Slice 4b itself** (tracked in the Deferred follow-ups section below): over-budget
+event / notification (the flag is derived on read only); `draft-from-actuals` labels new budgets `NGN` regardless
+of the expenses' currency; category matching is case- and whitespace-exact (no normalisation / vocabulary);
+mixed currency not converted; `spent_for` does a whole-month group-by per single-budget read; no department
+entity, rollover or annual budgets; budget service tests lack `autoflush=False` variants; 403 / cross-tenant 404 /
+January rollover / partial-seed month are unit-verified only (no live capture).
+
+**Deferred within Slice 4a itself** (tracked in the Deferred follow-ups section below): ~~Budgets (Slice 4b)~~ now
+shipped; recurring-expense scheduler (`recurring` is a stored flag only); concurrent PATCH desync on one expense (no row
+lock); no idempotency key on money POSTs (module-wide); mixed currency not converted; `currency` not
+ISO-validated; storage delete before DB commit (module-wide); receipt content type trusted from the header;
+future-dated expenses in the summary but not in cash-flow; 403 / cross-tenant 404 / Cloudinary URL / oversize
+receipt / runway-notification firing are unit- or source-verified only (no live capture).
+
+**Deferred within Slice 1 itself** (tracked in the Deferred follow-ups section below): multi-currency
+conversion / mixed-currency summary (sums add unlike currencies as one unit); revenue-vs-financing
+split (`monthly_revenue` counts all inflow); transactions list is unpaginated; DELETE, the
+`category`/`direction`/date filters and error bodies are unit/source-verified only (no live capture).
+
+**Deferred within Slice 3 itself** (tracked in the Deferred follow-ups section below): reminder/overdue
+scheduler (`auto_remind` is a stored flag only); server-side PDF (FE-only); Client/CRM entity; mixed-currency
+not converted; `currency` not ISO-validated; `send`/`PATCH`/`DELETE` use an unlocked fetch (double-tap Send can
+queue two emails; PATCH lost-update — `mark-paid`/`mark-unpaid` DO lock); the no-op mark-paid path re-runs the
+runway hooks (harmless); no `invoice.*` domain events; real-Resend delivery, RBAC 403, cross-tenant 404 and the
+low-runway transition via an invoice payment are unit-verified only (no live capture).
+
+**Deferred within Slice 2 itself** (tracked in the Deferred follow-ups section below): concurrent
+double-fire race on the low-runway alert (unlocked read); first transaction mutation creates a settings
+row without a PUT; +1 `cash_flow_summary` per transaction mutation; `money.runway_live` has no
+`unique(startup_id, key)` constraint (self-heals); signal can appear before a completed assessment;
+`money.runway_live` value 0 is ambiguous (cash-positive vs out-of-cash); no email category for
+`finance.runway.low` (in-app only); 403 / over-int32 422 / PATCH-DELETE alert hook / other-member
+fan-out are unit-verified only (no live capture).
+
+---
+
 ## ⬜ Upcoming (from PRD — mapped as we reach each)
 
-- [ ] **Module 03 — AI Co-Founder** — Slice 1 (LLM seam + assessment narrative, PR #72) + Slice 2
+- [x] **Module 03 — AI Co-Founder** — *✅ MODULE 03 COMPLETE (owner decision, 2026-09-21)*: Slice 1
+      (LLM seam + assessment narrative, PR #72) + Slice 2
       (structured output + canvas ai-fill worker, PR #77) merged; Slice 3 (typed records ai-fill
       worker, closing the last unconsumed ai-fill job type) merged (PR #81); Slice 4 (mission
       reason + health recommendation AI upgrade) merged (PR #83); Slice 5 (dashboard AI briefing)
-      merged (PR #87); see its own section above.
-      Onboarding AI panel and roadmap replan rationale (the remaining Module-03-deferred AI
-      consumers) still ahead
+      merged (PR #87); Slice 6 (roadmap re-plan rationale) merged (PR #90); Slice 7 (onboarding
+      AI panel) merged (PR #92); see its own section above.
+      All six named Module-03 AI consumers and the LLM seam are shipped, across seven build
+      slices. Of the 3 infra items named since Slice 1: per-workspace LLM token budget and a
+      workspace-level enrichment-status endpoint (`GET /ai/status`) shipped 2026-09-21 on
+      `feat/llm-budget-ai-status` (SOP `docs/sop/2026-09-21-llm-budget-ai-status.md`); the
+      non-OpenAI/Anthropic provider implementation is dropped won't-do (OpenAI-only,
+      2026-09-21) — no remaining open Module-03 follow-ups
 - [x] **Module 20 — Notifications** — *✅ ALL 4 SLICES BUILT — MODULE 20 COMPLETE*: Slice 1
       (In-App Feed + Fan-Out) merged (PR #58); Slice 2 (Email Delivery + Preferences + Worker)
       merged (PR #60); Slice 3 (Scheduler/Cron) merged (PR #71, migrations `0024_scheduled_runs` →
       `0025_roadmap_milestone_due_idx`); Slice 4 (Real-Time SSE) merged (PR #74, no migration);
       see its own section above.
       Device/closed-app push remains a genuinely separate, still-unbuilt follow-up (Slice 4 SOP)
-- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above* · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
-- [ ] **Module 21 — Founder Journal** — *junior handoff prepared* · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 17 — Learning Academy** — *✅ MERGED to `develop` (PR #59); see its own section above.* **2026-09-23:** its Module-03-deferred AI upgrade (shelf-level `recommendation_reason`, templated→AI on `GET /learning/recommendations`) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0031_learning_recommendations`, commits `5035f56`→`2fb6501`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-learning-recommendations.md` · brief `docs/handoff/module-17-learning-academy.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 20 — Notifications PRD gaps (FE hand-off pass)** — **built 2026-10-29** on `feature/notifications-be-gaps` (migration `0081_notifications_gaps`; PR pending): server filters + counts, priority/module on rows, archive/restore, per-category In app + Email grid with locked critical alerts, working digest and quiet hours. SOP `docs/sop/2026-10-29-notifications-prd-gaps.md`, FE guide `docs/fe-integration-guide-notifications-inbox.md`.
+- [x] **Module 23 — Team page (light, PRD overridden 2026-10-29)** — **built** on `feature/team-be-gaps` (no migration; PR pending): role change, remove, leave, invitation list / resend / revoke, Documents grants revoked on removal, Audit tab + CSV, comments index. Tasks, Directory and the grants matrix deliberately not built. SOP `docs/sop/2026-10-29-team-manage.md`, FE guide `docs/fe-integration-guide-team.md`.
+- [x] **Module 21 — Founder Journal** — *✅ MERGED (PR #37); this line was stale — the Snapshot above (and the module tally) already counted it complete, this checkbox had just never been flipped.* **2026-09-23:** its Module-03-deferred AI upgrade (daily `prompt`, static→AI on `GET /journal/prompts/today`, grounded only in operational signals — never journal content or mood) shipped on `feat/module-03-deferred-ai-upgrades` (migration `0032_journal_prompts`, commits `f9f9b01`→`1797088`) — SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide `docs/fe-integration-guide-journal.md` §1 · brief `docs/handoff/module-21-founder-journal.md` · planned blueprint `docs/architecture/planned/modules-17-21-junior-handoff.md`
+- [x] **Module 10 — Marketing Hub** — *✅ ALL 5 SLICES BUILT — MODULE 10 COMPLETE (2026-09-29)*: Slice 1
+      (Content Calendar + Channels + Overview CRUD spine, migration
+      `0033_marketing_calendar_channels`), Slice 2 (Campaigns + Audience Segments,
+      `0034_campaigns_segments`), Slice 3a (AI copy generation + plan-week,
+      `0035_marketing_ai_generations`), Slice 3b (AI channel-plan recommender + fit notes,
+      `0036_channel_fit_notes`), Slice 4 (SEO Tools, `0037_seo_tools`) and Slice 5 (Performance
+      Analytics, `0038_marketing_metrics`) all merged to `develop`
+      (PRs #100/#101/#102/#104/#105/#106); see its own section above. SOPs
+      `docs/sop/2026-09-24-marketing-slice{1,2,3a}.md` + `docs/sop/2026-09-28-marketing-slice3b.md` +
+      `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
+      `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
+- [x] **Module 09 — Validation Hub** — *🟢 shipped, merged to `develop` (PR #103, migration `0041_validation`); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
+- [ ] **Module 12 — Finance Hub** — *🟡 in-scope build COMPLETE (Slices 1–5 built, 2026-09-30; Slice 4b, 5 detail in its own section above); only the deferred Integrations/external-connectors slice remains* (earlier note, Slices 1–3 and 4a): Slice 1 transactions
+      ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
+      `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
+      projection, `finance.runway.low` alert, informational `money.runway_live` signal (migration
+      `0040_finance_runway`, `feat/module-12-finance-slice2`); Slice 3 Invoices — server-computed totals, INV
+      numbering, draft→sent→paid lifecycle + derived overdue, idempotent paid-inflow into Cash Flow/Runway with
+      exact reversal, client email (migration `0042_finance_invoices`, `feat/module-12-finance-slice3`); Slice 4a
+      Expenses — 1:1 expense↔outflow with edit-sync/delete-reverse into Cash Flow/Runway, generalized managed
+      guard, receipts via storage, category summary (migration `0043_finance_expenses`,
+      `feat/module-12-finance-slice4a`, PR #111); Slice 4b (Budgets, migration `0044_finance_budgets`, PR #112) and Slice 5 (Financial Model, migration `0045_finance_model`, `feat/module-12-finance-slice5`, PR pending) built; Integrations deferred; see its own section
+      above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
+      FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
+- [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 assigned to Victoria 2026-10-14 (#124); checkpoints settled 2026-10-15 (#125); spec in progress* · brief `docs/handoff/module-13-legal-compliance.md`
+  - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
+        Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
+        · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day
+        `relativedelta`, idempotent spawn via unique `previous_item_id`) · IP renewals = scheduler scans `renewal_on` (no
+        linked row) · today = UTC date, no re-arm on date move · NG + US-DE only, figures transcribed then **verified by
+        Adebayo before prod** · IP status stored drafting/filed/registered, expired derived · FE must send stable step keys
+  - [ ] Slice 2 — Legal Advisor Requests (13.6: external `legal_advisor` role, scoped access, document versions)
+  - [ ] Slice 3 — Contract Templates + AI Contract Review (13.2/13.3: LLM jobs, PDF/DOCX parsing)
 - [ ] Remaining PRD modules — to be mapped into their own sections as scope firms up
 
 **Reference docs:** system architecture blueprint `docs/architecture/system-architecture.md` (sync/verify after each module); planned-module blueprints under `docs/architecture/planned/`.
@@ -1828,6 +3320,294 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 ---
 
 ## Deferred follow-ups (tracked, non-blocking)
+
+### Deferred AI upgrades (unblocked by Module 03)
+
+Each is a small "seam it, defer it" AI slice inside an otherwise-complete (or in-progress)
+module. Module 03's LLM seam, structured output, async-upgrade worker pattern, and the
+per-workspace token budget all exist — so none of these are *blocked*. They
+follow the established async-upgrade pattern (templated fallback written synchronously, an
+`ai.*` worker job overwrites it via `complete*()`), and each is metered through
+`app/platform/llm_budget.py`. **Modules 17 and 21 shipped 2026-09-23** on
+`feat/module-03-deferred-ai-upgrades`; Module 09 remains with the junior.
+
+- [x] **Module 17 — AI-picked learning recommendations** — **shipped 2026-09-23** as the
+      shelf-level `recommendation_reason` (templated→AI on `GET /learning/recommendations`;
+      migration `0031_learning_recommendations`, `ai.learning.recommendations` worker). Was v1
+      deterministic stage-tag matching; the AI reason-line is now built. SOP
+      `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-learning-recommendations.md`. Per-course reasons +
+      Health-Score-weighted sort key remain unbuilt follow-ups.
+- [x] **Module 21 — Journal PRD gaps (FE hand-off pass)** — **built 2026-10-29** on `feature/journal-be-gaps` (migration `0080_journal_gaps`; PR pending): by-date read, richer list + month filter, stats, mood range + annotations, rule-based insights + supportive card, prompt dismiss + library, settings, optional passcode lock (`423 JOURNAL_LOCKED`), export, permanent delete, retros, opt-in reminder notifications. SOP `docs/sop/2026-10-29-journal-prd-gaps.md`, FE guide `docs/fe-integration-guide-journal.md` (regenerated from live captures). FE: hand-off brief `cofoundaz/docs/fe-handoff/journal.md`.
+- [x] **Module 21 — AI context-aware journal prompts** — **shipped 2026-09-23** as the daily
+      `prompt` upgrade (static→AI on `GET /journal/prompts/today`, grounded only in operational
+      signals — never journal content or mood; migration `0032_journal_prompts`,
+      `ai.journal.prompt` worker). SOP `docs/sop/2026-09-23-deferred-ai-upgrades.md`, FE guide
+      `docs/fe-integration-guide-journal.md` §1. Mood/journal-aware prompts (behind consent)
+      remain an unbuilt follow-up.
+- [ ] **Module 09 — Validation Hub AI insight synthesizer** (`POST /validation/synthesize`) +
+      interview-script generation (`POST /validation/scripts/generate`). Both are enqueue-a-job
+      seams; v1 enqueues / ships plain CRUD. **In progress with the junior** (handoff + issue
+      #62). Brief: `docs/handoff/module-09-validation-hub.md`.
+
+### Module 10 (Marketing Hub) Slice 1 follow-ups
+
+Deferred by the Slice 1 design spec, not gaps introduced by accident — tracked here so Slices
+2–5 (and any interim hardening) can pick them up deliberately. SOP:
+`docs/sop/2026-09-24-marketing-slice1.md`.
+
+- [ ] Auto-publish at `scheduled_at` — today's status transitions are manual `PATCH` only; would
+      hook Module 20's cron/scheduler infra.
+- [ ] Multi-channel calendar entries — `ContentCalendarEntry.channel` is a single `ChannelKey`
+      today; broadening to multiple channels per entry needs a model change, not a mechanical
+      extension.
+- [ ] Media upload integration with Module 18 — `media_ref` is an untouched opaque string slot,
+      not fetched/validated server-side yet.
+- [ ] Granular per-module "Marketing grant" — access is workspace-wide founder/team_member today;
+      no per-entry ownership or narrower grant (no per-module grant infra exists anywhere in this
+      codebase yet). **Still open after Slice 2** — segments/campaigns hang off the same
+      workspace-wide dependency, no narrower grant added.
+- [ ] `PATCH /marketing/channels/{key}` 404s if called before that workspace's first
+      `GET /marketing/channels` (which lazy-seeds the 8 rows) — documented as a deliberate
+      write-path-simplicity tradeoff in the FE guide, not fixed here; a future pass could make
+      `PATCH` auto-seed instead.
+
+### Module 10 (Marketing Hub) Slice 2 follow-ups
+
+Deferred by the Slice 2 design spec, not gaps introduced by accident — tracked here so Slices
+3–5 (and any interim hardening) can pick them up deliberately. SOP:
+`docs/sop/2026-09-24-marketing-slice2.md`.
+
+- [x] AI channel-plan recommender for `channel_mix` — *shipped in Slice 3b*
+      (`POST /marketing/channel-plan/recommend` → `GET
+      /marketing/channel-plan/recommendations/{id}`, standalone, objective + stage → an 8-channel
+      split summing to 100 + rationale). `channel_mix` on the campaign itself is still 100%
+      manually entered — the recommendation is applied to the wizard's sliders client-side, no
+      server-side write to the campaign row. See `docs/sop/2026-09-28-marketing-slice3b.md`.
+- [x] `top_channel_by_conversions` filled — *shipped in Slice 5* (Overview fills; see
+      `docs/sop/2026-09-29-marketing-slice5.md`). Campaign `metrics` deliberately **stays `{}`**:
+      per-campaign numbers live in `GET /marketing/analytics` → `leaderboard` instead (see the
+      Slice 5 follow-ups for the `campaign.metrics` JSONB cleanup).
+- [ ] Segment rule execution — `AudienceSegment.definition` is stored/returned as an opaque JSON
+      blob with no engine evaluating it against real user/customer data; `est_size` is a
+      manually-entered number, not computed from the definition.
+- [ ] Campaign Content step — no attach/generate-assets flow and no link from a campaign to
+      specific Slice 1 calendar entries yet; the PRD's "Content" step of campaign planning is
+      unbuilt.
+- [ ] No `cancelled` terminal status — only `draft`/`active`/`paused`/`completed` exist;
+      `completed` is the only terminal state, with no server-side "abandon this campaign"
+      transition distinct from delete.
+
+### Module 10 (Marketing Hub) Slice 3a follow-ups
+
+Deferred by the Slice 3a design spec, not gaps introduced by accident — tracked here so Slice 3b
+(and later slices) can pick them up deliberately. SOP:
+`docs/sop/2026-09-24-marketing-slice3a.md`.
+
+- [ ] Inline "Refine" on a generation's output — no endpoint to iterate on an existing
+      generation (e.g. "make variant 2 punchier"); a founder must start a brand-new generation.
+- [ ] No generation↔calendar-entry link persisted server-side — both FE compositions
+      (Write-with-AI, Save-to-calendar/Add-all) are pure client-side orchestration over existing
+      endpoints; "written with AI" provenance, if wanted, must be tracked client-side.
+- [ ] No history-list endpoint for `plan_week` (unlike copy's `GET /copy/generations`) — a founder
+      can poll a plan-week id they already have, but not browse past plan-week generations.
+- [x] ~~Stub-provider `plan_week` entries are always empty~~ — *resolved in Slice 3b*
+      (`plan_week_schema()`'s `channel` field now carries an `"enum"` constraint listing the 8
+      `ChannelKey` values; `StubLLMClient._stub_value` already honored `enum` fields, so the stub
+      now emits a valid `ChannelKey` and entries survive the worker's filter — `output.entries` is
+      populated under the stub too. See `docs/sop/2026-09-28-marketing-slice3b.md` and the updated
+      `docs/fe-integration-guide-marketing-copy.md` §5.)
+- [x] AI channel-plan recommender + fit notes for `channel_mix` — *shipped in Slice 3b* (tracked
+      above under Slice 2 follow-ups too, since it fills a Slice-2-owned field).
+
+### Module 10 (Marketing Hub) Slice 3b follow-ups
+
+Deferred by the Slice 3b design spec, not gaps introduced by accident — tracked here so Slice
+3c/4/5 (and any interim hardening) can pick them up deliberately. SOP:
+`docs/sop/2026-09-28-marketing-slice3b.md`.
+
+- [ ] `Overview.ai_content_ideas` stays an explicit `null` — deferred per design decision D5 as
+      "the least-defined AI surface" in the PRD; no committed slice number yet.
+- [ ] `Overview.active_campaigns` stays `null` — a pre-existing Slice-2 leftover (campaigns shipped
+      in Slice 2, but `overview()` never wires a live count for this field); noticed during Slice
+      3b design but explicitly out of scope for that slice. Whichever slice picks it up should wire
+      a real `Campaign.status == active` count, same shape as `active_channels`'s existing count.
+- [ ] No history-list endpoint for `channel_plan` or `channel_fit` (design decision D1/D2 — YAGNI,
+      same reasoning as plan-week's missing history list).
+- [ ] No server-side link between a channel-plan recommendation and the campaign it informs — pure
+      client-side orchestration (FE applies the split to the wizard's sliders).
+- [ ] Inline "Refine" on a generation's output — still unbuilt, carried over from Slice 3a.
+- [ ] Stub-provider `channel_mix` is always the even-split fallback (13/12 across the 8 channels),
+      never a differentiated recommendation — `channel_plan_schema()`'s per-channel values are
+      plain `integer`s with no `enum` (unlike a name-like field, an arbitrary percentage has no
+      small fixed vocabulary to enumerate), so the stub always emits `0` for every channel and
+      `normalize_channel_mix`'s all-zero fallback always fires. A real fix would need a
+      `StubLLMClient` change (e.g. a per-property stub-value override), not attempted here as it's
+      out of this slice's scope; real-provider behavior is unaffected. See the FE guide's boxed
+      note and the SOP's Follow-ups.
+
+### Module 10 (Marketing Hub) Slice 4 follow-ups
+
+Deferred by the Slice 4 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-marketing-slice4.md`.
+
+- [ ] External SEO-provider sync — keyword `volume`/`difficulty`/`current_rank` are founder-entered
+      today; a provider integration + refresh job is a separate future slice.
+- [ ] FE screens for the **on-page checklist** and **AI content-gap** — both are build-ahead (no
+      screen consumes them yet); reconcile the FE guide and API shapes when the FE is built.
+- [ ] Partially-filled brand-positioning `PUT` composes the statement template with blank gaps;
+      `statement` is `null` only when all five parts are blank — untested edge, decide whether to
+      require all five parts.
+- [ ] `DELETE /marketing/seo/pages/{id}` has no dedicated test or e2e capture.
+
+### Module 10 (Marketing Hub) Slice 5 follow-ups
+
+Deferred by the Slice 5 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-marketing-slice5.md`. None block Module 10 being complete.
+
+- [ ] Analytics export — belongs with Module 22 (Analytics & Reports).
+- [ ] Ad-platform auto-ingestion (Google/Meta/etc. sync + refresh job) — metrics only enter via
+      `POST /marketing/metrics` today.
+- [ ] FE ingestion screen — none exists; `POST /marketing/metrics` is API-first / provisional and may
+      change when one (or auto-ingestion) lands.
+- [ ] Funnel additive-scope guidance — the funnel sums every row regardless of scope, so ingesting the
+      same events at two scopes double-counts it (e.g. `conversion_rate` 8.1 in the sample capture);
+      decide whether to enforce one scope per event, derive the funnel from a single scope, or add a
+      dedupe/idempotency key.
+- [ ] Metric dedupe / correction — ingestion is append-only; no update/delete endpoint.
+- [ ] Missing tests: analytics-route 403 and the 1000-point ingest cap (both enforced, neither has a
+      dedicated test).
+- [ ] `campaign.metrics` JSONB — stays `{}` and is now dead weight; remove or populate once the FE
+      confirms it reads `analytics.leaderboard`.
+
+### Module 12 (Finance Hub) Slice 1 follow-ups
+
+Deferred by the Slice 1 design spec, not gaps introduced by accident. SOP:
+`docs/sop/2026-09-29-finance-slice1.md`. None block Slice 2.
+
+- [x] Runway scenarios + `finance.runway.low` event + Health-Score finance signal — **done in Slice 2** (2026-09-29).
+- [ ] Multi-currency conversion — summary sums `amount_minor` across currencies as one unit; needs a
+      reporting currency + FX source.
+- [ ] Mixed-currency summary — `currency` is only the most common one; no test exercises mixed
+      currencies today.
+- [ ] Revenue-vs-financing split — `monthly_revenue` counts every inflow, including a fundraise inside
+      the trailing-3-month window.
+- [ ] Transactions list pagination — currently returns the full filtered set.
+- [ ] Missing live captures / tests: DELETE, the `category`/`direction`/`date_from`/`date_to` filters,
+      and the 422/403/404 bodies are unit- or source-verified only.
+
+### Module 12 (Finance Hub) Slice 2 follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-29-finance-slice2.md`.
+
+- [ ] Concurrent double-fire race on `finance.runway.low` — `evaluate_runway_alert` reads
+      `alert_is_low` unlocked, so two concurrent transaction commits can each publish. Fix:
+      `with_for_update()` (+ `populate_existing`) on the settings row in the alert path.
+- [ ] First transaction mutation creates a `finance_runway_settings` row without a PUT (alert dedup
+      needs the row); harmless defaults `0/0/0`.
+- [ ] +1 `cash_flow_summary` per transaction mutation (alert + signal each run it) — consolidate if it
+      shows in profiles.
+- [ ] `money.runway_live` has no `unique(startup_id, key)` constraint (delete-then-add upsert; a
+      concurrent pair could leave two rows — self-heals on next write/recompute).
+- [ ] `money.runway_live` can appear before a completed assessment (`score: null`) — FE must not assume
+      signal ⇒ score.
+- [ ] `money.runway_live` value `0` is ambiguous (cash-positive vs out-of-cash) — consider a sentinel or
+      second key.
+- [ ] No email category for `finance.runway.low` — in-app only.
+- [ ] Fundraises count as revenue in scenario projections (inherits the Slice 1 revenue-vs-financing
+      gap above).
+- [ ] Unit-only (no live capture): 403 for non-finance roles + accountant access; over-int32 422;
+      PATCH/DELETE running the alert hook; alert fan-out to other members; empty-workspace runway
+      response (scenario `runway_months` `0.0`).
+
+### Module 12 (Finance Hub) Slice 3 follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-29-finance-slice3.md`.
+
+- [ ] Reminder / overdue **scheduler** — `auto_remind` is stored but nothing sends reminders; `overdue` is
+      only derived on read. Needs a Module 20 scheduler job + email category + `invoice.overdue` notification.
+- [ ] Server-side **PDF** — "Download PDF" is FE-only; no `GET /finance/invoices/{id}/pdf`.
+- [ ] **Client / CRM entity** — `client_name` / `client_email` are free text per invoice.
+- [ ] **Mixed currency not converted** — a foreign-currency invoice's inflow adds raw minor units into
+      cash-on-hand / burn / revenue / runway (inherits the Slice 1 multi-currency gap above).
+- [ ] `currency` **not ISO-4217-validated** — only length 1–3.
+- [ ] `send` / `PATCH` / `DELETE` use an **unlocked fetch** — a double-tap Send can queue two
+      `email.invoice_sent` jobs (two client emails); concurrent PATCHes can lose an update.
+      `mark-paid` / `mark-unpaid` DO lock. Fix: `_get_invoice_locked` in `send_invoice` / `update_invoice`,
+      or dedupe the job by `invoice_id`.
+- [ ] No-op `mark-paid` (already paid) still **re-runs the runway hooks** — harmless self-healing, two
+      extra `cash_flow_summary` computations per retry.
+- [ ] No **`invoice.*` domain events** (`sent` / `paid` / `overdue`) — nothing reaches the notification
+      feed or Health Score.
+- [ ] Invoice `number` can be reused after deleting the newest draft (max-suffix + 1).
+- [ ] Invoices list is unpaginated (full set, `created_at` desc).
+- [ ] Unit-only (no live capture): real-Resend delivery of the invoice email; 403 for non-finance roles +
+      accountant access; cross-tenant 404; half-up rounding; SAVEPOINT number retry; int32 overflow 422;
+      runway alert/signal refresh on paid/unpaid; the row lock. The live `overdue` proof backdates `due_on`
+      directly in the DB.
+
+### Module 12 (Finance Hub) Slice 4a follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-finance-slice4a.md`.
+
+- [x] ~~**Budgets (Slice 4b)**~~ — shipped (see Slice 4b follow-ups below). Matching is on the free-text,
+      case- and whitespace-exact `category`; no normalisation was added.
+- [ ] **Recurring-expense scheduler** — `recurring` is a stored, filterable flag only; nothing generates the next
+      occurrence. Needs a Module 20 scheduler job.
+- [ ] **Concurrent PATCH on one expense can desync it from its outflow** — `update_expense` reads without a row
+      lock. Fix: `with_for_update()` + `populate_existing` in `update_expense` / `delete_expense`.
+- [ ] **No idempotency key on money POSTs — module-wide** (`/finance/expenses`, `/finance/transactions`,
+      `/finance/invoices`): a client retry can double-post. Cross-slice fix: Redis cache + in-flight sentinel.
+- [ ] **Mixed currency not converted** — summary and each outflow add raw minor units (inherits the Slice 1
+      multi-currency gap above).
+- [ ] `currency` **not ISO-4217-validated** — only length 1–3.
+- [ ] **Storage delete happens before the DB commit** (module-wide, matches Documents) — a rare commit failure can
+      leave a row pointing at a deleted receipt file or orphan a stored file.
+- [ ] **Receipt content type trusted from the header** — not sniffed from the bytes.
+- [ ] **Future-dated expenses** appear in the category summary but not in cash-flow (`date <= today`).
+- [ ] No **`expense.*` domain events**; expenses list is unpaginated.
+- [ ] Unit-only (no live capture): 403 for non-finance roles + accountant access; cross-tenant 404; oversize
+      (> 10 MB) receipt 422; `date_from`/`date_to` filters; runway alert/signal refresh through an expense; the
+      Cloudinary `https` receipt URL (e2e ran local storage).
+
+### Module 12 (Finance Hub) Slice 4b follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-finance-slice4b.md`.
+
+- [ ] **Over-budget event / notification** — `over_budget` is derived on read only; no `finance.budget.over` event,
+      in-app notification or email. Natural shape: a fire-once / re-arm Module 20 notification on the transition
+      into over-budget, triggered from the expense create/edit/delete hooks (like `finance.runway.low`).
+- [ ] **`draft-from-actuals` labels new budgets `NGN`** regardless of the category's expense currency (not the
+      prevailing currency). Fix with the reporting-currency work.
+- [ ] **Category matching is case- and whitespace-exact** — a mismatch silently shows 0 spent. FE owns a shared
+      category picker for now; a normalised key or a shared `categories` table is a cross-slice change.
+- [ ] **Mixed currency not converted** — `spent_minor` sums raw minor units across currencies (inherits the Slice 1
+      multi-currency gap above).
+- [ ] **`spent_for` does a whole-month group-by per single-budget read** (`GET`/`POST`/`PATCH` one budget). Filter the
+      helper by category for the single-budget paths if it ever matters (the list already does one grouped query).
+- [ ] **Department ≠ category modelling, unspent rollover and annual / quarterly budgets** not built.
+- [ ] `currency` **not ISO-4217-validated**; **no idempotency key on `POST /finance/budgets`** (module-wide); list
+      unpaginated; `copy-last-month` does not carry `notes`.
+- [ ] **Budget service tests lack `autoflush=False` variants** (Slice 4a's expense tests have them) — add for
+      `create_budget` / `_seed_missing`.
+- [ ] Unit-only (no live capture): 403 for non-finance roles + accountant access; cross-tenant 404 / list
+      isolation; the January → December seeder rollover; a partial-seed month; a draft whose sum exceeds int32.
+
+### Module 12 (Finance Hub) Slice 5 follow-ups
+
+Known non-blocking gaps, none introduced by accident. SOP: `docs/sop/2026-09-30-finance-slice5.md`.
+
+- [ ] **XLSX export** — deferred (`openpyxl`); the FE Export button is FE-only for now.
+- [ ] **36-month horizon** — v1 is 12 months (`horizon_months` column already exists).
+- [ ] **Server-side sensitivity** — v1 sensitivity is client-side.
+- [ ] **Itemised opex** — opex is a single line; no per-category opex.
+- [ ] **Bank-account actuals** — via the deferred Integrations (external connectors) slice.
+- [ ] **No concurrent-generation dedup** — two POSTs create two models and two LLM jobs.
+- [ ] **Currency hardcoded `NGN`**; no multi-currency conversion.
+- [ ] **Paid-in-capital plug** — pragmatic startup model, not full GAAP.
+- [ ] **Financing counted as revenue** in the trailing-3-month seed (inherits the Slice 1 revenue-vs-financing gap).
+- [ ] Unit-only (no live capture): the `failed` path (AI budget exceeded), RBAC 403 + accountant access, cross-tenant
+      404, real-LLM (non-stub) numbers.
 
 - [x] **Resend email backend** — shipped (PR #54, `cddafdc`). `ResendEmailSender` behind `EmailSender`, `EMAIL_BACKEND=resend`, httpx (no new dep), fail-loud; `RESEND_API_KEY` now a real Settings field; share-create notification made best-effort. SOP `docs/sop/2026-09-12-resend-email-backend.md`. **Deploy:** set `EMAIL_BACKEND=resend` + `RESEND_API_KEY` + a Resend-verified `EMAILS_FROM_EMAIL` in `.env.staging.enc`/`.env.production.enc`; verify a real send in staging (not exercised live — mocked in tests).
 - [ ] `complete_assessment` should return `job_ids` (parity with `complete_onboarding`)
@@ -1842,12 +3622,15 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
 - [ ] Trivy: **3 HIGH** remaining (all `starlette` 0.46.2; was 6 before the
       `python-multipart` bump). 0 CRITICAL, zero OS-package findings. Nothing
       suppressed in `.trivyignore`; CI's `build` job is expected red until triaged
-- [ ] `pip-audit`: **10 advisories** remaining — `starlette` (9) + `ecdsa` 0.19.2
+- [x] ~~`pip-audit`: **10 advisories** remaining~~ — **0 as of 2026-10-12**, nothing suppressed (PyJWT migration). Historical: — `starlette` (9) + `ecdsa` 0.19.2
       (`PYSEC-2026-1325`, no fix, via `python-jose`); was 16. Nothing suppressed
       in `.github/security/pip-audit-ignores.txt`
-- [ ] Migrate `python-jose` → `PyJWT` to drop the unfixable `ecdsa` advisory
-      (`CVE-2024-23342` / `PYSEC-2026-1325`, the Minerva attack — surfaced by
-      `trivy fs`, hidden from the image scan by `--ignore-unfixed`)
+- [x] **Migrated `python-jose` → `PyJWT`** (2026-10-12, **merged PR #122 `bbd21f2`**). Removed python-jose,
+      ecdsa, rsa and pyasn1; cleared **both** `CVE-2026-85394` and `PYSEC-2026-1325`, so
+      `.github/security/pip-audit-ignores.txt` is empty and pip-audit is clean with no suppressions. Contract suite
+      `tests/core/test_jwt_contract.py` (13 tests, committed red-first) proves pre-deploy tokens still authenticate.
+      SOP `docs/sop/2026-10-12-python-jose-to-pyjwt-migration.md`
+- [ ] _Follow-up:_ confirm staging/prod `SECRET_KEY` ≥ 32 bytes, then consider PyJWT `enforce_minimum_key_length`
 - [ ] Refactor `validate_answer` (`app/services/assessment/engine.py`) so ruff's
       `max-complexity` can drop 12 → the common default of 10. It is the only
       function above 10
@@ -1867,6 +3650,12 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       on starlette **1.6.0** (pin `>=1.3.1,<2.0.0`), and `make scan` is clean: the only HIGH
       left in `trivy fs` is `ecdsa` CVE-2024-23342 (transitive via `python-jose`, no fixed
       version published, report-only). Verified 2026-08-29 alongside the fastapi bump
+- [ ] **GitHub Actions billing block (2026-10-14 →, still on 2026-10-17):** no job starts. Fix in GitHub Billing & plans,
+      then re-run the `develop` CI (`38643446554`) and the `CD (staging)` run for `25f71da`
+- [ ] **Staging not verified since `2ad0698` (2026-10-02):** Calendar (#119) and PyJWT (#122) have never passed the live
+      staging gate; `develop` is 261 commits / 38 merges ahead of `main`. Re-verify on staging before any prod promotion
+- [ ] DNS residual: remove `ns1.cloudoon.com` from the zone's own apex NS records (it's already out of the `.com`
+      delegation; it still serves a stale serial-`2026101001` zone)
 - [ ] **Rate limits are per-worker, not global.** slowapi uses in-memory `MemoryStorage`, so
       the real ceiling in production is `WEB_CONCURRENCY × RATE_LIMIT_PER_MINUTE`
       (measured: 4 workers × 120 = **480**, not 120). Pre-existing, not a regression, but now
@@ -1916,3 +3705,129 @@ the end. SOP: `docs/sop/2026-09-03-cicd-branching-restructure.md`._
       or a DNS change
 - [ ] `deploy/nginx/` has no CI coverage. A job running just `nginx -t` inside the nginx
       container would be cheap and is not done
+
+
+## Validation Hub PRD completion (2026-10-19)
+- [x] Slice (a) BE: overview + riskiest nudge, Design experiment (AI draft), hosted smoke-test pages at `/p/{slug}`
+      (slug reservation, visit/click/signup capture, waitlist), server verdict, milestone notification, deletes
+      (branch `feat/validation-prd-a`, migration 0056, guide `docs/fe-integration-guide-validation-prd-a.md`)
+- [x] Slice (a) FE (#114) + live re-walk on develop (2026-10-19, `cofoundaz/docs/checklist/validation-rewalk.md`)
+- [x] Slice (b) BE: interview scripts + Insight Synthesizer (branch `feat/validation-prd-b`, migration 0057, guide
+      `docs/fe-integration-guide-validation-prd-b.md`, SOP `docs/sop/2026-10-19-validation-prd-b.md`)
+  - [x] `interview_scripts`: AI job saves a 6-10 question script with tips; list/get/edit (stable question ids)/delete
+  - [x] `insight_reports`: synthesizer over interviews and/or open survey answers (no names, no closed answers),
+        verbatim-only quotes, suggestions only for real assumptions that change status
+  - [x] Per-suggestion Apply (row lock, 409 on repeat); `validation.insight.detected` + PRD notification to founders + team members
+  - [x] Tests first (20), e2e journey + captures, real-model captures
+- [ ] Slice (b) FE (sub-session) + live re-walk
+- [x] Slice (c) BE: MVP feedback (D-VAL-2/3) + BE bits of rows 9 and 10 (branch `feat/validation-prd-c`, migration 0058,
+      guide `docs/fe-integration-guide-validation-prd-c.md`, SOP `docs/sop/2026-10-19-validation-prd-c.md`)
+  - [x] Inbox: interview quotes + open survey answers mirrored in (read-only, dismiss/restore), manual entries
+        tagged interview / in_app / email
+  - [x] AI theme clustering runs; "{theme} mentioned {n}× across {m} sources" derived on read; Send to roadmap (once)
+  - [x] Synthesizer `source=feedback`; open survey answers endpoint; share-link rotation; `linked_experiments`
+  - [x] Tests first, e2e journey + captures, real-model captures
+- [ ] Slice (c) FE (sub-session) + live re-walk
+
+
+## Settings + Billing (2026-10-27)
+Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
+- [x] (a) Settings BE: profile edit + avatar, change password, 2FA status/disable/new backup codes, sessions list/revoke, workspace
+      settings + logo, notification digest/quiet-hours storage (branch `feature/settings-be`, migration 0077, guide
+      `docs/fe-integration-guide-settings.md`, SOP `docs/sop/2026-10-27-settings-be-account.md`)
+  - [x] Tests first (53), e2e journey + captures
+  - [ ] FE sub-session + live re-walk of every control (1440 + 375, every role)
+- [x] (b) Billing BE on Paystack, built to the recommended defaults (branch `feature/settings-billing`, migration 0078, guide
+      `docs/fe-integration-guide-settings-billing.md`, SOP `docs/sop/2026-10-27-settings-be-billing.md`); D-SET-1 to 14 accepted by Adebayo 2026-10-29
+  - [x] Plans, checkout + callback verify, HMAC-verified idempotent webhook, subscription state (trial/grace/cancel/scheduled downgrade), prorated upgrade
+  - [x] Usage meters, invoices + PDF receipts, cards, credit-pack add-ons, billing details, notifications, plan gate (dark) on Sales outreach
+  - [x] Opus review of webhook/money/plan-gate paths, findings fixed
+  - [ ] Live Paystack round trip (hosted checkout, real charge, real webhook delivery); FE sub-session + re-walk; flip `PLAN_ENFORCEMENT`
+- [ ] Deferred: digest sender + quiet hours enforcement; account deletion/export; AI preferences/memory; SMS 2FA
+
+## AI preferences (Settings S8, 2026-10-30)
+- [x] `GET/PATCH /ai/settings` (proactive suggestions, daily briefing, tone) that change behaviour; migration 0082; guide
+      `docs/fe-integration-guide-ai-settings.md`; SOP `docs/sop/2026-10-30-ai-preferences.md`
+  - [x] Briefing off: no generation/trigger, no notification; suggestions off: briefing actions + opportunities hidden, course-recommended notification skipped; tone in chat and briefing prompts
+  - [ ] FE wiring + live re-walk; verify tone with the real model
+- [ ] Deferred: "What I remember" / Forget / Clear all (needs a memory store)
+
+
+## 🟢 Admin + Super Admin portals (Modules 25, 26): slice A built (2026-10-31, branch `feature/admin-staff-access`, migration `0083_platform_staff`, PR pending)
+
+Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-ADM-1..13). Slice A blocks every other admin slice. SOP `docs/sop/2026-10-31-admin-staff-access.md`, FE guide `docs/fe-integration-guide-admin-staff.md`.
+
+### Slice A: staff access, staff routes, audit explorer (API)
+- [x] `platform_staff` table + migration 0083 (role, scopes[], invited_by, revoked_at)
+- [x] `require_staff(scope)` / `require_super_admin`: role read from the DB per request, TOTP required, non-staff get the unknown-route 404
+- [x] Fresh single-use TOTP step-up on each Super Admin mutation (window recorded in the SOP)
+- [x] `/super-admin/staff` list, invite (and reinstate), revoke; required reason on every mutation via `write_audit`
+- [x] `python -m app.scripts.create_super_admin <email>`
+- [x] `audit_log` append-only trigger (checked first: no job or test deletes rows)
+- [x] `/super-admin/audit` explorer (actor, action, workspace, date filters, cursor) + audited CSV export
+- [x] `get_current_user` rejects tokens with a `typ` claim (calendar OAuth state could be used as a bearer token)
+- [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
+- [ ] CI green on the PR, merged by Adebayo
+
+### Slices still ahead
+- [ ] B: Users, Workspaces (read-only), Dashboard KPIs
+- [x] C: Billing overrides (refund, credit, extend trial, comp): built 2026-10-31, see below
+- [x] D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, PR pending; see Admin slice D below)
+- [ ] E: Maintenance mode + global sign-out with a second approver
+- [ ] FE for both consoles (after the API slices)
+- [ ] Next: tickets, content CMS, reported issues; after Marketplace: expert vetting
+
+### Admin slice D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, migration 0084, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-feature-flags.md`, FE guide `docs/fe-integration-guide-admin-flags.md`.
+- [x] `feature_flags` table (key, name, description, stage beta/ga/internal, enabled, rollout %, workspace allow-list)
+- [x] Stable bucketing and `is_enabled(db, key, workspace_id)`; unknown flag is off
+- [x] Super Admin list, create, update, impact preview; step-up, reason, audit row on each write
+- [x] `GET /flags`: the app's on-only map for the current workspace
+- [x] Unit tests (26), live e2e journey safe for the shared e2e database, Opus review (no High; Mediums fixed)
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: check-before-step-up ordering, flag archive/delete, plan/stage targeting (P7b), wiring features to flags
+
+### Deferred follow-ups (slice A)
+- [ ] Emailed staff invite for people without an account yet
+- [ ] Block TRUNCATE on `audit_log`; separate immutable audit store; hardware-key MFA
+
+### Admin slice B: Users, Workspaces, Dashboard KPIs (2026-10-31, branch `feature/admin-users-workspaces`, no migration, PR pending)
+
+Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `docs/sop/2026-10-31-admin-users-workspaces.md`, FE guide `docs/fe-integration-guide-admin-users.md` (and PATCH + `last_login_at` in `fe-integration-guide-admin-staff.md`).
+- [x] Users: search (email, name, workspace, ids), filters, profile with sessions and subscription, `can` flags
+- [x] Suspend (signs out at once, blocks sign-in, kills reset and verification links), unsuspend (restores the right state)
+- [x] Send password reset, resend verification (60 s cooldown, send-failure rollback)
+- [x] A fresh code and a reason on every staff mutation (P1); staff-on-staff limits (P2)
+- [x] Workspaces list and read-only detail (P11)
+- [x] Dashboard KPIs with the P3 definitions (deltas only where history exists)
+- [x] `PATCH /super-admin/staff/{id}` (P9) and `last_login_at` on staff rows (S14)
+- [x] Suspension also holds at MFA challenge, refresh and password reset; `POST /auth/verify` no longer lifts it
+- [x] Unit tests, live e2e journey, Opus review (no High or Medium; Lows fixed)
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
+
+### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0085_billing_overrides`, on develop after #206 merged, PR draft)
+
+Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan for N days, refund = internal entry. SOP `docs/sop/2026-10-31-admin-billing-overrides.md`, FE guide `docs/fe-integration-guide-admin-billing.md`.
+- [x] `billing_overrides` ledger + `comped` + `refunded_minor` (migration 0084, refund cap check)
+- [x] Refund recorded as pending (partial/full, over-refund guard incl. pending); founder sees it only after staff mark it done, then the invoice flips to `refunded` (Adebayo "Accept all four")
+- [x] Credit (AI credits visible in Usage at once)
+- [x] Extend trial (1-60 days, 90-day cap)
+- [x] Comp (lapses by itself; founder cancel/resume/change blocked; MRR excludes it)
+- [x] Step-up + reason + audit row + `request_id` idempotency + locks on every override
+- [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
+- [ ] CI green, #206 merged first, then re-chain 0084 on develop's head and merge develop in
+- [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
+- [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
+
+### Admin slice E: maintenance mode and global sign-out (2026-10-31, branch `feature/admin-danger-zone`, migration `0086_admin_danger_zone`, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-guide-admin-danger-zone.md`. Chained on 0085_billing_overrides.
+- [x] Approval requests: request, approve, reject, cancel, expiry (1 h), list; requester never decides; step-up, reason, audit on each
+- [x] Maintenance mode: one middleware, allow-list (sign-in, staff, health, webhooks), 503 `MAINTENANCE_MODE`; public `GET /platform/status`
+- [x] Switching it off: any one Super Admin alone (never needs a second person)
+- [x] Global sign-out: revokes all sessions, kills existing access tokens (`iat` cutoff), staff sign back in; open streams close
+- [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out

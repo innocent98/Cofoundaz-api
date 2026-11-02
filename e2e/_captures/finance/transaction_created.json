@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "715aa74a-9c03-43de-b338-45cca2e49434",
+    "date": "2026-05-15",
+    "description": "Pre-seed round",
+    "category": "Fundraising",
+    "amount_minor": 100000000,
+    "currency": "NGN",
+    "direction": "in",
+    "source": "manual",
+    "created_at": "2026-09-30T08:32:51.556665Z",
+    "updated_at": "2026-09-30T08:32:51.556665Z"
+  },
+  "meta": null
+}

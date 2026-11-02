@@ -1,0 +1,32 @@
+{
+  "data": {
+    "query": "Acme",
+    "results": [
+      {
+        "type": "deal",
+        "group": "Sales",
+        "id": "f9c69088-b134-4147-aa03-e424c2fd2320",
+        "title": "Acme fleet rollout",
+        "subtitle": "Deal",
+        "href": "/sales?deal=f9c69088-b134-4147-aa03-e424c2fd2320"
+      },
+      {
+        "type": "sales_account",
+        "group": "Sales",
+        "id": "6a5e9104-94ee-4f8e-a78e-25bc7bce5292",
+        "title": "Acme Logistics",
+        "subtitle": "Account \u00b7 Logistics",
+        "href": "/sales/accounts/6a5e9104-94ee-4f8e-a78e-25bc7bce5292"
+      },
+      {
+        "type": "sales_contact",
+        "group": "Sales",
+        "id": "a464ba09-10f9-4e0f-afc1-25e9ca7518b2",
+        "title": "Tunde Okafor",
+        "subtitle": "Contact \u00b7 tunde@acme.example",
+        "href": "/sales/contacts?contact=a464ba09-10f9-4e0f-afc1-25e9ca7518b2"
+      }
+    ]
+  },
+  "meta": null
+}

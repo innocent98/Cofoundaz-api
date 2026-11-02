@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PAID_SUBSCRIPTION",
+    "message": "This workspace pays for a plan. Cancel it first; a comp would stop the charges from matching what they get.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "status_code": 200,
+  "content-type": "application/pdf",
+  "content-disposition": "attachment; filename=\"invoice-INV-2026-001.pdf\"",
+  "body_starts_with": "%PDF-1.4",
+  "body_bytes": 1697
+}

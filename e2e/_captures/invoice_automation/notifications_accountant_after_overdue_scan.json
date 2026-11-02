@@ -1,0 +1,57 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "8814b083-9c29-43d5-8165-eaf5aae5ddb8",
+        "type": "finance.invoice.overdue",
+        "title": "Invoice overdue: INV-2026-002 \u00b7 Ngozi Bello Ltd \u00b7 NGN 1,612.50",
+        "body": "Send reminder",
+        "data": {
+          "href": "/finance/invoices",
+          "due_on": "2026-10-18",
+          "number": "INV-2026-002",
+          "currency": "NGN",
+          "invoice_id": "deeebb35-d797-4dfa-a56a-78bb45bbed5c",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "client_name": "Ngozi Bello Ltd",
+          "amount_minor": 161250
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:20.538729+00:00"
+      },
+      {
+        "id": "274695b1-e7ff-4c6d-958f-ce9948860340",
+        "type": "finance.invoice.overdue",
+        "title": "Invoice overdue: INV-2026-001 \u00b7 Chidi Okafor Stores \u00b7 NGN 1,612.50",
+        "body": "Send reminder",
+        "data": {
+          "href": "/finance/invoices",
+          "due_on": "2026-10-18",
+          "number": "INV-2026-001",
+          "currency": "NGN",
+          "invoice_id": "9b9e99ff-a2ce-4493-ad17-5ee62d7a0b50",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318",
+          "client_name": "Chidi Okafor Stores",
+          "amount_minor": 161250
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:20.508050+00:00"
+      },
+      {
+        "id": "6356716e-924f-43d7-8ee1-6816d9f77c97",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "3e7de256-48ec-4e35-8bdc-6306384e16c1",
+          "startup_id": "74d93808-3645-4aaa-b96b-7ced0bd74318"
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:16.724283+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

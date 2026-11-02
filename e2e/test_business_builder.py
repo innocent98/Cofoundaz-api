@@ -106,8 +106,9 @@ def test_business_builder_journey(base_url, make_verified_user, capture):
         overview_empty = c.get("/api/v1/business-builder/overview", headers=wh)
         assert overview_empty.status_code == 200, overview_empty.text
         rows = overview_empty.json()["data"]
-        assert {r["type"] for r in rows} == _CANVAS_TYPES | _RECORD_KINDS
-        assert all(r["status"] == "start" for r in rows), rows
+        # ...plus the Business Plan row (PRD 08.1), `status: "none"` until a plan is generated.
+        assert {r["type"] for r in rows} == _CANVAS_TYPES | _RECORD_KINDS | {"plan"}
+        assert all(r["status"] == "start" for r in rows if r["type"] != "plan"), rows
         capture("business", "overview_empty", overview_empty)
 
         # 2. GET /business-builder/canvases/business_model -- lazy-creates the
@@ -751,3 +752,440 @@ def test_business_positioning_map_journey(base_url, make_verified_user, capture)
         assert fixed_comp["x"] == 0.85
         assert fixed_comp["y"] == 0.15
         capture("business", "positioning_get_after_coord_fix", map_after_fix)
+
+
+def test_business_builder_prd_a_journey(
+    base_url, make_verified_user, mailbox, unique_email, capture
+):
+    """PRD completion slice (a): editor "last edited" + version history and restore
+    (D-BB-1), Export to a Document (D-BB-2), consultant-only suggest mode with the founder's
+    PRD notification (D-BB-3), and the overview's last-edited + Business Plan row. A founder,
+    a `business_consultant` and a `mentor` share one workspace. Captures land in
+    e2e/_captures/business_prd/ and are the source of docs/fe-integration-guide-business-builder-prd.md.
+    """
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD A")
+
+        people = {}
+        for role in ("business_consultant", "mentor"):
+            email = unique_email(role.split("_")[0])
+            inv = c.post(
+                "/api/v1/onboarding/invites",
+                headers=auth,
+                json={"invites": [{"email": email, "role": role}]},
+            )
+            assert inv.status_code == 200, inv.text
+            token = mailbox.latest_token_for(email, subject_contains="invited")
+            member_auth = _signup_verify_login(
+                c, mailbox, email, "Member-" + email.split("@")[0] + "-9"
+            )
+            acc = c.post("/api/v1/invitations/accept", json={"token": token}, headers=member_auth)
+            assert acc.status_code == 200, acc.text
+            people[role] = member_auth
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+
+        wh = _wh(c, auth)
+        bc = _wh(c, people["business_consultant"])
+        mentor = _wh(c, people["mentor"])
+
+        # 1. Overview before any edit: no last-edited anywhere, plan row "none".
+        ov = c.get(f"{bb}/overview", headers=wh)
+        assert ov.status_code == 200, ov.text
+        rows = {r["type"]: r for r in ov.json()["data"]}
+        assert rows["plan"]["status"] == "none" and rows["swot"]["updated_at"] is None
+        capture("business_prd", "overview_before", ov)
+
+        # 2. A fresh canvas has no `updated_by`; a save stamps the editor.
+        fresh = c.get(f"{bb}/canvases/swot", headers=wh)
+        assert fresh.json()["data"]["updated_by"] is None
+        capture("business_prd", "canvas_fresh", fresh)
+        s1 = c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={"blocks": {"strengths": ["Founder-market fit"]}, "version": 1},
+        )
+        assert s1.status_code == 200, s1.text
+        assert s1.json()["data"]["updated_by"]["name"] == "Ada Founder"
+        capture("business_prd", "canvas_save_v2", s1)
+        s2 = c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={
+                "blocks": {"strengths": ["Founder-market fit", "Speed"], "threats": ["Incumbent"]},
+                "version": 2,
+            },
+        )
+        assert s2.status_code == 200, s2.text
+
+        # 3. Version history, newest first, and one version's blocks.
+        versions = c.get(f"{bb}/canvases/swot/versions", headers=wh)
+        assert [v["version"] for v in versions.json()["data"]["versions"]] == [3, 2]
+        capture("business_prd", "versions_list", versions)
+        v2 = c.get(f"{bb}/canvases/swot/versions/2", headers=wh)
+        assert v2.json()["data"]["blocks"]["strengths"] == ["Founder-market fit"]
+        capture("business_prd", "version_detail", v2)
+        missing = c.get(f"{bb}/canvases/swot/versions/99", headers=wh)
+        assert missing.status_code == 404
+        capture("business_prd", "version_not_found", missing)
+
+        # 4. Restore: stale `version` is a 409; the current one writes v4 from the snapshot.
+        stale = c.post(f"{bb}/canvases/swot/versions/2/restore", headers=wh, json={"version": 2})
+        assert stale.status_code == 409, stale.text
+        capture("business_prd", "restore_stale_409", stale)
+        bc_restore = c.post(
+            f"{bb}/canvases/swot/versions/2/restore", headers=bc, json={"version": 3}
+        )
+        assert bc_restore.status_code == 403
+        capture("business_prd", "restore_consultant_403", bc_restore)
+        restored = c.post(f"{bb}/canvases/swot/versions/2/restore", headers=wh, json={"version": 3})
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["data"]["version"] == 4
+        capture("business_prd", "restore_ok", restored)
+        after = c.get(f"{bb}/canvases/swot/versions", headers=wh)
+        assert after.json()["data"]["versions"][0]["source"] == "restore"
+        capture("business_prd", "versions_after_restore", after)
+
+        # 5. Export: a canvas and a record list become Documents; empty is a 422.
+        empty = c.post(f"{bb}/canvases/lean/export", headers=wh)
+        assert empty.status_code == 422, empty.text
+        capture("business_prd", "export_empty_422", empty)
+        exp = c.post(f"{bb}/canvases/swot/export", headers=wh)
+        assert exp.status_code == 201, exp.text
+        capture("business_prd", "export_canvas", exp)
+        doc = c.get(f"/api/v1/documents/{exp.json()['data']['document_id']}", headers=wh)
+        assert doc.status_code == 200, doc.text
+        capture("business_prd", "export_canvas_document", doc)
+        comp = c.post(
+            f"{bb}/competitors",
+            headers=wh,
+            json={"data": {"name": "Paystack", "positioning": "Payments for Africa"}},
+        )
+        assert comp.status_code == 201, comp.text
+        capture("business_prd", "record_create_with_updated_by", comp)
+        exp_rec = c.post(f"{bb}/competitors/export", headers=wh)
+        assert exp_rec.status_code == 201, exp_rec.text
+        capture("business_prd", "export_records", exp_rec)
+        bc_export = c.post(f"{bb}/canvases/swot/export", headers=bc)
+        assert bc_export.status_code == 403
+        capture("business_prd", "export_consultant_403", bc_export)
+
+        # 6. Suggest mode is consultant-only; the founder is notified with the PRD copy.
+        body = {
+            "op": "canvas_update",
+            "target": {"canvas_type": "business_model"},
+            "payload": {"blocks": {"key_partners": ["Flutterwave"]}},
+            "note": "Add our payments partner",
+        }
+        m403 = c.post(f"{bb}/suggestions", headers=mentor, json=body)
+        assert m403.status_code == 403, m403.text
+        capture("business_prd", "suggest_mentor_403", m403)
+        f403 = c.post(f"{bb}/suggestions", headers=wh, json=body)
+        assert f403.status_code == 403
+        sug = c.post(f"{bb}/suggestions", headers=bc, json=body)
+        assert sug.status_code == 201, sug.text
+        capture("business_prd", "suggest_consultant_201", sug)
+        feed = c.get("/api/v1/notifications", headers=wh)
+        assert feed.status_code == 200, feed.text
+        notes = [
+            n
+            for n in feed.json()["data"]["notifications"]
+            if n["type"] == "business.suggestion.created"
+        ]
+        assert notes and notes[0]["title"].endswith("suggested changes to Business Model Canvas")
+        capture("business_prd", "founder_notifications", feed)
+        mentor_feed = c.get("/api/v1/notifications", headers=mentor)
+        assert not [
+            n
+            for n in mentor_feed.json()["data"]["notifications"]
+            if n["type"] == "business.suggestion.created"
+        ]
+
+        # 7. Approve: the canvas's last editor and the snapshot are the consultant.
+        sid = sug.json()["data"]["id"]
+        appr = c.post(f"{bb}/suggestions/{sid}/approve", headers=wh)
+        assert appr.status_code == 200, appr.text
+        bmc_versions = c.get(f"{bb}/canvases/business_model/versions", headers=wh)
+        assert bmc_versions.json()["data"]["versions"][0]["source"] == "suggestion"
+        capture("business_prd", "versions_after_suggestion", bmc_versions)
+
+        # 8. Overview after: last-edited set on touched artifacts.
+        ov2 = c.get(f"{bb}/overview", headers=wh)
+        rows2 = {r["type"]: r for r in ov2.json()["data"]}
+        assert rows2["swot"]["updated_at"] and rows2["competitor"]["updated_at"]
+        capture("business_prd", "overview_after", ov2)
+
+        # 9. Record field descriptors are readable type names.
+        personas = c.get(f"{bb}/personas", headers=wh)
+        assert {f["type"] for f in personas.json()["data"]["fields"]} <= {"str", "list[str]"}
+        capture("business_prd", "personas_fields", personas)
+
+
+def _drain_ai() -> None:
+    """Run the AI jobs in-process with the stub LLM (same as e2e/test_roadmap_prd.py)."""
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import ai as _ai  # noqa: F401  (registers the business AI jobs)
+    from app.worker.handlers import finance_model as _fm  # noqa: F401  (ai.finance.model)
+    from app.worker.handlers import plan as _plan  # noqa: F401  (plan generate + section)
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
+
+
+def _job(c: httpx.Client, wh: dict, resp: httpx.Response) -> httpx.Response:
+    assert resp.status_code == 202, resp.text
+    _drain_ai()
+    done = c.get(f"/api/v1/jobs/{resp.json()['data']['job_id']}", headers=wh)
+    assert done.status_code == 200, done.text
+    return done
+
+
+def test_business_builder_prd_b_journey(base_url, make_verified_user, capture):
+    """PRD completion slice (b): section comment threads, per-section AI assist (append-only),
+    Mission & Vision "Give me 3 options", personas from validation notes and the pricing advisor.
+    Captures land in e2e/_captures/business_prd_b/ (source of the slice (b) FE guide section)."""
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD B")
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        wh = _wh(c, auth)
+
+        # 1. Section comments on a canvas block, and on a record.
+        c.get(f"{bb}/canvases/swot", headers=wh)
+        c.put(
+            f"{bb}/canvases/swot",
+            headers=wh,
+            json={"blocks": {"strengths": ["Founder-market fit"]}, "version": 1},
+        )
+        comment = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_canvas",
+                "entity_id": c.get(f"{bb}/canvases/swot", headers=wh).json()["data"]["id"],
+                "anchor": "strengths",
+                "body": "Is founder-market fit provable yet?",
+            },
+        )
+        assert comment.status_code == 201, comment.text
+        capture("business_prd_b", "comment_section_create", comment)
+        cid = comment.json()["data"]["entity_id"]
+        thread = c.get(
+            "/api/v1/team/comments",
+            headers=wh,
+            params={"entity_type": "business_canvas", "entity_id": cid},
+        )
+        assert thread.status_code == 200 and thread.json()["data"][0]["anchor"] == "strengths"
+        capture("business_prd_b", "comment_thread_canvas", thread)
+        bad_anchor = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_canvas",
+                "entity_id": cid,
+                "anchor": "key_partners",
+                "body": "x",
+            },
+        )
+        assert bad_anchor.status_code == 422, bad_anchor.text
+        capture("business_prd_b", "comment_bad_anchor_422", bad_anchor)
+        persona = c.post(f"{bb}/personas", headers=wh, json={"data": {"name": "Amaka"}})
+        rec_comment = c.post(
+            "/api/v1/team/comments",
+            headers=wh,
+            json={
+                "entity_type": "business_record",
+                "entity_id": persona.json()["data"]["id"],
+                "body": "Based on two interviews so far.",
+            },
+        )
+        assert rec_comment.status_code == 201, rec_comment.text
+        capture("business_prd_b", "comment_record_create", rec_comment)
+
+        # 2. Per-section AI: append-only into one block.
+        bad_block = c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "nope"})
+        assert bad_block.status_code == 422
+        capture("business_prd_b", "section_ai_bad_block_422", bad_block)
+        enq = c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "strengths"})
+        capture("business_prd_b", "section_ai_enqueue", enq)
+        done = _job(c, wh, enq)
+        assert done.json()["data"]["result"]["status"] == "ready"
+        capture("business_prd_b", "section_ai_job_done", done)
+        after = c.get(f"{bb}/canvases/swot", headers=wh)
+        strengths = after.json()["data"]["blocks"]["strengths"]
+        assert strengths[0] == "Founder-market fit" and len(strengths) == 2
+        assert after.json()["data"]["blocks"]["weaknesses"] == []
+        capture("business_prd_b", "section_ai_canvas_after", after)
+        again = _job(
+            c, wh, c.post(f"{bb}/canvases/swot/ai-fill", headers=wh, json={"block": "strengths"})
+        )
+        assert again.json()["data"]["result"]["status"] == "nothing_new"
+        capture("business_prd_b", "section_ai_nothing_new", again)
+
+        # 3. Mission & Vision options (never written).
+        opts_enq = c.post(
+            f"{bb}/canvases/mission_vision/options", headers=wh, json={"field": "mission"}
+        )
+        capture("business_prd_b", "mv_options_enqueue", opts_enq)
+        opts = _job(c, wh, opts_enq)
+        assert opts.json()["data"]["result"]["options"]
+        capture("business_prd_b", "mv_options_job_done", opts)
+        bad_field = c.post(
+            f"{bb}/canvases/mission_vision/options", headers=wh, json={"field": "values"}
+        )
+        assert bad_field.status_code == 422
+        capture("business_prd_b", "mv_options_bad_field_422", bad_field)
+
+        # 4. Personas from validation notes: 422 before any interview, then appended.
+        none_yet = c.post(f"{bb}/personas/from-validation", headers=wh)
+        assert none_yet.status_code == 422, none_yet.text
+        capture("business_prd_b", "personas_from_validation_422", none_yet)
+        iv = c.post(
+            "/api/v1/validation/interviews",
+            headers=wh,
+            json={
+                "interviewee": "Placeholder Interviewee",
+                "held_on": "2026-10-01",
+                "verdict": "supports",
+                "segment": "Market traders",
+                "notes": "Reconciles cash sales by hand every evening; loses track of credit.",
+                "key_quotes": ["I lose track of who owes me"],
+            },
+        )
+        assert iv.status_code == 201, iv.text
+        pv = _job(c, wh, c.post(f"{bb}/personas/from-validation", headers=wh))
+        result = pv.json()["data"]["result"]
+        assert result["status"] == "ready" and result["interviews_used"] == 1
+        capture("business_prd_b", "personas_from_validation_job_done", pv)
+        listed = c.get(f"{bb}/personas", headers=wh)
+        assert len(listed.json()["data"]["records"]) == 2
+        capture("business_prd_b", "personas_after", listed)
+
+        # 5. Pricing advisor: advice only.
+        c.post(
+            f"{bb}/competitors",
+            headers=wh,
+            json={"data": {"name": "Paystack", "price": "1.5% per transaction"}},
+        )
+        adv_enq = c.post(
+            f"{bb}/pricing/advisor",
+            headers=wh,
+            json={
+                "competitor_prices": [{"name": "Moniepoint", "price": "NGN 0 setup"}],
+                "willingness_to_pay": "Traders said NGN 2,000 a month feels fair",
+            },
+        )
+        capture("business_prd_b", "pricing_advisor_enqueue", adv_enq)
+        adv = _job(c, wh, adv_enq)
+        assert adv.json()["data"]["result"]["status"] == "ready"
+        capture("business_prd_b", "pricing_advisor_job_done", adv)
+        assert c.get(f"{bb}/pricing", headers=wh).json()["data"]["records"] == []
+
+
+def test_business_builder_prd_c_journey(base_url, make_verified_user, capture):
+    """PRD completion slice (c): business plan options, progress, readiness, draft-missing and
+    section regenerate (08.11); revenue projection and "Send to financial model" feeding the
+    Finance 3-statement model (08.8 / 12.6); Value Proposition fit-lines (08.5). Captures land in
+    e2e/_captures/business_prd_c/."""
+    bb = "/api/v1/business-builder"
+    with httpx.Client(base_url=base_url, timeout=10.0) as c:
+        u = make_verified_user(c)
+        auth = _auth_header(c.post("/api/v1/auth/login", json=u).json()["data"]["access_token"])
+        _onboard_steps(c, auth, stage="validation", name="Cofoundaz PRD C")
+        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        wh = _wh(c, auth)
+
+        # 1. Readiness before anything is filled, then draft the missing artifacts with AI.
+        ready0 = c.get(f"{bb}/plan/readiness", headers=wh)
+        assert ready0.status_code == 200 and ready0.json()["data"]["ready_count"] == 0
+        capture("business_prd_c", "readiness_empty", ready0)
+        drafts = c.post(f"{bb}/plan/draft-missing", headers=wh)
+        assert drafts.status_code == 202, drafts.text
+        assert len(drafts.json()["data"]["jobs"]) == 9
+        capture("business_prd_c", "draft_missing", drafts)
+        _drain_ai()
+        ready1 = c.get(f"{bb}/plan/readiness", headers=wh)
+        assert ready1.json()["data"]["ready_count"] == 9, ready1.text
+        capture("business_prd_c", "readiness_after_draft", ready1)
+
+        # 2. Generate with options; progress + options on GET /plan; then done.
+        bad = c.post(f"{bb}/plan/generate", headers=wh, json={"audience": "aliens"})
+        assert bad.status_code == 422
+        capture("business_prd_c", "plan_generate_bad_option_422", bad)
+        gen = c.post(f"{bb}/plan/generate", headers=wh, json={"audience": "bank", "length": "full"})
+        assert gen.status_code == 202, gen.text
+        capture("business_prd_c", "plan_generate", gen)
+        pending = c.get(f"{bb}/plan", headers=wh)
+        assert pending.json()["data"]["progress"]["done"] == 0
+        capture("business_prd_c", "plan_generating", pending)
+        _drain_ai()
+        done = c.get(f"{bb}/plan", headers=wh)
+        assert done.json()["data"]["status"] == "complete", done.text
+        assert done.json()["data"]["options"] == {"audience": "bank", "length": "full"}
+        capture("business_prd_c", "plan_complete", done)
+
+        # 3. Regenerate one section; unknown section 404.
+        nope = c.post(f"{bb}/plan/sections/nope/regenerate", headers=wh)
+        assert nope.status_code == 404
+        capture("business_prd_c", "regenerate_unknown_404", nope)
+        regen = _job(c, wh, c.post(f"{bb}/plan/sections/financials/regenerate", headers=wh))
+        assert regen.json()["data"]["result"]["status"] == "ready", regen.text
+        capture("business_prd_c", "regenerate_job_done", regen)
+
+        # 4. Revenue projection + send to the financial model + build the model.
+        none = c.post(f"{bb}/revenue-streams/send-to-finance", headers=wh)
+        # (draft-missing created AI revenue streams, so this succeeds; see the 422 in unit tests)
+        assert none.status_code == 200, none.text
+        for name, est in (("Subscriptions", 150000), ("Setup fees", 50000)):
+            c.post(
+                f"{bb}/revenue-streams",
+                headers=wh,
+                json={"data": {"name": name, "pricing_basis": "monthly", "est_monthly": est}},
+            )
+        proj = c.get(
+            f"{bb}/revenue-streams/projection", headers=wh, params={"months": 6, "growth_pct": 5}
+        )
+        assert proj.status_code == 200 and len(proj.json()["data"]["months"]) == 6, proj.text
+        capture("business_prd_c", "revenue_projection", proj)
+        sent = c.post(f"{bb}/revenue-streams/send-to-finance", headers=wh)
+        assert sent.status_code == 200, sent.text
+        capture("business_prd_c", "send_to_finance", sent)
+        model = c.post("/api/v1/finance/model/generate", headers=wh, json={})
+        assert model.status_code == 202, model.text
+        _drain_ai()
+        built = c.get("/api/v1/finance/model", headers=wh)
+        assert built.status_code == 200, built.text
+        assumptions = built.json()["data"]["assumptions"]
+        assert assumptions["revenue_source"] == "business_builder"
+        assert assumptions["revenue_0_minor"] == sent.json()["data"]["total_monthly_minor"]
+        capture("business_prd_c", "finance_model_from_drivers", built)
+
+        # 5. Value Proposition fit-lines.
+        vp = c.get(f"{bb}/canvases/value_prop", headers=wh).json()["data"]
+        blocks = vp["blocks"]
+        link = {
+            "from_block": "pain_relievers",
+            "from_item": blocks["pain_relievers"][0],
+            "to_block": "pains",
+            "to_item": blocks["pains"][0],
+        }
+        fit = c.put(f"{bb}/canvases/value_prop/fit", headers=wh, json={"links": [link]})
+        assert fit.status_code == 200 and fit.json()["data"]["fit_links"] == [link], fit.text
+        capture("business_prd_c", "fit_links_saved", fit)
+        bad_fit = c.put(
+            f"{bb}/canvases/value_prop/fit",
+            headers=wh,
+            json={"links": [{**link, "to_block": "gains"}]},
+        )
+        assert bad_fit.status_code == 422
+        capture("business_prd_c", "fit_links_bad_pair_422", bad_fit)

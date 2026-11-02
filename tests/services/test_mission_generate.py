@@ -257,14 +257,15 @@ def test_streak_counts_consecutive_completed(db):
     assert streak(db, s) == 3
 
 
-def test_streak_broken_by_gap(db):
+def test_streak_broken_by_gap(db, monkeypatch):
+    # Pin "today" to a Thursday so the gap (Tuesday) is a weekday. Against the real clock,
+    # on a Monday the gap day is Saturday, a weekends-off rest day that correctly does NOT
+    # break the streak, so this test failed every Monday.
+    today = date(2026, 10, 15)
+    monkeypatch.setattr(mission_service, "_today", lambda: today)
     s = create_startup(db, owner=create_user(db))
-    create_mission(
-        db, s, mission_date=date.today() - timedelta(days=1), status=MissionStatus.complete
-    )
-    create_mission(
-        db, s, mission_date=date.today() - timedelta(days=3), status=MissionStatus.complete
-    )
+    create_mission(db, s, mission_date=today - timedelta(days=1), status=MissionStatus.complete)
+    create_mission(db, s, mission_date=today - timedelta(days=3), status=MissionStatus.complete)
     db.flush()
     assert streak(db, s) == 1
 

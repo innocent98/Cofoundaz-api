@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "BANK_LINK_REJECTED",
+    "message": "That bank link expired or was not accepted. Start again.",
+    "field_errors": []
+  }
+}

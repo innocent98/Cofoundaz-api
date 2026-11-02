@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Upload a PNG, JPEG, GIF or WebP image.",
+    "field_errors": []
+  }
+}

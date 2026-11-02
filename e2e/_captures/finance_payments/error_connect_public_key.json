@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "secret_key",
+        "message": "Use your Paystack secret key (starts with sk_test_ or sk_live_)."
+      }
+    ]
+  }
+}

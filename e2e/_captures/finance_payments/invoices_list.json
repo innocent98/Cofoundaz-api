@@ -1,0 +1,100 @@
+{
+  "data": {
+    "invoices": [
+      {
+        "id": "c35ee790-582d-4f7d-b104-f8b064520bf9",
+        "number": "INV-2026-003",
+        "client_name": "Gamma Ltd",
+        "client_email": "delivered+pay-3269ebfdf2c2@resend.dev",
+        "line_items": [
+          {
+            "description": "Retainer",
+            "quantity": 1,
+            "unit_price_minor": 100000,
+            "amount_minor": 100000
+          }
+        ],
+        "subtotal_minor": 100000,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 100000,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "paid",
+        "issued_on": "2026-10-21",
+        "due_on": "2026-11-20",
+        "paid_at": "2026-10-21T13:07:00Z",
+        "auto_remind": false,
+        "transaction_id": "d2742c43-1bad-464d-944d-62e6d5555776",
+        "pay_url": "https://checkout.flutterwave.com/v3/hosted/pay/stub-INV-2026-003-ac557e80",
+        "pay_provider": "flutterwave",
+        "paid_via": "flutterwave",
+        "created_at": "2026-10-21T13:07:00.272661Z",
+        "updated_at": "2026-10-21T13:07:00.411776Z"
+      },
+      {
+        "id": "b6314b5f-9477-482a-b225-bb7058f530fc",
+        "number": "INV-2026-002",
+        "client_name": "Beta Foods",
+        "client_email": "delivered+pay-7de56b02ce3d@resend.dev",
+        "line_items": [
+          {
+            "description": "Retainer",
+            "quantity": 2,
+            "unit_price_minor": 100000,
+            "amount_minor": 200000
+          }
+        ],
+        "subtotal_minor": 200000,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 200000,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "sent",
+        "issued_on": "2026-10-21",
+        "due_on": "2026-11-20",
+        "paid_at": null,
+        "auto_remind": false,
+        "transaction_id": null,
+        "pay_url": "https://checkout.paystack.com/stub-INV-2026-002-9191eb00",
+        "pay_provider": "paystack",
+        "paid_via": null,
+        "created_at": "2026-10-21T13:07:00.113672Z",
+        "updated_at": "2026-10-21T13:07:00.129695Z"
+      },
+      {
+        "id": "ccf760dc-4b4f-4807-affb-c995df34303d",
+        "number": "INV-2026-001",
+        "client_name": "Acme Traders Ltd",
+        "client_email": "delivered+pay-da3a1aced2c5@resend.dev",
+        "line_items": [
+          {
+            "description": "Retainer",
+            "quantity": 1,
+            "unit_price_minor": 100000,
+            "amount_minor": 100000
+          }
+        ],
+        "subtotal_minor": 100000,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 100000,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "paid",
+        "issued_on": "2026-10-21",
+        "due_on": "2026-11-20",
+        "paid_at": "2026-10-21T13:06:59Z",
+        "auto_remind": false,
+        "transaction_id": "87ea0a9c-6246-4deb-a10b-26bf4c1facb1",
+        "pay_url": "https://checkout.paystack.com/stub-INV-2026-001-bfc32f9c",
+        "pay_provider": "paystack",
+        "paid_via": "paystack",
+        "created_at": "2026-10-21T13:06:58.857359Z",
+        "updated_at": "2026-10-21T13:07:00.012653Z"
+      }
+    ]
+  },
+  "meta": null
+}

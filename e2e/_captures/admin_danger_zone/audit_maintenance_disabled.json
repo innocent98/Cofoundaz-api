@@ -1,0 +1,23 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "8cd3b867-f605-4bea-aa86-fd8c8d1d54ec",
+        "created_at": "2026-10-31T15:50:01.123034+00:00",
+        "action": "maintenance.disabled",
+        "actor_user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "actor_email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "workspace_id": null,
+        "entity_type": "platform_setting",
+        "entity_id": null,
+        "reason": "Upgrade finished, all checks green",
+        "details": null,
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.db.models.enums import MissionStatus, TaskEffort
 from app.db.models.job import Job, JobStatus
 from app.db.models.mission import Mission, MissionTask
-from app.worker.handlers import ai as ai_mod
+from app.platform import llm_budget
 from app.worker.handlers.ai import handle_mission_reason
 from tests.factories import create_startup, create_user
 
@@ -50,13 +50,14 @@ def _job(mission_id):
 
 
 def test_rewrites_every_task_reason(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     m = _mission_with_tasks(db, s, ["From your 'A' milestone.", "From your 'B' milestone."])
     fake = _FakeLLM(
         {"reasons": [{"order": 0, "reason": "AI zero"}, {"order": 1, "reason": "AI one"}]}
     )
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_mission_reason(db, _job(m.id))
     tasks = db.query(MissionTask).filter_by(mission_id=m.id).order_by(MissionTask.order).all()
     assert [t.reason for t in tasks] == ["AI zero", "AI one"]
@@ -64,11 +65,12 @@ def test_rewrites_every_task_reason(db, monkeypatch):
 
 
 def test_missing_order_keeps_templated_reason(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     m = _mission_with_tasks(db, s, ["templated-0", "templated-1"])
     fake = _FakeLLM({"reasons": [{"order": 0, "reason": "AI zero"}]})  # no order 1
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_mission_reason(db, _job(m.id))
     tasks = db.query(MissionTask).filter_by(mission_id=m.id).order_by(MissionTask.order).all()
     assert tasks[0].reason == "AI zero"
@@ -84,7 +86,9 @@ def test_noop_when_no_tasks(db, monkeypatch):
     s = create_startup(db, owner=u)
     m = _mission_with_tasks(db, s, [])
     called = {"n": 0}
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: (_ for _ in ()).throw(AssertionError()))
+    monkeypatch.setattr(
+        llm_budget, "get_llm_client", lambda: (_ for _ in ()).throw(AssertionError())
+    )
     handle_mission_reason(db, _job(m.id))  # returns before any LLM client construction
     assert called["n"] == 0
 
@@ -103,6 +107,7 @@ def test_stub_marks_first_task(db, monkeypatch):
 def test_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     m = _mission_with_tasks(db, s, ["t0"])

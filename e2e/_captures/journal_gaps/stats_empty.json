@@ -1,0 +1,89 @@
+{
+  "data": {
+    "total_entries": 0,
+    "entries_this_month": 0,
+    "entries_per_week": 0.0,
+    "average_mood": null,
+    "average_mood_score": null,
+    "previous_month_average_mood": null,
+    "current_streak_days": 0,
+    "longest_streak_days": 0,
+    "longest_streak_ended_on": null,
+    "wrote_today": false,
+    "weeks": [
+      {
+        "week_start": "2026-08-10",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-08-17",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-08-24",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-08-31",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-09-07",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-09-14",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-09-21",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-09-28",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-10-05",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-10-12",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-10-19",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      },
+      {
+        "week_start": "2026-10-26",
+        "entries": 0,
+        "average_mood": null,
+        "average_stress": null
+      }
+    ]
+  },
+  "meta": null
+}

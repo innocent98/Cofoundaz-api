@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This lead was already converted.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "This lead was already converted."
+      }
+    ]
+  }
+}

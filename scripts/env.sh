@@ -190,8 +190,12 @@ cmd_verify() {
     key=$(require_key)
     # Decrypts to STDOUT only - never writes plaintext to disk, so this is the
     # safe command to run on a shared machine or in CI.
-    if _decrypt_stdout "$enc" "$key" | head -1 | grep -q '='; then
-        echo -e "${GREEN}Verification passed.${NC} .env.$env.enc decrypts cleanly."
+    # Count variable lines anywhere in the stream: the first line may be a comment, and
+    # `grep -q` would close the pipe early, which `pipefail` reports as a failure.
+    local n
+    n=$(_decrypt_stdout "$enc" "$key" 2>/dev/null | grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' || true)
+    if [ "${n:-0}" -gt 0 ]; then
+        echo -e "${GREEN}Verification passed.${NC} .env.$env.enc decrypts cleanly ($n variables)."
     else
         echo -e "${RED}Verification FAILED.${NC} Wrong key or corrupted file." >&2
         exit 1

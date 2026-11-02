@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "id": "49e9139f-3b63-4efc-bdff-5e347e0a263d",
+      "type": "quarterly",
+      "status": "completed",
+      "started_at": "2026-10-20T13:46:45.324891+00:00",
+      "completed_at": "2026-07-12T13:46:45.667588+00:00",
+      "overall_provisional": 31,
+      "stage_at_time": "build",
+      "progress": null
+    },
+    {
+      "id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+      "type": "initial",
+      "status": "completed",
+      "started_at": "2026-10-20T13:46:45.008038+00:00",
+      "completed_at": "2026-07-12T13:46:45.667588+00:00",
+      "overall_provisional": 80,
+      "stage_at_time": "build",
+      "progress": null
+    }
+  ],
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null,
+    "quarterly_due": true
+  }
+}

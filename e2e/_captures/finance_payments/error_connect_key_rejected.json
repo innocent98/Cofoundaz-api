@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PAYMENT_KEY_REJECTED",
+    "message": "Paystack did not accept that key. Check it and try again.",
+    "field_errors": []
+  }
+}

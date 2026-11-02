@@ -1,0 +1,47 @@
+{
+  "data": {
+    "id": "302e851d-a637-4962-80fe-1d2dbdde2b45",
+    "number": "INV-2026-001",
+    "client_name": "Acme Logistics",
+    "client_email": "delivered+client-9da498e5604f@resend.dev",
+    "line_items": [
+      {
+        "description": "Design sprint",
+        "quantity": 2,
+        "unit_price_minor": 50000,
+        "amount_minor": 100000
+      }
+    ],
+    "subtotal_minor": 100000,
+    "tax_percent": 7.5,
+    "tax_minor": 7500,
+    "total_minor": 107500,
+    "currency": "NGN",
+    "terms": "net_30",
+    "status": "sent",
+    "issued_on": "2026-10-24",
+    "due_on": "2026-11-23",
+    "paid_at": null,
+    "auto_remind": false,
+    "transaction_id": null,
+    "account_id": "88422f12-3e75-4bdf-8cc1-3abff80df328",
+    "account_name": "Acme Logistics",
+    "notes": "Thank you for your business.\nPlease quote the invoice number.",
+    "payment_details": {
+      "bank_name": "GTBank",
+      "account_name": "NovaPay Ltd",
+      "account_number": "0123456789",
+      "instructions": "Use the invoice number as the reference."
+    },
+    "last_sent_at": "2026-10-24T19:50:26.761893Z",
+    "pay_url": null,
+    "pay_provider": null,
+    "paid_via": null,
+    "last_reminded_at": null,
+    "reminder_count": 0,
+    "overdue_notified_at": null,
+    "created_at": "2026-10-24T19:50:26.687416Z",
+    "updated_at": "2026-10-24T19:50:26.760622Z"
+  },
+  "meta": null
+}

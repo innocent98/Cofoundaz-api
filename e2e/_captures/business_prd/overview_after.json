@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "type": "business_model",
+      "label": "Business Model",
+      "filled_blocks": 1,
+      "total_blocks": 9,
+      "completion_pct": 11,
+      "status": "continue",
+      "updated_at": "2026-10-19T11:08:26.523128+00:00"
+    },
+    {
+      "type": "lean",
+      "label": "Lean",
+      "filled_blocks": 0,
+      "total_blocks": 9,
+      "completion_pct": 0,
+      "status": "start",
+      "updated_at": null
+    },
+    {
+      "type": "value_prop",
+      "label": "Value Prop",
+      "filled_blocks": 0,
+      "total_blocks": 6,
+      "completion_pct": 0,
+      "status": "start",
+      "updated_at": null
+    },
+    {
+      "type": "mission_vision",
+      "label": "Mission Vision",
+      "filled_blocks": 0,
+      "total_blocks": 2,
+      "completion_pct": 0,
+      "status": "start",
+      "updated_at": null
+    },
+    {
+      "type": "swot",
+      "label": "Swot",
+      "filled_blocks": 1,
+      "total_blocks": 4,
+      "completion_pct": 25,
+      "status": "continue",
+      "updated_at": "2026-10-19T11:08:26.354497+00:00"
+    },
+    {
+      "type": "persona",
+      "label": "Persona",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0,
+      "updated_at": null
+    },
+    {
+      "type": "revenue_stream",
+      "label": "Revenue Stream",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0,
+      "updated_at": null
+    },
+    {
+      "type": "competitor",
+      "label": "Competitor",
+      "status": "complete",
+      "completion_pct": 100,
+      "count": 1,
+      "updated_at": "2026-10-19T11:08:26.421556+00:00"
+    },
+    {
+      "type": "pricing",
+      "label": "Pricing",
+      "status": "start",
+      "completion_pct": 0,
+      "count": 0,
+      "updated_at": null
+    },
+    {
+      "type": "plan",
+      "label": "Business Plan",
+      "status": "none",
+      "document_id": null,
+      "updated_at": null
+    }
+  ],
+  "meta": null
+}

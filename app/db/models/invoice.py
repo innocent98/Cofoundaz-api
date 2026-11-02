@@ -1,0 +1,110 @@
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+from app.db.mixins import TimestampMixin, UUIDMixin
+from app.db.models.enums import InvoiceStatus, InvoiceTerms
+from app.db.models.sales import SalesAccount
+
+
+class Invoice(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "invoices"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    number: Mapped[str] = mapped_column(String(20), nullable=False)
+    client_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    client_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    line_items: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    subtotal_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tax_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    tax_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_minor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="NGN")
+    # values_callable so the DB stores the enum *value* (e.g. "net_30"), matching the migration.
+    terms: Mapped[InvoiceTerms] = mapped_column(
+        Enum(
+            InvoiceTerms,
+            native_enum=False,
+            length=16,
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
+        default=InvoiceTerms.net_30,
+    )
+    status: Mapped[InvoiceStatus] = mapped_column(
+        Enum(
+            InvoiceStatus,
+            native_enum=False,
+            length=8,
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        nullable=False,
+        default=InvoiceStatus.draft,
+    )
+    issued_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    auto_remind: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    transaction_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
+    # Provider pay link (Paystack/Flutterwave) and how the invoice was settled.
+    pay_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pay_reference: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    pay_provider: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    paid_via: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Reminder automation bookkeeping: when the last reminder (auto or manual) went out, how many
+    # have gone out, and when the one-shot overdue event fired.
+    last_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reminder_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Client picker: the Sales account this invoice bills (SET NULL so deleting the account never
+    # deletes an invoice), plus what the client sees beyond the line items.
+    account_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("sales_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # selectin (a second query), never a join: get_invoice_locked takes FOR UPDATE, which Postgres
+    # refuses on the nullable side of an outer join.
+    account: Mapped[SalesAccount | None] = relationship(
+        SalesAccount, lazy="selectin", viewonly=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # When the invoice email last went out (first send or a resend); drives the resend cooldown.
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (UniqueConstraint("startup_id", "number", name="uq_invoices_startup_number"),)

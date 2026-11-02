@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Send at least one setting, with a value.",
+    "field_errors": []
+  }
+}

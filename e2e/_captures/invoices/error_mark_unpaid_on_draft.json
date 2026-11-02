@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a paid invoice can be marked unpaid.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Only a paid invoice can be marked unpaid."
+      }
+    ]
+  }
+}

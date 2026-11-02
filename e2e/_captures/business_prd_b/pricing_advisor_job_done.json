@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": "e07fde83-0e35-46ef-a699-88a46a275526",
+    "type": "ai.business.pricing_advisor",
+    "status": "succeeded",
+    "result": {
+      "advice": {
+        "tiers": [
+          {
+            "name": "[stub-llm] name",
+            "price": "[stub-llm] price",
+            "features": [
+              "[stub-llm] features"
+            ]
+          }
+        ],
+        "rationale": "[stub-llm] rationale",
+        "wtp_questions": [
+          "[stub-llm] wtp_questions"
+        ],
+        "recommended_model": "subscription"
+      },
+      "status": "ready"
+    },
+    "error": null
+  },
+  "meta": null
+}

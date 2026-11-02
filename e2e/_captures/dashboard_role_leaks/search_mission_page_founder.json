@@ -1,0 +1,24 @@
+{
+  "data": {
+    "query": "mission",
+    "results": [
+      {
+        "type": "page",
+        "group": "Pages",
+        "id": "/mission",
+        "title": "Today's Mission",
+        "subtitle": null,
+        "href": "/mission"
+      },
+      {
+        "type": "page",
+        "group": "Pages",
+        "id": "/business-builder/mission-vision",
+        "title": "Mission & Vision",
+        "subtitle": null,
+        "href": "/business-builder/mission-vision"
+      }
+    ]
+  },
+  "meta": null
+}

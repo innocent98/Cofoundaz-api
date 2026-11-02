@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "e57fa7cd-af7d-4813-8e16-9f1b74daf786",
+    "entity_type": "business_record",
+    "entity_id": "80ce5dd8-dbaf-491d-8af5-b8dd4013578c",
+    "anchor": null,
+    "author": {
+      "id": "6ed5aaaa-a0ed-49a8-b806-8eb7e853c06f",
+      "name": "Ada Founder"
+    },
+    "body": "Based on two interviews so far.",
+    "mention_user_ids": [],
+    "created_at": "2026-10-19T11:37:49.918524+00:00",
+    "edited_at": null,
+    "resolved_at": null,
+    "is_mine": true
+  },
+  "meta": null
+}

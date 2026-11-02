@@ -1,6 +1,8 @@
 import uuid
+from typing import Any
 
-from sqlalchemy import Index, String
+from sqlalchemy import Index, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +25,10 @@ class AuditLog(UUIDMixin, TimestampMixin, Base):
     after_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Staff mutations carry a required human reason; `details` holds non-secret context
+    # (the invited email, role and scopes). Neither ever holds a secret or restricted content.
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     __table_args__ = (
         Index("ix_audit_log_startup_created", "startup_id", "created_at"),

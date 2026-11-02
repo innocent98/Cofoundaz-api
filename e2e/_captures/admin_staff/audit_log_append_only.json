@@ -1,0 +1,4 @@
+{
+  "update": "audit_log is append-only: UPDATE is not allowed",
+  "delete": "audit_log is append-only: DELETE is not allowed"
+}

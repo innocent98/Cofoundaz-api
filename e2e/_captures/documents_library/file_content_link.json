@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "url": "http://127.0.0.1:8031/api/v1/documents/files/content?token=REDACTED_TOKEN",
+      "expires_at": "2026-10-25T11:07:18+00:00",
+      "content_type": "application/pdf",
+      "filename": "Term sheet (signed).pdf",
+      "viewer": "pdf"
+    },
+    "meta": null
+  }
+}

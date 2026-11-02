@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "2442b3cc-bc0b-41ad-8e73-868861995521",
+    "date": "2026-10-21",
+    "description": "Office build-out",
+    "category": "Capex",
+    "amount_minor": 90000000,
+    "currency": "NGN",
+    "direction": "out",
+    "source": "manual",
+    "created_at": "2026-10-21T15:33:21.079704Z",
+    "updated_at": "2026-10-21T15:33:21.079704Z"
+  },
+  "meta": null
+}

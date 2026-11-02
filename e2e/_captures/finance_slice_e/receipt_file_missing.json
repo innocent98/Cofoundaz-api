@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RECEIPT_FILE_MISSING",
+    "message": "This receipt file is no longer available. Upload it again.",
+    "field_errors": []
+  }
+}

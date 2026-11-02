@@ -1,21 +1,22 @@
 {
   "data": [
     {
-      "id": "d9053d45-8e8d-4056-8ee6-bd9a335f3a96",
+      "id": "dc4493c2-6041-46ba-bd06-fabc60df349d",
       "change_count": 1,
       "summary": "Re-planned 1 milestone",
+      "rationale": "Re-planned 1 milestone: adjusted the dates for Validate demand to keep your roadmap realistic after recent slips.",
       "applied_by": {
-        "id": "6a06c5a8-8533-4542-b9e9-271e2895f2ce",
+        "id": "02f0a6d3-71ea-4731-b5be-9df31348df30",
         "name": "Ada Founder"
       },
-      "created_at": "2026-09-08T14:03:28.557392+00:00",
+      "created_at": "2026-09-30T08:33:20.789575+00:00",
       "changes": [
         {
           "title": "Validate demand",
           "reason": "10 days overdue and not yet done.",
-          "new_due": "2026-09-15",
-          "old_due": "2026-08-29",
-          "milestone_id": "cdf6fd43-bb5a-44e6-988c-344e48ed76f4"
+          "new_due": "2026-10-07",
+          "old_due": "2026-09-20",
+          "milestone_id": "e4f3e277-6c14-4bde-ade9-21a2cf29ec0c"
         }
       ]
     }

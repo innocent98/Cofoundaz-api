@@ -71,7 +71,7 @@ def test_overview_ok_after_assessment(client, db):
     assert len(data["dimensions"]) == 5
     assert {d["key"] for d in data["dimensions"]} == {"product", "market", "money", "legal", "team"}
     for d in data["dimensions"]:
-        assert set(d) == {"key", "label", "score", "band"}
+        assert set(d) == {"key", "label", "score", "band", "trend"}
     assert len(data["top_recommendations"]) <= 3
     assert data["summary"]
 
@@ -123,7 +123,7 @@ def test_dimension_detail(client, db):
     assert isinstance(data["signals"], list)
     assert len(data["signals"]) >= 1
     for sig in data["signals"]:
-        assert set(sig) == {"key", "value", "contribution", "source_ref"}
+        assert {"key", "value", "contribution", "source_ref", "label", "target", "href"} <= set(sig)
         assert isinstance(sig["value"], float)
         assert isinstance(sig["contribution"], float)
     assert isinstance(data["trend"], list)
@@ -155,7 +155,7 @@ def test_history_range(client, db):
     assert isinstance(data, list)
     assert len(data) >= 1
     for row in data:
-        assert set(row) == {"score", "dimension_scores", "delta", "computed_at"}
+        assert set(row) == {"score", "dimension_scores", "delta", "computed_at", "trigger"}
 
 
 def test_history_default_range(client, db):

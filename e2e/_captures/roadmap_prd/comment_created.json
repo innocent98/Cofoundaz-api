@@ -1,0 +1,20 @@
+{
+  "data": {
+    "id": "66e92e1c-211f-4b20-80b3-8d957c305ef1",
+    "entity_type": "roadmap_milestone",
+    "entity_id": "be3cc2e4-d5e2-4425-bc67-6d1a06c16d71",
+    "author": {
+      "id": "e2fbf711-3d34-41e6-af61-f0854d9010a2",
+      "name": "Ada F"
+    },
+    "body": "Can you own the interviews?",
+    "mention_user_ids": [
+      "36f881f3-b3f2-4573-9ca5-91d932fcc9bb"
+    ],
+    "created_at": "2026-10-18T03:18:55.080086+00:00",
+    "edited_at": null,
+    "resolved_at": null,
+    "is_mine": true
+  },
+  "meta": null
+}

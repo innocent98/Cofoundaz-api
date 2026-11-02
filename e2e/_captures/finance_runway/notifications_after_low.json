@@ -1,0 +1,39 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "535c0de9-480f-4d05-8c0a-cddbf181e9a9",
+        "type": "finance.runway.updated",
+        "title": "Your runway is now 1.2 months",
+        "body": "Open Finance",
+        "data": {
+          "band": "low",
+          "href": "/finance/runway",
+          "currency": "NGN",
+          "startup_id": "07017dbf-8ffc-4a7c-b4c7-924735e1326f",
+          "monthly_burn": 23666667,
+          "runway_months": 1.2
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:23.075813+00:00"
+      },
+      {
+        "id": "10d99ca2-5440-4e04-b5f5-91ecabcccf29",
+        "type": "finance.runway.low",
+        "title": "Runway below 6 months, review recommended",
+        "body": "Open Finance",
+        "data": {
+          "href": "/finance/runway",
+          "currency": "NGN",
+          "startup_id": "07017dbf-8ffc-4a7c-b4c7-924735e1326f",
+          "monthly_burn": 23666667,
+          "runway_months": 1.2
+        },
+        "read": false,
+        "created_at": "2026-10-21T15:33:23.075813+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

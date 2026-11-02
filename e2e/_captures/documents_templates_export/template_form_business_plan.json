@@ -1,0 +1,106 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "key": "business_plan",
+      "name": "Business Plan",
+      "description": "A full business plan.",
+      "kind": "business_plan",
+      "category": "Pitch",
+      "sections": [
+        "Executive Summary",
+        "Problem",
+        "Solution",
+        "Market & Customer",
+        "Business Model",
+        "Go-to-Market",
+        "Team",
+        "Financials",
+        "The Ask"
+      ],
+      "disclaimer": null,
+      "form": {
+        "template_key": "business_plan",
+        "fields": [],
+        "sections": [
+          {
+            "key": "executive_summary",
+            "heading": "Executive Summary",
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": true
+          },
+          {
+            "key": "problem",
+            "heading": "Problem",
+            "value": "- Traders lose money to slow cash handling\n- Card fraud",
+            "state": "filled",
+            "source": "business_builder",
+            "ai_draftable": true
+          },
+          {
+            "key": "solution",
+            "heading": "Solution",
+            "value": "- A mobile wallet for market traders",
+            "state": "filled",
+            "source": "business_builder",
+            "ai_draftable": true
+          },
+          {
+            "key": "market_customer",
+            "heading": "Market & Customer",
+            "value": "- Open-air market traders",
+            "state": "filled",
+            "source": "business_builder",
+            "ai_draftable": true
+          },
+          {
+            "key": "business_model",
+            "heading": "Business Model",
+            "value": "- Transaction fees (pricing basis: 1% per payment)",
+            "state": "filled",
+            "source": "business_builder",
+            "ai_draftable": true
+          },
+          {
+            "key": "go_to_market",
+            "heading": "Go-to-Market",
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": true
+          },
+          {
+            "key": "team",
+            "heading": "Team",
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": false
+          },
+          {
+            "key": "financials",
+            "heading": "Financials",
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": true
+          },
+          {
+            "key": "the_ask",
+            "heading": "The Ask",
+            "value": "",
+            "state": "empty",
+            "source": null,
+            "ai_draftable": false
+          }
+        ],
+        "unfilled_required": [],
+        "disclaimer": null,
+        "ai_available": true
+      }
+    },
+    "meta": null
+  }
+}

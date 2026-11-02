@@ -1,0 +1,32 @@
+{
+  "data": {
+    "query": "runway",
+    "results": [
+      {
+        "type": "page",
+        "group": "Pages",
+        "id": "/finance/runway",
+        "title": "Runway",
+        "subtitle": null,
+        "href": "/finance/runway"
+      },
+      {
+        "type": "course",
+        "group": "Learning Academy",
+        "id": "growth-know-your-numbers",
+        "title": "Know your numbers",
+        "subtitle": "Course",
+        "href": "/academy/courses/growth-know-your-numbers"
+      },
+      {
+        "type": "article",
+        "group": "Learning Academy",
+        "id": "article-read-your-runway",
+        "title": "How to read your runway without a finance degree",
+        "subtitle": "Article",
+        "href": "/academy/articles/article-read-your-runway"
+      }
+    ]
+  },
+  "meta": null
+}

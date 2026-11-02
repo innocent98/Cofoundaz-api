@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "content-type": "image/png",
+  "cache-control": "private, max-age=3600",
+  "x-content-type-options": "nosniff",
+  "bytes": 40
+}

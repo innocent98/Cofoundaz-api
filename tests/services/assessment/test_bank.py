@@ -32,3 +32,20 @@ def test_choice_questions_have_options_and_scoring_within_max():
             for k, _v in q.scoring.items():
                 if k != "max":
                     assert k in opt_values, f"{q.key}: scoring key {k} not an option"
+
+
+def test_every_bank_question_has_prompt():
+    """Every real question must carry founder-facing prompt text (the FE renders it).
+
+    `Question.prompt` defaults to "" so synthetic engine-logic fixtures need not set it;
+    this guards the actual bank so a new question can't ship promptless (the original
+    gap that left the assessment FE with nothing to display).
+    """
+    missing = [q.key for q in ASSESSMENT_BANK.questions if not (q.prompt and q.prompt.strip())]
+    assert not missing, f"bank questions missing prompt text: {missing}"
+
+
+def test_bank_prompts_are_distinct_and_non_trivial():
+    prompts = [q.prompt for q in ASSESSMENT_BANK.questions]
+    assert len(set(prompts)) == len(prompts), "duplicate prompts in the bank"
+    assert all(len(p) >= 8 for p in prompts), "a bank prompt looks too short to be real"

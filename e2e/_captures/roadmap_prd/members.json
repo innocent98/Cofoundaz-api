@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "user_id": "e2fbf711-3d34-41e6-af61-f0854d9010a2",
+      "name": "Ada F",
+      "email": "delivered+e2e-77ee95a006d6@resend.dev",
+      "role": "founder"
+    },
+    {
+      "user_id": "36f881f3-b3f2-4573-9ca5-91d932fcc9bb",
+      "name": null,
+      "email": "delivered+mate-80abbf919888@resend.dev",
+      "role": "team_member"
+    }
+  ],
+  "meta": null
+}

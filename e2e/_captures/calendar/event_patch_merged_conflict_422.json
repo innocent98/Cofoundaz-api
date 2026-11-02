@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "an all-day event may not carry a start or end time",
+    "field_errors": [
+      {
+        "field": "start_time",
+        "message": "an all-day event may not carry a start or end time"
+      }
+    ]
+  }
+}

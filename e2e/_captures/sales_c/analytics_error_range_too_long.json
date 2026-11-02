@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick a range of at most 366 days.",
+    "field_errors": [
+      {
+        "field": "to",
+        "message": "Pick a range of at most 366 days."
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This invoice was paid through Flutterwave and cannot be marked unpaid.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "This invoice was paid through Flutterwave and cannot be marked unpaid."
+      }
+    ]
+  }
+}

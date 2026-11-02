@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+      "type": "initial",
+      "status": "in_progress",
+      "started_at": "2026-10-20T13:46:45.008038+00:00",
+      "completed_at": null,
+      "overall_provisional": null,
+      "stage_at_time": null,
+      "progress": {
+        "answered": 1,
+        "remaining": 8,
+        "pct": 11
+      }
+    }
+  ],
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null,
+    "quarterly_due": false
+  }
+}

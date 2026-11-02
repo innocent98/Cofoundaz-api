@@ -1,0 +1,13 @@
+{
+  "data": {
+    "offers": [
+      {
+        "milestone_id": "b0699117-eb96-4ec6-b228-4975351469e6",
+        "milestone_title": "Validate demand",
+        "completed_at": "2026-10-29T20:07:48.171299Z",
+        "prompt": "Run a 5-minute retro on Validate demand?"
+      }
+    ]
+  },
+  "meta": null
+}

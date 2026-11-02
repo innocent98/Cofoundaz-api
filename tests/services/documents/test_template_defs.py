@@ -10,13 +10,17 @@ from app.services.documents.template_defs import (
 )
 
 
-def test_registry_has_the_five_templates():
+def test_registry_has_the_nine_templates():
     assert set(DOCUMENT_TEMPLATES) == {
         "business_plan",
         "pitch_deck",
         "financial_model",
         "meeting_notes",
         "one_pager",
+        "nda",
+        "contractor_agreement",
+        "founder_agreement",
+        "safe",
     }
 
 

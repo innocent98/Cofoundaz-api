@@ -1,0 +1,27 @@
+{
+  "data": {
+    "id": "ea12c7db-0942-4801-8907-1b019d19ab2c",
+    "name": "Same-day settlement",
+    "type": "smoke_test",
+    "status": "draft",
+    "config": {
+      "slug": "novapay-same-day",
+      "cta_text": "Join the waitlist",
+      "headline": "Get paid the same day",
+      "metric_type": "email_signup",
+      "subheadline": "Instant settlement for market traders",
+      "show_pricing": false,
+      "require_email": true,
+      "target_conversion": 10
+    },
+    "metrics": {},
+    "assumption_ids": [
+      "44e0592d-8931-4bd6-9c69-f14aa9a8bc11"
+    ],
+    "slug": "novapay-same-day",
+    "published_at": null,
+    "created_at": "2026-10-19T19:59:32.378371+00:00",
+    "updated_at": "2026-10-19T19:59:32.378371+00:00"
+  },
+  "meta": null
+}

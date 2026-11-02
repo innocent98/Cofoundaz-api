@@ -1,0 +1,45 @@
+{
+  "data": {
+    "campaign_id": "54a87848-c841-45e3-9eee-1fe502b6f646",
+    "name": "Waitlist push",
+    "range": "all",
+    "totals": {
+      "impressions": 2000,
+      "clicks": 100,
+      "conversions": 10,
+      "spend": 20000,
+      "click_through_rate": 5.0,
+      "conversion_rate": 10.0
+    },
+    "series": [
+      {
+        "date": "2026-10-20",
+        "impressions": 2000,
+        "clicks": 100,
+        "conversions": 10,
+        "spend": 20000
+      }
+    ],
+    "by_channel": [
+      {
+        "channel": "email",
+        "share_percent": 60.0,
+        "impressions": 1200,
+        "clicks": 60,
+        "conversions": 6,
+        "spend": 12000,
+        "estimated": true
+      },
+      {
+        "channel": "search",
+        "share_percent": 40.0,
+        "impressions": 800,
+        "clicks": 40,
+        "conversions": 4,
+        "spend": 8000,
+        "estimated": true
+      }
+    ]
+  },
+  "meta": null
+}

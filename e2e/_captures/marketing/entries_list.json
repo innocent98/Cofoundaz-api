@@ -1,0 +1,21 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "ee4844c5-de84-441b-ac94-a86436fbdf5c",
+        "startup_id": "0e86cc20-186b-40f6-a774-9fb25ec1f854",
+        "created_by": "0aaa196b-955f-415e-94bd-d9ed2d7ff950",
+        "title": "Launch week kickoff",
+        "channel": "email",
+        "status": "scheduled",
+        "body": "Ship it",
+        "media_ref": null,
+        "scheduled_at": "2026-10-01T09:00:00Z",
+        "published_at": null,
+        "created_at": "2026-09-30T08:33:04.302252Z",
+        "updated_at": "2026-09-30T08:33:04.302252Z"
+      }
+    ]
+  },
+  "meta": null
+}

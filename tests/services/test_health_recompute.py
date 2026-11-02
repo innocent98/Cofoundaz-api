@@ -53,7 +53,19 @@ def test_recompute_writes_score_signals_history(db):
     hs = recompute_health_score(db, s, trigger="assessment_complete")
     assert hs.score == 60
     assert hs.band == "healthy"
-    assert db.query(HealthSignal).filter_by(startup_id=s.id).count() == 5
+    signals = db.query(HealthSignal).filter_by(startup_id=s.id).all()
+    assert sum(1 for x in signals if x.key.startswith("assessment.")) == 5
+    # Plus every applicable live signal (no roadmap / no finance yet -> those are left out).
+    assert {x.key for x in signals if not x.key.startswith("assessment.")} == {
+        "product.mission_completion",
+        "market.assumptions_tested",
+        "market.interviews_30d",
+        "money.transactions_30d",
+        "legal.signatures_complete",
+        "team.members",
+        "team.activity_7d",
+        "team.streak",
+    }
     assert db.query(HealthScoreHistory).filter_by(startup_id=s.id).count() == 1
 
 

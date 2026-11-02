@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "Value error, an all-day event may not carry a start or end time"
+      }
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "data": {
+    "user": {
+      "id": "71a03878-3c50-4072-ac24-ca31efb7cceb",
+      "email": "delivered+e2e-ab063a386f32@resend.dev",
+      "status": "active"
+    },
+    "profile": {
+      "full_name": "Ada Obi",
+      "role_title": "CEO",
+      "country": "NG",
+      "avatar_url": null,
+      "phone": "+2348012345678"
+    },
+    "memberships": [
+      {
+        "startup_id": "319eca7c-5c7c-49ff-801c-ed3562e64afc",
+        "name": "Cofoundaz",
+        "role": "founder"
+      }
+    ],
+    "active_workspace_id": "319eca7c-5c7c-49ff-801c-ed3562e64afc"
+  },
+  "meta": null
+}

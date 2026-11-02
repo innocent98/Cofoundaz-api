@@ -1,0 +1,60 @@
+{
+  "data": {
+    "id": "build-scope-the-mvp",
+    "title": "Scope the MVP",
+    "summary": "Pick the one core flow, cut the rest, and test demand before you build too much.",
+    "level": "intermediate",
+    "stage_tags": [
+      "validation",
+      "build"
+    ],
+    "lesson_count": 3,
+    "duration_min": 30,
+    "review_status": "draft",
+    "enrolled": false,
+    "progress": 0,
+    "completed": false,
+    "last_lesson_id": null,
+    "next_lesson_id": "build-scope-the-mvp-1",
+    "position_s": 0,
+    "description": "An MVP is the smallest thing that lets a real customer get the value you promise. It is not a bad version of the full product, and it is not a demo.\n\nThis course shows you how to choose the one flow that matters, cut everything else, and confirm that people want it before you spend months building.",
+    "outcomes": [
+      "Choose the single flow that delivers your promised value",
+      "Cut features with a clear rule instead of a feeling",
+      "Check demand with a small test before you commit to the full build"
+    ],
+    "lessons": [
+      {
+        "id": "build-scope-the-mvp-1",
+        "title": "Pick the one core flow",
+        "order": 1,
+        "duration_min": 12,
+        "video": null,
+        "transcript": "Your product promises one outcome. The core flow is the shortest path a customer takes to reach it.\n\n## Write the promise\n\nComplete this sentence: **\"A customer can ___ in under ___ minutes.\"** For example: *\"A salon owner can accept and confirm a booking in under two minutes.\"*\n\n## Map the path\n\nList every step from the customer's first contact to the promised result. Be literal. For the booking example:\n\n1. Customer sends a message\n2. Owner sees available slots\n3. Owner confirms a slot\n4. Customer gets a confirmation\n\nThat four step path is your core flow. Everything else, such as reports, loyalty points and staff scheduling, is not part of it.\n\n## Ask three questions about each step\n\n- Does the promise break without it?\n- Can it be done by hand for now?\n- Can a tool you already have do it, such as WhatsApp, a form or a spreadsheet?\n\n## Build only what must be software\n\nMany early founders find that only one or two steps need real code. The rest can be manual at the start. This is not cheating. It is called a concierge approach, and it teaches you what the software should do before you write it.\n\n## Output of this lesson\n\nA single page with the promise, the steps, and a mark beside each step: **build**, **manual** or **use existing tool**. Share it with one customer and ask: \"If this worked, would it solve your problem?\" Adjust until the answer is a clear yes.",
+        "completed": false,
+        "position_s": 0
+      },
+      {
+        "id": "build-scope-the-mvp-2",
+        "title": "Cut everything else",
+        "order": 2,
+        "duration_min": 10,
+        "video": null,
+        "transcript": "Founders rarely run out of ideas. They run out of time and money. Cutting is the main skill of scoping.\n\n## Use a clear rule\n\nFor each feature on your wish list, ask: **\"Can a customer get the promised result without it?\"** If yes, it is out of version one. Do not debate. Move it to a \"later\" list.\n\n## Sort what remains\n\nMark every remaining item with one of three tags:\n\n- **Must:** the core flow breaks without it.\n- **Should:** it makes the flow smoother, but customers can live without it.\n- **Could:** nice to have.\n\nVersion one contains only the **musts**. Take one honest look at whether a **should** is actually a must in disguise, and then stop.\n\n## Common things to cut\n\n- Custom user roles and permissions\n- Advanced dashboards and reports\n- Settings pages for every option\n- Multiple languages, unless your first customers require it\n- Native apps when a mobile friendly web page works\n\n## Protect against scope creep\n\nWrite the list of cut items down and keep it visible. When someone asks \"can we just add...\", point to the list and ask which must item they want to replace. A feature added without something removed is a delay in disguise.\n\n## A useful test\n\nIf you feel slightly embarrassed by how small version one is, you are probably close. Customers forgive missing features far more easily than a product that arrives six months late and solves the wrong problem.",
+        "completed": false,
+        "position_s": 0
+      },
+      {
+        "id": "build-scope-the-mvp-3",
+        "title": "Test demand before you build",
+        "order": 3,
+        "duration_min": 8,
+        "video": null,
+        "transcript": "Before you commit months to building, run one cheap test to see whether people want the result you promise.\n\n## Three quick demand tests\n\n- **Smoke test page.** Publish a one page description of the product with a clear call to action, such as \"Join the waitlist\" or \"Book a demo\". Send real traffic from the places where your customers gather. Measure how many take the action.\n- **Manual first.** Offer the service by hand to five customers and see whether they come back for a second time.\n- **Pre-order.** Ask for a small deposit for early access and track who pays.\n\n## Set a bar before you start\n\nChoose a target number in advance so that you cannot argue yourself into a pass. For example: *\"At least 30 of the first 300 visitors leave their WhatsApp number, or 5 of 20 contacted prospects book a call.\"* The exact numbers depend on your market. What matters is writing the bar down first.\n\n## Read the result\n\n- **Above the bar:** build the core flow from the previous lessons, and keep the same people close as your first testers.\n- **Near the bar:** change one thing, such as the headline or the audience, and repeat.\n- **Far below the bar:** go back to your interview notes. The problem or the audience may need to change.\n\n## Set a finish line\n\nBefore you start building, choose a ship date and a definition of done: what the customer can do, and how you will know. A date keeps scope honest. Aim to put the core flow in front of real customers within weeks, not months.",
+        "completed": false,
+        "position_s": 0
+      }
+    ]
+  },
+  "meta": null
+}

@@ -155,4 +155,39 @@ def test_dashboard_ai_briefing(base_url, make_verified_user, capture):
         assert "[stub-llm]" in after_data["risks"]["message"]
         assert after_data["opportunities"]["status"] == "ready"
         assert "[stub-llm]" in after_data["opportunities"]["message"]
+        # v2 structured rows: server-mapped hrefs, never model-authored URLs.
+        risk = after_data["risks"]["items"][0]
+        assert risk["severity"] == "high" and risk["href"] == "/mission"
+        assert after_data["opportunities"]["items"][0]["href"] == "/mission"
+        action = briefing["actions"][0]
+        assert (action["kind"], action["accepted"], action["mission_task_id"]) == (
+            "task",
+            False,
+            None,
+        )
         capture("dashboard_ai_briefing", "summary_ready", after)
+
+        # 5. "Do it" on action 0 -> added to today's mission; a repeat is idempotent.
+        url = f"/api/v1/dashboard/briefing/{briefing['id']}/actions/0/accept"
+        done = c.post(url, headers=wh)
+        assert done.status_code == 200, done.text
+        task = done.json()["data"]["mission_task"]
+        assert task["title"] == action["label"]
+        capture("dashboard_ai_briefing", "action_accept_task", done)
+        again = c.post(url, headers=wh)
+        assert again.json()["data"]["mission_task"]["id"] == task["id"]
+        capture("dashboard_ai_briefing", "action_accept_task_repeat", again)
+
+        today = c.get("/api/v1/missions/today", headers=wh).json()["data"]
+        assert task["id"] in [t["id"] for t in today["tasks"]]
+        accepted = c.get("/api/v1/dashboard/summary", headers=wh)
+        a0 = accepted.json()["data"]["briefing"]["actions"][0]
+        assert (a0["accepted"], a0["mission_task_id"]) == (True, task["id"])
+        assert accepted.json()["data"]["mission"]["empty_reason"] is None
+        capture("dashboard_ai_briefing", "summary_after_accept", accepted)
+
+        missing = c.post(
+            f"/api/v1/dashboard/briefing/{briefing['id']}/actions/9/accept", headers=wh
+        )
+        assert missing.status_code == 404
+        capture("dashboard_ai_briefing", "action_accept_out_of_range", missing)

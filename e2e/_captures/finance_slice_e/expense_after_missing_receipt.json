@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "c42e06c9-5259-428b-b1f2-cfd64df43fdb",
+    "vendor": "Notion",
+    "category": "Software",
+    "expense_date": "2026-10-24",
+    "amount_minor": 1000,
+    "currency": "NGN",
+    "recurring": false,
+    "notes": null,
+    "has_receipt": false,
+    "receipt_url": null,
+    "transaction_id": "76c1767b-dadb-4bab-a8a8-33e19ba62e9c",
+    "created_by": "47b32183-ce5a-43bd-8016-2ca5163b07ba",
+    "created_at": "2026-10-24T19:50:26.887554Z",
+    "updated_at": "2026-10-24T19:50:26.919879Z"
+  },
+  "meta": null
+}

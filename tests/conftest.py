@@ -1,3 +1,4 @@
+import functools
 from collections.abc import Iterator
 
 import pytest
@@ -11,12 +12,31 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.services.learning.content import load_content, sync_content
 
 # Local-only fallback for developers without TEST_DATABASE_URL set; not a real secret.
 TEST_URL = (
     settings.TEST_DATABASE_URL
     or "postgresql://user:password@localhost:5433/cofoundaz_test"  # noqa: S106
 )
+
+
+@pytest.fixture(autouse=True)
+def _never_touch_the_real_outreach_mailbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A developer's .env may hold the real cPanel mailbox settings. No test may ever reach it:
+    blank every SALES_OUTREACH_* value so tests start unconfigured and opt in with fakes."""
+    keep = {"SALES_OUTREACH_SMTP_SECURITY", "SALES_OUTREACH_IMAP_PROCESSED_FOLDER"}
+    for name in type(settings).model_fields:
+        if name.startswith("SALES_OUTREACH_") and name not in keep:
+            if isinstance(getattr(settings, name), str):
+                monkeypatch.setattr(settings, name, "")
+
+
+@pytest.fixture(autouse=True)
+def _isolated_local_storage(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Uploads (and the signing flow, which reads the stored PDF) write under the test's tmp dir,
+    never `var/storage`."""
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_DIR", str(tmp_path / "storage"))
 
 
 @pytest.fixture(scope="session")
@@ -55,3 +75,16 @@ def client(db: Session) -> Iterator[TestClient]:
         yield c
     app.state.limiter.enabled = True
     app.dependency_overrides.clear()
+
+
+@functools.cache
+def _academy_bundle():  # type: ignore[no-untyped-def]
+    return load_content()
+
+
+@pytest.fixture()
+def academy(db: Session) -> Session:
+    """The real Academy content (content/academy) loaded into the test transaction."""
+    sync_content(db, _academy_bundle())
+    db.flush()
+    return db

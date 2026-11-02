@@ -118,7 +118,9 @@ def test_notifications_journey(base_url, make_verified_user, mailbox, unique_ema
         # different external recipients) -- two real `document.shared`
         # events, giving B two notifications to exercise keyset pagination
         # with.
-        created = a.post("/api/v1/documents", headers=wh_a, json={"template_key": "one_pager"})
+        # D-DOC-1: `document.shared` goes to the document's OWNER (never the whole workspace),
+        # so B (a team member) creates the document and founder A shares it.
+        created = b.post("/api/v1/documents", headers=wh_b, json={"template_key": "one_pager"})
         assert created.status_code == 201, created.text
         doc_id = created.json()["data"]["id"]
         capture("notifications", "trigger_document_create", created)

@@ -1,0 +1,30 @@
+{
+  "data": {
+    "id": "54a87848-c841-45e3-9eee-1fe502b6f646",
+    "startup_id": "57829571-0f6c-4298-8e87-5cbc70631b58",
+    "name": "Waitlist push",
+    "objective": "launch",
+    "budget": 50000,
+    "channel_mix": {
+      "email": 60.0,
+      "search": 40.0
+    },
+    "status": "draft",
+    "metrics": {
+      "impressions": 0,
+      "clicks": 0,
+      "conversions": 0,
+      "spend": 0,
+      "click_through_rate": 0.0,
+      "conversion_rate": 0.0
+    },
+    "segment_ids": [],
+    "period_start": "2026-10-20",
+    "period_end": "2026-11-03",
+    "launched_at": null,
+    "completed_at": null,
+    "created_at": "2026-10-20T18:14:36.793414Z",
+    "updated_at": "2026-10-20T18:14:36.793414Z"
+  },
+  "meta": null
+}

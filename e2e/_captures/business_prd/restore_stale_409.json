@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANVAS_VERSION_CONFLICT",
+    "message": "This canvas was changed elsewhere. Reload and reapply your edits.",
+    "field_errors": []
+  }
+}

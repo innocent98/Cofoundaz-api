@@ -1,0 +1,8 @@
+{
+  "date": "Thu, 29 Oct 2026 20:07:48 GMT",
+  "server": "uvicorn",
+  "content-disposition": "attachment; filename=\"journal-export.json\"",
+  "cache-control": "no-store",
+  "content-length": "1410",
+  "content-type": "application/json"
+}

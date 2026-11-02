@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_REVOKED",
+    "message": "That person's staff access is already revoked.",
+    "field_errors": []
+  }
+}

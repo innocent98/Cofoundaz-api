@@ -1,0 +1,62 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "6f4138b2-e5b2-425c-b7b0-9bed3fc3b130",
+        "type": "business.suggestion.created",
+        "title": "delivered+business-3c3d1291b103@resend.dev suggested changes to Business Model Canvas",
+        "body": "Review suggestions",
+        "data": {
+          "op": "canvas_update",
+          "artifact": "Business Model Canvas",
+          "created_by": "1d239fcc-220d-4304-9eb0-264af04b9069",
+          "startup_id": "77337255-6f8f-42e9-b210-509e1fd083cc",
+          "author_name": "delivered+business-3c3d1291b103@resend.dev",
+          "suggestion_id": "a5193e7a-92ed-4d15-bc11-0cace9116108"
+        },
+        "read": false,
+        "created_at": "2026-10-19T11:08:26.480462+00:00"
+      },
+      {
+        "id": "4c86ff00-ac03-4a03-828c-2bb3fe7511ce",
+        "type": "business.artifact.completed",
+        "title": "A Business Builder artifact was completed",
+        "body": "",
+        "data": {
+          "artifact": "competitor",
+          "startup_id": "77337255-6f8f-42e9-b210-509e1fd083cc"
+        },
+        "read": false,
+        "created_at": "2026-10-19T11:08:26.421556+00:00"
+      },
+      {
+        "id": "a63ff095-d9e1-4b93-a5c8-06ca707f6ce2",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "51558c7a-c345-4b6b-9c71-7f7123f1f0e7",
+          "startup_id": "77337255-6f8f-42e9-b210-509e1fd083cc"
+        },
+        "read": false,
+        "created_at": "2026-10-19T11:08:26.103196+00:00"
+      },
+      {
+        "id": "1d6e3ca0-8c4f-4086-bfda-95078e6727d9",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "business_consultant",
+          "user_id": "1d239fcc-220d-4304-9eb0-264af04b9069",
+          "startup_id": "77337255-6f8f-42e9-b210-509e1fd083cc"
+        },
+        "read": false,
+        "created_at": "2026-10-19T11:08:25.507524+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

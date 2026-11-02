@@ -1,0 +1,237 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "document": {
+        "id": "34bb977d-7a11-48e4-a98a-ab84b9998775",
+        "type": "document",
+        "kind": "nda",
+        "mime": "application/vnd.cofoundaz.document+json",
+        "title": "Non-Disclosure Agreement",
+        "status": "draft",
+        "ai_generated": false,
+        "folder": null,
+        "tags": [],
+        "template_key": "nda",
+        "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it.",
+        "version": 1,
+        "owner": {
+          "id": "97ef66ef-8c63-4ebb-a8de-c10d50c71a2f",
+          "name": "Ada Founder"
+        },
+        "share_count": 0,
+        "updated_at": "2026-10-25T15:03:54.564669+00:00",
+        "trashed_at": null,
+        "purges_at": null,
+        "sections": [
+          {
+            "id": "985a119f-bc29-4900-8a10-ae7942c776b7",
+            "body": "This Non-Disclosure Agreement is made on 2026-10-25 between NovaPay (the \"Disclosing Party\") and Bright Ventures Ltd (the \"Receiving Party\").",
+            "heading": "Parties"
+          },
+          {
+            "id": "bf3b7a09-ffb3-4caa-8e77-2ee068ba030d",
+            "body": "The Disclosing Party will share confidential information with the Receiving Party solely for the following purpose: Evaluating a seed investment. The Receiving Party may not use the information for any other purpose.",
+            "heading": "Purpose"
+          },
+          {
+            "id": "631d0390-8adc-4171-b69b-42e4b58af5fc",
+            "body": "\"Confidential Information\" means any non-public information the Disclosing Party shares in any form, including business plans, financials, customer and supplier details, product designs, source code and know-how, whether or not it is marked confidential.",
+            "heading": "Confidential Information"
+          },
+          {
+            "id": "ccdcca76-e71e-4582-924f-3fa6093d109c",
+            "body": "The Receiving Party will: keep the Confidential Information secret using at least the care it uses for its own confidential material; share it only with people who need to know it for the purpose above and who are bound by equivalent duties; and not copy it except as the purpose requires.",
+            "heading": "Obligations of the Receiving Party"
+          },
+          {
+            "id": "919ca025-7a33-47b5-853c-1ea89f2c5c3d",
+            "body": "These duties do not apply to information that: is or becomes public through no fault of the Receiving Party; was already known to the Receiving Party without a duty of confidence; is received lawfully from a third party; or must be disclosed by law, in which case the Receiving Party will give the Disclosing Party prompt notice where allowed.",
+            "heading": "Exclusions"
+          },
+          {
+            "id": "f91be9cb-63b6-4c1f-aa0f-1acb98e0cffd",
+            "body": "This agreement covers information shared from the effective date. The duties of confidentiality continue for 2 years after the effective date.",
+            "heading": "Term"
+          },
+          {
+            "id": "964ecfaa-5c3c-47fa-a82c-e744ea71edf4",
+            "body": "On request, the Receiving Party will promptly return or destroy all Confidential Information and confirm in writing that it has done so.",
+            "heading": "Return or Destruction"
+          },
+          {
+            "id": "3e3e6394-5f4b-42df-ad1d-50feddc397bb",
+            "body": "The Receiving Party acknowledges that a breach may cause harm that money alone cannot repair, and that the Disclosing Party may seek an injunction in addition to any other remedy.",
+            "heading": "Remedies"
+          },
+          {
+            "id": "7b55d319-0423-4946-b855-dd5d2f7a6e7f",
+            "body": "This agreement is governed by the laws of Lagos State, Nigeria, and its courts have jurisdiction over any dispute.",
+            "heading": "Governing Law"
+          },
+          {
+            "id": "cbe4828b-e906-435b-9d99-951e4fcc119e",
+            "body": "Signed for NovaPay:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________\n\nSigned for Bright Ventures Ltd:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________",
+            "heading": "Signatures"
+          }
+        ]
+      },
+      "form": {
+        "template_key": "nda",
+        "fields": [
+          {
+            "key": "disclosing_party",
+            "label": "Disclosing party",
+            "type": "text",
+            "required": true,
+            "value": "NovaPay",
+            "state": "filled",
+            "source": "profile",
+            "ai_draftable": false
+          },
+          {
+            "key": "receiving_party",
+            "label": "Receiving party",
+            "type": "text",
+            "required": true,
+            "value": "Bright Ventures Ltd",
+            "state": "filled",
+            "source": "you",
+            "ai_draftable": false
+          },
+          {
+            "key": "effective_date",
+            "label": "Effective date",
+            "type": "date",
+            "required": false,
+            "value": "2026-10-25",
+            "state": "filled",
+            "source": "system",
+            "ai_draftable": false
+          },
+          {
+            "key": "purpose",
+            "label": "Purpose of sharing",
+            "type": "longtext",
+            "required": true,
+            "value": "Evaluating a seed investment",
+            "state": "filled",
+            "source": "you",
+            "ai_draftable": false
+          },
+          {
+            "key": "term_years",
+            "label": "Confidentiality period (years)",
+            "type": "text",
+            "required": false,
+            "value": "2",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "governing_law",
+            "label": "Governing law",
+            "type": "text",
+            "required": true,
+            "value": "Lagos State, Nigeria",
+            "state": "filled",
+            "source": "you",
+            "ai_draftable": false
+          }
+        ],
+        "sections": [
+          {
+            "key": "parties",
+            "heading": "Parties",
+            "value": "This Non-Disclosure Agreement is made on 2026-10-25 between NovaPay (the \"Disclosing Party\") and Bright Ventures Ltd (the \"Receiving Party\").",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "purpose",
+            "heading": "Purpose",
+            "value": "The Disclosing Party will share confidential information with the Receiving Party solely for the following purpose: Evaluating a seed investment. The Receiving Party may not use the information for any other purpose.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "confidential_information",
+            "heading": "Confidential Information",
+            "value": "\"Confidential Information\" means any non-public information the Disclosing Party shares in any form, including business plans, financials, customer and supplier details, product designs, source code and know-how, whether or not it is marked confidential.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "obligations_of_the_receiving_party",
+            "heading": "Obligations of the Receiving Party",
+            "value": "The Receiving Party will: keep the Confidential Information secret using at least the care it uses for its own confidential material; share it only with people who need to know it for the purpose above and who are bound by equivalent duties; and not copy it except as the purpose requires.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "exclusions",
+            "heading": "Exclusions",
+            "value": "These duties do not apply to information that: is or becomes public through no fault of the Receiving Party; was already known to the Receiving Party without a duty of confidence; is received lawfully from a third party; or must be disclosed by law, in which case the Receiving Party will give the Disclosing Party prompt notice where allowed.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "term",
+            "heading": "Term",
+            "value": "This agreement covers information shared from the effective date. The duties of confidentiality continue for 2 years after the effective date.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "return_or_destruction",
+            "heading": "Return or Destruction",
+            "value": "On request, the Receiving Party will promptly return or destroy all Confidential Information and confirm in writing that it has done so.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "remedies",
+            "heading": "Remedies",
+            "value": "The Receiving Party acknowledges that a breach may cause harm that money alone cannot repair, and that the Disclosing Party may seek an injunction in addition to any other remedy.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "governing_law",
+            "heading": "Governing Law",
+            "value": "This agreement is governed by the laws of Lagos State, Nigeria, and its courts have jurisdiction over any dispute.",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          },
+          {
+            "key": "signatures",
+            "heading": "Signatures",
+            "value": "Signed for NovaPay:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________\n\nSigned for Bright Ventures Ltd:\n\nName: ______________________\nTitle: ______________________\nSignature: ___________________\nDate: ______________________",
+            "state": "filled",
+            "source": "template",
+            "ai_draftable": false
+          }
+        ],
+        "unfilled_required": [],
+        "disclaimer": "This document is a draft template provided for convenience and is not legal advice. Cofoundaz is not a law firm. Have a qualified lawyer review it before you sign or rely on it.",
+        "ai_available": false
+      },
+      "ai": {
+        "status": "not_requested",
+        "job_id": null,
+        "sections": []
+      }
+    },
+    "meta": null
+  }
+}

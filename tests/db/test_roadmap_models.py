@@ -47,3 +47,26 @@ def test_one_roadmap_per_startup(db):
     db.flush()
     with pytest.raises(IntegrityError):
         create_roadmap(db, startup)
+
+
+def test_roadmap_replan_rationale_nullable(db):
+    from app.db.models.roadmap import RoadmapReplan
+    from tests.factories import create_roadmap, create_startup, create_user
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    r = create_roadmap(db, s)
+    replan = RoadmapReplan(
+        roadmap_id=r.id,
+        applied_by=u.id,
+        change_count=1,
+        changes=[],
+        summary="Re-planned 1 milestone",
+    )
+    db.add(replan)
+    db.flush()
+    assert replan.rationale is None  # nullable, defaults to NULL
+    replan.rationale = "because dates slipped"
+    db.flush()
+    got = db.query(RoadmapReplan).filter_by(id=replan.id).one()
+    assert got.rationale == "because dates slipped"

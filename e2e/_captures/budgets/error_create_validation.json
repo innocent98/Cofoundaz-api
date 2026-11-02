@@ -1,0 +1,20 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "category",
+        "message": "String should have at least 1 character"
+      },
+      {
+        "field": "period_month",
+        "message": "String should match pattern '^\\d{4}-(0[1-9]|1[0-2])$'"
+      },
+      {
+        "field": "limit_minor",
+        "message": "Input should be greater than or equal to 0"
+      }
+    ]
+  }
+}

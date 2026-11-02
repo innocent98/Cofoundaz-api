@@ -335,3 +335,31 @@ def test_install_fails_loudly_if_slowapi_changes_the_helper_signature(
     )
     with pytest.raises(RuntimeError, match="unexpected signature"):
         install_included_router_support()
+
+
+# Public routes whose path carries a secret (a credential id, a survey or unsubscribe token). By
+# default slowapi buckets per full URL, so each new token got a fresh allowance and guessing
+# tokens was unlimited. These share one bucket per caller across every token.
+_PUBLIC_TOKEN_ROUTES = [
+    ("GET", "/api/v1/verify/CFZ-AAAA-BBBB-{i:04d}", 30),
+    ("GET", "/api/v1/validation/surveys/tok-{i}", 20),
+    ("POST", "/api/v1/validation/surveys/tok-{i}/responses", 20),
+    ("GET", "/api/v1/public/sales/unsubscribe/tok-{i}", 30),
+    ("POST", "/api/v1/public/sales/unsubscribe/tok-{i}", 30),
+]
+
+
+@pytest.mark.parametrize(("method", "path", "allowed"), _PUBLIC_TOKEN_ROUTES)
+def test_public_token_routes_limit_per_caller_not_per_token(client, method, path, allowed):
+    app.state.limiter.enabled = True
+    rate_limit.limiter.reset()
+    try:
+        codes = [
+            client.request(method, path.format(i=i), json={}).status_code
+            for i in range(allowed + 1)
+        ]
+    finally:
+        app.state.limiter.enabled = False
+        rate_limit.limiter.reset()
+    assert 429 not in codes[:allowed], codes
+    assert codes[allowed] == 429, codes

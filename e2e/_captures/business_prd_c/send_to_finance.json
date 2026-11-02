@@ -1,0 +1,28 @@
+{
+  "data": {
+    "streams": [
+      {
+        "name": "[stub-llm] name",
+        "pricing_basis": "[stub-llm] pricing_basis",
+        "est_monthly": 0.0,
+        "est_monthly_minor": 0
+      },
+      {
+        "name": "Subscriptions",
+        "pricing_basis": "monthly",
+        "est_monthly": 150000.0,
+        "est_monthly_minor": 15000000
+      },
+      {
+        "name": "Setup fees",
+        "pricing_basis": "monthly",
+        "est_monthly": 50000.0,
+        "est_monthly_minor": 5000000
+      }
+    ],
+    "total_monthly_minor": 20000000,
+    "sent_at": "2026-10-19T12:07:07.454182+00:00",
+    "sent_by": "95c05611-7477-446a-b936-672c1f669d87"
+  },
+  "meta": null
+}

@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "2de2187e-63d9-4c0d-b1ed-838ee910fbe3",
+    "name": "Chidi Eze",
+    "company": "Zenith Foods",
+    "email": "chidi@zenith.example",
+    "source": "referral",
+    "status": "new",
+    "owner_id": null,
+    "converted_deal_id": null,
+    "converted_contact_id": null,
+    "converted_account_id": null,
+    "created_at": "2026-10-21T11:58:05.245348Z"
+  },
+  "meta": null
+}

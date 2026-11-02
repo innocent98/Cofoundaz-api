@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,8 @@ def write_audit(
     after_hash: str | None = None,
     ip: str | None = None,
     user_agent: str | None = None,
+    reason: str | None = None,
+    details: dict[str, Any] | None = None,
 ) -> AuditLog:
     row = AuditLog(
         action=action,
@@ -30,6 +33,8 @@ def write_audit(
         after_hash=after_hash,
         ip=ip,
         user_agent=user_agent,
+        reason=reason,
+        details=details,
     )
     db.add(row)
     db.flush()

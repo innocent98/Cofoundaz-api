@@ -1,0 +1,32 @@
+{
+ "captured": "2026-10-19 local stack: milestone 'Capture milestone' with two todo tasks; PATCH /api/v1/roadmap/milestones/{id} {\"status\":\"done\"}. Then GET /roadmap tasks for that milestone.",
+ "request": {
+  "status": "done"
+ },
+ "status_code": 200,
+ "body": {
+  "data": {
+   "id": "2eefbd7a-370b-4af9-bddc-3a032ab87400",
+   "phase_id": "3b4c2888-56c0-4d82-a14c-8b1349938f9f",
+   "title": "Capture milestone",
+   "description": null,
+   "due_on": null,
+   "owner": null,
+   "status": "done",
+   "progress": 100,
+   "overdue": false,
+   "order": 2
+  },
+  "meta": null
+ },
+ "tasks_after": [
+  {
+   "title": "Open task one",
+   "status": "done"
+  },
+  {
+   "title": "Open task two",
+   "status": "done"
+  }
+ ]
+}

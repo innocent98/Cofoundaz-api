@@ -1,22 +1,31 @@
 {
   "data": {
-    "id": "7fe71ec8-65f6-48d1-98b9-7b28485db29b",
+    "id": "628a1f9b-611c-474e-a7db-1337bd7151d6",
     "kind": "business_plan",
+    "mime": "application/vnd.cofoundaz.document+json",
     "title": "Cofoundaz Business Plan",
     "status": "final",
     "ai_generated": false,
     "folder": "Investor Docs",
+    "tags": [],
     "template_key": "business_plan",
     "version": 2,
-    "updated_at": "2026-09-09T15:08:01.135778+00:00",
+    "owner": {
+      "id": "62ce90e5-eca5-434e-b312-e301a0c8459d",
+      "name": "Ada Founder"
+    },
+    "share_count": 0,
+    "updated_at": "2026-10-25T11:02:20.833265+00:00",
+    "trashed_at": null,
+    "purges_at": null,
     "sections": [
       {
-        "id": "7f947bc2-8c99-45bd-b5f3-12cc9821f618",
+        "id": "fe441e9b-7e02-43b4-af69-546c6937e68f",
         "body": "We help founders ship faster.",
         "heading": "Executive Summary"
       },
       {
-        "id": "bb41b8e5-28c5-4cba-a6ec-9e051466bea7",
+        "id": "af39cc7e-b4c5-4c7d-94e8-bc66422ebdc3",
         "body": "$500k pre-seed.",
         "heading": "The Ask"
       }

@@ -26,6 +26,7 @@ from datetime import date
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from app.db.models.enums import MembershipRole
 from app.db.models.mission import Mission
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -61,7 +62,7 @@ def test_concurrent_dashboard_summary_mission_cold_start_no_500(engine: Engine):
                 u = session.query(User).filter(User.id == user_id).one()
                 barrier.wait(timeout=5)
                 try:
-                    out = get_summary(session, s, u)
+                    out = get_summary(session, s, u, role=MembershipRole.founder)
                 except BaseException as exc:  # noqa: BLE001 - captured for the assertion below
                     session.rollback()
                     outcome = (None, exc)

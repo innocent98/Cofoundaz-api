@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Deal not found.",
+    "field_errors": [
+      {
+        "field": "deal_id",
+        "message": "Deal not found."
+      }
+    ]
+  }
+}

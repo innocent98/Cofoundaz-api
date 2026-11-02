@@ -2,7 +2,7 @@ from datetime import date
 
 from app.db.models.assessment import AssessmentResult
 from app.db.models.dashboard import DailyBriefing
-from app.db.models.enums import AssessmentStatus, BriefingStatus
+from app.db.models.enums import AssessmentStatus, BriefingStatus, MembershipRole
 from app.db.models.job import Job
 from app.services.dashboard.service import get_or_generate_briefing, get_summary
 from tests.factories import create_assessment, create_startup, create_user
@@ -53,19 +53,45 @@ def test_get_summary_blocks_reflect_state(db):
     u = create_user(db)
     s = create_startup(db, owner=u)
     # no assessment -> static empty block
-    summary = get_summary(db, s, u)
+    summary = get_summary(db, s, u, role=MembershipRole.founder)
     assert summary["briefing"]["status"] == "empty"
     # with assessment -> generating block
     _complete_assessment(db, s)
-    summary = get_summary(db, s, u)
+    summary = get_summary(db, s, u, role=MembershipRole.founder)
     assert summary["briefing"]["status"] == "generating"
     assert summary["risks"]["status"] == "generating"
     assert summary["opportunities"]["status"] == "generating"
     # flip to ready -> ready block with the stored text
     row = db.query(DailyBriefing).filter_by(startup_id=s.id, briefing_date=date.today()).one()
     row.briefing, row.risks, row.opportunities = "B", "R", "O"
+    row.risk_items = [{"severity": "high", "text": "R", "module": "finance"}]
+    row.opportunity_items = [{"text": "O", "module": None}]
+    row.actions = [
+        {"label": "Do X", "kind": "task", "module": "validation", "accepted_task_id": None}
+    ]
     row.status = BriefingStatus.ready
     db.flush()
-    summary = get_summary(db, s, u)
-    assert summary["briefing"] == {"status": "ready", "message": "B"}
-    assert summary["opportunities"] == {"status": "ready", "message": "O"}
+    summary = get_summary(db, s, u, role=MembershipRole.founder)
+    assert summary["briefing"] == {
+        "status": "ready",
+        "message": "B",
+        "id": str(row.id),
+        "actions": [
+            {
+                "index": 0,
+                "label": "Do X",
+                "kind": "task",
+                "href": "/validation",
+                "accepted": False,
+                "mission_task_id": None,
+            }
+        ],
+    }
+    assert summary["risks"]["items"] == [
+        {"index": 0, "severity": "high", "text": "R", "href": "/finance"}
+    ]
+    assert summary["opportunities"] == {
+        "status": "ready",
+        "message": "O",
+        "items": [{"index": 0, "text": "O", "href": None}],
+    }

@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "created": [
+        {
+          "item_id": "20fe6283",
+          "task_id": "787058d0-1a6c-42cd-a891-582772b401f3"
+        }
+      ],
+      "milestone_id": "08d2feb0-680a-48cb-86ae-c2ef1ae77c6f",
+      "action_items": [
+        {
+          "id": "20fe6283",
+          "title": "[stub-llm] action_items",
+          "task_id": "787058d0-1a6c-42cd-a891-582772b401f3",
+          "assignee_id": null
+        }
+      ]
+    },
+    "meta": null
+  }
+}

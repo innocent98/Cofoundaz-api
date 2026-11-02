@@ -1,0 +1,41 @@
+{
+  "tasks_trend": {
+    "delta": null,
+    "series": [
+      {
+        "period": "2026-10-17",
+        "value": 0
+      }
+    ]
+  },
+  "runway": {
+    "status": "ok",
+    "months": 1.5,
+    "is_low": true,
+    "monthly_burn_minor": 2000000,
+    "cash_on_hand_minor": 3000000,
+    "currency": "NGN",
+    "trend": {
+      "delta": null,
+      "series": [
+        {
+          "period": "2026-10-16",
+          "value": 4.0
+        },
+        {
+          "period": "2026-10-17",
+          "value": 1.5
+        }
+      ]
+    }
+  },
+  "revenue_trend": {
+    "delta": null,
+    "series": [
+      {
+        "period": "2026-10-17",
+        "value": 0
+      }
+    ]
+  }
+}

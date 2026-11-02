@@ -35,7 +35,7 @@ def test_upload_then_get_and_list(client, db, tmp_path, monkeypatch):
     r = _upload(client, h, folder="Legal")
     assert r.status_code == 201
     fid = r.json()["data"]["id"]
-    assert r.json()["data"]["filename"] == "nda.pdf" and r.json()["data"]["url"]
+    assert r.json()["data"]["filename"] == "nda.pdf" and "url" not in r.json()["data"]
     got = client.get(f"/api/v1/documents/files/{fid}", headers=h)
     assert got.status_code == 200 and got.json()["data"]["size_bytes"] == 8
     lst = client.get("/api/v1/documents/files?folder=Legal", headers=h)
@@ -63,7 +63,8 @@ def test_mentor_cannot_upload_403(client, db, tmp_path, monkeypatch):
 def test_delete_removes(client, db, tmp_path, monkeypatch):
     _u, _s, h = _member(db, tmp_path, monkeypatch)
     fid = _upload(client, h).json()["data"]["id"]
-    assert client.delete(f"/api/v1/documents/files/{fid}", headers=h).status_code == 200
+    resp = client.delete(f"/api/v1/documents/files/{fid}", headers=h)
+    assert resp.status_code == 200
     assert client.get(f"/api/v1/documents/files/{fid}", headers=h).status_code == 404
 
 

@@ -99,7 +99,7 @@ Once `document_id` is known (from §1b), fetch it here. **Auth:** any active mem
   "data": {
     "id": "02009be9-1d4d-4d76-ad7c-1d2779da4d79",
     "kind": "business_plan",
-    "title": "Cofoundaz — Business Plan",
+    "title": "Cofoundaz: Business Plan",
     "status": "draft",
     "ai_generated": true,
     "folder": null,
@@ -128,7 +128,7 @@ The remaining 8 headings, in order: "Solution & Product", "Market & Customers", 
 "Go-to-Market", "Competition", "Team", "Financials & Projections", "Roadmap & Milestones".)
 
 **Field notes, confirmed live:**
-- `title` is always `"{startup name or 'Business'} — Business Plan"` — an em dash (`—`), not a
+- `title` is always `"{startup name or 'Business'}: Business Plan"` — an em dash (`—`), not a
   hyphen. The example above shows a raw (unescaped) em dash; the actual HTTP response has it
   JSON-escaped as `—`, same character.
 - `status` here is the DOCUMENT's status (`draft`/`final`/etc., Module 18's own field), NOT the

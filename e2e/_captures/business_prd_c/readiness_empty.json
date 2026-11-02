@@ -1,0 +1,74 @@
+{
+  "data": {
+    "items": [
+      {
+        "type": "business_model",
+        "label": "Business Model Canvas",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "lean",
+        "label": "Lean Canvas",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "value_prop",
+        "label": "Value Proposition Canvas",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "mission_vision",
+        "label": "Mission & Vision",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "swot",
+        "label": "SWOT",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "persona",
+        "label": "Customer Personas",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "revenue_stream",
+        "label": "Revenue Model",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "competitor",
+        "label": "Competitive Analysis",
+        "status": "missing",
+        "completion_pct": 0
+      },
+      {
+        "type": "pricing",
+        "label": "Pricing Strategy",
+        "status": "missing",
+        "completion_pct": 0
+      }
+    ],
+    "ready_count": 0,
+    "total": 9,
+    "missing": [
+      "business_model",
+      "lean",
+      "value_prop",
+      "mission_vision",
+      "swot",
+      "persona",
+      "revenue_stream",
+      "competitor",
+      "pricing"
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "bcf0d900-f62e-4951-81d6-2633595a6a86",
+    "type": "ai.roadmap.breakdown",
+    "status": "succeeded",
+    "result": {
+      "status": "ready",
+      "milestone_id": "be3cc2e4-d5e2-4425-bc67-6d1a06c16d71",
+      "created_task_ids": [
+        "0cec7f9e-3da0-4caa-a6f5-31cd2f1e0300"
+      ]
+    },
+    "error": null
+  },
+  "meta": null
+}

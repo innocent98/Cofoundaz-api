@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "provider": "google",
+      "connected": true,
+      "status": "active",
+      "account_email": "founder.stub@gmail.example",
+      "direction": "pull_only",
+      "calendar_id": "primary",
+      "last_sync_at": "2026-10-29T15:08:13.855863+00:00",
+      "last_sync_summary": {
+        "pulled": 2,
+        "pushed": 3,
+        "removed": 0
+      },
+      "last_error": null,
+      "needs_attention": false
+    },
+    "meta": null
+  }
+}

@@ -1,0 +1,39 @@
+{
+ "captured": "2026-10-19 local stack: POST /api/v1/business-builder/competitors with threat_level \"\" (the form's unselected 'Select...'). Before the fix this was 422 {\"error\":{\"code\":\"VALIDATION_ERROR\",\"message\":\"Some fields are invalid.\",\"field_errors\":[{\"field\":\"threat_level\",\"message\":\"Input should be 'low', 'medium' or 'high'\"}]}} (captured in the browser).",
+ "request": {
+  "data": {
+   "name": "Capture Co",
+   "threat_level": "",
+   "positioning": "",
+   "price": "",
+   "strengths": [],
+   "weaknesses": [],
+   "map_x": null,
+   "map_y": null
+  }
+ },
+ "status_code": 201,
+ "body": {
+  "data": {
+   "id": "24782dae-ca9a-4771-b940-911e47e4ed72",
+   "kind": "competitor",
+   "data": {
+    "name": "Capture Co",
+    "map_x": null,
+    "map_y": null,
+    "price": "",
+    "strengths": [],
+    "weaknesses": [],
+    "positioning": "",
+    "threat_level": "medium"
+   },
+   "position": 2,
+   "updated_at": "2026-10-19T17:21:01.516353+00:00",
+   "updated_by": {
+    "id": "0a37c892-5def-4fef-af27-a822588d4171",
+    "name": "Victor Founder"
+   }
+  },
+  "meta": null
+ }
+}

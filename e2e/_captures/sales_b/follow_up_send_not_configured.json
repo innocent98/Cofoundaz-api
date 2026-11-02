@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SENDING_NOT_CONFIGURED",
+    "message": "Sending isn't set up yet.",
+    "field_errors": []
+  }
+}

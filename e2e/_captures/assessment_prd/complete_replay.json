@@ -1,0 +1,17 @@
+{
+  "data": {
+    "assessment_id": "7e7286ef-d15f-4dc4-a76d-df4bbf35721d",
+    "status": "completed",
+    "dimension_scores": {
+      "team": 75,
+      "legal": 100,
+      "money": 71,
+      "market": 75,
+      "product": 78
+    },
+    "overall_provisional": 80,
+    "narrative": "Your strongest area is legal (100). Focus next on money (71).",
+    "health": null
+  },
+  "meta": null
+}

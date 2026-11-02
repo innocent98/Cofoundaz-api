@@ -13,10 +13,10 @@ The "AI reason line" section (§1, below) is pasted verbatim from a separate liv
 Base path: `/api/v1/missions`. Every route requires a Bearer access token
 (`Authorization: Bearer <token>`) and an `X-Workspace-Id` header identifying the active workspace
 (`GET /auth/me` → `data.active_workspace_id` is the source for that header), same as every other
-tenant-scoped endpoint in this API. **Reads** (`GET /today`, `GET /history`, `GET /settings`) are
-open to any active member — founder, team_member, **or mentor**. **Writes** (`PATCH /settings`,
-`POST /tasks`, `PATCH /tasks/{id}`) require the caller's membership role to be `founder` or
-`team_member` — a `mentor` gets a `403`.
+tenant-scoped endpoint in this API. **Every** Mission endpoint, reads
+and writes, requires the caller's membership role to be `founder` or `team_member` (PRD Module 04
+access; reads were open to mentors until the 2026-10-19 re-walk, D-MIS-8). Any other role gets a
+`403 FORBIDDEN` (live capture `e2e/_captures/mission_rewalk/today_mentor_403.json`).
 
 **Every success response is the standard envelope `{"data": …, "meta": null}`** — `meta` is
 literally `null` on every mission endpoint (no pagination cursor is used). Errors drop `data`/
@@ -136,6 +136,10 @@ AI-authored by the time the screen loads.
 field, same nullability, as the templated version — there is no separate "is this AI-authored"
 flag on the task; the FE cannot and should not try to distinguish templated from AI-personalized
 text at render time.
+
+> **AI budget note:** if the workspace is over its daily LLM token budget, this rewrite is skipped
+> and `reason` stays on the templated string (see `docs/fe-integration-guide-ai-status.md` —
+> `GET /ai/status` reports `over_budget`).
 
 `e2e/_captures/mission_reason/today_before_drain.json` — `GET /missions/today` immediately after
 generation, task at `order: 0`, templated `reason` (status `200`):
@@ -515,7 +519,7 @@ range (source: `patch_settings`):
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Mission size must be 1–3.",
+    "message": "Mission size must be 1, 2 or 3.",
     "field_errors": [
       { "field": "mission_size", "message": "Must be 1, 2, or 3." }
     ]

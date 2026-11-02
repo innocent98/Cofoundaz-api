@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick a reason for losing this deal.",
+    "field_errors": [
+      {
+        "field": "closed_reason",
+        "message": "Pick a reason for losing this deal."
+      }
+    ]
+  }
+}

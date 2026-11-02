@@ -1,0 +1,24 @@
+{
+  "data": {
+    "assumptions": [
+      {
+        "id": "0f4bd20f-5de3-42be-a6a8-1dc748960c6e",
+        "statement": "Traders will pay 0.5% for same-day settlement",
+        "risk": "high",
+        "status": "untested",
+        "evidence_count": 2,
+        "linked_experiments": [
+          {
+            "id": "a3a4bd77-4c7b-4639-bec9-3dbcef6b87bc",
+            "name": "Fee fake door",
+            "type": "smoke_test",
+            "status": "draft"
+          }
+        ],
+        "created_at": "2026-10-19T21:57:25.889954+00:00",
+        "updated_at": "2026-10-19T21:57:25.889954+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

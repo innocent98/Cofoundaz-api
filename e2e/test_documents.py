@@ -66,6 +66,18 @@ _SIGN_LINK_RE = re.compile(r'href="([^"]*/sign/[^"]+)"')
 _FE_BASE = os.environ.get("APP_BASE_URL", "").rstrip("/")
 
 
+def _real_pdf() -> bytes:
+    """A one-page PDF the API can parse and stamp (signing validates the file)."""
+    from reportlab.pdfgen.canvas import Canvas
+
+    buf = io.BytesIO()
+    canvas = Canvas(buf)
+    canvas.drawString(72, 720, "e2e agreement")
+    canvas.showPage()
+    canvas.save()
+    return buf.getvalue()
+
+
 def _latest_email_for(email: str) -> dict:
     """The newest captured email dict for `email`, read straight from the file
     mail dir (same `E2E_MAIL_DIR` the link readers above use). Returned whole so
@@ -284,7 +296,8 @@ def test_documents_files_journey(base_url, make_verified_user, capture):
         assert file_row["content_type"] == "application/pdf"
         assert file_row["size_bytes"] == len(pdf_bytes)
         assert file_row["folder"] == "Legal"
-        assert file_row["url"]
+        assert "url" not in file_row  # private since BE-A: read via GET .../{id}/download
+        assert file_row["scan_status"] == "clean"
         capture("documents", "file_upload", uploaded)
 
         file_id = file_row["id"]
@@ -388,7 +401,8 @@ def test_documents_sharing_journey(
         opened = c.get(f"/api/v1/shared/{token}")
         assert opened.status_code == 200, opened.text
         opened_body = opened.json()["data"]
-        assert opened_body["document"]["id"] == doc_id
+        assert "id" not in opened_body["document"]  # BE-A: no internal id/folder on the public open
+        assert "folder" not in opened_body["document"]
         assert opened_body["access_level"] == "view"
         capture("documents", "share_open", opened)
 
@@ -400,7 +414,8 @@ def test_documents_sharing_journey(
         assert len(doc_shares) == 1
         assert doc_shares[0]["id"] == share_id
         assert doc_shares[0]["last_viewed_at"] is not None
-        assert "link" not in doc_shares[0]
+        # BE-D: editors can copy the link again (derived token; same value as the one emailed)
+        assert doc_shares[0]["link"].rsplit("/", 1)[-1] == token
         capture("documents", "share_list_by_document", listed)
 
         # 6. GET /documents/shares -- workspace "Shared with others" overview,
@@ -441,7 +456,7 @@ def test_documents_esignature_journey(
         wh = {**auth, "X-Workspace-Id": me["active_workspace_id"]}
 
         # 1. Upload a file to send for signature (Slice 2's /documents/files).
-        pdf_bytes = b"%PDF-1.4\n%a tiny fake PDF for e2e signing\n%%EOF"
+        pdf_bytes = _real_pdf()
         uploaded = c.post(
             "/api/v1/documents/files",
             headers=wh,
@@ -500,7 +515,7 @@ def test_documents_esignature_journey(
         view1_body = view1.json()["data"]
         assert view1_body["request"]["title"] == "Investor Agreement"
         assert view1_body["request"]["status"] == "awaiting"
-        assert view1_body["file"]["id"] == file_id
+        assert "id" not in view1_body["file"] and view1_body["file"]["filename"]
         assert view1_body["signer"]["email"] == signer1_email
         capture("documents", "signature_sign_view", view1)
 

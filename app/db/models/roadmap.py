@@ -114,6 +114,9 @@ class RoadmapTask(UUIDMixin, TimestampMixin, Base):
     )
     due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Founder-chosen position in the mission queue (PRD 04.2 "editable order"); NULL = default
+    # milestone/due-date order. Sorted first by the mission generator and the Upcoming projection.
+    mission_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class RoadmapReplan(UUIDMixin, TimestampMixin, Base):
@@ -131,6 +134,7 @@ class RoadmapReplan(UUIDMixin, TimestampMixin, Base):
     change_count: Mapped[int] = mapped_column(Integer, nullable=False)
     changes: Mapped[list] = mapped_column(JSONB, nullable=False)
     summary: Mapped[str] = mapped_column(String(200), nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RoadmapTaskDependency(Base):

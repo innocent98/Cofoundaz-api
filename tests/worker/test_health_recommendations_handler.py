@@ -6,8 +6,8 @@ from app.core.config import settings
 from app.db.models.enums import RecommendationEffort, RecommendationStatus
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job, JobStatus
+from app.platform import llm_budget
 from app.services.health_score.ai_recommendations import catalog_bodies
-from app.worker.handlers import ai as ai_mod
 from app.worker.handlers.ai import handle_health_recommendations
 from tests.factories import create_startup, create_user
 
@@ -52,6 +52,7 @@ def _job(startup_id):
 
 
 def test_rewrites_pending_default_bodies(db, monkeypatch):
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     _rec(db, s, "product.define_mvp")
@@ -64,7 +65,7 @@ def test_rewrites_pending_default_bodies(db, monkeypatch):
             ]
         }
     )
-    monkeypatch.setattr(ai_mod, "get_llm_client", lambda: fake)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
     handle_health_recommendations(db, _job(s.id))
     rows = {r.key: r.body for r in db.query(HealthRecommendation).filter_by(startup_id=s.id)}
     assert rows["product.define_mvp"] == "AI body A"
@@ -77,7 +78,7 @@ def test_noop_and_no_llm_call_when_all_non_default(db, monkeypatch):
     s = create_startup(db, owner=u)
     _rec(db, s, "product.define_mvp", body="already personalized")
     monkeypatch.setattr(
-        ai_mod,
+        llm_budget,
         "get_llm_client",
         lambda: (_ for _ in ()).throw(AssertionError("no LLM call expected")),
     )
@@ -92,7 +93,7 @@ def test_skips_accepted_and_dismissed(db, monkeypatch):
     _rec(db, s, "product.define_mvp", status=RecommendationStatus.accepted)
     _rec(db, s, "market.icp_definition", status=RecommendationStatus.dismissed)
     monkeypatch.setattr(
-        ai_mod,
+        llm_budget,
         "get_llm_client",
         lambda: (_ for _ in ()).throw(AssertionError("no LLM call expected")),
     )
@@ -121,6 +122,7 @@ def test_noop_when_startup_missing(db):
 def test_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     _rec(db, s, "product.define_mvp")

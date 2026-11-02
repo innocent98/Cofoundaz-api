@@ -4,7 +4,7 @@ import pytest
 
 from app.core.errors import NotFound, SignatureNotActive
 from app.db.models.document import DocumentFile
-from app.db.models.enums import SignatureRequestStatus
+from app.db.models.enums import ScanStatus, SignatureRequestStatus
 from app.services.documents.signatures import (
     cancel_request,
     create_request,
@@ -14,6 +14,7 @@ from app.services.documents.signatures import (
     serialize_request,
 )
 from tests.factories import create_membership, create_startup, create_user
+from tests.pdf_helpers import store_pdf
 
 
 def _ctx(db):
@@ -28,9 +29,11 @@ def _ctx(db):
         size_bytes=10,
         storage_key=f"documents/{s.id}/x.pdf",
         url="file:///x.pdf",
+        scan_status=ScanStatus.clean,
     )
     db.add(f)
     db.flush()
+    store_pdf(f)
     return u, s, m, f
 
 

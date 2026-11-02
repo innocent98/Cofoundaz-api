@@ -1,6 +1,8 @@
+import uuid
 from datetime import date, timedelta
 
 from app.db.models.enums import RoadmapStatus
+from app.db.models.job import Job
 from app.db.models.roadmap import RoadmapReplan
 from app.services.roadmap.replan import apply_replan, compute_replan
 from tests.factories import (
@@ -66,3 +68,25 @@ def test_reapply_is_idempotent(db):
     db.flush()
     assert again["applied"] == []
     assert db.query(RoadmapReplan).count() == 1
+
+
+def test_apply_writes_rationale_and_enqueues(db):
+    roadmap, user, m = _slipped(db)
+    changes = compute_replan(db, roadmap)
+    result = apply_replan(db, roadmap, user, [changes[0].change_id])
+    db.flush()
+
+    assert result["applied"] == [str(m.id)]
+    assert result["rationale"]  # non-null templated fallback in the response
+    replan = db.query(RoadmapReplan).filter_by(roadmap_id=roadmap.id).one()
+    assert replan.rationale  # persisted, non-null
+    assert db.query(Job).filter(Job.type == "ai.roadmap.rationale").count() == 1
+
+
+def test_apply_empty_enqueues_nothing(db):
+    roadmap, user, _m = _slipped(db)
+    result = apply_replan(db, roadmap, user, [uuid.uuid4()])  # not in the proposal
+    db.flush()
+    assert result["applied"] == []
+    assert result["replan_id"] is None
+    assert db.query(Job).filter(Job.type == "ai.roadmap.rationale").count() == 0

@@ -2,16 +2,16 @@
   "data": {
     "notifications": [
       {
-        "id": "aa573d19-c98d-4a90-86f8-da501b958604",
+        "id": "e08d9b35-d1c4-43d4-b07c-9b1beb2d3628",
         "type": "mission.ready",
         "title": "Today's mission is ready",
         "body": "",
         "data": {
-          "mission_id": "459c2c52-aa0a-455f-883a-013920696c2f",
-          "startup_id": "8a56df9c-0ee0-49aa-8f87-07c71eee40cc"
+          "mission_id": "11cec7f9-8aca-4921-8002-206d49adbd37",
+          "startup_id": "3561974d-7b7b-4572-beea-06c9f4854e99"
         },
         "read": false,
-        "created_at": "2026-09-18T22:31:57.840751+00:00"
+        "created_at": "2026-09-30T08:33:14.355857+00:00"
       }
     ],
     "next_cursor": null

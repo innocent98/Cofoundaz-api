@@ -48,6 +48,10 @@ class Assessment(UUIDMixin, TimestampMixin, Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The startup's `stage` frozen at completion (D-ASM-3), so a later re-assessment can be read
+    # against the stage it was taken at. NULL = in progress, no stage set, or taken before this
+    # column existed (never back-filled: "not recorded").
+    stage_at_time: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     __table_args__ = (
         Index(

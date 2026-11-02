@@ -1,0 +1,19 @@
+{
+  "data": {
+    "articles": [
+      {
+        "id": "article-read-your-runway",
+        "title": "How to read your runway without a finance degree",
+        "summary": "Three figures, one division and a weekly check, so cash never surprises you.",
+        "tags": [
+          "money",
+          "runway",
+          "growth"
+        ],
+        "read_min": 1,
+        "review_status": "draft"
+      }
+    ]
+  },
+  "meta": null
+}

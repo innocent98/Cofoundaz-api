@@ -1,0 +1,41 @@
+{
+  "data": {
+    "encryption_configured": true,
+    "providers": [
+      {
+        "provider": "paystack",
+        "label": "Paystack",
+        "key_hint": "Starts with sk_test_ or sk_live_",
+        "connection": {
+          "id": "419732d3-6f58-48da-a468-a939691b8487",
+          "provider": "paystack",
+          "status": "needs_attention",
+          "mode": "test",
+          "key_last4": "eac6",
+          "account_name": null,
+          "last_sync_at": "2026-10-21T13:06:58.795565Z",
+          "last_error": "The provider rejected the saved key. Replace it to resume syncing.",
+          "last_sync_summary": {
+            "fees": 0,
+            "fetched": 2,
+            "refunds": 0,
+            "imported": 0,
+            "duplicates": 2,
+            "invoice_matched": 0,
+            "skipped_currency": 0,
+            "skipped_oversize": 0
+          },
+          "webhook_url": "http://127.0.0.1:8041/api/v1/webhooks/payments/paystack/Jm6llDFqfPbiTDoy7-6udv5updcQwqBuQ2brSwANtps",
+          "created_at": "2026-10-21T13:06:58.716100Z"
+        }
+      },
+      {
+        "provider": "flutterwave",
+        "label": "Flutterwave",
+        "key_hint": "Starts with FLWSECK_TEST- or FLWSECK-",
+        "connection": null
+      }
+    ]
+  },
+  "meta": null
+}

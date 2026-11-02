@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_PAYMENT_CONNECTION",
+    "message": "Connect Paystack or Flutterwave before creating a pay link.",
+    "field_errors": []
+  }
+}

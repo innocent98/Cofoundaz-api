@@ -1,0 +1,10 @@
+{
+  "data": {
+    "scheduled_this_week": 0,
+    "active_channels": 0,
+    "active_campaigns": 1,
+    "top_channel_by_conversions": "email",
+    "ai_content_ideas": 0
+  },
+  "meta": null
+}

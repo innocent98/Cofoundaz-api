@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "STAFF_TARGET",
+    "message": "Only a Super Admin can act on a staff account.",
+    "field_errors": []
+  }
+}

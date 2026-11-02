@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "burn_rate",
+        "message": "Extra inputs are not permitted"
+      }
+    ]
+  }
+}

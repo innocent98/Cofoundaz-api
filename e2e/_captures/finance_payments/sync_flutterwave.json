@@ -1,0 +1,37 @@
+{
+  "data": {
+    "connection": {
+      "id": "628e9941-4448-4794-8fb3-0dbf8d8be4e9",
+      "provider": "flutterwave",
+      "status": "active",
+      "mode": "test",
+      "key_last4": "75-X",
+      "account_name": null,
+      "last_sync_at": "2026-10-21T13:07:00.363645Z",
+      "last_error": null,
+      "last_sync_summary": {
+        "fees": 1,
+        "fetched": 2,
+        "refunds": 0,
+        "imported": 1,
+        "duplicates": 0,
+        "invoice_matched": 0,
+        "skipped_currency": 0,
+        "skipped_oversize": 0
+      },
+      "webhook_url": "http://127.0.0.1:8041/api/v1/webhooks/payments/flutterwave/qDeolzDYuBmJM9Pvv_2jgDghqSE1rmu8UguT_uvWcmY",
+      "created_at": "2026-10-21T13:07:00.320075Z"
+    },
+    "summary": {
+      "imported": 1,
+      "duplicates": 0,
+      "invoice_matched": 0,
+      "skipped_currency": 0,
+      "skipped_oversize": 0,
+      "fees": 1,
+      "refunds": 0,
+      "fetched": 2
+    }
+  },
+  "meta": null
+}

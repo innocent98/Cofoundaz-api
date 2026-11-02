@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "SUMMARY_IN_PROGRESS",
+      "message": "A summary is already being written.",
+      "field_errors": []
+    }
+  }
+}

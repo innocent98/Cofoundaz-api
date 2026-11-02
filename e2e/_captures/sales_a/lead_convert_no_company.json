@@ -1,0 +1,37 @@
+{
+  "data": {
+    "deal": {
+      "id": "8ccd4b30-fb4c-4a27-ae5b-2b5fa9c5775b",
+      "name": "Solo Prospect",
+      "account_id": null,
+      "account_name": null,
+      "contact_id": "b986e1b6-014b-4b0f-b0f7-5c5ea9729efc",
+      "contact_name": "Solo Prospect",
+      "value_minor": 0,
+      "currency": "NGN",
+      "stage_id": "42bb4376-6516-42e8-afa4-2868b9d57582",
+      "next_step": null,
+      "next_step_due": null,
+      "closed_reason": null,
+      "closed_note": null,
+      "closed_at": null,
+      "owner_id": "6d491050-3918-40c1-a09e-f4f6145278e6",
+      "last_activity_at": "2026-10-21T11:58:05.346170Z",
+      "is_stalled": false,
+      "days_inactive": 0,
+      "created_at": "2026-10-21T11:58:05.341505Z"
+    },
+    "account": null,
+    "contact": {
+      "id": "b986e1b6-014b-4b0f-b0f7-5c5ea9729efc",
+      "account_id": null,
+      "first_name": "Solo",
+      "last_name": "Prospect",
+      "email": null,
+      "phone": null,
+      "title": null,
+      "created_at": "2026-10-21T11:58:05.341505Z"
+    }
+  },
+  "meta": null
+}

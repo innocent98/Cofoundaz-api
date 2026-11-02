@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+      "kind": "custom",
+      "mime": "application/vnd.cofoundaz.document+json",
+      "title": "Seed pitch narrative",
+      "status": "draft",
+      "ai_generated": false,
+      "folder": "Fundraising/Seed",
+      "tags": [
+        "fundraising",
+        "Pitch"
+      ],
+      "template_key": null,
+      "version": 2,
+      "owner": {
+        "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+        "name": "Ada Founder"
+      },
+      "share_count": 0,
+      "updated_at": "2026-10-25T11:02:18.190775+00:00",
+      "trashed_at": null,
+      "purges_at": null,
+      "sections": [
+        {
+          "id": "ad7b3bf3-a82a-41b8-b041-778c9234408f",
+          "body": "Founders lose track of paperwork and deadlines",
+          "heading": "Problem"
+        }
+      ]
+    },
+    "meta": null
+  }
+}

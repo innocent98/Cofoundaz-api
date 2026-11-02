@@ -11,7 +11,9 @@ from app.api.deps import Unauthorized
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.auth import AuthSession
+from app.db.models.enums import UserStatus
 from app.db.models.user import User
+from app.platform.state import lock_session_issue
 
 
 def hash_token(raw: str) -> str:
@@ -30,6 +32,7 @@ def issue_token_pair(
     user_agent: str | None = None,
     family_id: uuid.UUID | None = None,
 ) -> tuple[str, str]:
+    lock_session_issue(db)
     raw = _new_refresh()
     session = AuthSession(
         user_id=user.id,
@@ -52,6 +55,7 @@ def rotate_refresh(
     ip: str | None = None,
     user_agent: str | None = None,
 ) -> tuple[str, str, User]:
+    lock_session_issue(db)  # before the claim below, so it can't deadlock with a global sign-out
     session = (
         db.query(AuthSession)
         .filter(AuthSession.refresh_token_hash == hash_token(raw_refresh))
@@ -89,7 +93,9 @@ def rotate_refresh(
         raise Unauthorized()
 
     user = db.query(User).filter(User.id == session.user_id).first()
-    if user is None:
+    # A refresh in flight while staff suspend the account must not mint a new session row that
+    # the suspension's revoke-all never saw.
+    if user is None or user.deleted_at is not None or user.status == UserStatus.disabled:
         raise Unauthorized()
 
     access, raw = issue_token_pair(
@@ -144,3 +150,60 @@ def set_refresh_cookie(response: Response, raw_refresh: str) -> None:
 
 def clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(key=settings.REFRESH_COOKIE_NAME, path="/api/v1/auth")
+
+
+def family_of(db: Session, user_id: uuid.UUID, raw_refresh: str | None) -> uuid.UUID | None:
+    """The sign-in (refresh family) a raw refresh token belongs to, only if it is `user_id`'s."""
+    if not raw_refresh:
+        return None
+    row = (
+        db.query(AuthSession)
+        .filter(
+            AuthSession.refresh_token_hash == hash_token(raw_refresh),
+            AuthSession.user_id == user_id,
+        )
+        .first()
+    )
+    return row.family_id if row is not None else None
+
+
+def list_active(db: Session, user_id: uuid.UUID) -> list[AuthSession]:
+    """One row per live sign-in: the unrotated, unrevoked, unexpired head of each refresh family
+    (a rotation leaves the previous rows behind, so the family id is the stable session id)."""
+    now = datetime.now(UTC)
+    return (
+        db.query(AuthSession)
+        .filter(
+            AuthSession.user_id == user_id,
+            AuthSession.rotated_at.is_(None),
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at >= now,
+        )
+        .order_by(AuthSession.created_at.desc(), AuthSession.id)
+        .all()
+    )
+
+
+def revoke_family_for_user(db: Session, user_id: uuid.UUID, family_id: uuid.UUID) -> int:
+    n = (
+        db.query(AuthSession)
+        .filter(
+            AuthSession.user_id == user_id,
+            AuthSession.family_id == family_id,
+            AuthSession.revoked_at.is_(None),
+        )
+        .update({AuthSession.revoked_at: datetime.now(UTC)}, synchronize_session=False)
+    )
+    db.flush()
+    return int(n)
+
+
+def revoke_all_except(db: Session, user_id: uuid.UUID, keep_family: uuid.UUID | None) -> int:
+    q = db.query(AuthSession).filter(
+        AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None)
+    )
+    if keep_family is not None:
+        q = q.filter(AuthSession.family_id != keep_family)
+    n = q.update({AuthSession.revoked_at: datetime.now(UTC)}, synchronize_session=False)
+    db.flush()
+    return int(n)

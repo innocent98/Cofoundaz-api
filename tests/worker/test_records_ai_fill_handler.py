@@ -51,7 +51,34 @@ def test_ai_fill_noop_when_startup_missing(db, monkeypatch):
 def test_ai_fill_fails_loud_on_llm_error(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     with pytest.raises(RuntimeError):
         handle_record_ai_fill(db, _job(s.id, RecordKind.competitor))
+
+
+def test_ai_fill_reports_its_outcome_on_the_job(db, monkeypatch):
+    """Like the canvas fill: the app said "AI draft added" on a non-empty list where nothing
+    was drafted (2026-10-19 re-walk). The job now records ready / nothing_new / over_budget."""
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    s = create_startup(db, owner=create_user(db))
+    first = _job(s.id, RecordKind.competitor)
+    handle_record_ai_fill(db, first)
+    assert first.result["status"] == "ready" and first.result["added"] >= 1
+
+    again = _job(s.id, RecordKind.competitor)
+    handle_record_ai_fill(db, again)
+    assert again.result == {"status": "nothing_new", "added": 0}
+
+
+def test_ai_fill_reports_over_budget(db, monkeypatch):
+    from app.platform import llm_budget
+
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100)
+    s = create_startup(db, owner=create_user(db))
+    llm_budget.debit(db, s.id, 100)  # at budget
+    job = _job(s.id, RecordKind.persona)
+    handle_record_ai_fill(db, job)
+    assert job.result == {"status": "over_budget", "added": 0}

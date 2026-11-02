@@ -3,7 +3,7 @@ from app.db.models.enums import CanvasType
 from app.db.models.job import Job, JobStatus
 from app.services.business.ai_fill import build_canvas_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
-from app.services.business.service import get_or_create_canvas
+from app.services.business.service import get_or_create_canvas, list_versions
 from app.worker.handlers.ai import handle_canvas_ai_fill
 from tests.factories import create_startup, create_user
 
@@ -57,6 +57,10 @@ def test_ai_fill_fills_empty_canvas(db, monkeypatch):
         val = canvas.blocks[b.key]
         assert val and "[stub-llm]" in (val if isinstance(val, str) else val[0])
     assert canvas.version >= 2  # bumped from the create's version 1
+    # D-BB-1: the AI write is in the version history, attributed to nobody (AI).
+    (snap,) = list_versions(db, canvas)
+    assert snap.version == canvas.version and snap.source == "ai" and snap.edited_by_id is None
+    assert canvas.updated_by_id is None
 
 
 def test_ai_fill_preserves_user_filled_blocks(db, monkeypatch):
@@ -90,7 +94,8 @@ def test_ai_fill_preserves_concurrent_edit_during_llm_call(db, monkeypatch):
                 for k, v in schema["properties"].items()
             }
 
-    monkeypatch.setattr("app.worker.handlers.ai.get_llm_client", lambda: RacyLLMClient())
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    monkeypatch.setattr("app.platform.llm_budget.get_llm_client", lambda: RacyLLMClient())
     handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))
     db.refresh(canvas)
     assert canvas.blocks["value_propositions"] == ["USER EDIT"]  # concurrent edit preserved
@@ -111,9 +116,38 @@ def test_ai_fill_noop_when_startup_missing(db, monkeypatch):
 def test_ai_fill_fails_loud_when_llm_errors(db, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "LLM_API_KEY", "")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
     u = create_user(db)
     s = create_startup(db, owner=u)
     import pytest
 
     with pytest.raises(RuntimeError):
         handle_canvas_ai_fill(db, _job(s.id, CanvasType.business_model))
+
+
+def test_ai_fill_reports_its_outcome_on_the_job(db, monkeypatch):
+    """The FE showed "AI draft added" even when nothing was drafted (2026-10-19 re-walk):
+    the whole-canvas fill now says what happened, like section AI and records AI do."""
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    s = create_startup(db, owner=create_user(db))
+
+    first = _job(s.id, CanvasType.swot)
+    handle_canvas_ai_fill(db, first)
+    assert first.result["status"] == "ready"
+    assert set(first.result["filled"]) == {b.key for b in CANVAS_BLOCKS[CanvasType.swot]}
+
+    again = _job(s.id, CanvasType.swot)
+    handle_canvas_ai_fill(db, again)  # every block has content now
+    assert again.result == {"status": "nothing_new", "filled": []}
+
+
+def test_ai_fill_reports_over_budget(db, monkeypatch):
+    from app.platform import llm_budget
+
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "stub")
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100)
+    s = create_startup(db, owner=create_user(db))
+    llm_budget.debit(db, s.id, 100)  # at budget
+    job = _job(s.id, CanvasType.lean)
+    handle_canvas_ai_fill(db, job)
+    assert job.result == {"status": "over_budget", "filled": []}

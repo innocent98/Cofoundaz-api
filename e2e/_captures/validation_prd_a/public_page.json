@@ -1,0 +1,13 @@
+{
+  "data": {
+    "headline": "Get paid the same day",
+    "subheadline": "Instant settlement for market traders",
+    "cta_text": "Join the waitlist",
+    "require_email": true,
+    "show_pricing": false,
+    "metric_type": "email_signup",
+    "post_signup_message": "You're on the list, we'll be in touch soon.",
+    "powered_by": "Powered by Cofoundaz"
+  },
+  "meta": null
+}

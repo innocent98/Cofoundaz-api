@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "kind",
+        "message": "Input should be 'visit', 'cta_click' or 'preorder_click'"
+      },
+      {
+        "field": "visitor_id",
+        "message": "Field required"
+      }
+    ]
+  }
+}

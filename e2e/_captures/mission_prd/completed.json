@@ -1,0 +1,19 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "866a01aa-5561-4e5c-bbd6-198bd3bdbce6",
+        "title": "Run 10 customer interviews",
+        "completed_at": "2026-10-18T00:34:12.056573+00:00",
+        "mission_date": "2026-10-18",
+        "milestone": {
+          "id": "cc49b3c8-9738-4d50-8a42-174eb2288503",
+          "title": "Validate demand",
+          "due_on": "2026-11-01"
+        }
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

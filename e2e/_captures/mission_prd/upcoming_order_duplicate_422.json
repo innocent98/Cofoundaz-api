@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Each task can appear only once.",
+    "field_errors": [
+      {
+        "field": "roadmap_task_ids",
+        "message": "Duplicate task."
+      }
+    ]
+  }
+}

@@ -14,9 +14,28 @@ from app.worker.scheduler import scheduler_tick
 def register() -> None:
     """Import handler modules for their register_handler(...) side effects."""
     import app.worker.handlers.ai  # noqa: F401
+    import app.worker.handlers.calendar  # noqa: F401
+    import app.worker.handlers.documents_ai  # noqa: F401
+    import app.worker.handlers.documents_sign  # noqa: F401
     import app.worker.handlers.email  # noqa: F401
+    import app.worker.handlers.finance_model  # noqa: F401
+    import app.worker.handlers.finance_payments  # noqa: F401
+    import app.worker.handlers.invoice_email  # noqa: F401
+    import app.worker.handlers.learning  # noqa: F401
+    import app.worker.handlers.marketing_ai  # noqa: F401
     import app.worker.handlers.plan  # noqa: F401
+    import app.worker.handlers.sales_ai  # noqa: F401
+    import app.worker.handlers.sales_outreach  # noqa: F401
     import app.worker.handlers.scheduled  # noqa: F401
+    import app.worker.handlers.validation  # noqa: F401
+    from app.services.health_score.triggers import register as register_health_triggers
+    from app.services.notifications.registry import register as register_notifications
+
+    # Events published inside jobs (business.plan.generated, dashboard.briefing.ready, and
+    # the scheduler's mission.ready / milestone.overdue / quarterly.due) only become
+    # notifications if this process's bus has the subscribers too, not just the API's.
+    register_notifications()
+    register_health_triggers()  # job-published events refresh the Health Score too
 
 
 def main_loop(stop: Callable[[], bool]) -> None:

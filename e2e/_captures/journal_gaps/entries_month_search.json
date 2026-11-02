@@ -1,0 +1,17 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "c3ffed77-3a9f-46a7-984e-6563dec9f0ff",
+        "date": "2026-10-26",
+        "mood": "okay",
+        "stress": 7,
+        "first_line": "Day 3 first line",
+        "preview": "Day 3 first line\nSecond line about pricing and runway.",
+        "word_count": 10
+      }
+    ],
+    "total": 1
+  },
+  "meta": null
+}

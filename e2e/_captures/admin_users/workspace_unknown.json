@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "WORKSPACE_NOT_FOUND",
+    "message": "No such workspace.",
+    "field_errors": []
+  }
+}

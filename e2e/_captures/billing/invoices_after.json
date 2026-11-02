@@ -1,0 +1,55 @@
+{
+  "data": [
+    {
+      "id": "ead643cf-2b33-4e2e-8c01-bb5acdd0cdec",
+      "number": "CFZ-2026-0005",
+      "kind": "addon",
+      "description": "2,000 AI credits",
+      "amount_minor": 800000,
+      "currency": "NGN",
+      "status": "paid",
+      "date": "2026-10-01T09:30:00+00:00"
+    },
+    {
+      "id": "a7a15940-7438-434b-a588-216ae7e1990e",
+      "number": "CFZ-2026-0004",
+      "kind": "subscription",
+      "description": "Scale plan, monthly",
+      "amount_minor": 6800000,
+      "currency": "NGN",
+      "status": "failed",
+      "date": "2026-10-27T13:31:40.922667+00:00"
+    },
+    {
+      "id": "d74b1363-f633-4a7f-bb16-1a695e759c58",
+      "number": "CFZ-2026-0003",
+      "kind": "subscription",
+      "description": "Scale plan, monthly",
+      "amount_minor": 6800000,
+      "currency": "NGN",
+      "status": "paid",
+      "date": "2026-11-27T10:00:00+00:00"
+    },
+    {
+      "id": "bd8d49f3-1520-4604-b162-6697d8bf99f2",
+      "number": "CFZ-2026-0002",
+      "kind": "upgrade",
+      "description": "Upgrade to Scale, monthly (prorated)",
+      "amount_minor": 4404929,
+      "currency": "NGN",
+      "status": "paid",
+      "date": "2026-10-27T13:31:40.439611+00:00"
+    },
+    {
+      "id": "fc530ced-a39b-42a1-963d-6f3e2c6d7960",
+      "number": "CFZ-2026-0001",
+      "kind": "subscription",
+      "description": "Growth plan, monthly",
+      "amount_minor": 2400000,
+      "currency": "NGN",
+      "status": "paid",
+      "date": "2026-10-27T12:00:00+00:00"
+    }
+  ],
+  "meta": null
+}

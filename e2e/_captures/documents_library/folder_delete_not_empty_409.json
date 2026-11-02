@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "error": {
+      "code": "FOLDER_NOT_EMPTY",
+      "message": "This folder still has documents or files in it.",
+      "field_errors": []
+    }
+  }
+}

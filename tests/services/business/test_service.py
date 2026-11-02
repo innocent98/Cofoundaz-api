@@ -90,8 +90,9 @@ def test_overview_is_read_only_and_covers_all_types(db):
     # Exact-set assertion re-catches duplicate/stray/misspelled rows.
     assert {r["type"] for r in rows} == {t.value for t in CanvasType} | {
         k.value for k in RecordKind
-    }
-    assert all(r["status"] == "start" for r in rows)
+    } | {"plan"}
+    assert all(r["status"] == "start" for r in rows if r["type"] != "plan")
+    assert next(r for r in rows if r["type"] == "plan")["status"] == "none"
     # overview created no rows
     from app.db.models.business import BusinessCanvas, BusinessRecord
 

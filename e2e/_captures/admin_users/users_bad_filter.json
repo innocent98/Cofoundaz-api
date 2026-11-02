@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "query.billing_status",
+        "message": "Input should be 'free', 'trialing', 'active', 'past_due' or 'canceled'"
+      }
+    ]
+  }
+}

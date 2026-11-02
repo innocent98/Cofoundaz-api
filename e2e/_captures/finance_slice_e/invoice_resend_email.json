@@ -1,0 +1,9 @@
+{
+  "to": "delivered+client-9da498e5604f@resend.dev",
+  "subject": "Invoice INV-2026-001 from NovaPay",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Invoice INV-2026-001</h2><p>From NovaPay</p><p>Bill to Acme Logistics</p><table style='width:100%'><tr><td>Design sprint (x2)</td><td style='text-align:right'>1,000.00 NGN</td></tr></table><p>Subtotal: 1,000.00 NGN<br>Tax: 75.00 NGN<br><strong>Total: 1,075.00 NGN</strong></p><p>Due: 2026-11-23</p><p><strong>Pay by bank transfer</strong><br>Bank: GTBank<br>Account name: NovaPay Ltd<br>Account number: 0123456789<br>Use the invoice number as the reference.</p><p>Thank you for your business.<br>Please quote the invoice number.</p></div>",
+  "sent_at": "2026-10-24T19:50:26.772428+00:00",
+  "attachments": [
+    "invoice-INV-2026-001.pdf"
+  ]
+}

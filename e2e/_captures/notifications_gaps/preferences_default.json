@@ -1,0 +1,124 @@
+{
+  "data": {
+    "master_email": true,
+    "categories": {
+      "documents": true,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true,
+      "finance": false,
+      "marketing": false,
+      "sales": false,
+      "validation": false,
+      "academy": false,
+      "ai_insights": false,
+      "billing": true
+    },
+    "in_app": {
+      "documents": true,
+      "business": true,
+      "roadmap_missions": true,
+      "health_assessment": true,
+      "team": true,
+      "finance": true,
+      "marketing": true,
+      "sales": true,
+      "validation": true,
+      "academy": true,
+      "ai_insights": true,
+      "billing": true
+    },
+    "groups": [
+      {
+        "key": "documents",
+        "title": "Documents",
+        "description": "Shares, versions and e-signature updates.",
+        "critical_types": [
+          "document.signature.requested"
+        ]
+      },
+      {
+        "key": "business",
+        "title": "Business Builder",
+        "description": "Suggestions, plans and completed artifacts.",
+        "critical_types": []
+      },
+      {
+        "key": "roadmap_missions",
+        "title": "Roadmap & missions",
+        "description": "Re-plans, milestones, missions and streaks.",
+        "critical_types": []
+      },
+      {
+        "key": "health_assessment",
+        "title": "Health & assessment",
+        "description": "Score changes and assessments.",
+        "critical_types": []
+      },
+      {
+        "key": "team",
+        "title": "Team",
+        "description": "New members and comments that mention you.",
+        "critical_types": []
+      },
+      {
+        "key": "finance",
+        "title": "Finance",
+        "description": "Runway, invoices and payments.",
+        "critical_types": [
+          "finance.invoice.overdue",
+          "finance.runway.low"
+        ]
+      },
+      {
+        "key": "marketing",
+        "title": "Marketing",
+        "description": "Posts published and campaign results.",
+        "critical_types": []
+      },
+      {
+        "key": "sales",
+        "title": "Sales",
+        "description": "Deals won or stalled and sequence sending.",
+        "critical_types": [
+          "sales.sending.paused"
+        ]
+      },
+      {
+        "key": "validation",
+        "title": "Validation",
+        "description": "Smoke-test milestones and new customer insights.",
+        "critical_types": []
+      },
+      {
+        "key": "academy",
+        "title": "Academy",
+        "description": "Courses completed and recommended.",
+        "critical_types": []
+      },
+      {
+        "key": "ai_insights",
+        "title": "AI & insights",
+        "description": "Your daily briefing and KPI alerts.",
+        "critical_types": []
+      },
+      {
+        "key": "billing",
+        "title": "Billing",
+        "description": "Plan changes and usage.",
+        "critical_types": [
+          "billing.payment.failed"
+        ]
+      }
+    ],
+    "digest_mode": "realtime",
+    "digest_time": "08:00",
+    "digest_day": 0,
+    "quiet_enabled": false,
+    "quiet_from": "20:00",
+    "quiet_until": "06:00",
+    "timezone": "Africa/Lagos"
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANNOT_ACT_ON_SELF",
+    "message": "You can't do that to your own account.",
+    "field_errors": []
+  }
+}

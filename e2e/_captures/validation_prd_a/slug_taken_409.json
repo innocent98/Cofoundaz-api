@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SLUG_TAKEN",
+    "message": "That page address is taken. Try another.",
+    "field_errors": []
+  }
+}

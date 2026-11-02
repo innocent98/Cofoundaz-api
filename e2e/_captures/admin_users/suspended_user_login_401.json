@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "That email and password don't match.",
+    "field_errors": []
+  }
+}

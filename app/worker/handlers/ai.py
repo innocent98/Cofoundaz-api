@@ -1,27 +1,59 @@
+import uuid
 from datetime import date
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.logger import log
+from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.assessment import AssessmentResult
-from app.db.models.business import BusinessRecord
+from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.dashboard import DailyBriefing
-from app.db.models.enums import BriefingStatus, CanvasType, RecommendationStatus, RecordKind
+from app.db.models.enums import (
+    BriefingStatus,
+    CanvasType,
+    ChatMessageRole,
+    ChatMessageStatus,
+    EnrichmentStatus,
+    RecommendationStatus,
+    RecordKind,
+)
 from app.db.models.health_score import HealthRecommendation
 from app.db.models.job import Job
+from app.db.models.journal import JournalPrompt
+from app.db.models.learning import AcademyCourse, LearningRecommendation
 from app.db.models.mission import Mission, MissionTask
+from app.db.models.roadmap import Roadmap, RoadmapReplan
 from app.db.models.startup import Startup
-from app.platform.llm import get_llm_client
+from app.db.models.user import User
+from app.platform.activity import write_activity
+from app.platform.events import event_bus
+from app.platform.llm import EmptyCompletionError
+from app.platform.llm_budget import metered_complete, metered_complete_json
+from app.services.ai_cofounder.finance_context import finance_context_for
+from app.services.ai_cofounder.prompts import build_cofounder_messages
+from app.services.ai_cofounder.service import BUDGET_FAILED_TEXT, REPLY_FAILED_TEXT, fail_message
+from app.services.ai_preferences import founder_tone, get_prefs
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
 from app.services.business.record_defs import record_json_schema
 from app.services.business.records import create_record
-from app.services.business.service import get_or_create_canvas, validate_blocks
+from app.services.business.service import (
+    get_or_create_canvas,
+    snapshot_canvas,
+    validate_blocks,
+)
 from app.services.dashboard.ai_briefing import (
     build_dashboard_briefing_messages,
     dashboard_briefing_schema,
+)
+from app.services.dashboard.briefing import (
+    normalize_actions,
+    normalize_opportunities,
+    normalize_risks,
+    prose,
 )
 from app.services.dashboard.service import gather_briefing_context
 from app.services.health_score.ai_recommendations import (
@@ -29,7 +61,16 @@ from app.services.health_score.ai_recommendations import (
     catalog_bodies,
     health_recommendation_schema,
 )
+from app.services.journal.ai_prompt import (
+    build_journal_prompt_messages,
+    gather_prompt_context,
+    journal_prompt_schema,
+)
+from app.services.learning import recommendations as learning_recommendations
+from app.services.learning.ai_reason import build_learning_reason_messages, learning_reason_schema
 from app.services.mission.ai_reason import build_mission_reason_messages, mission_reason_schema
+from app.services.onboarding.ai_panel import build_onboarding_panel_messages
+from app.services.roadmap.ai_rationale import build_roadmap_rationale_messages
 from app.worker.runner import register_handler
 
 
@@ -53,7 +94,9 @@ def handle_assessment_narrative(db: Session, job: Job) -> None:
         industry=industry,
         stage=stage,
     )
-    text = get_llm_client().complete(messages, max_tokens=settings.LLM_MAX_TOKENS)
+    text = metered_complete(db, startup_id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated narrative
     result.narrative = text.strip()
     # Flush (not commit) so the change is visible to any read on this connection before
     # the runner's own db.commit() finalizes the job — the runner still owns the txn.
@@ -67,16 +110,22 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
     """Draft a business canvas's EMPTY blocks with the LLM (structured output).
 
     Fill-empties-only: re-reads the canvas at run time and never overwrites a block the
-    user already filled. No commit — the runner owns the txn.
+    user already filled. No commit — the runner owns the txn. `job.result` says what
+    happened (`ready` with the filled keys, `nothing_new`, or `over_budget`) so the FE can
+    tell the founder instead of always reporting a draft.
     """
     startup = db.get(Startup, job.payload["startup_id"])
     if startup is None:
         return  # benign no-op
     canvas_type = CanvasType(job.payload["canvas_type"])
     canvas = get_or_create_canvas(db, startup, canvas_type)
+    if job.payload.get("block"):
+        _canvas_section_fill(db, job, startup, canvas)
+        return
     current = dict(canvas.blocks or {})
     empty_keys = [b.key for b in CANVAS_BLOCKS[canvas_type] if not current.get(b.key)]
     if not empty_keys:
+        job.result = {"status": "nothing_new", "filled": []}
         return  # nothing to fill
     messages = build_canvas_fill_messages(
         name=startup.name,
@@ -84,9 +133,16 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         stage=(startup.stage.value if startup.stage else None),
         blocks=CANVAS_BLOCKS[canvas_type],
     )
-    filled = get_llm_client().complete_json(
-        messages, schema=canvas_json_schema(canvas_type), max_tokens=settings.LLM_MAX_TOKENS
+    filled = metered_complete_json(
+        db,
+        startup.id,
+        messages,
+        schema=canvas_json_schema(canvas_type),
+        max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if filled is None:
+        job.result = {"status": "over_budget", "filled": []}
+        return  # over budget, skip enrichment, keep the empty blocks
     # Re-read: a concurrent PATCH may have committed during the (multi-second) LLM call.
     # Under READ COMMITTED this reflects the latest committed blocks/version, so we never
     # clobber an edit that landed while we were waiting on the model.
@@ -97,25 +153,63 @@ def handle_canvas_ai_fill(db: Session, job: Job) -> None:
         if not latest.get(b.key) and b.key in filled:  # only blocks STILL empty now
             merged[b.key] = filled[b.key]
     if merged == latest:
-        return  # nothing left to fill (user filled everything meanwhile) — no version bump
+        job.result = {"status": "nothing_new", "filled": []}
+        return  # nothing left to fill (user filled everything meanwhile), no version bump
     validate_blocks(canvas_type, merged)
     canvas.blocks = merged
     canvas.version += 1
     db.flush()
+    snapshot_canvas(db, canvas, user_id=None, source="ai")
+    job.result = {"status": "ready", "filled": [k for k in merged if merged[k] != latest.get(k)]}
+
+
+def _canvas_section_fill(db: Session, job: Job, startup: Startup, canvas: BusinessCanvas) -> None:
+    """PRD 08 per-section AI assist (D-BB-4): append-only into ONE block. Result in job.result."""
+    from app.services.business import ai_assist
+
+    key = str(job.payload["block"])
+    block = ai_assist.block_def(canvas, key)
+    if block is None:
+        job.result = {"status": "gone", "block": key, "added": []}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_section_messages(startup, canvas, block),
+        schema=ai_assist.section_schema(block),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "block": key, "added": []}
+        return
+    db.refresh(canvas)  # a concurrent edit during the LLM call wins; we only append to it
+    added = ai_assist.merge_section(canvas, block, result)
+    if not added:
+        job.result = {"status": "nothing_new", "block": key, "added": []}
+        return
+    validate_blocks(canvas.type, canvas.blocks)
+    canvas.version += 1
+    db.flush()
+    snapshot_canvas(db, canvas, user_id=None, source="ai")
+    job.result = {"status": "ready", "block": key, "added": added, "version": canvas.version}
 
 
 register_handler("business.canvas.ai_fill", handle_canvas_ai_fill)
 
 
 def handle_record_ai_fill(db: Session, job: Job) -> None:
-    """Draft up to 3 records for an EMPTY record kind via structured output. No commit."""
+    """Draft up to 3 records for an EMPTY record kind via structured output. No commit.
+    `job.result` is `ready` (with how many were added), `nothing_new` or `over_budget`."""
     kind = RecordKind(job.payload["kind"])
     startup = db.get(Startup, job.payload["startup_id"])
     if startup is None:
         return
     if db.query(BusinessRecord).filter_by(startup_id=startup.id, kind=kind).count():
+        job.result = {"status": "nothing_new", "added": 0}
         return  # fill-empties only
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        startup.id,
         build_record_fill_messages(
             kind,
             name=startup.name,
@@ -125,12 +219,18 @@ def handle_record_ai_fill(db: Session, job: Job) -> None:
         schema=record_json_schema(kind),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        job.result = {"status": "over_budget", "added": 0}
+        return  # over budget, skip enrichment, keep the kind empty
+    added = 0
     for rec in (result.get("records") or [])[:3]:
         try:
             create_record(db, startup, kind, rec)
+            added += 1
         except AppError:
             continue  # skip a record that fails the kind's validation; keep the good ones
     db.flush()
+    job.result = {"status": "ready" if added else "nothing_new", "added": added}
 
 
 for _kind in RecordKind:
@@ -150,7 +250,9 @@ def handle_mission_reason(db: Session, job: Job) -> None:
     if not tasks:
         return
     startup = db.get(Startup, mission.startup_id)
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        mission.startup_id,
         build_mission_reason_messages(
             [(t.order, t.title) for t in tasks],
             name=(startup.name if startup else None),
@@ -160,6 +262,8 @@ def handle_mission_reason(db: Session, job: Job) -> None:
         schema=mission_reason_schema(len(tasks)),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the templated reasons
     by_order = {
         r["order"]: r["reason"]
         for r in (result.get("reasons") or [])
@@ -194,7 +298,9 @@ def handle_health_recommendations(db: Session, job: Job) -> None:
     todo = [r for r in rows if r.body == defaults.get(r.key)]
     if not todo:
         return  # nothing to personalize -- no LLM call
-    result = get_llm_client().complete_json(
+    result = metered_complete_json(
+        db,
+        startup.id,
         build_health_recommendation_messages(
             [(r.key, r.dimension, r.title) for r in todo],
             name=startup.name,
@@ -204,6 +310,8 @@ def handle_health_recommendations(db: Session, job: Job) -> None:
         schema=health_recommendation_schema([r.key for r in todo]),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
+    if result is None:
+        return  # over budget — skip enrichment, keep the catalog default bodies
     by_key = {
         r["key"]: r["body"]
         for r in (result.get("recommendations") or [])
@@ -239,16 +347,405 @@ def handle_dashboard_briefing(db: Session, job: Job) -> None:
     if row is None or row.status != BriefingStatus.generating:
         return
     ctx = gather_briefing_context(db, startup)
-    result = get_llm_client().complete_json(
-        build_dashboard_briefing_messages(**ctx),
+    result = metered_complete_json(
+        db,
+        startup.id,
+        build_dashboard_briefing_messages(**ctx, tone=founder_tone(db, startup.id)),
         schema=dashboard_briefing_schema(),
         max_tokens=settings.LLM_MAX_TOKENS,
     )
-    row.briefing = result["briefing"]
-    row.risks = result["risks"]
-    row.opportunities = result["opportunities"]
+    if result is None:
+        return  # over budget — skip enrichment, keep the "generating" placeholder
+    risks = normalize_risks(result.get("risks"))
+    opportunities = normalize_opportunities(result.get("opportunities"))
+    row.briefing = str(result.get("briefing") or "").strip() or row.briefing
+    row.risk_items = risks
+    row.opportunity_items = opportunities
+    row.actions = normalize_actions(result.get("actions"))
+    # Legacy prose columns, for readers that predate the structured items.
+    row.risks = prose(risks)
+    row.opportunities = prose(opportunities)
     row.status = BriefingStatus.ready
     db.flush()
+    event_bus.publish(
+        db,
+        "dashboard.briefing.ready",
+        {"startup_id": str(startup.id), "briefing_id": str(row.id)},
+    )
 
 
 register_handler("ai.dashboard.briefing", handle_dashboard_briefing)
+
+
+def handle_roadmap_rationale(db: Session, job: Job) -> None:
+    """Overwrite a roadmap re-plan's rationale with the LLM (prose). No commit.
+
+    The templated rationale written at apply time stays as the instant value and fallback.
+    """
+    replan = db.get(RoadmapReplan, job.payload["replan_id"])
+    if replan is None:
+        return  # benign no-op
+    roadmap = db.get(Roadmap, replan.roadmap_id)
+    if roadmap is None:
+        return  # benign no-op (orphaned replan)
+    startup = db.get(Startup, roadmap.startup_id)
+    messages = build_roadmap_rationale_messages(
+        stage=(startup.stage.value if (startup and startup.stage) else None),
+        name=(startup.name if startup else None),
+        industry=(startup.industry if startup else None),
+        changes=list(replan.changes or []),
+    )
+    text = metered_complete(db, roadmap.startup_id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated rationale
+    replan.rationale = text.strip()
+    db.flush()
+
+
+register_handler("ai.roadmap.rationale", handle_roadmap_rationale)
+
+
+def handle_onboarding_panel(db: Session, job: Job) -> None:
+    """Overwrite a startup's onboarding AI panel with the LLM (prose). No commit.
+
+    The templated panel written at signals-complete stays as the instant value and fallback.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None or startup.profile is None:
+        return  # benign no-op
+    messages = build_onboarding_panel_messages(
+        industry=startup.industry,
+        stage=(startup.stage.value if startup.stage else None),
+        goals=(startup.profile.goals or []),
+    )
+    text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_MAX_TOKENS)
+    if text is None:
+        return  # over budget — skip enrichment, keep the templated panel
+    startup.profile.ai_panel = text.strip()
+    db.flush()
+
+
+register_handler("ai.onboarding.panel", handle_onboarding_panel)
+
+
+def handle_learning_recommendations(db: Session, job: Job) -> None:
+    """Write the hero course's recommendation reason via the LLM. No commit.
+
+    Idempotent and stale-safe: no-ops unless the row for ``(startup_id, course_id)`` is still
+    `generating` for the ``context_key`` this job was queued for (a newer stage or gap change
+    supersedes it). Keeps the templated fallback when the startup has no stage or the workspace
+    is over budget.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    course_id = job.payload.get("course_id")
+    if startup is None or not course_id:  # a job queued before reasons were per course
+        return
+    row = (
+        db.query(LearningRecommendation)
+        .filter_by(startup_id=startup.id, course_id=course_id)
+        .one_or_none()
+    )
+    if (
+        row is None
+        or row.status != EnrichmentStatus.generating
+        or row.context_key != job.payload.get("context_key")
+    ):
+        return
+    course = db.get(AcademyCourse, course_id)
+    if startup.stage is None or course is None:  # nothing to personalize -> keep fallback
+        row.status = EnrichmentStatus.ready
+        db.flush()
+        return
+    gaps = learning_recommendations.gather_gaps(db, startup.id)
+    phrases = [
+        learning_recommendations.gap_phrase(tag)
+        for tag in learning_recommendations.matched_gaps(course, gaps)
+    ]
+    result = metered_complete_json(
+        db,
+        startup.id,
+        build_learning_reason_messages(
+            stage=startup.stage,
+            course_title=course.title,
+            course_summary=course.summary,
+            gap_phrases=phrases,
+        ),
+        schema=learning_reason_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        return  # over budget -- keep the templated reason, stay generating
+    row.reason = str(result["reason"])[:300]
+    row.status = EnrichmentStatus.ready
+    db.flush()
+
+
+register_handler("ai.learning.recommendations", handle_learning_recommendations)
+
+
+def handle_journal_prompt(db: Session, job: Job) -> None:
+    """Personalize a founder's daily journal prompt via the LLM. No commit.
+
+    Grounds ONLY in operational signals (shipped milestone + mission focus) — never journal
+    content or mood. Idempotent: no-ops unless the row is still `generating`. Keeps the static
+    prompt when there is no signal or the workspace is over budget.
+    """
+    startup = db.get(Startup, job.payload["startup_id"])
+    if startup is None:
+        return
+    founder = db.get(User, job.payload["founder_id"])
+    if founder is None:
+        return
+    d = date.fromisoformat(job.payload["date"])
+    row = (
+        db.query(JournalPrompt)
+        .filter_by(startup_id=startup.id, founder_id=founder.id, date=d)
+        .one_or_none()
+    )
+    if row is None or row.status != EnrichmentStatus.generating:
+        return
+    milestone_title, mission_focus = gather_prompt_context(db, startup.id)
+    if milestone_title is None and mission_focus is None:  # no signal -> keep static, no LLM
+        row.status = EnrichmentStatus.ready
+        db.flush()
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        build_journal_prompt_messages(milestone_title=milestone_title, mission_focus=mission_focus),
+        schema=journal_prompt_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        return  # over budget — keep the static prompt, stay generating
+    row.prompt = str(result["prompt"])[:300]
+    row.status = EnrichmentStatus.ready
+    db.flush()
+
+
+register_handler("ai.journal.prompt", handle_journal_prompt)
+
+
+def handle_cofounder_reply(db: Session, job: Job) -> None:
+    """Fill the assistant turn of an AI Co-Founder chat via the LLM (prose). No commit.
+
+    Idempotent: no-ops unless the assistant row is still `generating`. A chat turn has no
+    templated fallback, so over budget -> status `failed` (the FE polls and surfaces it).
+    """
+    msg = db.get(AiMessage, uuid.UUID(job.payload["message_id"]))
+    if (
+        msg is None
+        or msg.role != ChatMessageRole.assistant
+        or msg.status != ChatMessageStatus.generating
+    ):
+        return
+    conversation = db.get(AiConversation, msg.conversation_id)
+    if conversation is None:
+        return
+    startup = db.get(Startup, conversation.startup_id)
+    if startup is None:
+        return
+    # Cap history to the most recent turns so one long conversation can't amplify the
+    # LLM input cost of every subsequent reply.
+    prior = list(
+        reversed(
+            db.query(AiMessage)
+            .filter(
+                AiMessage.conversation_id == conversation.id,
+                AiMessage.id != msg.id,
+                AiMessage.status == ChatMessageStatus.ready,
+            )
+            .order_by(AiMessage.created_at.desc(), AiMessage.id.desc())
+            .limit(20)
+            .all()
+        )
+    )
+    profile = startup.profile
+    messages = build_cofounder_messages(
+        name=startup.name,
+        industry=startup.industry,
+        stage=(startup.stage.value if startup.stage else None),
+        description=startup.description,
+        goals=(list(profile.goals) if profile and profile.goals else []),
+        history=[(m.role.value, m.content) for m in prior if m.content],
+        # Role-gated: only a member who may read Finance gets the money figures.
+        finance_context=finance_context_for(
+            db, startup_id=startup.id, user_id=conversation.created_by
+        ),
+        tone=(
+            get_prefs(db, user_id=conversation.created_by, startup_id=startup.id).tone
+            if conversation.created_by
+            else None
+        ),
+    )
+    try:
+        text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
+    except Exception as exc:  # noqa: BLE001 - any provider failure must end the turn eventually
+        # An empty completion repeats for the same prompt, so end the turn now instead of
+        # spending the daily token budget on retries.
+        if (
+            not isinstance(exc, EmptyCompletionError)
+            and job.attempts < settings.WORKER_MAX_ATTEMPTS
+        ):
+            raise  # let the runner retry with backoff
+        log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
+        fail_message(db, msg, REPLY_FAILED_TEXT)
+        return
+    if text is None:
+        # over budget — no templated fallback for a chat turn
+        fail_message(db, msg, BUDGET_FAILED_TEXT)
+        return
+    msg.content = text.strip()
+    msg.status = ChatMessageStatus.ready
+    db.flush()
+
+
+register_handler("ai.cofounder.reply", handle_cofounder_reply)
+
+
+def handle_roadmap_breakdown(db: Session, job: Job) -> None:
+    """PRD 05.3 "Ask AI to break this down": append 3-5 tasks to a milestone. No commit.
+    The outcome is written to `job.result` for the FE poll."""
+    from app.db.models.roadmap import RoadmapMilestone
+    from app.services.roadmap.breakdown import apply_breakdown, breakdown_schema
+    from app.services.roadmap.breakdown import build_breakdown_messages as _msgs
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    milestone = db.get(RoadmapMilestone, uuid.UUID(str(job.payload["milestone_id"])))
+    if startup is None or milestone is None:
+        job.result = {"status": "gone"}
+        return
+    existing = [t.title for t in milestone_tasks(db, milestone.id)]
+    result = metered_complete_json(
+        db,
+        startup.id,
+        _msgs(
+            milestone=milestone.title,
+            description=milestone.description,
+            existing=existing,
+            stage=startup.stage.value if startup.stage else None,
+            industry=startup.industry,
+        ),
+        schema=breakdown_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "milestone_id": str(milestone.id)}
+        return
+    created = apply_breakdown(db, milestone, result.get("tasks"))
+    write_activity(
+        db,
+        startup_id=startup.id,
+        action="roadmap.milestone.broken_down",
+        entity_type="roadmap_milestone",
+        entity_id=milestone.id,
+        summary=f"AI broke '{milestone.title}' into {len(created)} tasks",
+    )
+    job.result = {
+        "status": "ready",
+        "milestone_id": str(milestone.id),
+        "created_task_ids": [str(t.id) for t in created],
+    }
+
+
+def milestone_tasks(db: Session, milestone_id: uuid.UUID) -> list:
+    from app.db.models.roadmap import RoadmapTask
+
+    return db.query(RoadmapTask).filter(RoadmapTask.milestone_id == milestone_id).all()
+
+
+register_handler("ai.roadmap.breakdown", handle_roadmap_breakdown)
+
+
+def handle_mission_vision_options(db: Session, job: Job) -> None:
+    """PRD 08.4 "Give me 3 options": variants in job.result, nothing written. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    field = str(job.payload["field"])
+    if startup is None:
+        job.result = {"status": "gone", "field": field, "options": []}
+        return
+    canvas = get_or_create_canvas(db, startup, CanvasType.mission_vision)
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_options_messages(startup, field, str(canvas.blocks.get(field) or "")),
+        schema=ai_assist.options_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "field": field, "options": []}
+        return
+    job.result = {"status": "ready", "field": field, "options": ai_assist.clean_options(result)}
+
+
+def handle_personas_from_validation(db: Session, job: Job) -> None:
+    """PRD 08.6 "Generate personas from my validation notes": append up to 3 personas. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    if startup is None:
+        job.result = {"status": "gone", "created_record_ids": []}
+        return
+    ctx = ai_assist.validation_context(db, startup)
+    if not ai_assist.has_validation_data(ctx):
+        job.result = {"status": "no_validation_data", "created_record_ids": []}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_persona_messages(startup, ctx),
+        schema=record_json_schema(RecordKind.persona),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget", "created_record_ids": []}
+        return
+    taken = ai_assist.existing_persona_names(db, startup)
+    created = []
+    for rec in (result.get("records") or [])[:3]:
+        name = str(rec.get("name", "")).strip().casefold()
+        if not name or name in taken:
+            continue  # append-only and de-duplicated by name
+        try:
+            created.append(create_record(db, startup, RecordKind.persona, rec))
+        except AppError:
+            continue
+        taken.add(name)
+    db.flush()
+    job.result = {
+        "status": "ready" if created else "nothing_new",
+        "created_record_ids": [str(r.id) for r in created],
+        "interviews_used": len(ctx["interviews"]),
+    }
+
+
+def handle_pricing_advisor(db: Session, job: Job) -> None:
+    """PRD 08.7 AI advisor panel: WTP prompts + suggested model/tiers in job.result. No commit."""
+    from app.services.business import ai_assist
+
+    startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
+    if startup is None:
+        job.result = {"status": "gone"}
+        return
+    result = metered_complete_json(
+        db,
+        startup.id,
+        ai_assist.build_advisor_messages(
+            startup,
+            job.payload.get("competitor_prices") or [],
+            job.payload.get("willingness_to_pay"),
+        ),
+        schema=ai_assist.advisor_schema(),
+        max_tokens=settings.LLM_MAX_TOKENS,
+    )
+    if result is None:
+        job.result = {"status": "over_budget"}
+        return
+    job.result = {"status": "ready", "advice": result}
+
+
+register_handler("ai.business.mission_vision_options", handle_mission_vision_options)
+register_handler("ai.business.personas_from_validation", handle_personas_from_validation)
+register_handler("ai.business.pricing_advisor", handle_pricing_advisor)

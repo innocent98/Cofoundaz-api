@@ -1,0 +1,25 @@
+{
+  "data": {
+    "text": [
+      "location",
+      "business_type",
+      "company_size",
+      "income_band"
+    ],
+    "channel_acquired": [
+      "organic_social",
+      "paid_social",
+      "search",
+      "email",
+      "content_seo",
+      "partnerships",
+      "events",
+      "referral"
+    ],
+    "behaviour_tags": {
+      "max_tags": 10,
+      "max_length": 40
+    }
+  },
+  "meta": null
+}

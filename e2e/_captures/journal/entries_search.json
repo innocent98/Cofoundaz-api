@@ -1,0 +1,17 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "8a2c60fe-8df4-4715-a8d3-cacb2de9dac6",
+        "date": "2026-10-29",
+        "mood": "great",
+        "stress": 6,
+        "first_line": "Shipped the invite flow.",
+        "preview": "Shipped the invite flow.\nPricing decided: usage-based.",
+        "word_count": 7
+      }
+    ],
+    "total": 1
+  },
+  "meta": null
+}

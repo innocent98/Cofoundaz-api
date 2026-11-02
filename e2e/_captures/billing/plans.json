@@ -1,0 +1,100 @@
+{
+  "data": {
+    "plans": [
+      {
+        "key": "starter",
+        "name": "Starter",
+        "tagline": "For validating an idea.",
+        "currency": "NGN",
+        "price_monthly_minor": 0,
+        "price_annual_minor": 0,
+        "ai_credits": 500,
+        "seats": 1,
+        "storage_mb": 5120,
+        "features": [
+          "Core AI Co-Founder",
+          "Roadmap and Health Score",
+          "Business Builder",
+          "Documents",
+          "500 AI credits monthly",
+          "1 seat"
+        ],
+        "modules": []
+      },
+      {
+        "key": "growth",
+        "name": "Growth",
+        "tagline": "For getting to revenue.",
+        "currency": "NGN",
+        "price_monthly_minor": 2400000,
+        "price_annual_minor": 24000000,
+        "ai_credits": 5000,
+        "seats": 5,
+        "storage_mb": 20480,
+        "features": [
+          "Everything in Starter",
+          "Marketing, Sales, Finance, Validation Hubs",
+          "Analytics and Reports",
+          "5,000 AI credits monthly",
+          "5 seats"
+        ],
+        "modules": [
+          "marketing",
+          "sales",
+          "finance",
+          "validation",
+          "analytics",
+          "sales_outreach"
+        ]
+      },
+      {
+        "key": "scale",
+        "name": "Scale",
+        "tagline": "For raising and expanding.",
+        "currency": "NGN",
+        "price_monthly_minor": 6800000,
+        "price_annual_minor": 68000000,
+        "ai_credits": 20000,
+        "seats": null,
+        "storage_mb": 102400,
+        "features": [
+          "Everything in Growth",
+          "Funding Hub and Investor Readiness",
+          "Legal and Compliance",
+          "Priority support",
+          "20,000 AI credits monthly",
+          "Unlimited seats"
+        ],
+        "modules": [
+          "marketing",
+          "sales",
+          "finance",
+          "validation",
+          "analytics",
+          "sales_outreach",
+          "funding",
+          "investor_readiness",
+          "legal",
+          "priority_support"
+        ]
+      }
+    ],
+    "addons": [
+      {
+        "key": "credits_2000",
+        "name": "2,000 AI credits",
+        "description": "One-time top-up.",
+        "credits": 2000,
+        "price_minor": 800000
+      },
+      {
+        "key": "credits_10000",
+        "name": "10,000 AI credits",
+        "description": "Best value for heavy AI months.",
+        "credits": 10000,
+        "price_minor": 3200000
+      }
+    ]
+  },
+  "meta": null
+}

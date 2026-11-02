@@ -20,6 +20,7 @@
 !app/
 !alembic/
 !alembic.ini
+!content/
 
 # --- re-exclude build noise that lives inside the allowed directories ---
 **/__pycache__/

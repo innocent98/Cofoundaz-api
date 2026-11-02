@@ -1,0 +1,1 @@
+{"event": "refund.processed", "data": {"id": 7001, "transaction_reference": "ref_alpha", "amount": 200000, "currency": "NGN", "status": "processed", "refunded_at": "2026-10-03T08:00:00.000Z"}}

@@ -1,11 +1,12 @@
 {
   "data": {
     "applied": [
-      "cdf6fd43-bb5a-44e6-988c-344e48ed76f4"
+      "e4f3e277-6c14-4bde-ade9-21a2cf29ec0c"
     ],
     "skipped": [],
-    "replan_id": "d9053d45-8e8d-4056-8ee6-bd9a335f3a96",
-    "summary": "Re-planned 1 milestone"
+    "replan_id": "dc4493c2-6041-46ba-bd06-fabc60df349d",
+    "summary": "Re-planned 1 milestone",
+    "rationale": "Re-planned 1 milestone: adjusted the dates for Validate demand to keep your roadmap realistic after recent slips."
   },
   "meta": null
 }

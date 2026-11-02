@@ -1,0 +1,9 @@
+{
+  "to": "delivered+client2-3c8a658c584c@resend.dev",
+  "subject": "Reminder: invoice INV-2026-002 from Automation Co",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><p>Hi Ngozi, a friendly nudge that invoice INV-2026-002 for 1,612.50 NGN was due on 2026-10-18. Thanks, Ada Founder</p></div>",
+  "sent_at": "2026-10-21T15:33:20.786809+00:00",
+  "attachments": [
+    "invoice-INV-2026-002.pdf"
+  ]
+}

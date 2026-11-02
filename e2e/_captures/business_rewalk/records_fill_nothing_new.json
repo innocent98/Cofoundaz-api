@@ -1,0 +1,29 @@
+{
+ "captured": "2026-10-19 local stack: POST /api/v1/business-builder/competitors/ai-fill with 2 competitors already present, then GET /api/v1/jobs/{id}",
+ "post": {
+  "status_code": 202,
+  "body": {
+   "data": {
+    "job_id": "c2e8bd1d-590c-4e40-a6d5-86857a96610d",
+    "status": "queued"
+   },
+   "meta": null
+  }
+ },
+ "job": {
+  "status_code": 200,
+  "body": {
+   "data": {
+    "id": "c2e8bd1d-590c-4e40-a6d5-86857a96610d",
+    "type": "business.competitor.ai_fill",
+    "status": "succeeded",
+    "result": {
+     "added": 0,
+     "status": "nothing_new"
+    },
+    "error": null
+   },
+   "meta": null
+  }
+ }
+}

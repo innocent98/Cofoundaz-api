@@ -1,0 +1,51 @@
+{
+  "data": {
+    "upload_id": "27b641a23ced46e2aafbbbecf69d2c58",
+    "headers": [
+      "Full Name",
+      "Company",
+      "E-mail",
+      "Source"
+    ],
+    "sample_rows": [
+      [
+        "Kemi Bello",
+        "Bello Print",
+        "kemi@bello.example",
+        "event"
+      ],
+      [
+        "Femi Ade",
+        "Ade Farms",
+        "femi@ade.example",
+        "inbound"
+      ],
+      [
+        "Chidi Again",
+        "Zenith Foods",
+        "CHIDI@zenith.example",
+        "manual"
+      ],
+      [
+        "Bad Email",
+        "Broken Ltd",
+        "not-an-email",
+        "manual"
+      ],
+      [
+        "",
+        "",
+        "orphan@nowhere.example",
+        "manual"
+      ]
+    ],
+    "suggested_mapping": {
+      "name": "Full Name",
+      "company": "Company",
+      "email": "E-mail",
+      "source": "Source"
+    },
+    "row_count": 5
+  },
+  "meta": null
+}

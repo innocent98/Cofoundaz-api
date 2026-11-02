@@ -1,0 +1,69 @@
+{
+  "data": [
+    {
+      "id": "68157f08-8802-493f-92d8-ea6338ead3b3",
+      "key": "organic_social",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] organic_social",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "3f9f3af2-36e7-4f21-aa40-7830ff8dd093",
+      "key": "paid_social",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] paid_social",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "c94ec7b6-a153-4c96-9ca2-f2a4e95c1120",
+      "key": "search",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] search",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "78aaeb2a-066f-48ed-a184-bab08aadef46",
+      "key": "email",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] email",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "8885fd3e-5a89-4ee9-841e-f0f1b95f7c9c",
+      "key": "content_seo",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] content_seo",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "24e1d594-991e-4946-a089-3570e9c1af66",
+      "key": "partnerships",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] partnerships",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "38582ad9-2f10-4ab6-b2c6-b1453e9ea15c",
+      "key": "events",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] events",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    },
+    {
+      "id": "c036b552-f971-40ac-a92c-b73c2854c345",
+      "key": "referral",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] referral",
+      "fit_note_generated_at": "2026-09-30T08:33:06.305101Z"
+    }
+  ],
+  "meta": null
+}

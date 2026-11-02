@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "89470fd0-0ebe-42fb-a784-b69019962e51",
+    "type": "validation.synthesize",
+    "status": "succeeded",
+    "result": {
+      "status": "ready",
+      "insight_id": "5c184608-35a4-4ab2-8bb9-605bacc9270b"
+    },
+    "error": null
+  },
+  "meta": null
+}

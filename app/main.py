@@ -4,11 +4,8 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from jose import JWTError, jwt
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.api import api_router
@@ -18,8 +15,11 @@ from app.core.errors import register_exception_handlers
 from app.core.logger import log
 from app.core.rate_limit import (
     install_included_router_support,
+    limiter,
     verify_included_router_resolution,
 )
+from app.middleware.maintenance import MaintenanceMiddleware
+from app.services.documents.scanner import warn_if_noop_scanner
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -49,28 +49,6 @@ app = FastAPI(
 register_exception_handlers(app)
 
 
-# Rate limiting
-def _rate_limit_key(request: Request) -> str:
-    """Key rate limits on the authenticated user when possible, falling back
-    to remote address for unauthenticated requests. This keeps limits tied to
-    the caller rather than the source IP, so users behind a shared IP (NAT,
-    corporate proxy) aren't penalized by each other's traffic."""
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer "):
-        try:
-            payload = jwt.decode(auth[7:], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            sub = payload.get("sub")
-            if sub:
-                return f"user:{sub}"
-        except JWTError:
-            pass
-    return get_remote_address(request)
-
-
-limiter = Limiter(
-    key_func=_rate_limit_key,
-    default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"],
-)
 app.state.limiter = limiter
 
 
@@ -94,6 +72,10 @@ async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JS
 # /api/v1 surface unlimited. See app/core/rate_limit.py.
 install_included_router_support()
 verify_included_router_resolution()
+warn_if_noop_scanner(settings.ENVIRONMENT)
+# Added before SlowAPI, so it runs inside the rate limiter: its lookup is rate-limited too, and
+# inside CORS, so the 503 still carries CORS headers and the FE can read it.
+app.add_middleware(MaintenanceMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware

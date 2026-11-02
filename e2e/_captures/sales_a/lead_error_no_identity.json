@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Add a name or a company.",
+    "field_errors": [
+      {
+        "field": "name",
+        "message": "Add a name or a company."
+      }
+    ]
+  }
+}

@@ -40,6 +40,26 @@ def next_question(bank: Bank, answers: dict, startup: Any) -> Question | None:
     return None
 
 
+def progress(bank: Bank, answers: dict, startup: Any) -> dict[str, int]:
+    """D-ASM-2: answered / (answered + remaining applicable), as an integer 0-100.
+
+    Only questions that are applicable *given the current answers* count, on both sides: an answer
+    to a retired key, or to a follow-up the founder's later answers hid, is ignored. Because
+    applicability depends on answers, `remaining` (and so `pct`) can move as the path adapts.
+    """
+    answered = remaining = 0
+    for q in bank.questions:
+        if not is_applicable(q, answers, startup):
+            continue
+        if q.key in answers:
+            answered += 1
+        else:
+            remaining += 1
+    total = answered + remaining
+    pct = 100 if total == 0 else answered * 100 // total
+    return {"answered": answered, "remaining": remaining, "pct": pct}
+
+
 def validate_answer(question: Question, value: Any) -> None:
     err = AppError("INVALID_ANSWER", "That answer isn't valid for this question.", 422)
     if question.qtype == QType.SINGLE_CHOICE:

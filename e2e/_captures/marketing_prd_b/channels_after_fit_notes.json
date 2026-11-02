@@ -1,0 +1,141 @@
+{
+  "data": [
+    {
+      "id": "942d8d63-4f08-4f12-abb6-2140fa981fb8",
+      "key": "organic_social",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "02811d19-5ee5-4ecd-b61e-3f7f982c17c8",
+      "key": "paid_social",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "45643e87-5ca1-4c83-bfba-647b5ade4e1c",
+      "key": "search",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "9c7698ed-63b7-4bd4-80f4-954aa7aabc2f",
+      "key": "email",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 40,
+        "conversions": 0,
+        "spend": 900,
+        "has_data": true
+      }
+    },
+    {
+      "id": "56db6253-463b-4e28-9c14-3ce78e7d5659",
+      "key": "content_seo",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "1f8c250c-4b4a-499f-9288-0aa3a6c2adb6",
+      "key": "partnerships",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "0262b867-5610-4e55-b862-1d1a9bada548",
+      "key": "events",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    },
+    {
+      "id": "8b25352d-20d0-427d-834e-2aece0b2de1f",
+      "key": "referral",
+      "status": "not_started",
+      "notes": null,
+      "ai_fit_note": "[stub-llm] note",
+      "fit_level": "high",
+      "fit_note_generated_at": "2026-10-20T18:32:44.397023Z",
+      "stats_30d": {
+        "visits": 0,
+        "impressions": 0,
+        "clicks": 0,
+        "conversions": 0,
+        "spend": 0,
+        "has_data": false
+      }
+    }
+  ],
+  "meta": null
+}

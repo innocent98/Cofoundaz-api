@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "8ebcf9d6-deaf-4106-b966-b5a15397eed1",
+    "startup_id": "75fdf13d-85e4-4543-93b0-02495008daec",
+    "kind": "plan_week",
+    "status": "ready",
+    "inputs": {},
+    "output": {
+      "entries": [
+        {
+          "body": "[stub-llm] body",
+          "title": "[stub-llm] title",
+          "channel": "organic_social",
+          "day_offset": 0
+        }
+      ]
+    },
+    "error": null,
+    "created_at": "2026-09-30T08:33:05.623121Z",
+    "updated_at": "2026-09-30T08:33:05.631812Z"
+  },
+  "meta": null
+}

@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "41050504-bf80-4108-86d2-f6b9c1fbc876",
+    "type": "validation.scripts.generate",
+    "status": "succeeded",
+    "result": {
+      "status": "ready",
+      "script_id": "443dfec2-00b9-4afc-9611-bac5462eadbd"
+    },
+    "error": null
+  },
+  "meta": null
+}

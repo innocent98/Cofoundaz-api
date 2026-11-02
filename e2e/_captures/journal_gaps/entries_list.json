@@ -1,0 +1,35 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "d8ca0d16-4d64-4220-ace4-3b09d7c6a616",
+        "date": "2026-10-29",
+        "mood": "great",
+        "stress": 4,
+        "first_line": "Day 6 first line",
+        "preview": "Day 6 first line\nSecond line about pricing and runway.",
+        "word_count": 10
+      },
+      {
+        "id": "263838d2-40c3-4a8d-9c0c-049602192741",
+        "date": "2026-10-28",
+        "mood": "good",
+        "stress": 5,
+        "first_line": "Day 5 first line",
+        "preview": "Day 5 first line\nSecond line about pricing and runway.",
+        "word_count": 10
+      },
+      {
+        "id": "9ea5c2b5-ff8e-4d23-9d81-a981ca0688a9",
+        "date": "2026-10-27",
+        "mood": "good",
+        "stress": 6,
+        "first_line": "Day 4 first line",
+        "preview": "Day 4 first line\nSecond line about pricing and runway.",
+        "word_count": 10
+      }
+    ],
+    "total": 6
+  },
+  "meta": null
+}

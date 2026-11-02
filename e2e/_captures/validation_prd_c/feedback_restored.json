@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "343d27f2-5ff8-44c1-8ade-5b3b1337bd6d",
+    "source": "survey",
+    "text": "Payouts take forever",
+    "origin": {
+      "type": "survey",
+      "id": "c2a12dd8-69ff-4c3a-b55f-3e3a7aab0127",
+      "label": "Survey: Payouts"
+    },
+    "imported": true,
+    "dismissed": false,
+    "received_on": "2026-10-19",
+    "created_at": "2026-10-19T21:57:26.034384+00:00"
+  },
+  "meta": null
+}

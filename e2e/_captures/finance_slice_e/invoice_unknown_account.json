@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That client was not found in this workspace.",
+    "field_errors": [
+      {
+        "field": "account_id",
+        "message": "That client was not found in this workspace."
+      }
+    ]
+  }
+}

@@ -17,6 +17,7 @@ from app.db.models.roadmap import (
 )
 from app.db.models.user import User
 from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
 
 REPLAN_BUFFER_DAYS = 7
 
@@ -144,6 +145,18 @@ def compute_replan(db: Session, roadmap: Roadmap) -> list[Change]:
     return changes
 
 
+def _templated_rationale(summary: str, snapshot: list[dict]) -> str:
+    """Non-null instant fallback shown until the AI job overwrites it."""
+    if not snapshot:
+        return summary
+    titles = ", ".join(c["title"] for c in snapshot[:3])
+    more = "" if len(snapshot) <= 3 else f", and {len(snapshot) - 3} more"
+    return (
+        f"{summary}: adjusted the dates for {titles}{more} to keep your roadmap realistic "
+        "after recent slips."
+    )
+
+
 def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uuid.UUID]) -> dict:
     proposal = {c.change_id: c for c in compute_replan(db, roadmap)}
     now = datetime.now(UTC)
@@ -180,19 +193,25 @@ def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uu
 
     replan_id: str | None = None
     summary: str | None = None
+    rationale: str | None = None
     if applied:
         n = len(applied)
         summary = f"Re-planned {n} milestone{'s' if n != 1 else ''}"
+        rationale = _templated_rationale(summary, snapshot)
         replan = RoadmapReplan(
             roadmap_id=roadmap.id,
             applied_by=actor.id,
             change_count=n,
             changes=snapshot,
             summary=summary,
+            rationale=rationale,
         )
         db.add(replan)
         db.flush()
         replan_id = str(replan.id)
+        job_dispatcher.enqueue(
+            db, "ai.roadmap.rationale", {"replan_id": replan_id}, roadmap.startup_id
+        )
         event_bus.publish(
             db,
             "roadmap.replanned",
@@ -205,4 +224,10 @@ def apply_replan(db: Session, roadmap: Roadmap, actor: User, change_ids: list[uu
             },
         )
     db.flush()
-    return {"applied": applied, "skipped": skipped, "replan_id": replan_id, "summary": summary}
+    return {
+        "applied": applied,
+        "skipped": skipped,
+        "replan_id": replan_id,
+        "summary": summary,
+        "rationale": rationale,
+    }

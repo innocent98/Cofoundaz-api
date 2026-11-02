@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "419732d3-6f58-48da-a468-a939691b8487",
+    "provider": "paystack",
+    "status": "active",
+    "mode": "test",
+    "key_last4": "eac6",
+    "account_name": null,
+    "last_sync_at": null,
+    "last_error": null,
+    "last_sync_summary": null,
+    "webhook_url": "http://127.0.0.1:8041/api/v1/webhooks/payments/paystack/Jm6llDFqfPbiTDoy7-6udv5updcQwqBuQ2brSwANtps",
+    "created_at": "2026-10-21T13:06:58.716100Z"
+  },
+  "meta": null
+}

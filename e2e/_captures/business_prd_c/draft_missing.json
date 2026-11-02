@@ -1,0 +1,43 @@
+{
+  "data": {
+    "jobs": [
+      {
+        "type": "business_model",
+        "job_id": "2512a112-f9a5-4483-921e-eca8b321a853"
+      },
+      {
+        "type": "lean",
+        "job_id": "47c660af-d8e9-4693-93c0-d0aa5180d630"
+      },
+      {
+        "type": "value_prop",
+        "job_id": "6855df6e-13bf-40c4-8ecb-6c03de11c0da"
+      },
+      {
+        "type": "mission_vision",
+        "job_id": "eb66bcbe-b457-49af-b6bc-13188856fa40"
+      },
+      {
+        "type": "swot",
+        "job_id": "5967ae1b-80b5-4250-89e9-5d5058335303"
+      },
+      {
+        "type": "persona",
+        "job_id": "e203d6e2-637f-4b2b-a8b6-6c55565a4de7"
+      },
+      {
+        "type": "revenue_stream",
+        "job_id": "0295913e-87bb-461e-8b50-342b2c75848c"
+      },
+      {
+        "type": "competitor",
+        "job_id": "a573a17c-6cb3-4b95-a474-0610ce1f39bb"
+      },
+      {
+        "type": "pricing",
+        "job_id": "7d3aef05-d5ce-468b-bad7-700e4dec5a19"
+      }
+    ]
+  },
+  "meta": null
+}

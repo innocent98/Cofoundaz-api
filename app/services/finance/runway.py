@@ -1,0 +1,172 @@
+"""Runway orchestration: settings persistence + scenario payload assembly.
+
+Import graph (acyclic): runway -> cashflow, runway_math, scenario_config. Neither cashflow nor
+runway_math may import this module.
+"""
+
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.db.models.enums import FinancialModelStatus
+from app.db.models.finance_runway import FinanceRunwaySettings
+from app.db.models.financial_model import FinancialModel
+from app.db.models.startup import Startup
+from app.platform.events import event_bus
+from app.schemas.finance_runway import AssumptionsUpdate
+from app.services.finance.cashflow import cash_flow_summary, trailing_monthly_flows
+from app.services.finance.model_service import _effective_assumptions
+from app.services.finance.runway_math import _runway_is_low, monthly_rows, project_scenarios
+from app.services.finance.scenario_config import RUNWAY_HORIZON_MONTHS
+
+
+def get_or_default_settings(db: Session, *, startup_id: uuid.UUID) -> FinanceRunwaySettings | None:
+    """The startup's settings row, or None. Never creates a row on read."""
+    return db.scalars(
+        select(FinanceRunwaySettings).where(FinanceRunwaySettings.startup_id == startup_id)
+    ).one_or_none()
+
+
+def _get_or_create_settings(db: Session, *, startup_id: uuid.UUID) -> FinanceRunwaySettings:
+    row = get_or_default_settings(db, startup_id=startup_id)
+    if row is None:
+        # add() INSIDE begin_nested: a concurrent first writer loses the unique(startup_id) race,
+        # the savepoint rolls back cleanly, and we adopt the winner's row instead of a 500.
+        try:
+            with db.begin_nested():
+                row = FinanceRunwaySettings(startup_id=startup_id)
+                db.add(row)
+        except IntegrityError:
+            row = get_or_default_settings(db, startup_id=startup_id)
+            if row is None:  # pragma: no cover - the conflicting row vanished mid-request
+                raise
+    return row
+
+
+def upsert_assumptions(
+    db: Session, *, startup_id: uuid.UUID, data: AssumptionsUpdate
+) -> FinanceRunwaySettings:
+    row = _get_or_create_settings(db, startup_id=startup_id)
+    for name, value in data.model_dump(exclude_unset=True).items():
+        setattr(row, name, value)
+    db.flush()
+    return row
+
+
+def _model_rows(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
+    """Hiring and one-off rows of the newest COMPLETE financial model, with the founder's edits on
+    top (D-FIN-12: the runway has no rows of its own). A generating or failed model is skipped so
+    a regeneration in flight never blanks the runway."""
+    row = (
+        db.query(FinancialModel)
+        .filter_by(startup_id=startup_id, status=FinancialModelStatus.complete)
+        .order_by(FinancialModel.created_at.desc(), FinancialModel.id.desc())
+        .first()
+    )
+    merged = (_effective_assumptions(row) or {}) if row is not None else {}
+    return {
+        "model_id": row.id if row is not None else None,
+        "href": "/finance/model",
+        "hiring_plan": list(merged.get("hiring_plan") or []),
+        "one_offs": list(merged.get("one_offs") or []),
+    }
+
+
+def runway_payload(db: Session, *, startup_id: uuid.UUID) -> dict[str, Any]:
+    row = get_or_default_settings(db, startup_id=startup_id)
+    assumptions = {
+        "mom_growth_percent": row.mom_growth_percent if row else 0,
+        "hiring_spend_minor": row.hiring_spend_minor if row else 0,
+        "one_off_costs_minor": row.one_off_costs_minor if row else 0,
+    }
+    summary = cash_flow_summary(db, startup_id=startup_id)
+    # The projection needs the true (unclamped) monthly costs; summary's monthly_burn is clamped
+    # at 0 for profitable startups and is display-only.
+    monthly_revenue, monthly_costs = trailing_monthly_flows(db, startup_id=startup_id)
+    model_rows = _model_rows(db, startup_id=startup_id)
+    today = datetime.now(UTC).date()
+    hires, one_offs = monthly_rows(model_rows["hiring_plan"], model_rows["one_offs"], today=today)
+    scenarios = project_scenarios(
+        {
+            "cash_on_hand": summary["cash_on_hand"],
+            "monthly_revenue": monthly_revenue,
+            "monthly_costs": monthly_costs,
+            "currency": summary["currency"],
+        },
+        assumptions,
+        today=today,
+        model_hires=hires,
+        model_one_offs=one_offs,
+    )
+    return {
+        "assumptions": assumptions,
+        "model_rows": model_rows,
+        "baseline": {
+            "cash_on_hand": summary["cash_on_hand"],
+            "monthly_burn": summary["monthly_burn"],
+            "monthly_revenue": summary["monthly_revenue"],
+            "currency": summary["currency"],
+        },
+        "horizon_months": RUNWAY_HORIZON_MONTHS,
+        "scenarios": scenarios,
+    }
+
+
+def evaluate_runway_alert(db: Session, *, startup_id: uuid.UUID) -> None:
+    """Fire `finance.runway.low` once per transition into danger; re-arm on recovery.
+
+    `alert_is_low` is the dedup state: it flips True when the event fires and back to False when
+    runway recovers, so a still-low startup never re-notifies on every transaction.
+    """
+    summary = cash_flow_summary(db, startup_id=startup_id)
+    monthly_burn = int(summary["monthly_burn"])
+    low_now = _runway_is_low(monthly_burn, summary["runway_months"])
+    row = _get_or_create_settings(db, startup_id=startup_id)
+    was_low = bool(row.alert_is_low)
+    if low_now and not row.alert_is_low:
+        row.alert_is_low = True
+        row.alert_last_fired_at = datetime.now(UTC)
+        db.flush()
+        event_bus.publish(
+            db,
+            "finance.runway.low",
+            {
+                "startup_id": str(startup_id),
+                "runway_months": summary["runway_months"],
+                "monthly_burn": monthly_burn,
+                "currency": summary["currency"],
+                "href": "/finance/runway",
+            },
+        )
+    elif not low_now and row.alert_is_low:
+        row.alert_is_low = False
+        db.flush()
+    if low_now != was_low:
+        event_bus.publish(
+            db,
+            "finance.runway.updated",
+            {
+                "startup_id": str(startup_id),
+                "runway_months": summary["runway_months"],
+                "monthly_burn": monthly_burn,
+                "currency": summary["currency"],
+                "band": "low" if low_now else "healthy",
+                "href": "/finance/runway",
+            },
+        )
+
+
+def upsert_runway_signal(db: Session, *, startup_id: uuid.UUID) -> None:
+    """Called after every money write: recompute the Health Score now (live signals include
+    runway and transactions tracked), bypassing the 15-minute event throttle because this is a
+    direct founder action on a health input."""
+    from app.services.health_score.service import refresh_health_score  # import cycle
+
+    startup = db.get(Startup, startup_id)
+    if startup is not None:
+        refresh_health_score(db, startup, trigger="finance", force=True)
+        db.flush()

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "id": "faef4d50-0dac-4269-a128-c10db6dd56b4",
+    "startup_id": "b9b42c95-d001-4e99-a824-9bbea9353147",
+    "name": "Lagos merchants",
+    "definition": {
+      "location": "Lagos",
+      "behaviour_tags": [
+        "trial",
+        "mobile first"
+      ],
+      "channel_acquired": "email"
+    },
+    "est_size": 1200,
+    "persona_id": null,
+    "created_at": "2026-10-20T18:32:44.684265Z",
+    "updated_at": "2026-10-20T18:32:44.684265Z"
+  },
+  "meta": null
+}

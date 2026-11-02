@@ -1,0 +1,26 @@
+{
+  "data": {
+    "expenses": [
+      {
+        "id": "749a761f-2597-4d7f-a67a-375b126631bf",
+        "vendor": "AWS",
+        "category": "Infrastructure",
+        "expense_date": "2026-10-22",
+        "amount_minor": 250000,
+        "currency": "NGN",
+        "recurring": false,
+        "notes": null,
+        "has_receipt": true,
+        "receipt_url": "/api/v1/finance/expenses/749a761f-2597-4d7f-a67a-375b126631bf/receipt",
+        "transaction_id": "767498a2-8530-48d3-9058-32ca1289adc6",
+        "created_by": "d96a18a1-494a-444d-b21d-4b60b97a16b1",
+        "created_at": "2026-10-22T14:44:40.752370+01:00",
+        "updated_at": "2026-10-22T14:44:40.816821+01:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": 1
+  }
+}

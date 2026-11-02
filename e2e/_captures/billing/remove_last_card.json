@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "LAST_PAYMENT_METHOD",
+    "message": "Add another method before removing this one.",
+    "field_errors": []
+  }
+}

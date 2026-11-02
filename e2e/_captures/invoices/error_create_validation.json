@@ -1,0 +1,20 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "client_email",
+        "message": "value is not a valid email address: An email address must have an @-sign."
+      },
+      {
+        "field": "line_items",
+        "message": "List should have at least 1 item after validation, not 0"
+      },
+      {
+        "field": "tax_percent",
+        "message": "Input should be less than or equal to 100"
+      }
+    ]
+  }
+}

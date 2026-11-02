@@ -1,0 +1,33 @@
+{
+  "data": {
+    "id": "7ef97964-7df3-492a-8aa7-067b27b8b712",
+    "mode": "roleplay",
+    "deal_id": "75dacf34-13a8-4443-bad7-7d1156873ade",
+    "deal_name": "Acme fleet payments",
+    "scenario": null,
+    "persona": "Skeptical CFO",
+    "difficulty": "tough",
+    "status": "active",
+    "scorecard": null,
+    "scorecard_error": null,
+    "created_at": "2026-10-21T12:30:36.242852+00:00",
+    "ended_at": null,
+    "messages": [
+      {
+        "id": "ae38b4a0-9884-4d34-a427-cd70e50ea3cd",
+        "role": "user",
+        "status": "ready",
+        "content": "Hello again",
+        "created_at": "2026-10-21T12:30:36.255366+00:00"
+      },
+      {
+        "id": "301d5cca-5e99-467a-b03c-f6e026e32a4c",
+        "role": "assistant",
+        "status": "failed",
+        "content": "",
+        "created_at": "2026-10-21T12:30:36.256366+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

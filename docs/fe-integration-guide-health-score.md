@@ -330,6 +330,10 @@ with an LLM-authored, startup-specific version; this typically lands within a fe
 is no separate endpoint or webhook: **re-fetch `GET /health-score/recommendations`** (or the
 `top_recommendations` slice on `GET /health-score`) to pick up the personalized text.
 
+> **AI budget note:** if the workspace is over its daily LLM token budget, this personalization is
+> skipped and `body` stays on the catalog default (see `docs/fe-integration-guide-ai-status.md` —
+> `GET /ai/status` reports `over_budget`).
+
 **`title` is the stable catalog headline and is never rewritten** — only `body` is
 AI-personalized. Render `title` as a fixed label safe to cache/compare across reads; treat `body`
 as the field that can change out from under a cached copy.

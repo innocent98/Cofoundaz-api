@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "APPROVAL_NOT_PENDING",
+    "message": "That request is already rejected.",
+    "field_errors": []
+  }
+}

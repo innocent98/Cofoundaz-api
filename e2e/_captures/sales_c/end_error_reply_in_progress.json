@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REPLY_IN_PROGRESS",
+    "message": "The buyer is still replying. Please wait.",
+    "field_errors": []
+  }
+}

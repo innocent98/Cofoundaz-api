@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "monthly_revenue_growth_pct",
+        "message": "Input should be less than or equal to 100"
+      },
+      {
+        "field": "ar_days",
+        "message": "Input should be greater than or equal to 0"
+      }
+    ]
+  }
+}

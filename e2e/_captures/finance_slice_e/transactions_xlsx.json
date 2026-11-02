@@ -1,0 +1,56 @@
+{
+  "status": 200,
+  "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "content_disposition": "attachment; filename=\"transactions.xlsx\"",
+  "bytes_start": "PK",
+  "sheets": [
+    "Transactions"
+  ],
+  "rows": [
+    [
+      "Date",
+      "Description",
+      "Category",
+      "Direction",
+      "Amount",
+      "Currency",
+      "Source"
+    ],
+    [
+      "2026-10-24",
+      "=SUM(A1:A9) hosting",
+      "Infrastructure",
+      "out",
+      "120000",
+      "NGN",
+      "manual"
+    ],
+    [
+      "2026-10-24",
+      "Team salaries",
+      "Payroll",
+      "out",
+      "200000",
+      "NGN",
+      "manual"
+    ],
+    [
+      "2026-10-24",
+      "Customer payments",
+      "Revenue",
+      "in",
+      "60000",
+      "NGN",
+      "manual"
+    ],
+    [
+      "2026-06-15",
+      "Pre-seed round",
+      "Funding",
+      "in",
+      "1000000",
+      "NGN",
+      "manual"
+    ]
+  ]
+}

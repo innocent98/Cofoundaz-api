@@ -1,0 +1,79 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "ab3625a9-530b-41d3-a738-dfe44980ee51",
+        "type": "mission.completed",
+        "title": "Today's mission is complete",
+        "body": "",
+        "data": {
+          "mission_id": "745a31de-b7a6-4128-9abf-1f4e2c3ae48a",
+          "startup_id": "482ae457-86a1-4f59-93c7-5ddf66d37bd5",
+          "mission_date": "2026-10-20"
+        },
+        "read": false,
+        "created_at": "2026-10-20T15:16:08.896023+00:00"
+      },
+      {
+        "id": "4116f758-ea28-4eef-b910-86df1b5a3d61",
+        "type": "dashboard.briefing.ready",
+        "title": "Your daily AI briefing is ready",
+        "body": "",
+        "data": {
+          "startup_id": "482ae457-86a1-4f59-93c7-5ddf66d37bd5",
+          "briefing_id": "a8ac6676-7685-4643-bd6a-d74d3c1e2410"
+        },
+        "read": false,
+        "created_at": "2026-10-20T15:16:08.748170+00:00"
+      },
+      {
+        "id": "5f0c7f9f-b3ea-479f-995b-251e68742554",
+        "type": "assessment.completed",
+        "title": "A startup assessment was completed",
+        "body": "",
+        "data": {
+          "actor_id": "99ae6353-2896-49db-878b-8399ecb6de60",
+          "startup_id": "482ae457-86a1-4f59-93c7-5ddf66d37bd5",
+          "assessment_id": "9ca46e8e-c367-45ac-b1c3-e1bc42d235e1",
+          "dimension_scores": {
+            "team": 50,
+            "legal": 0,
+            "money": 43,
+            "market": 38,
+            "product": 25
+          }
+        },
+        "read": false,
+        "created_at": "2026-10-20T15:16:08.442932+00:00"
+      },
+      {
+        "id": "298f6f97-77ff-4ac6-b7f2-18dfb9faea4a",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "business_consultant",
+          "user_id": "dd0cf689-7cad-4b53-9b2d-0b3970336294",
+          "startup_id": "482ae457-86a1-4f59-93c7-5ddf66d37bd5"
+        },
+        "read": false,
+        "created_at": "2026-10-20T15:16:08.291094+00:00"
+      },
+      {
+        "id": "bd52acf0-b4c6-41fb-9f3a-329cf7cd1770",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "c86015a6-d57d-4d1a-a473-0fa74b58f08d",
+          "startup_id": "482ae457-86a1-4f59-93c7-5ddf66d37bd5"
+        },
+        "read": false,
+        "created_at": "2026-10-20T15:16:07.757123+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

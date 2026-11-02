@@ -1,0 +1,30 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "1c99a386-7977-4306-a43c-fca02ce773d1",
+        "type": "healthscore.dropped",
+        "title": "legacy healthscore.dropped",
+        "body": "",
+        "data": {},
+        "read": false,
+        "created_at": "2026-10-21T09:15:29.444093+00:00"
+      },
+      {
+        "id": "545a64b8-ab97-4a8d-ac3c-b14a4124b19a",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "business_consultant",
+          "user_id": "c398c7e5-3bb5-41f2-b148-e13109229da7",
+          "startup_id": "182c2422-c6e7-465f-9bfa-e7acf67b8fda"
+        },
+        "read": false,
+        "created_at": "2026-10-21T09:15:28.477666+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

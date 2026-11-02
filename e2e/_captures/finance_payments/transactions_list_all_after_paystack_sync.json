@@ -1,0 +1,31 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "1035851e-65a3-4a53-906e-88f60285e308",
+        "date": "2026-10-01",
+        "description": "Paystack fee for stub_ps_charge_1",
+        "category": "Payment fees",
+        "amount_minor": 7500,
+        "currency": "NGN",
+        "direction": "out",
+        "source": "paystack",
+        "created_at": "2026-10-21T13:06:58.752026Z",
+        "updated_at": "2026-10-21T13:06:58.752026Z"
+      },
+      {
+        "id": "2f45d406-fc1c-450d-9c8c-430d5f15c287",
+        "date": "2026-10-01",
+        "description": "Paystack payment stub_ps_charge_1",
+        "category": "Revenue",
+        "amount_minor": 500000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "paystack",
+        "created_at": "2026-10-21T13:06:58.752026Z",
+        "updated_at": "2026-10-21T13:06:58.752026Z"
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "85eae5d4-26e6-4c4f-9f22-5312feb3d789",
+    "date": "2026-10-18",
+    "description": "Series A tranche",
+    "category": "Fundraising",
+    "amount_minor": 300000000,
+    "currency": "NGN",
+    "direction": "in",
+    "source": "manual",
+    "created_at": "2026-10-18T03:09:31.019771Z",
+    "updated_at": "2026-10-18T03:09:31.019771Z"
+  },
+  "meta": null
+}

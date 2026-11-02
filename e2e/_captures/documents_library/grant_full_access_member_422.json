@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "That person is a founder or team member and already has full access.",
+      "field_errors": []
+    }
+  }
+}

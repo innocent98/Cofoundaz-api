@@ -1,0 +1,27 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "b992c272-2b34-4bcf-ba1a-a2f1ddc4afdd",
+        "source": "email",
+        "text": "Payout came late again",
+        "origin": {
+          "type": "manual",
+          "id": null,
+          "label": "Added by hand"
+        },
+        "imported": false,
+        "dismissed": false,
+        "received_on": "2026-10-18",
+        "created_at": "2026-10-19T21:57:26.001832+00:00"
+      }
+    ],
+    "counts": {
+      "interview": 1,
+      "survey": 1,
+      "in_app": 1,
+      "email": 1
+    }
+  },
+  "meta": null
+}

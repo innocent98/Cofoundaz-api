@@ -16,7 +16,12 @@ BANDS: list[tuple[int, int, str]] = [
     (80, 100, "thriving"),
 ]
 
-MIN_COHORT_SIZE = 5
+# Benchmarks privacy (PRD 06.4 "no startup's individual data is ever visible"): at least this many
+# OTHER eligible startups, each verified and at least COHORT_MIN_AGE_DAYS old, so nobody can
+# assemble a cohort of fakes around one target; values are bucketed to BENCHMARK_BUCKET points.
+MIN_COHORT_SIZE = 10
+COHORT_MIN_AGE_DAYS = 7
+BENCHMARK_BUCKET = 5
 
 DIMENSION_LABELS: dict[str, str] = {
     "product": "Product",
@@ -111,7 +116,7 @@ RECOMMENDATION_CATALOG: dict[str, list[dict]] = {
         {
             "key": "team.hiring_plan",
             "title": "Draft a 6-month hiring plan",
-            "body": "List the next 2–3 critical hires, when, and why. A plan turns hiring from reactive to intentional.",
+            "body": "List the next 2-3 critical hires, when, and why. A plan turns hiring from reactive to intentional.",
             "estimated_lift": 5,
             "effort": "low",
             "triggers_below": 50,

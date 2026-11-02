@@ -1,4 +1,4 @@
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +30,40 @@ class Settings(BaseSettings):
     # MFA_ENCRYPTION_KEY so the app still boots without it; the journal service raises
     # JournalNotConfigured at use time rather than failing startup for every deployment.
     JOURNAL_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Encrypts founders' payment-provider secrets at rest. Optional so the app boots without
+    # it; connect/replace/webhook/sync raise FinanceConnectionsNotConfigured at use time.
+    FINANCE_CONNECTIONS_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Public base URL of this API, used to build per-connection webhook URLs.
+    API_PUBLIC_URL: str = ""
+    # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.
+    PAYMENT_PROVIDER_STUB: bool = False
+
+    # Cofoundaz Billing (subscriptions) is Adebayo's own Paystack account, separate from the
+    # per-founder keys in Finance. PAYSTACK_SECRET_KEY wins; PAYSTACK_TEST_SECRET_KEY is the
+    # test-mode fallback. A live key is refused outside production (billing/paystack.py).
+    PAYSTACK_SECRET_KEY: str | None = None
+    PAYSTACK_TEST_SECRET_KEY: str | None = None
+    # Plan gating is built dark: nothing is blocked until this is switched on (D-SET-3 / D-SAL-11).
+    PLAN_ENFORCEMENT: bool = False
+    BILLING_TRIAL_DAYS: int = 14
+    BILLING_GRACE_DAYS: int = 7
+    # Mono bank link (Finance integrations). The secret key and webhook secret belong to the
+    # Cofoundaz Mono app, not to a founder: only the linked account id is per-founder (and is
+    # encrypted with FINANCE_CONNECTIONS_ENCRYPTION_KEY). Sandbox only unless MONO_ALLOW_LIVE.
+    MONO_SECRET_KEY: str | None = None
+    MONO_PUBLIC_KEY: str | None = None
+    MONO_WEBHOOK_SECRET: str | None = None
+    MONO_ALLOW_LIVE: bool = False
+    # Google Calendar sync (per-user OAuth). The client id/secret belong to the Cofoundaz Google
+    # app; each user's own tokens are Fernet-encrypted (FINANCE_CONNECTIONS_ENCRYPTION_KEY).
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    # Dev/e2e only: answer every Google call from an in-process fake (never reachable in production).
+    CALENDAR_PROVIDER_STUB: bool = False
+    CALENDAR_SYNC_INTERVAL_MINUTES: int = 15
+    FINANCE_SYNC_BACKFILL_DAYS: int = 90
+    FINANCE_SYNC_MAX_PAGES: int = 20
+    FINANCE_SYNC_MIN_INTERVAL_SECONDS: int = 30
 
     # Providers
     EMAIL_BACKEND: str = "console"  # console | smtp | file
@@ -48,10 +82,16 @@ class Settings(BaseSettings):
     WORKER_MAX_ATTEMPTS: int = 5
     WORKER_STALE_SECONDS: int = 300
     APP_BASE_URL: str = ""  # frontend origin for email deep links; falls back to SERVER_HOST
+    # Academy certificates: the Cofoundaz LinkedIn company page id (public, so it is the default
+    # everywhere; an env value overrides it). Blank, the add-to-profile link names the
+    # organisation (organizationName) instead of linking the page.
+    ACADEMY_LINKEDIN_ORG_ID: str = "146743971"
 
     # Scheduler (Module 20 Slice 3)
     SCHEDULER_TIMEZONE: str = "UTC"  # IANA name for the 06:00 check
     MISSION_GEN_HOUR: int = 6  # local hour to pre-generate today's mission
+    HEALTH_NIGHTLY_HOUR: int = 3  # local hour for the nightly Health Score pass (PRD 06)
+    KPI_SNAPSHOT_HOUR: int = 2  # local hour for the nightly kpi_snapshots capture (PRD 02.1)
     SCHEDULER_INTERVAL: int = 60  # seconds; throttle the scheduler within the worker poll
     QUARTERLY_REASSESS_DAYS: int = 90
 
@@ -78,6 +118,47 @@ class Settings(BaseSettings):
         elif isinstance(v, list | str):
             return v
         raise ValueError(v)
+
+    @field_validator("SALES_OUTREACH_SMTP_HOST", "SALES_OUTREACH_IMAP_HOST")
+    @classmethod
+    def normalize_outreach_host(cls, v: str) -> str:
+        """Accept `mail.example.com`, `smtps://mail.example.com/` or padded values; keep the bare
+        host. Anything that still is not a hostname fails at boot with a clear message."""
+        host = v.strip()
+        if "://" in host:
+            host = host.split("://", 1)[1]
+        host = host.rstrip("/")
+        if host and not all(c.isalnum() or c in ".-" for c in host):
+            raise ValueError(
+                f"SALES_OUTREACH_*_HOST must be a bare hostname such as mail.example.com (got {v!r})"
+            )
+        return host
+
+    @model_validator(mode="after")
+    def require_unsubscribe_key_in_production(self) -> "Settings":
+        """Unsubscribe links live in recipients' inboxes for years. Signing them with SECRET_KEY
+        alone would break every one of them the day SECRET_KEY rotates, so a production
+        deployment that sends outreach must set its own key (dev falls back to SECRET_KEY)."""
+        if (
+            self.ENVIRONMENT == "production"
+            and self.SALES_OUTREACH_PROVIDER.strip()
+            and not self.SALES_OUTREACH_UNSUBSCRIBE_KEY.strip()
+        ):
+            raise ValueError(
+                "SALES_OUTREACH_UNSUBSCRIBE_KEY must be set in production when "
+                "SALES_OUTREACH_PROVIDER is set"
+            )
+        return self
+
+    @field_validator("SALES_OUTREACH_SMTP_SECURITY")
+    @classmethod
+    def validate_outreach_security(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in {"ssl", "starttls", "none"}:
+            raise ValueError(
+                "SALES_OUTREACH_SMTP_SECURITY must be one of 'ssl', 'starttls', 'none'"
+            )
+        return v
 
     @field_validator("REFRESH_COOKIE_SAMESITE")
     @classmethod
@@ -112,6 +193,26 @@ class Settings(BaseSettings):
     EMAILS_FROM_NAME: str | None = None
     RESEND_API_KEY: str | None = None  # used only when EMAIL_BACKEND == "resend"
 
+    # --- Sales outreach mailbox (D-SAL-1, slice B) ---------------------------
+    # A cPanel mailbox, deliberately NOT Resend (Resend carries the app's auth email, so outreach
+    # reputation must never touch it). SMTP sends, IMAP reads bounce notices. Unset = sequences
+    # save and enroll but nothing sends (the API reports "not configured", never a 500).
+    SALES_OUTREACH_PROVIDER: str = ""  # smtp | console (console logs only, never in production)
+    SALES_OUTREACH_SMTP_HOST: str = ""
+    SALES_OUTREACH_SMTP_PORT: int = 465
+    SALES_OUTREACH_SMTP_SECURITY: str = "ssl"  # ssl (465) | starttls (587) | none (local/e2e only)
+    SALES_OUTREACH_SMTP_USERNAME: str = ""
+    SALES_OUTREACH_SMTP_PASSWORD: str = ""
+    SALES_OUTREACH_FROM_EMAIL: str = ""
+    SALES_OUTREACH_IMAP_HOST: str = ""
+    SALES_OUTREACH_IMAP_PORT: int = 993  # 993 = TLS from the start; anything else uses STARTTLS
+    SALES_OUTREACH_IMAP_PROCESSED_FOLDER: str = "Cofoundaz-Processed"
+    # Global cap for the one shared mailbox, across every workspace.
+    SALES_OUTREACH_HOURLY_LIMIT: int = 30
+    # Signs the public unsubscribe links. Falls back to SECRET_KEY; set it so rotating SECRET_KEY
+    # cannot break links already sitting in recipients' inboxes.
+    SALES_OUTREACH_UNSUBSCRIBE_KEY: str = ""
+
     # --- LLM seam (Module 03) ---------------------------------------------
     LLM_PROVIDER: str = "openai"  # openai | stub
     LLM_API_KEY: str = ""  # required when LLM_PROVIDER == "openai"
@@ -121,6 +222,13 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_TIMEOUT: int = 60  # seconds per LLM HTTP call (LLM latency >> a normal request)
     LLM_MAX_TOKENS: int = 800  # default output cap
+    # AI chat turns: reasoning models count hidden reasoning against the cap, so open questions
+    # ("what levers should I look at first?") exhausted 800 and came back empty (finance D9).
+    LLM_CHAT_MAX_TOKENS: int = 3000
+    # A chat reply still `generating` this long after it was asked is marked failed (retries
+    # back off 30s..8min, so the default sits just past the last attempt).
+    AI_REPLY_STALE_SECONDS: int = 900
+    LLM_DAILY_TOKEN_BUDGET: int = 100000  # per-startup per-UTC-day token cap; <= 0 = unlimited
 
     # Admin
     FIRST_SUPERUSER_EMAIL: EmailStr

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "role",
+        "message": "Input should be 'founder', 'team_member', 'mentor', 'accountant', 'legal_advisor' or 'business_consultant'"
+      }
+    ]
+  }
+}

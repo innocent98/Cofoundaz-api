@@ -1,0 +1,78 @@
+{
+  "data": {
+    "id": "article-pricing-basics",
+    "title": "Pricing your first product in naira",
+    "summary": "A short method to set a first price: start from the customer's alternative, then test with real money.",
+    "tags": [
+      "pricing",
+      "validation",
+      "money"
+    ],
+    "read_min": 1,
+    "review_status": "draft",
+    "body": "A first price is a hypothesis, not a promise. You will change it. The goal is to start close enough to learn quickly.\n\n## Three inputs\n\n1. **The alternative.** What do customers pay today, in money and in time, to solve the problem? Compare yourself to that, not to a competitor's website alone.\n2. **The value.** How much money or time do you save or earn the customer? Estimate it in naira.\n3. **Your costs.** The price must at least cover the cost of serving a customer, with a margin. If it cannot, the model needs work.\n\n## A starting range\n\nMany founders begin with a price at roughly 10 to 30 percent of the value they create, and near or under the alternative. If a tool saves a business \u20a680,000 a month, a price between \u20a68,000 and \u20a624,000 is a reasonable test range.\n\n## Make paying easy\n\nCustomers in your market may prefer bank transfer, card or mobile payment. Offer at least two ways. A monthly plan with a small discount for a yearly payment suits both cautious and committed buyers.\n\n## Test with real offers\n\nAsk ten qualified people to pay. Record the price, the answer and the reason. If nearly everyone accepts at once, the price is probably too low. If almost nobody accepts and the reasons mention value, work on the offer before cutting the price.\n\n## Changing a price\n\nRaise prices for new customers first. Tell existing customers early, explain the reason and thank them for being first. Avoid frequent changes in the same quarter.",
+    "related": {
+      "articles": [
+        {
+          "id": "article-interview-questions",
+          "title": "Questions that get honest answers",
+          "summary": "Seven questions that make people describe what really happened, plus the ones that waste your time.",
+          "tags": [
+            "validation",
+            "customers"
+          ],
+          "read_min": 1,
+          "review_status": "draft"
+        },
+        {
+          "id": "article-painkiller-or-vitamin",
+          "title": "Painkiller or vitamin: a quick test for your idea",
+          "summary": "Painkillers solve urgent problems people already spend effort on. Vitamins are nice to have. Check which one you are building.",
+          "tags": [
+            "idea",
+            "validation",
+            "product"
+          ],
+          "read_min": 1,
+          "review_status": "draft"
+        },
+        {
+          "id": "article-accepting-first-payments",
+          "title": "Accepting your first payments without a big setup",
+          "summary": "Start with simple, trusted ways to get paid and add complexity only when volume demands it.",
+          "tags": [
+            "payments",
+            "launch",
+            "money"
+          ],
+          "read_min": 1,
+          "review_status": "draft"
+        }
+      ],
+      "courses": [
+        {
+          "id": "validation-price-your-product",
+          "title": "Price your product",
+          "summary": "Choose a pricing model, set a first price in naira and test it with real money.",
+          "level": "intermediate",
+          "duration_min": 29
+        },
+        {
+          "id": "idea-shape-the-problem",
+          "title": "Shape the problem",
+          "summary": "Turn a vague idea into a sharp problem statement and check that the pain is worth building for.",
+          "level": "beginner",
+          "duration_min": 30
+        },
+        {
+          "id": "validation-talk-to-customers",
+          "title": "Talk to customers",
+          "summary": "Recruit the right people, run an interview that gets honest answers, and turn notes into decisions.",
+          "level": "beginner",
+          "duration_min": 34
+        }
+      ]
+    }
+  },
+  "meta": null
+}

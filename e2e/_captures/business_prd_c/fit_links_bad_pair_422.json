@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A fit-line must join a pain reliever to a pain, or a gain creator to a gain, using items on the canvas.",
+    "field_errors": [
+      {
+        "field": "links.0",
+        "message": "Not a valid fit-line."
+      }
+    ]
+  }
+}

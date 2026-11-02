@@ -93,3 +93,23 @@ def test_mood_log_stress_range_is_enforced(db):
     with pytest.raises(sqlalchemy.exc.IntegrityError):
         db.add(MoodLog(startup_id=s.id, founder_id=u.id, date=TODAY, mood=3, stress=99))
         db.flush()
+
+
+def test_journal_prompt_persists(db):
+    from app.db.models.enums import EnrichmentStatus
+    from app.db.models.journal import JournalPrompt
+
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    row = JournalPrompt(
+        startup_id=s.id,
+        founder_id=u.id,
+        date=TODAY,
+        prompt="What moved forward today?",
+        status=EnrichmentStatus.generating,
+    )
+    db.add(row)
+    db.flush()
+    got = db.query(JournalPrompt).filter_by(startup_id=s.id, founder_id=u.id).one()
+    assert got.status == EnrichmentStatus.generating
+    assert got.prompt == "What moved forward today?"

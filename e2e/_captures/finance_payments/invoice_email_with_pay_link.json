@@ -1,0 +1,6 @@
+{
+  "to": "delivered+pay-da3a1aced2c5@resend.dev",
+  "subject": "Invoice INV-2026-001 from Payments Co",
+  "html": "<div style='font-family:system-ui,sans-serif;max-width:560px'><h2>Invoice INV-2026-001</h2><p>From Payments Co</p><p>Bill to Acme Traders Ltd</p><table style='width:100%'><tr><td>Retainer (x1)</td><td style='text-align:right'>1,000.00 NGN</td></tr></table><p>Subtotal: 1,000.00 NGN<br>Tax: 0.00 NGN<br><strong>Total: 1,000.00 NGN</strong></p><p>Due: 2026-11-20</p><p><a href=\"https://checkout.paystack.com/stub-INV-2026-001-bfc32f9c\" style='display:inline-block;padding:10px 18px;background:#0b6b3a;color:#fff;text-decoration:none;border-radius:6px'>Pay now</a></p></div>",
+  "sent_at": "2026-10-21T13:06:59.937352+00:00"
+}

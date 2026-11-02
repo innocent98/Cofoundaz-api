@@ -1,0 +1,33 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "documents": [
+        {
+          "id": "c1f3192a-aca9-4bcf-88ff-27e8ca511ed6",
+          "kind": "custom",
+          "mime": "application/vnd.cofoundaz.document+json",
+          "title": "Seed pitch narrative v2",
+          "status": "final",
+          "ai_generated": false,
+          "folder": "Fundraising",
+          "tags": [
+            "Pitch",
+            "seed"
+          ],
+          "template_key": null,
+          "version": 4,
+          "owner": {
+            "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+            "name": "Ada Founder"
+          },
+          "share_count": 0,
+          "updated_at": "2026-10-25T11:02:18.285772+00:00",
+          "trashed_at": null,
+          "purges_at": null
+        }
+      ]
+    },
+    "meta": null
+  }
+}

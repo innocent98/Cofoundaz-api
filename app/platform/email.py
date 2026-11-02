@@ -1,10 +1,20 @@
-from dataclasses import dataclass
+import base64
+import re
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import httpx
 
 from app.core.config import settings
+from app.core.errors import EmailDeliveryFailed
 from app.core.logger import log
+
+
+@dataclass
+class EmailAttachment:
+    filename: str
+    content: bytes
+    content_type: str
 
 
 @dataclass
@@ -12,6 +22,14 @@ class EmailMessage:
     to: str
     subject: str
     html: str
+    attachments: list[EmailAttachment] = field(default_factory=list)
+
+
+def _safe_filename(name: str) -> str:
+    # Keep only a plain basename of safe characters: no path separators, no traversal.
+    base = re.split(r"[\\/]", name)[-1]
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", base).lstrip(".")
+    return cleaned or "attachment"
 
 
 class EmailSender(Protocol):
@@ -64,6 +82,12 @@ class SMTPEmailSender:
             html=msg.html,
             mail_from=(settings.EMAILS_FROM_NAME, from_email),
         )
+        for att in msg.attachments:
+            m.attach(
+                filename=_safe_filename(att.filename),
+                data=att.content,
+                mime_type=att.content_type,
+            )
         m.send(
             to=msg.to,
             smtp={
@@ -80,8 +104,9 @@ class ResendEmailSender:
     """Sends via the Resend HTTP API (https://resend.com).
 
     Uses httpx (already a project dependency) rather than the `resend` SDK — the
-    API is a single authenticated POST. Fails loud (raises) on a missing key,
-    a missing From address, or a non-2xx response, mirroring SMTPEmailSender:
+    API is a single authenticated POST. Fails loud on a missing key or From
+    address (RuntimeError: a deploy misconfiguration) and on a non-2xx response
+    or transport error (EmailDeliveryFailed, an enveloped 503), mirroring SMTPEmailSender:
     a caller that must deliver (email verification, password reset) should see
     the failure, not have it swallowed. Callers that can tolerate a miss (e.g.
     a best-effort document-share notification) wrap the send themselves.
@@ -107,21 +132,41 @@ class ResendEmailSender:
             if settings.EMAILS_FROM_NAME
             else str(from_email)
         )
-        response = httpx.post(
-            self._ENDPOINT,
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "from": sender,
-                "to": [msg.to],
-                "subject": msg.subject,
-                "html": msg.html,
-            },
-            timeout=10.0,
-        )
-        if response.status_code >= 300:
-            raise RuntimeError(
-                f"Resend API returned {response.status_code} sending to {msg.to}: {response.text}"
+        body: dict[str, object] = {
+            "from": sender,
+            "to": [msg.to],
+            "subject": msg.subject,
+            "html": msg.html,
+        }
+        if msg.attachments:
+            body["attachments"] = [
+                {
+                    "filename": _safe_filename(a.filename),
+                    "content": base64.b64encode(a.content).decode("ascii"),
+                    "content_type": a.content_type,
+                }
+                for a in msg.attachments
+            ]
+        try:
+            response = httpx.post(
+                self._ENDPOINT,
+                headers={"Authorization": f"Bearer {api_key}"},
+                json=body,
+                timeout=10.0,
             )
+        except httpx.HTTPError as exc:
+            log.error(f"[email:resend] transport error sending to {msg.to}: {exc!r}")
+            raise EmailDeliveryFailed() from exc
+        # A provider refusal (unverified domain 403, bad recipient 422, quota 429, 5xx) is
+        # a typed, enveloped 503 rather than a bare RuntimeError -> plain-text 500. The
+        # provider's own body is logged so the cause is one `docker compose logs` away;
+        # it never reaches the client.
+        if response.status_code >= 300:
+            log.error(
+                f"[email:resend] Resend API returned {response.status_code} "
+                f"sending to {msg.to}: {response.text}"
+            )
+            raise EmailDeliveryFailed()
         log.info(f"[email:resend] to={msg.to} subject={msg.subject!r}")
 
 
@@ -143,15 +188,24 @@ class FileEmailSender:
 
         path = Path(self.mail_dir)
         path.mkdir(parents=True, exist_ok=True)
-        payload = {
+        payload: dict[str, object] = {
             "to": msg.to,
             "subject": msg.subject,
             "html": msg.html,
             "sent_at": datetime.now(UTC).isoformat(),
         }
-        (
-            path / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}-{uuid.uuid4().hex[:8]}.json"
-        ).write_text(json.dumps(payload))
+        stem = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}-{uuid.uuid4().hex[:8]}"
+        if msg.attachments:
+            # Attachments land in `<stem>.attachments/<filename>` beside the message file.
+            att_dir = path / f"{stem}.attachments"
+            att_dir.mkdir(parents=True, exist_ok=True)
+            names = []
+            for att in msg.attachments:
+                name = _safe_filename(att.filename)
+                (att_dir / name).write_bytes(att.content)
+                names.append(name)
+            payload["attachments"] = names
+        (path / f"{stem}.json").write_text(json.dumps(payload))
         log.info(f"[email:file] to={msg.to} subject={msg.subject!r} -> {self.mail_dir}")
 
 

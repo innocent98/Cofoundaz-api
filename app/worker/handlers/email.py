@@ -17,6 +17,13 @@ _CATEGORY_PATH = {
     "roadmap_missions": "/roadmap",
     "health_assessment": "/health",
     "team": "/team",
+    "finance": "/finance",
+    "marketing": "/marketing",
+    "sales": "/sales",
+    "validation": "/validation",
+    "academy": "/academy",
+    "ai_insights": "/dashboard",
+    "billing": "/settings",
 }
 
 

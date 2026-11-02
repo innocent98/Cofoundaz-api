@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "3bf2ffd3-12f0-4629-bd32-3f023c6604b6",
+    "deal_id": "75dacf34-13a8-4443-bad7-7d1156873ade",
+    "status": "ready",
+    "output": {
+      "context": "[stub-llm] context",
+      "call_goal": "[stub-llm] call_goal",
+      "objections": [
+        {
+          "response": "[stub-llm] response",
+          "objection": "[stub-llm] objection"
+        }
+      ],
+      "discovery_questions": [
+        "[stub-llm] discovery_questions"
+      ]
+    },
+    "error": null,
+    "created_at": "2026-10-21T12:30:34.243166+00:00"
+  },
+  "meta": null
+}

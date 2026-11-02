@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Use the stage endpoint.",
+    "field_errors": [
+      {
+        "field": "stage_id",
+        "message": "Use the stage endpoint."
+      }
+    ]
+  }
+}

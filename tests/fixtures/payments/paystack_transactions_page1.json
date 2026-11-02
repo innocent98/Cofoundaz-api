@@ -1,0 +1,4 @@
+{"status": true, "message": "Transactions retrieved", "data": [
+ {"id": 1001, "reference": "ref_alpha", "amount": 500000, "currency": "NGN", "status": "success", "paid_at": "2026-10-01T09:30:00.000Z", "created_at": "2026-10-01T09:29:00.000Z", "channel": "card", "fees": 7500, "customer": {"email": "buyer1@example.test"}},
+ {"id": 1002, "reference": "ref_failed", "amount": 100000, "currency": "NGN", "status": "failed", "paid_at": null, "created_at": "2026-10-01T10:00:00.000Z", "channel": "card", "fees": null, "customer": {"email": "buyer2@example.test"}}
+], "meta": {"total": 3, "page": 1, "perPage": 2, "pageCount": 2}}

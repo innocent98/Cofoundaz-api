@@ -1,0 +1,24 @@
+{
+  "status": 201,
+  "body": {
+    "data": {
+      "id": "8729720b-37b8-45e2-ba2b-f416939047cf",
+      "filename": "nda.pdf",
+      "content_type": "application/pdf",
+      "mime": "application/pdf",
+      "size_bytes": 19,
+      "folder": null,
+      "tags": [],
+      "owner": {
+        "id": "7b26b396-26bc-43a2-a02e-025cc80fa14c",
+        "name": "Ada F"
+      },
+      "share_count": 0,
+      "scan_status": "clean",
+      "uploaded_at": "2026-10-25T11:02:25.876168+00:00",
+      "trashed_at": null,
+      "purges_at": null
+    },
+    "meta": null
+  }
+}

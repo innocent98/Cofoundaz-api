@@ -1,0 +1,84 @@
+{
+  "data": {
+    "records": [
+      {
+        "id": "80ce5dd8-dbaf-491d-8af5-b8dd4013578c",
+        "kind": "persona",
+        "data": {
+          "name": "Amaka",
+          "goals": [],
+          "quote": "",
+          "demographics": "",
+          "frustrations": [],
+          "watering_holes": []
+        },
+        "position": 0,
+        "updated_at": "2026-10-19T11:37:49.860180+00:00",
+        "updated_by": {
+          "id": "6ed5aaaa-a0ed-49a8-b806-8eb7e853c06f",
+          "name": "Ada Founder"
+        }
+      },
+      {
+        "id": "55bee50a-c4f2-489e-84da-234d1f92f663",
+        "kind": "persona",
+        "data": {
+          "name": "[stub-llm] name",
+          "goals": [
+            "[stub-llm] goals"
+          ],
+          "quote": "[stub-llm] quote",
+          "demographics": "[stub-llm] demographics",
+          "frustrations": [
+            "[stub-llm] frustrations"
+          ],
+          "watering_holes": [
+            "[stub-llm] watering_holes"
+          ]
+        },
+        "position": 1,
+        "updated_at": "2026-10-19T11:37:53.069656+00:00",
+        "updated_by": null
+      }
+    ],
+    "fields": [
+      {
+        "key": "name",
+        "required": true,
+        "type": "str",
+        "choices": null
+      },
+      {
+        "key": "demographics",
+        "required": false,
+        "type": "str",
+        "choices": null
+      },
+      {
+        "key": "goals",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "frustrations",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "watering_holes",
+        "required": false,
+        "type": "list[str]",
+        "choices": null
+      },
+      {
+        "key": "quote",
+        "required": false,
+        "type": "str",
+        "choices": null
+      }
+    ]
+  },
+  "meta": null
+}

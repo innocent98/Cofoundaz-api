@@ -1,0 +1,36 @@
+{
+  "data": {
+    "id": "83511b3e-c815-48fb-b6d6-94807c6e23f7",
+    "startup_id": "b9b42c95-d001-4e99-a824-9bbea9353147",
+    "campaign_id": null,
+    "kind": "channel_fit",
+    "status": "ready",
+    "inputs": {},
+    "output": {
+      "notes": {
+        "email": "[stub-llm] note",
+        "events": "[stub-llm] note",
+        "search": "[stub-llm] note",
+        "referral": "[stub-llm] note",
+        "content_seo": "[stub-llm] note",
+        "paid_social": "[stub-llm] note",
+        "partnerships": "[stub-llm] note",
+        "organic_social": "[stub-llm] note"
+      },
+      "levels": {
+        "email": "high",
+        "events": "high",
+        "search": "high",
+        "referral": "high",
+        "content_seo": "high",
+        "paid_social": "high",
+        "partnerships": "high",
+        "organic_social": "high"
+      }
+    },
+    "error": null,
+    "created_at": "2026-10-20T18:32:44.360076Z",
+    "updated_at": "2026-10-20T18:32:44.388033Z"
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "LAST_FOUNDER",
+    "message": "You are the only founder. Make someone else a founder before you leave.",
+    "field_errors": []
+  }
+}

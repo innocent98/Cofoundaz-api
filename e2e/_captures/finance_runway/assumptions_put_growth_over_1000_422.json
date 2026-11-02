@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "mom_growth_percent",
+        "message": "Input should be less than or equal to 1000"
+      }
+    ]
+  }
+}

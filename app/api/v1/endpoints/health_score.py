@@ -78,14 +78,30 @@ def get_history(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    if range not in ("7d", "30d", "90d", "all"):
+    _check_range(range)
+    return success_response(hs_service.get_history(db, _startup(db, membership), range))
+
+
+@router.get("/history/markers")
+def get_history_markers(
+    range: str = Query("30d"),  # noqa: B008
+    membership: Membership = Depends(require_workspace),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 06.3 annotated event markers for the trend chart (same `range` as /history)."""
+    _check_range(range)
+    return success_response(hs_service.get_history_markers(db, _startup(db, membership), range))
+
+
+def _check_range(range_key: str) -> None:
+    if range_key not in hs_service.HISTORY_RANGES:
         raise AppError(
             "VALIDATION_ERROR",
             "Unknown range.",
             422,
-            field_errors=[{"field": "range", "message": "Use 7d, 30d, 90d, or all."}],
+            field_errors=[{"field": "range", "message": "Use 7d, 30d, 90d, 365d, or all."}],
         )
-    return success_response(hs_service.get_history(db, _startup(db, membership), range))
 
 
 @router.post("/recommendations/{rec_id}/accept")

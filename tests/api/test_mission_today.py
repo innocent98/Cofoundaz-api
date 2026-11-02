@@ -55,7 +55,7 @@ def test_get_today_no_roadmap_returns_empty_state(client, db):
 
     r = client.get("/api/v1/missions/today", headers=h)
     assert r.status_code == 200, r.text
-    assert r.json()["data"] == {"status": "no_roadmap"}
+    assert r.json()["data"] == {"status": "no_roadmap", "assigned_to_me": []}
 
 
 def test_get_today_requires_auth(client):

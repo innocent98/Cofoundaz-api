@@ -1,0 +1,24 @@
+{
+  "data": {
+    "query": "Run 10 custo",
+    "results": [
+      {
+        "type": "roadmap_task",
+        "group": "Roadmap",
+        "id": "3613767a-f2d5-49fa-8657-56216f87062c",
+        "title": "Run 10 customer interviews",
+        "subtitle": "Task in Validate demand",
+        "href": "/roadmap"
+      },
+      {
+        "type": "mission_task",
+        "group": "Mission",
+        "id": "3d405cc0-1593-4707-939b-d0628bea8664",
+        "title": "Run 10 customer interviews",
+        "subtitle": "Mission task \u00b7 2026-10-20",
+        "href": "/mission"
+      }
+    ]
+  },
+  "meta": null
+}

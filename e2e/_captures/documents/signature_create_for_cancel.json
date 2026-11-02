@@ -1,27 +1,29 @@
 {
   "data": {
-    "id": "52a05584-923d-4f6a-a095-67c430aa6b9d",
+    "id": "178ed5b6-8b4f-4e7a-b521-8ff8539b71fa",
     "title": "NDA",
     "status": "awaiting",
-    "file_id": "a9cb0db0-4713-4124-8ad7-1420a7ee329b",
+    "file_id": "54b1c37a-e5eb-494e-929d-a68f7d4d1958",
     "filename": "nda.pdf",
     "signed_count": 0,
     "total": 1,
-    "expires_at": "2026-09-28T13:13:40.435422+00:00",
+    "expires_at": "2026-11-08T11:02:23.268594+00:00",
     "completed_at": null,
-    "created_at": "2026-09-14T13:13:40.431031+00:00",
+    "created_at": "2026-10-25T11:02:23.264938+00:00",
     "signers": [
       {
-        "email": "signer-cancelled-ec6324e1d2d8@example.com",
+        "email": "delivered+signer-cancelled-1cb9db88d99c@resend.dev",
         "name": null,
         "position": 0,
         "status": "pending",
         "signed_at": null,
-        "signed_name": null
+        "signed_name": null,
+        "signed_ip": null,
+        "signed_user_agent": null
       }
     ],
     "signer_links": [
-      "http://localhost/sign/P2Stz8s7AXQgg-cEQHo4XnxAyaHZCStdvKwQzXX4E88"
+      "http://localhost:3000/sign/REDACTED_TOKEN"
     ]
   },
   "meta": null

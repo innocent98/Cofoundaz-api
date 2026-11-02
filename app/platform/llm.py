@@ -1,10 +1,15 @@
 import json
+import re
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
 import httpx
 
 from app.core.config import settings
+from app.core.logger import log
+
+EMPTY_RETRY_FACTOR = 4
+EMPTY_RETRY_CEILING = 16000
 
 Role = Literal["system", "user", "assistant"]
 
@@ -13,6 +18,30 @@ Role = Literal["system", "user", "assistant"]
 class LLMMessage:
     role: Role
     content: str
+
+
+# Product copy rule: no em/en dashes in anything we render. Models love them, so every
+# real completion is cleaned here, at the one seam all LLM output passes through.
+_DIGIT_RANGE = re.compile(r"(?<=\d)[ \t]*[\u2013\u2014][ \t]*(?=\d)")
+_LINE_BULLET = re.compile(r"^([ \t]*)[\u2013\u2014][ \t]*", re.MULTILINE)
+_INLINE_DASH = re.compile(r"[ \t]*[\u2013\u2014][ \t]*")
+
+
+def strip_dashes(text: str) -> str:
+    """Replace em/en dashes: digit ranges become '-', line bullets '- ', anything else ', '."""
+    text = _DIGIT_RANGE.sub("-", text)
+    text = _LINE_BULLET.sub(r"\1- ", text)
+    return _INLINE_DASH.sub(", ", text)
+
+
+def _strip_dashes_deep(value: object) -> object:
+    if isinstance(value, str):
+        return strip_dashes(value)
+    if isinstance(value, list):
+        return [_strip_dashes_deep(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_dashes_deep(v) for k, v in value.items()}
+    return value
 
 
 class LLMClient(Protocol):
@@ -31,6 +60,8 @@ class StubLLMClient:
     Returns a fixed, recognizable string so a test can assert the AI path ran without
     a network call or an API key.
     """
+
+    last_usage_tokens: int = 0
 
     def complete(
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
@@ -59,6 +90,12 @@ class StubLLMClient:
         return f"[stub-llm] {key}"
 
 
+class EmptyCompletionError(RuntimeError):
+    """The model answered with no text. Deterministic for a given prompt (a spent reasoning
+    budget that a larger retry did not fix, a content filter), so retrying the job only burns
+    tokens: callers end the turn instead."""
+
+
 class OpenAILLMClient:
     """Calls the OpenAI (or OpenAI-compatible) Chat Completions API over httpx. Fail-loud.
 
@@ -79,6 +116,11 @@ class OpenAILLMClient:
     Protocol conformance and for any future OpenAI-compatible provider/model that does honor
     it; this client just doesn't have anywhere live to put it for the configured model today.
     """
+
+    def __init__(self) -> None:
+        self.last_usage_tokens: int = 0
+        # Tokens the caller can still spend today (None = unlimited); caps the larger retry.
+        self.headroom: int | None = None
 
     def _post_chat(self, payload: dict) -> dict:
         if not settings.LLM_API_KEY:
@@ -107,23 +149,52 @@ class OpenAILLMClient:
 
     def _content(self, body: dict) -> str:
         try:
-            return str(body["choices"][0]["message"]["content"])
+            content = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"LLM API returned an unexpected body shape: {exc}") from exc
+        # A refusal / content-filter / exhausted-reasoning reply carries `content: null`; that
+        # must read as empty, not as the string "None".
+        return "" if content is None else str(content)
+
+    def _finish(self, body: dict) -> tuple[str, int]:
+        """(finish_reason, reasoning_tokens) of the first choice, for diagnostics."""
+        try:
+            reason = str(body["choices"][0].get("finish_reason"))
+        except (KeyError, IndexError, TypeError, AttributeError):
+            reason = "unknown"
+        details = (body.get("usage") or {}).get("completion_tokens_details") or {}
+        return reason, int(details.get("reasoning_tokens", 0) or 0)
 
     def complete(
         self, messages: list[LLMMessage], *, max_tokens: int, temperature: float = 0.7
     ) -> str:
-        body = self._post_chat(
-            {
-                "messages": [{"role": m.role, "content": m.content} for m in messages],
-                "max_completion_tokens": max_tokens,
-            }
-        )
-        text = self._content(body)
-        if not text or not text.strip():
-            raise RuntimeError("LLM API returned an empty completion.")
-        return text
+        wire = [{"role": m.role, "content": m.content} for m in messages]
+        budget = max_tokens
+        spent = 0
+        for attempt in (1, 2):
+            body = self._post_chat({"messages": wire, "max_completion_tokens": budget})
+            spent += int((body.get("usage") or {}).get("total_tokens", 0) or 0)
+            self.last_usage_tokens = spent
+            text = self._content(body)
+            if text and text.strip():
+                return strip_dashes(text)
+            reason, reasoning = self._finish(body)
+            log.warning(
+                f"[llm] empty completion model={settings.LLM_MODEL} finish_reason={reason} "
+                f"reasoning_tokens={reasoning} max_completion_tokens={budget} attempt={attempt}"
+            )
+            # Reasoning models spend max_completion_tokens on hidden reasoning first; when the
+            # whole budget went there the visible answer is empty and finish_reason is "length".
+            # Retry once with a larger budget instead of failing the turn.
+            larger = min(max_tokens * EMPTY_RETRY_FACTOR, EMPTY_RETRY_CEILING)
+            affordable = self.headroom is None or self.headroom - spent >= larger
+            if reason != "length" or attempt == 2 or not affordable:
+                raise EmptyCompletionError(
+                    f"LLM API returned an empty completion (finish_reason={reason}, "
+                    f"reasoning_tokens={reasoning})."
+                )
+            budget = larger
+        raise RuntimeError("LLM API returned an empty completion.")  # pragma: no cover
 
     def complete_json(self, messages: list[LLMMessage], *, schema: dict, max_tokens: int) -> dict:
         body = self._post_chat(
@@ -136,6 +207,7 @@ class OpenAILLMClient:
                 },
             }
         )
+        self.last_usage_tokens = int((body.get("usage") or {}).get("total_tokens", 0) or 0)
         content = self._content(body)
         try:
             data = json.loads(content)
@@ -143,7 +215,8 @@ class OpenAILLMClient:
             raise RuntimeError(f"LLM API returned an unparseable JSON body: {exc}") from exc
         if not isinstance(data, dict):
             raise RuntimeError("LLM API returned a non-object JSON result.")
-        return data
+        cleaned: dict = _strip_dashes_deep(data)  # type: ignore[assignment]
+        return cleaned
 
 
 def get_llm_client() -> LLMClient:

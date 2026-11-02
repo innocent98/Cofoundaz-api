@@ -21,12 +21,23 @@ def test_category_for_maps_events():
     assert category_for("unknown.event") is None
 
 
-def test_effective_defaults_all_on_when_unset(db):
+def test_effective_defaults_when_unset(db):
     u, s = _ctx(db)
     eff = effective_preferences(db, user_id=u.id, startup_id=s.id)
     assert eff["master_email"] is True
     assert set(eff["categories"]) == set(CATEGORIES)
-    assert all(eff["categories"].values())
+    # The original five rows, billing and calendar email by default; others added later are opt-in (D-NOT-2).
+    on = {
+        "documents",
+        "business",
+        "roadmap_missions",
+        "health_assessment",
+        "team",
+        "billing",
+        "calendar",
+    }
+    assert {k for k, v in eff["categories"].items() if v} == on
+    assert all(eff["in_app"].values())
 
 
 def test_set_and_email_enabled(db):

@@ -1,0 +1,37 @@
+{
+  "data": {
+    "id": "9b9e99ff-a2ce-4493-ad17-5ee62d7a0b50",
+    "number": "INV-2026-001",
+    "client_name": "Chidi Okafor Stores",
+    "client_email": "delivered+client1-cebfd50a4301@resend.dev",
+    "line_items": [
+      {
+        "description": "Retainer",
+        "quantity": 2,
+        "unit_price_minor": 75000,
+        "amount_minor": 150000
+      }
+    ],
+    "subtotal_minor": 150000,
+    "tax_percent": 7.5,
+    "tax_minor": 11250,
+    "total_minor": 161250,
+    "currency": "NGN",
+    "terms": "net_15",
+    "status": "overdue",
+    "issued_on": "2026-10-21",
+    "due_on": "2026-10-18",
+    "paid_at": null,
+    "auto_remind": true,
+    "transaction_id": null,
+    "pay_url": null,
+    "pay_provider": null,
+    "paid_via": null,
+    "last_reminded_at": null,
+    "reminder_count": 0,
+    "overdue_notified_at": null,
+    "created_at": "2026-10-21T15:33:17.494752Z",
+    "updated_at": "2026-10-21T15:33:17.566711Z"
+  },
+  "meta": null
+}

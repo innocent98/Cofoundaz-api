@@ -1,0 +1,14 @@
+{
+  "status": "ok",
+  "value_minor": 80000000,
+  "currency": "NGN",
+  "trend": {
+    "delta": null,
+    "series": [
+      {
+        "period": "2026-10-21",
+        "value": 80000000
+      }
+    ]
+  }
+}

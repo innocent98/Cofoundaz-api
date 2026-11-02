@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "STEP_UP_INVALID",
+    "message": "That authenticator code isn't right, or was already used. Enter a new one.",
+    "field_errors": []
+  }
+}

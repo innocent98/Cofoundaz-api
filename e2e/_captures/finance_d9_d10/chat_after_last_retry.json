@@ -1,0 +1,25 @@
+{
+  "data": {
+    "id": "cb691991-414b-4a90-b0d4-637043f99f79",
+    "title": "What levers should I look at first?",
+    "created_at": "2026-10-25T10:00:26.068923+00:00",
+    "updated_at": "2026-10-25T10:00:26.081945+00:00",
+    "messages": [
+      {
+        "id": "f1663561-1506-48f8-b1c8-bba390e1b7ba",
+        "role": "user",
+        "status": "ready",
+        "content": "What levers should I look at first?",
+        "created_at": "2026-10-25T10:00:26.080945+00:00"
+      },
+      {
+        "id": "3a9e8dcd-81df-490f-b04f-3f870f7ac2a8",
+        "role": "assistant",
+        "status": "failed",
+        "content": "Sorry, I couldn't put a reply together. Please try asking again.",
+        "created_at": "2026-10-25T10:00:26.081945+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

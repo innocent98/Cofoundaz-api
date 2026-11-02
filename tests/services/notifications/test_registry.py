@@ -15,31 +15,16 @@ def _workspace(db):
     return owner, other, s
 
 
-def test_members_minus_actor(db):
+def test_document_shared_goes_to_owner_not_the_sharer(db):
     owner, other, s = _workspace(db)
-    # owner shares a document -> everyone in the workspace EXCEPT owner is notified
-    _handle(db, "document.shared", {"startup_id": str(s.id), "shared_by": str(owner.id)})
-    rows = db.query(Notification).all()
-    assert {r.user_id for r in rows} == {other.id}
-    assert rows[0].type == "document.shared"
-
-
-def test_members_minus_actor_real_document_shared_payload(db):
-    owner, other, s = _workspace(db)
-    # real payload shape produced by app.services.documents.shares.create_share
+    # a team member shares the founder's document -> the founder (owner) is told, not the sharer
     _handle(
         db,
         "document.shared",
-        {
-            "startup_id": str(s.id),
-            "document_id": "00000000-0000-0000-0000-0000000000aa",
-            "share_id": "00000000-0000-0000-0000-0000000000bb",
-            "shared_by_id": str(owner.id),
-        },
+        {"startup_id": str(s.id), "shared_by_id": str(other.id), "owner_id": str(owner.id)},
     )
     rows = db.query(Notification).all()
-    assert owner.id not in {r.user_id for r in rows}
-    assert {r.user_id for r in rows} == {other.id}
+    assert {r.user_id for r in rows} == {owner.id}
     assert rows[0].type == "document.shared"
 
 
@@ -74,5 +59,9 @@ def test_register_subscribes_on_bus(db):
     bus = DispatchingEventBus()
     registry.register(bus)  # register onto a fresh bus
     owner, other, s = _workspace(db)
-    bus.publish(db, "document.shared", {"startup_id": str(s.id), "shared_by": str(owner.id)})
-    assert db.query(Notification).filter_by(user_id=other.id).count() == 1
+    bus.publish(
+        db,
+        "document.shared",
+        {"startup_id": str(s.id), "shared_by_id": str(other.id), "owner_id": str(owner.id)},
+    )
+    assert db.query(Notification).filter_by(user_id=owner.id).count() == 1

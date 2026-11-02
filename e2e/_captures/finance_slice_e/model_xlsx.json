@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "content_disposition": "attachment; filename=\"financial-model.xlsx\"",
+  "sheets": [
+    "P&L",
+    "Cash flow",
+    "Balance sheet"
+  ],
+  "pnl_first_rows": [
+    [
+      "Line",
+      "2026-11",
+      "2026-12",
+      "2027-01"
+    ],
+    [
+      "Revenue",
+      "20000",
+      "20000",
+      "20000"
+    ],
+    [
+      "COGS",
+      "0",
+      "0",
+      "0"
+    ],
+    [
+      "Gross profit",
+      "20000",
+      "20000",
+      "20000"
+    ]
+  ],
+  "columns_in_pnl": 37
+}

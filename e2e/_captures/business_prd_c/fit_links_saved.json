@@ -1,0 +1,79 @@
+{
+  "data": {
+    "id": "4207267c-6410-46c0-a3cb-7ad186faa408",
+    "type": "value_prop",
+    "version": 2,
+    "blocks": {
+      "jobs": [
+        "[stub-llm] jobs"
+      ],
+      "gains": [
+        "[stub-llm] gains"
+      ],
+      "pains": [
+        "[stub-llm] pains"
+      ],
+      "gain_creators": [
+        "[stub-llm] gain_creators"
+      ],
+      "pain_relievers": [
+        "[stub-llm] pain_relievers"
+      ],
+      "products_services": [
+        "[stub-llm] products_services"
+      ]
+    },
+    "block_defs": [
+      {
+        "key": "jobs",
+        "label": "Customer Jobs",
+        "kind": "list"
+      },
+      {
+        "key": "pains",
+        "label": "Pains",
+        "kind": "list"
+      },
+      {
+        "key": "gains",
+        "label": "Gains",
+        "kind": "list"
+      },
+      {
+        "key": "products_services",
+        "label": "Products & Services",
+        "kind": "list"
+      },
+      {
+        "key": "pain_relievers",
+        "label": "Pain Relievers",
+        "kind": "list"
+      },
+      {
+        "key": "gain_creators",
+        "label": "Gain Creators",
+        "kind": "list"
+      }
+    ],
+    "completion": {
+      "filled_blocks": 6,
+      "total_blocks": 6,
+      "completion_pct": 100,
+      "status": "complete"
+    },
+    "updated_at": "2026-10-19T12:07:07.977468+00:00",
+    "updated_by": {
+      "id": "95c05611-7477-446a-b936-672c1f669d87",
+      "name": "Ada Founder"
+    },
+    "fit_links": [
+      {
+        "to_item": "[stub-llm] pains",
+        "to_block": "pains",
+        "from_item": "[stub-llm] pain_relievers",
+        "from_block": "pain_relievers"
+      }
+    ]
+  },
+  "meta": null
+}

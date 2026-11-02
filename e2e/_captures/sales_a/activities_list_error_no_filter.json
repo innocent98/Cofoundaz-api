@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Filter by an account, contact or deal.",
+    "field_errors": [
+      {
+        "field": "account_id",
+        "message": "Filter by an account, contact or deal."
+      }
+    ]
+  }
+}

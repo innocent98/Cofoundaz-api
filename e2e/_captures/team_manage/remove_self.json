@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANNOT_REMOVE_SELF",
+    "message": "Use Leave workspace to remove yourself.",
+    "field_errors": []
+  }
+}

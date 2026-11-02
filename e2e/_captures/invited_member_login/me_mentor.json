@@ -1,0 +1,24 @@
+{
+    "data": {
+        "user": {
+            "id": "91161181-b442-4f13-ad28-d702f7ed19a0",
+            "email": "bb-mentor-1@example.com",
+            "status": "active"
+        },
+        "profile": {
+            "full_name": null,
+            "role_title": "Founder & CEO",
+            "country": null,
+            "avatar_url": null
+        },
+        "memberships": [
+            {
+                "startup_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44",
+                "name": "NovaPay",
+                "role": "mentor"
+            }
+        ],
+        "active_workspace_id": "11ba2aa0-8c8d-4035-adb8-62530988ed44"
+    },
+    "meta": null
+}

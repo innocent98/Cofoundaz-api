@@ -1,0 +1,16 @@
+{
+  "data": {
+    "id": "1500c4ea-4452-4785-8720-a7974da6ded0",
+    "type": "ai.business.mission_vision_options",
+    "status": "succeeded",
+    "result": {
+      "field": "mission",
+      "status": "ready",
+      "options": [
+        "[stub-llm] options"
+      ]
+    },
+    "error": null
+  },
+  "meta": null
+}

@@ -1,0 +1,62 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "48da9ac1-ea86-474d-8d1d-39747865fa67",
+      "title": "Founders agreement",
+      "status": "awaiting",
+      "file_id": "e03bbe9f-99b5-447d-9c27-d1fd141b60e5",
+      "filename": "founders-agreement.pdf",
+      "signed_count": 0,
+      "total": 2,
+      "sequential": true,
+      "message": "Hi both, please sign before Friday.\nThanks, Ada",
+      "sent_at": "2026-10-25T20:01:49.309861+00:00",
+      "expires_at": "2026-11-08T20:01:49.316916+00:00",
+      "completed_at": null,
+      "created_at": "2026-10-25T20:01:49.309861+00:00",
+      "document_hash": "131836dee3925f0b013f6e702500304cd33fb971dc02b3f3df5b574398d050c7",
+      "executed": null,
+      "legal_caveat": "These are simple electronic signatures: each signer typed their name to adopt it as their signature. Cofoundaz records the signer's email, IP address, browser, the time and the document's SHA-256 hash, but does not issue a certificate-based or qualified signature and is not a trust service provider. Whether a typed-name signature is enforceable depends on the document and the jurisdiction; take legal advice for high-stakes agreements.",
+      "signers": [
+        {
+          "id": "bf948ebb-36a0-49b8-bd18-6faa1243bcd7",
+          "email": "delivered+signer-one-47b38a027f89@resend.dev",
+          "name": "Ada Investor",
+          "position": 0,
+          "status": "viewed",
+          "notified_at": "2026-10-25T20:01:49.316916+00:00",
+          "viewed_at": "2026-10-25T20:01:49.373748+00:00",
+          "signed_at": null,
+          "signed_name": null,
+          "signed_ip": null,
+          "signed_user_agent": null,
+          "link_copies": [
+            {
+              "at": "2026-10-25T20:01:49.325035+00:00",
+              "via": "created",
+              "name": "Ada Founder",
+              "email": "delivered+e2e-80ad0fec983e@resend.dev",
+              "user_id": "215bf31d-2c32-4833-a84b-4127fb5f4cd2"
+            }
+          ]
+        },
+        {
+          "id": "04e8f7f0-a3c8-4996-8437-748a09d28f89",
+          "email": "delivered+signer-two-166c2902d204@resend.dev",
+          "name": "Bello Legal",
+          "position": 1,
+          "status": "waiting",
+          "notified_at": null,
+          "viewed_at": null,
+          "signed_at": null,
+          "signed_name": null,
+          "signed_ip": null,
+          "signed_user_agent": null,
+          "link_copies": []
+        }
+      ]
+    },
+    "meta": null
+  }
+}

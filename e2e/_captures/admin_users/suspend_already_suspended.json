@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_SUSPENDED",
+    "message": "That account is already suspended.",
+    "field_errors": []
+  }
+}

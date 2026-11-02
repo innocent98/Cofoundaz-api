@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A pipeline needs between 1 and 10 stages.",
+    "field_errors": [
+      {
+        "field": "stages",
+        "message": "A pipeline needs between 1 and 10 stages."
+      }
+    ]
+  }
+}

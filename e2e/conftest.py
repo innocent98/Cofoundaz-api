@@ -51,7 +51,9 @@ _MAILBOX_FIXTURES = frozenset({"mailbox", "make_verified_user"})
 # the token in a clickable FE link (`/verify-email/<tok>`, `/reset-password/<tok>` -
 # see app/services/auth/emails.py), while the onboarding-invite email still uses a
 # bare `<code><tok></code>`. Match either and take whichever group captured.
-_TOKEN_RE = re.compile(r"/(?:verify-email|reset-password)/([A-Za-z0-9_\-]+)|<code>([^<]+)</code>")
+_TOKEN_RE = re.compile(
+    r"/(?:verify-email|reset-password|invite)/([A-Za-z0-9_\-]+)|<code>([^<]+)</code>"
+)
 
 
 def pytest_collection_modifyitems(config, items):

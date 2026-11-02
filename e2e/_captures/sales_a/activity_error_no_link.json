@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Link the activity to an account, contact or deal.",
+    "field_errors": [
+      {
+        "field": "account_id",
+        "message": "Link the activity to an account, contact or deal."
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "data": {
+    "platforms": [
+      {
+        "key": "x",
+        "label": "X",
+        "limit": 280,
+        "kind": "hard"
+      },
+      {
+        "key": "instagram",
+        "label": "Instagram caption",
+        "limit": 2200,
+        "kind": "hard"
+      },
+      {
+        "key": "linkedin",
+        "label": "LinkedIn post",
+        "limit": 3000,
+        "kind": "hard"
+      },
+      {
+        "key": "facebook",
+        "label": "Facebook post",
+        "limit": 500,
+        "kind": "recommended"
+      },
+      {
+        "key": "whatsapp",
+        "label": "WhatsApp message",
+        "limit": 1024,
+        "kind": "hard"
+      },
+      {
+        "key": "google_ads_headline",
+        "label": "Google Ads headline",
+        "limit": 30,
+        "kind": "hard"
+      },
+      {
+        "key": "google_ads_description",
+        "label": "Google Ads description",
+        "limit": 90,
+        "kind": "hard"
+      },
+      {
+        "key": "email_subject",
+        "label": "Email subject line",
+        "limit": 60,
+        "kind": "recommended"
+      }
+    ]
+  },
+  "meta": null
+}

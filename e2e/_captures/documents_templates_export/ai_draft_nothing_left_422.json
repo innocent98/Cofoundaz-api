@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "body": {
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "There are no empty sections for AI to draft.",
+      "field_errors": []
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+    "data": {
+        "query": "problem",
+        "results": [
+            {
+                "type": "milestone",
+                "group": "Roadmap",
+                "id": "9797de96-3ac8-47b1-918d-15f7fe9fd2b9",
+                "title": "Write your problem statement",
+                "subtitle": "Milestone \u00b7 due 2026-10-24",
+                "href": "/roadmap/milestones"
+            },
+            {
+                "type": "roadmap_task",
+                "group": "Roadmap",
+                "id": "9dc4a38f-2ec7-46c5-82d5-221b3363b71f",
+                "title": "Describe the problem in one paragraph",
+                "subtitle": "Task in Write your problem statement",
+                "href": "/roadmap"
+            },
+            {
+                "type": "roadmap_task",
+                "group": "Roadmap",
+                "id": "b7257c42-f7ac-4f50-be98-a5f6ac97b726",
+                "title": "List who has this problem",
+                "subtitle": "Task in Write your problem statement",
+                "href": "/roadmap"
+            }
+        ]
+    },
+    "meta": null
+}

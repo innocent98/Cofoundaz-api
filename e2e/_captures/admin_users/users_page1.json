@@ -1,0 +1,40 @@
+{
+  "data": {
+    "users": [
+      {
+        "id": "8151f29b-a795-4b12-81a5-7df58e2495c6",
+        "email": "delivered+pending-dbe8e07d2110@resend.dev",
+        "full_name": null,
+        "status": "pending_verification",
+        "email_verified": false,
+        "created_at": "2026-10-31T13:37:40.241123+00:00",
+        "last_login_at": null,
+        "activity": "dormant",
+        "workspace_count": 0,
+        "primary_workspace": null
+      },
+      {
+        "id": "8a15664e-7be0-4fda-b3c9-ac58cb98049f",
+        "email": "delivered+e2e-d9aefb27dbf1@resend.dev",
+        "full_name": "Ada Obi",
+        "status": "active",
+        "email_verified": true,
+        "created_at": "2026-10-31T13:37:39.610949+00:00",
+        "last_login_at": "2026-10-31T13:37:39.891539+00:00",
+        "activity": "active",
+        "workspace_count": 1,
+        "primary_workspace": {
+          "workspace_id": "39d2aada-9f02-495f-bf3a-5f72a65da00f",
+          "workspace_name": "NovaPay",
+          "role": "founder",
+          "plan_key": "starter",
+          "billing_status": "free"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": "MjAyNi0xMC0zMVQxMzozNzozOS42MTA5NDkrMDA6MDB8OGExNTY2NGUtN2JlMC00ZmRhLWIzYzktYWM1OGNiOTgwNDlm",
+    "total_estimate": null
+  }
+}

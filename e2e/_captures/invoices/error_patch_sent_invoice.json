@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a draft invoice can be edited.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Only a draft invoice can be edited."
+      }
+    ]
+  }
+}

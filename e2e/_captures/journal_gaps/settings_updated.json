@@ -1,0 +1,9 @@
+{
+  "data": {
+    "passcode_enabled": false,
+    "locked_until": null,
+    "daily_prompt_notifications": true,
+    "evening_reminder": false
+  },
+  "meta": null
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "63fed7e6-5518-4911-8c42-0954fbed2d06",
+    "action": "roadmap.e2e.sentinel",
+    "entity_type": "roadmap",
+    "entity_id": null,
+    "summary": "e2e sentinel (open to every role)",
+    "meta": null,
+    "actor": null,
+    "created_at": "2026-10-20T17:02:54.564033+00:00"
+  }
+]

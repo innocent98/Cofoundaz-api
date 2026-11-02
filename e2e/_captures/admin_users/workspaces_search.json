@@ -1,0 +1,26 @@
+{
+  "data": {
+    "workspaces": [
+      {
+        "id": "39d2aada-9f02-495f-bf3a-5f72a65da00f",
+        "name": "NovaPay",
+        "owner_email": "delivered+e2e-d9aefb27dbf1@resend.dev",
+        "owner_name": "Ada Obi",
+        "stage": "idea",
+        "country": null,
+        "created_at": "2026-10-31T13:37:40.142587+00:00",
+        "seats": 1,
+        "members": 1,
+        "plan_key": "starter",
+        "billing_status": "free",
+        "health_score": null,
+        "health_band": null,
+        "last_active_at": "2026-10-31T13:38:00.076654+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

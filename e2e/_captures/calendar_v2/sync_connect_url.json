@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=e2e-google-client-id.apps.example&redirect_uri=http%3A%2F%2F127.0.0.1%3A8011%2Fapi%2Fv1%2Fcalendar%2Fsync%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.calendarlist.readonly&access_type=offline&prompt=consent&state=<signed-state-redacted>",
+      "expires_in": 600
+    },
+    "meta": null
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "notifications": [
+        {
+          "id": "4a002041-5d71-4eac-a0a9-6803465f58ad",
+          "type": "workspace.member.joined",
+          "title": "A new member joined your workspace",
+          "body": "",
+          "data": {
+            "role": "business_consultant",
+            "user_id": "cceca2dd-e0b2-4a89-828a-b4eea4f15c4b",
+            "startup_id": "0c0a2898-06cb-4b4e-8ed9-eb0d78ee083b"
+          },
+          "read": false,
+          "created_at": "2026-10-25T11:02:25.819373+00:00"
+        }
+      ],
+      "next_cursor": null
+    },
+    "meta": null
+  }
+}

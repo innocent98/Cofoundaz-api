@@ -6,8 +6,8 @@ These tests open real, committing `Session`s against the session-scoped `engine`
 
 Targets:
 - `get_or_create_enrollment`: two concurrent enrols produce one row (SAVEPOINT + re-select).
-- `complete_lesson` on the same lesson twice: one lesson_progress row and one enrolment.
-- `complete_lesson` on two different lessons of an unenrolled two-lesson course: one enrolment,
+- `update_lesson_progress` on the same lesson twice: one lesson_progress row and one enrolment.
+- `update_lesson_progress` on three different lessons of an unenrolled three-lesson course: one enrolment,
   both lessons recorded, progress 100 and exactly one certificate. The enrolment row lock makes
   the roll-up serial, so neither caller stores a stale percentage.
 """
@@ -20,16 +20,31 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.db.models.job import Job
-from app.db.models.learning import Certificate, Enrollment, LessonProgress
+from app.db.models.learning import (
+    AcademyArticle,
+    AcademyCourse,
+    AcademyPath,
+    Certificate,
+    Enrollment,
+    LessonProgress,
+)
 from app.db.models.startup import Startup
 from app.db.models.user import User
-from app.services.learning.service import complete_lesson, get_or_create_enrollment
+from app.services.learning.content import load_content, sync_content
+from app.services.learning.service import get_or_create_enrollment, update_lesson_progress
 from tests.factories import create_startup, create_user
+
+
+def complete_lesson(session: Session, startup_id: uuid.UUID, user_id: uuid.UUID, lesson_id: str):
+    return update_lesson_progress(
+        session, startup_id, user_id, lesson_id, completed=True, position_s=None
+    )
 
 
 def _setup(engine: Engine) -> tuple[uuid.UUID, uuid.UUID]:
     setup = Session(bind=engine)
     try:
+        sync_content(setup, load_content())  # committed: the racing sessions are separate
         user = create_user(setup, email=f"race-{uuid.uuid4().hex[:8]}@example.com")
         startup = create_startup(setup, owner=user)
         setup.commit()
@@ -43,6 +58,10 @@ def _cleanup(engine: Engine, startup_id: uuid.UUID, user_id: uuid.UUID) -> None:
     try:
         # Jobs have no FK to startups, so they are removed explicitly.
         cleanup.query(Job).filter(Job.startup_id == startup_id).delete()
+        # The committed catalog would leak into every later test; courses cascade to lessons.
+        cleanup.query(AcademyCourse).delete()
+        cleanup.query(AcademyPath).delete()
+        cleanup.query(AcademyArticle).delete()
         # Cascades: startups -> enrollments, lesson_progress, certificates.
         cleanup.query(Startup).filter(Startup.id == startup_id).delete()
         cleanup.query(User).filter(User.id == user_id).delete()
@@ -116,14 +135,14 @@ def test_concurrent_completions_of_the_same_lesson_record_it_once(engine: Engine
             assert verify.query(LessonProgress).filter_by(**scope).count() == 1
             enrollments = verify.query(Enrollment).filter_by(**scope).all()
             assert len(enrollments) == 1
-            assert enrollments[0].progress == 33
+            assert enrollments[0].progress == 33  # one lesson of three
         finally:
             verify.close()
     finally:
         _cleanup(engine, startup_id, user_id)
 
 
-def test_concurrent_completions_of_different_lessons_enrol_once_and_finish(engine: Engine):
+def test_concurrent_completions_of_every_lesson_enrol_once_and_finish(engine: Engine):
     startup_id, user_id = _setup(engine)
 
     def first(session: Session) -> object:
@@ -132,8 +151,11 @@ def test_concurrent_completions_of_different_lessons_enrol_once_and_finish(engin
     def second(session: Session) -> object:
         return complete_lesson(session, startup_id, user_id, "build-scope-the-mvp-2")
 
+    def third(session: Session) -> object:
+        return complete_lesson(session, startup_id, user_id, "build-scope-the-mvp-3")
+
     try:
-        assert _race(engine, [first, second]) == [None, None]
+        assert _race(engine, [first, second, third]) == [None, None, None]
         verify = Session(bind=engine)
         try:
             scope = {"startup_id": startup_id, "user_id": user_id}
@@ -141,7 +163,7 @@ def test_concurrent_completions_of_different_lessons_enrol_once_and_finish(engin
             assert len(enrollments) == 1, "exactly one enrolment, not one per racer"
             assert enrollments[0].progress == 100, "the roll-up must see both completions"
             assert enrollments[0].completed_at is not None
-            assert verify.query(LessonProgress).filter_by(**scope).count() == 2
+            assert verify.query(LessonProgress).filter_by(**scope).count() == 3
             assert verify.query(Certificate).filter_by(**scope).count() == 1
         finally:
             verify.close()

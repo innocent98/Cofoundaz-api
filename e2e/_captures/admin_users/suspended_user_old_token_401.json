@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Not authenticated.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Receipt must be a PNG, JPEG, or PDF.",
+    "field_errors": [
+      {
+        "field": "receipt",
+        "message": "Receipt must be a PNG, JPEG, or PDF."
+      }
+    ]
+  }
+}

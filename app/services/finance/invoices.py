@@ -1,0 +1,459 @@
+import datetime as dt
+import uuid
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.core.errors import AppError, NotFound
+from app.core.logger import log
+from app.core.pagination import DEFAULT_LIMIT, decode_keyset, encode_keyset
+from app.db.models.enums import (
+    InvoiceStatus,
+    InvoiceTerms,
+    TransactionDirection,
+    TransactionSource,
+)
+from app.db.models.finance import Transaction
+from app.db.models.invoice import Invoice
+from app.db.models.sales import SalesAccount
+from app.platform.events import event_bus
+from app.platform.jobs import job_dispatcher
+from app.schemas.invoice import (
+    InvoiceCreate,
+    InvoiceResponse,
+    InvoiceUpdate,
+    MoneyLine,
+    PaymentDetails,
+)
+from app.services.finance.errors import _validation
+
+_INT32 = 2_147_483_647
+_NUMBER_RETRIES = 5
+_PROVIDER_LABELS = {"paystack": "Paystack", "flutterwave": "Flutterwave"}
+_TERM_DAYS = {
+    InvoiceTerms.net_15: 15,
+    InvoiceTerms.net_30: 30,
+    InvoiceTerms.due_on_receipt: 0,
+}
+
+
+def _compute_totals(line_items: list[dict[str, Any]], tax_percent: float) -> tuple[int, int, int]:
+    subtotal = sum(int(li["quantity"]) * int(li["unit_price_minor"]) for li in line_items)
+    if subtotal > _INT32:
+        raise _validation("line_items", "Invoice subtotal exceeds the maximum allowed amount.")
+    # Decimal + ROUND_HALF_UP (not float round(), which is banker's rounding): a half-kobo of tax
+    # rounds up, as expected for money.
+    tax = int(
+        (Decimal(subtotal) * Decimal(str(tax_percent)) / Decimal(100)).quantize(
+            Decimal("1"), rounding=ROUND_HALF_UP
+        )
+    )
+    total = subtotal + tax
+    if total > _INT32:
+        raise _validation("line_items", "Invoice total exceeds the maximum allowed amount.")
+    return subtotal, tax, total
+
+
+def _next_number(db: Session, *, startup_id: uuid.UUID, year: int) -> str:
+    prefix = f"INV-{year}-"
+    existing = (
+        db.query(Invoice.number)
+        .filter(Invoice.startup_id == startup_id, Invoice.number.like(f"{prefix}%"))
+        .all()
+    )
+    # max suffix + 1 (not count + 1): stays monotonic even if a row is ever removed.
+    highest = 0
+    for (number,) in existing:
+        suffix = number[len(prefix) :]
+        if suffix.isdigit():
+            highest = max(highest, int(suffix))
+    return f"{prefix}{highest + 1:03d}"
+
+
+def _derived_status(inv: Invoice, *, today: dt.date) -> str:
+    if inv.status == InvoiceStatus.sent and inv.due_on is not None and inv.due_on < today:
+        return "overdue"
+    return inv.status.value
+
+
+def _require_account(db: Session, *, startup_id: uuid.UUID, account_id: uuid.UUID) -> None:
+    """The client picker may only link an account of the caller's own workspace (422 otherwise,
+    the same answer for a missing id and another workspace's id, so ids cannot be probed)."""
+    found = (
+        db.query(SalesAccount.id)
+        .filter(SalesAccount.id == account_id, SalesAccount.startup_id == startup_id)
+        .first()
+    )
+    if found is None:
+        raise _validation("account_id", "That client was not found in this workspace.")
+
+
+def _details_json(details: PaymentDetails | None) -> dict[str, Any] | None:
+    return details.model_dump() if details is not None else None
+
+
+def create_invoice(db: Session, *, startup_id: uuid.UUID, data: InvoiceCreate) -> Invoice:
+    if data.account_id is not None:
+        _require_account(db, startup_id=startup_id, account_id=data.account_id)
+    line_items = [li.model_dump() for li in data.line_items]
+    # tax_percent is stored as NUMERIC(5,2); quantise first so the stored rate is the applied one.
+    tax_percent = Decimal(str(data.tax_percent)).quantize(Decimal("0.01"))
+    subtotal, tax, total = _compute_totals(line_items, float(tax_percent))
+    year = dt.datetime.now(dt.UTC).year
+
+    for attempt in range(_NUMBER_RETRIES):
+        number = _next_number(db, startup_id=startup_id, year=year)
+        # add() must be inside the SAVEPOINT so a failed insert is rolled back with it and does
+        # not poison the outer session.
+        try:
+            with db.begin_nested():
+                inv = Invoice(
+                    startup_id=startup_id,
+                    number=number,
+                    client_name=data.client_name,
+                    client_email=str(data.client_email),
+                    line_items=line_items,
+                    subtotal_minor=subtotal,
+                    tax_percent=tax_percent,
+                    tax_minor=tax,
+                    total_minor=total,
+                    currency=data.currency,
+                    terms=InvoiceTerms(data.terms),
+                    status=InvoiceStatus.draft,
+                    account_id=data.account_id,
+                    notes=data.notes,
+                    payment_details=_details_json(data.payment_details),
+                )
+                db.add(inv)
+        except IntegrityError:
+            if attempt == _NUMBER_RETRIES - 1:
+                raise
+            continue
+        db.flush()
+        return inv
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
+def get_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+    inv = db.query(Invoice).filter_by(id=invoice_id, startup_id=startup_id).one_or_none()
+    if inv is None:
+        raise NotFound()
+    return inv
+
+
+def get_invoice_locked(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+    # Row lock (+ populate_existing to bypass the identity-map cache) so two concurrent
+    # mark-paid / mark-unpaid calls serialise on the invoice and cannot both move money.
+    inv = (
+        db.query(Invoice)
+        .filter_by(id=invoice_id, startup_id=startup_id)
+        .with_for_update()
+        .populate_existing()
+        .first()
+    )
+    if inv is None:
+        raise NotFound()
+    return inv
+
+
+def _apply_client_extras(
+    db: Session, inv: Invoice, data: InvoiceUpdate, *, startup_id: uuid.UUID
+) -> None:
+    """Client link, notes and payment details; an explicit null clears them."""
+    sent = data.model_fields_set
+    if "account_id" in sent:
+        if data.account_id is not None:
+            _require_account(db, startup_id=startup_id, account_id=data.account_id)
+        inv.account_id = data.account_id
+    if "notes" in sent:
+        inv.notes = data.notes
+    if "payment_details" in sent:
+        inv.payment_details = _details_json(data.payment_details)
+
+
+def update_invoice(
+    db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, data: InvoiceUpdate
+) -> Invoice:
+    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    fields = data.model_dump(exclude_unset=True)
+    if inv.status != InvoiceStatus.draft:
+        # Once issued the commercial terms are frozen; only the reminder toggle stays editable.
+        if set(fields) - {"auto_remind"}:
+            raise _validation("status", "Only a draft invoice can be edited.")
+        if "auto_remind" in fields:
+            inv.auto_remind = fields["auto_remind"]
+            db.flush()
+        return inv
+
+    if "client_name" in fields:
+        inv.client_name = fields["client_name"]
+    if "client_email" in fields:
+        inv.client_email = str(fields["client_email"])
+    if "currency" in fields:
+        inv.currency = fields["currency"]
+    if "terms" in fields:
+        inv.terms = InvoiceTerms(fields["terms"])
+    if "auto_remind" in fields:
+        inv.auto_remind = fields["auto_remind"]
+    _apply_client_extras(db, inv, data, startup_id=startup_id)
+
+    if "line_items" in fields or "tax_percent" in fields:
+        line_items = (
+            [li.model_dump() for li in data.line_items]
+            if "line_items" in fields and data.line_items is not None
+            else inv.line_items
+        )
+        tax_percent = (
+            Decimal(str(fields["tax_percent"])).quantize(Decimal("0.01"))
+            if "tax_percent" in fields
+            else inv.tax_percent
+        )
+        subtotal, tax, total = _compute_totals(line_items, float(tax_percent))
+        inv.line_items = line_items
+        inv.tax_percent = tax_percent
+        inv.subtotal_minor = subtotal
+        inv.tax_minor = tax
+        inv.total_minor = total
+    db.flush()
+    return inv
+
+
+def delete_invoice(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> None:
+    inv = get_invoice(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.draft:
+        raise _validation("status", "Only a draft invoice can be deleted.")
+    db.delete(inv)
+    db.flush()
+
+
+def send_invoice(
+    db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, today: dt.date | None = None
+) -> Invoice:
+    # Row lock: two concurrent sends of one draft serialise here, so the second sees `sent`
+    # and is refused instead of emailing the client twice.
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.draft:
+        raise _validation("status", "Only a draft invoice can be sent.")
+    issued_on = today or dt.datetime.now(dt.UTC).date()
+    inv.issued_on = issued_on
+    inv.due_on = issued_on + dt.timedelta(days=_TERM_DAYS[inv.terms])
+    inv.status = InvoiceStatus.sent
+    inv.last_sent_at = dt.datetime.now(dt.UTC)
+    db.flush()
+    job_dispatcher.enqueue(db, "email.invoice_sent", {"invoice_id": str(inv.id)}, inv.startup_id)
+    return inv
+
+
+RESEND_COOLDOWN_SECONDS = 60
+
+
+def resend_invoice(
+    db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID, now: dt.datetime | None = None
+) -> Invoice:
+    """Email an already-issued invoice to the client again (same job and PDF as the first send).
+
+    Only an unpaid, issued invoice (sent or overdue) can be resent: a draft has not been issued
+    and a paid one needs no payment nudge. A per-invoice cooldown (on top of the route's rate
+    limit) stops a double click or a script from mailing the same client repeatedly. The row is
+    locked so two concurrent resends cannot both pass the cooldown.
+    """
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.sent:
+        raise _validation("status", "Only a sent, unpaid invoice can be resent.")
+    moment = now or dt.datetime.now(dt.UTC)
+    if inv.last_sent_at is not None:
+        wait = RESEND_COOLDOWN_SECONDS - (moment - inv.last_sent_at).total_seconds()
+        if wait > 0:
+            raise AppError(
+                "RESEND_TOO_SOON",
+                f"This invoice was emailed a moment ago. Try again in {int(wait) + 1} seconds.",
+                429,
+            )
+    inv.last_sent_at = moment
+    db.flush()
+    job_dispatcher.enqueue(db, "email.invoice_sent", {"invoice_id": str(inv.id)}, inv.startup_id)
+    return inv
+
+
+def mark_paid(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    now: dt.datetime | None = None,
+    paid_via: str | None = None,
+) -> Invoice:
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
+        return inv  # idempotent no-op: never create a second inflow
+    if inv.status != InvoiceStatus.sent:
+        raise _validation("status", "Only a sent invoice can be marked paid.")
+    paid_at = now or dt.datetime.now(dt.UTC)
+    txn = Transaction(
+        startup_id=startup_id,
+        date=paid_at.date(),
+        description=f"Invoice {inv.number}: {inv.client_name}"[:300],
+        category="Revenue",
+        amount_minor=inv.total_minor,
+        currency=inv.currency,
+        direction=TransactionDirection.inflow,
+        source=TransactionSource.invoice,
+    )
+    db.add(txn)
+    db.flush()  # assign txn.id
+    inv.status = InvoiceStatus.paid
+    inv.paid_at = paid_at
+    inv.transaction_id = txn.id
+    if paid_via is not None:
+        inv.paid_via = paid_via
+    db.flush()
+    event_bus.publish(
+        db,
+        "finance.invoice.paid",
+        {
+            "startup_id": str(startup_id),
+            "invoice_id": str(inv.id),
+            "number": inv.number,
+            "client_name": inv.client_name,
+            "amount_minor": inv.total_minor,
+            "currency": inv.currency,
+            "paid_via": paid_via,
+            "href": "/finance/invoices",
+        },
+    )
+    return inv
+
+
+def mark_paid_via_provider(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    provider: str,
+    now: dt.datetime | None = None,
+) -> Invoice | None:
+    """Mark a sent invoice paid because a payment provider confirmed the charge.
+
+    Reuses the locked mark_paid path (one inflow, row lock), then records which provider paid it.
+    Idempotent: an already-paid invoice is returned untouched (its original `paid_via` is kept).
+    Returns None when the invoice does not exist in this workspace or is not payable (a draft);
+    a provider confirmation must never raise into the importer or a webhook.
+    """
+    try:
+        inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    except NotFound:
+        return None
+    if inv.status == InvoiceStatus.paid or inv.transaction_id is not None:
+        return inv
+    if inv.status != InvoiceStatus.sent:
+        return None
+    return mark_paid(db, startup_id=startup_id, invoice_id=invoice_id, now=now, paid_via=provider)
+
+
+def mark_unpaid(db: Session, *, startup_id: uuid.UUID, invoice_id: uuid.UUID) -> Invoice:
+    inv = get_invoice_locked(db, startup_id=startup_id, invoice_id=invoice_id)
+    if inv.status != InvoiceStatus.paid:
+        raise _validation("status", "Only a paid invoice can be marked unpaid.")
+    if inv.paid_via:
+        # Provider-paid: the sync/webhook would simply pay it again, so the ledger row is final.
+        label = _PROVIDER_LABELS.get(inv.paid_via, inv.paid_via.capitalize())
+        raise _validation(
+            "status", f"This invoice was paid through {label} and cannot be marked unpaid."
+        )
+    txn_id = inv.transaction_id
+    inv.transaction_id = None
+    inv.paid_at = None
+    inv.status = InvoiceStatus.sent
+    db.flush()
+    txn = db.get(Transaction, txn_id) if txn_id is not None else None
+    if txn is None:
+        log.warning(
+            f"[invoice] mark_unpaid: linked inflow missing for paid invoice {inv.id} "
+            f"(transaction {txn_id}); clearing the link only"
+        )
+    else:
+        db.delete(txn)
+        db.flush()
+    return inv
+
+
+def list_invoices(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    status: str | None = None,
+    today: dt.date | None = None,
+    limit: int = DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> tuple[list[Invoice], str | None, int]:
+    """One page, newest first: (rows, next_cursor, total matching the status filter).
+
+    `status` is derived (overdue depends on today), so the filter and the cursor are applied in
+    Python over the workspace's invoices, which stay small.
+    """
+    rows = (
+        db.query(Invoice)
+        .filter_by(startup_id=startup_id)
+        .order_by(Invoice.created_at.desc(), Invoice.number.desc())
+        .all()
+    )
+    if status is not None:
+        as_of = today or dt.datetime.now(dt.UTC).date()
+        rows = [r for r in rows if _derived_status(r, today=as_of) == status]
+    total = len(rows)
+    if cursor:
+        created, number = decode_keyset(cursor, dt.datetime.fromisoformat, str)
+        rows = [r for r in rows if (r.created_at, r.number) < (created, number)]
+    next_cursor = None
+    if len(rows) > limit:
+        rows = rows[:limit]
+        next_cursor = encode_keyset(rows[-1].created_at.isoformat(), rows[-1].number)
+    return rows, next_cursor, total
+
+
+def serialize_invoice(inv: Invoice, *, today: dt.date) -> InvoiceResponse:
+    lines = [
+        MoneyLine(
+            description=li["description"],
+            quantity=li["quantity"],
+            unit_price_minor=li["unit_price_minor"],
+            amount_minor=int(li["quantity"]) * int(li["unit_price_minor"]),
+        )
+        for li in inv.line_items
+    ]
+    return InvoiceResponse(
+        id=inv.id,
+        number=inv.number,
+        client_name=inv.client_name,
+        client_email=inv.client_email,
+        line_items=lines,
+        subtotal_minor=inv.subtotal_minor,
+        tax_percent=float(inv.tax_percent),
+        tax_minor=inv.tax_minor,
+        total_minor=inv.total_minor,
+        currency=inv.currency,
+        terms=inv.terms.value,
+        status=_derived_status(inv, today=today),
+        issued_on=inv.issued_on,
+        due_on=inv.due_on,
+        paid_at=inv.paid_at,
+        auto_remind=inv.auto_remind,
+        transaction_id=inv.transaction_id,
+        account_id=inv.account_id,
+        account_name=inv.account.name if inv.account is not None else None,
+        notes=inv.notes,
+        payment_details=(
+            PaymentDetails.model_validate(inv.payment_details) if inv.payment_details else None
+        ),
+        last_sent_at=inv.last_sent_at,
+        pay_url=inv.pay_url,
+        pay_provider=inv.pay_provider,
+        paid_via=inv.paid_via,
+        last_reminded_at=inv.last_reminded_at,
+        reminder_count=inv.reminder_count,
+        overdue_notified_at=inv.overdue_notified_at,
+        created_at=inv.created_at,
+        updated_at=inv.updated_at,
+    )

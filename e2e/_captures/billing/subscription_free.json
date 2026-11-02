@@ -1,0 +1,23 @@
+{
+  "data": {
+    "plan": {
+      "key": "starter",
+      "name": "Starter"
+    },
+    "interval": "monthly",
+    "status": "free",
+    "price_minor": 0,
+    "currency": "NGN",
+    "current_period_start": null,
+    "renews_at": null,
+    "ends_at": null,
+    "trial_ends_at": null,
+    "trial_available": true,
+    "cancel_at_period_end": false,
+    "cancel_reason": null,
+    "pending_change": null,
+    "payment_issue": null,
+    "enforcement": false
+  },
+  "meta": null
+}

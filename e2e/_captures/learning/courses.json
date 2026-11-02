@@ -1,0 +1,155 @@
+{
+  "data": {
+    "courses": [
+      {
+        "id": "idea-shape-the-problem",
+        "title": "Shape the problem",
+        "summary": "Turn a vague idea into a sharp problem statement and check that the pain is worth building for.",
+        "level": "beginner",
+        "stage_tags": [
+          "idea",
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "idea-shape-the-problem-1",
+        "position_s": 0
+      },
+      {
+        "id": "validation-talk-to-customers",
+        "title": "Talk to customers",
+        "summary": "Recruit the right people, run an interview that gets honest answers, and turn notes into decisions.",
+        "level": "beginner",
+        "stage_tags": [
+          "validation"
+        ],
+        "lesson_count": 3,
+        "duration_min": 34,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "validation-talk-to-customers-1",
+        "position_s": 0
+      },
+      {
+        "id": "validation-price-your-product",
+        "title": "Price your product",
+        "summary": "Choose a pricing model, set a first price in naira and test it with real money.",
+        "level": "intermediate",
+        "stage_tags": [
+          "validation",
+          "launch"
+        ],
+        "lesson_count": 3,
+        "duration_min": 29,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "validation-price-your-product-1",
+        "position_s": 0
+      },
+      {
+        "id": "build-scope-the-mvp",
+        "title": "Scope the MVP",
+        "summary": "Pick the one core flow, cut the rest, and test demand before you build too much.",
+        "level": "intermediate",
+        "stage_tags": [
+          "validation",
+          "build"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "build-scope-the-mvp-1",
+        "position_s": 0
+      },
+      {
+        "id": "launch-plan-go-to-market",
+        "title": "Plan your go-to-market",
+        "summary": "Choose launch channels, write messaging that lands and run a focused launch week.",
+        "level": "intermediate",
+        "stage_tags": [
+          "launch"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "launch-plan-go-to-market-1",
+        "position_s": 0
+      },
+      {
+        "id": "growth-find-a-channel",
+        "title": "Find a repeatable channel",
+        "summary": "Test several acquisition channels cheaply, back the winner and know what a customer costs you.",
+        "level": "advanced",
+        "stage_tags": [
+          "growth"
+        ],
+        "lesson_count": 3,
+        "duration_min": 32,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "growth-find-a-channel-1",
+        "position_s": 0
+      },
+      {
+        "id": "growth-know-your-numbers",
+        "title": "Know your numbers",
+        "summary": "Understand cash, burn and runway, unit economics and a simple monthly review.",
+        "level": "advanced",
+        "stage_tags": [
+          "growth",
+          "scale"
+        ],
+        "lesson_count": 3,
+        "duration_min": 30,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "growth-know-your-numbers-1",
+        "position_s": 0
+      },
+      {
+        "id": "scale-build-the-org",
+        "title": "Build the org",
+        "summary": "Document core processes, hire against a plan and set clear roles and equity terms.",
+        "level": "advanced",
+        "stage_tags": [
+          "scale"
+        ],
+        "lesson_count": 3,
+        "duration_min": 36,
+        "review_status": "draft",
+        "enrolled": false,
+        "progress": 0,
+        "completed": false,
+        "last_lesson_id": null,
+        "next_lesson_id": "scale-build-the-org-1",
+        "position_s": 0
+      }
+    ]
+  },
+  "meta": null
+}

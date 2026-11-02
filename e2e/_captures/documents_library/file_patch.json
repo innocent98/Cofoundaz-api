@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "id": "199e1cb9-db1a-4762-b437-aaf02127834b",
+      "filename": "Term sheet (signed).pdf",
+      "content_type": "application/pdf",
+      "mime": "application/pdf",
+      "size_bytes": 19,
+      "folder": "Contracts",
+      "tags": [
+        "legal"
+      ],
+      "owner": {
+        "id": "1694eaad-0851-40a7-8c58-576c80cced79",
+        "name": "Ada Founder"
+      },
+      "share_count": 0,
+      "scan_status": "clean",
+      "uploaded_at": "2026-10-25T11:02:18.441478+00:00",
+      "trashed_at": null,
+      "purges_at": null
+    },
+    "meta": null
+  }
+}

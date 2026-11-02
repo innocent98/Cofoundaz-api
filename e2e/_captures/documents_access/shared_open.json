@@ -1,0 +1,46 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "document": {
+        "kind": "one_pager",
+        "title": "One-Pager",
+        "status": "draft",
+        "ai_generated": false,
+        "template_key": "one_pager",
+        "version": 1,
+        "updated_at": "2026-10-25T11:02:25.843085+00:00",
+        "sections": [
+          {
+            "id": "f8b6f2b4-a983-4f4e-804a-d31b0d8811c2",
+            "body": "",
+            "heading": "Overview"
+          },
+          {
+            "id": "4a842214-484e-4389-b627-b135a26d4625",
+            "body": "",
+            "heading": "Problem"
+          },
+          {
+            "id": "29cdee2d-aeef-4da3-b060-6eaf284262d1",
+            "body": "",
+            "heading": "Solution"
+          },
+          {
+            "id": "e819fbea-451d-42a3-94a6-8cf17aa0dce2",
+            "body": "",
+            "heading": "Traction"
+          },
+          {
+            "id": "b74eccf2-ee2a-4f80-80b7-7d57ed3c6ef2",
+            "body": "",
+            "heading": "The Ask"
+          }
+        ]
+      },
+      "access_level": "view",
+      "expires_at": "2026-11-24T11:02:25.891154+00:00"
+    },
+    "meta": null
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Imported transactions are read-only except the category.",
+    "field_errors": [
+      {
+        "field": "source",
+        "message": "Imported transactions are read-only except the category."
+      }
+    ]
+  }
+}

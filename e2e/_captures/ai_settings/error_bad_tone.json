@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "tone",
+        "message": "Input should be 'straight_shooter' or 'encouraging'"
+      }
+    ]
+  }
+}

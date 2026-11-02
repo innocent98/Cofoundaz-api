@@ -126,6 +126,13 @@ def test_health_score_journey(base_url, make_verified_user, capture):
         assert len(history_data) >= 1
         capture("health_score", "history", history)
 
+        markers = c.get(
+            "/api/v1/health-score/history/markers", params={"range": "365d"}, headers=wh
+        )
+        assert markers.status_code == 200, markers.text
+        assert "Assessment completed" in [m["label"] for m in markers.json()["data"]]
+        capture("health_score", "history_markers_365d", markers)
+
         # 6. Recommendations were actually generated (weak answers => non-empty),
         # and every freshly generated recommendation starts pending.
         recs = c.get("/api/v1/health-score/recommendations", headers=wh)

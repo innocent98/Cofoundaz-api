@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_SUBSCRIBED",
+    "message": "There's no paid plan to cancel.",
+    "field_errors": []
+  }
+}

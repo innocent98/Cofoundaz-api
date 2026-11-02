@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANNOT_CHANGE_SELF",
+    "message": "You can't change your own role.",
+    "field_errors": []
+  }
+}

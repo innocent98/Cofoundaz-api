@@ -1,0 +1,19 @@
+{
+    "data": {
+        "id": "25d35aa1-1983-40fc-bbd3-949b627be472",
+        "status": "complete",
+        "document_id": "f551e6fc-0f38-44da-ac0c-1a033411b76b",
+        "options": {
+            "length": "concise",
+            "audience": "investors"
+        },
+        "progress": {
+            "done": 10,
+            "stage": "Done",
+            "total": 10
+        },
+        "error": null,
+        "created_at": "2026-10-19T12:08:00.462399+00:00"
+    },
+    "meta": null
+}

@@ -1,0 +1,78 @@
+{
+  "data": {
+    "invoices": [
+      {
+        "id": "d1967e05-87d6-4913-8156-9415d2fbb2b1",
+        "number": "INV-2026-003",
+        "client_name": "Client 2",
+        "client_email": "client@example.com",
+        "line_items": [
+          {
+            "description": "Work",
+            "quantity": 1,
+            "unit_price_minor": 100,
+            "amount_minor": 100
+          }
+        ],
+        "subtotal_minor": 100,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 100,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "draft",
+        "issued_on": null,
+        "due_on": null,
+        "paid_at": null,
+        "auto_remind": false,
+        "transaction_id": null,
+        "pay_url": null,
+        "pay_provider": null,
+        "paid_via": null,
+        "last_reminded_at": null,
+        "reminder_count": 0,
+        "overdue_notified_at": null,
+        "created_at": "2026-10-22T14:44:41.815219+01:00",
+        "updated_at": "2026-10-22T14:44:41.815219+01:00"
+      },
+      {
+        "id": "f36c6092-5ed7-4fb7-819f-d904b20c4596",
+        "number": "INV-2026-002",
+        "client_name": "Client 1",
+        "client_email": "client@example.com",
+        "line_items": [
+          {
+            "description": "Work",
+            "quantity": 1,
+            "unit_price_minor": 100,
+            "amount_minor": 100
+          }
+        ],
+        "subtotal_minor": 100,
+        "tax_percent": 0.0,
+        "tax_minor": 0,
+        "total_minor": 100,
+        "currency": "NGN",
+        "terms": "net_30",
+        "status": "draft",
+        "issued_on": null,
+        "due_on": null,
+        "paid_at": null,
+        "auto_remind": false,
+        "transaction_id": null,
+        "pay_url": null,
+        "pay_provider": null,
+        "paid_via": null,
+        "last_reminded_at": null,
+        "reminder_count": 0,
+        "overdue_notified_at": null,
+        "created_at": "2026-10-22T14:44:41.804729+01:00",
+        "updated_at": "2026-10-22T14:44:41.804729+01:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": "WyIyMDI2LTEwLTIyVDE0OjQ0OjQxLjgwNDcyOSswMTowMCIsICJJTlYtMjAyNi0wMDIiXQ==",
+    "total_estimate": 3
+  }
+}

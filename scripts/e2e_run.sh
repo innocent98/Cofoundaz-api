@@ -53,6 +53,45 @@ export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cr
 # journal writes work in e2e. (A real deployment MUST set a persistent JOURNAL_ENCRYPTION_KEY.)
 export JOURNAL_ENCRYPTION_KEY="${JOURNAL_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
 
+# Finance payments (Paystack / Flutterwave): founder secrets are Fernet-encrypted at rest, so the
+# run needs a key (an existing env value is respected). PAYMENT_PROVIDER_STUB serves canned
+# provider HTTP inside the server, and is IGNORED when ENVIRONMENT=production (http.py); this
+# script is local-only. The sync interval is 0 so the journey can sync twice back to back, and
+# API_PUBLIC_URL makes the webhook_url the API returns point at this e2e server.
+export FINANCE_CONNECTIONS_ENCRYPTION_KEY="${FINANCE_CONNECTIONS_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"
+export PAYMENT_PROVIDER_STUB="true"
+export FINANCE_SYNC_MIN_INTERVAL_SECONDS="0"
+export API_PUBLIC_URL="${E2E_BASE_URL}"
+# Cofoundaz Billing (Paystack subscriptions): a throwaway test-mode key generated per run, exported to
+# BOTH the server and the pytest process (the journey signs its webhook with it). It always wins over a
+# developer's real key in .env, and the stubbed HTTP above answers api.paystack.co, so no run reaches Paystack.
+export PAYSTACK_SECRET_KEY="sk_test_e2e_$(poetry run python -c 'import secrets; print(secrets.token_hex(12))')"
+export PAYSTACK_TEST_SECRET_KEY=""
+# Mono bank link: fake sandbox-shaped values, set explicitly so a developer's real sandbox keys
+# in .env are never used (process env beats the env file) and no run can reach Mono. The
+# stubbed HTTP above answers api.withmono.com; the webhook secret is what the journey signs with.
+export MONO_SECRET_KEY="test_sk_e2e_stub_key"
+export MONO_PUBLIC_KEY="test_pk_e2e_stub_key"
+export MONO_WEBHOOK_SECRET="e2e-mono-webhook-secret"
+export MONO_ALLOW_LIVE="false"
+
+# Calendar sync: the e2e server AND the in-process worker drain answer every Google call from the
+# in-process fake (app/services/calendar/stub_transport.py). The client id/secret are placeholders;
+# nothing here can reach Google, and a developer's real values in .env are overridden.
+export CALENDAR_PROVIDER_STUB="true"
+export GOOGLE_CLIENT_ID="e2e-google-client-id.apps.example"
+export GOOGLE_CLIENT_SECRET="placeholder-not-a-real-secret"
+
+# Sales outreach: the e2e server and test process must NEVER reach a real mailbox, even when a
+# developer's .env holds the cPanel settings. Blank values win over .env (process env beats the
+# env file in pydantic-settings). The journey points the in-process worker at an in-process fake
+# SMTP server by itself.
+for _v in SALES_OUTREACH_PROVIDER SALES_OUTREACH_SMTP_HOST SALES_OUTREACH_SMTP_USERNAME \
+  SALES_OUTREACH_SMTP_PASSWORD SALES_OUTREACH_FROM_EMAIL SALES_OUTREACH_IMAP_HOST \
+  SALES_OUTREACH_UNSUBSCRIBE_KEY; do
+  export "${_v}="
+done
+
 SERVER_PID=""
 SERVER_LOG="$(mktemp -t cfz-e2e-server.XXXXXX.log)"
 
@@ -116,6 +155,11 @@ docker compose exec -T db psql -U "${PG_USER}" -d "${ADMIN_DB}" \
 
 echo "==> [sanity] alembic upgrade head on ${E2E_DB}"
 poetry run alembic upgrade head >/dev/null
+
+# The Academy catalog lives in content/academy/*.md and reaches the database through this loader
+# (the deploy `migrate` step runs the same command); the learning journey reads it back over HTTP.
+echo "==> [sanity] load Academy content into ${E2E_DB}"
+poetry run python -m app.services.learning.content
 
 echo "==> [sanity] app imports"
 poetry run python -c "import app.main" >/dev/null

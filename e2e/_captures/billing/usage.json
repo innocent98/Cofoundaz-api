@@ -1,0 +1,26 @@
+{
+  "data": {
+    "cycle": {
+      "starts_on": "2026-10-27",
+      "resets_on": "2026-11-27"
+    },
+    "ai_credits": {
+      "used": 0,
+      "limit": 5000,
+      "percent": 0,
+      "from_packs": 0,
+      "tokens_per_credit": 50
+    },
+    "seats": {
+      "used": 1,
+      "limit": 5
+    },
+    "storage": {
+      "used_mb": 0.0,
+      "limit_mb": 20480
+    },
+    "daily": [],
+    "breakdown": []
+  },
+  "meta": null
+}

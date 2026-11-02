@@ -1,0 +1,9 @@
+{"captured": "2026-10-19 local stack, GET /api/v1/missions/today after: complete, reject 'Wrong priority', snooze, complete custom task (fields trimmed to the ones this capture is about; ids are local throwaway data)",
+ "status_code": 200,
+ "body": {"data": {"mission_date": "2026-10-19", "status": "complete", "streak": 2,
+  "tasks": [
+   {"title": "List who has this problem", "status": "done", "reject_reason": null, "completed_at": "2026-10-19T15:07:38.958450+00:00", "roadmap_task_id": "b7257c42-f7ac-4f50-be98-a5f6ac97b726"},
+   {"title": "Recruit 5 interviewees", "status": "rejected", "reject_reason": "Wrong priority", "completed_at": null, "roadmap_task_id": "14f901a5-8ca3-4441-93ed-752c5722df19"},
+   {"title": "Draft a one-page concept", "status": "snoozed", "reject_reason": null, "completed_at": null, "roadmap_task_id": "8d956f49-a23b-4cb6-9460-3bc411d065f3"},
+   {"title": "Call two bank partners about API access", "status": "done", "reject_reason": null, "completed_at": "2026-10-19T15:31:19.467660+00:00", "roadmap_task_id": null}],
+  "empty_reason": null}}}

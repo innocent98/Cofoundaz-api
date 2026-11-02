@@ -1,8 +1,10 @@
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.envelope import error_response
 
@@ -28,7 +30,7 @@ class AppError(Exception):
 
 class EmailTaken(AppError):  # noqa: N818
     code, http_status = "EMAIL_TAKEN", 409
-    message = "That email already has an account — log in instead?"
+    message = "That email already has an account. Log in instead?"
 
 
 class WeakPassword(AppError):  # noqa: N818
@@ -46,6 +48,15 @@ class PasswordTooLong(AppError):  # noqa: N818
     # accepting the long passwords existing users already have.
     code, http_status = "PASSWORD_TOO_LONG", 422
     message = "That password is too long. Emoji and accented letters take up extra room."
+
+
+class EmailDeliveryFailed(AppError):  # noqa: N818
+    # The mail provider refused or never answered (unverified sending domain, quota,
+    # outage). 503 because it is the server's dependency failing, and it is retryable.
+    # Raised by the email backends; endpoints whose response must not reveal whether an
+    # account exists (forgot, verify/resend) catch it instead of letting it propagate.
+    code, http_status = "EMAIL_DELIVERY_FAILED", 503
+    message = "We couldn't send the email right now. Please try again in a few minutes."
 
 
 class InvalidCredentials(AppError):  # noqa: N818
@@ -78,6 +89,33 @@ class JournalContentUnreadable(AppError):  # noqa: N818
     # error surfaced to a client or a log.
     code, http_status = "JOURNAL_CONTENT_UNREADABLE", 500
     message = "That entry could not be read."
+
+
+class FinanceConnectionsNotConfigured(AppError):  # noqa: N818
+    code, http_status = "FINANCE_CONNECTIONS_NOT_CONFIGURED", 503
+    message = "Payment connections are not configured on the server."
+
+
+class MonoNotConfigured(AppError):  # noqa: N818
+    code, http_status = "MONO_NOT_CONFIGURED", 503
+    message = "Bank connections are not configured on the server."
+
+
+class FinanceConnectionUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor the secret may appear in an error.
+    code, http_status = "FINANCE_CONNECTION_UNREADABLE", 500
+    message = "That payment connection could not be read."
+
+
+class CalendarSyncNotConfigured(AppError):  # noqa: N818
+    code, http_status = "CALENDAR_SYNC_NOT_CONFIGURED", 503
+    message = "Calendar sync is not configured on the server."
+
+
+class CalendarConnectionUnreadable(AppError):  # noqa: N818
+    # Deliberately vague: neither the ciphertext nor a token may appear in an error.
+    code, http_status = "CALENDAR_CONNECTION_UNREADABLE", 500
+    message = "That calendar connection could not be read."
 
 
 class FeatureNotEnabled(AppError):  # noqa: N818
@@ -135,6 +173,41 @@ class SignatureNotActive(AppError):  # noqa: N818
     message = "This signature request is already complete or cancelled."
 
 
+class FileHasSignatureRequests(AppError):  # noqa: N818
+    code, http_status = "FILE_HAS_SIGNATURE_REQUESTS", 409
+    message = "This file has signature requests, so it can't be deleted."
+
+
+class FolderNotEmpty(AppError):  # noqa: N818
+    code, http_status = "FOLDER_NOT_EMPTY", 409
+    message = "This folder still has documents or files in it."
+
+
+class FolderExists(AppError):  # noqa: N818
+    code, http_status = "FOLDER_EXISTS", 409
+    message = "A folder with that name already exists here."
+
+
+class GrantExists(AppError):  # noqa: N818
+    code, http_status = "GRANT_EXISTS", 409
+    message = "This person already has access to the document."
+
+
+class NotInTrash(AppError):  # noqa: N818
+    code, http_status = "NOT_IN_TRASH", 409
+    message = "Move it to the trash first."
+
+
+class FileNotClean(AppError):  # noqa: N818
+    code, http_status = "FILE_NOT_CLEAN", 409
+    message = "This file hasn't passed the security scan, so it can't be sent or shared yet."
+
+
+class AiBudgetExhausted(AppError):  # noqa: N818
+    code, http_status = "AI_BUDGET_EXHAUSTED", 429
+    message = "Today's AI allowance for this workspace is used up. Try again tomorrow."
+
+
 class EmailNotVerified(AppError):  # noqa: N818
     code, http_status = "EMAIL_NOT_VERIFIED", 403
     message = "Please verify your email first."
@@ -150,7 +223,29 @@ class DependencyCycle(AppError):  # noqa: N818
     message = "That change would create a dependency loop."
 
 
+# The staff consoles must look like routes that don't exist to anyone who isn't staff. The guard
+# handles auth; these cover what runs before a guard can: the router's 405 for a wrong method and
+# the body parser's malformed-JSON error.
+_STAFF_PREFIXES = ("/api/v1/admin", "/api/v1/super-admin")
+
+
+def _is_staff_path(request: Request) -> bool:
+    return any(
+        request.url.path == p or request.url.path.startswith(p + "/") for p in _STAFF_PREFIXES
+    )
+
+
+def _hidden_404() -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+
 def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(request: Request, exc: StarletteHTTPException) -> Response:
+        if exc.status_code == 405 and _is_staff_path(request):
+            return _hidden_404()
+        return await http_exception_handler(request, exc)
+
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(
@@ -159,7 +254,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+        if _is_staff_path(request) and any(e["type"] == "json_invalid" for e in exc.errors()):
+            return _hidden_404()
         field_errors = [
             {"field": ".".join(str(p) for p in e["loc"] if p != "body"), "message": e["msg"]}
             for e in exc.errors()

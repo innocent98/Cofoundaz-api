@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "No account with that email. They need to sign up first.",
+    "field_errors": []
+  }
+}

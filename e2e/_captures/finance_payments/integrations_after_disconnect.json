@@ -1,0 +1,20 @@
+{
+  "data": {
+    "encryption_configured": true,
+    "providers": [
+      {
+        "provider": "paystack",
+        "label": "Paystack",
+        "key_hint": "Starts with sk_test_ or sk_live_",
+        "connection": null
+      },
+      {
+        "provider": "flutterwave",
+        "label": "Flutterwave",
+        "key_hint": "Starts with FLWSECK_TEST- or FLWSECK-",
+        "connection": null
+      }
+    ]
+  },
+  "meta": null
+}

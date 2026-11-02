@@ -42,6 +42,7 @@ from app.schemas.roadmap import (
     TaskCreate,
     TaskUpdate,
 )
+from app.services.roadmap.breakdown import start_breakdown
 from app.services.roadmap.dependencies import add_dependency, dependency_map, would_create_cycle
 from app.services.roadmap.gallery import GALLERY_TEMPLATES, template_counts
 from app.services.roadmap.replan import apply_replan, compute_replan, detect_drift
@@ -465,9 +466,16 @@ def update_milestone_ep(
     for field, value in fields.items():
         setattr(m, field, value)
     db.flush()
+    now_done = m.status == RoadmapStatus.done
+    if now_done and not was_done:
+        # D-RM-5: completing a milestone completes its open tasks, so it never reads "done
+        # at 0%" and Today's Mission stops offering work the founder just signed off.
+        db.query(RoadmapTask).filter(
+            RoadmapTask.milestone_id == m.id, RoadmapTask.status != RoadmapStatus.done
+        ).update({RoadmapTask.status: RoadmapStatus.done}, synchronize_session="fetch")
+        db.flush()
     # keep progress honest if the milestone itself was flipped and has no tasks
     recompute_milestone_progress(db, m)
-    now_done = m.status == RoadmapStatus.done
     if now_done and not was_done:
         roadmap = _require_roadmap(db, membership)
         event_bus.publish(
@@ -492,6 +500,20 @@ def update_milestone_ep(
         )
     db.commit()
     return success_response(_milestone_out(db, m))
+
+
+@router.post("/milestones/{milestone_id}/breakdown", status_code=202)
+def breakdown_milestone(
+    milestone_id: uuid.UUID,
+    membership: Membership = Depends(_editor),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """PRD 05.3 "Ask AI to break this down": queue an AI job that appends 3-5 tasks.
+    Poll `GET /jobs/{job_id}`; 409 BREAKDOWN_IN_PROGRESS while one is running."""
+    job = start_breakdown(db, _startup(db, membership), milestone_id)
+    db.commit()
+    return success_response({"job_id": str(job.id), "status": job.status.value})
 
 
 @router.delete("/milestones/{milestone_id}")
@@ -599,7 +621,7 @@ def create_dependency_ep(
     if would_create_cycle(db, roadmap.id, dependent.id, dependency.id):
         raise DependencyCycle(
             message=(
-                f"That would create a loop — {dependency.title} already depends on "
+                f"That would create a loop: {dependency.title} already depends on "
                 f"{dependent.title}."
             )
         )
@@ -701,6 +723,7 @@ def replan_history(
                 "id": str(r.id),
                 "change_count": r.change_count,
                 "summary": r.summary,
+                "rationale": r.rationale,
                 "applied_by": person_ref(db, r.applied_by),
                 "created_at": r.created_at.isoformat(),
                 "changes": r.changes,
