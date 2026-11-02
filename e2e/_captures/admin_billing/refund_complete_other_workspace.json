@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REFUND_NOT_FOUND",
+    "message": "No refund entry with that id in this workspace.",
+    "field_errors": []
+  }
+}

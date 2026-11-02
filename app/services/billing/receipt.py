@@ -34,6 +34,8 @@ def build_receipt(
         ("Reference", inv.reference),
         ("Amount", format_money(inv.amount_minor, inv.currency)),
     ]
+    if inv.refunded_minor:
+        rows.append(("Refunded", format_money(inv.refunded_minor, inv.currency)))
     for label, value in rows:
         c.setFont("Helvetica-Bold", 10)
         c.drawString(50, y, label)

@@ -581,6 +581,14 @@ class StaffRole(enum.StrEnum):
     super_admin = "super_admin"
 
 
+class FlagStage(enum.StrEnum):
+    """A product label shown on the flag card. It does not change who gets the feature."""
+
+    beta = "beta"
+    ga = "ga"
+    internal = "internal"
+
+
 class ApprovalAction(enum.StrEnum):
     """What a Super Admin may ask a second Super Admin to approve (Admin slice E)."""
 

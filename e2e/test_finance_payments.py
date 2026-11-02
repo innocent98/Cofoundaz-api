@@ -156,8 +156,9 @@ def test_finance_payments_journey(
     base_url, make_verified_user, unique_email, mailbox, capture, capture_json
 ):
     # Placeholder-shaped secrets, generated per run (uuid hex: never a human-style password).
-    ps_key = f"sk_test_{uuid.uuid4().hex}"
-    ps_key_2 = f"sk_test_{uuid.uuid4().hex}"
+    # The stub rejects any key containing "bad", which a random hex string sometimes does.
+    ps_key = f"sk_test_{uuid.uuid4().hex.replace('bad', 'bed')}"
+    ps_key_2 = f"sk_test_{uuid.uuid4().hex.replace('bad', 'bed')}"
     fw_key = f"FLWSECK_TEST-{uuid.uuid4().hex}-X"
     fw_hash = f"hash{uuid.uuid4().hex}"
     secrets_sent = [ps_key, ps_key_2, fw_key, fw_hash]

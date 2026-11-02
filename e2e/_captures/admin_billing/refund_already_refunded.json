@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVOICE_NOT_REFUNDABLE",
+    "message": "Only a paid invoice can be refunded; this one is refunded.",
+    "field_errors": []
+  }
+}

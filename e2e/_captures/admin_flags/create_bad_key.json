@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "key",
+        "message": "String should match pattern '^[a-z][a-z0-9_]{2,59}$'"
+      }
+    ]
+  }
+}

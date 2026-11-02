@@ -3771,11 +3771,22 @@ Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-AD
 
 ### Slices still ahead
 - [ ] B: Users, Workspaces (read-only), Dashboard KPIs
-- [ ] C: Billing overrides (refund, credit, extend trial, comp)
-- [ ] D: Feature flags
+- [x] C: Billing overrides (refund, credit, extend trial, comp): built 2026-10-31, see below
+- [x] D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, PR pending; see Admin slice D below)
 - [ ] E: Maintenance mode + global sign-out with a second approver
 - [ ] FE for both consoles (after the API slices)
 - [ ] Next: tickets, content CMS, reported issues; after Marketplace: expert vetting
+
+### Admin slice D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, migration 0084, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-feature-flags.md`, FE guide `docs/fe-integration-guide-admin-flags.md`.
+- [x] `feature_flags` table (key, name, description, stage beta/ga/internal, enabled, rollout %, workspace allow-list)
+- [x] Stable bucketing and `is_enabled(db, key, workspace_id)`; unknown flag is off
+- [x] Super Admin list, create, update, impact preview; step-up, reason, audit row on each write
+- [x] `GET /flags`: the app's on-only map for the current workspace
+- [x] Unit tests (26), live e2e journey safe for the shared e2e database, Opus review (no High; Mediums fixed)
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: check-before-step-up ordering, flag archive/delete, plan/stage targeting (P7b), wiring features to flags
 
 ### Deferred follow-ups (slice A)
 - [ ] Emailed staff invite for people without an account yet
@@ -3796,14 +3807,27 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 - [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
 
-### Admin slice E: maintenance mode and global sign-out (2026-10-31, branch `feature/admin-danger-zone`, migration `0085_admin_danger_zone`, PR pending)
+### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0085_billing_overrides`, on develop after #206 merged, PR draft)
 
-SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-guide-admin-danger-zone.md`. Chained on 0083: re-chain after slices C and D (both 0084).
+Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan for N days, refund = internal entry. SOP `docs/sop/2026-10-31-admin-billing-overrides.md`, FE guide `docs/fe-integration-guide-admin-billing.md`.
+- [x] `billing_overrides` ledger + `comped` + `refunded_minor` (migration 0084, refund cap check)
+- [x] Refund recorded as pending (partial/full, over-refund guard incl. pending); founder sees it only after staff mark it done, then the invoice flips to `refunded` (Adebayo "Accept all four")
+- [x] Credit (AI credits visible in Usage at once)
+- [x] Extend trial (1-60 days, 90-day cap)
+- [x] Comp (lapses by itself; founder cancel/resume/change blocked; MRR excludes it)
+- [x] Step-up + reason + audit row + `request_id` idempotency + locks on every override
+- [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
+- [ ] CI green, #206 merged first, then re-chain 0084 on develop's head and merge develop in
+- [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
+- [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
+
+### Admin slice E: maintenance mode and global sign-out (2026-10-31, branch `feature/admin-danger-zone`, migration `0086_admin_danger_zone`, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-guide-admin-danger-zone.md`. Chained on 0085_billing_overrides.
 - [x] Approval requests: request, approve, reject, cancel, expiry (1 h), list; requester never decides; step-up, reason, audit on each
 - [x] Maintenance mode: one middleware, allow-list (sign-in, staff, health, webhooks), 503 `MAINTENANCE_MODE`; public `GET /platform/status`
 - [x] Switching it off: any one Super Admin alone (never needs a second person)
 - [x] Global sign-out: revokes all sessions, kills existing access tokens (`iat` cutoff), staff sign back in; open streams close
 - [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
-- [ ] CI green on the PR, merged by Adebayo; re-chain migration after C and D
+- [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out
-

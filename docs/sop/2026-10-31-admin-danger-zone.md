@@ -1,6 +1,6 @@
 # Admin slice E: maintenance mode and global sign-out (second approver)
 
-**What shipped:** Super Admin "Danger zone" API (D-ADM-4): a Super Admin requests maintenance mode or a global sign-out, a **different** active Super Admin approves or rejects it, an unanswered request expires. One middleware blocks founder writes while maintenance is on. A public status read feeds the app banner. PR: see the branch `feature/admin-danger-zone` (migration `0085_admin_danger_zone`, chained on `0083`; re-chain after slices C and D merge).
+**What shipped:** Super Admin "Danger zone" API (D-ADM-4): a Super Admin requests maintenance mode or a global sign-out, a **different** active Super Admin approves or rejects it, an unanswered request expires. One middleware blocks founder writes while maintenance is on. A public status read feeds the app banner. PR: see the branch `feature/admin-danger-zone` (migration `0086_admin_danger_zone`, chained on `0085_billing_overrides`).
 
 **Why:** the Super Admin mock has two dangerous buttons (S22, S23). Neither may be pressed by one person, and neither may leave the platform in a state that cannot be undone or lock the recovering staff out.
 
@@ -23,12 +23,12 @@
 - `app/services/staff/danger_zone.py`, `app/platform/state.py`, `app/middleware/maintenance.py`, `app/main.py` (middleware order: inside CORS and the rate limiter).
 - `app/api/v1/endpoints/super_admin.py` (`/danger-zone`, `/approvals`, `/maintenance/disable`), `platform_status.py`, `app/schemas/staff.py`.
 - `app/api/deps.py`, `app/core/security.py`, `app/services/auth/sessions.py`, `notifications.py`, `access.py` (cancel open requests on revoke/demote).
-- Models `platform_setting.py`, `staff_approval.py`; migration `0085_admin_danger_zone`.
+- Models `platform_setting.py`, `staff_approval.py`; migration `0086_admin_danger_zone`.
 - Tests `tests/api/test_staff_danger_zone.py`; live journey `e2e/test_zz_admin_danger_zone.py` (captures `e2e/_captures/admin_danger_zone/`).
 
 **Verification:** see the PR. Three Opus reviews (approval flow, middleware, sign-out) found no High; Medium and Low findings fixed as listed above.
 
-**Operate / roll back:** if maintenance is stuck on and no one can sign in, set `platform_settings` key `maintenance` value `{"enabled": false}` in SQL. Roll back by reverting and `alembic downgrade 0083_platform_staff` (drops both tables). Old tokens without `iat` stay valid until no cutoff exists.
+**Operate / roll back:** if maintenance is stuck on and no one can sign in, set `platform_settings` key `maintenance` value `{"enabled": false}` in SQL. Roll back by reverting and `alembic downgrade 0085_billing_overrides` (drops both tables). Old tokens without `iat` stay valid until no cutoff exists.
 
 **Follow-ups / not done**
 - Smoke-page signups (`/validation/pages/{slug}/signups`, `/events`) are blocked during maintenance, so visitors to founders' landing pages get 503. Product call whether to allow them.

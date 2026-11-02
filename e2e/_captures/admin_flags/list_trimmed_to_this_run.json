@@ -1,0 +1,36 @@
+{
+  "data": {
+    "flags": [
+      {
+        "id": "aab3b0a1-8e8e-4e01-9b1d-240737b0a6a5",
+        "key": "e2e_voice_ed11f57f",
+        "name": "AI voice notes",
+        "description": "Dictate journal entries and mission updates.",
+        "stage": "ga",
+        "enabled": true,
+        "rollout_pct": 0,
+        "workspace_allowlist": [
+          "981dea5d-651e-41ca-9fee-89d5e86a43b2"
+        ],
+        "affected_workspaces": 1,
+        "created_at": "2026-10-31T14:50:30.505453+00:00",
+        "updated_at": "2026-10-31T14:52:30.254098+00:00"
+      },
+      {
+        "id": "b7871ed1-d411-4e5b-a8f6-d401784ade3c",
+        "key": "e2e_board_c2d3d121",
+        "name": "Roadmap Kanban v2",
+        "description": "",
+        "stage": "internal",
+        "enabled": false,
+        "rollout_pct": 0,
+        "workspace_allowlist": [],
+        "affected_workspaces": 0,
+        "created_at": "2026-10-31T14:55:00.110705+00:00",
+        "updated_at": "2026-10-31T14:55:00.110705+00:00"
+      }
+    ],
+    "total_workspaces": 4
+  },
+  "meta": null
+}

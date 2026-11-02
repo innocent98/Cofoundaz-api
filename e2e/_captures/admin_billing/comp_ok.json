@@ -1,0 +1,50 @@
+{
+  "data": {
+    "replayed": false,
+    "override": {
+      "id": "1e2e4b0f-1f24-4431-9607-430c57514d08",
+      "request_id": "b5fed3a0-7d4e-4bdd-ba39-2ad5138b38e7",
+      "kind": "comp",
+      "reason": "Goodwill after a failed renewal",
+      "actor_email": "delivered+e2e-e497acf2eaed@resend.dev",
+      "invoice_id": null,
+      "amount_minor": null,
+      "credits": null,
+      "days": 30,
+      "plan_key": "growth",
+      "provider_refund": null,
+      "completed_at": null,
+      "details": {
+        "before": {
+          "comped": false,
+          "status": "free",
+          "plan_key": "starter"
+        },
+        "ends_at": "2026-11-30T15:26:00.302853+00:00"
+      },
+      "created_at": "2026-10-31T15:26:00.273332+00:00"
+    },
+    "subscription": {
+      "plan": {
+        "key": "growth",
+        "name": "Growth"
+      },
+      "interval": "monthly",
+      "status": "active",
+      "price_minor": 2400000,
+      "currency": "NGN",
+      "current_period_start": "2026-10-31T15:26:00.302853+00:00",
+      "renews_at": null,
+      "ends_at": "2026-11-30T15:26:00.302853+00:00",
+      "trial_ends_at": null,
+      "trial_available": false,
+      "comped": true,
+      "cancel_at_period_end": true,
+      "cancel_reason": "comp",
+      "pending_change": null,
+      "payment_issue": null,
+      "enforcement": false
+    }
+  },
+  "meta": null
+}

@@ -1,7 +1,7 @@
 """Admin slice E: platform settings and second-approver requests (maintenance mode, global sign-out)
 
-Revision ID: 0085_admin_danger_zone
-Revises: 0083_platform_staff
+Revision ID: 0086_admin_danger_zone
+Revises: 0085_billing_overrides
 Create Date: 2026-10-31
 
 Adds `platform_settings` (key/value switches; rows are created on first use) and
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0085_admin_danger_zone"
-down_revision = "0083_platform_staff"
+revision = "0086_admin_danger_zone"
+down_revision = "0085_billing_overrides"
 branch_labels = None
 depends_on = None
 
