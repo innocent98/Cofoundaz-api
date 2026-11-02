@@ -592,8 +592,10 @@ def test_canned_responses_crud_and_audit(client, db):
     assert (
         client.patch(f"{S}/canned/{cid}", json={}, headers=h).json()["error"]["code"] == "NO_CHANGE"
     )
-    assert client.delete(f"{S}/canned/{cid}", headers=h).json()["data"]["deleted"] is True
-    assert client.delete(f"{S}/canned/{cid}", headers=h).status_code == 404
+    deleted = client.delete(f"{S}/canned/{cid}", headers=h)
+    assert deleted.json()["data"]["deleted"] is True
+    deleted_again = client.delete(f"{S}/canned/{cid}", headers=h)
+    assert deleted_again.status_code == 404
     assert (
         client.patch(f"{S}/canned/{uuid.uuid4()}", json={"title": "x"}, headers=h).status_code
         == 404
