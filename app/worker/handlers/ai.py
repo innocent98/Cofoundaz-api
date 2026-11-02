@@ -554,6 +554,7 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
                 AiMessage.conversation_id == conversation.id,
                 AiMessage.id != msg.id,
                 AiMessage.status == ChatMessageStatus.ready,
+                AiMessage.removed_by_moderation_at.is_(None),  # removed by staff: never re-fed
             )
             .order_by(AiMessage.created_at.desc(), AiMessage.id.desc())
             .limit(20)

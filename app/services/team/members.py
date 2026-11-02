@@ -35,6 +35,7 @@ from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.auth.emails import invitation_email
 from app.services.auth.sessions import hash_token
+from app.services.reports.core import REMOVED_PLACEHOLDER
 from app.services.team import service as team_svc
 
 INVITE_TTL = timedelta(days=14)
@@ -546,7 +547,11 @@ def comment_threads(
                 "mentions_me": mentions_me,
                 "last_comment": {
                     "author": author[0] or author[1] or None,
-                    "snippet": latest.body[: team_svc.SNIPPET],
+                    "snippet": (
+                        REMOVED_PLACEHOLDER
+                        if latest.removed_by_moderation_at
+                        else latest.body[: team_svc.SNIPPET]
+                    ),
                     "created_at": latest.created_at.isoformat(),
                 },
             }

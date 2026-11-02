@@ -1,0 +1,43 @@
+{
+  "data": {
+    "id": "1ffd1deb-e585-453e-a6af-6f3c81a0a1cd",
+    "title": "How long is my runway?",
+    "created_at": "2026-11-02T14:31:28.303416+00:00",
+    "updated_at": "2026-11-02T14:31:30.024901+00:00",
+    "messages": [
+      {
+        "id": "6138438b-969a-4cb4-aaf5-d418271532fd",
+        "role": "user",
+        "status": "ready",
+        "content": "How long is my runway?",
+        "removed_by_moderation": false,
+        "created_at": "2026-11-02T14:31:28.315811+00:00"
+      },
+      {
+        "id": "a5d17cae-15d2-4fd0-b26d-ccdb1387ff9c",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "removed_by_moderation": false,
+        "created_at": "2026-11-02T14:31:28.316811+00:00"
+      },
+      {
+        "id": "98235b78-ceb0-413e-8ed2-220bec4e74a7",
+        "role": "user",
+        "status": "ready",
+        "content": "And what should I charge?",
+        "removed_by_moderation": false,
+        "created_at": "2026-11-02T14:31:30.023901+00:00"
+      },
+      {
+        "id": "ef27fd03-5af5-4787-89ff-47fffead343c",
+        "role": "assistant",
+        "status": "ready",
+        "content": "Removed by moderation",
+        "removed_by_moderation": true,
+        "created_at": "2026-11-02T14:31:30.024901+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

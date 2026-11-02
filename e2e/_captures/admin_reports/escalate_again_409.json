@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_ESCALATED",
+    "message": "This report is already escalated.",
+    "field_errors": []
+  }
+}

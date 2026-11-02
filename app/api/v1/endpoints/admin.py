@@ -6,8 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext, require_staff
 from app.core.envelope import Meta, success_response
-from app.db.models.enums import StartupStage, TicketCategory, TicketPriority
+from app.db.models.enums import (
+    ReportItemType,
+    ReportReason,
+    StartupStage,
+    TicketCategory,
+    TicketPriority,
+)
 from app.db.session import get_db
+from app.schemas.reports import ReasonRequest, StepUpReasonRequest
 from app.schemas.staff import StaffActionRequest
 from app.schemas.support import (
     AssignRequest,
@@ -19,12 +26,13 @@ from app.schemas.support import (
     ReopenRequest,
     ResolveRequest,
 )
-from app.services.staff import support, users, workspaces
+from app.services.staff import reports, support, users, workspaces
 from app.services.staff.stepup import verify_step_up
 
 router = APIRouter()
 
 _Support = Annotated[StaffContext, Depends(require_staff("support"))]
+_Moderation = Annotated[StaffContext, Depends(require_staff("moderation"))]
 _Anyone = Annotated[StaffContext, Depends(require_staff())]
 _Db = Annotated[Session, Depends(get_db)]
 
@@ -304,3 +312,86 @@ def update_canned(
 def delete_canned(canned_id: uuid.UUID, request: Request, ctx: _Support, db: _Db) -> dict[str, Any]:
     ip, ua = _client(request)
     return success_response(support.delete_canned(db, ctx, canned_id, ip=ip, ua=ua))
+
+
+# ------------------------------------------------------- reported issues (scope: moderation)
+# Dismiss and escalate need only a written reason (reversible, no content changes). Remove and
+# restore change what an author sees, so they also carry a fresh authenticator code (R9). Only a
+# Super Admin decides an escalated report (R7). Every action writes an audit row.
+
+
+@router.get("/reports/counts")
+def report_counts(ctx: _Moderation, db: _Db) -> dict[str, Any]:
+    return success_response(reports.counts(db))
+
+
+@router.get("/reports")
+def list_reports(
+    ctx: _Moderation,
+    db: _Db,
+    tab: Literal["open", "escalated", "closed"] = "open",
+    type: ReportItemType | None = None,  # noqa: A002 - the query-string name is `type`
+    reason: ReportReason | None = None,
+    query: Annotated[str | None, Query(max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    items, nxt = reports.list_reports(
+        db, tab=tab, item_type=type, reason=reason, query=query, limit=limit, cursor=cursor
+    )
+    return success_response({"reports": items}, Meta(next_cursor=nxt))
+
+
+@router.get("/reports/{report_id}")
+def get_report(report_id: uuid.UUID, ctx: _Moderation, db: _Db) -> dict[str, Any]:
+    return success_response(reports.detail(db, report_id))
+
+
+@router.post("/reports/{report_id}/dismiss")
+def dismiss_report(
+    report_id: uuid.UUID, payload: ReasonRequest, request: Request, ctx: _Moderation, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        reports.dismiss(db, ctx, report_id, reason=payload.reason, ip=ip, ua=ua)
+    )
+
+
+@router.post("/reports/{report_id}/escalate")
+def escalate_report(
+    report_id: uuid.UUID, payload: ReasonRequest, request: Request, ctx: _Moderation, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        reports.escalate(db, ctx, report_id, reason=payload.reason, ip=ip, ua=ua)
+    )
+
+
+@router.post("/reports/{report_id}/remove")
+def remove_reported_item(
+    report_id: uuid.UUID,
+    payload: StepUpReasonRequest,
+    request: Request,
+    ctx: _Moderation,
+    db: _Db,
+) -> dict[str, Any]:
+    reports.detail(db, report_id)  # a 404 must not spend the authenticator code
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(reports.remove(db, ctx, report_id, reason=payload.reason, ip=ip, ua=ua))
+
+
+@router.post("/reports/{report_id}/restore")
+def restore_reported_item(
+    report_id: uuid.UUID,
+    payload: StepUpReasonRequest,
+    request: Request,
+    ctx: _Moderation,
+    db: _Db,
+) -> dict[str, Any]:
+    reports.detail(db, report_id)  # a 404 must not spend the authenticator code
+    verify_step_up(ctx.user, payload.totp_code)
+    ip, ua = _client(request)
+    return success_response(
+        reports.restore(db, ctx, report_id, reason=payload.reason, ip=ip, ua=ua)
+    )

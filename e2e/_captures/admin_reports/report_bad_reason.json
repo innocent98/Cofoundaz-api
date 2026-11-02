@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "reason",
+        "message": "Input should be 'spam', 'abusive', 'harmful', 'inaccurate', 'privacy' or 'other'"
+      }
+    ]
+  }
+}

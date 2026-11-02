@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SUPER_ADMIN_ONLY",
+    "message": "Only a Super Admin can decide an escalated report.",
+    "field_errors": []
+  }
+}

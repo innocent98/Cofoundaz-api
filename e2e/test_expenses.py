@@ -335,7 +335,9 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
         assert replaced.status_code == 200, replaced.text
         rep = replaced.json()["data"]
         assert rep["has_receipt"] is True
-        assert rep["receipt_url"] == up["receipt_url"]  # the route is stable; the file behind it moved
+        assert (
+            rep["receipt_url"] == up["receipt_url"]
+        )  # the route is stable; the file behind it moved
         capture("expenses", "receipt_replaced", replaced)
         assert _fetch(first_url).status_code == 404, "replace must delete the old receipt file"
         assert _fetch(_link(c, wh, hosting_id)).content == _PDF
@@ -425,7 +427,9 @@ def test_finance_expenses_journey(base_url, make_verified_user, capture):
         assert deleted.status_code == 200, deleted.text
         assert deleted.json()["data"] == {"deleted": True}
         capture("expenses", "expense_deleted", deleted)
-        assert _fetch(pay_url).status_code == 404, "deleting an expense must remove its receipt file"
+        assert (
+            _fetch(pay_url).status_code == 404
+        ), "deleting an expense must remove its receipt file"
 
         gone = c.get(f"/api/v1/finance/expenses/{payroll_id}", headers=wh)
         assert gone.status_code == 404, gone.text

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REPORT_CLOSED",
+    "message": "This report is already closed.",
+    "field_errors": []
+  }
+}

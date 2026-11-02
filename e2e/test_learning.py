@@ -116,7 +116,9 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         again = c.post("/api/v1/learning/enrollments", headers=wh, json={"course_id": COURSE})
         assert again.status_code == 200, again.text
         capture("learning", "enrollment_repeat", again)
-        unknown_course = c.post("/api/v1/learning/enrollments", headers=wh, json={"course_id": "nope"})
+        unknown_course = c.post(
+            "/api/v1/learning/enrollments", headers=wh, json={"course_id": "nope"}
+        )
         assert unknown_course.status_code == 404
         capture("learning", "enrollment_unknown_course", unknown_course)
         no_field = c.post("/api/v1/learning/enrollments", headers=wh, json={})
@@ -148,7 +150,9 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         empty = c.get(note_url, headers=wh)
         assert empty.status_code == 200 and empty.json()["data"]["body"] == ""
         capture("learning", "note_empty", empty)
-        saved = c.put(note_url, headers=wh, json={"body": "Ask the pilot customers about WhatsApp."})
+        saved = c.put(
+            note_url, headers=wh, json={"body": "Ask the pilot customers about WhatsApp."}
+        )
         assert saved.status_code == 200, saved.text
         capture("learning", "note_saved", saved)
         assert c.get(note_url, headers=wh).json()["data"]["body"].startswith("Ask the pilot")
@@ -241,7 +245,11 @@ def test_learning_journey(base_url, make_verified_user, capture, capture_json):
         verify = c.get(f"/api/v1/verify/{code}")
         assert verify.status_code == 200, verify.text
         assert set(verify.json()["data"]) == {
-            "valid", "holder_name", "course_title", "issued_on", "issuer"
+            "valid",
+            "holder_name",
+            "course_title",
+            "issued_on",
+            "issuer",
         }
         assert verify.json()["data"]["holder_name"] == "Ada Founder"
         capture("learning", "verify_valid", verify)

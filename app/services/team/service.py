@@ -20,6 +20,7 @@ from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, Roadm
 from app.db.models.startup import Startup
 from app.db.models.user import User, UserProfile
 from app.platform.events import event_bus
+from app.services.reports.core import REMOVED_PLACEHOLDER
 
 # Who may post: everyone but investors (PRD 05 access: BC suggest, M read shared). All may read.
 COMMENTER_ROLES = frozenset(MembershipRole) - {MembershipRole.investor}
@@ -122,6 +123,7 @@ def _names(db: Session, user_ids: set[uuid.UUID]) -> dict[uuid.UUID, str | None]
 
 
 def serialize_comment(c: Comment, names: dict[uuid.UUID, str | None], viewer: uuid.UUID) -> dict:
+    removed = c.removed_by_moderation_at is not None
     return {
         "id": str(c.id),
         "entity_type": c.entity_type,
@@ -130,8 +132,9 @@ def serialize_comment(c: Comment, names: dict[uuid.UUID, str | None], viewer: uu
         "author": (
             {"id": str(c.author_id), "name": names.get(c.author_id)} if c.author_id else None
         ),
-        "body": c.body,
-        "mention_user_ids": list(c.mention_user_ids or []),
+        "body": REMOVED_PLACEHOLDER if removed else c.body,
+        "removed_by_moderation": removed,
+        "mention_user_ids": [] if removed else list(c.mention_user_ids or []),
         "created_at": c.created_at.isoformat(),
         "edited_at": c.edited_at.isoformat() if c.edited_at else None,
         "resolved_at": c.resolved_at.isoformat() if c.resolved_at else None,
@@ -249,7 +252,7 @@ def edit_comment(
     db: Session, startup: Startup, user: User, comment_id: uuid.UUID, body: str
 ) -> dict:
     c = _own_comment(db, startup, comment_id)
-    if c.author_id != user.id:
+    if c.author_id != user.id or c.removed_by_moderation_at is not None:
         raise Forbidden()
     c.body = body
     c.edited_at = datetime.now(UTC)

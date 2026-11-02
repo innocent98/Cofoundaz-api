@@ -3843,3 +3843,14 @@ SOP `docs/sop/2026-11-02-admin-tickets.md`, FE guide `docs/fe-integration-guide-
 - [x] 45 API tests incl. IDOR and guard matrix; live e2e + captured FE guide; Opus review fixed
 - [ ] FE: Settings > Help entry and Support tab (brief `docs/fe-handoff/admin-support-tickets.md`, FE dev)
 - [ ] Deferred: attachments, AI triage, email-in, assignee notification, de-escalate, SLA on resolution
+
+### Admin Reported issues: founder "report this" + staff moderation queue (2026-11-02, branch `feature/admin-reports`, migration `0088_content_reports` on `0087`, PR pending)
+
+SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-admin-reports.md`, calls R1 to R12 in the SOP. PRD 25.5, gap row A21. Rebased on develop after Tickets (#211).
+- [x] Models + migration 0088 (content reports, removed-by-moderation flag on comments and AI messages)
+- [x] Founder: report an AI reply or a comment (reason, note), one live report per item, rate limit, `GET /reports/mine`
+- [x] Staff (`moderation` scope + Super Admin): queue tabs Open / Escalated / Closed, filters, search, detail with the snippet only; dismiss, escalate (reason), remove and restore (step-up); only a Super Admin decides escalations; audit row per action
+- [x] Authors see "Removed by moderation" in comments, the threads index and AI chats; removed comments can't be edited
+- [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide
+- [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
+- [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view

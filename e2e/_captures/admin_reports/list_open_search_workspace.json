@@ -1,0 +1,82 @@
+{
+  "data": {
+    "reports": [
+      {
+        "id": "51de0fac-ab33-414b-9fea-0b324b613117",
+        "item_type": "ai_message",
+        "reason": "harmful",
+        "note": "Wrong figures",
+        "status": "open",
+        "snippet": "[stub-llm] AI-generated assessment narrative.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+        },
+        "author": null,
+        "workspace": {
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "name": "Report Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-02T14:31:30.221510+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      },
+      {
+        "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
+        "item_type": "ai_message",
+        "reason": "inaccurate",
+        "note": "Wrong figures",
+        "status": "open",
+        "snippet": "[stub-llm] AI-generated assessment narrative.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+        },
+        "author": null,
+        "workspace": {
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "name": "Report Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-02T14:31:30.200966+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      },
+      {
+        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+        "item_type": "comment",
+        "reason": "abusive",
+        "note": "Personal attack",
+        "status": "open",
+        "snippet": "Your launch plan is hopeless and so are you.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+        },
+        "author": {
+          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+          "name": "delivered+e2e-a8874c9c7471@resend.dev"
+        },
+        "workspace": {
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "name": "Report Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-02T14:31:30.166167+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

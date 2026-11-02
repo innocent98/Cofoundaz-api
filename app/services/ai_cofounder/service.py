@@ -12,6 +12,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.reports.core import REMOVED_PLACEHOLDER
 
 REPLY_FAILED_TEXT = "Sorry, I couldn't put a reply together. Please try asking again."
 BUDGET_FAILED_TEXT = (
@@ -168,11 +169,13 @@ def post_message(db: Session, conversation: AiConversation, content: str) -> AiM
 
 
 def serialize_message(m: AiMessage) -> dict[str, Any]:
+    removed = m.removed_by_moderation_at is not None
     return {
         "id": str(m.id),
         "role": m.role.value,
         "status": m.status.value,
-        "content": m.content,
+        "content": REMOVED_PLACEHOLDER if removed else m.content,
+        "removed_by_moderation": removed,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
 

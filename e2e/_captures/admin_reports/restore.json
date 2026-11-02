@@ -1,0 +1,42 @@
+{
+  "data": {
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+    "item_type": "comment",
+    "reason": "abusive",
+    "note": "Personal attack",
+    "status": "restored",
+    "snippet": "Your launch plan is hopeless and so are you.",
+    "snippet_truncated": false,
+    "reporter": {
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "name": "Ada Obi",
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+    },
+    "author": {
+      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+      "name": "delivered+e2e-a8874c9c7471@resend.dev"
+    },
+    "workspace": {
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "name": "Report Co",
+      "plan_key": "starter"
+    },
+    "created_at": "2026-11-02T14:31:30.166167+00:00",
+    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
+    "decided_at": "2026-11-02T14:32:01.218225+00:00",
+    "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
+    "decision_reason": "Second look: context was a quoted example",
+    "escalated_by": {
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
+    },
+    "decided_by": {
+      "id": "210254f9-f135-4d34-bebd-0117b1651d68",
+      "name": "delivered+e2e-27877180d2aa@resend.dev",
+      "email": "delivered+e2e-27877180d2aa@resend.dev"
+    },
+    "reports_on_item": 1
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_REMOVED",
+    "message": "Only a removed item can be restored.",
+    "field_errors": []
+  }
+}

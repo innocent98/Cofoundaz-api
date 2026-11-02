@@ -625,3 +625,27 @@ class TicketCategory(enum.StrEnum):
     how_to = "how_to"
     feature_request = "feature_request"
     other = "other"
+
+
+class ReportItemType(enum.StrEnum):
+    """What a founder can report. Marketplace reviews join when Marketplace is built."""
+
+    ai_message = "ai_message"
+    comment = "comment"
+
+
+class ReportReason(enum.StrEnum):
+    spam = "spam"
+    abusive = "abusive"
+    harmful = "harmful"
+    inaccurate = "inaccurate"
+    privacy = "privacy"
+    other = "other"
+
+
+class ReportStatus(enum.StrEnum):
+    open = "open"
+    escalated = "escalated"
+    dismissed = "dismissed"
+    removed = "removed"
+    restored = "restored"
