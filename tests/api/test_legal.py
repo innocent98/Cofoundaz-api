@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -276,6 +276,191 @@ def test_forbidden_roles_cannot_touch_ip(client, db, role):
     _u, _s, h = _member(db, role=role, startup=startup)
     assert client.get(f"{BASE}/ip-assets", headers=h).status_code == 403
     assert client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=h).status_code == 403
+
+
+# --- compliance items --------------------------------------------------------------------------
+
+
+def _comp_body(**kw):
+    body = {"title": "VAT filing", "authority": "FIRS", "due_on": "2026-11-30"}
+    body.update(kw)
+    return body
+
+
+def _in_days(n):
+    return (datetime.now(UTC).date() + timedelta(days=n)).isoformat()
+
+
+def test_compliance_crud_roundtrip(client, db):
+    _u, _s, h = _member(db)
+    created = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=h)
+    assert created.status_code == 200, created.text
+    data = created.json()["data"]
+    cid = data["id"]
+    assert data["due_on"] == "2026-11-30"  # ISO, never "in 9 days"
+    assert data["status"] == "open"
+    assert data["recurrence"] == "none"
+    assert data["done_at"] is None and data["proof_url"] is None
+
+    listed = client.get(f"{BASE}/compliance-items", headers=h)
+    assert listed.status_code == 200
+    assert any(i["id"] == cid for i in listed.json()["data"]["compliance_items"])
+
+    one = client.get(f"{BASE}/compliance-items/{cid}", headers=h)
+    assert one.status_code == 200 and one.json()["data"]["title"] == "VAT filing"
+
+    patched = client.patch(
+        f"{BASE}/compliance-items/{cid}", json={"title": "VAT return"}, headers=h
+    )
+    assert patched.status_code == 200
+    assert patched.json()["data"]["title"] == "VAT return"
+
+    cleared = client.patch(f"{BASE}/compliance-items/{cid}", json={"authority": None}, headers=h)
+    assert cleared.json()["data"]["authority"] is None
+
+    deleted = client.delete(f"{BASE}/compliance-items/{cid}", headers=h)
+    assert deleted.status_code == 200
+    assert deleted.json()["data"] == {"deleted": True}
+    assert client.get(f"{BASE}/compliance-items/{cid}", headers=h).status_code == 404
+
+
+def test_the_four_derived_badges(client, db):
+    _u, _s, h = _member(db)
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="Late", due_on=_in_days(-1)), headers=h
+    )
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="Today", due_on=_in_days(0)), headers=h
+    )
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="Soon", due_on=_in_days(14)), headers=h
+    )
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="Later", due_on=_in_days(15)), headers=h
+    )
+
+    rows = client.get(f"{BASE}/compliance-items", headers=h).json()["data"]["compliance_items"]
+    by_title = {i["title"]: i["derived_status"] for i in rows}
+    assert by_title["Late"] == "overdue"
+    assert by_title["Today"] == "due_soon"  # today has not passed
+    assert by_title["Soon"] == "due_soon"  # 14 days is inside the window
+    assert by_title["Later"] == "upcoming"  # 15 is outside it
+
+
+def test_marking_done_wins_over_overdue(client, db):
+    _u, _s, h = _member(db)
+    cid = client.post(
+        f"{BASE}/compliance-items", json=_comp_body(due_on=_in_days(-30)), headers=h
+    ).json()["data"]["id"]
+    done = client.patch(f"{BASE}/compliance-items/{cid}", json={"status": "done"}, headers=h)
+    assert done.status_code == 200, done.text
+    assert done.json()["data"]["derived_status"] == "done"
+    assert done.json()["data"]["done_at"] is not None
+
+
+def test_an_empty_calendar_lists_nothing(client, db):
+    _u, _s, h = _member(db)
+    r = client.get(f"{BASE}/compliance-items", headers=h)
+    assert r.status_code == 200 and r.json()["data"]["compliance_items"] == []
+
+
+def test_compliance_range_and_status_filters(client, db):
+    _u, _s, h = _member(db)
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="June", due_on="2026-06-30"), headers=h
+    )
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="July 1", due_on="2026-07-01"), headers=h
+    )
+    client.post(
+        f"{BASE}/compliance-items", json=_comp_body(title="July 31", due_on="2026-07-31"), headers=h
+    )
+
+    ranged = client.get(
+        f"{BASE}/compliance-items?date_from=2026-07-01&date_to=2026-07-31", headers=h
+    )
+    assert [i["title"] for i in ranged.json()["data"]["compliance_items"]] == ["July 1", "July 31"]
+
+    only_open = client.get(f"{BASE}/compliance-items?status=open", headers=h)
+    assert len(only_open.json()["data"]["compliance_items"]) == 3
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"title": ""},
+        {"title": "   "},
+        {"due_on": "not-a-date"},
+        {"recurrence": "fortnightly"},
+        {"authority": "a" * 121},
+    ],
+)
+def test_bad_compliance_bodies_are_422(client, db, body):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/compliance-items", json=_comp_body(**body), headers=h)
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_due_on_is_required_on_create(client, db):
+    _u, _s, h = _member(db)
+    r = client.post(f"{BASE}/compliance-items", json={"title": "VAT"}, headers=h)
+    assert r.status_code == 422
+
+
+def test_an_explicit_null_on_a_required_compliance_field_is_422(client, db):
+    _u, _s, h = _member(db)
+    cid = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=h).json()["data"]["id"]
+    r = client.patch(f"{BASE}/compliance-items/{cid}", json={"title": None}, headers=h)
+    assert r.status_code == 422
+
+
+def test_anchor_day_cannot_be_set_by_the_client(client, db):
+    _u, _s, h = _member(db)
+    # Extra keys are ignored by the schema, so the anchor stays derived from due_on (spec D24).
+    created = client.post(
+        f"{BASE}/compliance-items",
+        json=_comp_body(due_on="2026-01-31") | {"anchor_day": 1},
+        headers=h,
+    )
+    assert created.status_code == 200, created.text
+    assert "anchor_day" not in created.json()["data"]
+
+
+def test_compliance_cross_tenant_ids_are_404(client, db):
+    _u, _s, h = _member(db)
+    _other_u, _other_s, other_h = _member(db)
+    theirs = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=other_h).json()[
+        "data"
+    ]["id"]
+    assert client.get(f"{BASE}/compliance-items/{theirs}", headers=h).status_code == 404
+    assert (
+        client.patch(
+            f"{BASE}/compliance-items/{theirs}", json={"title": "X"}, headers=h
+        ).status_code
+        == 404
+    )
+    assert client.delete(f"{BASE}/compliance-items/{theirs}", headers=h).status_code == 404
+
+
+def test_a_legal_advisor_reads_but_cannot_write_compliance(client, db):
+    owner = create_user(db, email_verified_at=datetime.now(UTC))
+    startup = create_startup(db, owner=owner, stage=StartupStage.validation)
+    _u, _s, advisor_h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
+    assert client.get(f"{BASE}/compliance-items", headers=advisor_h).status_code == 200
+    assert (
+        client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=advisor_h).status_code
+        == 403
+    )
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_touch_compliance(client, db, role):
+    owner = create_user(db, email_verified_at=datetime.now(UTC))
+    startup = create_startup(db, owner=owner, stage=StartupStage.validation)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    assert client.get(f"{BASE}/compliance-items", headers=h).status_code == 403
+    assert client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=h).status_code == 403
 
 
 # --- RBAC -------------------------------------------------------------------------------------

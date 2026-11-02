@@ -7,12 +7,25 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
-from app.db.models.enums import LEGAL_ROLES, IpAssetStatus, IpAssetType, MembershipRole
+from app.db.models.enums import (
+    LEGAL_ROLES,
+    ComplianceStatus,
+    IpAssetStatus,
+    IpAssetType,
+    MembershipRole,
+)
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.legal import FormationStepPatch, IpAssetCreate, IpAssetUpdate
+from app.schemas.legal import (
+    ComplianceCreate,
+    ComplianceUpdate,
+    FormationStepPatch,
+    IpAssetCreate,
+    IpAssetUpdate,
+)
+from app.services.legal import compliance as compliance_svc
 from app.services.legal import formation as formation_svc
 from app.services.legal import ip as ip_svc
 from app.services.legal.catalog import JURISDICTIONS
@@ -147,5 +160,87 @@ def delete_ip_asset(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     ip_svc.delete_asset(db, startup_id=membership.startup_id, asset_id=asset_id)
+    db.commit()
+    return success_response({"deleted": True})
+
+
+# --- compliance items --------------------------------------------------------------------------
+
+
+@router.post("/compliance-items", response_model=dict[str, Any])
+def create_compliance_item(
+    payload: ComplianceCreate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = compliance_svc.create_item(
+        db, startup_id=membership.startup_id, created_by=user.id, data=payload
+    )
+    db.commit()
+    return success_response(compliance_svc.serialize_item(row, today=_today()))
+
+
+@router.get("/compliance-items", response_model=dict[str, Any])
+def list_compliance_items(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    status: ComplianceStatus | None = None,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The compliance calendar. `status` filters the STORED value (open/done) only.
+
+    The derived badge is returned per row, so the FE counts the overdue ones itself - which is
+    what its banner already does, so no summary endpoint is needed (spec D13).
+    """
+    rows = compliance_svc.list_items(
+        db,
+        startup_id=membership.startup_id,
+        date_from=date_from,
+        date_to=date_to,
+        status=status,
+    )
+    today = _today()
+    return success_response(
+        {"compliance_items": [compliance_svc.serialize_item(r, today=today) for r in rows]}
+    )
+
+
+@router.get("/compliance-items/{item_id}", response_model=dict[str, Any])
+def get_compliance_item(
+    item_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = compliance_svc.get_item(db, startup_id=membership.startup_id, item_id=item_id)
+    return success_response(compliance_svc.serialize_item(row, today=_today()))
+
+
+@router.patch("/compliance-items/{item_id}", response_model=dict[str, Any])
+def update_compliance_item(
+    item_id: uuid.UUID,
+    payload: ComplianceUpdate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = compliance_svc.update_item(
+        db, startup_id=membership.startup_id, item_id=item_id, data=payload
+    )
+    db.commit()
+    return success_response(compliance_svc.serialize_item(row, today=_today()))
+
+
+@router.delete("/compliance-items/{item_id}", response_model=dict[str, Any])
+def delete_compliance_item(
+    item_id: uuid.UUID,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    compliance_svc.delete_item(db, startup_id=membership.startup_id, item_id=item_id)
     db.commit()
     return success_response({"deleted": True})
