@@ -8,13 +8,20 @@ from sqlalchemy.orm import Session
 from app.core.errors import NotFound
 from app.db.models.enums import ComplianceStatus
 from app.db.models.legal import ComplianceItem
+from app.platform.storage import get_storage
 from app.schemas.legal import ComplianceCreate, ComplianceUpdate
+from app.services.legal.errors import _validation
 from app.services.legal.recurrence import next_due_on
 
 # Not arbitrary: 14 is also the first reminder threshold, so the badge the user sees and the
 # first notification they receive agree (spec D12). The FE prototype likewise badges "in 9 days"
 # as Due soon, which rules out a 7-day window.
 DUE_SOON_DAYS = 14
+
+# Same allowance as the Finance expense receipt (app/services/finance/expenses.py), which this
+# copies: a proof of filing is a scan or a PDF, nothing else.
+PROOF_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "application/pdf": ".pdf"}
+MAX_PROOF_BYTES = 10 * 1024 * 1024
 
 DONE = "done"
 OVERDUE = "overdue"
@@ -167,5 +174,39 @@ def update_item(
 
 def delete_item(db: Session, *, startup_id: uuid.UUID, item_id: uuid.UUID) -> None:
     row = get_item(db, startup_id=startup_id, item_id=item_id)
+    # The stored asset goes with its row rather than being orphaned in storage, mirroring
+    # `delete_expense`. Note a migration downgrade does NOT do this - see the SOP.
+    if row.proof_key:
+        get_storage().delete(row.proof_key)
     db.delete(row)
     db.flush()
+
+
+def attach_proof(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    item_id: uuid.UUID,
+    content_type: str | None,
+    size_bytes: int,
+    content: bytes,
+) -> ComplianceItem:
+    """Attach or replace the proof of filing. Copies `attach_receipt` from Finance.
+
+    Proof is OPTIONAL per the PRD: marking an item done never requires one.
+    """
+    row = get_item(db, startup_id=startup_id, item_id=item_id)
+    ext = PROOF_EXT.get(content_type or "")
+    if ext is None:
+        raise _validation("proof", "Proof must be a PNG, JPEG, or PDF.")
+    if size_bytes > MAX_PROOF_BYTES:
+        raise _validation("proof", "Proof exceeds the 10 MB limit.")
+    old_key = row.proof_key
+    key = f"legal-proofs/{startup_id}/{uuid.uuid4().hex}{ext}"
+    # Save the new asset before dropping the old one, so a failed upload never orphans the row.
+    url = get_storage().save(key, content, content_type or "")
+    row.proof_url, row.proof_key = url, key
+    if old_key:
+        get_storage().delete(old_key)
+    db.flush()
+    return row
