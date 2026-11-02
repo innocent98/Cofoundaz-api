@@ -11,8 +11,8 @@ Every body below is copied from `e2e/_captures/google_sign_in/` (a live run agai
 ```
 FE  POST /auth/oauth/google/start ──────────────► { auth_url }          (sets an HttpOnly cookie)
 FE  window.location = auth_url ─────────────────► Google (user picks account, consents)
-Google ─► browser ─► API GET …/callback ────────► 302 {FE}/auth/google/callback?ticket=…   or  ?error=…
-FE  (page /auth/google/callback) POST …/exchange { ticket } ─► same body as POST /auth/login (+3 fields)
+Google ─► browser ─► API GET …/callback ────────► 302 {FE}/auth/google/callback#ticket=…   or  ?error=…
+FE  (page /auth/google/callback) POST …/exchange { ticket }  (credentials: include) ─► same body as POST /auth/login (+3 fields)
 ```
 
 The FE needs one new page, `/auth/google/callback`, and must call `start` with `credentials: "include"` (the proof cookie is how the API ties the return trip to this browser).
@@ -44,12 +44,12 @@ Navigate the **whole window** to `auth_url` (not a popup or iframe). Response he
 ### Callback (browser only, the FE never calls it). `new_user_callback_redirect`
 Google sends the browser to the API, which always answers `302` to a fixed FE page:
 ```json
-{"status": 302, "location": "http://localhost:3000/auth/google/callback?ticket=<ticket-placeholder>"}
+{"status": 302, "location": "http://localhost:3000/auth/google/callback#ticket=<ticket-placeholder>"}
 ```
-The URL carries **either** `ticket` **or** `error`, plus `next` when it was sent to `start`. Errors in section 4.
+The **ticket is in the URL fragment** (`#ticket=…`, so it never reaches a server log or a Referer); on failure there is `?error=…` instead. `next` (when it was sent to `start`) is a normal query parameter, e.g. `?next=%2Fdashboard#ticket=…` (`invite_match_callback_redirect`). Read the ticket from `location.hash`. Errors in section 4.
 
 ### Exchange. `new_user_exchange`
-`POST /auth/oauth/google/exchange` body `{"ticket": "<from the URL>"}`. Call it immediately on page load, once. Remove the ticket from the address bar (`history.replaceState`) before anything else.
+`POST /auth/oauth/google/exchange` body `{"ticket": "<from the URL fragment>"}`, **with `credentials: "include"`**: the ticket only works in the browser that called `start` (the proof cookie must come back with it), so a ticket URL pasted into another browser fails. Call it immediately on page load, once. Clear the fragment from the address bar (`history.replaceState`) before anything else.
 
 New account (`200`):
 ```json
@@ -104,7 +104,7 @@ Show the existing 2FA code screen and call the existing `POST /auth/mfa/challeng
 ```json
 {"status": 400, "body": {"error": {"code": "GOOGLE_TICKET_INVALID", "message": "That sign-in has expired. Start again.", "field_errors": []}}}
 ```
-Tickets last 2 minutes and work once. Same code if the account was suspended between the callback and the exchange. Send the user back to login with the message.
+Tickets last 2 minutes and work once. Same code if the account was suspended between the callback and the exchange, or if the request came from a different browser than the one that started the flow. Send the user back to login with the message.
 
 ## 3. Traps
 

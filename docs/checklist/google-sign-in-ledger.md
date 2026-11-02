@@ -7,7 +7,7 @@ Branch `feature/google-sign-in` (off `origin/develop` 219ad18b). No migration (u
 - [x] Tests `tests/api/auth/test_google_signin.py` (25) green; black/isort/ruff/mypy clean
 - [x] Live e2e `e2e/test_google_sign_in.py` + captures `e2e/_captures/google_sign_in/`
 - [x] SOP, checklist entry, FE guide
-- [ ] Opus review (running) → fixes
+- [x] Opus review: ticket bound to browser + fragment, takeover clears 2FA, stub limited to development/test, limiter loosened (rest in SOP follow-ups)
 - [ ] Push, PR to develop, CI green
 - [ ] FE brief PR on `docs/google-sign-in-brief`
 

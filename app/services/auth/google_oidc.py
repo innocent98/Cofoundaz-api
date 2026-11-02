@@ -27,6 +27,8 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105  # nosec B105 - 
 JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 ISSUERS = ("https://accounts.google.com", "accounts.google.com")
 SCOPES = ("openid", "email", "profile")
+# The stub lets a caller mint any identity, so it runs ONLY where these names say so.
+STUB_ENVIRONMENTS = frozenset({"development", "test"})
 TIMEOUT_SECONDS = 10.0
 JWKS_TTL_SECONDS = 3600
 
@@ -43,7 +45,7 @@ class GoogleIdentityError(Exception):
 
 
 def http_client() -> httpx.Client:
-    if settings.GOOGLE_SIGNIN_STUB and settings.ENVIRONMENT != "production":
+    if settings.GOOGLE_SIGNIN_STUB and settings.ENVIRONMENT in STUB_ENVIRONMENTS:
         from app.services.auth.google_stub import stub_transport
 
         return httpx.Client(transport=stub_transport(), timeout=TIMEOUT_SECONDS)

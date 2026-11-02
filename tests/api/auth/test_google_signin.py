@@ -54,7 +54,7 @@ def _callback(client, url):
     assert (
         f"{loc.scheme}://{loc.netloc}{loc.path}" == "https://app.example.test/auth/google/callback"
     )
-    return {k: v[0] for k, v in parse_qs(loc.query).items()}
+    return {k: v[0] for k, v in {**parse_qs(loc.query), **parse_qs(loc.fragment)}.items()}
 
 
 def _signin(client, *, sub="g-sub-1", email="new@example.com", verified=True, **body):
@@ -125,6 +125,8 @@ def test_linking_an_unverified_signup_takes_it_over(client, db):
         email="victim@example.com",
         status=UserStatus.pending_verification,
         password_hash=get_password_hash("attackerknows"),
+        mfa_type=MfaType.totp,
+        mfa_secret="squatter-secret",
     )
     db.add(
         AuthSession(
@@ -140,6 +142,7 @@ def test_linking_an_unverified_signup_takes_it_over(client, db):
     db.refresh(u)
     assert u.password_hash is None and u.email_verified_at is not None
     assert u.status == UserStatus.active
+    assert u.mfa_type == MfaType.none and u.mfa_secret is None
     old = db.query(AuthSession).filter(AuthSession.refresh_token_hash == hash_token("r")).one()
     assert old.revoked_at is not None
     pw = client.post(
@@ -268,6 +271,19 @@ def test_state_is_single_use(client):
     assert "ticket" in first
     # the browser's proof cookie was cleared too, so re-send it by starting nothing new: replay
     assert _callback(client, cb) == {"error": "invalid_state"}
+
+
+def test_ticket_is_useless_in_another_browser(client):
+    """Login CSRF: an attacker's ticket URL parked in a victim's browser must not sign them in."""
+    ticket = _signin(client, sub="g-csrf", email="csrf@example.com")["ticket"]
+    client.cookies.clear()
+    r = _exchange(client, ticket)
+    assert r.status_code == 400 and r.json()["error"]["code"] == "GOOGLE_TICKET_INVALID"
+
+
+def test_stub_is_ignored_outside_development_and_test(monkeypatch):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "staging")
+    assert google_oidc.http_client()._transport.__class__.__name__ != "MockTransport"
 
 
 def test_ticket_is_single_use(client):

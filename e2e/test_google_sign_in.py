@@ -69,7 +69,8 @@ def _land(c: httpx.Client, callback_url: str, name: str | None = None) -> dict:
     loc = r.headers["location"]
     if name:
         _save(f"{name}_callback_redirect", {"status": 302, "location": loc})
-    return {k: v[0] for k, v in parse_qs(urlparse(loc).query).items()}
+    u = urlparse(loc)
+    return {k: v[0] for k, v in {**parse_qs(u.query), **parse_qs(u.fragment)}.items()}
 
 
 def _signin(c, *, name=None, sub, email, verified=True, **body) -> dict:

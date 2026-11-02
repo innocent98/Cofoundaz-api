@@ -37,7 +37,13 @@ def _ip(request: Request) -> str | None:
 
 def _fe_url(query: dict[str, str | None]) -> str:
     base = (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
-    return f"{base}/auth/google/callback?{urlencode({k: v for k, v in query.items() if v})}"
+    params = {k: v for k, v in query.items() if v}
+    # The ticket rides in the fragment: it never reaches a server log, analytics or a Referer.
+    ticket = params.pop("ticket", None)
+    url = f"{base}/auth/google/callback"
+    if params:
+        url += f"?{urlencode(params)}"
+    return f"{url}#ticket={ticket}" if ticket else url
 
 
 @router.post("/start")
@@ -88,7 +94,10 @@ def callback(
     redirect = RedirectResponse(
         _fe_url({"ticket": ticket, "error": failure, "next": next_path}), status_code=302
     )
-    redirect.delete_cookie(PROOF_COOKIE, path=PROOF_COOKIE_PATH)
+    if (
+        failure
+    ):  # on success the cookie stays: /exchange needs it to bind the ticket to this browser
+        redirect.delete_cookie(PROOF_COOKIE, path=PROOF_COOKIE_PATH)
     return redirect
 
 
@@ -97,10 +106,11 @@ def exchange(
     payload: GoogleExchangeRequest,
     request: Request,
     response: Response,
+    cfz_google_signin: str | None = Cookie(default=None),
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """Trade the one-time ticket for what a password login returns: a session, or the MFA step."""
-    record = svc.read_ticket(payload.ticket)
+    record = svc.read_ticket(payload.ticket, cfz_google_signin)
     user = (
         db.query(User).filter(User.id == uuid.UUID(record["user_id"])).first() if record else None
     )
@@ -112,6 +122,7 @@ def exchange(
         or user.status == UserStatus.disabled
     ):
         raise AppError("GOOGLE_TICKET_INVALID", "That sign-in has expired. Start again.", 400)
+    response.delete_cookie(PROOF_COOKIE, path=PROOF_COOKIE_PATH)
     extras = {
         "is_new_user": bool(record["new_user"]),
         "invite_token": record.get("invite"),

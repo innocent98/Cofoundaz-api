@@ -239,8 +239,8 @@ def _drain() -> None:
     """Drains the in-process job queue (same pattern as e2e/test_dashboard_ai_briefing.py)."""
     from app.db.session import SessionLocal
     from app.worker import runner
-    from app.worker.handlers import (
-        marketing_ai as _marketing_ai,  # noqa: F401  (registers ai.marketing.copy / .plan_week)
+    from app.worker.handlers import (  # noqa: F401  (registers ai.marketing.copy / .plan_week)
+        marketing_ai as _marketing_ai,
     )
 
     db = SessionLocal()

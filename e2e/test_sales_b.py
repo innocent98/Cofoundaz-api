@@ -78,8 +78,8 @@ def _drain() -> None:
     from app.db.session import SessionLocal
     from app.services.notifications.registry import register as register_notifications
     from app.worker import runner
-    from app.worker.handlers import (
-        sales_outreach,  # noqa: F401  (registers ai.sales.draft + the outreach jobs)
+    from app.worker.handlers import (  # noqa: F401  (registers ai.sales.draft + the outreach jobs)
+        sales_outreach,
         scheduled,  # noqa: F401
     )
 

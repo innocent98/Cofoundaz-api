@@ -28,8 +28,14 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.redis import get_redis
-from app.db.models.auth import OAuthAccount
-from app.db.models.enums import AuthTokenPurpose, InvitationStatus, OAuthProvider, UserStatus
+from app.db.models.auth import MfaBackupCode, OAuthAccount
+from app.db.models.enums import (
+    AuthTokenPurpose,
+    InvitationStatus,
+    MfaType,
+    OAuthProvider,
+    UserStatus,
+)
 from app.db.models.invitation import Invitation
 from app.db.models.user import User, UserProfile
 from app.platform.audit import write_audit
@@ -46,7 +52,8 @@ PROOF_TYP = "google_signin_proof"
 _STATE_KEY = "google_signin_state:"
 _TICKET_KEY = "google_signin_ticket:"
 _RATE_KEY = "google_signin_rate:"
-RATE_LIMIT = 30
+# Generous: behind a proxy every caller can share one address, so this only stops a flood.
+RATE_LIMIT = 100
 RATE_WINDOW_SECONDS = 600
 
 # Error codes the callback hands the FE in `?error=`.
@@ -63,7 +70,7 @@ ERR_MAINTENANCE = "maintenance"
 ERR_RATE = "rate_limited"
 ERR_CONFLICT = "try_again"
 
-_NEXT_RE = re.compile(r"^/[A-Za-z0-9/_\-.?=&%]{0,199}$")
+_NEXT_RE = re.compile(r"^/[A-Za-z0-9/_\-.?=&]{0,199}$")
 
 
 def _now() -> datetime:
@@ -143,10 +150,13 @@ def start(db: Session, *, invite_token: str | None, next_path: str | None) -> tu
     return url, _sign(PROOF_TYP, jti)
 
 
-def _ticket(user: User, *, new_user: bool, invite: str | None, next_path: str | None) -> str:
+def _ticket(
+    user: User, *, jti: str, new_user: bool, invite: str | None, next_path: str | None
+) -> str:
     ticket = secrets.token_urlsafe(32)
     record = {
         "user_id": str(user.id),
+        "jti": jti,
         "new_user": new_user,
         "invite": invite,
         "next": next_path,
@@ -155,8 +165,13 @@ def _ticket(user: User, *, new_user: bool, invite: str | None, next_path: str | 
     return ticket
 
 
-def read_ticket(ticket: str) -> dict[str, Any] | None:
-    return _pop(f"{_TICKET_KEY}{ticket}")
+def read_ticket(ticket: str, proof: str | None) -> dict[str, Any] | None:
+    """Pop the ticket, but only for the browser that started the flow: otherwise an attacker could
+    park their own ticket URL in a victim's browser (login CSRF)."""
+    record = _pop(f"{_TICKET_KEY}{ticket}")
+    if record is None or _read_jti(proof, PROOF_TYP) != record.get("jti"):
+        return None
+    return record
 
 
 def _reject(db: Session, reason: str, *, ip: str | None, user: User | None = None) -> str:
@@ -223,7 +238,7 @@ def complete_callback(
         # Signed in through an older Google identity whose account email is not the invited one.
         return None, _reject(db, ERR_INVITE_MISMATCH, ip=ip, user=user), next_path
     return (
-        _ticket(user, new_user=new_user, invite=invite_token, next_path=next_path),
+        _ticket(user, jti=str(jti), new_user=new_user, invite=invite_token, next_path=next_path),
         None,
         next_path,
     )
@@ -288,6 +303,11 @@ def _take_over_unverified(db: Session, user: User) -> None:
     sign-up: whoever made it may be someone else, so their password, sessions and pending links
     die, and the email counts as verified."""
     user.password_hash = None
+    # Whoever squatted the row may also have switched on 2FA: it dies with their password.
+    user.mfa_type = MfaType.none
+    user.mfa_secret = None
+    user.mfa_enabled_at = None
+    db.query(MfaBackupCode).filter(MfaBackupCode.user_id == user.id).delete()
     user.email_verified_at = _now()
     if user.status == UserStatus.pending_verification:
         user.status = UserStatus.active
