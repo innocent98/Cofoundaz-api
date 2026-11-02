@@ -1,0 +1,24 @@
+{
+  "data": {
+    "plan": {
+      "key": "growth",
+      "name": "Growth"
+    },
+    "interval": "monthly",
+    "status": "active",
+    "price_minor": 2400000,
+    "currency": "NGN",
+    "current_period_start": "2026-10-31T15:24:44+00:00",
+    "renews_at": "2026-11-30T15:24:44+00:00",
+    "ends_at": null,
+    "trial_ends_at": null,
+    "trial_available": false,
+    "comped": false,
+    "cancel_at_period_end": false,
+    "cancel_reason": null,
+    "pending_change": null,
+    "payment_issue": null,
+    "enforcement": false
+  },
+  "meta": null
+}

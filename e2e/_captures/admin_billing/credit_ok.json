@@ -1,0 +1,22 @@
+{
+  "data": {
+    "replayed": false,
+    "override": {
+      "id": "4c7afbf6-5300-4bee-9f75-ae11302c3fb6",
+      "request_id": "5c995e53-5789-4e41-9308-d040e0140434",
+      "kind": "credit",
+      "reason": "Goodwill after a failed renewal",
+      "actor_email": "delivered+e2e-e497acf2eaed@resend.dev",
+      "invoice_id": null,
+      "amount_minor": null,
+      "credits": 500,
+      "days": null,
+      "plan_key": null,
+      "provider_refund": null,
+      "completed_at": null,
+      "details": {},
+      "created_at": "2026-10-31T15:25:01.386557+00:00"
+    }
+  },
+  "meta": null
+}

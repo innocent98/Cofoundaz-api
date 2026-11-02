@@ -1,7 +1,8 @@
+import uuid
 from collections.abc import Sequence
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
 from app.db.models.enums import StaffRole
 
@@ -64,3 +65,42 @@ class StaffActionRequest(BaseModel):
 
     reason: Reason
     totp_code: TotpCode
+
+
+class _OverrideBase(BaseModel):
+    """Every billing override: why, the staff member's own fresh code, and a caller-made id that
+    makes a retry safe (the same `request_id` twice applies once)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: uuid.UUID
+    reason: Reason
+    totp_code: TotpCode
+
+
+class RefundRequest(_OverrideBase):
+    invoice_id: uuid.UUID
+    amount_minor: Annotated[int, Field(ge=1, le=2_000_000_000)]  # kobo
+
+
+class CompleteRefundRequest(BaseModel):
+    """Confirms a recorded refund was made in Paystack. Idempotent by nature: completing twice
+    changes nothing, so it needs no request id."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: Reason
+    totp_code: TotpCode
+
+
+class CreditRequest(_OverrideBase):
+    credits: Annotated[int, Field(ge=1, le=100_000)]  # AI credits (1 credit = 50 tokens)
+
+
+class ExtendTrialRequest(_OverrideBase):
+    days: Annotated[int, Field(ge=1, le=60)]
+
+
+class CompRequest(_OverrideBase):
+    plan_key: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    days: Annotated[int, Field(ge=1, le=365)]

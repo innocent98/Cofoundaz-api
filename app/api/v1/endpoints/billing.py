@@ -97,6 +97,7 @@ def _inv_json(i: BillingInvoice) -> dict[str, Any]:
         "kind": i.kind,
         "description": i.description,
         "amount_minor": i.amount_minor,
+        "refunded_minor": i.refunded_minor,
         "currency": i.currency,
         "status": i.status,
         "date": (i.paid_at or i.created_at).isoformat(),

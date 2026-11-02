@@ -9,6 +9,7 @@ from app.db.models.billing import (  # noqa: F401
     BillingDetails,
     BillingInvoice,
     BillingOperation,
+    BillingOverride,
     BillingPaymentMethod,
     BillingPlan,
     BillingSubscription,

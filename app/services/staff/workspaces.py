@@ -59,6 +59,7 @@ def search_workspaces(
             owner_profile.c.full_name.label("owner_name"),
             BillingSubscription.plan_key,
             BillingSubscription.status.label("billing_status"),
+            BillingSubscription.comped.label("comped"),
             HealthScore.score,
             HealthScore.band,
         )
@@ -134,6 +135,7 @@ def search_workspaces(
             "members": members.get(r.id, 0),
             "plan_key": r.plan_key or "starter",
             "billing_status": r.billing_status or "free",
+            "comped": bool(r.comped),
             "health_score": r.score,
             "health_band": r.band,
             "last_active_at": _iso(last_active.get(r.id)),
@@ -199,6 +201,7 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
             BillingSubscription.plan_key,
             BillingSubscription.interval,
             BillingSubscription.status,
+            BillingSubscription.comped,
             BillingSubscription.trial_ends_at,
             BillingSubscription.current_period_end,
             BillingSubscription.cancel_at_period_end,
@@ -256,6 +259,7 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
             "status": sub.status if sub else "free",
             "trial_ends_at": _iso(sub.trial_ends_at) if sub else None,
             "current_period_end": _iso(sub.current_period_end) if sub else None,
+            "comped": bool(sub.comped) if sub else False,
             "cancel_at_period_end": bool(sub.cancel_at_period_end) if sub else False,
             "grace_ends_at": _iso(sub.grace_ends_at) if sub else None,
         },
@@ -323,6 +327,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
             Startup.deleted_at.is_(None),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
+            BillingSubscription.comped.is_(False),
         )
         .scalar()
         or 0
@@ -341,6 +346,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
             Startup.deleted_at.is_(None),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
+            BillingSubscription.comped.is_(False),
         )
         .group_by(
             BillingSubscription.interval,
