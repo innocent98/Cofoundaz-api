@@ -233,7 +233,7 @@ Your reports that are still with staff (open or escalated), newest first, up to 
 
 ## What the author sees after a removal
 
-The existing endpoints return two new facts on every comment and every AI message: `removed_by_moderation` (boolean, always present) and, when it is `true`, the text replaced by `Removed by moderation` (`body` for a comment, `content` for an AI reply; a removed comment's `mention_user_ids` is `[]`). Render a muted "Removed by moderation" row and hide edit, reply and report actions on it. The comments threads index (`GET /team/comments/threads`) uses the same placeholder in its `snippet`. **This applies to everyone who can see the item, not only the author.**
+The existing endpoints return two new facts on every comment and every AI message: `removed_by_moderation` (boolean, always present) and, when it is `true`, the text replaced by `Removed by moderation` (`body` for a comment, `content` for an AI reply; a removed comment's `mention_user_ids` is `[]`). Render a muted "Removed by moderation" row and hide edit, reply and report actions on it. The comments threads index (`GET /team/comments/threads`) uses the same placeholder in its `snippet`. **This applies to everyone who can see the item, not only the author.** For an **AI reply** that means the removal also hides it from the conversation owner's own view (the person who reported it is that owner, since AI chats are private to one person): their chat shows `Removed by moderation` in its place. The author of a comment never learns who reported it: no comment, thread or report route returns reporter information to anyone but staff.
 
 
 
@@ -1033,6 +1033,7 @@ Actions seen live: `report.filed`, `report.dismissed`, `report.escalated`, `repo
 | Remove with a bad code 403, no code 422, good code 200 (AI reply by moderator, comment by Super Admin) | verified-live |
 | Author sees `Removed by moderation` on a comment and an AI reply, cannot edit it, restore brings it back | verified-live |
 | Restore on a non-removed report 409; moderator restoring an escalated removal 403 | verified-live |
+| An author can't learn who reported them (API test: reporter id, name, email, note absent from every author-facing response) | API-tested only |
 | Removing when an escalated sibling report exists (moderator 403); the threads-index snippet is hidden | API-tested only |
 | Remove after the author already deleted the item (report still closes) | API-tested only |
 | Audit rows for all five actions | verified-live |

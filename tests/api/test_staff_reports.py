@@ -512,3 +512,25 @@ def test_removed_comment_text_is_hidden_in_the_threads_index(client, db, world):
     r = client.get("/api/v1/team/comments/threads", headers=fh(world.mate, world.ws))
     assert r.status_code == 200 and "Quiet abuse text" not in r.text
     assert any(t["entity_id"] == str(world.canvas.id) for t in r.json()["data"])  # still listed
+
+
+def test_an_author_cannot_learn_who_reported_them(client, db, world):
+    mod = moderator(db)
+    c = mk_comment(db, world.ws, world.mate, world.canvas.id, body="Borderline remark")
+    rid = filed(client, world.owner, world.ws, "comment", c.id, note="Ada's private note")["id"]
+    act(client, mod, rid, "remove", step_up=True)
+    author = fh(world.mate, world.ws)
+    seen = client.get(
+        "/api/v1/team/comments",
+        params={"entity_type": "business_canvas", "entity_id": str(world.canvas.id)},
+        headers=author,
+    ).text
+    seen += client.get("/api/v1/team/comments/threads", headers=author).text
+    mine = client.get(f"{F}/mine", headers=author)
+    seen += mine.text
+    assert mine.json()["data"]["reports"] == []  # a report is visible to its reporter only
+    for leak in (world.owner.email, str(world.owner.id), "Ada Obi", "Ada's private note", rid):
+        assert leak not in seen
+    # No report route accepts the author's id as a way in either.
+    other = client.get(f"/api/v1/admin/reports/{rid}", headers=hdr(world.mate))
+    assert other.status_code == 404
