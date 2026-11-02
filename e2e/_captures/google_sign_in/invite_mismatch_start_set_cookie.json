@@ -1,0 +1,3 @@
+{
+  "set-cookie": "cfz_google_signin=<proof-placeholder>;  HttpOnly; Max-Age=600; Path=/api/v1/auth/oauth/google; SameSite=lax"
+}

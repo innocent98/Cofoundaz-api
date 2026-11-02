@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "access_token": "<access_token-placeholder>",
+      "refresh_token": "<refresh_token-placeholder>",
+      "mfa_required": false,
+      "is_new_user": false,
+      "invite_token": null,
+      "next": null
+    },
+    "meta": null
+  }
+}

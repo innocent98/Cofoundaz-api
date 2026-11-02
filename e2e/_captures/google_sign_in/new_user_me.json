@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "user": {
+        "id": "beac97fb-203c-42fb-9d46-dd77c9f52902",
+        "email": "delivered+e2e-876913c631f2@resend.dev",
+        "status": "active"
+      },
+      "profile": {
+        "full_name": "Stub Person",
+        "role_title": "Founder & CEO",
+        "country": null,
+        "avatar_url": null,
+        "phone": null
+      },
+      "memberships": [],
+      "active_workspace_id": null
+    },
+    "meta": null
+  }
+}

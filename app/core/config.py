@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str | None = None
     # Dev/e2e only: answer every Google call from an in-process fake (never reachable in production).
     CALENDAR_PROVIDER_STUB: bool = False
+    # Same idea for Google SIGN-IN (OIDC): an in-process fake that signs real RS256 id_tokens.
+    GOOGLE_SIGNIN_STUB: bool = False
     CALENDAR_SYNC_INTERVAL_MINUTES: int = 15
     FINANCE_SYNC_BACKFILL_DAYS: int = 90
     FINANCE_SYNC_MAX_PAGES: int = 20

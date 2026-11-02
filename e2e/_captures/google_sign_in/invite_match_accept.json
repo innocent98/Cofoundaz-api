@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "startup_id": "496011c2-fb75-4d7c-bfe1-8ff1c33358ae",
+      "role": "team_member"
+    },
+    "meta": null
+  }
+}
