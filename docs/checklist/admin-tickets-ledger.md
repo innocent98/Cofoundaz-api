@@ -2,7 +2,7 @@
 
 Resume file for a successor. Worktree `wt/admin-tickets`; scratch DB/Redis containers `tk-pg` (55987) and `tk-redis` (56987); env in untracked `.envrc-tk`. Venv `cofoundaz-api-kvMkS96W-py3.14`. Never merge; no AI attribution; fast local checks only.
 
-## Product calls (sent to the lead 2026-11-02, building on them)
+## Product calls T1-T8: ACCEPTED by Adebayo 2026-11-02 (T1, T4, T6 explicitly; rest as defaults)
 | # | Call |
 |---|---|
 | T1 | SLA = first staff reply deadline: P1 1h, P2 4h, P3 24h, P4 72h. Chips: ok / due_soon (<=1h left) / breached; met / late once answered. Founders can't set priority; default by category (billing, account = P2, rest P3). |

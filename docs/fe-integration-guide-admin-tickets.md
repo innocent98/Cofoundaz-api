@@ -7,7 +7,7 @@ Every body below is pasted from a live run against a real server: `e2e/test_admi
 1. **Settings > Help (founder app).** Any workspace member opens a ticket (category, subject, message), sees their tickets, reads the thread and replies. Needs `Authorization` and `X-Workspace-Id`. No attachments in v1. The founder never sees priority, SLA, assignee, internal notes or staff names/emails; staff messages show as author "Cofoundaz Support".
 2. **Support tab (Admin console, scope `support`; Super Admin too).** Queue with tabs Open / Mine / Resolved, filters, SLA chips, a thread with an internal-notes tab, canned replies, assign, priority, escalate, resolve, reopen. Per-page search (P13). No step-up code on these actions (T3).
 
-Product calls: T1 SLA = first staff reply deadline, P1 1h / P2 4h / P3 24h / P4 72h. T2 no AI triage (hide the banner). T3 any `support` staff sees all tickets. T4 text only, 5000 chars. T5 rate limits. T6 visibility rules below. T7 reopen window 14 days. T8 escalate = P1.
+Product calls T1 to T8 (accepted by Adebayo 2026-11-02): T1 SLA = first staff reply deadline, P1 1h / P2 4h / P3 24h / P4 72h. T2 no AI triage (hide the banner). T3 any `support` staff sees all tickets. T4 text only, 5000 chars. T5 rate limits. T6 visibility rules below. T7 reopen window 14 days. T8 escalate = P1.
 
 ## Founder endpoints
 
