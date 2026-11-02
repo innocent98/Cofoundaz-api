@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     sales_sequences,
     search,
     super_admin,
+    support,
     team,
     validation,
     verify,
@@ -80,6 +81,7 @@ api_router.include_router(workspace.router, prefix="/workspace", tags=["workspac
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(billing.webhook_router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(flags.router, prefix="/flags", tags=["flags"])
+api_router.include_router(support.router, prefix="/support", tags=["support"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"], include_in_schema=False)
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
