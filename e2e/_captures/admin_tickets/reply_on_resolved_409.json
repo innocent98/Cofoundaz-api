@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TICKET_RESOLVED",
+    "message": "This ticket is resolved. Reopen it first.",
+    "field_errors": []
+  }
+}

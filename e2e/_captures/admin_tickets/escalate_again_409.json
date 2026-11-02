@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_ESCALATED",
+    "message": "This ticket is already escalated.",
+    "field_errors": []
+  }
+}

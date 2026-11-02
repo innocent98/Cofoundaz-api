@@ -444,7 +444,7 @@ def test_priority_change_moves_the_deadline_until_answered(client, db, world):
     staff = mk_staff(db)
     t = open_ticket(client, owner, ws)  # P3, 24h
     row = db.query(SupportTicket).one()
-    created = row.created_at
+    created = row.sla_due_at - timedelta(hours=24)
     r = client.patch(f"{S}/tickets/{t['id']}/priority", json={"priority": "P1"}, headers=hdr(staff))
     assert r.status_code == 200 and r.json()["data"]["priority"] == "P1"
     db.refresh(row)
@@ -615,3 +615,44 @@ def test_dashboard_counts_open_tickets_for_any_staff(client, db, world):
     data = client.get("/api/v1/admin/dashboard/attention", headers=hdr(content)).json()["data"]
     assert data["tickets"]["open"] >= 1 and data["tickets"]["breached"] == 0
     assert db.query(SupportTicketNote).count() == 0
+
+
+def test_priority_change_on_a_reopened_ticket_keeps_its_running_clock(client, db, world):
+    owner, ws = world
+    staff = mk_staff(db)
+    t = open_ticket(client, owner, ws)
+    db.query(SupportTicket).update({"created_at": core.now_utc() - timedelta(days=10)})
+    db.flush()
+    client.post(f"{S}/tickets/{t['id']}/resolve", json={}, headers=hdr(staff))
+    client.post(f"{S}/tickets/{t['id']}/reopen", json={}, headers=hdr(staff))
+    r = client.patch(f"{S}/tickets/{t['id']}/priority", json={"priority": "P4"}, headers=hdr(staff))
+    assert r.json()["data"]["sla"]["state"] == "ok"
+
+
+def test_no_mail_to_a_creator_who_left_the_workspace(client, db, world, outbox):
+    from app.db.models.membership import Membership, MembershipStatus
+
+    owner, ws = world
+    mate = mk_user(db)
+    member(db, ws, mate, MembershipRole.team_member)
+    staff = mk_staff(db)
+    t = open_ticket(client, mate, ws)
+    db.query(Membership).filter(Membership.user_id == mate.id).update(
+        {"status": MembershipStatus.removed}
+    )
+    db.flush()
+    r = client.post(f"{S}/tickets/{t['id']}/reply", json={"body": "Hello"}, headers=hdr(staff))
+    assert r.status_code == 200 and outbox.sent == []
+
+
+def test_any_mail_error_leaves_the_reply_committed(client, db, world, monkeypatch):
+    class Broken:
+        def send(self, msg):
+            raise RuntimeError("smtp not configured")
+
+    monkeypatch.setattr(core, "get_email_sender", lambda: Broken())
+    owner, ws = world
+    staff = mk_staff(db)
+    t = open_ticket(client, owner, ws)
+    r = client.post(f"{S}/tickets/{t['id']}/reply", json={"body": "Hello"}, headers=hdr(staff))
+    assert r.status_code == 200

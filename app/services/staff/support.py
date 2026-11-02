@@ -17,6 +17,7 @@ from app.api.staff_deps import StaffContext
 from app.core.errors import NotFound
 from app.db.models.billing import BillingSubscription
 from app.db.models.enums import TicketCategory, TicketPriority, TicketStatus, UserStatus
+from app.db.models.membership import Membership, MembershipStatus
 from app.db.models.platform_staff import PlatformStaff
 from app.db.models.startup import Startup
 from app.db.models.support import (
@@ -376,6 +377,17 @@ def _notify(db: Session, t: SupportTicket, build: Any) -> None:
     owner = db.query(User).filter(User.id == t.created_by).first() if t.created_by else None
     if owner is None or owner.status != UserStatus.active:
         return
+    still_member = (
+        db.query(Membership.id)
+        .filter(
+            Membership.user_id == owner.id,
+            Membership.startup_id == t.startup_id,
+            Membership.status == MembershipStatus.active,
+        )
+        .first()
+    )
+    if still_member is None:  # left the workspace: they can't read the ticket, so don't mail it
+        return
     core.send_after_commit(lambda: build(owner.email))
 
 
@@ -415,7 +427,8 @@ def set_priority(
     before = t.priority
     t.priority = priority
     if t.first_response_at is None:
-        t.sla_due_at = core.sla_due(priority, t.created_at)
+        # Shift the running deadline; recomputing from created_at would breach a reopened ticket.
+        t.sla_due_at += timedelta(hours=core.SLA_HOURS[priority] - core.SLA_HOURS[before])
     _audit(
         db,
         ctx,

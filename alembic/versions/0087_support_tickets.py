@@ -44,13 +44,15 @@ def _user_fk(name: str) -> sa.Column:
 
 
 def upgrade() -> None:
+    # create_table does not create a sequence attached to a non-primary-key column, so make it first.
+    op.execute(sa.schema.CreateSequence(sa.Sequence("support_ticket_no_seq", start=1001)))
     op.create_table(
         "support_tickets",
         _id(),
         sa.Column(
             "ticket_no",
             sa.Integer(),
-            sa.Sequence("support_ticket_no_seq", start=1001),
+            server_default=sa.text("nextval('support_ticket_no_seq')"),
             nullable=False,
             unique=True,
         ),

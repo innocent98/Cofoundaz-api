@@ -1,0 +1,110 @@
+{
+  "data": {
+    "id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+    "number": "T-1001",
+    "subject": "Invoice PDF is blank",
+    "category": "billing",
+    "priority": "P1",
+    "status": "resolved",
+    "escalated": true,
+    "last_author": "staff",
+    "founder": {
+      "id": "b7182fbe-437a-404c-af5c-05f647ad2ce2",
+      "name": "Ada Obi",
+      "email": "delivered+e2e-d6d4db192d15@resend.dev"
+    },
+    "workspace": {
+      "id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+      "name": "Ticket Co",
+      "plan_key": "starter"
+    },
+    "assignee": {
+      "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+      "name": "delivered+e2e-ec76b0082478@resend.dev",
+      "email": "delivered+e2e-ec76b0082478@resend.dev"
+    },
+    "sla": {
+      "due_at": "2026-11-02T14:55:05.133122+00:00",
+      "state": "met"
+    },
+    "created_at": "2026-11-02T13:55:05.118139+00:00",
+    "last_message_at": "2026-11-02T13:55:05.672944+00:00",
+    "first_response_at": "2026-11-02T13:55:05.580415+00:00",
+    "resolved_at": "2026-11-02T13:55:05.672944+00:00",
+    "escalation_reason": "Founder is a design partner and invoices are blocked",
+    "resolved_by": {
+      "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+      "name": "delivered+e2e-ec76b0082478@resend.dev",
+      "email": "delivered+e2e-ec76b0082478@resend.dev"
+    },
+    "messages": [
+      {
+        "id": "84465c68-e23e-47ff-84cb-00e0a42f460c",
+        "author_kind": "founder",
+        "author": {
+          "id": "b7182fbe-437a-404c-af5c-05f647ad2ce2",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-d6d4db192d15@resend.dev"
+        },
+        "body": "The PDF export of invoice INV-0004 comes out blank.\nIt worked last week.",
+        "created_at": "2026-11-02T13:55:05.133122+00:00"
+      },
+      {
+        "id": "a3aaf71c-5c2b-4f3d-93d7-74d00d43804d",
+        "author_kind": "staff",
+        "author": {
+          "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+          "name": "delivered+e2e-ec76b0082478@resend.dev",
+          "email": "delivered+e2e-ec76b0082478@resend.dev"
+        },
+        "body": "Thanks for flagging this. We found the cause and are fixing it today.",
+        "created_at": "2026-11-02T13:55:05.580415+00:00"
+      },
+      {
+        "id": "6dd7f5d7-c7ff-4e20-8985-0e35afd7ad88",
+        "author_kind": "founder",
+        "author": {
+          "id": "b7182fbe-437a-404c-af5c-05f647ad2ce2",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-d6d4db192d15@resend.dev"
+        },
+        "body": "Great, thank you!",
+        "created_at": "2026-11-02T13:55:05.622888+00:00"
+      },
+      {
+        "id": "c3cb5717-ca19-4fe3-b3bb-ebeee2b90014",
+        "author_kind": "staff",
+        "author": {
+          "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+          "name": "delivered+e2e-ec76b0082478@resend.dev",
+          "email": "delivered+e2e-ec76b0082478@resend.dev"
+        },
+        "body": "Fixed in today's release. Reply here if it happens again.",
+        "created_at": "2026-11-02T13:55:05.672944+00:00"
+      }
+    ],
+    "notes": [
+      {
+        "id": "297b1eec-6ac9-49a2-a71d-cbe8126fbc19",
+        "author": {
+          "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+          "name": "delivered+e2e-ec76b0082478@resend.dev",
+          "email": "delivered+e2e-ec76b0082478@resend.dev"
+        },
+        "body": "INTERNAL: invoice template changed in 0.9.4; check PDF worker.",
+        "created_at": "2026-11-02T13:55:05.464314+00:00"
+      },
+      {
+        "id": "630731f3-e2bb-4b79-b239-59f58a490912",
+        "author": {
+          "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+          "name": "delivered+e2e-ec76b0082478@resend.dev",
+          "email": "delivered+e2e-ec76b0082478@resend.dev"
+        },
+        "body": "Escalated to P1: Founder is a design partner and invoices are blocked",
+        "created_at": "2026-11-02T13:55:05.640935+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

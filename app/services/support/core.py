@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import AppError, EmailDeliveryFailed
+from app.core.errors import AppError
 from app.core.logger import log
 from app.core.redis import get_redis
 from app.db.models.enums import TicketCategory, TicketPriority, TicketStatus
@@ -102,8 +102,8 @@ def claim(key: str, limit: int, ttl: int, message: str) -> None:
     """Count one use of a rate-limited action; refuse with 429 once `limit` is spent in `ttl` s."""
     redis = get_redis()
     used = int(redis.incr(key))  # type: ignore[arg-type]
-    if used == 1:
-        redis.expire(key, ttl)
+    if used == 1 or int(redis.ttl(key)) < 0:  # type: ignore[arg-type]
+        redis.expire(key, ttl)  # also repairs a key left without expiry by a crash
     if used > limit:
         raise err("RATE_LIMITED", message, 429)
 
@@ -147,8 +147,8 @@ def send_after_commit(build: Callable[[], EmailMessage | None]) -> None:
         msg = build()
         if msg is not None:
             get_email_sender().send(msg)
-    except EmailDeliveryFailed:
-        log.warning("support email failed: provider refused the send")
+    except Exception:  # noqa: BLE001 - the change is committed; mail must never turn it into a 500
+        log.warning("support email failed")
 
 
 def now_utc() -> datetime:

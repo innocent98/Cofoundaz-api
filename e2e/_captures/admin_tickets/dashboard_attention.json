@@ -1,0 +1,9 @@
+{
+  "data": {
+    "tickets": {
+      "open": 1,
+      "breached": 0
+    }
+  },
+  "meta": null
+}

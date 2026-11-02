@@ -12,11 +12,11 @@ Resume file for a successor. Worktree `wt/admin-tickets`; scratch DB/Redis conta
 | T5 | Rate limits (Redis counters): 5 tickets/hour, 20/day per user; 30 founder replies/hour. 429 `RATE_LIMITED`. |
 | T6 | A founder sees tickets they opened; the workspace's founder role sees all of that workspace's tickets; never notes; other workspaces are 404. |
 | T7 | A founder reply on a resolved ticket reopens it within 14 days (clock restarts); after that 409 `TICKET_CLOSED`. |
-| T8 | Escalate: P1 + escalated flag + staff-only note with the reason + audit; resolve emails the founder. Dashboard KPIs carry `needs_attention.tickets {open, breached}` (A9). |
+| T8 | Escalate: P1 + escalated flag + staff-only note with the reason + audit; resolve emails the founder. `GET /admin/dashboard/attention` gives tickets {open, breached} (A9); KPI payload untouched. |
 
 ## Status
-- [x] Task 1: models, migration 0087, founder + staff services/endpoints, 42 API tests (negative auth/IDOR included)
-- [ ] Opus review of task 1 and fixes
-- [ ] Task 2: e2e journey + captures, live FE guide
+- [x] Task 1: models, migration 0087, services/endpoints, 45 API tests
+- [x] Opus review of task 1: 1 Critical (sequence missing in migration), 3 Important, 1 Minor, all fixed
+- [x] Task 2: e2e journey + captures + FE guide (live, passes)
 - [ ] Task 3: SOP, API checklist, FE brief (FE repo branch `docs/admin-tickets-brief`)
 - [ ] PR to develop, CI green

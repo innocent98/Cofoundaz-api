@@ -1,0 +1,19 @@
+{
+  "data": {
+    "staff": [
+      {
+        "id": "042b860d-1cbc-462c-ab78-bd7ff65b3970",
+        "name": "delivered+e2e-484048ef0a4b@resend.dev",
+        "email": "delivered+e2e-484048ef0a4b@resend.dev",
+        "role": "super_admin"
+      },
+      {
+        "id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "name": "delivered+e2e-ec76b0082478@resend.dev",
+        "email": "delivered+e2e-ec76b0082478@resend.dev",
+        "role": "admin"
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,40 @@
+{
+  "data": {
+    "id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+    "number": "T-1001",
+    "category": "billing",
+    "subject": "Invoice PDF is blank",
+    "status": "open",
+    "last_author": "founder",
+    "created_at": "2026-11-02T13:55:05.118139+00:00",
+    "last_message_at": "2026-11-02T13:55:05.622888+00:00",
+    "resolved_at": null,
+    "messages": [
+      {
+        "id": "84465c68-e23e-47ff-84cb-00e0a42f460c",
+        "author_kind": "founder",
+        "author_name": "Ada Obi",
+        "is_mine": true,
+        "body": "The PDF export of invoice INV-0004 comes out blank.\nIt worked last week.",
+        "created_at": "2026-11-02T13:55:05.133122+00:00"
+      },
+      {
+        "id": "a3aaf71c-5c2b-4f3d-93d7-74d00d43804d",
+        "author_kind": "staff",
+        "author_name": "Cofoundaz Support",
+        "is_mine": false,
+        "body": "Thanks for flagging this. We found the cause and are fixing it today.",
+        "created_at": "2026-11-02T13:55:05.580415+00:00"
+      },
+      {
+        "id": "6dd7f5d7-c7ff-4e20-8985-0e35afd7ad88",
+        "author_kind": "founder",
+        "author_name": "Ada Obi",
+        "is_mine": true,
+        "body": "Great, thank you!",
+        "created_at": "2026-11-02T13:55:05.622888+00:00"
+      }
+    ]
+  },
+  "meta": null
+}
