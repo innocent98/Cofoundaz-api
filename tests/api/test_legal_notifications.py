@@ -114,13 +114,15 @@ def test_the_ip_title_names_the_asset(db):
 # --- the new category -------------------------------------------------------------------------
 
 
-def test_legal_is_a_notification_category_defaulting_on(client, db):
+def test_legal_is_a_notification_category_with_email_off_by_default(client, db):
     _u, _s, h = _member(db)
     r = client.get("/api/v1/notifications/preferences", headers=h)
     assert r.status_code == 200, r.text
     cats = r.json()["data"]["categories"]
     # No migration needed: preferences are JSONB read with a code-side default (spec D20).
-    assert "legal" in cats and cats["legal"] is True
+    # But the EMAIL default is OFF, not ON: a category added after the original five starts off
+    # (D-NOT-2) so nobody begins receiving a new kind of email unasked. In-app is always on.
+    assert "legal" in cats and cats["legal"] is False
 
 
 def test_a_put_that_omits_legal_leaves_it_on(client, db):
@@ -143,17 +145,17 @@ def test_a_put_that_omits_legal_leaves_it_on(client, db):
     )
     assert r.status_code == 200, r.text
     cats = r.json()["data"]["categories"]
-    assert cats["legal"] is True
+    assert cats["legal"] is False  # untouched, keeps its stored default
     assert cats["documents"] is False  # the ones it did send still apply
 
 
-def test_legal_can_be_switched_off_explicitly(client, db):
+def test_legal_email_can_be_switched_on_explicitly(client, db):
     _u, _s, h = _member(db)
     r = client.put(
         "/api/v1/notifications/preferences",
-        json={"master_email": True, "categories": {"legal": False}},
+        json={"master_email": True, "categories": {"legal": True}},
         headers=h,
     )
     assert r.status_code == 200, r.text
-    assert r.json()["data"]["categories"]["legal"] is False
+    assert r.json()["data"]["categories"]["legal"] is True
     assert datetime.now(UTC).year >= 2026
