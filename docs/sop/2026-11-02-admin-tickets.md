@@ -4,6 +4,8 @@
 
 **Why:** the Support tab was a mock and there was no way for a founder to reach support, so the queue would have been empty (A18/P4).
 
+**Exception to P1:** ticket actions (reply, internal note, assign, priority, resolve, escalate, reopen, canned CRUD) need no fresh authenticator code. Each still writes an audit row, escalate still needs a written reason, and staff MFA at sign-in still applies. (Adebayo, 2026-11-02.) T1 to T8 are all accepted.
+
 **How, and the calls made**
 
 | Call | Decision |

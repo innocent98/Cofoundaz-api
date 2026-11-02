@@ -14,6 +14,8 @@ Resume file for a successor. Worktree `wt/admin-tickets`; scratch DB/Redis conta
 | T7 | A founder reply on a resolved ticket reopens it within 14 days (clock restarts); after that 409 `TICKET_CLOSED`. |
 | T8 | Escalate: P1 + escalated flag + staff-only note with the reason + audit; resolve emails the founder. `GET /admin/dashboard/attention` gives tickets {open, breached} (A9); KPI payload untouched. |
 
+**Accepted exception to P1 (Adebayo, 2026-11-02, "Yes, skip it"): ticket actions (reply, internal note, assign, priority, resolve, escalate, reopen, canned CRUD) need no fresh authenticator code. Each still writes an audit row, escalate still needs a written reason, and staff MFA at sign-in still applies.**
+
 ## Status
 - [x] Task 1: models, migration 0087, services/endpoints, 45 API tests
 - [x] Opus review of task 1: 1 Critical (sequence missing in migration), 3 Important, 1 Minor, all fixed

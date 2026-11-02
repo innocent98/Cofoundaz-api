@@ -9,6 +9,8 @@ Every body below is pasted from a live run against a real server: `e2e/test_admi
 
 Product calls T1 to T8 (accepted by Adebayo 2026-11-02): T1 SLA = first staff reply deadline, P1 1h / P2 4h / P3 24h / P4 72h. T2 no AI triage (hide the banner). T3 any `support` staff sees all tickets. T4 text only, 5000 chars. T5 rate limits. T6 visibility rules below. T7 reopen window 14 days. T8 escalate = P1.
 
+**Exception to P1 (accepted by Adebayo, 2026-11-02):** no `totp_code` is sent on any ticket action, unlike other staff mutations. Do not add a code prompt here. Actions are still audited and escalate still needs a `reason`.
+
 ## Founder endpoints
 
 ### `POST /support/tickets` (201)
