@@ -7,6 +7,7 @@ Any secret key containing "bad" is answered with the provider's 401 body.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -181,7 +182,9 @@ def _tx_data(ref: str, tx: dict[str, object]) -> dict[str, object]:
         "reference": ref,
         "amount": tx["amount"],
         "currency": "NGN",
-        "paid_at": _STUB_WHEN,
+        # A Paystack charge is paid now. A fixed date here aged every stubbed charge by a day each
+        # day, and from 2026-11-01 a monthly subscription "bought" in a test had already ended.
+        "paid_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "channel": "card",
         "customer": {"email": email, "customer_code": _customer_code(email)},
         "authorization": {
