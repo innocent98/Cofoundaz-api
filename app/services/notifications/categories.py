@@ -20,6 +20,7 @@ CATEGORIES: tuple[str, ...] = (
     "ai_insights",
     "billing",
     "calendar",
+    "legal",
 )
 
 # Titles and one-line descriptions for the Preferences grid (the API is the source, the FE renders).
@@ -65,6 +66,9 @@ EVENT_CATEGORY: dict[str, str] = {
     "roadmap.milestone.due_soon": "roadmap_missions",
     "assessment.quarterly.due": "health_assessment",
     "calendar.meeting.reminder": "calendar",
+    "legal.compliance.due_soon": "legal",
+    "legal.compliance.overdue": "legal",
+    "legal.ip.renewal_due_soon": "legal",
 }
 
 # Types not listed above are classified by their prefix, so a new module's events (Billing, ...)

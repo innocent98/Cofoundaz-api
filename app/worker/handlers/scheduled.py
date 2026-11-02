@@ -3,9 +3,10 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
-from app.db.models.enums import RoadmapStatus
+from app.db.models.enums import ComplianceStatus, IpAssetStatus, RoadmapStatus
 from app.db.models.job import Job
 from app.db.models.journal import JournalEntry
+from app.db.models.legal import ComplianceItem, IpAsset
 from app.db.models.marketing import ContentCalendarEntry
 from app.db.models.mission import MissionTask
 from app.db.models.roadmap import RoadmapMilestone
@@ -21,10 +22,12 @@ from app.services.notifications.digest import send_digest
 from app.services.sales.stall import notify_stalled
 from app.worker.runner import register_handler
 from app.worker.scheduler import (
+    SCHED_COMPLIANCE,
     SCHED_DOCUMENT_TRASH_PURGE,
     SCHED_DUE_SOON,
     SCHED_HEALTH_NIGHTLY,
     SCHED_INVOICE_OVERDUE,
+    SCHED_IP_RENEWAL,
     SCHED_JOURNAL_NUDGE,
     SCHED_KPI_SNAPSHOT,
     SCHED_MARKETING_PUBLISH,
@@ -213,3 +216,53 @@ register_handler(SCHED_INVOICE_OVERDUE, handle_invoice_overdue)
 register_handler(
     SCHED_DOCUMENT_TRASH_PURGE, handle_documents_trash_purge, manages_transactions=True
 )
+
+
+def handle_legal_compliance_due(db: Session, job: Job) -> None:
+    """Publish a compliance reminder, if the filing still qualifies.
+
+    `days_out` is computed here, never read off the `period_key`: thresholds are windows, so a
+    `due14` claim can legitimately fire for a filing three days away (spec D22).
+    """
+    item = db.get(ComplianceItem, uuid.UUID(str(job.payload["item_id"])))
+    # Re-check: it may have been completed or deleted between enqueue and run. The claim is the
+    # only other gate - no "already sent" flags of our own (brief gotcha).
+    if item is None or item.status == ComplianceStatus.done:
+        return
+    today = datetime.now(UTC).date()
+    days_out = (item.due_on - today).days
+    event = "legal.compliance.overdue" if days_out < 0 else "legal.compliance.due_soon"
+    event_bus.publish(
+        db,
+        event,
+        {
+            "startup_id": str(item.startup_id),
+            "item_id": str(item.id),
+            "title": item.title,
+            "due_on": item.due_on.isoformat(),
+            "days_out": days_out,
+        },
+    )
+
+
+def handle_legal_ip_renewal_due(db: Session, job: Job) -> None:
+    """Publish an IP renewal reminder, if the asset still qualifies."""
+    asset = db.get(IpAsset, uuid.UUID(str(job.payload["asset_id"])))
+    if asset is None or asset.renewal_on is None or asset.status == IpAssetStatus.drafting:
+        return
+    today = datetime.now(UTC).date()
+    event_bus.publish(
+        db,
+        "legal.ip.renewal_due_soon",
+        {
+            "startup_id": str(asset.startup_id),
+            "asset_id": str(asset.id),
+            "name": asset.name,
+            "renewal_on": asset.renewal_on.isoformat(),
+            "days_out": (asset.renewal_on - today).days,
+        },
+    )
+
+
+register_handler(SCHED_COMPLIANCE, handle_legal_compliance_due)
+register_handler(SCHED_IP_RENEWAL, handle_legal_ip_renewal_due)
