@@ -482,3 +482,33 @@ def test_remove_when_the_author_already_deleted_the_item(client, db, world):
     # The snippet survives for the record.
     resp = client.get(f"{S}/{rid}", headers=hdr(mod))
     assert resp.json()["data"]["snippet"]
+
+
+def test_a_moderator_cannot_close_an_escalation_by_removing_a_sibling_report(client, db, world):
+    mod, boss = moderator(db), mk_staff(db, role=StaffRole.super_admin)
+    c = mk_comment(db, world.ws, world.mate)
+    third = mk_user(db)
+    member(db, world.ws, third, MembershipRole.team_member)
+    escalated = filed(client, world.owner, world.ws, "comment", c.id)["id"]
+    plain = filed(client, third, world.ws, "comment", c.id)["id"]
+    act(client, mod, escalated, "escalate")
+    blocked = act(client, mod, plain, "remove", step_up=True)
+    assert blocked.status_code == 403 and blocked.json()["error"]["code"] == "SUPER_ADMIN_ONLY"
+    assert db.get(Comment, c.id).removed_by_moderation_at is None
+    assert db.get(ContentReport, uuid.UUID(escalated)).status == ReportStatus.escalated
+    # A Super Admin's removal answers both; a moderator then cannot undo it.
+    assert act(client, boss, plain, "remove", step_up=True).status_code == 200
+    undo = act(client, mod, plain, "restore", step_up=True)
+    assert undo.status_code == 403 and undo.json()["error"]["code"] == "SUPER_ADMIN_ONLY"
+    assert db.get(Comment, c.id).removed_by_moderation_at is not None
+    assert act(client, boss, plain, "restore", step_up=True).status_code == 200
+
+
+def test_removed_comment_text_is_hidden_in_the_threads_index(client, db, world):
+    mod = moderator(db)
+    c = mk_comment(db, world.ws, world.mate, world.canvas.id, body="Quiet abuse text")
+    rid = filed(client, world.owner, world.ws, "comment", c.id)["id"]
+    act(client, mod, rid, "remove", step_up=True)
+    r = client.get("/api/v1/team/comments/threads", headers=fh(world.mate, world.ws))
+    assert r.status_code == 200 and "Quiet abuse text" not in r.text
+    assert any(t["entity_id"] == str(world.canvas.id) for t in r.json()["data"])  # still listed

@@ -182,6 +182,13 @@ def _live_only(ctx: StaffContext, r: ContentReport) -> None:
         )
 
 
+def _super_admin_for_escalations(ctx: StaffContext, reports: list[ContentReport]) -> None:
+    if not ctx.is_super_admin and any(x.escalated_at is not None for x in reports):
+        raise core.err(
+            "SUPER_ADMIN_ONLY", "Only a Super Admin can decide an escalated report.", 403
+        )
+
+
 def _audit(
     db: Session,
     ctx: StaffContext,
@@ -258,7 +265,6 @@ def remove(
     r = _load(db, report_id)
     _live_only(ctx, r)
     now = core.now_utc()
-    hidden = core.set_removed(db, r, True, now)
     # R8: everyone who reported this item is answered by the one removal.
     others = (
         db.query(ContentReport)
@@ -270,6 +276,9 @@ def remove(
         .with_for_update()
         .all()
     )
+    # An escalated sibling is a Super Admin's call (R7): a removal must not close it for them.
+    _super_admin_for_escalations(ctx, others)
+    hidden = core.set_removed(db, r, True, now)
     for o in others:
         o.status = ReportStatus.removed
         o.decided_by, o.decided_at, o.decision_reason = ctx.user.id, now, reason
@@ -300,7 +309,6 @@ def restore(
     if r.status != ReportStatus.removed:
         raise core.err("NOT_REMOVED", "Only a removed item can be restored.", 409)
     now = core.now_utc()
-    shown = core.set_removed(db, r, False, now)
     others = (
         db.query(ContentReport)
         .filter(
@@ -311,6 +319,9 @@ def restore(
         .with_for_update()
         .all()
     )
+    # Undoing a Super Admin's decision on an escalated report is theirs too (R7).
+    _super_admin_for_escalations(ctx, others)
+    shown = core.set_removed(db, r, False, now)
     for o in others:
         o.status = ReportStatus.restored
         o.decided_by, o.decided_at, o.decision_reason = ctx.user.id, now, reason
