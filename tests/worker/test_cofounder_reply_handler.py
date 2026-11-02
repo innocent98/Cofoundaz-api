@@ -276,3 +276,30 @@ def test_headroom_reports_remaining_tokens(db, monkeypatch):
     db.add(LlmUsageDaily(startup_id=s.id, usage_date=today_utc(), tokens_used=1500))
     db.flush()
     assert llm_budget.headroom(db, s.id) == 0
+
+
+def test_a_reply_removed_by_moderation_is_not_fed_back_to_the_model(db, monkeypatch):
+    from datetime import UTC, datetime
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    s, first = _conv_with_pending(db)
+    first.status, first.content = ChatMessageStatus.ready, "REMOVED-REPLY-TEXT"
+    first.removed_by_moderation_at = datetime.now(UTC)
+    pending = AiMessage(
+        conversation_id=first.conversation_id,
+        role=ChatMessageRole.assistant,
+        status=ChatMessageStatus.generating,
+        content="",
+    )
+    db.add(pending)
+    db.flush()
+    seen = []
+
+    class _Spy(_FakeLLM):
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            seen.append(str(messages))
+            return "fine"
+
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _Spy("fine"))
+    handle_cofounder_reply(db, _job(pending.id, s.id))
+    assert seen and "REMOVED-REPLY-TEXT" not in seen[0]

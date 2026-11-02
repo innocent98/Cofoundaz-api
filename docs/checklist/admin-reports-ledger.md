@@ -12,6 +12,6 @@ See `docs/sop/2026-11-02-admin-reports.md` for the table. Remove and restore hav
 - [x] Security review of task 1: 3 findings fixed (R7 bypasses x2, threads-index leak)
 - [x] Task 2: e2e journey + captures + FE guide (live, passes)
 - [x] Task 3: SOP, checklist
-- [ ] Opus review of the whole diff
-- [ ] FE brief (FE repo branch `docs/admin-reports-brief`)
+- [x] Opus review of the whole diff: 2 Important + 3 Minor fixed with tests
+- [x] FE brief (FE PR innocent98/cofoundaz#213, branch `docs/admin-reports-brief`)
 - [ ] PR to develop, CI green

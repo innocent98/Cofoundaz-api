@@ -172,6 +172,24 @@ def _load(db: Session, report_id: uuid.UUID) -> ContentReport:
     return r
 
 
+def _load_with_siblings(
+    db: Session, report_id: uuid.UUID
+) -> tuple[ContentReport, list[ContentReport]]:
+    """The report and every report on the same item, all locked in id order, so two moderators
+    acting on sibling reports queue up instead of deadlocking."""
+    first = db.query(ContentReport).filter(ContentReport.id == report_id).first()
+    if first is None:
+        raise NotFound()
+    rows = (
+        db.query(ContentReport)
+        .filter(ContentReport.item_type == first.item_type, ContentReport.item_id == first.item_id)
+        .order_by(ContentReport.id)
+        .with_for_update()
+        .all()
+    )
+    return next(x for x in rows if x.id == report_id), rows
+
+
 def _live_only(ctx: StaffContext, r: ContentReport) -> None:
     if r.status not in (ReportStatus.open, ReportStatus.escalated):
         raise core.err("REPORT_CLOSED", "This report is already closed.", 409)
@@ -262,20 +280,11 @@ def remove(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    r = _load(db, report_id)
+    r, siblings = _load_with_siblings(db, report_id)
     _live_only(ctx, r)
     now = core.now_utc()
     # R8: everyone who reported this item is answered by the one removal.
-    others = (
-        db.query(ContentReport)
-        .filter(
-            ContentReport.item_type == r.item_type,
-            ContentReport.item_id == r.item_id,
-            ContentReport.status.in_((ReportStatus.open, ReportStatus.escalated)),
-        )
-        .with_for_update()
-        .all()
-    )
+    others = [x for x in siblings if x.status in (ReportStatus.open, ReportStatus.escalated)]
     # An escalated sibling is a Super Admin's call (R7): a removal must not close it for them.
     _super_admin_for_escalations(ctx, others)
     hidden = core.set_removed(db, r, True, now)
@@ -305,20 +314,11 @@ def restore(
     ip: str | None,
     ua: str | None,
 ) -> dict[str, Any]:
-    r = _load(db, report_id)
+    r, siblings = _load_with_siblings(db, report_id)
     if r.status != ReportStatus.removed:
         raise core.err("NOT_REMOVED", "Only a removed item can be restored.", 409)
     now = core.now_utc()
-    others = (
-        db.query(ContentReport)
-        .filter(
-            ContentReport.item_type == r.item_type,
-            ContentReport.item_id == r.item_id,
-            ContentReport.status == ReportStatus.removed,
-        )
-        .with_for_update()
-        .all()
-    )
+    others = [x for x in siblings if x.status == ReportStatus.removed]
     # Undoing a Super Admin's decision on an escalated report is theirs too (R7).
     _super_admin_for_escalations(ctx, others)
     shown = core.set_removed(db, r, False, now)

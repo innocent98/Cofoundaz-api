@@ -2,7 +2,7 @@
   "data": {
     "reports": [
       {
-        "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
         "item_type": "comment",
         "reason": "abusive",
         "note": "Personal attack",
@@ -10,21 +10,21 @@
         "snippet": "Your launch plan is hopeless and so are you.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "4f9ba134-081d-4892-a41a-794328252141",
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
           "name": "Ada Obi",
-          "email": "delivered+e2e-c2db400dd75f@resend.dev"
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
         },
         "author": {
-          "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-          "name": "delivered+e2e-2cef66258eb7@resend.dev"
+          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+          "name": "delivered+e2e-a8874c9c7471@resend.dev"
         },
         "workspace": {
-          "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:24:55.129808+00:00",
-        "escalated_at": "2026-11-02T14:24:55.382565+00:00",
+        "created_at": "2026-11-02T14:31:30.166167+00:00",
+        "escalated_at": "2026-11-02T14:31:30.394716+00:00",
         "decided_at": null
       }
     ]

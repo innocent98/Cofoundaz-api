@@ -35,6 +35,7 @@ Rejected: copying the whole conversation into the report (breaks D-ADM-9); hard-
 - `tests/api/test_staff_reports.py` (33): founder validation, IDOR and cross-workspace, a teammate's private AI chat, document comments, rate limit, duplicates; the guard matrix for all 7 staff routes; queue tabs, filters, search, paging; staff never see the thread text, prompt or author email; every action with audit rows; step-up on remove and restore; escalation stays a Super Admin's call; removed text hidden in threads, the threads index and AI chats; deleted source.
 - `e2e/test_admin_reports.py`: live journey (founder reports a comment and two AI replies; moderator dismisses, escalates and removes; Super Admin removes the escalated one; authors see it removed; restore; audit). Captures in `e2e/_captures/admin_reports/`; guide `docs/fe-integration-guide-admin-reports.md`.
 - Migration upgrade, downgrade to 0087, upgrade, downgrade to base and upgrade on a scratch DB; `alembic check` shows no drift for the new objects.
+- Opus review (whole diff): two Important findings fixed with tests: a removed AI reply was still sent to the model as chat history (`app/worker/handlers/ai.py`), and mention notifications still quoted a removed comment (now scrubbed in `app/services/reports/core.py`; a restore brings the comment back but not the quote). Minor: sibling reports are locked in id order (no deadlock), a report can't be filed on an item mid-removal, and a 404 no longer spends a rate-limit slot or an authenticator code.
 - An automated security review of the first commit found three issues, all fixed with tests: a moderator could close an escalation by removing a sibling report; a moderator could restore a Super Admin's removal; the threads-index snippet showed the removed text.
 
 **Operate / roll back**
@@ -43,4 +44,4 @@ Rejected: copying the whole conversation into the report (breaks D-ADM-9); hard-
 
 **Follow-ups**
 - FE: the Report action on AI replies and comments, plus the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md` in the FE repo).
-- Not built: reviews (Marketplace), notifying the author or reporter, withdrawing your own report, reporting Sales Coach or Marketing AI output, a repeat-offender view, and keeping a removed AI message out of the model's own conversation context.
+- Not built: reviews (Marketplace), notifying the author or reporter, withdrawing your own report, reporting Sales Coach or Marketing AI output, a repeat-offender view.

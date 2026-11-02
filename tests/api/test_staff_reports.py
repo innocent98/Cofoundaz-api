@@ -497,11 +497,13 @@ def test_a_moderator_cannot_close_an_escalation_by_removing_a_sibling_report(cli
     assert db.get(Comment, c.id).removed_by_moderation_at is None
     assert db.get(ContentReport, uuid.UUID(escalated)).status == ReportStatus.escalated
     # A Super Admin's removal answers both; a moderator then cannot undo it.
-    assert act(client, boss, plain, "remove", step_up=True).status_code == 200
+    resp = act(client, boss, plain, "remove", step_up=True)
+    assert resp.status_code == 200
     undo = act(client, mod, plain, "restore", step_up=True)
     assert undo.status_code == 403 and undo.json()["error"]["code"] == "SUPER_ADMIN_ONLY"
     assert db.get(Comment, c.id).removed_by_moderation_at is not None
-    assert act(client, boss, plain, "restore", step_up=True).status_code == 200
+    resp = act(client, boss, plain, "restore", step_up=True)
+    assert resp.status_code == 200
 
 
 def test_removed_comment_text_is_hidden_in_the_threads_index(client, db, world):
@@ -534,3 +536,47 @@ def test_an_author_cannot_learn_who_reported_them(client, db, world):
     # No report route accepts the author's id as a way in either.
     other = client.get(f"/api/v1/admin/reports/{rid}", headers=hdr(world.mate))
     assert other.status_code == 404
+
+
+def test_removal_scrubs_the_quote_in_mention_notifications(client, db, world):
+    mod = moderator(db)
+    r = client.post(
+        "/api/v1/team/comments",
+        json={
+            "entity_type": "business_canvas",
+            "entity_id": str(world.canvas.id),
+            "body": "Mention-quoted nasty text",
+            "mention_user_ids": [str(world.owner.id)],
+        },
+        headers=fh(world.mate, world.ws),
+    )
+    assert r.status_code == 201, r.text
+    cid = r.json()["data"]["id"]
+    third = mk_user(db)
+    member(db, world.ws, third, MembershipRole.team_member)
+    rid = filed(client, third, world.ws, "comment", cid)["id"]
+    before = client.get("/api/v1/notifications", headers=fh(world.owner, world.ws)).text
+    assert "Mention-quoted nasty text" in before
+    act(client, mod, rid, "remove", step_up=True)
+    after = client.get("/api/v1/notifications", headers=fh(world.owner, world.ws)).text
+    assert "Mention-quoted nasty text" not in after
+
+
+def test_a_404_spends_neither_a_report_slot_nor_an_authenticator_code(client, db, world):
+    mod = moderator(db)
+    for _ in range(12):  # more than the hourly limit, all 404
+        resp = report(client, world.owner, world.ws, "comment", uuid.uuid4())
+        assert resp.status_code == 404
+    c = mk_comment(db, world.ws, world.mate)
+    resp = report(client, world.owner, world.ws, "comment", c.id)
+    assert resp.status_code == 201
+    code = pyotp.TOTP(mod.test_secret).now()
+    miss = client.post(
+        f"{S}/{uuid.uuid4()}/remove", json={"reason": REASON, "totp_code": code}, headers=hdr(mod)
+    )
+    assert miss.status_code == 404
+    rid = db.query(ContentReport).one().id
+    ok = client.post(
+        f"{S}/{rid}/remove", json={"reason": REASON, "totp_code": code}, headers=hdr(mod)
+    )
+    assert ok.status_code == 200  # the same code still works

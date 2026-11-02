@@ -3853,4 +3853,4 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [x] Authors see "Removed by moderation" in comments, the threads index and AI chats; removed comments can't be edited
 - [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide
 - [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
-- [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view, removed AI replies still in the model's chat context
+- [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view

@@ -56,6 +56,7 @@ def _target(
                 AiMessage.status == ChatMessageStatus.ready,
                 AiMessage.removed_by_moderation_at.is_(None),
             )
+            .with_for_update(of=AiMessage)  # a removal in flight finishes first
             .first()
         )
         if msg is None:
@@ -70,6 +71,7 @@ def _target(
             Comment.entity_type != "document",
             Comment.removed_by_moderation_at.is_(None),
         )
+        .with_for_update()
         .first()
     )
     if comment is None:
@@ -89,13 +91,14 @@ def create_report(
     reason: ReportReason,
     note: str | None,
 ) -> dict[str, Any]:
+    text, author_id = _target(db, user, m, item_type, item_id)
+    # Spent only once the item is valid: a 404 or your own comment doesn't use a slot.
     core.claim(
         f"report_rl:{user.id}",
         core.REPORTS_PER_HOUR,
         3600,
         "You've sent several reports recently. Please wait a little before sending another.",
     )
-    text, author_id = _target(db, user, m, item_type, item_id)
     report = ContentReport(
         startup_id=m.startup_id,
         reporter_id=user.id,

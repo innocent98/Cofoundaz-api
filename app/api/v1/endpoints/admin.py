@@ -375,6 +375,7 @@ def remove_reported_item(
     ctx: _Moderation,
     db: _Db,
 ) -> dict[str, Any]:
+    reports.detail(db, report_id)  # a 404 must not spend the authenticator code
     verify_step_up(ctx.user, payload.totp_code)
     ip, ua = _client(request)
     return success_response(reports.remove(db, ctx, report_id, reason=payload.reason, ip=ip, ua=ua))
@@ -388,6 +389,7 @@ def restore_reported_item(
     ctx: _Moderation,
     db: _Db,
 ) -> dict[str, Any]:
+    reports.detail(db, report_id)  # a 404 must not spend the authenticator code
     verify_step_up(ctx.user, payload.totp_code)
     ip, ua = _client(request)
     return success_response(

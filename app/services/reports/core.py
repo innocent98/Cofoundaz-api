@@ -18,6 +18,7 @@ from app.db.models.ai_chat import AiMessage
 from app.db.models.comment import Comment
 from app.db.models.content_report import ContentReport
 from app.db.models.enums import ReportItemType
+from app.db.models.notification import Notification
 
 SNIPPET_MAX = 2000  # R4
 REPORTS_PER_HOUR = 10  # R3
@@ -74,4 +75,23 @@ def set_removed(db: Session, report: ContentReport, removed: bool, now: datetime
     if item is None:
         return False
     item.removed_by_moderation_at = now if removed else None
+    if removed and report.item_type == ReportItemType.comment:
+        _scrub_mentions(db, report.item_id)
     return True
+
+
+def _scrub_mentions(db: Session, comment_id: uuid.UUID) -> None:
+    """A mention notification quotes the comment; once it is removed the quote goes too. A later
+    restore does not bring the quote back (the comment itself comes back)."""
+    rows = (
+        db.query(Notification)
+        .filter(
+            Notification.type == "team.comment.mentioned",
+            Notification.data["comment_id"].astext == str(comment_id),
+        )
+        .all()
+    )
+    for n in rows:
+        n.title = "A comment that mentioned you was removed by moderation"
+        n.body = REMOVED_PLACEHOLDER
+        n.data = {**n.data, "snippet": REMOVED_PLACEHOLDER}

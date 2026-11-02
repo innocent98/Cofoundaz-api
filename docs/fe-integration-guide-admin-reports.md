@@ -40,12 +40,12 @@ Body: `{"item_type": "ai_message" | "comment", "item_id": uuid, "reason": spam|a
 ```json
 {
   "data": {
-    "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
     "item_type": "comment",
-    "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+    "item_id": "b86a41c8-0fb1-45ee-815a-f48e3e0551c3",
     "reason": "abusive",
     "status": "received",
-    "created_at": "2026-11-02T14:24:55.129808+00:00"
+    "created_at": "2026-11-02T14:31:30.166167+00:00"
   },
   "meta": null
 }
@@ -55,12 +55,12 @@ Body: `{"item_type": "ai_message" | "comment", "item_id": uuid, "reason": spam|a
 ```json
 {
   "data": {
-    "id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+    "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
     "item_type": "ai_message",
-    "item_id": "4d9b8e1f-a38b-44e0-868b-e65a47c83966",
+    "item_id": "a5d17cae-15d2-4fd0-b26d-ccdb1387ff9c",
     "reason": "inaccurate",
     "status": "received",
-    "created_at": "2026-11-02T14:24:55.169246+00:00"
+    "created_at": "2026-11-02T14:31:30.200966+00:00"
   },
   "meta": null
 }
@@ -192,28 +192,28 @@ Your reports that are still with staff (open or escalated), newest first, up to 
   "data": {
     "reports": [
       {
-        "id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+        "id": "51de0fac-ab33-414b-9fea-0b324b613117",
         "item_type": "ai_message",
-        "item_id": "8eed12e7-91e7-44a2-b3ae-a4f89b104980",
+        "item_id": "ef27fd03-5af5-4787-89ff-47fffead343c",
         "reason": "harmful",
         "status": "received",
-        "created_at": "2026-11-02T14:24:55.185968+00:00"
+        "created_at": "2026-11-02T14:31:30.221510+00:00"
       },
       {
-        "id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+        "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
         "item_type": "ai_message",
-        "item_id": "4d9b8e1f-a38b-44e0-868b-e65a47c83966",
+        "item_id": "a5d17cae-15d2-4fd0-b26d-ccdb1387ff9c",
         "reason": "inaccurate",
         "status": "received",
-        "created_at": "2026-11-02T14:24:55.169246+00:00"
+        "created_at": "2026-11-02T14:31:30.200966+00:00"
       },
       {
-        "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
         "item_type": "comment",
-        "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+        "item_id": "b86a41c8-0fb1-45ee-815a-f48e3e0551c3",
         "reason": "abusive",
         "status": "received",
-        "created_at": "2026-11-02T14:24:55.129808+00:00"
+        "created_at": "2026-11-02T14:31:30.166167+00:00"
       }
     ]
   },
@@ -241,42 +241,42 @@ The existing endpoints return two new facts on every comment and every AI messag
 ```json
 {
   "data": {
-    "id": "cdf814d2-b68c-483d-ab91-afb2fc576ce1",
+    "id": "1ffd1deb-e585-453e-a6af-6f3c81a0a1cd",
     "title": "How long is my runway?",
-    "created_at": "2026-11-02T14:24:52.819111+00:00",
-    "updated_at": "2026-11-02T14:24:54.987370+00:00",
+    "created_at": "2026-11-02T14:31:28.303416+00:00",
+    "updated_at": "2026-11-02T14:31:30.024901+00:00",
     "messages": [
       {
-        "id": "dd2008a0-9ef5-4913-9b30-5c96b19a5aa5",
+        "id": "6138438b-969a-4cb4-aaf5-d418271532fd",
         "role": "user",
         "status": "ready",
         "content": "How long is my runway?",
         "removed_by_moderation": false,
-        "created_at": "2026-11-02T14:24:52.831299+00:00"
+        "created_at": "2026-11-02T14:31:28.315811+00:00"
       },
       {
-        "id": "4d9b8e1f-a38b-44e0-868b-e65a47c83966",
+        "id": "a5d17cae-15d2-4fd0-b26d-ccdb1387ff9c",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
         "removed_by_moderation": false,
-        "created_at": "2026-11-02T14:24:52.832299+00:00"
+        "created_at": "2026-11-02T14:31:28.316811+00:00"
       },
       {
-        "id": "93a382bb-c8ad-456f-9243-7f4272c4ab07",
+        "id": "98235b78-ceb0-413e-8ed2-220bec4e74a7",
         "role": "user",
         "status": "ready",
         "content": "And what should I charge?",
         "removed_by_moderation": false,
-        "created_at": "2026-11-02T14:24:54.986370+00:00"
+        "created_at": "2026-11-02T14:31:30.023901+00:00"
       },
       {
-        "id": "8eed12e7-91e7-44a2-b3ae-a4f89b104980",
+        "id": "ef27fd03-5af5-4787-89ff-47fffead343c",
         "role": "assistant",
         "status": "ready",
         "content": "Removed by moderation",
         "removed_by_moderation": true,
-        "created_at": "2026-11-02T14:24:54.987370+00:00"
+        "created_at": "2026-11-02T14:31:30.024901+00:00"
       }
     ]
   },
@@ -289,18 +289,18 @@ The existing endpoints return two new facts on every comment and every AI messag
 {
   "data": [
     {
-      "id": "818091d3-a870-442a-aef4-ea30a8eae184",
+      "id": "b86a41c8-0fb1-45ee-815a-f48e3e0551c3",
       "entity_type": "roadmap_milestone",
-      "entity_id": "725f3414-aa11-4ee0-b193-b1ac9e9a3ef5",
+      "entity_id": "65777ccc-b5f9-4b9f-9721-bf49e3820d6f",
       "anchor": null,
       "author": {
-        "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
+        "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
         "name": null
       },
       "body": "Removed by moderation",
       "removed_by_moderation": true,
       "mention_user_ids": [],
-      "created_at": "2026-11-02T14:24:52.800600+00:00",
+      "created_at": "2026-11-02T14:31:28.281642+00:00",
       "edited_at": null,
       "resolved_at": null,
       "is_mine": true
@@ -329,18 +329,18 @@ A removed comment cannot be edited back into view:
 {
   "data": [
     {
-      "id": "818091d3-a870-442a-aef4-ea30a8eae184",
+      "id": "b86a41c8-0fb1-45ee-815a-f48e3e0551c3",
       "entity_type": "roadmap_milestone",
-      "entity_id": "725f3414-aa11-4ee0-b193-b1ac9e9a3ef5",
+      "entity_id": "65777ccc-b5f9-4b9f-9721-bf49e3820d6f",
       "anchor": null,
       "author": {
-        "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
+        "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
         "name": null
       },
       "body": "Your launch plan is hopeless and so are you.",
       "removed_by_moderation": false,
       "mention_user_ids": [],
-      "created_at": "2026-11-02T14:24:52.800600+00:00",
+      "created_at": "2026-11-02T14:31:28.281642+00:00",
       "edited_at": null,
       "resolved_at": null,
       "is_mine": true
@@ -384,7 +384,7 @@ Tab badges.
   "data": {
     "open": 3,
     "escalated": 0,
-    "closed": 3
+    "closed": 6
   },
   "meta": null
 }
@@ -403,7 +403,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+        "id": "51de0fac-ab33-414b-9fea-0b324b613117",
         "item_type": "ai_message",
         "reason": "harmful",
         "note": "Wrong figures",
@@ -411,17 +411,17 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "[stub-llm] AI-generated assessment narrative.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "4f9ba134-081d-4892-a41a-794328252141",
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
           "name": "Ada Obi",
-          "email": "delivered+e2e-c2db400dd75f@resend.dev"
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
         },
         "author": null,
         "workspace": {
-          "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:24:55.185968+00:00",
+        "created_at": "2026-11-02T14:31:30.221510+00:00",
         "escalated_at": null,
         "decided_at": null
       }
@@ -441,7 +441,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
         "item_type": "comment",
         "reason": "abusive",
         "note": "Personal attack",
@@ -449,20 +449,20 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "Your launch plan is hopeless and so are you.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "4f9ba134-081d-4892-a41a-794328252141",
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
           "name": "Ada Obi",
-          "email": "delivered+e2e-c2db400dd75f@resend.dev"
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
         },
         "author": {
-          "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-          "name": "delivered+e2e-2cef66258eb7@resend.dev"
+          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+          "name": "delivered+e2e-a8874c9c7471@resend.dev"
         },
         "workspace": {
-          "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:24:55.129808+00:00",
+        "created_at": "2026-11-02T14:31:30.166167+00:00",
         "escalated_at": null,
         "decided_at": null
       }
@@ -481,7 +481,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+        "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
         "item_type": "ai_message",
         "reason": "inaccurate",
         "note": "Wrong figures",
@@ -489,19 +489,19 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "[stub-llm] AI-generated assessment narrative.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "4f9ba134-081d-4892-a41a-794328252141",
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
           "name": "Ada Obi",
-          "email": "delivered+e2e-c2db400dd75f@resend.dev"
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
         },
         "author": null,
         "workspace": {
-          "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:24:55.169246+00:00",
+        "created_at": "2026-11-02T14:31:30.200966+00:00",
         "escalated_at": null,
-        "decided_at": "2026-11-02T14:24:55.343009+00:00"
+        "decided_at": "2026-11-02T14:31:30.351805+00:00"
       }
     ]
   },
@@ -511,7 +511,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   }
 }
 ```
-(list trimmed to its first item; the live response had 4)
+(list trimmed to its first item; the live response had 7)
 
 `list_escalated_tab` (200):
 ```json
@@ -519,7 +519,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
         "item_type": "comment",
         "reason": "abusive",
         "note": "Personal attack",
@@ -527,21 +527,21 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "Your launch plan is hopeless and so are you.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "4f9ba134-081d-4892-a41a-794328252141",
+          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
           "name": "Ada Obi",
-          "email": "delivered+e2e-c2db400dd75f@resend.dev"
+          "email": "delivered+e2e-bb3da4790da4@resend.dev"
         },
         "author": {
-          "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-          "name": "delivered+e2e-2cef66258eb7@resend.dev"
+          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+          "name": "delivered+e2e-a8874c9c7471@resend.dev"
         },
         "workspace": {
-          "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:24:55.129808+00:00",
-        "escalated_at": "2026-11-02T14:24:55.382565+00:00",
+        "created_at": "2026-11-02T14:31:30.166167+00:00",
+        "escalated_at": "2026-11-02T14:31:30.394716+00:00",
         "decided_at": null
       }
     ]
@@ -564,7 +564,7 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
 ```json
 {
   "data": {
-    "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -572,20 +572,20 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": {
-      "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-      "name": "delivered+e2e-2cef66258eb7@resend.dev"
+      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+      "name": "delivered+e2e-a8874c9c7471@resend.dev"
     },
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.129808+00:00",
+    "created_at": "2026-11-02T14:31:30.166167+00:00",
     "escalated_at": null,
     "decided_at": null,
     "escalation_reason": null,
@@ -602,7 +602,7 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
 ```json
 {
   "data": {
-    "id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+    "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
     "item_type": "ai_message",
     "reason": "inaccurate",
     "note": "Wrong figures",
@@ -610,17 +610,17 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
     "snippet": "[stub-llm] AI-generated assessment narrative.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": null,
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.169246+00:00",
+    "created_at": "2026-11-02T14:31:30.200966+00:00",
     "escalated_at": null,
     "decided_at": null,
     "escalation_reason": null,
@@ -667,7 +667,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+    "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
     "item_type": "ai_message",
     "reason": "inaccurate",
     "note": "Wrong figures",
@@ -675,26 +675,26 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "[stub-llm] AI-generated assessment narrative.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": null,
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.169246+00:00",
+    "created_at": "2026-11-02T14:31:30.200966+00:00",
     "escalated_at": null,
-    "decided_at": "2026-11-02T14:24:55.343009+00:00",
+    "decided_at": "2026-11-02T14:31:30.351805+00:00",
     "escalation_reason": null,
     "decision_reason": "Figures match the workspace data; not an error",
     "escalated_by": null,
     "decided_by": {
-      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
-      "name": "delivered+e2e-525010dc6b1a@resend.dev",
-      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -717,7 +717,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -725,28 +725,28 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": {
-      "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-      "name": "delivered+e2e-2cef66258eb7@resend.dev"
+      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+      "name": "delivered+e2e-a8874c9c7471@resend.dev"
     },
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.129808+00:00",
-    "escalated_at": "2026-11-02T14:24:55.382565+00:00",
+    "created_at": "2026-11-02T14:31:30.166167+00:00",
+    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
     "decided_at": null,
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": null,
     "escalated_by": {
-      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
-      "name": "delivered+e2e-525010dc6b1a@resend.dev",
-      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
     },
     "decided_by": null,
     "reports_on_item": 1
@@ -825,7 +825,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+    "id": "51de0fac-ab33-414b-9fea-0b324b613117",
     "item_type": "ai_message",
     "reason": "harmful",
     "note": "Wrong figures",
@@ -833,26 +833,26 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "[stub-llm] AI-generated assessment narrative.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": null,
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.185968+00:00",
+    "created_at": "2026-11-02T14:31:30.221510+00:00",
     "escalated_at": null,
-    "decided_at": "2026-11-02T14:24:55.462046+00:00",
+    "decided_at": "2026-11-02T14:31:30.490871+00:00",
     "escalation_reason": null,
     "decision_reason": "Harmful financial advice to a founder",
     "escalated_by": null,
     "decided_by": {
-      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
-      "name": "delivered+e2e-525010dc6b1a@resend.dev",
-      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -864,7 +864,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -872,33 +872,33 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": {
-      "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-      "name": "delivered+e2e-2cef66258eb7@resend.dev"
+      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+      "name": "delivered+e2e-a8874c9c7471@resend.dev"
     },
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.129808+00:00",
-    "escalated_at": "2026-11-02T14:24:55.382565+00:00",
-    "decided_at": "2026-11-02T14:24:55.494655+00:00",
+    "created_at": "2026-11-02T14:31:30.166167+00:00",
+    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
+    "decided_at": "2026-11-02T14:31:30.520445+00:00",
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": "Abuse of a named person confirmed",
     "escalated_by": {
-      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
-      "name": "delivered+e2e-525010dc6b1a@resend.dev",
-      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
     },
     "decided_by": {
-      "id": "ef030fb6-bf88-455a-bfd4-da12b8b20610",
-      "name": "delivered+e2e-a62d256717eb@resend.dev",
-      "email": "delivered+e2e-a62d256717eb@resend.dev"
+      "id": "210254f9-f135-4d34-bebd-0117b1651d68",
+      "name": "delivered+e2e-27877180d2aa@resend.dev",
+      "email": "delivered+e2e-27877180d2aa@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -935,7 +935,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -943,33 +943,33 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
       "name": "Ada Obi",
-      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+      "email": "delivered+e2e-bb3da4790da4@resend.dev"
     },
     "author": {
-      "id": "c42cb876-4146-4584-9a37-9459790cbdf3",
-      "name": "delivered+e2e-2cef66258eb7@resend.dev"
+      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
+      "name": "delivered+e2e-a8874c9c7471@resend.dev"
     },
     "workspace": {
-      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:24:55.129808+00:00",
-    "escalated_at": "2026-11-02T14:24:55.382565+00:00",
-    "decided_at": "2026-11-02T14:25:00.649324+00:00",
+    "created_at": "2026-11-02T14:31:30.166167+00:00",
+    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
+    "decided_at": "2026-11-02T14:32:01.218225+00:00",
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": "Second look: context was a quoted example",
     "escalated_by": {
-      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
-      "name": "delivered+e2e-525010dc6b1a@resend.dev",
-      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
+      "name": "delivered+e2e-fa1913781717@resend.dev",
+      "email": "delivered+e2e-fa1913781717@resend.dev"
     },
     "decided_by": {
-      "id": "ef030fb6-bf88-455a-bfd4-da12b8b20610",
-      "name": "delivered+e2e-a62d256717eb@resend.dev",
-      "email": "delivered+e2e-a62d256717eb@resend.dev"
+      "id": "210254f9-f135-4d34-bebd-0117b1651d68",
+      "name": "delivered+e2e-27877180d2aa@resend.dev",
+      "email": "delivered+e2e-27877180d2aa@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -988,17 +988,17 @@ Every action (and the founder's filing) writes an audit row, visible to Super Ad
   "data": {
     "entries": [
       {
-        "id": "af568efd-6ea2-408b-9029-725e4d9367a8",
-        "created_at": "2026-11-02T14:25:00.641111+00:00",
+        "id": "c734c801-2a90-41f2-ad8b-33b26a485b6c",
+        "created_at": "2026-11-02T14:32:01.190122+00:00",
         "action": "report.item_restored",
-        "actor_user_id": "ef030fb6-bf88-455a-bfd4-da12b8b20610",
-        "actor_email": "delivered+e2e-a62d256717eb@resend.dev",
-        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "actor_user_id": "210254f9-f135-4d34-bebd-0117b1651d68",
+        "actor_email": "delivered+e2e-27877180d2aa@resend.dev",
+        "workspace_id": "7557040c-f857-4dfc-a796-bd32953acb81",
         "entity_type": "content_report",
-        "entity_id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "entity_id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
         "reason": "Second look: context was a quoted example",
         "details": {
-          "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+          "item_id": "b86a41c8-0fb1-45ee-815a-f48e3e0551c3",
           "item_type": "comment",
           "item_existed": true,
           "reports_reopened_as_restored": 1
