@@ -38,6 +38,7 @@ CATEGORY_META: dict[str, tuple[str, str]] = {
     "ai_insights": ("AI & insights", "Your daily briefing and KPI alerts."),
     "billing": ("Billing", "Plan changes and usage."),
     "calendar": ("Calendar", "Meeting reminders."),
+    "legal": ("Legal & compliance", "Filing deadlines and IP renewals."),
 }
 
 EVENT_CATEGORY: dict[str, str] = {
@@ -104,6 +105,9 @@ CATEGORY_DEFAULTS: dict[str, bool] = {
             "billing",
             "calendar",
         ),
+        # `legal` is deliberately absent: a row added after the original five starts with email
+        # OFF (D-NOT-2) so nobody begins receiving a new kind of email unasked. Spec D20 said ON,
+        # which predates that rule - the house rule wins.
         True,
     ),
 }
@@ -170,6 +174,7 @@ _MODULE_BY_PREFIX: dict[str, str] = {
     "billing": "billing",
     "journal": "journal",
     "ai": "ai",
+    "legal": "legal",
 }
 
 

@@ -1,7 +1,7 @@
 import subprocess
 
-REVISION = "0067_legal"
-PREVIOUS = "0066_finance_invoice_automation"
+REVISION = "0087_legal"
+PREVIOUS = "0086_admin_danger_zone"
 
 
 def _alembic(*args: str) -> subprocess.CompletedProcess:
