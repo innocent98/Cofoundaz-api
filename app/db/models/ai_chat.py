@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,3 +51,7 @@ class AiMessage(UUIDMixin, TimestampMixin, Base):
         default=ChatMessageStatus.ready,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Set when staff remove it after a report; the row stays so the removal can be undone.
+    removed_by_moderation_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

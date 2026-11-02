@@ -34,5 +34,9 @@ class Comment(UUIDMixin, TimestampMixin, Base):
     mention_user_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when staff remove it after a report; the row stays so the removal can be undone.
+    removed_by_moderation_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (Index("ix_comments_entity", "startup_id", "entity_type", "entity_id"),)

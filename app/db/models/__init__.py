@@ -31,6 +31,7 @@ from app.db.models.calendar import (  # noqa: F401
     CalendarReminderRule,
 )
 from app.db.models.comment import Comment  # noqa: F401
+from app.db.models.content_report import ContentReport  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
 from app.db.models.document import Document  # noqa: F401
 from app.db.models.expense import Expense  # noqa: F401
