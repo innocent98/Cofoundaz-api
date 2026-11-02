@@ -6,10 +6,20 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext, require_staff
 from app.core.envelope import Meta, success_response
-from app.db.models.enums import StartupStage
+from app.db.models.enums import StartupStage, TicketCategory, TicketPriority
 from app.db.session import get_db
 from app.schemas.staff import StaffActionRequest
-from app.services.staff import users, workspaces
+from app.schemas.support import (
+    AssignRequest,
+    CannedRequest,
+    CannedUpdateRequest,
+    EscalateRequest,
+    MessageRequest,
+    PriorityRequest,
+    ReopenRequest,
+    ResolveRequest,
+)
+from app.services.staff import support, users, workspaces
 from app.services.staff.stepup import verify_step_up
 
 router = APIRouter()
@@ -141,3 +151,156 @@ def get_workspace(workspace_id: uuid.UUID, ctx: _Support, db: _Db) -> dict[str, 
 @router.get("/dashboard/kpis")
 def dashboard_kpis(ctx: _Anyone, db: _Db) -> dict[str, Any]:
     return success_response(workspaces.dashboard_kpis(db))
+
+
+@router.get("/dashboard/attention")
+def dashboard_attention(ctx: _Anyone, db: _Db) -> dict[str, Any]:
+    """The Needs attention card (A9). A separate route so the KPI payload keeps its shape."""
+    return success_response({"tickets": support.attention(db)})
+
+
+# ---------------------------------------------------------------- support tickets (scope: support)
+# No step-up code: staff already signed in with TOTP, and the actions are reversible. Escalate
+# needs a written reason; every action writes an audit row.
+
+
+@router.get("/support/counts")
+def support_counts(ctx: _Support, db: _Db) -> dict[str, Any]:
+    return success_response(support.counts(db, ctx))
+
+
+@router.get("/support/assignees")
+def support_assignees(ctx: _Support, db: _Db) -> dict[str, Any]:
+    return success_response({"staff": support.assignable_staff(db)})
+
+
+@router.get("/support/tickets")
+def list_tickets(
+    ctx: _Support,
+    db: _Db,
+    tab: Literal["open", "mine", "resolved"] = "open",
+    priority: TicketPriority | None = None,
+    category: TicketCategory | None = None,
+    sla: Literal["breached", "due_soon"] | None = None,
+    escalated: bool | None = None,
+    unassigned: bool = False,
+    query: Annotated[str | None, Query(max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    items, nxt = support.list_tickets(
+        db,
+        ctx,
+        tab=tab,
+        priority=priority,
+        category=category,
+        sla=sla,
+        escalated=escalated,
+        unassigned=unassigned,
+        query=query,
+        limit=limit,
+        cursor=cursor,
+    )
+    return success_response({"tickets": items}, Meta(next_cursor=nxt))
+
+
+@router.get("/support/tickets/{ticket_id}")
+def get_ticket(ticket_id: uuid.UUID, ctx: _Support, db: _Db) -> dict[str, Any]:
+    return success_response(support.detail(db, ticket_id))
+
+
+@router.post("/support/tickets/{ticket_id}/assign")
+def assign_ticket(
+    ticket_id: uuid.UUID, payload: AssignRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.assign(db, ctx, ticket_id, assignee=payload.assignee_user_id, ip=ip, ua=ua)
+    )
+
+
+@router.post("/support/tickets/{ticket_id}/reply")
+def reply_ticket(
+    ticket_id: uuid.UUID, payload: MessageRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(support.reply(db, ctx, ticket_id, body=payload.body, ip=ip, ua=ua))
+
+
+@router.post("/support/tickets/{ticket_id}/notes")
+def note_ticket(
+    ticket_id: uuid.UUID, payload: MessageRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(support.add_note(db, ctx, ticket_id, body=payload.body, ip=ip, ua=ua))
+
+
+@router.patch("/support/tickets/{ticket_id}/priority")
+def prioritise_ticket(
+    ticket_id: uuid.UUID, payload: PriorityRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.set_priority(db, ctx, ticket_id, priority=payload.priority, ip=ip, ua=ua)
+    )
+
+
+@router.post("/support/tickets/{ticket_id}/escalate")
+def escalate_ticket(
+    ticket_id: uuid.UUID, payload: EscalateRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.escalate(db, ctx, ticket_id, reason=payload.reason, ip=ip, ua=ua)
+    )
+
+
+@router.post("/support/tickets/{ticket_id}/resolve")
+def resolve_ticket(
+    ticket_id: uuid.UUID, payload: ResolveRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.resolve(db, ctx, ticket_id, message=payload.message, ip=ip, ua=ua)
+    )
+
+
+@router.post("/support/tickets/{ticket_id}/reopen")
+def reopen_ticket(
+    ticket_id: uuid.UUID, payload: ReopenRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(support.reopen(db, ctx, ticket_id, reason=payload.reason, ip=ip, ua=ua))
+
+
+@router.get("/support/canned")
+def list_canned(ctx: _Support, db: _Db) -> dict[str, Any]:
+    return success_response({"canned": support.list_canned(db)})
+
+
+@router.post("/support/canned", status_code=201)
+def create_canned(
+    payload: CannedRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.create_canned(db, ctx, title=payload.title, body=payload.body, ip=ip, ua=ua)
+    )
+
+
+@router.patch("/support/canned/{canned_id}")
+def update_canned(
+    canned_id: uuid.UUID, payload: CannedUpdateRequest, request: Request, ctx: _Support, db: _Db
+) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(
+        support.update_canned(
+            db, ctx, canned_id, title=payload.title, body=payload.body, ip=ip, ua=ua
+        )
+    )
+
+
+@router.delete("/support/canned/{canned_id}")
+def delete_canned(canned_id: uuid.UUID, request: Request, ctx: _Support, db: _Db) -> dict[str, Any]:
+    ip, ua = _client(request)
+    return success_response(support.delete_canned(db, ctx, canned_id, ip=ip, ua=ua))

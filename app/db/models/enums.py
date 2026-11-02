@@ -602,3 +602,26 @@ class ApprovalStatus(enum.StrEnum):
     rejected = "rejected"
     expired = "expired"
     cancelled = "cancelled"
+
+
+class TicketStatus(enum.StrEnum):
+    open = "open"
+    resolved = "resolved"
+
+
+class TicketPriority(enum.StrEnum):
+    """P1 is the most urgent. Founders never set it; it defaults from the category."""
+
+    p1 = "P1"
+    p2 = "P2"
+    p3 = "P3"
+    p4 = "P4"
+
+
+class TicketCategory(enum.StrEnum):
+    billing = "billing"
+    account = "account"
+    bug = "bug"
+    how_to = "how_to"
+    feature_request = "feature_request"
+    other = "other"

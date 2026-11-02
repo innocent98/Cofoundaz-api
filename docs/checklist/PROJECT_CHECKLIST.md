@@ -3831,3 +3831,15 @@ SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-gu
 - [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
 - [ ] CI green on the PR, merged by Adebayo
 - [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out
+
+
+### Admin Tickets: founder Help intake + staff Support (2026-11-02, branch `feature/admin-tickets`, migration `0087_support_tickets`, PR pending)
+
+SOP `docs/sop/2026-11-02-admin-tickets.md`, FE guide `docs/fe-integration-guide-admin-tickets.md`, calls T1 to T8 in the SOP. Gap rows A16, A17, A18, A9, A3 and P4.
+- [x] Models + migration 0087 (tickets, thread messages, staff-only notes, canned replies; ticket-number sequence)
+- [x] Founder: open, list, read, reply (reopens within 14 days), rate limits, email on staff reply and resolve
+- [x] Staff: queue tabs + filters + search (P13), SLA states, assign, priority, internal notes, canned CRUD, escalate (reason), resolve, reopen; audit row per action
+- [x] Dashboard `needs_attention` count (A9) at `/admin/dashboard/attention`
+- [x] 45 API tests incl. IDOR and guard matrix; live e2e + captured FE guide; Opus review fixed
+- [ ] FE: Settings > Help entry and Support tab (brief `docs/fe-handoff/admin-support-tickets.md`, FE dev)
+- [ ] Deferred: attachments, AI triage, email-in, assignee notification, de-escalate, SLA on resolution

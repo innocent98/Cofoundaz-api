@@ -1,0 +1,139 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "855de331-7f56-4cf3-904e-6fa94e23689d",
+        "created_at": "2026-11-02T13:55:05.782681+00:00",
+        "action": "ticket.reopened",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": "Customer reports it again",
+        "details": {
+          "ticket": "T-1001"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "9ede063b-6696-430e-878c-7a72664b51e7",
+        "created_at": "2026-11-02T13:55:05.761877+00:00",
+        "action": "ticket.resolved",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "ticket": "T-1001",
+          "with_message": false
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "bd4c88a4-127e-40d4-9f9c-ba502b776b28",
+        "created_at": "2026-11-02T13:55:05.667136+00:00",
+        "action": "ticket.resolved",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "ticket": "T-1001",
+          "with_message": true
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "d549b40e-6932-40a3-8535-0fcfb93f8324",
+        "created_at": "2026-11-02T13:55:05.634571+00:00",
+        "action": "ticket.escalated",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": "Founder is a design partner and invoices are blocked",
+        "details": {
+          "ticket": "T-1001",
+          "priority_from": "P1"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "870ab530-5574-4040-8cc7-07080a6f6a7f",
+        "created_at": "2026-11-02T13:55:05.574233+00:00",
+        "action": "ticket.replied",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "ticket": "T-1001",
+          "message_id": "a3aaf71c-5c2b-4f3d-93d7-74d00d43804d"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "c6dbd210-d3c4-478c-aef8-f28a5defacd3",
+        "created_at": "2026-11-02T13:55:05.478547+00:00",
+        "action": "ticket.priority_changed",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "to": "P1",
+          "from": "P2",
+          "ticket": "T-1001"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "b733624c-c625-4e9a-bf5a-e4ded9eccf6a",
+        "created_at": "2026-11-02T13:55:05.457765+00:00",
+        "action": "ticket.note_added",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "ticket": "T-1001",
+          "note_id": "297b1eec-6ac9-49a2-a71d-cbe8126fbc19"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "4ed1b77e-4f1d-4d75-b367-edf08ff5b01b",
+        "created_at": "2026-11-02T13:55:05.410786+00:00",
+        "action": "ticket.assigned",
+        "actor_user_id": "de9f1a8a-5538-49fb-a585-f27183272757",
+        "actor_email": "delivered+e2e-ec76b0082478@resend.dev",
+        "workspace_id": "b93834b0-4c2b-4d05-a17c-f6e71907d056",
+        "entity_type": "support_ticket",
+        "entity_id": "2028f4e6-a732-458e-a658-d0ff40f36033",
+        "reason": null,
+        "details": {
+          "to": "de9f1a8a-5538-49fb-a585-f27183272757",
+          "from": null,
+          "ticket": "T-1001"
+        },
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

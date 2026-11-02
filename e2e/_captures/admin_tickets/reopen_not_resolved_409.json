@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TICKET_NOT_RESOLVED",
+    "message": "Only a resolved ticket can be reopened.",
+    "field_errors": []
+  }
+}
