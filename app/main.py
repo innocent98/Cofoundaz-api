@@ -18,6 +18,7 @@ from app.core.rate_limit import (
     limiter,
     verify_included_router_resolution,
 )
+from app.middleware.maintenance import MaintenanceMiddleware
 from app.services.documents.scanner import warn_if_noop_scanner
 
 
@@ -72,6 +73,9 @@ async def _rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JS
 install_included_router_support()
 verify_included_router_resolution()
 warn_if_noop_scanner(settings.ENVIRONMENT)
+# Added before SlowAPI, so it runs inside the rate limiter: its lookup is rate-limited too, and
+# inside CORS, so the 503 still carries CORS headers and the FE can read it.
+app.add_middleware(MaintenanceMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware

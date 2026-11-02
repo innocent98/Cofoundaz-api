@@ -15,6 +15,7 @@ from app.db.models.enums import MfaType, StaffRole, UserStatus
 from app.db.models.platform_staff import PlatformStaff
 from app.db.models.user import User, UserProfile
 from app.platform.audit import write_audit
+from app.services.staff.danger_zone import cancel_open_requests_of
 
 
 def _err(code: str, message: str, status: int) -> AppError:
@@ -170,6 +171,9 @@ def revoke_staff(
     # No "last Super Admin" check is needed: the actor is a locked, active Super Admin and can't
     # revoke themselves, so whoever else is revoked, the actor remains.
     row.revoked_at = datetime.now(UTC)
+    cancel_open_requests_of(
+        db, row.user_id, actor=ctx.user.id, reason="Their Super Admin access was revoked."
+    )
     target = db.query(User.email).filter(User.id == row.user_id).scalar()
     write_audit(
         db,
@@ -204,6 +208,10 @@ def update_staff(
     after = {"role": role.value, "scopes": list(scopes)}
     if before == after:
         raise _err("NO_CHANGE", "That is already their role and scopes.", 422)
+    if row.role == StaffRole.super_admin and role != StaffRole.super_admin:
+        cancel_open_requests_of(
+            db, row.user_id, actor=ctx.user.id, reason="They are no longer a Super Admin."
+        )
     row.role, row.scopes = role, list(scopes)
     target = db.query(User.email).filter(User.id == row.user_id).scalar()
     write_audit(

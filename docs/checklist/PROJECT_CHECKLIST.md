@@ -3821,3 +3821,13 @@ Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan f
 - [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
 - [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
 
+### Admin slice E: maintenance mode and global sign-out (2026-10-31, branch `feature/admin-danger-zone`, migration `0086_admin_danger_zone`, PR pending)
+
+SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-guide-admin-danger-zone.md`. Chained on 0085_billing_overrides.
+- [x] Approval requests: request, approve, reject, cancel, expiry (1 h), list; requester never decides; step-up, reason, audit on each
+- [x] Maintenance mode: one middleware, allow-list (sign-in, staff, health, webhooks), 503 `MAINTENANCE_MODE`; public `GET /platform/status`
+- [x] Switching it off: any one Super Admin alone (never needs a second person)
+- [x] Global sign-out: revokes all sessions, kills existing access tokens (`iat` cutoff), staff sign back in; open streams close
+- [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
+- [ ] CI green on the PR, merged by Adebayo
+- [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out

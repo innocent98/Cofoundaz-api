@@ -8,6 +8,13 @@ import app.api.v1.endpoints.notifications as notif_ep
 from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MISSION_ROLES, MembershipRole
 
 
+@pytest.fixture(autouse=True)
+def _no_global_sign_out(monkeypatch):
+    """The stream re-checks the sign-out cutoff in the database; these tests have no platform
+    tables behind SessionLocal, so pin it to "never signed out"."""
+    monkeypatch.setattr(notif_ep, "_signed_out_since", lambda started_at: False)
+
+
 def test_stream_ticket_requires_auth(client):
     # no auth -> 401/403 (same guard as the other notification endpoints)
     r = client.post("/api/v1/notifications/stream-ticket")

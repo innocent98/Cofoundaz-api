@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "MAINTENANCE_NOT_ON",
+    "message": "Maintenance mode isn't on.",
+    "field_errors": []
+  }
+}

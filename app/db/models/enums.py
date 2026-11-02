@@ -587,3 +587,18 @@ class FlagStage(enum.StrEnum):
     beta = "beta"
     ga = "ga"
     internal = "internal"
+
+
+class ApprovalAction(enum.StrEnum):
+    """What a Super Admin may ask a second Super Admin to approve (Admin slice E)."""
+
+    maintenance_enable = "maintenance_enable"
+    global_signout = "global_signout"
+
+
+class ApprovalStatus(enum.StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    expired = "expired"
+    cancelled = "cancelled"

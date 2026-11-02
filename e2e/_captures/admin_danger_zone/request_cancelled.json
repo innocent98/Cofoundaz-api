@@ -1,0 +1,26 @@
+{
+  "data": {
+    "id": "c5bf0dbc-4904-4e61-ad7d-1e547a3b79bf",
+    "action": "maintenance_enable",
+    "status": "cancelled",
+    "reason": "Planned database upgrade window",
+    "message": "Cofoundaz is being upgraded. Your work is safe; we will be back by 10:00 WAT.",
+    "requested_by": {
+      "user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+      "email": "delivered+e2e-080feeca571c@resend.dev",
+      "full_name": null
+    },
+    "designated_approver": null,
+    "decided_by": {
+      "user_id": "427e4d72-2f7f-4491-b10a-cbda93338740",
+      "email": "delivered+e2e-080feeca571c@resend.dev",
+      "full_name": null
+    },
+    "decided_at": "2026-10-31T15:49:30.481241+00:00",
+    "decision_reason": "Wrong time, asking again later",
+    "outcome": null,
+    "expires_at": "2026-10-31T16:49:00.215293+00:00",
+    "created_at": "2026-10-31T15:49:00.199313+00:00"
+  },
+  "meta": null
+}

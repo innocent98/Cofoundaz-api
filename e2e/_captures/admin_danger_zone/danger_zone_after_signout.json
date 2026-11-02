@@ -1,0 +1,20 @@
+{
+  "data": {
+    "maintenance": {
+      "enabled": false,
+      "message": null,
+      "since": null
+    },
+    "last_global_signout_at": "2026-10-31T15:50:30.753104+00:00",
+    "approval_ttl_minutes": 60,
+    "eligible_approvers": [
+      {
+        "user_id": "2cbb7dff-38d6-4293-9500-7e84bea541de",
+        "email": "delivered+e2e-db22e25ae38e@resend.dev",
+        "full_name": null
+      }
+    ],
+    "pending_count": 0
+  },
+  "meta": null
+}

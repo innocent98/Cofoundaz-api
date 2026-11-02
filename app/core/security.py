@@ -71,7 +71,10 @@ def create_access_token(subject: str | Any, expires_delta: timedelta | None = No
     else:
         expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode = {"exp": expire, "sub": str(subject)}
+    # `iat` is a float with microseconds (RFC 7519 allows it), not whole seconds: a global
+    # sign-out compares it with its own cutoff, and whole seconds can't tell a token issued just
+    # before the cutoff from one issued just after.
+    to_encode = {"exp": expire, "sub": str(subject), "iat": datetime.now(UTC).timestamp()}
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return cast(str, encoded_jwt)
 

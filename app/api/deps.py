@@ -10,6 +10,7 @@ from app.core.errors import AppError, EmailNotVerified
 from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.db.session import get_db
+from app.platform.state import session_cutoff_ts
 
 security = HTTPBearer(auto_error=False)
 
@@ -34,8 +35,14 @@ def get_current_user(
         if not user_id or "typ" in payload:
             raise Unauthorized()
         subject = uuid.UUID(user_id)
-    except (jwt.PyJWTError, ValueError) as exc:
+        issued_at = float(payload["iat"]) if "iat" in payload else None
+    except (jwt.PyJWTError, ValueError, TypeError) as exc:
         raise Unauthorized() from exc
+    # Global sign-out: refuse any token issued at or before the cutoff. A token with no `iat`
+    # predates this check and so predates any cutoff.
+    cutoff = session_cutoff_ts(db)
+    if cutoff is not None and (issued_at is None or issued_at <= cutoff):
+        raise Unauthorized()
     # Exclude soft-deleted users so a still-valid token for a deleted account can't
     # authenticate.
     user = db.query(User).filter(User.id == subject, User.deleted_at.is_(None)).first()
