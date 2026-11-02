@@ -1,0 +1,35 @@
+{
+  "data": {
+    "id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+    "item_type": "ai_message",
+    "reason": "harmful",
+    "note": "Wrong figures",
+    "status": "removed",
+    "snippet": "[stub-llm] AI-generated assessment narrative.",
+    "snippet_truncated": false,
+    "reporter": {
+      "id": "4f9ba134-081d-4892-a41a-794328252141",
+      "name": "Ada Obi",
+      "email": "delivered+e2e-c2db400dd75f@resend.dev"
+    },
+    "author": null,
+    "workspace": {
+      "id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+      "name": "Report Co",
+      "plan_key": "starter"
+    },
+    "created_at": "2026-11-02T14:24:55.185968+00:00",
+    "escalated_at": null,
+    "decided_at": "2026-11-02T14:24:55.462046+00:00",
+    "escalation_reason": null,
+    "decision_reason": "Harmful financial advice to a founder",
+    "escalated_by": null,
+    "decided_by": {
+      "id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
+      "name": "delivered+e2e-525010dc6b1a@resend.dev",
+      "email": "delivered+e2e-525010dc6b1a@resend.dev"
+    },
+    "reports_on_item": 1
+  },
+  "meta": null
+}

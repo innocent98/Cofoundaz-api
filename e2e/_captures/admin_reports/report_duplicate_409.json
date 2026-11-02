@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_REPORTED",
+    "message": "You've already reported this. We'll take a look.",
+    "field_errors": []
+  }
+}

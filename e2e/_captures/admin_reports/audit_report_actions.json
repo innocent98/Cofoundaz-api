@@ -1,0 +1,174 @@
+{
+  "data": {
+    "entries": [
+      {
+        "id": "af568efd-6ea2-408b-9029-725e4d9367a8",
+        "created_at": "2026-11-02T14:25:00.641111+00:00",
+        "action": "report.item_restored",
+        "actor_user_id": "ef030fb6-bf88-455a-bfd4-da12b8b20610",
+        "actor_email": "delivered+e2e-a62d256717eb@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "reason": "Second look: context was a quoted example",
+        "details": {
+          "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+          "item_type": "comment",
+          "item_existed": true,
+          "reports_reopened_as_restored": 1
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "f727ed0e-a565-40e4-a19f-9472dd15d32d",
+        "created_at": "2026-11-02T14:24:55.488780+00:00",
+        "action": "report.item_removed",
+        "actor_user_id": "ef030fb6-bf88-455a-bfd4-da12b8b20610",
+        "actor_email": "delivered+e2e-a62d256717eb@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "reason": "Abuse of a named person confirmed",
+        "details": {
+          "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+          "item_type": "comment",
+          "item_existed": true,
+          "reports_closed": 1
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "f37de621-d0e5-4561-902c-37a0258a6156",
+        "created_at": "2026-11-02T14:24:55.455083+00:00",
+        "action": "report.item_removed",
+        "actor_user_id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
+        "actor_email": "delivered+e2e-525010dc6b1a@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+        "reason": "Harmful financial advice to a founder",
+        "details": {
+          "item_id": "8eed12e7-91e7-44a2-b3ae-a4f89b104980",
+          "item_type": "ai_message",
+          "item_existed": true,
+          "reports_closed": 1
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "c4ea27c7-8c92-4b45-91bb-68d2f10690c3",
+        "created_at": "2026-11-02T14:24:55.377746+00:00",
+        "action": "report.escalated",
+        "actor_user_id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
+        "actor_email": "delivered+e2e-525010dc6b1a@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "reason": "Targeted abuse of a named person; needs a Super Admin call",
+        "details": {
+          "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+          "item_type": "comment"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "f6b3a4c2-6bac-429c-83b5-2bdad290a6c4",
+        "created_at": "2026-11-02T14:24:55.338003+00:00",
+        "action": "report.dismissed",
+        "actor_user_id": "bef0f0f6-f5dc-4083-83d6-9ba554d3037a",
+        "actor_email": "delivered+e2e-525010dc6b1a@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+        "reason": "Figures match the workspace data; not an error",
+        "details": {
+          "from": "open",
+          "item_id": "4d9b8e1f-a38b-44e0-868b-e65a47c83966",
+          "item_type": "ai_message"
+        },
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": "1f4e71be-3489-4b6e-b4bc-d24a638b55fc",
+        "created_at": "2026-11-02T14:24:55.185968+00:00",
+        "action": "report.filed",
+        "actor_user_id": "4f9ba134-081d-4892-a41a-794328252141",
+        "actor_email": "delivered+e2e-c2db400dd75f@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+        "reason": null,
+        "details": {
+          "reason": "harmful",
+          "item_id": "8eed12e7-91e7-44a2-b3ae-a4f89b104980",
+          "item_type": "ai_message"
+        },
+        "ip": null
+      },
+      {
+        "id": "7473ecd6-4089-496b-9ce0-5f79d6c9e33d",
+        "created_at": "2026-11-02T14:24:55.169246+00:00",
+        "action": "report.filed",
+        "actor_user_id": "4f9ba134-081d-4892-a41a-794328252141",
+        "actor_email": "delivered+e2e-c2db400dd75f@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "d1ee8fdf-af0e-4eba-89f8-601c11d13b6a",
+        "reason": null,
+        "details": {
+          "reason": "inaccurate",
+          "item_id": "4d9b8e1f-a38b-44e0-868b-e65a47c83966",
+          "item_type": "ai_message"
+        },
+        "ip": null
+      },
+      {
+        "id": "cdcf6e19-17c0-430f-acf8-953822ebeb59",
+        "created_at": "2026-11-02T14:24:55.129808+00:00",
+        "action": "report.filed",
+        "actor_user_id": "4f9ba134-081d-4892-a41a-794328252141",
+        "actor_email": "delivered+e2e-c2db400dd75f@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "content_report",
+        "entity_id": "befe4f8d-3181-4f8c-91d4-6b91b396f6be",
+        "reason": null,
+        "details": {
+          "reason": "abusive",
+          "item_id": "818091d3-a870-442a-aef4-ea30a8eae184",
+          "item_type": "comment"
+        },
+        "ip": null
+      },
+      {
+        "id": "4e6e0734-279b-4676-8603-8a522a9ae102",
+        "created_at": "2026-11-02T14:24:52.720475+00:00",
+        "action": "team.member.joined",
+        "actor_user_id": "c42cb876-4146-4584-9a37-9459790cbdf3",
+        "actor_email": "delivered+e2e-2cef66258eb7@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "membership",
+        "entity_id": "069332ca-3a06-4cd0-9b0a-9b5ae5cdae8b",
+        "reason": null,
+        "details": null,
+        "ip": null
+      },
+      {
+        "id": "2cc6db56-d42d-4325-b144-d149d20956aa",
+        "created_at": "2026-11-02T14:24:52.422943+00:00",
+        "action": "team.invitation.created",
+        "actor_user_id": "4f9ba134-081d-4892-a41a-794328252141",
+        "actor_email": "delivered+e2e-c2db400dd75f@resend.dev",
+        "workspace_id": "534cae46-b55c-4b28-bcd9-d6d6d44c96c4",
+        "entity_type": "invitation",
+        "entity_id": "fb2ce304-b7da-4878-b83e-8704b56ba8ca",
+        "reason": null,
+        "details": null,
+        "ip": null
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

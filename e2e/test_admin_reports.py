@@ -408,6 +408,13 @@ def test_admin_reports_journey(
         json={"reason": "Second look: context was a quoted example", "totp_code": mod_app.fresh()},
         headers=mod,
     )
+    assert r.status_code == 403 and r.json()["error"]["code"] == "SUPER_ADMIN_ONLY"
+    capture(G, "restore_escalated_by_moderator_403", r)
+    r = http.post(
+        f"{A}/reports/{rc}/restore",
+        json={"reason": "Second look: context was a quoted example", "totp_code": sa_app.fresh()},
+        headers=sa,
+    )
     assert r.status_code == 200 and r.json()["data"]["status"] == "restored"
     capture(G, "restore", r)
     r = mc.get(comment_url, params=comment_params, headers=m)

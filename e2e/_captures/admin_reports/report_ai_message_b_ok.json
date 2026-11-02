@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": "2a8fe89d-8c4e-45a2-b6ca-91afb182de06",
+    "item_type": "ai_message",
+    "item_id": "8eed12e7-91e7-44a2-b3ae-a4f89b104980",
+    "reason": "harmful",
+    "status": "received",
+    "created_at": "2026-11-02T14:24:55.185968+00:00"
+  },
+  "meta": null
+}

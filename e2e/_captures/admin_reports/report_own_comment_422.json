@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "OWN_COMMENT",
+    "message": "You can't report your own comment.",
+    "field_errors": []
+  }
+}
