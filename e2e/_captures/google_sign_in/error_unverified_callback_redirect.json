@@ -1,0 +1,4 @@
+{
+  "status": 302,
+  "location": "http://localhost:3000/auth/google/callback?error=email_not_verified"
+}

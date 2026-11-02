@@ -54,3 +54,12 @@ class MfaDisableRequest(BaseModel):
 
 class MfaRegenerateRequest(BaseModel):
     password: str
+
+
+class GoogleStartRequest(BaseModel):
+    invite_token: str | None = None
+    next: str | None = None
+
+
+class GoogleExchangeRequest(BaseModel):
+    ticket: str

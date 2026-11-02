@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "mfa_required": true,
+      "mfa_ticket": "<mfa_ticket-placeholder>",
+      "access_token": null,
+      "is_new_user": false,
+      "invite_token": null,
+      "next": null
+    },
+    "meta": null
+  }
+}

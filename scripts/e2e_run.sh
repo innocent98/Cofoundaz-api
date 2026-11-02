@@ -79,6 +79,9 @@ export MONO_ALLOW_LIVE="false"
 # in-process fake (app/services/calendar/stub_transport.py). The client id/secret are placeholders;
 # nothing here can reach Google, and a developer's real values in .env are overridden.
 export CALENDAR_PROVIDER_STUB="true"
+# Google SIGN-IN (OIDC): same idea, an in-process fake that signs real RS256 id_tokens
+# (app/services/auth/google_stub.py). The consent screen itself is NOT exercised.
+export GOOGLE_SIGNIN_STUB="true"
 export GOOGLE_CLIENT_ID="e2e-google-client-id.apps.example"
 export GOOGLE_CLIENT_SECRET="placeholder-not-a-real-secret"
 

@@ -1,0 +1,7 @@
+{
+  "data": {
+    "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=e2e-google-client-id.apps.example&redirect_uri=http%3A%2F%2F127.0.0.1%3A8010%2Fapi%2Fv1%2Fauth%2Foauth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&state=<state-placeholder>&nonce=<nonce-placeholder>&code_challenge=<code_challenge-placeholder>&code_challenge_method=S256&prompt=select_account",
+    "expires_in": 600
+  },
+  "meta": null
+}
