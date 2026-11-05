@@ -1,0 +1,15 @@
+{
+  "data": {
+    "by_status": {
+      "draft": 0,
+      "pending_review": 2,
+      "active": 0,
+      "paused": 0,
+      "unlisted": 0,
+      "rejected": 0
+    },
+    "pending_revisions": 0,
+    "flagged_edits": 0
+  },
+  "meta": null
+}

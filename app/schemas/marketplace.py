@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, time
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
@@ -127,3 +127,101 @@ class ClearFlagRequest(_Strict):
     reason: Reason
     # `profile_flag.updated_at` as the reviewer saw it; a newer edit makes the clear a 409.
     updated_at: Annotated[str, StringConstraints(min_length=10, max_length=40)]
+
+
+# ---------------------------------------------------------------- slice B: listings, availability
+
+ListingTypeLit = Literal["consultation", "package"]
+Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=160)]
+Summary = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
+Deliverable = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+Tag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=30)]
+Kobo = Annotated[int, Field(ge=1, le=10_000_000_000, strict=True)]  # a string "5000" is refused
+
+
+def _https(v: str | None) -> str | None:
+    if v and not v.lower().startswith(("http://", "https://")):
+        raise ValueError("Links must start with http:// or https://")
+    return v
+
+
+class ListingFields(_Strict):
+    title: Title | None = None
+    summary: Summary | None = None
+    description: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=5000)] | None
+    ) = None
+    category: Category | None = None
+    tags: Annotated[list[Tag], Field(max_length=8)] | None = None
+    price_minor: Kobo | None = None
+    duration_min: Annotated[int, Field(ge=15, le=240, multiple_of=15)] | None = None
+    delivery_days: Annotated[int, Field(ge=1, le=90)] | None = None
+    deliverables: Annotated[list[Deliverable], Field(max_length=10)] | None = None
+    revisions_included: Annotated[int, Field(ge=0, le=5)] | None = None
+    meeting_url: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = (
+        None
+    )
+
+    @field_validator("meeting_url")
+    @classmethod
+    def _url(cls, v: str | None) -> str | None:
+        return _https(v)
+
+
+class ListingCreate(ListingFields):
+    type: ListingTypeLit
+    title: Title
+    category: Category
+    price_minor: Kobo
+
+
+class ListingPatch(ListingFields):
+    pass
+
+
+class RuleIn(_Strict):
+    weekday: Annotated[int, Field(ge=0, le=6)]
+    start: time
+    end: time
+    slot_min: Literal[15, 30, 60] = 30
+
+    @field_validator("start", "end")
+    @classmethod
+    def _whole_minutes(cls, v: time) -> time:
+        if v.second or v.microsecond or v.tzinfo:
+            raise ValueError("Use plain HH:MM times.")
+        return v
+
+
+class ExceptionIn(_Strict):
+    on_date: date
+    kind: Literal["blocked", "extra"]
+    start: time | None = None
+    end: time | None = None
+
+    @field_validator("start", "end")
+    @classmethod
+    def _whole_minutes(cls, v: time | None) -> time | None:
+        if v is not None and (v.second or v.microsecond or v.tzinfo):
+            raise ValueError("Use plain HH:MM times.")
+        return v
+
+
+class AvailabilityPut(_Strict):
+    min_notice_h: Annotated[int, Field(ge=0, le=336)]
+    buffer_min: Annotated[int, Field(ge=0, le=120)]
+    rules: Annotated[list[RuleIn], Field(max_length=28)]
+    exceptions: Annotated[list[ExceptionIn], Field(max_length=90)] = []
+
+
+class ListingRejectRequest(_Strict):
+    template: Literal["unclear_scope", "pricing", "prohibited_content", "contact_details", "other"]
+    message: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+        | None
+    ) = None
+    reason: Reason
+
+
+class ListingChangesRequest(_Strict):
+    message: Message

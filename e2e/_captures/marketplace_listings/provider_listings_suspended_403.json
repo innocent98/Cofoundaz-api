@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PROVIDER_NOT_APPROVED",
+    "message": "Your expert profile isn't approved yet.",
+    "field_errors": []
+  }
+}

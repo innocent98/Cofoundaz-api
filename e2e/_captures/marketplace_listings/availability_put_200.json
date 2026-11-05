@@ -1,0 +1,48 @@
+{
+  "data": {
+    "timezone": "Africa/Lagos",
+    "min_notice_h": 0,
+    "buffer_min": 15,
+    "rules": [
+      {
+        "weekday": 0,
+        "start": "09:00",
+        "end": "13:00",
+        "slot_min": 60
+      },
+      {
+        "weekday": 1,
+        "start": "09:00",
+        "end": "13:00",
+        "slot_min": 60
+      },
+      {
+        "weekday": 2,
+        "start": "09:00",
+        "end": "13:00",
+        "slot_min": 60
+      },
+      {
+        "weekday": 3,
+        "start": "09:00",
+        "end": "13:00",
+        "slot_min": 60
+      },
+      {
+        "weekday": 4,
+        "start": "09:00",
+        "end": "13:00",
+        "slot_min": 60
+      }
+    ],
+    "exceptions": [
+      {
+        "on_date": "2026-11-10",
+        "kind": "blocked",
+        "start": null,
+        "end": null
+      }
+    ]
+  },
+  "meta": null
+}

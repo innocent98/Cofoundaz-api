@@ -57,6 +57,11 @@ READINESS_READ_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
 READINESS_WRITE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
+# Marketplace (D-MP-L1): founders and team members browse; money and acceptance (later slices) are
+# the founder's alone.
+MARKETPLACE_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
 # Funding Hub (D-FUND-5): the pipeline, data room, grants and analytics are founder + team member.
 # The cap table and term sheets (later slices) get their own founder-only set.
 FUNDING_ROLES: frozenset[MembershipRole] = frozenset(
@@ -639,10 +644,13 @@ class TicketCategory(enum.StrEnum):
 
 
 class ReportItemType(enum.StrEnum):
-    """What a founder can report. Marketplace reviews join when Marketplace is built."""
+    """What a founder can report."""
 
     ai_message = "ai_message"
     comment = "comment"
+    # Marketplace (slice B). Reviews join in slice F.
+    listing = "listing"
+    provider = "provider"
 
 
 class ReportReason(enum.StrEnum):
@@ -730,3 +738,25 @@ class MarketplaceFilePurpose(enum.StrEnum):
     brief = "brief"
     delivery = "delivery"
     message = "message"
+
+
+class ListingType(enum.StrEnum):
+    consultation = "consultation"
+    package = "package"
+
+
+class ListingStatus(enum.StrEnum):
+    """`pending_review` is a first submission; a live listing's edit to a reviewed field keeps the
+    listing `active` and parks the edit in `pending_revision_json` (D-MP-L8)."""
+
+    draft = "draft"
+    pending_review = "pending_review"
+    active = "active"
+    paused = "paused"
+    unlisted = "unlisted"
+    rejected = "rejected"
+
+
+class AvailabilityKind(enum.StrEnum):
+    blocked = "blocked"
+    extra = "extra"
