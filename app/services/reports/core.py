@@ -21,6 +21,7 @@ from app.db.models.enums import ListingStatus, ReportItemType
 from app.db.models.marketplace import MarketplaceListing, MarketplaceProvider
 from app.db.models.notification import Notification
 from app.platform.audit import write_audit
+from app.services.marketplace.takedown import put_back, take_down
 
 SNIPPET_MAX = 2000  # R4
 REPORTS_PER_HOUR = 10  # R3
@@ -97,25 +98,18 @@ def set_removed(
     return True
 
 
-REPORT_UNLIST_REASON = "Unlisted after a report."
-
-
-def _unlisted_by_report(listing: MarketplaceListing) -> bool:
-    """Was the listing's CURRENT unlisting done by the report flow? Its marker reason says so: a
-    listing a moderator unlisted for their own reasons carries theirs, and restoring a report about
-    it must never relist it. (Read from the listing, not the audit trail: each request is its own
-    transaction, but a timestamp tie between two audit rows would make the trail ambiguous.)"""
-    return (
-        listing.status == ListingStatus.unlisted and listing.unlisted_reason == REPORT_UNLIST_REASON
-    )
+REPORT_UNLIST_REASON = (
+    "Unlisted after a report."  # shown to the expert; not used to decide anything
+)
 
 
 def _set_listing_unlisted(
     db: Session, report: ContentReport, removed: bool, actor_id: uuid.UUID | None
 ) -> bool:
     """Unlist (or relist) the reported listing. Active bookings are honoured; no new ones. Both
-    directions are audited on the listing and carry `via: report`; a restore only relists what
-    the report flow itself unlisted."""
+    directions are audited on the listing and carry `via: report`. A restore relists only a
+    listing THIS report took down (`unlisted_via_report_id`), and puts it back to the status it
+    had (an expert's own pause survives)."""
     listing = (
         db.query(MarketplaceListing)
         .filter(MarketplaceListing.id == report.item_id)
@@ -124,27 +118,27 @@ def _set_listing_unlisted(
     )
     if listing is None:
         return False
-    if removed and listing.status in (ListingStatus.active, ListingStatus.paused):
-        listing.status = ListingStatus.unlisted
-        listing.unlisted_by, listing.unlisted_reason = actor_id, REPORT_UNLIST_REASON
-        write_audit(
-            db,
-            "marketplace.listing.unlisted",
-            actor_user_id=actor_id,
-            entity_type="marketplace_listing",
-            entity_id=listing.id,
-            details={"via": "report", "report_id": str(report.id)},
-        )
-    elif not removed and _unlisted_by_report(listing):
-        listing.status = ListingStatus.active
-        listing.unlisted_by, listing.unlisted_reason = None, None
+    if removed:
+        if take_down(
+            listing, actor_id=actor_id, reason=REPORT_UNLIST_REASON, via_report_id=report.id
+        ):
+            write_audit(
+                db,
+                "marketplace.listing.unlisted",
+                actor_user_id=actor_id,
+                entity_type="marketplace_listing",
+                entity_id=listing.id,
+                details={"via": "report", "report_id": str(report.id)},
+            )
+    elif listing.status == ListingStatus.unlisted and listing.unlisted_via_report_id is not None:
+        restored = put_back(listing)
         write_audit(
             db,
             "marketplace.listing.relisted",
             actor_user_id=actor_id,
             entity_type="marketplace_listing",
             entity_id=listing.id,
-            details={"via": "report", "report_id": str(report.id)},
+            details={"via": "report", "report_id": str(report.id), "restored_to": restored.value},
         )
     return True
 

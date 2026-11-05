@@ -328,12 +328,8 @@ def test_listing_limit(client, db, monkeypatch):
     monkeypatch.setattr("app.services.marketplace.listings.MAX_LISTINGS_PER_PROVIDER", 2)
     u, _ = mk_provider(db)
     for _i in range(2):
-        assert (
-            client.post(
-                f"{P}/listings", json=create_body(category="Design"), headers=hdr(u)
-            ).status_code
-            == 201
-        )
+        resp_8 = client.post(f"{P}/listings", json=create_body(category="Design"), headers=hdr(u))
+        assert resp_8.status_code == 201
     r = client.post(f"{P}/listings", json=create_body(category="Design"), headers=hdr(u))
     assert r.status_code == 409 and r.json()["error"]["code"] == "LISTING_LIMIT_REACHED"
 
@@ -359,10 +355,8 @@ def test_patch_rules_on_a_draft(client, db, moderator, mail):
     )
     assert r.status_code == 200 and r.json()["data"]["tags"] == []
     assert r.json()["data"]["price_minor"] == 2_000_000 and r.json()["data"]["status"] == "draft"
-    assert (
-        client.patch(f"{P}/listings/{d['id']}", json={"type": "package"}, headers=h).status_code
-        == 422
-    )
+    resp_7 = client.patch(f"{P}/listings/{d['id']}", json={"type": "package"}, headers=h)
+    assert resp_7.status_code == 422
 
 
 # ---------------------------------------------------------------- submit and review
@@ -440,12 +434,8 @@ def test_reject_and_request_changes_send_it_back(client, db, moderator, mail):
     assert r.status_code == 200 and r.json()["data"]["status"] == "rejected"
     mine = client.get(f"{P}/listings/{a['id']}", headers=h).json()["data"]
     assert mine["review_message"] == "The price doesn't match the scope"
-    assert (
-        client.patch(
-            f"{P}/listings/{a['id']}", json={"price_minor": 900_000}, headers=h
-        ).status_code
-        == 200
-    )
+    resp_6 = client.patch(f"{P}/listings/{a['id']}", json={"price_minor": 900_000}, headers=h)
+    assert resp_6.status_code == 200
     resp5 = client.post(f"{P}/listings/{a['id']}/submit", headers=h)
     assert resp5.status_code == 200  # resubmit
 
@@ -545,9 +535,8 @@ def test_approving_a_revision_applies_it(client, db, moderator, mail):
     assert d["summary"] == "A new summary that reads better."
     assert d["pending_revision"] is None and d["diff"] == []
     assert "edit" in mail.sent[0].subject.lower()
-    assert (
-        staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False).status_code == 409
-    )
+    resp_5 = staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
+    assert resp_5.status_code == 409
 
 
 def test_rejecting_or_sending_back_a_revision_keeps_the_live_version(client, db, moderator, mail):
@@ -630,7 +619,8 @@ def test_unlist_and_relist_need_a_code_and_hide_the_listing(client, db, moderato
     back = staff_post(client, moderator, f"/listings/{lid}/relist")
     assert back.status_code == 200 and back.json()["data"]["status"] == "active"
     assert client.get(f"{M}/listings/{lid}", headers=fh(f, ws)).status_code == 200
-    assert staff_post(client, moderator, f"/listings/{lid}/relist").status_code == 409
+    resp_4 = staff_post(client, moderator, f"/listings/{lid}/relist")
+    assert resp_4.status_code == 409
 
 
 def test_unknown_listing_does_not_spend_the_authenticator_code(client, db, moderator):
@@ -868,10 +858,65 @@ def test_a_flagged_at_once_edit_reaches_the_queue_while_the_listing_stays_live(
     ok = staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
     assert ok.status_code == 200
     assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
-    again = client.patch(f"{P}/listings/{lid}", json={"price_minor": 6000}, headers=h)
-    assert again.status_code == 200  # same flag as the accepted baseline: not queued again
+    # the SAME accepted value again is not new; the same flag on a DIFFERENT value is
+    same = client.patch(f"{P}/listings/{lid}", json={"tags": ["call +234 803 123 4567"]}, headers=h)
+    assert same.status_code == 200  # tags were accepted with that exact phone number
     assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
-    assert client.get(f"{A}/listings/counts", headers=mh).json()["data"]["flagged_edits"] == 0
+    other_price = client.patch(f"{P}/listings/{lid}", json={"price_minor": 1}, headers=h)
+    assert other_price.status_code == 200
+    q2 = client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
+    assert [x["id"] for x in q2] == [lid] and q2[0]["has_flag"] is True  # 1 kobo is a new value
+    assert client.get(f"{A}/listings/counts", headers=mh).json()["data"]["flagged_edits"] == 1
+    staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
+    huge = client.patch(f"{P}/listings/{lid}", json={"price_minor": 9_000_000_000}, headers=h)
+    assert huge.status_code == 200  # N90,000,000 is also out of range, and also a new value
+    q3 = client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
+    assert [x["id"] for x in q3] == [lid]
+    other_tag = client.patch(
+        f"{P}/listings/{lid}", json={"tags": ["call +234 701 999 8888"]}, headers=h
+    )
+    assert other_tag.status_code == 200
+    detail = client.get(f"{A}/listings/{lid}", headers=mh).json()["data"]
+    assert {(x["rule"], x["field"]) for x in detail["flag"]["flags"]} == {
+        ("price_out_of_range", "price_minor"),
+        ("contact_details", "tags"),
+    }
+    assert "fp" not in json.dumps(detail)  # fingerprints stay internal
+
+
+def test_flag_decisions_send_matching_emails(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    lid = live_listing(client, db, moderator, user)
+    h, mh = hdr(user), hdr(moderator)
+    # approving a flagged edit announces nothing: the expert asked for nothing to be approved
+    client.patch(f"{P}/listings/{lid}", json={"price_minor": 5000}, headers=h)
+    mail.sent.clear()
+    approve = staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
+    assert approve.status_code == 200 and mail.sent == []
+    # rejecting one says the listing is still live and asks the expert to look again
+    client.patch(f"{P}/listings/{lid}", json={"price_minor": 7}, headers=h)
+    mail.sent.clear()
+    reject = staff_post(
+        client, moderator, f"/listings/{lid}/reject", step_up=False, template="pricing"
+    )
+    assert reject.status_code == 200 and reject.json()["data"]["status"] == "active"
+    assert "Please review your recent edit" in mail.sent[0].subject
+    assert "couldn't approve your listing" not in mail.sent[0].html
+    # a rejected text revision says "edit", not "listing"
+    client.patch(f"{P}/listings/{lid}", json={"title": "A different title"}, headers=h)
+    mail.sent.clear()
+    staff_post(client, moderator, f"/listings/{lid}/reject", step_up=False, template="other")
+    assert "couldn't approve your edit" in mail.sent[0].subject
+    # a first submission keeps the original wording
+    d = new_listing(client, user, title="Brand new listing")
+    client.post(f"{P}/listings/{d['id']}/submit", headers=h)
+    mail.sent.clear()
+    client.post(
+        f"{A}/listings/{d['id']}/request-changes",
+        json={"message": "Please add more detail."},
+        headers=mh,
+    )
+    assert "Changes needed on your listing" in mail.sent[0].subject
 
 
 def test_a_flagged_edit_can_be_sent_back_without_a_revision(client, db, moderator, mail):
@@ -887,9 +932,8 @@ def test_a_flagged_edit_can_be_sent_back_without_a_revision(client, db, moderato
         client.get(f"{P}/listings/{lid}", headers=hdr(user)).json()["data"]["review_message"] == msg
     )
     # nothing left to decide
-    assert (
-        staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False).status_code == 409
-    )
+    resp_3 = staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
+    assert resp_3.status_code == 409
 
 
 def test_a_flagged_listing_can_be_unlisted_from_the_queue(client, db, moderator, mail):
@@ -931,10 +975,8 @@ def test_fields_belong_to_a_listing_type(client, db, moderator, mail):
     d = client.patch(f"{P}/listings/{c['id']}", json={"delivery_days": 3}, headers=h)
     assert d.status_code == 422 and d.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
     # emptying a foreign field is harmless
-    assert (
-        client.patch(f"{P}/listings/{c['id']}", json={"deliverables": None}, headers=h).status_code
-        == 200
-    )
+    resp_2 = client.patch(f"{P}/listings/{c['id']}", json={"deliverables": None}, headers=h)
+    assert resp_2.status_code == 200
 
 
 def test_a_live_listing_cannot_lose_the_fields_its_type_needs(client, db, moderator, mail):
@@ -963,7 +1005,5 @@ def test_a_live_listing_cannot_lose_the_fields_its_type_needs(client, db, modera
         assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_REQUIRED", body
     # a draft may be emptied (it can't be submitted that way)
     d = new_listing(client, user, title="Draft being reworked")
-    assert (
-        client.patch(f"{P}/listings/{d['id']}", json={"meeting_url": None}, headers=h).status_code
-        == 200
-    )
+    resp_1 = client.patch(f"{P}/listings/{d['id']}", json={"meeting_url": None}, headers=h)
+    assert resp_1.status_code == 200

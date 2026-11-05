@@ -705,7 +705,8 @@ def test_founder_reports_a_listing_and_an_expert(client, db, fx):
     row = db.query(ContentReport).filter_by(item_id=lst.id).one()
     assert row.item_type == ReportItemType.listing and row.item_author_id == u.id
     assert row.snippet.startswith("Dodgy offer")
-    assert report(client, f, ws, "listing", lst.id).status_code == 409  # one live report each
+    resp_12 = report(client, f, ws, "listing", lst.id)
+    assert resp_12.status_code == 409  # one live report each
     p = report(client, f, ws, "provider", prov.id, "other", note="Impersonating someone")
     assert p.status_code == 201
     assert (
@@ -726,15 +727,16 @@ def test_reports_need_a_visible_item_and_not_your_own(client, db, fx):
         ("provider", hidden.id),
         ("provider", drafty.id),
     ):
-        assert report(client, f, ws, t, i).status_code == 404, (t, i)
-    assert (
-        report(client, f, ws, "review", uuid.uuid4()).status_code == 422
-    )  # not reportable until slice F
+        resp_11 = report(client, f, ws, t, i)
+        assert resp_11.status_code == 404, (t, i)
+    resp_10 = report(client, f, ws, "review", uuid.uuid4())
+    assert resp_10.status_code == 422  # not reportable until slice F
     own_u, own = mk_provider(db, user=f)
     mine = mk_listing(db, own)
     r = report(client, f, ws, "listing", mine.id)
     assert r.status_code == 422 and r.json()["error"]["code"] == "OWN_ITEM"
-    assert report(client, f, ws, "provider", own.id).json()["error"]["code"] == "OWN_ITEM"
+    resp_9 = report(client, f, ws, "provider", own.id)
+    assert resp_9.json()["error"]["code"] == "OWN_ITEM"
 
 
 def _admin_reports_post(client, actor, path, **extra):
@@ -807,16 +809,18 @@ def test_report_unlist_and_relist_are_audited_and_carry_the_actor(client, db, mo
     _, prov = mk_provider(db)
     lst = mk_listing(db, prov)
     rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
-    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
+    resp_8 = _admin_reports_post(client, moderator, f"/{rid}/remove")
+    assert resp_8.status_code == 200
     db.refresh(lst)
     assert lst.status == ListingStatus.unlisted and lst.unlisted_by == moderator.id
     (row,) = _audit_rows(db, lst.id, "marketplace.listing.unlisted")
     assert row.actor_user_id == moderator.id and row.details == {"via": "report", "report_id": rid}
-    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    resp_7 = _admin_reports_post(client, moderator, f"/{rid}/restore")
+    assert resp_7.status_code == 200
     db.refresh(lst)
     assert lst.status == ListingStatus.active and lst.unlisted_by is None
     (back,) = _audit_rows(db, lst.id, "marketplace.listing.relisted")
-    assert back.details == {"via": "report", "report_id": rid}
+    assert back.details == {"via": "report", "report_id": rid, "restored_to": "active"}
 
 
 def test_restoring_a_report_never_relists_what_a_moderator_unlisted(client, db, moderator, fx):
@@ -828,14 +832,16 @@ def test_restoring_a_report_never_relists_what_a_moderator_unlisted(client, db, 
     r = staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Fraudulent claims")
     assert r.status_code == 200
     # the report removal is a no-op on a listing that is already down...
-    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
+    resp_6 = _admin_reports_post(client, moderator, f"/{rid}/remove")
+    assert resp_6.status_code == 200
     db.refresh(lst)
     assert lst.unlisted_reason == "Fraudulent claims"  # not overwritten by the report flow
     assert (_audit_rows(db, lst.id, "marketplace.listing.unlisted")[0].details or {}).get(
         "via"
     ) != "report"
     # ...and restoring it must not bring the listing back
-    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    resp_5 = _admin_reports_post(client, moderator, f"/{rid}/restore")
+    assert resp_5.status_code == 200
     db.refresh(lst)
     assert lst.status == ListingStatus.unlisted
     assert _audit_rows(db, lst.id, "marketplace.listing.relisted") == []
@@ -847,17 +853,14 @@ def test_a_later_moderator_unlist_also_blocks_a_report_restore(client, db, moder
     _, prov = mk_provider(db)
     lst = mk_listing(db, prov)
     rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
-    assert (
-        _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
-    )  # report unlists
-    assert staff_post(client, moderator, f"/listings/{lst.id}/relist").status_code == 200
-    assert (
-        staff_post(
-            client, moderator, f"/listings/{lst.id}/unlist", reason="Second offence"
-        ).status_code
-        == 200
-    )
-    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    resp_4 = _admin_reports_post(client, moderator, f"/{rid}/remove")
+    assert resp_4.status_code == 200  # report unlists
+    resp_3 = staff_post(client, moderator, f"/listings/{lst.id}/relist")
+    assert resp_3.status_code == 200
+    resp_2 = staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Second offence")
+    assert resp_2.status_code == 200
+    resp_1 = _admin_reports_post(client, moderator, f"/{rid}/restore")
+    assert resp_1.status_code == 200
     db.refresh(lst)
     assert lst.status == ListingStatus.unlisted  # the latest unlisting is the moderator's
 
@@ -897,3 +900,82 @@ def test_avatar_and_portfolio_files_need_a_live_listing_too(client, db, fx):
     assert client.get(url, headers=fh(f, ws)).status_code == 404  # approved but nothing live
     mk_listing(db, prov)
     assert client.get(url, headers=fh(f, ws)).status_code == 200
+
+
+def test_a_moderator_typing_the_report_reason_cannot_make_a_report_restore_relist(
+    client, db, moderator, fx
+):
+    f, ws = fx
+    _, prov = mk_provider(db)
+    lst = mk_listing(db, prov)
+    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
+    # a moderator unlists with exactly the text the report flow uses as its reason
+    unlist = staff_post(
+        client, moderator, f"/listings/{lst.id}/unlist", reason="Unlisted after a report."
+    )
+    assert unlist.status_code == 200
+    removed = _admin_reports_post(client, moderator, f"/{rid}/remove")
+    assert removed.status_code == 200
+    restored = _admin_reports_post(client, moderator, f"/{rid}/restore")
+    assert restored.status_code == 200
+    db.refresh(lst)
+    assert lst.status == ListingStatus.unlisted and lst.unlisted_via_report_id is None
+
+
+def test_restoring_a_report_puts_back_the_status_the_listing_had(client, db, moderator, fx):
+    f, ws = fx
+    u, prov = mk_provider(db)
+    lst = mk_listing(db, prov, status=ListingStatus.paused)  # the expert paused it themselves
+    # a paused listing is invisible, so the founder reports it while it is live, then it is paused
+    live = mk_listing(db, prov, title="Another live one")
+    rid = report(client, f, ws, "listing", live.id, "harmful").json()["data"]["id"]
+    live.status = ListingStatus.paused
+    db.flush()
+    removed = _admin_reports_post(client, moderator, f"/{rid}/remove")
+    assert removed.status_code == 200
+    db.refresh(live)
+    assert live.status == ListingStatus.unlisted and live.unlisted_prior_status == "paused"
+    assert live.unlisted_via_report_id == uuid.UUID(rid)
+    restored = _admin_reports_post(client, moderator, f"/{rid}/restore")
+    assert restored.status_code == 200
+    db.refresh(live)
+    assert live.status == ListingStatus.paused  # not bookable again until the expert resumes
+    assert live.unlisted_prior_status is None and live.unlisted_via_report_id is None
+    assert get(client, f, ws, f"/listings/{live.id}").status_code == 404
+    assert lst.status == ListingStatus.paused
+
+
+def test_a_moderator_relist_also_restores_a_paused_listing_to_paused(client, db, moderator, fx):
+    f, ws = fx
+    _, prov = mk_provider(db)
+    lst = mk_listing(db, prov, status=ListingStatus.paused)
+    unlisted = staff_post(
+        client, moderator, f"/listings/{lst.id}/unlist", reason="Fraudulent claims in text"
+    )
+    assert unlisted.status_code == 200
+    relisted = staff_post(client, moderator, f"/listings/{lst.id}/relist")
+    assert relisted.status_code == 200 and relisted.json()["data"]["status"] == "paused"
+    live = mk_listing(db, prov, title="A live one")
+    staff_post(client, moderator, f"/listings/{live.id}/unlist", reason="Fraudulent claims in text")
+    resp_1 = staff_post(client, moderator, f"/listings/{live.id}/relist")
+    assert resp_1.json()["data"]["status"] == "active"
+
+
+def test_portfolio_files_need_a_live_listing_too(client, db, fx):
+    from app.db.models.marketplace import MarketplaceProviderPortfolio
+
+    f, ws = fx
+    u, prov = mk_provider(db)
+    pf = _file(db, u, MarketplaceFilePurpose.portfolio)
+    item = MarketplaceProviderPortfolio(
+        provider_id=prov.id, title="Poster", file_id=pf.id, position=0
+    )
+    db.add(item)
+    db.flush()
+    url = f"{M}/providers/{prov.id}/portfolio/{item.id}/file"
+    assert client.get(url, headers=fh(f, ws)).status_code == 404  # approved but nothing live
+    live = mk_listing(db, prov)
+    assert client.get(url, headers=fh(f, ws)).content == PNG
+    live.status = ListingStatus.paused
+    db.flush()
+    assert client.get(url, headers=fh(f, ws)).status_code == 404  # paused: back to hidden

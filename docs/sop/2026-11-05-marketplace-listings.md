@@ -29,12 +29,12 @@
 
 | Area | Paths |
 |---|---|
-| Models, migration | `MarketplaceListing`, `MarketplaceAvailabilityRule`, `MarketplaceAvailabilityException` in `app/db/models/marketplace.py`; enums `ListingType`, `ListingStatus`, `AvailabilityKind`, `MARKETPLACE_ROLES`, new `ReportItemType` values in `app/db/models/enums.py`; `alembic/versions/0094_marketplace_listings.py` (adds the 3 tables and `min_notice_h`, `buffer_min` on providers) |
-| Services | `app/services/marketplace/{slots,availability,listings,listing_moderation,directory}.py`; additions to `prescreen.py`, `emails.py`, `constants.py` |
+| Models, migration | `MarketplaceListing`, `MarketplaceAvailabilityRule`, `MarketplaceAvailabilityException` in `app/db/models/marketplace.py`; enums `ListingType`, `ListingStatus`, `AvailabilityKind`, `MARKETPLACE_ROLES`, new `ReportItemType` values in `app/db/models/enums.py`; `alembic/versions/0094_marketplace_listings.py` (adds the 3 tables, incl. `unlisted_prior_status` and `unlisted_via_report_id` on listings, and `min_notice_h`, `buffer_min` on providers) |
+| Services | `app/services/marketplace/{slots,availability,listings,listing_moderation,directory,takedown}.py`; additions to `prescreen.py`, `emails.py`, `constants.py` |
 | API | `app/api/v1/endpoints/{provider_listings,admin_marketplace_listings,marketplace}.py`, schemas in `app/schemas/marketplace.py`, wired in `app/api/v1/api.py` |
 | Reports | `app/services/reports/{founder,core}.py`, `app/services/staff/reports.py` |
 
-**Verification:** `tests/services/marketplace/test_slots.py` (21 worked examples), `tests/api/test_marketplace_listings.py` (62: guards, validation matrix, lifecycle, live edits, moderation, self-act guard, availability), `tests/api/test_marketplace_directory.py` (33: roles, visibility for every status, no-leak key sets, filters, sort, paging, slots, files, reports), `tests/test_marketplace_listings_migration.py` (up, down one, up, `alembic check`), existing report and slice A suites still pass. Live journey `e2e/test_marketplace_listings.py` on a real server (58 captured bodies). Local gates clean; CI runs the full suite and scans.
+**Verification:** `tests/services/marketplace/test_slots.py` (21 worked examples), `tests/api/test_marketplace_listings.py` (63: guards, validation matrix, lifecycle, live edits, moderation, self-act guard, availability), `tests/api/test_marketplace_directory.py` (37: roles, visibility for every status, no-leak key sets, filters, sort, paging, slots, files, reports), `tests/test_marketplace_listings_migration.py` (up, down one, up, `alembic check`), existing report and slice A suites still pass. Live journey `e2e/test_marketplace_listings.py` on a real server (60 captured bodies). Local gates clean; CI runs the full suite and scans.
 
 **Operate / roll back:** no new config or secrets. To revert, downgrade `0094` (drops the three tables and the two provider columns, so all listings and schedules are lost) and revert the PR. The Marketplace stays hidden in the FE sidebar.
 

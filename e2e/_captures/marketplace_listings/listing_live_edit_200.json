@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+    "id": "d0392fdc-d011-432f-b83d-7a2faa76f665",
     "type": "consultation",
     "status": "active",
     "title": "Contract review session",
@@ -22,16 +22,16 @@
       "title": "Contract and term sheet review"
     },
     "review_message": null,
-    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
-    "published_at": "2026-11-05T20:51:59.538082+00:00",
+    "submitted_at": "2026-11-05T21:09:59.335255+00:00",
+    "published_at": "2026-11-05T21:09:59.496920+00:00",
     "unlisted_reason": null,
     "earnings_preview": {
       "commission_bps": 1500,
       "commission_minor": 180000,
       "net_minor": 1020000
     },
-    "created_at": "2026-11-05T20:51:59.361749+00:00",
-    "updated_at": "2026-11-05T20:51:59.764020+00:00"
+    "created_at": "2026-11-05T21:09:59.245382+00:00",
+    "updated_at": "2026-11-05T21:09:59.903109+00:00"
   },
   "meta": null
 }

@@ -220,6 +220,13 @@ class MarketplaceListing(UUIDMixin, TimestampMixin, Base):
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     unlisted_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # What the listing was before staff took it down (`active` or `paused`), so a relist puts it
+    # back exactly there and an expert's pause survives. `unlisted_via_report_id` is set only when
+    # the report flow did the unlisting; a restore of that report undoes it and nothing else.
+    unlisted_prior_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    unlisted_via_report_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
 
 
 class MarketplaceAvailabilityRule(UUIDMixin, TimestampMixin, Base):

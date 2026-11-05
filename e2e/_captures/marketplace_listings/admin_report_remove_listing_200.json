@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "7cbddcda-eaf1-4c16-8b46-8150197d295c",
+    "id": "478bf2fa-bd92-4839-afa3-3ddf2fb87572",
     "item_type": "listing",
     "reason": "other",
     "note": "Misleading price",
@@ -8,29 +8,29 @@
     "snippet": "Contract and term sheet review\nA one hour review of your contract with written notes.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "4b7a5bfe-fa01-49fd-ba6d-9bebc0e9ad66",
+      "id": "1805b33f-3bc2-412c-bf02-23a9c4592720",
       "name": "Ada Obi",
-      "email": "delivered+e2e-f531c105b386@resend.dev"
+      "email": "delivered+e2e-e0631b4c27b7@resend.dev"
     },
     "author": {
-      "id": "4fc2d63c-e645-40ea-859b-884847a13fe0",
-      "name": "delivered+e2e-5b5aabf98398@resend.dev"
+      "id": "09fbe2cd-50f2-4137-9024-d48182995cc5",
+      "name": "delivered+e2e-c1e1f86ec07f@resend.dev"
     },
     "workspace": {
-      "id": "8154af4b-112a-435e-816d-3fbe408349a8",
+      "id": "25ae8c75-2bdc-445b-bd72-6e9500b4aa49",
       "name": "Browse Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-05T20:51:59.931527+00:00",
+    "created_at": "2026-11-05T21:10:00.299437+00:00",
     "escalated_at": null,
-    "decided_at": "2026-11-05T20:51:59.976587+00:00",
+    "decided_at": "2026-11-05T21:10:00.400031+00:00",
     "escalation_reason": null,
     "decision_reason": "Reviewed against the marketplace rules",
     "escalated_by": null,
     "decided_by": {
-      "id": "077d5027-42a3-40be-86d0-71006c1d313f",
-      "name": "delivered+e2e-5ec8266ed33c@resend.dev",
-      "email": "delivered+e2e-5ec8266ed33c@resend.dev"
+      "id": "6ed20544-b46e-4b45-9e78-79ea0942c61d",
+      "name": "delivered+e2e-e725d22671f2@resend.dev",
+      "email": "delivered+e2e-e725d22671f2@resend.dev"
     },
     "reports_on_item": 1
   },

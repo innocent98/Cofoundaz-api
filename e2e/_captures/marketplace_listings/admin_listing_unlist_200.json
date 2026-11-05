@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
-    "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
+    "id": "d0392fdc-d011-432f-b83d-7a2faa76f665",
+    "provider_id": "b026d0dc-5208-49d3-b48d-4770296e06e9",
     "provider_name": "Ngozi Eze",
     "provider_status": "approved",
     "type": "consultation",
@@ -12,7 +12,7 @@
     "has_revision": false,
     "has_flag": false,
     "flag": null,
-    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "submitted_at": "2026-11-05T21:09:59.335255+00:00",
     "revision_submitted_at": null,
     "prescreen_flags": [
       {
@@ -20,7 +20,7 @@
         "field": "tags"
       }
     ],
-    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "created_at": "2026-11-05T21:09:59.245382+00:00",
     "summary": "A one hour review of your contract with written notes.",
     "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
     "tags": [
@@ -32,13 +32,13 @@
     "deliverables": [],
     "revisions_included": 2,
     "meeting_url": "https://meet.example.com/ngozi-eze",
-    "review_message": null,
+    "review_message": "The price doesn't match the scope",
     "unlisted_reason": "Reviewed against the marketplace rules",
-    "published_at": "2026-11-05T20:51:59.538082+00:00",
+    "published_at": "2026-11-05T21:09:59.496920+00:00",
     "pending_revision": null,
     "diff": [],
     "provider": {
-      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
+      "id": "b026d0dc-5208-49d3-b48d-4770296e06e9",
       "display_name": "Ngozi Eze",
       "category": "Legal",
       "status": "approved",
@@ -54,68 +54,74 @@
     "history": [
       {
         "action": "marketplace.listing.unlisted",
-        "at": "2026-11-05T20:52:00.024931+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:10:30.781672+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": "Reviewed against the marketplace rules"
       },
       {
         "action": "marketplace.listing.relisted",
-        "at": "2026-11-05T20:52:00.011808+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:10:00.472582+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": "Reviewed against the marketplace rules"
       },
       {
         "action": "marketplace.listing.unlisted",
-        "at": "2026-11-05T20:51:59.966790+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:10:00.376488+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.resumed",
-        "at": "2026-11-05T20:51:59.919026+00:00",
-        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
+        "at": "2026-11-05T21:10:00.277736+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.paused",
-        "at": "2026-11-05T20:51:59.889236+00:00",
-        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
+        "at": "2026-11-05T21:10:00.211520+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
         "reason": null
       },
       {
+        "action": "marketplace.listing.rejected",
+        "at": "2026-11-05T21:10:00.113881+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
+        "reason": "Price looks like a typo"
+      },
+      {
         "action": "marketplace.listing.approved",
-        "at": "2026-11-05T20:51:59.856430+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:10:00.066850+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": "Tag is fine, not a contact detail"
       },
       {
         "action": "marketplace.listing.approved",
-        "at": "2026-11-05T20:51:59.806679+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:09:59.972104+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": "The edit reads fine"
       },
       {
         "action": "marketplace.listing.revision_submitted",
-        "at": "2026-11-05T20:51:59.764020+00:00",
-        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
+        "at": "2026-11-05T21:09:59.903109+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.approved",
-        "at": "2026-11-05T20:51:59.532015+00:00",
-        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
+        "at": "2026-11-05T21:09:59.484934+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
         "reason": "Scope and price are clear"
       },
       {
         "action": "marketplace.listing.submitted",
-        "at": "2026-11-05T20:51:59.424812+00:00",
-        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
+        "at": "2026-11-05T21:09:59.328152+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.created",
-        "at": "2026-11-05T20:51:59.361749+00:00",
-        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
+        "at": "2026-11-05T21:09:59.245382+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
         "reason": null
       }
     ]

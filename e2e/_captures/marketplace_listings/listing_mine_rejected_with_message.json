@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
+    "id": "9433b941-a009-4342-959d-9aa230ff0157",
     "type": "package",
     "status": "rejected",
     "title": "Shareholder agreement drafting",
@@ -20,7 +20,7 @@
     "meeting_url": null,
     "pending_revision": null,
     "review_message": "N250,000 looks too high for the deliverables listed. Please revise.",
-    "submitted_at": "2026-11-05T20:51:59.442582+00:00",
+    "submitted_at": "2026-11-05T21:09:59.355567+00:00",
     "published_at": null,
     "unlisted_reason": null,
     "earnings_preview": {
@@ -28,8 +28,8 @@
       "commission_minor": 3750000,
       "net_minor": 21250000
     },
-    "created_at": "2026-11-05T20:51:59.380263+00:00",
-    "updated_at": "2026-11-05T20:51:59.560854+00:00"
+    "created_at": "2026-11-05T21:09:59.270266+00:00",
+    "updated_at": "2026-11-05T21:09:59.540671+00:00"
   },
   "meta": null
 }

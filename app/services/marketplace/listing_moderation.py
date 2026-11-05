@@ -21,6 +21,7 @@ from app.platform.email import EmailMessage
 from app.services.marketplace import emails
 from app.services.marketplace.listings import err, public_name, refresh_prescreen
 from app.services.marketplace.providers import badge
+from app.services.marketplace.takedown import put_back, take_down
 from app.services.staff.like import contains_pattern
 
 REJECT_TEMPLATES: dict[str, str] = {
@@ -62,6 +63,15 @@ def exists_or_404(db: Session, listing_id: uuid.UUID) -> None:
         raise err("LISTING_NOT_FOUND", "No such listing.", 404)
 
 
+def _chip(flag: dict[str, str]) -> dict[str, str]:
+    return {"rule": flag["rule"], "field": flag["field"]}
+
+
+def _flag_view(row: MarketplaceListing) -> dict[str, Any]:
+    review = (row.prescreen_json or {}).get("review") or {}
+    return {**review, "flags": [_chip(f) for f in review.get("flags", [])]}
+
+
 def has_flag(row: MarketplaceListing) -> bool:
     """A live listing whose at-once edit (tags, price) tripped the pre-screen."""
     return row.status in (ListingStatus.active, ListingStatus.paused) and bool(
@@ -88,12 +98,12 @@ def summary(row: MarketplaceListing, provider: MarketplaceProvider) -> dict[str,
         "status": row.status.value,
         "has_revision": has_revision(row),
         "has_flag": has_flag(row),
-        "flag": (row.prescreen_json or {}).get("review") if has_flag(row) else None,
+        "flag": _flag_view(row) if has_flag(row) else None,
         "submitted_at": row.submitted_at.isoformat() if row.submitted_at else None,
         "revision_submitted_at": (
             row.revision_submitted_at.isoformat() if row.revision_submitted_at else None
         ),
-        "prescreen_flags": (row.prescreen_json or {}).get("flags", []),
+        "prescreen_flags": [_chip(f) for f in (row.prescreen_json or {}).get("flags", [])],
         "created_at": row.created_at.isoformat(),
     }
 
@@ -293,6 +303,8 @@ def approve(
         **_audit_ctx(ctx, ip, ua),
     )
     db.flush()
+    if kind == "flag":  # nothing the expert asked for changed, so there is nothing to announce
+        return row, []
     return row, [
         emails.listing_approved_email(
             provider.email, name=provider.display_name, title=row.title, revision=kind == "revision"
@@ -309,7 +321,7 @@ def _send_back(
     first_status: ListingStatus,
     message: str,
     reason: str,
-    headline: str,
+    headlines: dict[str, str],
     ip: str | None,
     ua: str | None,
     details: dict[str, Any] | None = None,
@@ -342,7 +354,7 @@ def _send_back(
         provider.email,
         name=provider.display_name,
         title=row.title,
-        headline=headline,
+        headline=headlines[kind],
         detail=message,
     )
     return row, [mail]
@@ -367,7 +379,11 @@ def reject(
         first_status=ListingStatus.rejected,
         message=message or REJECT_TEMPLATES[template],
         reason=reason,
-        headline="We couldn't approve your listing",
+        headlines={
+            "first": "We couldn't approve your listing",
+            "revision": "We couldn't approve your edit",
+            "flag": "Please review your recent edit",
+        },
         ip=ip,
         ua=ua,
         details={"template": template},
@@ -391,7 +407,11 @@ def request_changes(
         first_status=ListingStatus.draft,
         message=message,
         reason=message,
-        headline="Changes needed on your listing",
+        headlines={
+            "first": "Changes needed on your listing",
+            "revision": "Changes needed on your edit",
+            "flag": "Please review your recent edit",
+        },
         ip=ip,
         ua=ua,
     )
@@ -410,8 +430,7 @@ def unlist(
     _not_self(ctx, provider)
     if row.status not in (ListingStatus.active, ListingStatus.paused):
         raise err("INVALID_STATE", "Only a live listing can be unlisted.")
-    row.status = ListingStatus.unlisted
-    row.unlisted_by, row.unlisted_reason = ctx.user.id, reason
+    take_down(row, actor_id=ctx.user.id, reason=reason)
     write_audit(
         db,
         "marketplace.listing.unlisted",
@@ -437,14 +456,14 @@ def relist(
     _not_self(ctx, provider)
     if row.status != ListingStatus.unlisted:
         raise err("INVALID_STATE", "Only an unlisted listing can be relisted.")
-    row.status = ListingStatus.active
-    row.unlisted_by, row.unlisted_reason = None, None
+    restored = put_back(row)
     write_audit(
         db,
         "marketplace.listing.relisted",
         entity_type="marketplace_listing",
         entity_id=row.id,
         reason=reason,
+        details={"restored_to": restored.value},
         **_audit_ctx(ctx, ip, ua),
     )
     db.flush()

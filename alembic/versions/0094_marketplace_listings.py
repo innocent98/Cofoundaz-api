@@ -7,8 +7,8 @@ Create Date: 2026-11-05
 Marketplace slice B (listings and directory; no money). Adds `marketplace_listings`,
 `marketplace_availability_rules`, `marketplace_availability_exceptions` and two availability
 settings on `marketplace_providers` (`min_notice_h`, `buffer_min`). The new `content_reports`
-item types (`listing`, `provider`, `review`) fit the existing non-native enum column, so they need
-no DDL. Downgrade drops the tables and the two columns.
+item types (`listing`, `provider`) fit the existing non-native enum column, so they need no DDL.
+Downgrade drops the tables and the two columns.
 
 CHAIN NOTE: chained on 0093 (Readiness mock Q&A), develop's head when last merged. #222 chains 0095
 onto whichever of 0093 / 0094 merges first.
@@ -88,6 +88,8 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("unlisted_reason", sa.Text(), nullable=True),
+        sa.Column("unlisted_prior_status", sa.String(20), nullable=True),
+        sa.Column("unlisted_via_report_id", postgresql.UUID(as_uuid=True), nullable=True),
         *_stamps(),
     )
     op.create_index("ix_marketplace_listings_provider_id", "marketplace_listings", ["provider_id"])

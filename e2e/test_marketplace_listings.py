@@ -490,7 +490,9 @@ def test_marketplace_listings_journey(
     assert r.json()["data"]["title"] == "Contract and term sheet review"
 
     # ---- an at-once edit that trips the pre-screen is queued; type rules ---------------------------
-    r = http.patch(f"{P}/listings/{consult}", json={"tags": ["contracts", "whatsapp me"]}, headers=e)
+    r = http.patch(
+        f"{P}/listings/{consult}", json={"tags": ["contracts", "whatsapp me"]}, headers=e
+    )
     assert r.status_code == 200 and r.json()["data"]["status"] == "active"
     r = http.get(f"{A}/listings", params={"queue": "true", "query": "Ngozi"}, headers=mod)
     flagged = [x for x in r.json()["data"]["listings"] if x["id"] == consult]
@@ -504,6 +506,21 @@ def test_marketplace_listings_journey(
         headers=mod,
     )
     assert r.status_code == 200
+    # sending a flagged at-once edit back: the listing stays live and the email says so
+    r = http.patch(f"{P}/listings/{consult}", json={"price_minor": 5000}, headers=e)
+    assert r.status_code == 200 and r.json()["data"]["price_minor"] == 5000
+    r = http.post(
+        f"{A}/listings/{consult}/reject",
+        json={"template": "pricing", "reason": "Price looks like a typo"},
+        headers=mod,
+    )
+    assert r.status_code == 200 and r.json()["data"]["status"] == "active"
+    capture(G, "admin_listing_reject_flagged_edit_200", r)
+    mail = mailbox.latest_for(expert["email"])
+    assert "Please review your recent edit" in mail["subject"]
+    capture_json(G, "email_listing_flagged_edit_sent_back", mail)
+    r = http.patch(f"{P}/listings/{consult}", json={"price_minor": 1_200_000}, headers=e)
+    assert r.status_code == 200 and r.json()["data"]["price_minor"] == 1_200_000
     r = http.patch(f"{P}/listings/{consult}", json={"duration_min": None}, headers=e)
     assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_REQUIRED"
     capture(G, "listing_live_remove_required_field_422", r)
