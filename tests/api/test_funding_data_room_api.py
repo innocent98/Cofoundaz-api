@@ -1031,3 +1031,18 @@ def test_stamp_refuses_encrypted_and_garbage_pdfs():
 
     with pytest.raises(AppError):
         stamp_pdf(b"not a pdf", email="v@example.com")
+
+
+def test_oversized_images_are_refused_before_decoding(client, room, outbox, monkeypatch):
+    from PIL import Image
+
+    from app.services.funding import watermark
+
+    buf = io.BytesIO()
+    Image.new("RGB", (200, 100), (1, 2, 3)).save(buf, "PNG")  # 20,000 px, tiny on disk
+    img = room.add_file("big.png", "image/png", buf.getvalue())
+    s = room.share()
+    sess = _login(client, outbox, s)
+    monkeypatch.setattr(watermark, "MAX_IMAGE_PIXELS", 10_000)
+    r = client.get(f"{BASE}/dr/{s['token']}/items/{img['id']}/content", headers=sess)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "DOCUMENT_UNAVAILABLE"

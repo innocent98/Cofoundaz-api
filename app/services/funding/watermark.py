@@ -45,13 +45,21 @@ def _overlay(width: float, height: float, label: str) -> bytes:
     return buf.getvalue()
 
 
+MAX_IMAGE_PIXELS = 40_000_000  # ~120 MB decoded as RGB; a small PNG can otherwise expand hugely
+
+
 def image_to_pdf(raw: bytes) -> bytes:
-    """One-page PDF of a PNG/JPEG so an image can carry the same watermark as a PDF."""
+    """One-page PDF of a PNG/JPEG so an image can carry the same watermark as a PDF. The size is
+    checked from the header before anything is decoded."""
     try:
         with Image.open(io.BytesIO(raw)) as img:
+            if img.width * img.height > MAX_IMAGE_PIXELS:
+                raise unstampable()
             out = io.BytesIO()
             img.convert("RGB").save(out, "PDF")
             return out.getvalue()
+    except AppError:
+        raise
     except Exception:  # noqa: BLE001 - Pillow raises many types for a bad or oversized image
         raise unstampable() from None
 

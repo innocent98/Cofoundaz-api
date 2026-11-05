@@ -586,7 +586,9 @@ open this room, a code is on its way." and must **not** claim a code was sent. C
 once, and a new request replaces the old code. At most 5 code requests an hour per share and 10 an hour per client
 address. **Over the per-share cap the answer is still the same 202 and nothing is sent** (a 429 would reveal
 whether an address was invited), so a "didn't get it" state must not rely on an error: offer "Send a new
-code" again after a few minutes. The per-address limit is a 429 `RATE_LIMITED`.
+code" again after a few minutes. **Accepted risk:** because the cap ignores the email,
+anyone holding the link can use up the 5 requests with random addresses, and the real investor then gets no
+code for up to an hour, with no error. Give a way out: tell the investor to ask the founder for a new link. The per-address limit is a 429 `RATE_LIMITED`.
 
 capture `otp_unknown_email_202`
 ```json
@@ -926,7 +928,7 @@ capture `after_revoke_content_404`
 | `/open`, `/content` | 422 | `VIEW_ONLY_UNSUPPORTED` | type can't be watermarked and downloads are off. |
 | `/content` | 422 | `DOCUMENT_UNAVAILABLE` | cannot be stamped. |
 | founder items POST | 409 | `FILE_NOT_CLEAN`, `ITEM_EXISTS` | see section 3. |
-| founder folders POST/PATCH | 409 | `FOLDER_EXISTS` | duplicate name. |
+| founder folders POST/PATCH | 409 | `FOLDER_EXISTS` | duplicate name. Case-insensitive; the check is in the service, the database index is exact-case. |
 | founder shares POST | 409 | `TOO_MANY_SHARES` | 200 active links in one workspace (*from code, not exercised*). |
 | founder routes | 403 | | role. |
 
