@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TURN_MISMATCH",
+    "message": "That answer was already received. Reload the session to see the investor's reply.",
+    "field_errors": []
+  }
+}

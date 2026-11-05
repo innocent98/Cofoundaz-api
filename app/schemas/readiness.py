@@ -29,3 +29,19 @@ class DeckReviewIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     file_id: uuid.UUID
+
+
+class QaStartIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    focus: Literal["general", "financials", "market", "team"]
+    intensity: Literal["friendly_angel", "skeptical_vc", "term_sheet_grilling"]
+
+
+class QaMessageIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(..., min_length=1, max_length=2000)
+    # How many answers the client believes are already recorded (the session's `turns`). A stale
+    # value means this is a retry of an answer that was already received: 409 TURN_MISMATCH.
+    expected_turn: int = Field(..., ge=0, le=10)

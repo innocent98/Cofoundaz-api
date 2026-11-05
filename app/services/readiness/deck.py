@@ -13,9 +13,10 @@ import hashlib
 import io
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import func, text
+from sqlalchemy import func, text, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.errors import AiBudgetExhausted, AppError, FileNotClean, NotFound
@@ -252,17 +253,26 @@ def _lock(db: Session, startup_id: uuid.UUID) -> None:
 def reconcile(db: Session, review: DeckReview) -> bool:
     """A queued or running review whose job is gone or finished (the worker died, or the last
     attempt failed and the handler's writes were rolled back) will never complete: mark it failed
-    so it neither shows "queued" forever nor blocks a retry of the same file."""
+    so it neither shows "queued" forever nor blocks a retry of the same file.
+
+    Readers call this without a lock and may hold a review loaded before the worker committed the
+    result, so the change is a conditional UPDATE on the status we saw: a review that finished in
+    the meantime matches no row and is left alone."""
     if review.status not in ("queued", "running"):
         return False
     job = db.get(Job, review.job_id) if review.job_id else None
     if job is not None and job.status in (JobStatus.queued, JobStatus.running):
         return False
-    review.status = "failed"
-    review.error = "job_failed"
-    review.reviewed_at = datetime.now(UTC)
-    db.flush()
-    return True
+    changed = cast(
+        CursorResult,
+        db.execute(
+            update(DeckReview)
+            .where(DeckReview.id == review.id, DeckReview.status.in_(("queued", "running")))
+            .values(status="failed", error="job_failed", reviewed_at=datetime.now(UTC))
+        ),
+    ).rowcount
+    db.refresh(review)
+    return bool(changed)
 
 
 def create_review(

@@ -80,3 +80,23 @@ def test_is_ai_enrichment_job():
     assert lb.is_ai_enrichment_job("business.plan.generate")
     assert not lb.is_ai_enrichment_job("roadmap.replanned")
     assert not lb.is_ai_enrichment_job("email.notification")
+
+
+def test_a_failed_json_call_is_still_billed_on_its_own_session(db, monkeypatch):
+    """Like `metered_complete`: the job's savepoint rolls this session back, so a retry would be
+    free unless the failed call's tokens are billed independently."""
+    import pytest
+
+    class Boom(_FakeClient):
+        def complete_json(self, messages, *, schema, max_tokens):
+            raise RuntimeError("provider down")
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 1000)
+    monkeypatch.setattr(lb, "get_llm_client", lambda: Boom("x", 77))
+    billed = []
+    monkeypatch.setattr(lb, "_debit_independent", lambda sid, n: billed.append(n))
+    u = create_user(db)
+    s = create_startup(db, owner=u)
+    with pytest.raises(RuntimeError):
+        lb.metered_complete_json(db, s.id, [], schema={}, max_tokens=10)
+    assert billed == [77]

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Type an answer first.",
+    "field_errors": []
+  }
+}

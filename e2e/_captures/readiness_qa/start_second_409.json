@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SESSION_ACTIVE",
+    "message": "You already have a session in progress.",
+    "field_errors": []
+  }
+}
