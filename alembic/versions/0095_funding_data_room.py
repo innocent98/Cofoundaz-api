@@ -111,7 +111,6 @@ def upgrade() -> None:
         sa.Column("email", sa.String(320), nullable=False),
         sa.Column("scopes", postgresql.JSONB(), nullable=False),
         sa.Column("allow_download", sa.Boolean(), nullable=False),
-        sa.Column("watermark", sa.Boolean(), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("token_hash", sa.String(64), nullable=False),
         sa.Column("token_version", sa.Integer(), nullable=False),

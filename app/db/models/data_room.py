@@ -103,7 +103,6 @@ class DataRoomShare(UUIDMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False)  # stored lower-case
     scopes: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)  # folder ids
     allow_download: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    watermark: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
