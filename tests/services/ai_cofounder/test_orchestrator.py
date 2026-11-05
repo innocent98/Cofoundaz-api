@@ -385,7 +385,8 @@ def test_cancel_stops_a_generating_reply_and_the_job_then_does_nothing(db, monke
     assert msg.status == ChatMessageStatus.cancelled and llm.text_calls == []
     assert _used(db, s) == 0
     # idempotent, and the conversation accepts a new message again
-    assert cancel_message(db, conv, msg.id).status == ChatMessageStatus.cancelled
+    res1 = cancel_message(db, conv, msg.id)
+    assert res1.status == ChatMessageStatus.cancelled
     post_message(db, conv, "next question")
 
 

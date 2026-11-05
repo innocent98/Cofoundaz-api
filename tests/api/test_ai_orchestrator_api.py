@@ -115,9 +115,11 @@ def test_cancel_after_completion_is_409_and_unknown_ids_404(client, db):
     r = client.post(f"{C}/{conv['id']}/messages/{mid}/cancel", headers=h)
     assert r.status_code == 409 and r.json()["error"]["code"] == "REPLY_NOT_RUNNING"
     user_mid = conv["messages"][0]["id"]
-    assert client.post(f"{C}/{conv['id']}/messages/{user_mid}/cancel", headers=h).status_code == 404
+    res1 = client.post(f"{C}/{conv['id']}/messages/{user_mid}/cancel", headers=h)
+    assert res1.status_code == 404
     bad = "00000000-0000-0000-0000-000000000009"
-    assert client.post(f"{C}/{conv['id']}/messages/{bad}/cancel", headers=h).status_code == 404
+    res2 = client.post(f"{C}/{conv['id']}/messages/{bad}/cancel", headers=h)
+    assert res2.status_code == 404
 
 
 def test_cancel_is_private_to_the_conversation_owner_and_closed_to_other_roles(client, db):
@@ -129,9 +131,12 @@ def test_cancel_is_private_to_the_conversation_owner_and_closed_to_other_roles(c
     conv = client.post(C, headers=h, json={"message": "How long is my runway?"}).json()["data"]
     mid = conv["messages"][1]["id"]
     url = f"{C}/{conv['id']}/messages/{mid}/cancel"
-    assert client.post(url, headers=tm).status_code == 404  # a teammate cannot see or stop it
-    assert client.post(url, headers=mentor).status_code == 403
-    assert client.post(url, headers=acct).status_code == 403
+    res3 = client.post(url, headers=tm)
+    assert res3.status_code == 404  # a teammate cannot see or stop it
+    res4 = client.post(url, headers=mentor)
+    assert res4.status_code == 403
+    res5 = client.post(url, headers=acct)
+    assert res5.status_code == 403
     still = client.get(f"{C}/{conv['id']}", headers=h).json()["data"]
     assert still["messages"][1]["status"] == "generating"
 
