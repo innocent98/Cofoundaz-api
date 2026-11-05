@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_STATE",
+    "message": "Only a live listing can be unlisted.",
+    "field_errors": []
+  }
+}

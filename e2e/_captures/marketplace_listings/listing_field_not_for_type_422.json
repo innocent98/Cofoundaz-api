@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FIELD_NOT_FOR_TYPE",
+    "message": "'duration_min' doesn't apply to a package.",
+    "field_errors": []
+  }
+}

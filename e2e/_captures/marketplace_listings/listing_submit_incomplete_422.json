@@ -1,0 +1,20 @@
+{
+  "error": {
+    "code": "SUBMISSION_INCOMPLETE",
+    "message": "A few things are still needed before you can submit.",
+    "field_errors": [
+      {
+        "field": "description",
+        "message": "Describe the service in at least 50 characters."
+      },
+      {
+        "field": "delivery_days",
+        "message": "Say how many days delivery takes."
+      },
+      {
+        "field": "deliverables",
+        "message": "List at least one deliverable."
+      }
+    ]
+  }
+}

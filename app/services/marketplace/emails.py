@@ -141,3 +141,39 @@ def deliver(messages: list[EmailMessage]) -> list[str]:
             log.warning(f"[marketplace] email to {msg.to} failed: {exc}")
             undelivered.append(msg.to)
     return undelivered
+
+
+def listing_approved_email(
+    to: str, *, name: str | None, title: str, revision: bool
+) -> EmailMessage:
+    what = "your edit to" if revision else "your listing"
+    return EmailMessage(
+        to=to,
+        subject="Your Marketplace listing is live" if not revision else "Your listing edit is live",
+        html=_render(
+            title="Approved",
+            intro=f"{_greet(name)} {what} <strong>{escape(title)}</strong> has been approved and is live.",
+            cta_label="Open your listings",
+            action_url=f"{_portal()}/listings",
+            expiry_note="Founders can find it in the Marketplace now.",
+        ),
+    )
+
+
+def listing_feedback_email(
+    to: str, *, name: str | None, title: str, headline: str, detail: str
+) -> EmailMessage:
+    return EmailMessage(
+        to=to,
+        subject=f"{headline}: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title=headline,
+            intro=(
+                f"{_greet(name)} about <strong>{escape(title)}</strong>: <br><br>"
+                f"<em>{escape(detail)}</em>"
+            ),
+            cta_label="Open your listings",
+            action_url=f"{_portal()}/listings",
+            expiry_note="Your live listing, if any, is unchanged.",
+        ),
+    )

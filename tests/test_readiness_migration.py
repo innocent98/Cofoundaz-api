@@ -9,7 +9,13 @@ from sqlalchemy.engine import make_url
 
 from app.core.config import settings
 
-TABLES = {"readiness_scores", "readiness_score_history", "readiness_inputs", "deck_reviews"}
+TABLES = {
+    "readiness_scores",
+    "readiness_score_history",
+    "readiness_inputs",
+    "deck_reviews",
+    "mock_sessions",
+}
 
 
 def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
@@ -23,16 +29,17 @@ def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_migration_chain_includes_0089_and_0091():
+def test_migration_chain_includes_0089_0091_and_0093():
     heads = _alembic(str(settings.DATABASE_URL), "heads")
     assert heads.returncode == 0, heads.stderr
     assert heads.stdout.count("(head)") == 1, heads.stdout
     history = _alembic(str(settings.DATABASE_URL), "history")
     assert "0089_readiness_scores" in history.stdout
     assert "0091_readiness_deck_reviews" in history.stdout
+    assert "0093_readiness_mock_qa" in history.stdout
 
 
-def test_0089_and_0091_upgrade_downgrade_upgrade_on_a_scratch_database():
+def test_readiness_migrations_upgrade_downgrade_upgrade_on_a_scratch_database():
     base = make_url(settings.TEST_DATABASE_URL or str(settings.DATABASE_URL))
     name = f"readiness_mig_{uuid.uuid4().hex[:8]}"
     admin = create_engine(base, isolation_level="AUTOCOMMIT")
@@ -48,6 +55,12 @@ def test_0089_and_0091_upgrade_downgrade_upgrade_on_a_scratch_database():
         up = _alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr
         assert TABLES <= set(inspect(eng).get_table_names())
+        top = _alembic(scratch_url, "downgrade", "0092_marketplace_providers")
+        assert top.returncode == 0, top.stderr
+        mid = set(inspect(eng).get_table_names())
+        assert "mock_sessions" not in mid and "deck_reviews" in mid
+        up2 = _alembic(scratch_url, "upgrade", "head")
+        assert up2.returncode == 0, up2.stderr
         one = _alembic(scratch_url, "downgrade", "0090_funding_core")
         assert one.returncode == 0, one.stderr
         left = set(inspect(eng).get_table_names())

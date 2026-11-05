@@ -48,7 +48,9 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "billing.usage.threshold": FOUNDER,
     "billing.plan.changed": FOUNDER,
     "readiness.improved": FOUNDER,
+    "readiness.qa.scored": FOUNDER,
     "funding.round.committed_changed": CORE,
+    "funding.dataroom.viewed": CORE,
     "kpi.threshold.crossed": CORE,  # the test payload's audience is marketing
     "business.suggestion.created": FOUNDER,
     # Pages every member can open (Health, Roadmap, Business Builder, Team)

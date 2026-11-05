@@ -2,8 +2,11 @@
 staff see as chips next to the application. It never blocks a save; it only tells the reviewer
 where to look."""
 
+import hashlib
 import re
 from typing import Any
+
+from app.services.marketplace.constants import PRICE_MIN_MINOR, PRICE_SANE_MAX_MINOR
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]?){9,}(?!\d)")
@@ -36,4 +39,35 @@ def prescreen(fields: dict[str, str | None]) -> dict[str, Any]:
             if (rule, name) not in seen and pattern.search(text):
                 seen.add((rule, name))
                 flags.append({"rule": rule, "field": name})
+    return {"flags": flags, "clean": not flags}
+
+
+LISTING_FIELDS = ("title", "summary", "description", "deliverables", "tags")
+
+
+def _fp(value: object) -> str:
+    """A short fingerprint of the exact value a flag was raised for. Staff accept a flag for that
+    value only: a different value in the same field is a new flag."""
+    return hashlib.sha256(str(value).encode()).hexdigest()[:12]
+
+
+def prescreen_listing(fields: dict[str, object], price_minor: int | None) -> dict[str, Any]:
+    """The same deterministic rules over a listing's text, plus a price sanity chip. Each flag is
+    `{rule, field, fp}` where `fp` fingerprints the flagged value."""
+    flat: dict[str, str | None] = {}
+    for name in LISTING_FIELDS:
+        value = fields.get(name)
+        if isinstance(value, list):
+            flat[name] = " ".join(str(v) for v in value)
+        else:
+            flat[name] = str(value) if value else None
+    flags: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for name, text in flat.items():
+        for rule, pattern in _RULES:
+            if (rule, name) not in seen and text and pattern.search(text):
+                seen.add((rule, name))
+                flags.append({"rule": rule, "field": name, "fp": _fp(text)})
+    if price_minor is not None and not PRICE_MIN_MINOR <= price_minor <= PRICE_SANE_MAX_MINOR:
+        flags.append({"rule": "price_out_of_range", "field": "price_minor", "fp": _fp(price_minor)})
     return {"flags": flags, "clean": not flags}

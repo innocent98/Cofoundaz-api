@@ -1,0 +1,6 @@
+{
+  "to": "delivered+e2e-c1e1f86ec07f@resend.dev",
+  "subject": "Your Marketplace listing is live",
+  "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">Approved</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, your listing <strong>Contract review session</strong> has been approved and is live.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider/listings\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Open your listings</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider/listings\" style=\"color:#4f46e5\">http://localhost:3000/provider/listings</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Founders can find it in the Marketplace now.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
+  "sent_at": "2026-11-05T21:09:59.502065+00:00"
+}

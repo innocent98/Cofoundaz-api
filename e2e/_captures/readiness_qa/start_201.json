@@ -1,0 +1,31 @@
+{
+  "data": {
+    "session": {
+      "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
+      "focus": "financials",
+      "intensity": "skeptical_vc",
+      "status": "active",
+      "error": null,
+      "turns": 0,
+      "max_answers": 10,
+      "rating": null,
+      "rating_label": null,
+      "average": null,
+      "job_id": null,
+      "started_at": "2026-11-05T20:00:46.166375+00:00",
+      "ended_at": null,
+      "duration_minutes": null,
+      "transcript": [
+        {
+          "at": "2026-11-05T20:00:46.170561+00:00",
+          "role": "investor",
+          "text": "[stub-llm] AI-generated assessment narrative."
+        }
+      ],
+      "transcript_purged": false,
+      "scorecard": null
+    },
+    "reply": "[stub-llm] AI-generated assessment narrative."
+  },
+  "meta": null
+}

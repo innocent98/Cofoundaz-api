@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SESSION_REQUIRED",
+    "message": "Enter the code we emailed you to continue.",
+    "field_errors": []
+  }
+}

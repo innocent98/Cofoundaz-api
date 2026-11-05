@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VIEW_ONLY_UNSUPPORTED",
+    "message": "This file type can't be shown view-only. Ask the sender for a PDF.",
+    "field_errors": []
+  }
+}

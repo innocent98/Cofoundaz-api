@@ -51,6 +51,7 @@ SCHED_SALES_BOUNCES = "scheduled.sales.outreach_bounces"
 OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 minutes
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
+SCHED_QA_RETENTION = "scheduled.readiness.qa_retention"
 SCHED_NOTIF_DIGEST = "scheduled.notifications.digest"
 SCHED_JOURNAL_NUDGE = "scheduled.journal.nudge"
 JOURNAL_REMINDER_HOUR = 20  # local; the evening writing reminder
@@ -126,6 +127,21 @@ def _due_missions(db: Session, now: datetime) -> list[Due]:
         Due("mission.generate", str(sid), period, SCHED_MISSION, sid, {"startup_id": str(sid)})
         for sid in _active_startup_ids(db)
         if str(sid) not in claimed and now_t >= delivery.get(sid, default)
+    ]
+
+
+def _due_qa_retention(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
+    """One sweep per local day, for every workspace: Mock Q&A transcripts are kept 90 days, and
+    a session left open for a day is closed (D-IR-7)."""
+    return [
+        Due(
+            "readiness.qa_retention",
+            "all",
+            _local(now).date().isoformat(),
+            SCHED_QA_RETENTION,
+            None,
+            {},
+        )
     ]
 
 
@@ -643,6 +659,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_invoice_overdue(db, now),
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
+        *_due_qa_retention(db, now),
         *_due_notification_digests(db, now),
         *_due_journal_nudges(db, now),
         *_due_calendar_syncs(db, now),

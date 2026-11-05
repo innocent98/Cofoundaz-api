@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "text/plain; charset=utf-8",
+    "content-disposition": "inline; filename=\"model-notes.txt\"",
+    "cache-control": "private, no-store"
+  },
+  "body": "Placeholder model notes"
+}

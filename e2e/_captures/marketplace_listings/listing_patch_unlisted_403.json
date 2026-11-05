@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "LISTING_UNLISTED",
+    "message": "This listing was taken down. Contact support.",
+    "field_errors": []
+  }
+}

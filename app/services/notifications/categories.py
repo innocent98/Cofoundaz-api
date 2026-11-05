@@ -58,6 +58,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "healthscore.dropped": "health_assessment",
     "healthscore.record": "health_assessment",
     "readiness.improved": "health_assessment",
+    "readiness.qa.scored": "health_assessment",
     "assessment.completed": "health_assessment",
     "workspace.member.joined": "team",
     "notification.onboarding_complete": "roadmap_missions",

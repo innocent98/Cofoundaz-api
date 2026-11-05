@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Unknown category.",
+    "field_errors": [
+      {
+        "field": "category",
+        "message": "Use one of: Legal, Accounting, Design, Development, Marketing."
+      }
+    ]
+  }
+}

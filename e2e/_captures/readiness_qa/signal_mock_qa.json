@@ -1,0 +1,10 @@
+{
+  "key": "story.mock_qa",
+  "href": "/investor-readiness/qa",
+  "note": null,
+  "unit": "/5",
+  "label": "Defended the pitch (mock Q&A rating, out of 5)",
+  "score": 100.0,
+  "value": 3.67,
+  "target": 3.5
+}
