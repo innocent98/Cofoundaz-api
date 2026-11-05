@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "RANGE_TOO_LONG",
+    "message": "Ask for at most 14 days at a time.",
+    "field_errors": []
+  }
+}

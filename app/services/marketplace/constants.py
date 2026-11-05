@@ -34,3 +34,20 @@ def required_checks(category: str | None) -> tuple[str, ...]:
     if category in REGULATED:
         return ("id", "licence", "references")
     return ("id", "portfolio", "references")
+
+
+# ---- slice B: listings and availability
+DEFAULT_COMMISSION_BPS: Final = 1500  # D-MP-5: 15% taken from the expert's side
+PRICE_MIN_MINOR: Final = 100_000  # N1,000 in kobo: below this is flagged, not refused
+PRICE_SANE_MAX_MINOR: Final = 1_000_000_000  # N10,000,000: above this is flagged
+PRICE_HARD_MAX_MINOR: Final = 10_000_000_000  # N100,000,000: refused outright
+CONSULT_DURATIONS: Final = tuple(range(15, 241, 15))
+MAX_DELIVERABLES: Final = 10
+MAX_TAGS: Final = 8
+MAX_LISTINGS_PER_PROVIDER: Final = 20
+DEFAULT_MIN_NOTICE_H: Final = 24
+SLOT_STEPS: Final = (15, 30, 60)
+MAX_SLOT_RANGE_DAYS: Final = 14
+MAX_RULES: Final = 28
+MAX_EXCEPTIONS: Final = 90
+DIRECTORY_PAGE_SIZE: Final = 12

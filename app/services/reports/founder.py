@@ -20,9 +20,11 @@ from app.db.models.enums import (
     ReportReason,
     ReportStatus,
 )
+from app.db.models.marketplace import MarketplaceProvider
 from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.platform.audit import write_audit
+from app.services.marketplace import directory
 from app.services.reports import core
 
 LIVE = (ReportStatus.open, ReportStatus.escalated)
@@ -44,6 +46,8 @@ def _target(
     db: Session, user: User, m: Membership, item_type: ReportItemType, item_id: uuid.UUID
 ) -> tuple[str, uuid.UUID | None]:
     """The text to copy and who wrote it, for an item this person may report."""
+    if item_type in (ReportItemType.listing, ReportItemType.provider):
+        return _marketplace_target(db, user, item_type, item_id)
     if item_type == ReportItemType.ai_message:
         msg = (
             db.query(AiMessage)
@@ -79,6 +83,27 @@ def _target(
     if comment.author_id == user.id:
         raise core.err("OWN_COMMENT", "You can't report your own comment.", 422)
     return comment.body, comment.author_id
+
+
+def _marketplace_target(
+    db: Session, user: User, item_type: ReportItemType, item_id: uuid.UUID
+) -> tuple[str, uuid.UUID | None]:
+    """A listing or expert the reporter can actually see in the directory (anything else is a 404)."""
+    if item_type == ReportItemType.listing:
+        listing, owner = directory.get_listing(db, item_id)
+        text = f"{listing.title}\n{listing.summary}"
+    else:
+        profile = directory.get_provider(
+            db, item_id
+        )  # raises NotFound unless live in the directory
+        found = db.get(MarketplaceProvider, item_id)
+        if found is None:  # unreachable: get_provider just found it
+            raise NotFound()
+        owner = found
+        text = f"{profile['display_name']}\n{profile['headline'] or ''}\n{profile['bio'] or ''}"
+    if owner.user_id == user.id:
+        raise core.err("OWN_ITEM", "You can't report your own listing or profile.", 422)
+    return text, owner.user_id
 
 
 def create_report(

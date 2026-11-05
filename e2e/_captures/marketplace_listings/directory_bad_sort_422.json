@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Unknown sort.",
+    "field_errors": [
+      {
+        "field": "sort",
+        "message": "Use one of: relevance, rating, price_asc, price_desc."
+      }
+    ]
+  }
+}

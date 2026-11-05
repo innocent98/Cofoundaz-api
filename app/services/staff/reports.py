@@ -244,6 +244,7 @@ def dismiss(
 ) -> dict[str, Any]:
     r = _load(db, report_id)
     _live_only(ctx, r)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     was = r.status
     r.status = ReportStatus.dismissed
     r.decided_by, r.decided_at, r.decision_reason = ctx.user.id, core.now_utc(), reason
@@ -265,6 +266,7 @@ def escalate(
     if r.status == ReportStatus.escalated:
         raise core.err("ALREADY_ESCALATED", "This report is already escalated.", 409)
     _live_only(ctx, r)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     r.status = ReportStatus.escalated
     r.escalated_by, r.escalated_at, r.escalation_reason = ctx.user.id, core.now_utc(), reason
     _audit(db, ctx, "report.escalated", r, reason=reason, ip=ip, ua=ua)
@@ -283,12 +285,13 @@ def remove(
 ) -> dict[str, Any]:
     r, siblings = _load_with_siblings(db, report_id)
     _live_only(ctx, r)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     now = core.now_utc()
     # R8: everyone who reported this item is answered by the one removal.
     others = [x for x in siblings if x.status in (ReportStatus.open, ReportStatus.escalated)]
     # An escalated sibling is a Super Admin's call (R7): a removal must not close it for them.
     _super_admin_for_escalations(ctx, others)
-    hidden = core.set_removed(db, r, True, now)
+    hidden = core.set_removed(db, r, True, now, ctx.user.id)
     for o in others:
         o.status = ReportStatus.removed
         o.decided_by, o.decided_at, o.decision_reason = ctx.user.id, now, reason
@@ -318,11 +321,12 @@ def restore(
     r, siblings = _load_with_siblings(db, report_id)
     if r.status != ReportStatus.removed:
         raise core.err("NOT_REMOVED", "Only a removed item can be restored.", 409)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     now = core.now_utc()
     others = [x for x in siblings if x.status == ReportStatus.removed]
     # Undoing a Super Admin's decision on an escalated report is theirs too (R7).
     _super_admin_for_escalations(ctx, others)
-    shown = core.set_removed(db, r, False, now)
+    shown = core.set_removed(db, r, False, now, ctx.user.id)
     for o in others:
         o.status = ReportStatus.restored
         o.decided_by, o.decided_at, o.decision_reason = ctx.user.id, now, reason

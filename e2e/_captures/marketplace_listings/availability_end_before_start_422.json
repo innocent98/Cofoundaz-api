@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Each weekly window must end after it starts.",
+    "field_errors": []
+  }
+}

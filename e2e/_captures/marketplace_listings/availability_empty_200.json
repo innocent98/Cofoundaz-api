@@ -1,0 +1,10 @@
+{
+  "data": {
+    "timezone": "Africa/Lagos",
+    "min_notice_h": 24,
+    "buffer_min": 0,
+    "rules": [],
+    "exceptions": []
+  },
+  "meta": null
+}

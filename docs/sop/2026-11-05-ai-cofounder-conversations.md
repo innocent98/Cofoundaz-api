@@ -1,6 +1,6 @@
 # AI Co-Founder: conversation management (slice 1)
 
-**What shipped:** gap-list rows 12, 13, 14, 10 (`query` + `topic`) and 17 (archive, "Delete forever") from `docs/checklist/ai-cofounder-prd-gaps.md` (FE repo). Branch `feature/ai-cofounder-slice-1`, migration **`0097_ai_conversation_archive`** on `0095_funding_data_room` (the lead re-chains). FE guide `docs/fe-integration-guide-ai-conversations.md`.
+**What shipped:** gap-list rows 12, 13, 14, 10 (`query` + `topic`) and 17 (archive, "Delete forever") from `docs/checklist/ai-cofounder-prd-gaps.md` (FE repo). Branch `feature/ai-cofounder-slice-1`, migration **`0097_ai_conversation_archive`** on `0094_marketplace_listings`. FE guide `docs/fe-integration-guide-ai-conversations.md`.
 
 **Why:** a blank message made a model call and an empty title; an empty conversation could be created; `/ai/status` leaked token spend and failure times to mentor and accountant; list filters were ignored; and a founder had no way to remove a private conversation.
 
