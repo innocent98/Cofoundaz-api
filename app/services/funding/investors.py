@@ -40,6 +40,14 @@ def _iso(v: datetime | date | None) -> str | None:
     return v.isoformat() if v else None
 
 
+def _round_of(db: Session, row: Investor) -> FundingRound:
+    """The investor's round. The FK guarantees it exists; a miss is a vanished row, i.e. 404."""
+    rnd = db.get(FundingRound, row.round_id)
+    if rnd is None:
+        raise NotFound()
+    return rnd
+
+
 def get_investor_locked(db: Session, startup_id: uuid.UUID, investor_id: uuid.UUID) -> Investor:
     """The investor with a row lock held to the end of the transaction, for any write that decides
     from what it reads (stage moves, record-funding)."""
@@ -281,8 +289,7 @@ def update_investor(
     data: InvestorUpdate,
 ) -> Investor:
     row = get_investor(db, startup_id, investor_id)
-    rnd = db.get(FundingRound, row.round_id)
-    assert rnd is not None  # noqa: S101 - FK guarantees it
+    rnd = _round_of(db, row)
     before = _committed_now(db, rnd)
     given = data.model_fields_set
     if (
@@ -320,8 +327,7 @@ def delete_investor(
     db: Session, startup_id: uuid.UUID, actor_id: uuid.UUID | None, investor_id: uuid.UUID
 ) -> None:
     row = get_investor(db, startup_id, investor_id)
-    rnd = db.get(FundingRound, row.round_id)
-    assert rnd is not None  # noqa: S101
+    rnd = _round_of(db, row)
     before = _committed_now(db, rnd)
     db.delete(row)
     db.flush()
@@ -336,8 +342,7 @@ def move_stage(
     data: StageMove,
 ) -> tuple[Investor, dict[str, Any] | None]:
     row = get_investor_locked(db, startup_id, investor_id)
-    rnd = db.get(FundingRound, row.round_id)
-    assert rnd is not None  # noqa: S101
+    rnd = _round_of(db, row)
     target = data.stage.value
     if target == InvestorStage.passed.value:
         if data.passed_reason is None:
@@ -474,8 +479,7 @@ def record_funding(
     # Row lock: the "already recorded?" read decides a ledger write, so two concurrent confirms
     # must queue here and the second one sees the first one's transaction id.
     row = get_investor_locked(db, startup_id, investor_id)
-    rnd = db.get(FundingRound, row.round_id)
-    assert rnd is not None  # noqa: S101
+    rnd = _round_of(db, row)
     if row.stage != InvestorStage.committed.value or not row.committed_minor:
         raise AppError("NOT_COMMITTED", "Move the investor to Committed with an amount first.", 409)
     if row.recorded_transaction_id is not None:
