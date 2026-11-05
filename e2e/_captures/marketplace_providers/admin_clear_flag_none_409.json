@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NO_FLAGGED_EDIT",
+    "message": "There's no flagged profile edit to clear.",
+    "field_errors": []
+  }
+}

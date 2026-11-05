@@ -550,6 +550,7 @@ def clear_profile_flag(
     provider_id: uuid.UUID,
     *,
     reason: str,
+    seen_updated_at: str,
     ip: str | None,
     ua: str | None,
 ) -> MarketplaceProvider:
@@ -558,6 +559,9 @@ def clear_profile_flag(
     flag = (row.vetting_json or {}).get("profile_flag")
     if flag is None:
         raise err("NO_FLAGGED_EDIT", "There's no flagged profile edit to clear.")
+    if flag.get("updated_at") != seen_updated_at:
+        # The expert edited again after the reviewer opened it: they haven't seen these flags.
+        raise err("FLAG_CHANGED", "This flag changed since you opened it. Review it again.")
     row.vetting_json = {k: v for k, v in row.vetting_json.items() if k != "profile_flag"}
     write_audit(
         db,

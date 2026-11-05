@@ -41,6 +41,7 @@ Any other transition is `409 INVALID_STATE` (for example approving twice).
 | P11 (review fix) | **Staff cannot act on their own expert profile**: checklist, approve, reject, request changes, suspend and unsuspend answer 422 `CANNOT_ACT_ON_SELF`, and inviting your own email is the same 422. |
 | P12 (review fix) | **Resubmitting after `changes_requested` clears every checklist tick** (and the licence expiry), because the expert may have swapped a credential or changed name or category. Staff re-tick from scratch; `missing_checks` lists all required checks again. |
 | P13 (review fix) | Files that are not scan-`clean` are not served to anyone: 409 `FILE_NOT_CLEAN` on the expert's download and on the staff read. |
+| P14 (D-MP-L-new, Adebayo 2026-11-05: "Lock name, queue flagged") | **An approved expert cannot change `display_name`** (422 `NAME_LOCKED`, "contact support"; re-sending the same name is fine). Other edits to headline, bio and location go live at once; if the deterministic pre-screen trips on a field they just changed, the expert **stays approved and live** and the edit appears in the Admin queue as a *flagged profile edit* (`profile_flag`, `GET /admin/marketplace/providers?flagged=true`, `flagged_edits` in the counts). Staff dismiss it with `POST …/clear-flag` or answer it with a suspension. Flags merge (a second flagged edit adds to the first, `at` stays the earliest, `updated_at` moves). Avatar edits are never flagged (the pre-screen reads text only). The expert never sees `profile_flag`. |
 | P10 (default) | Terms: the call that joins (`accept` / `apply`) takes `accept_terms: true` and stores `terms_version` (`draft-2026-11` until counsel's text replaces it). |
 
 ## Auth rules the FE must handle on `/provider/*`
@@ -137,10 +138,10 @@ What an invitation is for, so the FE can show "Ngozi, you're invited as a Legal 
 ```json
 {
   "data": {
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "display_name": "Ngozi Eze",
     "category": "Legal",
-    "expires_at": "2026-11-19T15:09:55.674819+00:00",
+    "expires_at": "2026-11-19T15:24:58.834272+00:00",
     "terms_version": "draft-2026-11"
   },
   "meta": null
@@ -193,8 +194,8 @@ Signed in and verified, as **the invited email**. Body `{"token": "<from the lin
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "invited",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -206,7 +207,7 @@ Signed in and verified, as **the invited email**. Body `{"token": "<from the lin
     "timezone": "Africa/Lagos",
     "location": null,
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "submitted_at": null,
     "review_message": null,
     "can_edit_profile": true,
@@ -278,8 +279,8 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "invited",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -294,7 +295,7 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "submitted_at": null,
     "review_message": null,
     "can_edit_profile": true,
@@ -307,13 +308,13 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ]
   },
@@ -325,8 +326,8 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "changes_requested",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -341,8 +342,8 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
-    "submitted_at": "2026-11-05T15:09:56.255290+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "submitted_at": "2026-11-05T15:24:59.479931+00:00",
     "review_message": "The licence scan is blurry; please upload a clearer copy.",
     "can_edit_profile": true,
     "can_submit": true,
@@ -354,13 +355,13 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ]
   },
@@ -372,8 +373,8 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "approved",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -388,8 +389,8 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
-    "submitted_at": "2026-11-05T15:09:56.536154+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "submitted_at": "2026-11-05T15:24:59.918081+00:00",
     "review_message": null,
     "can_edit_profile": true,
     "can_submit": false,
@@ -405,13 +406,13 @@ The expert's own record. **Field-nesting notes:** it is flat (no `provider` wrap
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ]
   },
@@ -427,8 +428,8 @@ Send only what changed. Unknown fields are a 422 (an expert cannot send `status`
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "invited",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -443,7 +444,7 @@ Send only what changed. Unknown fields are a 422 (an expert cannot send `status`
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "submitted_at": null,
     "review_message": null,
     "can_edit_profile": true,
@@ -592,8 +593,8 @@ No body. Moves a draft (`invited`, `applied`, `changes_requested`) to `in_review
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "in_review",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -608,8 +609,8 @@ No body. Moves a draft (`invited`, `applied`, `changes_requested`) to `in_review
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
-    "submitted_at": "2026-11-05T15:09:56.255290+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "submitted_at": "2026-11-05T15:24:59.479931+00:00",
     "review_message": null,
     "can_edit_profile": false,
     "can_submit": false,
@@ -621,13 +622,13 @@ No body. Moves a draft (`invited`, `applied`, `changes_requested`) to `in_review
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ]
   },
@@ -645,13 +646,13 @@ Not exercised live (unit tests only, `tests/api/test_marketplace_providers.py`):
 ```json
 {
   "data": {
-    "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+    "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
     "purpose": "credential",
     "filename": "bar-licence.pdf",
     "mime": "application/pdf",
     "size_bytes": 38,
     "scan_status": "clean",
-    "created_at": "2026-11-05T15:09:56.185553+00:00"
+    "created_at": "2026-11-05T15:24:59.394784+00:00"
   },
   "meta": null
 }
@@ -698,7 +699,7 @@ Not exercised live (unit tests only, `tests/api/test_marketplace_providers.py`):
 ```json
 {
   "data": {
-    "id": "e2f04804-da29-4896-b58f-20dafccd6160",
+    "id": "da6fb834-a4f1-4bca-819e-b1fbd29b7bee",
     "title": "Fintech rebrand",
     "description": null,
     "url": "https://portfolio.example.com/fintech",
@@ -742,11 +743,12 @@ Guard: active staff with TOTP on. Anyone else gets the hidden 404 (`{"detail": "
       "applied": 0,
       "in_review": 0,
       "changes_requested": 0,
-      "approved": 0,
+      "approved": 1,
       "suspended": 0,
-      "rejected": 0
+      "rejected": 1
     },
-    "licence_expiring": 0
+    "licence_expiring": 0,
+    "flagged_edits": 0
   },
   "meta": null
 }
@@ -762,20 +764,21 @@ Oldest first (a work queue). `limit` 1-100 (default 25), `cursor` from `meta.nex
   "data": {
     "providers": [
       {
-        "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-        "user_id": "f287dad8-7499-4eb0-b932-492e93831f58",
-        "email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+        "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+        "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "display_name": "Ngozi Eze",
         "headline": "Corporate lawyer for early-stage startups",
         "category": "Legal",
         "status": "in_review",
         "source": "invite",
-        "submitted_at": "2026-11-05T15:09:56.255290+00:00",
-        "created_at": "2026-11-05T15:09:55.623500+00:00",
+        "submitted_at": "2026-11-05T15:24:59.479931+00:00",
+        "created_at": "2026-11-05T15:24:58.771567+00:00",
         "invite_pending": false,
         "invite_expires_at": null,
         "licence_expires_on": null,
         "licence_expiring": false,
+        "profile_flag": null,
         "prescreen_flags": [],
         "vetted_at": null
       }
@@ -797,20 +800,21 @@ Oldest first (a work queue). `limit` 1-100 (default 25), `cursor` from `meta.nex
 {
   "data": {
     "provider": {
-      "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+      "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
       "user_id": null,
-      "email": "delivered+e2e-80136db0f1ba@resend.dev",
+      "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
       "display_name": "Ngozi Eze",
       "headline": null,
       "category": "Legal",
       "status": "invited",
       "source": "invite",
       "submitted_at": null,
-      "created_at": "2026-11-05T15:09:55.623500+00:00",
+      "created_at": "2026-11-05T15:24:58.771567+00:00",
       "invite_pending": true,
-      "invite_expires_at": "2026-11-19T15:09:55.631270+00:00",
+      "invite_expires_at": "2026-11-19T15:24:58.787254+00:00",
       "licence_expires_on": null,
       "licence_expiring": false,
+      "profile_flag": null,
       "prescreen_flags": [],
       "vetted_at": null
     },
@@ -850,10 +854,10 @@ Oldest first (a work queue). `limit` 1-100 (default 25), `cursor` from `meta.nex
 `email_invite` (the emailed message; the link is `{APP_BASE_URL}/provider/invite/{token}`):
 ```json
 {
-  "to": "delivered+e2e-80136db0f1ba@resend.dev",
+  "to": "delivered+e2e-7aaf23cfaaa6@resend.dev",
   "subject": "You're invited to join the Cofoundaz Marketplace",
-  "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">Join the Cofoundaz Marketplace</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, Cofoundaz has invited you to offer your services as a Legal expert to founders on our Marketplace. Accept the invitation, complete your profile and upload your credentials, and our team will review your application.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider/invite/L4YrKfLY_pOgrZj-dHxhjCmHfMspegDgq8izkDN9q_s\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Accept invitation</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider/invite/L4YrKfLY_pOgrZj-dHxhjCmHfMspegDgq8izkDN9q_s\" style=\"color:#4f46e5\">http://localhost:3000/provider/invite/L4YrKfLY_pOgrZj-dHxhjCmHfMspegDgq8izkDN9q_s</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">This invitation expires in 14 days.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-05T15:09:55.636033+00:00"
+  "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">Join the Cofoundaz Marketplace</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, Cofoundaz has invited you to offer your services as a Legal expert to founders on our Marketplace. Accept the invitation, complete your profile and upload your credentials, and our team will review your application.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider/invite/Llg1MTdVeRytP0KbhQ_AT52_dqb9U2icQvm90LoaaNc\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Accept invitation</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider/invite/Llg1MTdVeRytP0KbhQ_AT52_dqb9U2icQvm90LoaaNc\" style=\"color:#4f46e5\">http://localhost:3000/provider/invite/Llg1MTdVeRytP0KbhQ_AT52_dqb9U2icQvm90LoaaNc</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">This invitation expires in 14 days.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
+  "sent_at": "2026-11-05T15:24:58.791427+00:00"
 }
 ```
 
@@ -877,20 +881,21 @@ Resend replaces the link and extends the expiry; revoke deletes the pending invi
 {
   "data": {
     "provider": {
-      "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+      "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
       "user_id": null,
-      "email": "delivered+e2e-80136db0f1ba@resend.dev",
+      "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
       "display_name": "Ngozi Eze",
       "headline": null,
       "category": "Legal",
       "status": "invited",
       "source": "invite",
       "submitted_at": null,
-      "created_at": "2026-11-05T15:09:55.623500+00:00",
+      "created_at": "2026-11-05T15:24:58.771567+00:00",
       "invite_pending": true,
-      "invite_expires_at": "2026-11-19T15:09:55.674819+00:00",
+      "invite_expires_at": "2026-11-19T15:24:58.834272+00:00",
       "licence_expires_on": null,
       "licence_expiring": false,
+      "profile_flag": null,
       "prescreen_flags": [],
       "vetted_at": null
     },
@@ -914,20 +919,21 @@ The full application. Notes for the FE:
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "user_id": "f287dad8-7499-4eb0-b932-492e93831f58",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "display_name": "Ngozi Eze",
     "headline": "Corporate lawyer for early-stage startups",
     "category": "Legal",
     "status": "in_review",
     "source": "invite",
-    "submitted_at": "2026-11-05T15:09:56.255290+00:00",
-    "created_at": "2026-11-05T15:09:55.623500+00:00",
+    "submitted_at": "2026-11-05T15:24:59.479931+00:00",
+    "created_at": "2026-11-05T15:24:58.771567+00:00",
     "invite_pending": false,
     "invite_expires_at": null,
     "licence_expires_on": null,
     "licence_expiring": false,
+    "profile_flag": null,
     "prescreen_flags": [],
     "vetted_at": null,
     "bio": "Fifteen years advising founders on contracts, shareholder agreements and fundraising.",
@@ -939,7 +945,7 @@ The full application. Notes for the FE:
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "terms_version": "draft-2026-11",
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "review_message": null,
     "suspended_reason": null,
     "commission_bps": null,
@@ -963,44 +969,44 @@ The full application. Notes for the FE:
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ],
     "history": [
       {
         "action": "marketplace.provider.submitted",
-        "at": "2026-11-05T15:09:56.243976+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.472626+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.profile_updated",
-        "at": "2026-11-05T15:09:56.120918+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.304361+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_accepted",
-        "at": "2026-11-05T15:09:56.016681+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.222046+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_resent",
-        "at": "2026-11-05T15:09:55.663617+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.825805+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invited",
-        "at": "2026-11-05T15:09:55.623500+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.771567+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       }
     ]
@@ -1013,22 +1019,28 @@ The full application. Notes for the FE:
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "user_id": "f287dad8-7499-4eb0-b932-492e93831f58",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "display_name": "Ngozi Eze",
-    "headline": "Corporate lawyer for early-stage startups",
+    "headline": "Senior counsel, call +234 803 123 4567",
     "category": "Legal",
     "status": "approved",
     "source": "invite",
-    "submitted_at": "2026-11-05T15:09:56.536154+00:00",
-    "created_at": "2026-11-05T15:09:55.623500+00:00",
+    "submitted_at": "2026-11-05T15:24:59.918081+00:00",
+    "created_at": "2026-11-05T15:24:58.771567+00:00",
     "invite_pending": false,
     "invite_expires_at": null,
     "licence_expires_on": "2027-11-05",
     "licence_expiring": false,
-    "prescreen_flags": [],
-    "vetted_at": "2026-11-05T15:09:56.646079+00:00",
+    "profile_flag": null,
+    "prescreen_flags": [
+      {
+        "rule": "contact_details",
+        "field": "headline"
+      }
+    ],
+    "vetted_at": "2026-11-05T15:25:00.025025+00:00",
     "bio": "Fifteen years advising founders on contracts, shareholder agreements and fundraising.",
     "categories": [],
     "languages": [
@@ -1038,7 +1050,7 @@ The full application. Notes for the FE:
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "terms_version": "draft-2026-11",
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "review_message": null,
     "suspended_reason": null,
     "commission_bps": null,
@@ -1051,21 +1063,21 @@ The full application. Notes for the FE:
     "missing_checks": [],
     "checks": {
       "id": {
-        "at": "2026-11-05T15:09:56.565582+00:00",
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
         "done": true,
         "note": "NIN slip seen"
       },
       "licence": {
-        "at": "2026-11-05T15:09:56.565582+00:00",
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
         "done": true,
         "note": "Bar roll number matched",
         "expires_on": "2027-11-05"
       },
       "references": {
-        "at": "2026-11-05T15:09:56.565582+00:00",
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
         "done": true,
         "note": "Two founders emailed",
         "count": 2
@@ -1087,86 +1099,104 @@ The full application. Notes for the FE:
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ],
     "history": [
       {
         "action": "marketplace.provider.unsuspended",
-        "at": "2026-11-05T15:11:00.675991+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:26:00.771070+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
         "action": "marketplace.provider.suspended",
-        "at": "2026-11-05T15:10:31.099501+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:25:30.511778+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
+        "action": "marketplace.provider.profile_flag_cleared",
+        "at": "2026-11-05T15:25:00.238687+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": "Phone number is the firm's public line"
+      },
+      {
+        "action": "marketplace.provider.profile_updated",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.profile_edit_flagged",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
         "action": "marketplace.provider.approved",
-        "at": "2026-11-05T15:09:56.630948+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:25:00.002472+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
         "action": "marketplace.provider.vetting_updated",
-        "at": "2026-11-05T15:09:56.559281+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.945658+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.submitted",
-        "at": "2026-11-05T15:09:56.528378+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.909193+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.changes_requested",
-        "at": "2026-11-05T15:09:56.497414+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.871499+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "The licence scan is blurry; please upload a clearer copy."
       },
       {
         "action": "marketplace.provider.vetting_updated",
-        "at": "2026-11-05T15:09:56.472504+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.849478+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.submitted",
-        "at": "2026-11-05T15:09:56.243976+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.472626+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.profile_updated",
-        "at": "2026-11-05T15:09:56.120918+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.304361+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_accepted",
-        "at": "2026-11-05T15:09:56.016681+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.222046+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_resent",
-        "at": "2026-11-05T15:09:55.663617+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.825805+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invited",
-        "at": "2026-11-05T15:09:55.623500+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.771567+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       }
     ]
@@ -1182,74 +1212,92 @@ The full application. Notes for the FE:
     "history": [
       {
         "action": "marketplace.provider.unsuspended",
-        "at": "2026-11-05T15:11:00.675991+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:26:00.771070+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
         "action": "marketplace.provider.suspended",
-        "at": "2026-11-05T15:10:31.099501+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:25:30.511778+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
+        "action": "marketplace.provider.profile_flag_cleared",
+        "at": "2026-11-05T15:25:00.238687+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": "Phone number is the firm's public line"
+      },
+      {
+        "action": "marketplace.provider.profile_updated",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.profile_edit_flagged",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
         "action": "marketplace.provider.approved",
-        "at": "2026-11-05T15:09:56.630948+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:25:00.002472+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "Checked the documents against the rubric"
       },
       {
         "action": "marketplace.provider.vetting_updated",
-        "at": "2026-11-05T15:09:56.559281+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.945658+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.submitted",
-        "at": "2026-11-05T15:09:56.528378+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.909193+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.changes_requested",
-        "at": "2026-11-05T15:09:56.497414+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.871499+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": "The licence scan is blurry; please upload a clearer copy."
       },
       {
         "action": "marketplace.provider.vetting_updated",
-        "at": "2026-11-05T15:09:56.472504+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:59.849478+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.submitted",
-        "at": "2026-11-05T15:09:56.243976+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.472626+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.profile_updated",
-        "at": "2026-11-05T15:09:56.120918+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.304361+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_accepted",
-        "at": "2026-11-05T15:09:56.016681+00:00",
-        "actor_email": "delivered+e2e-80136db0f1ba@resend.dev",
+        "at": "2026-11-05T15:24:59.222046+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invite_resent",
-        "at": "2026-11-05T15:09:55.663617+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.825805+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.provider.invited",
-        "at": "2026-11-05T15:09:55.623500+00:00",
-        "actor_email": "delivered+e2e-018d63e54359@resend.dev",
+        "at": "2026-11-05T15:24:58.771567+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
         "reason": null
       }
     ]
@@ -1311,7 +1359,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "in_review",
     "missing_checks": [
       "references"
@@ -1320,21 +1368,21 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
       "id": {
         "done": true,
         "note": "NIN slip seen",
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
-        "at": "2026-11-05T15:09:56.479889+00:00"
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "at": "2026-11-05T15:24:59.856281+00:00"
       },
       "licence": {
         "done": true,
         "note": "Bar roll number matched",
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
-        "at": "2026-11-05T15:09:56.479889+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "at": "2026-11-05T15:24:59.856281+00:00",
         "expires_on": "2027-11-05"
       },
       "references": {
         "done": true,
         "note": null,
-        "by": "fc1f6a88-cff0-4759-94db-c83bcb48cfc4",
-        "at": "2026-11-05T15:09:56.479889+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "at": "2026-11-05T15:24:59.856281+00:00",
         "count": 1
       }
     },
@@ -1348,13 +1396,127 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 }
 ```
 
+### Flagged profile edits (approved experts)
+
+`profile_name_locked_422` (expert side):
+```json
+{
+  "error": {
+    "code": "NAME_LOCKED",
+    "message": "Your name was verified, so it can't be changed here. Contact support to change it.",
+    "field_errors": []
+  }
+}
+```
+
+`profile_flagged_edit_still_live_200` (the expert's own view after a flagged edit: still `approved`, no `profile_flag`; shown trimmed to the fields that matter):
+```json
+{
+  "data": {
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "status": "approved",
+    "headline": "Senior counsel, call +234 803 123 4567",
+    "badge": {
+      "vetted": true,
+      "checks": [
+        "Identity verified",
+        "Professional licence verified",
+        "2 client references checked"
+      ]
+    }
+  }
+}
+```
+
+`admin_queue_flagged_edits` (`GET /admin/marketplace/providers?flagged=true`; each row carries `profile_flag`, also on the detail):
+```json
+{
+  "data": {
+    "providers": [
+      {
+        "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+        "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+        "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "display_name": "Ngozi Eze",
+        "headline": "Senior counsel, call +234 803 123 4567",
+        "category": "Legal",
+        "status": "approved",
+        "source": "invite",
+        "submitted_at": "2026-11-05T15:24:59.918081+00:00",
+        "created_at": "2026-11-05T15:24:58.771567+00:00",
+        "invite_pending": false,
+        "invite_expires_at": null,
+        "licence_expires_on": "2027-11-05",
+        "licence_expiring": false,
+        "profile_flag": {
+          "at": "2026-11-05T15:25:00.181345+00:00",
+          "flags": [
+            {
+              "rule": "contact_details",
+              "field": "headline"
+            }
+          ],
+          "updated_at": "2026-11-05T15:25:00.181345+00:00"
+        },
+        "prescreen_flags": [
+          {
+            "rule": "contact_details",
+            "field": "headline"
+          }
+        ],
+        "vetted_at": "2026-11-05T15:25:00.025025+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}
+```
+
+`POST /admin/marketplace/providers/{id}/clear-flag` takes `{"reason": "...", "updated_at": "<profile_flag.updated_at as you read it>"}`. If the expert edited again since, it is a 409 `FLAG_CHANGED` and nothing is cleared (re-read the detail). Clearing needs a reason but no authenticator code. No flag: 409 `NO_FLAGGED_EDIT`.
+
+`admin_clear_flag_stale_409`:
+```json
+{
+  "error": {
+    "code": "FLAG_CHANGED",
+    "message": "This flag changed since you opened it. Review it again.",
+    "field_errors": []
+  }
+}
+```
+
+`admin_clear_flag_200` (trimmed):
+```json
+{
+  "data": {
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "status": "approved",
+    "profile_flag": null
+  }
+}
+```
+
+`admin_clear_flag_none_409`:
+```json
+{
+  "error": {
+    "code": "NO_FLAGGED_EDIT",
+    "message": "There's no flagged profile edit to clear.",
+    "field_errors": []
+  }
+}
+```
+
 ### After a resubmit
 
 `admin_detail_after_resubmit_ticks_cleared` (the detail right after the expert resubmitted from `changes_requested`; note `checks` is `{}` and every required check is missing again):
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "in_review",
     "checks": {},
     "missing_checks": [
@@ -1417,7 +1579,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "changes_requested",
     "review_message": "The licence scan is blurry; please upload a clearer copy."
   }
@@ -1427,10 +1589,10 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 `email_changes_requested`:
 ```json
 {
-  "to": "delivered+e2e-80136db0f1ba@resend.dev",
+  "to": "delivered+e2e-7aaf23cfaaa6@resend.dev",
   "subject": "Changes needed on your Marketplace application",
   "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">A few changes are needed</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, our reviewer asked for some changes before we can approve your profile: <br><br><em>The licence scan is blurry; please upload a clearer copy.</em></p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Update your application</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider\" style=\"color:#4f46e5\">http://localhost:3000/provider</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Update your profile or documents, then submit again.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-05T15:09:56.506122+00:00"
+  "sent_at": "2026-11-05T15:24:59.881299+00:00"
 }
 ```
 
@@ -1438,9 +1600,9 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "approved",
-    "vetted_at": "2026-11-05T15:09:56.646079+00:00",
+    "vetted_at": "2026-11-05T15:25:00.025025+00:00",
     "badge": {
       "vetted": true,
       "checks": [
@@ -1469,7 +1631,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "suspended",
     "suspended_reason": "Checked the documents against the rubric"
   }
@@ -1480,7 +1642,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
     "status": "approved",
     "suspended_reason": null
   }
@@ -1507,7 +1669,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 ```json
 {
   "data": {
-    "id": "13a8fc60-004e-4b77-8ba7-c973e66ac871",
+    "id": "ba6a529d-96b2-428a-b772-ea4817421d73",
     "status": "rejected",
     "review_message": "The ID scan is unreadable.",
     "files": []
@@ -1518,10 +1680,10 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 `email_rejected`:
 ```json
 {
-  "to": "delivered+e2e-9d304e2ff601@resend.dev",
+  "to": "delivered+e2e-ee974bf022b4@resend.dev",
   "subject": "Your Marketplace application",
   "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">We can't approve your application</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Tolu Ade, after review we aren't able to approve your Marketplace application. Reason: Your documents were incomplete or unreadable.<br><br><em>The ID scan is unreadable.</em> Uploaded credential documents have been deleted.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/support\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Contact support</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/support\" style=\"color:#4f46e5\">http://localhost:3000/support</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">If you think this is a mistake, contact support.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-05T15:12:01.154095+00:00"
+  "sent_at": "2026-11-05T15:27:00.300749+00:00"
 }
 ```
 
@@ -1553,6 +1715,7 @@ Tick or untick checks; allowed in `in_review`, `changes_requested`, `approved` a
 | `FILE_NOT_CLEAN` for unscanned files (owner and staff) | | yes | live (the scanner never leaves a file pending) |
 | `CANNOT_ACT_ON_SELF` | yes (invite own email) | yes (checklist and every decision) | live self-decision |
 | Ticks cleared on resubmit | yes | yes | |
+| Name lock, flagged edit queue, clear (stale `FLAG_CHANGED`, `NO_FLAGGED_EDIT`) | yes | yes (merge, self, suspension, unflagged and pre-approval edits) | |
 | 15 MB cap boundary, quota, avatar replace, delete | | yes | |
 | Portfolio add | yes | yes (update, delete, limits, ownership) | |
 | Submit blockers and submit | yes | yes | |

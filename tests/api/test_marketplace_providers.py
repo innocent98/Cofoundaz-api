@@ -1258,12 +1258,21 @@ def test_flagged_edit_stays_live_and_lands_in_the_queue_until_cleared(client, db
     # a later clean edit does not silently clear the flag
     client.patch(f"{P}/me", json={"bio": BIO + " More detail."}, headers=h)
     assert client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"] is not None
-    short = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": "ok"}, headers=mh)
+    seen = client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"][
+        "updated_at"
+    ]
+    short = client.post(
+        f"{A}/providers/{pid}/clear-flag", json={"reason": "ok", "updated_at": seen}, headers=mh
+    )
     assert short.status_code == 422
-    ok = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": REASON}, headers=mh)
+    ok = client.post(
+        f"{A}/providers/{pid}/clear-flag", json={"reason": REASON, "updated_at": seen}, headers=mh
+    )
     assert ok.status_code == 200 and ok.json()["data"]["profile_flag"] is None
     assert client.get(f"{A}/providers/counts", headers=mh).json()["data"]["flagged_edits"] == 0
-    again = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": REASON}, headers=mh)
+    again = client.post(
+        f"{A}/providers/{pid}/clear-flag", json={"reason": REASON, "updated_at": seen}, headers=mh
+    )
     assert again.status_code == 409 and again.json()["error"]["code"] == "NO_FLAGGED_EDIT"
     ev = db.query(AuditLog).filter_by(action="marketplace.provider.profile_flag_cleared").one()
     assert ev.reason == REASON
@@ -1278,10 +1287,18 @@ def test_flagged_edit_can_be_answered_with_a_suspension(client, db, moderator, m
 
 def test_clear_flag_cannot_be_used_on_your_own_profile(client, db, moderator):
     row = _expert_row(db, moderator, ProviderStatus.approved)
-    row.vetting_json = {"profile_flag": {"at": "2026-11-05T00:00:00+00:00", "flags": []}}
+    row.vetting_json = {
+        "profile_flag": {
+            "at": "2026-11-05T00:00:00+00:00",
+            "updated_at": "2026-11-05T00:00:00+00:00",
+            "flags": [],
+        }
+    }
     db.flush()
     r = client.post(
-        f"{A}/providers/{row.id}/clear-flag", json={"reason": REASON}, headers=hdr(moderator)
+        f"{A}/providers/{row.id}/clear-flag",
+        json={"reason": REASON, "updated_at": "2026-11-05T00:00:00+00:00"},
+        headers=hdr(moderator),
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
 
@@ -1293,3 +1310,30 @@ def test_edits_before_approval_are_never_flagged(client, db, moderator, mail):
     assert (
         d["profile_flag"] is None and d["prescreen_flags"]
     )  # still a pre-screen chip, not a queue item
+
+
+def test_flags_merge_and_a_clear_of_a_stale_view_is_refused(client, db, moderator, mail):
+    user, pid = approved(client, db, moderator, mail)
+    h, mh = hdr(user), hdr(moderator)
+    client.patch(f"{P}/me", json={"headline": "Call +234 803 123 4567 now"}, headers=h)
+    first = client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"]
+    assert {(f["rule"], f["field"]) for f in first["flags"]} == {("contact_details", "headline")}
+    # the reviewer has the first view open; the expert edits again, tripping a different rule
+    client.patch(f"{P}/me", json={"bio": BIO + " Guaranteed approval of your visa."}, headers=h)
+    second = client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"]
+    rules = {(f["rule"], f["field"]) for f in second["flags"]}
+    assert rules == {("contact_details", "headline"), ("guaranteed_outcome", "bio")}  # merged
+    assert second["at"] == first["at"] and second["updated_at"] != first["updated_at"]
+    stale = client.post(
+        f"{A}/providers/{pid}/clear-flag",
+        json={"reason": REASON, "updated_at": first["updated_at"]},
+        headers=mh,
+    )
+    assert stale.status_code == 409 and stale.json()["error"]["code"] == "FLAG_CHANGED"
+    assert client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"] is not None
+    ok = client.post(
+        f"{A}/providers/{pid}/clear-flag",
+        json={"reason": REASON, "updated_at": second["updated_at"]},
+        headers=mh,
+    )
+    assert ok.status_code == 200

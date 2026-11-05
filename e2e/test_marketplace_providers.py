@@ -407,6 +407,44 @@ def test_marketplace_providers_journey(
     r = http.patch(f"{P}/me", json={"category": "Design"}, headers=e_auth)
     assert r.status_code == 409 and r.json()["error"]["code"] == "CATEGORY_LOCKED"
     capture(G, "profile_category_locked_409", r)
+    r = http.patch(f"{P}/me", json={"display_name": "Someone Else"}, headers=e_auth)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "NAME_LOCKED"
+    capture(G, "profile_name_locked_422", r)
+    r = http.patch(
+        f"{P}/me", json={"headline": "Senior counsel, call +234 803 123 4567"}, headers=e_auth
+    )
+    assert r.status_code == 200 and r.json()["data"]["status"] == "approved"
+    capture(G, "profile_flagged_edit_still_live_200", r)
+    r = http.get(
+        f"{A}/providers", params={"flagged": "true", "query": expert["email"]}, headers=mod
+    )
+    assert [p["id"] for p in r.json()["data"]["providers"]] == [pid]
+    capture(G, "admin_queue_flagged_edits", r)
+    seen = r.json()["data"]["providers"][0]["profile_flag"]["updated_at"]
+    r = http.post(
+        f"{A}/providers/{pid}/clear-flag",
+        json={
+            "reason": "Phone number is the firm's public line",
+            "updated_at": "2020-01-01T00:00:00+00:00",
+        },
+        headers=mod,
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "FLAG_CHANGED"
+    capture(G, "admin_clear_flag_stale_409", r)
+    r = http.post(
+        f"{A}/providers/{pid}/clear-flag",
+        json={"reason": "Phone number is the firm's public line", "updated_at": seen},
+        headers=mod,
+    )
+    assert r.status_code == 200 and r.json()["data"]["profile_flag"] is None
+    capture(G, "admin_clear_flag_200", r)
+    r = http.post(
+        f"{A}/providers/{pid}/clear-flag",
+        json={"reason": "Clearing it a second time", "updated_at": seen},
+        headers=mod,
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "NO_FLAGGED_EDIT"
+    capture(G, "admin_clear_flag_none_409", r)
 
     # suspend / unsuspend
     r = http.post(f"{A}/providers/{pid}/suspend", json=step_up({}), headers=mod)

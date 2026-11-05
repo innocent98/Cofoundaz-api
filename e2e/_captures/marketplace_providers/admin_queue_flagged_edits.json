@@ -1,0 +1,43 @@
+{
+  "data": {
+    "providers": [
+      {
+        "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+        "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+        "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "display_name": "Ngozi Eze",
+        "headline": "Senior counsel, call +234 803 123 4567",
+        "category": "Legal",
+        "status": "approved",
+        "source": "invite",
+        "submitted_at": "2026-11-05T15:24:59.918081+00:00",
+        "created_at": "2026-11-05T15:24:58.771567+00:00",
+        "invite_pending": false,
+        "invite_expires_at": null,
+        "licence_expires_on": "2027-11-05",
+        "licence_expiring": false,
+        "profile_flag": {
+          "at": "2026-11-05T15:25:00.181345+00:00",
+          "flags": [
+            {
+              "rule": "contact_details",
+              "field": "headline"
+            }
+          ],
+          "updated_at": "2026-11-05T15:25:00.181345+00:00"
+        },
+        "prescreen_flags": [
+          {
+            "rule": "contact_details",
+            "field": "headline"
+          }
+        ],
+        "vetted_at": "2026-11-05T15:25:00.025025+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

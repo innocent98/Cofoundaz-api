@@ -18,8 +18,8 @@ from app.db.models.enums import ProviderStatus
 from app.db.models.marketplace import MarketplaceProvider
 from app.db.session import get_db
 from app.schemas.marketplace import (
+    ClearFlagRequest,
     InviteRequest,
-    ReasonRequest,
     RejectRequest,
     RequestChangesRequest,
     StepUpReasonRequest,
@@ -229,11 +229,19 @@ def read_file(
 
 @router.post("/providers/{provider_id}/clear-flag")
 def clear_flag(
-    provider_id: uuid.UUID, payload: ReasonRequest, request: Request, ctx: _Moderation, db: _Db
+    provider_id: uuid.UUID, payload: ClearFlagRequest, request: Request, ctx: _Moderation, db: _Db
 ) -> dict[str, Any]:
     """Dismiss a flagged profile edit (the expert stays approved and live). To act on it instead,
     suspend with the usual step-up."""
     ip, ua = _client(request)
-    vetting.clear_profile_flag(db, ctx, provider_id, reason=payload.reason, ip=ip, ua=ua)
+    vetting.clear_profile_flag(
+        db,
+        ctx,
+        provider_id,
+        reason=payload.reason,
+        seen_updated_at=payload.updated_at,
+        ip=ip,
+        ua=ua,
+    )
     db.commit()
     return success_response(vetting.detail(db, provider_id))

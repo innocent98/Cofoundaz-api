@@ -1,15 +1,14 @@
 """Marketplace slice A: providers, files, portfolio
 
 Revision ID: 0092_marketplace_providers
-Revises: 0090_funding_core
+Revises: 0091_readiness_deck_reviews
 Create Date: 2026-11-05
 
 Marketplace slice A (providers and vetting; no money). Adds `marketplace_providers` (an expert,
 a table of its own like `platform_staff`), `marketplace_files` (private uploads for people with no
 workspace) and `marketplace_provider_portfolio`. Downgrade drops all three.
 
-CHAIN NOTE: `down_revision` is develop's head when last merged (0090, Funding). 0091 (Readiness
-deck review) is an open PR; the lead re-chains this migration when it merges.
+CHAIN NOTE: chained on develop's head, 0091 (Readiness deck reviews).
 """
 
 import sqlalchemy as sa
@@ -18,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0092_marketplace_providers"
-down_revision = "0090_funding_core"
+down_revision = "0091_readiness_deck_reviews"
 branch_labels = None
 depends_on = None
 

@@ -474,9 +474,14 @@ def flag_if_screened(
     flagged = [f for f in screen["flags"] if f["field"] in changes]
     if row.status != ProviderStatus.approved or not flagged:
         return
+    now = datetime.now(UTC).isoformat()
+    prior = row.vetting_json.get("profile_flag") or {}
+    # Merge, never replace: an earlier unreviewed flag must not be wiped by a later edit.
+    merged = list(prior.get("flags", []))
+    merged += [f for f in flagged if f not in merged]
     row.vetting_json = {
         **row.vetting_json,
-        "profile_flag": {"at": datetime.now(UTC).isoformat(), "flags": flagged},
+        "profile_flag": {"at": prior.get("at", now), "updated_at": now, "flags": merged},
     }
     write_audit(
         db,

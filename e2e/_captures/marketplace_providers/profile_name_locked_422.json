@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NAME_LOCKED",
+    "message": "Your name was verified, so it can't be changed here. Contact support to change it.",
+    "field_errors": []
+  }
+}

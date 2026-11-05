@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
-    "email": "delivered+e2e-80136db0f1ba@resend.dev",
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
     "status": "invited",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -16,7 +16,7 @@
     "timezone": "Africa/Lagos",
     "location": "Lagos, Nigeria",
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
     "submitted_at": null,
     "review_message": null,
     "can_edit_profile": true,
@@ -29,13 +29,13 @@
     "portfolio": [],
     "files": [
       {
-        "id": "1108155e-563b-434a-a108-a0574b4c7aee",
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
         "purpose": "credential",
         "filename": "bar-licence.pdf",
         "mime": "application/pdf",
         "size_bytes": 38,
         "scan_status": "clean",
-        "created_at": "2026-11-05T15:09:56.185553+00:00"
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
       }
     ]
   },

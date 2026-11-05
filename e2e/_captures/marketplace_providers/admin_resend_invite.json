@@ -1,20 +1,21 @@
 {
   "data": {
     "provider": {
-      "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+      "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
       "user_id": null,
-      "email": "delivered+e2e-80136db0f1ba@resend.dev",
+      "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
       "display_name": "Ngozi Eze",
       "headline": null,
       "category": "Legal",
       "status": "invited",
       "source": "invite",
       "submitted_at": null,
-      "created_at": "2026-11-05T15:09:55.623500+00:00",
+      "created_at": "2026-11-05T15:24:58.771567+00:00",
       "invite_pending": true,
-      "invite_expires_at": "2026-11-19T15:09:55.674819+00:00",
+      "invite_expires_at": "2026-11-19T15:24:58.834272+00:00",
       "licence_expires_on": null,
       "licence_expiring": false,
+      "profile_flag": null,
       "prescreen_flags": [],
       "vetted_at": null
     },

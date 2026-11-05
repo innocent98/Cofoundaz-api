@@ -121,3 +121,9 @@ class RejectRequest(_Strict):
     ) = None
     reason: Reason
     totp_code: TotpCode
+
+
+class ClearFlagRequest(_Strict):
+    reason: Reason
+    # `profile_flag.updated_at` as the reviewer saw it; a newer edit makes the clear a 409.
+    updated_at: Annotated[str, StringConstraints(min_length=10, max_length=40)]

@@ -3921,7 +3921,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-MP-1..9 all accepted. Order: A → B → C → D → E; F after D. **Production card charging stays off until counsel and Paystack confirm in writing (D-MP-3, D-MP-9).** The sidebar entry stays hidden until the whole page ships.
 
-- [x] **Slice A: providers and vetting** (`feature/marketplace-providers`, migration `0092_marketplace_providers` on `0090`, lead re-chains after 0091, SOP `docs/sop/2026-11-05-marketplace-providers.md`, FE guide `docs/fe-integration-guide-marketplace-providers.md`; PR open, not merged)
+- [x] **Slice A: providers and vetting** (`feature/marketplace-providers`, migration `0092_marketplace_providers` on `0091`, SOP `docs/sop/2026-11-05-marketplace-providers.md`, FE guide `docs/fe-integration-guide-marketplace-providers.md`; PR open, not merged)
   - [x] `marketplace_providers`, `marketplace_files`, `marketplace_provider_portfolio`
   - [x] `require_provider` guard (DB-read, 403 `NOT_A_PROVIDER` / `PROVIDER_REJECTED` / `PROVIDER_NOT_APPROVED`)
   - [x] Staff invite (single-use hashed token, 14 days, resend, revoke) and open applications behind `MARKETPLACE_OPEN_APPLICATIONS`

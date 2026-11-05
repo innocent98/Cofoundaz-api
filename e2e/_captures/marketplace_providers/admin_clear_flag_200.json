@@ -1,0 +1,174 @@
+{
+  "data": {
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "user_id": "7b178a01-c6d9-49df-b7bb-e8b5ea7f0403",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+    "display_name": "Ngozi Eze",
+    "headline": "Senior counsel, call +234 803 123 4567",
+    "category": "Legal",
+    "status": "approved",
+    "source": "invite",
+    "submitted_at": "2026-11-05T15:24:59.918081+00:00",
+    "created_at": "2026-11-05T15:24:58.771567+00:00",
+    "invite_pending": false,
+    "invite_expires_at": null,
+    "licence_expires_on": "2027-11-05",
+    "licence_expiring": false,
+    "profile_flag": null,
+    "prescreen_flags": [
+      {
+        "rule": "contact_details",
+        "field": "headline"
+      }
+    ],
+    "vetted_at": "2026-11-05T15:25:00.025025+00:00",
+    "bio": "Fifteen years advising founders on contracts, shareholder agreements and fundraising.",
+    "categories": [],
+    "languages": [
+      "English",
+      "Igbo"
+    ],
+    "timezone": "Africa/Lagos",
+    "location": "Lagos, Nigeria",
+    "terms_version": "draft-2026-11",
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "review_message": null,
+    "suspended_reason": null,
+    "commission_bps": null,
+    "required_checks": [
+      "id",
+      "licence",
+      "references"
+    ],
+    "references_required": 2,
+    "missing_checks": [],
+    "checks": {
+      "id": {
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "done": true,
+        "note": "NIN slip seen"
+      },
+      "licence": {
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "done": true,
+        "note": "Bar roll number matched",
+        "expires_on": "2027-11-05"
+      },
+      "references": {
+        "at": "2026-11-05T15:24:59.955549+00:00",
+        "by": "51d705d9-a225-4400-9842-214f8058fe5a",
+        "done": true,
+        "note": "Two founders emailed",
+        "count": 2
+      }
+    },
+    "badge": {
+      "vetted": true,
+      "checks": [
+        "Identity verified",
+        "Professional licence verified",
+        "2 client references checked"
+      ]
+    },
+    "badge_preview": [
+      "Identity verified",
+      "Professional licence verified",
+      "2 client references checked"
+    ],
+    "portfolio": [],
+    "files": [
+      {
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
+        "purpose": "credential",
+        "filename": "bar-licence.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 38,
+        "scan_status": "clean",
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
+      }
+    ],
+    "history": [
+      {
+        "action": "marketplace.provider.profile_flag_cleared",
+        "at": "2026-11-05T15:25:00.238687+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": "Phone number is the firm's public line"
+      },
+      {
+        "action": "marketplace.provider.profile_updated",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.profile_edit_flagged",
+        "at": "2026-11-05T15:25:00.170484+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.approved",
+        "at": "2026-11-05T15:25:00.002472+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": "Checked the documents against the rubric"
+      },
+      {
+        "action": "marketplace.provider.vetting_updated",
+        "at": "2026-11-05T15:24:59.945658+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.submitted",
+        "at": "2026-11-05T15:24:59.909193+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.changes_requested",
+        "at": "2026-11-05T15:24:59.871499+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": "The licence scan is blurry; please upload a clearer copy."
+      },
+      {
+        "action": "marketplace.provider.vetting_updated",
+        "at": "2026-11-05T15:24:59.849478+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.submitted",
+        "at": "2026-11-05T15:24:59.472626+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.profile_updated",
+        "at": "2026-11-05T15:24:59.304361+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.invite_accepted",
+        "at": "2026-11-05T15:24:59.222046+00:00",
+        "actor_email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.invite_resent",
+        "at": "2026-11-05T15:24:58.825805+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.invited",
+        "at": "2026-11-05T15:24:58.771567+00:00",
+        "actor_email": "delivered+e2e-5a43a45e1b07@resend.dev",
+        "reason": null
+      }
+    ]
+  },
+  "meta": null
+}
