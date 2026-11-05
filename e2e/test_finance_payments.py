@@ -35,6 +35,7 @@ import uuid
 from datetime import UTC, datetime
 
 import httpx
+import pytest
 
 G = "finance_payments"
 
@@ -152,6 +153,7 @@ def _flutterwave_charge_body(reference: str, amount_minor: int, event_id: int) -
     ).encode()
 
 
+@pytest.mark.critical
 def test_finance_payments_journey(
     base_url, make_verified_user, unique_email, mailbox, capture, capture_json
 ):

@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pyotp
+import pytest
 
 from app.services.auth.google_stub import stub_authorize
 
@@ -82,6 +83,7 @@ def _capture_resp(name: str, r: httpx.Response) -> None:
     _save(name, {"status": r.status_code, "body": r.json()})
 
 
+@pytest.mark.critical
 def test_google_sign_in_journey(base_url, make_verified_user, unique_email, mailbox):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         # 1. First Google sign-in creates the account, email already verified.

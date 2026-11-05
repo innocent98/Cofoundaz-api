@@ -127,6 +127,7 @@ ipython = ">=9.17,<10.0"
 ruff = ">=0.16.5,<0.17"
 bandit = "^1.9.4"
 radon = "^6.0.1"
+pytest-split = "^0.10"
 
 [tool.poetry.scripts]
 start = "app.main:start"
@@ -246,6 +247,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+markers = [
+    "critical: e2e journeys that run on every PR (the rest run nightly and on pushes to develop, or when a PR touches their area)",
+]
 addopts = "-v --strict-markers --cov=app --cov-report=term-missing --cov-report=html"
 filterwarnings = [
     # Third-party py3.14 asyncio DeprecationWarnings from pytest_asyncio/fastapi/slowapi
@@ -258,4 +262,5 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["app"]
+relative_files = true
 omit = ["app/main.py", "alembic/*"]

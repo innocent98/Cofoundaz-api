@@ -9,6 +9,7 @@ import uuid
 
 import httpx
 import pyotp
+import pytest
 
 
 def _pw() -> str:
@@ -16,6 +17,7 @@ def _pw() -> str:
     return f"Ev-{uuid.uuid4().hex[:12]}-7"
 
 
+@pytest.mark.critical
 def test_signup_verify_login_me(http: httpx.Client, make_verified_user):
     u = make_verified_user(http)
 

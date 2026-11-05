@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
+import pytest
 from pypdf import PdfReader
 from reportlab.pdfgen.canvas import Canvas
 
@@ -73,6 +74,7 @@ def _drain() -> None:
         db.close()
 
 
+@pytest.mark.critical
 def test_documents_esign_v2_journey(
     base_url, make_verified_user, unique_email, mailbox, capture_json
 ):

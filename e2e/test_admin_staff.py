@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import pyotp
+import pytest
 from sqlalchemy import create_engine, text
 
 S = "/api/v1/super-admin"
@@ -71,6 +72,7 @@ def _sign_in(http: httpx.Client, u: dict, secret_app: Authenticator) -> dict:
     return _auth(r.json()["data"]["access_token"])
 
 
+@pytest.mark.critical
 def test_staff_access_journey(http: httpx.Client, make_verified_user, capture, capture_json):
     # ---- the first Super Admin, by command -------------------------------------------------
     owner = make_verified_user(http)

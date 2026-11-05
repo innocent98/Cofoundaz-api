@@ -4,8 +4,10 @@ and the recalc jobs enqueued.
 """
 
 import httpx
+import pytest
 
 
+@pytest.mark.critical
 def test_assessment_journey(base_url, make_verified_user):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         u = make_verified_user(c)
