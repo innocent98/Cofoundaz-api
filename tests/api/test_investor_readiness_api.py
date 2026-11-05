@@ -61,9 +61,11 @@ def test_write_routes_by_role(client, team, role, method, path):
 
 def test_requires_auth_and_workspace(client, team):
     _s, heads = team
-    assert client.get(BASE + "/score").status_code in (401, 422)
+    anon = client.get(BASE + "/score")
+    assert anon.status_code in (401, 422)
     only_auth = {"Authorization": heads[MembershipRole.founder]["Authorization"]}
-    assert client.get(BASE + "/score", headers=only_auth).status_code == 422
+    no_ws = client.get(BASE + "/score", headers=only_auth)
+    assert no_ws.status_code == 422
 
 
 def test_cross_workspace_header_is_forbidden(client, db, team):
@@ -71,7 +73,8 @@ def test_cross_workspace_header_is_forbidden(client, db, team):
     other = create_startup(db, owner=create_user(db, email_verified_at=datetime.now(UTC)))
     db.commit()
     h = {**heads[MembershipRole.founder], "X-Workspace-Id": str(other.id)}
-    assert client.get(BASE + "/score", headers=h).status_code == 403
+    r = client.get(BASE + "/score", headers=h)
+    assert r.status_code == 403
     assert s.id != other.id
 
 
@@ -113,7 +116,8 @@ def test_team_member_sees_the_same_score_as_founder(client, team):
 def test_recompute_then_rate_limit(client, team):
     _s, heads = team
     h = heads[MembershipRole.founder]
-    assert client.post(BASE + "/score/recompute", headers=h).status_code == 200
+    first = client.post(BASE + "/score/recompute", headers=h)
+    assert first.status_code == 200
     r = client.post(BASE + "/score/recompute", headers=h)
     assert r.status_code == 429
     assert r.json()["error"]["code"] == "RATE_LIMITED"
@@ -125,7 +129,8 @@ def test_history_range_and_bad_range(client, team):
     client.get(BASE + "/score", headers=h)
     d = client.get(BASE + "/history?range=30", headers=h).json()["data"]
     assert d["range"] == 30 and len(d["points"]) == 1 and d["markers"] == []
-    assert client.get(BASE + "/history", headers=h).json()["data"]["range"] == 90
+    default = client.get(BASE + "/history", headers=h)
+    assert default.json()["data"]["range"] == 90
     bad = client.get(BASE + "/history?range=7", headers=h)
     assert bad.status_code == 422
 
@@ -144,12 +149,12 @@ def test_inputs_roundtrip_and_validation(client, team):
     assert r.json()["data"]["source_url"] == "https://example.com/report"
     got = client.get(BASE + "/inputs", headers=heads[MembershipRole.team_member]).json()["data"]
     assert got["som_minor"] == 100000
-    assert (
-        client.put(BASE + "/inputs", headers=h, json={"sam_minor": 5, "tam_minor": 1}).status_code
-        == 422
-    )
-    assert client.put(BASE + "/inputs", headers=h, json={"source_url": "nope"}).status_code == 422
-    assert client.put(BASE + "/inputs", headers=h, json={"bogus": 1}).status_code == 422
+    nested = client.put(BASE + "/inputs", headers=h, json={"sam_minor": 5, "tam_minor": 1})
+    assert nested.status_code == 422
+    bad_url = client.put(BASE + "/inputs", headers=h, json={"source_url": "nope"})
+    assert bad_url.status_code == 422
+    unknown = client.put(BASE + "/inputs", headers=h, json={"bogus": 1})
+    assert unknown.status_code == 422
     # The sourced market size now moves the Market dimension's signal.
     score = client.get(BASE + "/score?x=1", headers=h).json()["data"]
     market = next(d for d in score["dimensions"] if d["key"] == "market")
@@ -161,3 +166,19 @@ def test_snapshot_has_no_gap_notes(client, team):
     d = client.get(BASE + "/snapshot", headers=heads[MembershipRole.founder]).json()["data"]
     assert "gaps" not in d and "must_haves" not in d
     assert len(d["dimensions"]) == 6
+
+
+def test_inputs_reject_nesting_against_stored_values_and_other_currencies(client, team):
+    _s, heads = team
+    h = heads[MembershipRole.founder]
+    ok = client.put(
+        BASE + "/inputs", headers=h, json={"tam_minor": 100, "sam_minor": 50, "som_minor": 10}
+    )
+    assert ok.status_code == 200, ok.text
+    vs_stored = client.put(BASE + "/inputs", headers=h, json={"sam_minor": 500})
+    assert vs_stored.status_code == 422
+    assert vs_stored.json()["error"]["field_errors"][0]["field"] == "sam_minor"
+    eur = client.put(BASE + "/inputs", headers=h, json={"currency": "EUR"})
+    assert eur.status_code == 422
+    usd = client.put(BASE + "/inputs", headers=h, json={"currency": "USD"})
+    assert usd.status_code == 200 and usd.json()["data"]["currency"] == "USD"

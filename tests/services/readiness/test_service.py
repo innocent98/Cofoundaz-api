@@ -173,15 +173,19 @@ def test_market_size_only_counts_with_a_source(db, ws):
     service.put_inputs(
         db, s, u.id, {"tam_minor": 100, "sam_minor": 50, "som_minor": 10, "currency": "NGN"}
     )
-    assert _by_key(service.compute(db, s))["market.size"]["score"] == 0
+    unsourced = _by_key(service.compute(db, s))
+    assert unsourced["market.size"]["score"] == 0
     service.put_inputs(db, s, u.id, {"source_url": "https://example.com/report"})
-    assert _by_key(service.compute(db, s))["market.size"]["score"] == 100
-    assert service.get_inputs(db, s.id)["source_url"] == "https://example.com/report"
+    sourced = _by_key(service.compute(db, s))
+    assert sourced["market.size"]["score"] == 100
+    stored = service.get_inputs(db, s.id)
+    assert stored["source_url"] == "https://example.com/report"
 
 
 def test_inputs_default_when_never_set(db, ws):
     _u, s = ws
-    assert service.get_inputs(db, s.id)["tam_minor"] is None
+    got = service.get_inputs(db, s.id)
+    assert got["tam_minor"] is None
 
 
 def test_cap_holds_a_perfect_score_at_69(db, ws, monkeypatch):
@@ -215,7 +219,8 @@ def test_stale_row_recomputes_on_read(db, ws):
     row = db.query(ReadinessScore).filter_by(startup_id=s.id).one()
     row.updated_at = datetime.now(UTC) - timedelta(minutes=16)
     db.flush()
-    assert service.refresh_readiness(db, s, trigger="b").trigger == "b"
+    refreshed = service.refresh_readiness(db, s, trigger="b")
+    assert refreshed.trigger == "b"
 
 
 def test_updated_event_and_improved_notification_rules(db, ws):
@@ -325,7 +330,8 @@ def test_history_ranges_markers_and_validation(db, ws):
         "Moved to ready",
         "Cap lifted",
     ]
-    assert len(service.history(db, s, 365)["points"]) == 4
+    year = service.history(db, s, 365)
+    assert len(year["points"]) == 4
     with pytest.raises(AppError):
         service.history(db, s, 7)
 
@@ -342,3 +348,48 @@ def test_read_signals_marks_dropped_when_not_applicable(db, ws):
     _u, s = ws
     keys = {r.key for r in read_signals(db, s)}
     assert "financials.runway" not in keys and "team.assessment" not in keys
+
+
+def test_deck_must_have_needs_a_review_so_it_stays_unmet_in_slice_a(db, ws):
+    _u, s = ws
+    first = {m["key"]: m for m in must_haves(db, s)}
+    assert first["pitch_deck_reviewed"]["met"] is False
+    assert "Create a pitch deck" in first["pitch_deck_reviewed"]["reason"]
+    assert first["pitch_deck_reviewed"]["href"] == "/documents"
+    db.add(Document(startup_id=s.id, title="Deck", kind=DocumentKind.pitch_deck))
+    db.flush()
+    second = {m["key"]: m for m in must_haves(db, s)}
+    # A deck that exists is not a reviewed deck; the FE is told why and sent to the review page.
+    assert second["pitch_deck_reviewed"]["met"] is False
+    assert second["pitch_deck_reviewed"]["href"] == "/investor-readiness/deck"
+    assert "not available yet" in second["pitch_deck_reviewed"]["reason"]
+    assert all(m["reason"] for m in second.values())
+
+
+def test_met_must_have_has_no_reason(db, ws):
+    _u, s = ws
+    db.add(
+        FinancialModel(
+            startup_id=s.id,
+            status=FinancialModelStatus.complete,
+            overrides_rev=0,
+            calculated_rev=0,
+        )
+    )
+    db.flush()
+    model = next(m for m in must_haves(db, s) if m["key"] == "financial_model")
+    assert model["met"] is True and model["reason"] is None
+
+
+def test_inputs_nesting_is_checked_against_the_stored_row(db, ws):
+    u, s = ws
+    service.put_inputs(db, s, u.id, {"tam_minor": 100, "sam_minor": 50, "som_minor": 10})
+    with pytest.raises(AppError) as e:
+        service.put_inputs(db, s, u.id, {"sam_minor": 500})  # alone it looks fine; vs TAM it is not
+    assert e.value.http_status == 422
+    assert [f["field"] for f in e.value.field_errors] == ["sam_minor"]
+    with pytest.raises(AppError) as e2:
+        service.put_inputs(db, s, u.id, {"som_minor": 60})
+    assert e2.value.field_errors[0]["field"] == "som_minor"
+    stored = service.get_inputs(db, s.id)
+    assert (stored["tam_minor"], stored["sam_minor"], stored["som_minor"]) == (100, 50, 10)

@@ -31,8 +31,8 @@ with the real numbers plus a deep link to fix it.
 | team_member | 200 (same numbers as the founder) | **403** |
 | mentor, business_consultant, accountant, legal_advisor, investor | **403** | **403** |
 
-403 body (verified live for a user with no membership in the workspace; role-by-role 403s are unit-tested,
-same guard):
+403 body, verified live three ways: a user with no membership in the workspace, a **team member calling
+`POST /score/recompute`**, and a **mentor calling `GET /score`** (all three bodies are identical):
 
 ```json
 {
@@ -44,6 +44,27 @@ same guard):
 }
 ```
 
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+The remaining roles are unit-tested (same guard, `tests/api/test_investor_readiness_api.py`).
 FE: hide the Investor Readiness entry for roles that get 403, and show the read-only state (no
 "Recalculate", no market-size form) to the team member. An investor sees a score only through a Funding
 data-room share (not built here).
@@ -166,19 +187,22 @@ minutes, and after relevant events (see section 8). First open of a brand-new wo
         "key": "financial_model",
         "met": false,
         "href": "/finance/model",
-        "label": "A financial model"
+        "label": "A financial model",
+        "reason": "Generate a financial model in Finance."
       },
       {
-        "key": "pitch_deck",
+        "key": "pitch_deck_reviewed",
         "met": false,
         "href": "/documents",
-        "label": "A pitch deck"
+        "label": "A reviewed pitch deck",
+        "reason": "Create a pitch deck, then have it reviewed. Deck review is not available yet."
       },
       {
         "key": "traction_proof",
         "met": false,
         "href": "/validation",
-        "label": "One proof point: revenue, a won deal, or a validated assumption with demand"
+        "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
+        "reason": "Record revenue, win a deal, or validate an assumption with real demand."
       }
     ],
     "gaps": [
@@ -218,7 +242,7 @@ minutes, and after relevant events (see section 8). First open of a brand-new wo
         "signal_key": "story.pitch_deck"
       }
     ],
-    "computed_at": "2026-11-05T09:49:51.239590+00:00",
+    "computed_at": "2026-11-05T10:56:29.287718+00:00",
     "config_version": 1
   },
   "meta": null
@@ -341,19 +365,22 @@ After the founder created a pitch deck, a one-pager, a canvas (customer segment 
         "key": "financial_model",
         "met": false,
         "href": "/finance/model",
-        "label": "A financial model"
+        "label": "A financial model",
+        "reason": "Generate a financial model in Finance."
       },
       {
-        "key": "pitch_deck",
-        "met": true,
-        "href": "/documents",
-        "label": "A pitch deck"
+        "key": "pitch_deck_reviewed",
+        "met": false,
+        "href": "/investor-readiness/deck",
+        "label": "A reviewed pitch deck",
+        "reason": "Deck review is not available yet. A reviewed deck is required to pass 69."
       },
       {
         "key": "traction_proof",
         "met": true,
         "href": "/validation",
-        "label": "One proof point: revenue, a won deal, or a validated assumption with demand"
+        "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
+        "reason": null
       }
     ],
     "gaps": [
@@ -393,7 +420,7 @@ After the founder created a pitch deck, a one-pager, a canvas (customer segment 
         "signal_key": "product.mission_completion"
       }
     ],
-    "computed_at": "2026-11-05T09:49:51.575170+00:00",
+    "computed_at": "2026-11-05T10:56:29.516051+00:00",
     "config_version": 1
   },
   "meta": null
@@ -404,8 +431,12 @@ Field notes:
 
 - `score` is what to show. `raw_score` is the number before the cap. `capped: true` means the raw
   score reached 70 or more but a must-have is missing, so `score` is held at 69. **Show the reason**: list the
-  `must_haves` with `met: false` ("Capped at 69: add {label}") with a link to `href`. `capped: true` was not reached
-  live (see verification table).
+  `must_haves` with `met: false` ("Capped at 69: {label}") with `reason` as the explanation and a link to `href`.
+  `reason` is `null` once a must-have is met. `capped: true` was not reached live (see verification table).
+- **The reviewed-deck must-have cannot be met yet.** Its key is `pitch_deck_reviewed` ("A reviewed pitch deck"). It needs a
+  completed deck review and deck reviews ship in a later slice, so **until then no workspace can pass 69, by design (D-IR-2)**.
+  Its `href` is `/documents` while no pitch deck exists and `/investor-readiness/deck` once one does, and its `reason` says review
+  is not available yet. Do not hide the cap or the reason; the FE must not promise the user they can reach 70 today.
 - `band` is `not_yet` (under 40), `getting_close` (40 to 69) or `ready` (70+). `verdict` is the headline copy for the band:
   render it verbatim. `ready: true` is what shows the **Open Funding Hub** button (route `/funding`).
 - `dimensions` is always 6 entries in this order: team, traction, market, product, financials, story.
@@ -541,19 +572,22 @@ Forces a recompute. Returns the same body as `GET /score`. At most once a minute
         "key": "financial_model",
         "met": false,
         "href": "/finance/model",
-        "label": "A financial model"
+        "label": "A financial model",
+        "reason": "Generate a financial model in Finance."
       },
       {
-        "key": "pitch_deck",
-        "met": true,
-        "href": "/documents",
-        "label": "A pitch deck"
+        "key": "pitch_deck_reviewed",
+        "met": false,
+        "href": "/investor-readiness/deck",
+        "label": "A reviewed pitch deck",
+        "reason": "Deck review is not available yet. A reviewed deck is required to pass 69."
       },
       {
         "key": "traction_proof",
         "met": true,
         "href": "/validation",
-        "label": "One proof point: revenue, a won deal, or a validated assumption with demand"
+        "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
+        "reason": null
       }
     ],
     "gaps": [
@@ -593,7 +627,7 @@ Forces a recompute. Returns the same body as `GET /score`. At most once a minute
         "signal_key": "product.mission_completion"
       }
     ],
-    "computed_at": "2026-11-05T09:49:51.733982+00:00",
+    "computed_at": "2026-11-05T10:56:29.582389+00:00",
     "config_version": 1
   },
   "meta": null
@@ -625,7 +659,7 @@ irregular; draw them on a real time axis. `markers` list band changes and "Cap l
     "range": 30,
     "points": [
       {
-        "at": "2026-11-05T09:49:51.239590+00:00",
+        "at": "2026-11-05T10:56:29.287718+00:00",
         "score": 1,
         "band": "not_yet",
         "capped": false,
@@ -639,7 +673,7 @@ irregular; draw them on a real time axis. `markers` list band changes and "Cap l
         }
       },
       {
-        "at": "2026-11-05T09:49:51.575170+00:00",
+        "at": "2026-11-05T10:56:29.516051+00:00",
         "score": 32,
         "band": "not_yet",
         "capped": false,
@@ -714,7 +748,7 @@ Saved:
 }
 ```
 
-Validation (SAM larger than TAM). Note the empty `field` for a cross-field rule:
+Validation (SAM larger than TAM in the same request). Note the empty `field` for this request-level rule:
 
 ```json
 {
@@ -731,7 +765,10 @@ Validation (SAM larger than TAM). Note the empty `field` for a cross-field rule:
 }
 ```
 
-A malformed `source_url` or an unknown key also returns 422 `VALIDATION_ERROR` (unit-tested; same shape). A successful
+Nesting is also checked against what is **already stored**: after saving TAM 100 and SAM 50, sending only `{"sam_minor": 500}` is
+422 `VALIDATION_ERROR` with `field_errors: [{"field": "sam_minor", "message": "SAM cannot be larger than TAM."}]` (here `field` is
+filled in; unit-tested, not captured live). `currency` accepts only `"NGN"` or `"USD"` (422 otherwise). A malformed `source_url` or
+an unknown key also returns 422 `VALIDATION_ERROR` (unit-tested; same shape). A successful
 `PUT` recomputes the score straight away, so refetch `GET /score` to show the new number.
 
 ## 7. `GET /readiness/snapshot`
@@ -776,7 +813,7 @@ The share-safe subset Funding shows investors: no gap notes, no signal detail.
         "score": 75
       }
     ],
-    "computed_at": "2026-11-05T09:49:51.733982+00:00"
+    "computed_at": "2026-11-05T10:56:29.582389+00:00"
   },
   "meta": null
 }
@@ -846,7 +883,10 @@ Plus `429 RATE_LIMITED` (section 4), `422 VALIDATION_ERROR` (sections 5, 6) and 
 | Inputs empty, save, cross-field 422 | live |
 | Snapshot shape (no gaps) | live |
 | No token 401, no workspace header 422, other workspace 403 | live |
+| Team member 403 on recompute; mentor 403 on score | live |
 | Per-role 200/403 for all 7 roles on every route | unit-tested (`tests/api/test_investor_readiness_api.py`), not live |
+| `pitch_deck_reviewed` must-have unmet with `reason`, `href` switching on a deck | live (deck created in the journey) and unit-tested |
+| Nesting vs stored values, currency NGN/USD only | unit-tested; not captured live |
 | `capped: true`, `ready: true`, `band` other than `not_yet` | unit-tested (scoring and service tests); not reached live because it needs a financial model plus much more data |
 | Dimension `score: null` ("Not enough data yet") | not reachable with the current signals; shape from the serializer |
 | History `markers` with entries | unit-tested; none occurred in the live run |

@@ -281,19 +281,22 @@
         "key": "financial_model",
         "met": false,
         "href": "/finance/model",
-        "label": "A financial model"
+        "label": "A financial model",
+        "reason": "Generate a financial model in Finance."
       },
       {
-        "key": "pitch_deck",
+        "key": "pitch_deck_reviewed",
         "met": false,
         "href": "/documents",
-        "label": "A pitch deck"
+        "label": "A reviewed pitch deck",
+        "reason": "Create a pitch deck, then have it reviewed. Deck review is not available yet."
       },
       {
         "key": "traction_proof",
         "met": false,
         "href": "/validation",
-        "label": "One proof point: revenue, a won deal, or a validated assumption with demand"
+        "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
+        "reason": "Record revenue, win a deal, or validate an assumption with real demand."
       }
     ],
     "gaps": [
@@ -333,7 +336,7 @@
         "signal_key": "story.pitch_deck"
       }
     ],
-    "computed_at": "2026-11-05T09:49:51.239590+00:00",
+    "computed_at": "2026-11-05T10:56:29.287718+00:00",
     "config_version": 1
   },
   "meta": null

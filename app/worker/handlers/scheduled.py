@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import UTC, date, datetime
 
@@ -156,9 +157,21 @@ def handle_health_nightly(db: Session, job: Job) -> None:
     startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
     if startup is not None:
         refresh_health_score(db, startup, trigger="nightly", force=True)
-        from app.services.readiness.service import refresh_readiness
+        _refresh_readiness_nightly(db, startup)
 
-        refresh_readiness(db, startup, trigger="nightly", force=True)
+
+def _refresh_readiness_nightly(db: Session, startup: Startup) -> None:
+    """Investor Readiness rides on the Health nightly job. Its failure must never fail Health's, so
+    it runs in a savepoint and is only logged."""
+    from app.services.readiness.service import refresh_readiness
+
+    try:
+        with db.begin_nested():
+            refresh_readiness(db, startup, trigger="nightly", force=True)
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "nightly readiness refresh failed for startup %s", startup.id
+        )
 
 
 def handle_marketing_publish(db: Session, job: Job) -> None:

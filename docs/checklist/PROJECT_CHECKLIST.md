@@ -3865,7 +3865,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 `cofoundaz/docs/checklist/investor-readiness-prd-gaps.md`. Order: A, then B and D in parallel, then C, then FE, re-walk, unhide.
 
 - [x] **Slice A: score + history** (`feature/readiness-score`, migration `0089_readiness_scores`, SOP `docs/sop/2026-11-05-investor-readiness-score.md`, FE guide `docs/fe-integration-guide-investor-readiness.md`)
-  - [x] 23-signal table reusing Health readers; weights, bands, 69 cap until model + deck + proof (D-IR-2)
+  - [x] 23-signal table reusing Health readers; weights, bands, 69 cap until model + reviewed deck + proof (D-IR-2); deck never met until slice B
   - [x] `readiness_scores`, `readiness_score_history`, `readiness_inputs`
   - [x] `GET /readiness/score`, `POST /readiness/score/recompute`, `GET /readiness/history`, `GET /readiness/snapshot`, `GET`/`PUT /readiness/inputs`
   - [x] Roles per D-IR-4 (founder + team member read, founder writes), a test per role
