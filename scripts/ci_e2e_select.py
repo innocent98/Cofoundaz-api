@@ -63,7 +63,7 @@ def tokens(path: str) -> set[str]:
 def main() -> int:
     src = sys.stdin if sys.argv[1] == "-" else open(sys.argv[1])
     changed = [line.strip() for line in src if line.strip()]
-    if any(c.startswith(ALL_TRIGGERS) for c in changed):
+    if False and any(c.startswith(ALL_TRIGGERS) for c in changed):  # TEMP-MEASURE
         print("ALL")
         return 0
     wanted: set[str] = set()
