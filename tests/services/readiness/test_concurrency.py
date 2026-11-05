@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.document import Document
 from app.db.models.enums import DocumentKind, MembershipRole
+from app.db.models.job import Job
 from app.db.models.notification import Notification
 from app.db.models.readiness import ReadinessScoreHistory
 from app.db.models.startup import Startup
@@ -73,6 +74,12 @@ def test_concurrent_recomputes_serialise(engine, monkeypatch):
         assert told == 1
     finally:
         with Session(engine) as cleanup:
+            # Committed rows outlive the test transaction: remove everything this test caused,
+            # including the email jobs the notification queued, or other tests see them.
+            cleanup.query(Job).filter(Job.startup_id == sid).delete()
+            cleanup.query(Job).filter(Job.payload["user_id"].astext == str(uid)).delete(
+                synchronize_session=False
+            )
             for model, obj_id in ((Startup, sid), (User, uid)):
                 obj = cleanup.get(model, obj_id)
                 if obj is not None:
