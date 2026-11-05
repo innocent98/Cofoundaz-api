@@ -124,6 +124,15 @@ def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> Fundi
                 "This round already has amounts in "
                 f"{row.currency}. Clear them before changing the currency.",
             )
+        from app.services.funding import cap_table as cap_svc  # noqa: PLC0415 - avoids a cycle
+
+        if cap_svc.has_money(db, startup_id):
+            raise AppError(
+                "CAP_TABLE_HAS_AMOUNTS",
+                "Your cap table already has amounts in "
+                f"{row.currency}. Clear them before changing the currency.",
+                409,
+            )
         row.currency = data.currency.value
     if data.name is not None:
         row.name = data.name

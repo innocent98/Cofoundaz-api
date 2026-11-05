@@ -137,7 +137,7 @@ def largest_remainder_bps(weights: dict[str, int]) -> dict[str, int]:
     """Basis points per key from integer weights, summing to exactly 10 000 (or 0 if all zero)."""
     total = sum(weights.values())
     if total <= 0:
-        return {k: 0 for k in weights}
+        return dict.fromkeys(weights, 0)
     exact = {k: Decimal(v) * BPS / Decimal(total) for k, v in weights.items()}
     floors = {k: floor_int(v) for k, v in exact.items()}
     left = 10_000 - sum(floors.values())

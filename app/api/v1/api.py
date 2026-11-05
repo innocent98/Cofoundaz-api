@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     finance_integrations,
     flags,
     funding,
+    funding_cap_table,
     funding_data_room,
     funding_data_room_public,
     health,
@@ -68,6 +69,7 @@ api_router.include_router(assessments.router, prefix="/assessments", tags=["asse
 api_router.include_router(health_score.router, prefix="/health-score", tags=["health-score"])
 api_router.include_router(readiness.router, prefix="/readiness", tags=["readiness"])
 api_router.include_router(funding.router, prefix="/funding", tags=["funding"])
+api_router.include_router(funding_cap_table.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_data_room.router, prefix="/funding", tags=["funding"])
 api_router.include_router(
     funding_data_room_public.router, prefix="/funding", tags=["funding-data-room-public"]
