@@ -3873,13 +3873,18 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 `cofoundaz/docs/checklist/investor-readiness-prd-gaps.md`. Order: A, then B and D in parallel, then C, then FE, re-walk, unhide.
 
 - [x] **Slice A: score + history** (`feature/readiness-score`, migration `0089_readiness_scores`, SOP `docs/sop/2026-11-05-investor-readiness-score.md`, FE guide `docs/fe-integration-guide-investor-readiness.md`)
-  - [x] 23-signal table reusing Health readers; weights, bands, 69 cap until model + reviewed deck + proof (D-IR-2); deck never met until slice B
+  - [x] 23-signal table reusing Health readers; weights, bands, 69 cap until model + reviewed deck + proof (D-IR-2); reviewed deck met by slice B
   - [x] `readiness_scores`, `readiness_score_history`, `readiness_inputs`
   - [x] `GET /readiness/score`, `POST /readiness/score/recompute`, `GET /readiness/history`, `GET /readiness/snapshot`, `GET`/`PUT /readiness/inputs`
   - [x] Roles per D-IR-4 (founder + team member read, founder writes), a test per role
   - [x] Triggers: events, stale-on-read (15 min), nightly; `readiness.updated`; `readiness.improved` notification
   - [x] Unit + API + live e2e journey; migration round trip; live-captured FE guide
-- [ ] Slice B: deck review (`pypdfium2` thumbnails, `deck_reviews`, job, Story signal, "reviewed deck" must-have)
+- [x] **Slice B: deck review** (`feature/readiness-deck-review`, migration `0091_readiness_deck_reviews`, SOP `docs/sop/2026-11-06-investor-readiness-deck-review.md`, FE guide section 12)
+  - [x] Upload via Documents, `POST/GET /readiness/deck-reviews`, job `ai.readiness.deck_review` under the AI budget, dedupe by content hash, versions
+  - [x] pypdf extraction, layout-check Design score (D-IR-5), prompt-injection fence, clamped model output
+  - [x] pypdfium2 thumbnails with signed links; Story signals; `pitch_deck_reviewed` must-have; history log and marker
+  - [x] Unit + API (all roles) + live e2e journey (canned model); migration round trip
+  - [ ] _Not verified:_ a real model run (quality, token cost), Cloudinary thumbnails
 - [ ] Slice D: Mock Q&A (`mock_sessions`, turn endpoint, scoring job, budget pre-flight)
 - [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
 - [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk

@@ -1,0 +1,18 @@
+{
+  "data": {
+    "review": {
+      "id": "52d82d23-6e3d-4aef-a690-418c476ebe50",
+      "version": 1,
+      "status": "queued",
+      "error": null,
+      "filename": "Acme Pay seed deck.pdf",
+      "slide_count": null,
+      "scores": null,
+      "job_id": "3d3ee0de-e1ff-4bd9-8fa3-76e769d2ac49",
+      "created_at": "2026-11-05T14:17:12.665161+00:00",
+      "reviewed_at": null
+    },
+    "deduplicated": false
+  },
+  "meta": null
+}

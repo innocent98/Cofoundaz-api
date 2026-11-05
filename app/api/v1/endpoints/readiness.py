@@ -1,22 +1,27 @@
 """Investor Readiness (PRD Module 15). Slice A: score, recompute, history, market-size inputs and
 the share-safe snapshot Funding reads. Founder and team member read; only the founder writes."""
 
+import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
+from app.core.config import settings
 from app.core.envelope import success_response
 from app.core.errors import NotFound
+from app.core.rate_limit import limiter
 from app.db.models.enums import READINESS_READ_ROLES, READINESS_WRITE_ROLES
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
-from app.schemas.readiness import ReadinessInputsIn
-from app.services.readiness import service
+from app.platform.signed_urls import InvalidSignedToken, verify_key
+from app.schemas.readiness import DeckReviewIn, ReadinessInputsIn
+from app.services.readiness import deck, service
 
 router = APIRouter()
 _read = require_role(*READINESS_READ_ROLES)
@@ -88,3 +93,71 @@ def put_inputs(
         data["source_url"] = str(data["source_url"])
     data = {k: v for k, v in data.items() if not (k == "currency" and v is None)}
     return success_response(service.put_inputs(db, _startup(db, membership), user.id, data))
+
+
+# ---- Pitch deck review (PRD 15.2) ----------------------------------------------------------
+
+
+def _public_url() -> str:
+    return settings.API_PUBLIC_URL or settings.SERVER_HOST
+
+
+@router.post("/deck-reviews", status_code=status.HTTP_202_ACCEPTED)
+def create_deck_review(
+    body: DeckReviewIn,
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    """Queue a review of a Documents PDF. The same bytes already reviewed return that review with
+    `deduplicated: true` and spend nothing (HTTP 200); otherwise 202 with the job to poll."""
+    review, created = deck.create_review(db, _startup(db, membership), user.id, body.file_id)
+    db.commit()
+    payload = {"review": deck.summary(review), "deduplicated": not created}
+    resp = success_response(payload)
+    if created:
+        return resp
+    return JSONResponse(status_code=200, content=resp)
+
+
+@router.get("/deck-reviews")
+def list_deck_reviews(
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = deck.list_reviews(db, membership.startup_id)
+    return success_response({"reviews": [deck.summary(r) for r in rows]})
+
+
+@router.get("/deck-reviews/{review_id}")
+def get_deck_review(
+    review_id: uuid.UUID,
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    r = deck.get_review(db, membership.startup_id, review_id)
+    return success_response(deck.detail(r, _public_url()))
+
+
+@router.get("/deck-thumbnails", response_class=FileResponse)
+@limiter.shared_limit("120/minute", scope="public-deck-thumb")
+def deck_thumbnail(
+    request: Request,
+    token: str = Query(..., min_length=1, max_length=2000),  # noqa: B008
+) -> FileResponse:
+    """Serves a locally stored slide thumbnail to the holder of a valid, unexpired signed link
+    (issued inside `GET /deck-reviews/{id}` after the role check). Anything else is a 404."""
+    try:
+        claim = verify_key(token)
+    except InvalidSignedToken:
+        raise NotFound() from None
+    path = deck.thumbnail_path(claim.startup_id, claim.key)
+    if path is None:
+        raise NotFound()
+    return FileResponse(
+        path,
+        media_type="image/png",
+        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"},
+    )

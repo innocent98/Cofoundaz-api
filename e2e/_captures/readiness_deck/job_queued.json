@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": "3d3ee0de-e1ff-4bd9-8fa3-76e769d2ac49",
+    "type": "ai.readiness.deck_review",
+    "status": "queued",
+    "result": null,
+    "error": null
+  },
+  "meta": null
+}

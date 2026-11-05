@@ -39,6 +39,7 @@ from app.db.models.startup import Startup
 from app.db.models.validation import Assumption, Experiment, SmokeTestEvent, SurveyResponse
 from app.services.health_score.live_signals import SIGNALS_BY_KEY as HEALTH_SIGNALS
 from app.services.health_score.service import latest_completed_result
+from app.services.readiness import deck
 from app.services.readiness.scoring import Reading, signal_score
 
 STAGES = tuple(StartupStage)
@@ -273,6 +274,22 @@ def _doc_exists(db: Session, s: Startup, kind: DocumentKind) -> float:
         )
         > 0
     )
+
+
+def _deck_reviewed(db: Session, startup: Startup) -> bool:
+    return deck.latest_ready(db, startup.id) is not None
+
+
+def _deck_exists(db: Session, s: Startup) -> float:
+    """A pitch deck document, or any deck that has been reviewed."""
+    return 1.0 if _doc_exists(db, s, DocumentKind.pitch_deck) or _deck_reviewed(db, s) else 0.0
+
+
+def _deck_review_score(db: Session, s: Startup) -> float:
+    """Overall score (/10) of the latest finished review; 0 when there is none (absence is the
+    finding)."""
+    latest = deck.latest_ready(db, s.id)
+    return float((latest.scores or {}).get("overall", 0)) if latest else 0.0
 
 
 def _investor_plan(db: Session, s: Startup) -> float:
@@ -519,9 +536,23 @@ SIGNALS: tuple[Signal, ...] = (
         "Pitch deck",
         "step",
         by_stage(1, 1, 1, 1, 1, 1),
-        "/documents",
-        lambda db, s: _doc_exists(db, s, DocumentKind.pitch_deck),
-        lambda v, t: "You have no pitch deck. Create one in Documents.",
+        "/investor-readiness/deck",
+        _deck_exists,
+        lambda v, t: "You have no pitch deck. Upload your PDF and have it reviewed.",
+    ),
+    Signal(
+        "story.deck_review",
+        "story",
+        "Pitch deck review score (out of 10)",
+        "/10",
+        by_stage(6, 6, 6, 7, 7, 8),
+        "/investor-readiness/deck",
+        _deck_review_score,
+        lambda v, t: (
+            "Your deck has not been reviewed yet."
+            if v <= 0
+            else f"Your deck review scored {v:g} of 10 against {t:g}. Work through the top fixes."
+        ),
         2.0,
     ),
     Signal(
@@ -574,17 +605,12 @@ def read_signals(db: Session, startup: Startup) -> list[Reading]:
     return out
 
 
-def _deck_reviewed(db: Session, startup: Startup) -> bool:
-    """A completed pitch deck review exists. Always False until slice B adds `deck_reviews`."""
-    return False
-
-
 # ---- Must-haves (D-IR-2) -------------------------------------------------------------------
 
 
 def must_haves(db: Session, startup: Startup) -> list[dict[str, Any]]:
     """The three things no investor conversation starts without. Until they exist the overall is
-    capped at 69. The deck must-have needs a completed review (slice B); until then it is unmet."""
+    capped at 69. The deck must-have needs a finished deck review (slice B), not just a file."""
     revenue = (_monthly_revenue(db, startup) or 0) > 0
     validated = _count(
         db,
@@ -600,7 +626,6 @@ def must_haves(db: Session, startup: Startup) -> list[dict[str, Any]]:
         or _won_deals(db, startup) > 0
         or (validated >= 1 and (_signups(db, startup) >= 10 or interviews >= 5))
     )
-    deck_exists = bool(_doc_exists(db, startup, DocumentKind.pitch_deck))
     items = [
         {
             "key": "financial_model",
@@ -610,17 +635,12 @@ def must_haves(db: Session, startup: Startup) -> list[dict[str, Any]]:
             "reason": "Generate a financial model in Finance.",
         },
         {
-            # D-IR-2: "a reviewed deck". Deck reviews arrive with slice B, so until then this is
-            # never met and the cap holds at 69 by design.
+            # D-IR-2: "a reviewed deck": a finished deck review, not just a file.
             "key": "pitch_deck_reviewed",
             "label": "A reviewed pitch deck",
             "met": _deck_reviewed(db, startup),
-            "href": "/investor-readiness/deck" if deck_exists else "/documents",
-            "reason": (
-                "Deck review is not available yet. A reviewed deck is required to pass 69."
-                if deck_exists
-                else "Create a pitch deck, then have it reviewed. Deck review is not available yet."
-            ),
+            "href": "/investor-readiness/deck",
+            "reason": "Upload your pitch deck PDF and run a deck review.",
         },
         {
             "key": "traction_proof",

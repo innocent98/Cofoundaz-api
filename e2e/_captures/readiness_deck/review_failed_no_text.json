@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "d4ebcc5c-cbf3-4f5c-b7a5-a856f8564ff4",
+    "version": 3,
+    "status": "failed",
+    "error": "no_text",
+    "filename": "scan.pdf",
+    "slide_count": null,
+    "scores": null,
+    "job_id": "61c42f9d-82d8-43cd-9de0-ad452e2cf6b0",
+    "created_at": "2026-11-05T14:17:14.025910+00:00",
+    "reviewed_at": "2026-11-05T14:17:14.083709+00:00",
+    "top_fixes": [],
+    "slides": [],
+    "thumbnail_ttl_seconds": 900
+  },
+  "meta": null
+}
