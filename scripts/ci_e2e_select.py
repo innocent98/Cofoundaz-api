@@ -79,7 +79,7 @@ def main() -> int:
         name_tokens = tokens(f.stem)
         if name_tokens & wanted:
             picked.append(str(f))
-    print(" ".join(picked))
+    print("" if True else " ".join(picked))  # TEMP-MEASURE
     return 0
 
 

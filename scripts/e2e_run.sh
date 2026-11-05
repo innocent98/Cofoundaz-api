@@ -196,7 +196,7 @@ E2E_SELECT="${E2E_SELECT:-all}"
 set +e
 if [[ "${E2E_SELECT}" == "critical" ]]; then
   echo "==> running e2e suite (critical journeys)"
-  poetry run pytest e2e/ -m critical -o addopts="" -v -p no:cacheprovider
+  poetry run pytest e2e/ -m critical -o addopts="" -v -p no:cacheprovider --durations=15
   CODE=$?
   if [[ -n "${E2E_AREA_FILES:-}" ]]; then
     echo "==> running e2e suite (touched areas: ${E2E_AREA_FILES})"
@@ -209,7 +209,7 @@ if [[ "${E2E_SELECT}" == "critical" ]]; then
   fi
 else
   echo "==> running e2e suite (smoke + journeys)"
-  poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider
+  poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider --durations=15
   CODE=$?
 fi
 set -e
