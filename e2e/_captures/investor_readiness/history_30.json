@@ -1,0 +1,37 @@
+{
+  "data": {
+    "range": 30,
+    "points": [
+      {
+        "at": "2026-11-05T10:56:29.287718+00:00",
+        "score": 1,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 0,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      },
+      {
+        "at": "2026-11-05T10:56:29.516051+00:00",
+        "score": 32,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 75,
+          "market": 56,
+          "product": 25,
+          "traction": 12,
+          "financials": 42
+        }
+      }
+    ],
+    "markers": []
+  },
+  "meta": null
+}

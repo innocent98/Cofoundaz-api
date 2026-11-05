@@ -1,0 +1,10 @@
+{
+  "data": {
+    "tam_minor": 500000000000,
+    "sam_minor": 50000000000,
+    "som_minor": 5000000000,
+    "currency": "NGN",
+    "source_url": "https://example.com/placeholder-market-report"
+  },
+  "meta": null
+}

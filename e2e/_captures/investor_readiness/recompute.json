@@ -1,0 +1,353 @@
+{
+  "data": {
+    "score": 32,
+    "band": "not_yet",
+    "verdict": "Not yet, and that's fine. Here's the shortest path.",
+    "ready": false,
+    "capped": false,
+    "raw_score": 32,
+    "dimensions": [
+      {
+        "key": "team",
+        "label": "Team",
+        "score": 8,
+        "weight": 15,
+        "signals": [
+          {
+            "key": "team.members",
+            "href": "/team",
+            "note": "1 active member(s). Investors back teams: invite a co-founder or first hire.",
+            "unit": "count",
+            "label": "Active team members",
+            "score": 33.3,
+            "value": 1.0,
+            "target": 3
+          },
+          {
+            "key": "team.founder_agreement",
+            "href": "/documents",
+            "note": "No founder agreement yet. Diligence asks for it first.",
+            "unit": "step",
+            "label": "Founder agreement drafted and signed",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 2
+          },
+          {
+            "key": "team.advisors",
+            "href": "/team",
+            "note": "No advisor or mentor attached. Invite one whose name an investor will know.",
+            "unit": "count",
+            "label": "Advisor or mentor on the team",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 1
+          },
+          {
+            "key": "team.activity_7d",
+            "href": "/dashboard",
+            "note": "Only 0 of 20 workspace actions this week. Investors read momentum.",
+            "unit": "events",
+            "label": "Workspace activity (7 days)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 20
+          }
+        ]
+      },
+      {
+        "key": "traction",
+        "label": "Traction",
+        "score": 12,
+        "weight": 25,
+        "signals": [
+          {
+            "key": "traction.revenue",
+            "href": "/finance",
+            "note": "Revenue averages \u20a6300,000 a month against \u20a61,000,000 for your stage. Log income in Finance.",
+            "unit": "NGN",
+            "label": "Monthly revenue (3 month average)",
+            "score": 30.0,
+            "value": 300000.0,
+            "target": 1000000
+          },
+          {
+            "key": "traction.customers",
+            "href": "/sales/pipeline",
+            "note": "0 paying customer(s) against 10. Close a deal or record a paid invoice.",
+            "unit": "count",
+            "label": "Paying customers",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 10
+          },
+          {
+            "key": "traction.pipeline",
+            "href": "/sales",
+            "note": "0 open deal(s) against 10. Add real prospects to the pipeline.",
+            "unit": "count",
+            "label": "Open deals in the pipeline",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 10
+          },
+          {
+            "key": "traction.demand_proof",
+            "href": "/validation",
+            "note": "0 signups or survey answers against 100. Run a smoke test or a survey.",
+            "unit": "count",
+            "label": "Demand proof (signups and survey answers)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 100
+          }
+        ]
+      },
+      {
+        "key": "market",
+        "label": "Market",
+        "score": 56,
+        "weight": 15,
+        "signals": [
+          {
+            "key": "market.assumptions_tested",
+            "href": "/validation/assumptions",
+            "note": "0 of 10 assumptions tested. Test the one that would sink you.",
+            "unit": "count",
+            "label": "Assumptions tested",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 10
+          },
+          {
+            "key": "market.interviews_30d",
+            "href": "/validation/interviews",
+            "note": "0 of 3 customer interviews this month. Talk to more customers.",
+            "unit": "count",
+            "label": "Customer interviews (30 days)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 3
+          },
+          {
+            "key": "market.customer_segments",
+            "href": "/business-builder/canvas",
+            "note": null,
+            "unit": "step",
+            "label": "Customer segments defined",
+            "score": 100.0,
+            "value": 1.0,
+            "target": 1
+          },
+          {
+            "key": "market.competitors",
+            "href": "/business-builder/competitors",
+            "note": "1 competitor(s) mapped. Investors ask 'who else?' first.",
+            "unit": "count",
+            "label": "Competitors mapped",
+            "score": 33.3,
+            "value": 1.0,
+            "target": 3
+          },
+          {
+            "key": "market.size",
+            "href": "/investor-readiness",
+            "note": null,
+            "unit": "step",
+            "label": "Market size with a source",
+            "score": 100.0,
+            "value": 1.0,
+            "target": 1
+          }
+        ]
+      },
+      {
+        "key": "product",
+        "label": "Product",
+        "score": 25,
+        "weight": 15,
+        "signals": [
+          {
+            "key": "product.roadmap_progress",
+            "href": "/roadmap",
+            "note": "Roadmap is 0% done against 60%. Close out your next tasks.",
+            "unit": "%",
+            "label": "Roadmap tasks done",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 60
+          },
+          {
+            "key": "product.mission_completion",
+            "href": "/mission",
+            "note": "Mission completion is 0% against 70%. Finish today's mission.",
+            "unit": "%",
+            "label": "Mission completion (7 days)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 70
+          },
+          {
+            "key": "product.solution",
+            "href": "/business-builder/canvas",
+            "note": null,
+            "unit": "step",
+            "label": "Solution defined on the canvas",
+            "score": 100.0,
+            "value": 1.0,
+            "target": 1
+          },
+          {
+            "key": "product.experiments",
+            "href": "/validation/experiments",
+            "note": "0 experiment(s) run. Launch a test that shows people want it.",
+            "unit": "count",
+            "label": "Experiments run",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 3
+          }
+        ]
+      },
+      {
+        "key": "financials",
+        "label": "Financials",
+        "score": 42,
+        "weight": 20,
+        "signals": [
+          {
+            "key": "financials.runway",
+            "href": "/finance/runway",
+            "note": null,
+            "unit": "months",
+            "label": "Runway",
+            "score": 100.0,
+            "value": 999.0,
+            "target": 12
+          },
+          {
+            "key": "financials.model",
+            "href": "/finance/model",
+            "note": "You have no financial model. Investors expect one.",
+            "unit": "step",
+            "label": "Financial model, current",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 2
+          },
+          {
+            "key": "financials.books",
+            "href": "/finance",
+            "note": "1 of 10 transactions logged this month. Keep the books current.",
+            "unit": "count",
+            "label": "Transactions tracked (30 days)",
+            "score": 10.0,
+            "value": 1.0,
+            "target": 10
+          }
+        ]
+      },
+      {
+        "key": "story",
+        "label": "Story",
+        "score": 75,
+        "weight": 10,
+        "signals": [
+          {
+            "key": "story.pitch_deck",
+            "href": "/documents",
+            "note": null,
+            "unit": "step",
+            "label": "Pitch deck",
+            "score": 100.0,
+            "value": 1.0,
+            "target": 1
+          },
+          {
+            "key": "story.investor_plan",
+            "href": "/business-builder/plan",
+            "note": "Generate a business plan with investors as the audience.",
+            "unit": "step",
+            "label": "Business plan written for investors",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 1
+          },
+          {
+            "key": "story.one_pager",
+            "href": "/documents",
+            "note": null,
+            "unit": "step",
+            "label": "One-pager",
+            "score": 100.0,
+            "value": 1.0,
+            "target": 1
+          }
+        ]
+      }
+    ],
+    "must_haves": [
+      {
+        "key": "financial_model",
+        "met": false,
+        "href": "/finance/model",
+        "label": "A financial model",
+        "reason": "Generate a financial model in Finance."
+      },
+      {
+        "key": "pitch_deck_reviewed",
+        "met": false,
+        "href": "/investor-readiness/deck",
+        "label": "A reviewed pitch deck",
+        "reason": "Deck review is not available yet. A reviewed deck is required to pass 69."
+      },
+      {
+        "key": "traction_proof",
+        "met": true,
+        "href": "/validation",
+        "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
+        "reason": null
+      }
+    ],
+    "gaps": [
+      {
+        "href": "/finance/model",
+        "lift": 8,
+        "note": "You have no financial model. Investors expect one.",
+        "dimension": "financials",
+        "signal_key": "financials.model"
+      },
+      {
+        "href": "/finance",
+        "lift": 7,
+        "note": "Revenue averages \u20a6300,000 a month against \u20a61,000,000 for your stage. Log income in Finance.",
+        "dimension": "traction",
+        "signal_key": "traction.revenue"
+      },
+      {
+        "href": "/sales/pipeline",
+        "lift": 5,
+        "note": "0 paying customer(s) against 10. Close a deal or record a paid invoice.",
+        "dimension": "traction",
+        "signal_key": "traction.customers"
+      },
+      {
+        "href": "/validation/experiments",
+        "lift": 4,
+        "note": "0 experiment(s) run. Launch a test that shows people want it.",
+        "dimension": "product",
+        "signal_key": "product.experiments"
+      },
+      {
+        "href": "/mission",
+        "lift": 4,
+        "note": "Mission completion is 0% against 70%. Finish today's mission.",
+        "dimension": "product",
+        "signal_key": "product.mission_completion"
+      }
+    ],
+    "computed_at": "2026-11-05T10:56:29.582389+00:00",
+    "config_version": 1
+  },
+  "meta": null
+}

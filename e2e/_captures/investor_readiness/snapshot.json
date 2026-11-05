@@ -1,0 +1,41 @@
+{
+  "data": {
+    "score": 32,
+    "band": "not_yet",
+    "ready": false,
+    "dimensions": [
+      {
+        "key": "team",
+        "label": "Team",
+        "score": 8
+      },
+      {
+        "key": "traction",
+        "label": "Traction",
+        "score": 12
+      },
+      {
+        "key": "market",
+        "label": "Market",
+        "score": 56
+      },
+      {
+        "key": "product",
+        "label": "Product",
+        "score": 25
+      },
+      {
+        "key": "financials",
+        "label": "Financials",
+        "score": 42
+      },
+      {
+        "key": "story",
+        "label": "Story",
+        "score": 75
+      }
+    ],
+    "computed_at": "2026-11-05T10:56:29.582389+00:00"
+  },
+  "meta": null
+}

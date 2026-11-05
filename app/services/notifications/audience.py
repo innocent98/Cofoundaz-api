@@ -31,6 +31,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "billing.payment.failed": FOUNDER_ROLES,
     "billing.usage.threshold": FOUNDER_ROLES,
     "billing.plan.changed": FOUNDER_ROLES,
+    "readiness.improved": FOUNDER_ROLES,  # D-IR-4: the score is the founder's to act on
     "mission.ready": MISSION_ROLES,
     "mission.completed": MISSION_ROLES,
     "mission.streak.milestone": MISSION_ROLES,

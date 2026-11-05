@@ -87,6 +87,11 @@ from app.db.models.notification import Notification  # noqa: F401
 from app.db.models.notification_preference import NotificationPreference  # noqa: F401
 from app.db.models.platform_setting import PlatformSetting  # noqa: F401
 from app.db.models.platform_staff import PlatformStaff  # noqa: F401
+from app.db.models.readiness import (  # noqa: F401
+    ReadinessInput,
+    ReadinessScore,
+    ReadinessScoreHistory,
+)
 from app.db.models.roadmap import (  # noqa: F401
     Roadmap,
     RoadmapMilestone,

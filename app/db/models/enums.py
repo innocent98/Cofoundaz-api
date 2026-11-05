@@ -51,6 +51,12 @@ FINANCE_ROLES: frozenset[MembershipRole] = frozenset(
 MARKETING_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
+# Investor Readiness (D-IR-4): founder and team member read; only the founder spends AI budget
+# or edits inputs. Everyone else is 403 until a Funding data-room share exists.
+READINESS_READ_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
+READINESS_WRITE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
 SALES_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )

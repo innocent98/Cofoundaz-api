@@ -3864,3 +3864,23 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [x] `critical` e2e marker on 10 journeys; PRs run critical + touched areas; push/nightly run all
 - [x] Poetry `.venv` cache (already in place) and PR `concurrency` cancel-in-progress verified
 - [ ] Enable Dependency graph + set `ENABLE_CODE_SCANNING=true` (Adebayo; SOP `docs/sop/2026-11-05-ci-pipeline-speed.md`)
+
+---
+
+## Module 15 — Investor Readiness (design accepted 2026-11-05; slice A built)
+
+Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.md`; gaps and D-IR-1..7 (all accepted):
+`cofoundaz/docs/checklist/investor-readiness-prd-gaps.md`. Order: A, then B and D in parallel, then C, then FE, re-walk, unhide.
+
+- [x] **Slice A: score + history** (`feature/readiness-score`, migration `0089_readiness_scores`, SOP `docs/sop/2026-11-05-investor-readiness-score.md`, FE guide `docs/fe-integration-guide-investor-readiness.md`)
+  - [x] 23-signal table reusing Health readers; weights, bands, 69 cap until model + reviewed deck + proof (D-IR-2); deck never met until slice B
+  - [x] `readiness_scores`, `readiness_score_history`, `readiness_inputs`
+  - [x] `GET /readiness/score`, `POST /readiness/score/recompute`, `GET /readiness/history`, `GET /readiness/snapshot`, `GET`/`PUT /readiness/inputs`
+  - [x] Roles per D-IR-4 (founder + team member read, founder writes), a test per role
+  - [x] Triggers: events, stale-on-read (15 min), nightly; `readiness.updated`; `readiness.improved` notification
+  - [x] Unit + API + live e2e journey; migration round trip; live-captured FE guide
+- [ ] Slice B: deck review (`pypdfium2` thumbnails, `deck_reviews`, job, Story signal, "reviewed deck" must-have)
+- [ ] Slice D: Mock Q&A (`mock_sessions`, turn endpoint, scoring job, budget pre-flight)
+- [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
+- [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk
+- [ ] _Deferred:_ Academy "Learn how" link per gap · revenue growth and non-NGN revenue signals · founder agreement linked to a signature
