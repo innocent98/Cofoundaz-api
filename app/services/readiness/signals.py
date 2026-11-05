@@ -574,12 +574,17 @@ def read_signals(db: Session, startup: Startup) -> list[Reading]:
     return out
 
 
+def _deck_reviewed(db: Session, startup: Startup) -> bool:
+    """A completed pitch deck review exists. Always False until slice B adds `deck_reviews`."""
+    return False
+
+
 # ---- Must-haves (D-IR-2) -------------------------------------------------------------------
 
 
 def must_haves(db: Session, startup: Startup) -> list[dict[str, Any]]:
     """The three things no investor conversation starts without. Until they exist the overall is
-    capped at 69. Slice B tightens "deck" to "a reviewed deck"."""
+    capped at 69. The deck must-have needs a completed review (slice B); until then it is unmet."""
     revenue = (_monthly_revenue(db, startup) or 0) > 0
     validated = _count(
         db,
@@ -595,23 +600,37 @@ def must_haves(db: Session, startup: Startup) -> list[dict[str, Any]]:
         or _won_deals(db, startup) > 0
         or (validated >= 1 and (_signups(db, startup) >= 10 or interviews >= 5))
     )
-    return [
+    deck_exists = bool(_doc_exists(db, startup, DocumentKind.pitch_deck))
+    items = [
         {
             "key": "financial_model",
             "label": "A financial model",
             "met": _latest_model(db, startup) is not None,
             "href": "/finance/model",
+            "reason": "Generate a financial model in Finance.",
         },
         {
-            "key": "pitch_deck",
-            "label": "A pitch deck",
-            "met": bool(_doc_exists(db, startup, DocumentKind.pitch_deck)),
-            "href": "/documents",
+            # D-IR-2: "a reviewed deck". Deck reviews arrive with slice B, so until then this is
+            # never met and the cap holds at 69 by design.
+            "key": "pitch_deck_reviewed",
+            "label": "A reviewed pitch deck",
+            "met": _deck_reviewed(db, startup),
+            "href": "/investor-readiness/deck" if deck_exists else "/documents",
+            "reason": (
+                "Deck review is not available yet. A reviewed deck is required to pass 69."
+                if deck_exists
+                else "Create a pitch deck, then have it reviewed. Deck review is not available yet."
+            ),
         },
         {
             "key": "traction_proof",
             "label": "One proof point: revenue, a won deal, or a validated assumption with demand",
             "met": proof,
             "href": "/validation",
+            "reason": "Record revenue, win a deal, or validate an assumption with real demand.",
         },
     ]
+    for item in items:
+        if item["met"]:
+            item["reason"] = None
+    return items

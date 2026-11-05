@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -87,10 +87,26 @@ def _dim_scores(dimensions: dict[str, Any]) -> dict[str, int | None]:
     return {d: v["score"] for d, v in dimensions.items()}
 
 
+def _lock(db: Session, startup_id: uuid.UUID) -> None:
+    """Serialise recomputes per workspace for the rest of the transaction. Without it two
+    concurrent recomputes both read the same previous row, both decide the score "changed" and
+    write two history rows and two "improved" notifications."""
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+        {"k": f"readiness:{startup_id}"},
+    )
+
+
 def recompute_readiness(db: Session, startup: Startup, *, trigger: str) -> ReadinessScore:
+    _lock(db, startup.id)
     now = datetime.now(UTC)
     res = compute(db, startup)
-    prev = db.query(ReadinessScore).filter_by(startup_id=startup.id).first()
+    prev = (
+        db.query(ReadinessScore)
+        .filter_by(startup_id=startup.id)
+        .execution_options(populate_existing=True)
+        .first()
+    )
     previous_score = prev.score if prev else None
     changed = (
         prev is None
@@ -305,6 +321,27 @@ def input_view(row: ReadinessInput | None) -> dict[str, Any]:
     }
 
 
+def _check_nesting(v: dict[str, int | None]) -> None:
+    """SAM <= TAM and SOM <= SAM, against the values that would be stored (not just the request)."""
+    errors = []
+    if (
+        v["tam_minor"] is not None
+        and v["sam_minor"] is not None
+        and v["sam_minor"] > v["tam_minor"]
+    ):
+        errors.append({"field": "sam_minor", "message": "SAM cannot be larger than TAM."})
+    if (
+        v["sam_minor"] is not None
+        and v["som_minor"] is not None
+        and v["som_minor"] > v["sam_minor"]
+    ):
+        errors.append({"field": "som_minor", "message": "SOM cannot be larger than SAM."})
+    if errors:
+        raise AppError(
+            "VALIDATION_ERROR", "Please check the highlighted fields.", 422, field_errors=errors
+        )
+
+
 def get_inputs(db: Session, startup_id: uuid.UUID) -> dict[str, Any]:
     return input_view(db.query(ReadinessInput).filter_by(startup_id=startup_id).first())
 
@@ -313,6 +350,13 @@ def put_inputs(
     db: Session, startup: Startup, user_id: uuid.UUID, data: dict[str, Any]
 ) -> dict[str, Any]:
     row = db.query(ReadinessInput).filter_by(startup_id=startup.id).first()
+    merged = {
+        "tam_minor": row.tam_minor if row else None,
+        "sam_minor": row.sam_minor if row else None,
+        "som_minor": row.som_minor if row else None,
+        **{k: v for k, v in data.items() if k in ("tam_minor", "sam_minor", "som_minor")},
+    }
+    _check_nesting(merged)
     if row is None:
         row = ReadinessInput(startup_id=startup.id)
         db.add(row)

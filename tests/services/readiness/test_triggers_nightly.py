@@ -43,3 +43,15 @@ def test_nightly_pass_refreshes_readiness_too(db):
     s = _ws(db)
     handle_health_nightly(db, SimpleNamespace(payload={"startup_id": str(s.id)}))
     assert db.query(ReadinessScore).filter_by(startup_id=s.id).one().trigger == "nightly"
+
+
+def test_a_readiness_failure_cannot_fail_the_health_nightly_job(db, monkeypatch, caplog):
+    s = _ws(db)
+    from app.services.readiness import service as svc
+
+    def boom(*_a, **_k):
+        raise RuntimeError("readiness exploded")
+
+    monkeypatch.setattr(svc, "refresh_readiness", boom)
+    handle_health_nightly(db, SimpleNamespace(payload={"startup_id": str(s.id)}))  # must not raise
+    assert "nightly readiness refresh failed" in caplog.text

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
@@ -9,7 +11,7 @@ class ReadinessInputsIn(BaseModel):
     tam_minor: int | None = Field(None, ge=0, le=10**15)
     sam_minor: int | None = Field(None, ge=0, le=10**15)
     som_minor: int | None = Field(None, ge=0, le=10**15)
-    currency: str | None = Field(None, min_length=3, max_length=3)
+    currency: Literal["NGN", "USD"] | None = None
     source_url: HttpUrl | None = None
 
     @model_validator(mode="after")

@@ -11,13 +11,15 @@
 | Engine (D-IR-1) | Deterministic. One declarative table of 23 signals in `app/services/readiness/signals.py` (key, dimension, stage targets, href, reader, gap-note template, weight). No LLM, no tokens. |
 | Reuse | Health Score readers are imported (`health_score.live_signals.SIGNALS_BY_KEY[...].read`): members, activity, roadmap, mission, assumptions, interviews, transactions, runway. New readers read Sales, Invoices, Validation, Business Builder, Documents, Financial Model directly. |
 | Weights (D-IR-2) | Traction 25, Financials 20, Product 15, Market 15, Team 15, Story 10 (`config.py`). A signal scores `min(value/target,1)*100` against its stage target; a dimension is the weighted mean of its applicable signals; a signal that does not apply yet (`None`) drops out instead of counting 0. Overall renormalises over scored dimensions. |
-| Cap (D-IR-2) | Overall is held at 69 until three must-haves exist: a financial model, a pitch deck, one traction proof point. `raw_score` and `must_haves` are always returned so the FE can say why. |
+| Cap (D-IR-2) | Overall is held at 69 until three must-haves exist: a financial model, **a reviewed pitch deck** (`pitch_deck_reviewed`), one traction proof point. `raw_score` and `must_haves` (each with `label`, `href` and a `reason` while unmet) are always returned so the FE can say why. **Until slice B ships deck reviews the deck must-have is never met, so no workspace can pass 69, by design.** |
 | Gaps | Candidate per below-target signal, ranked by overall points gained, at most 2 per dimension, top 5. Notes are templates filled with the real numbers, never model prose. |
+| Concurrency | `recompute_readiness` takes `pg_advisory_xact_lock` on the workspace first, so concurrent recomputes cannot write duplicate history rows or duplicate notifications (`tests/services/readiness/test_concurrency.py` fails without the lock). |
+| Nightly | The readiness refresh runs inside the Health nightly job, in a savepoint with its own try/except and logging, so a readiness error cannot fail Health's refresh. |
 | Cache and triggers | `readiness_scores` (one row per workspace). Refreshed on read when older than 15 minutes, on events (Health's list plus canvas, deal won, invoice paid, financial model, assumption validated/invalidated, document created), and by the nightly Health pass (`handle_health_nightly` also refreshes readiness). History row only on change. |
 | Notification | `readiness.improved`, founders only, at most once a day, on a band improvement or a rise of 5+ points. Category `health_assessment`, module `readiness`. |
 | Event | `readiness.updated {startup_id, score, previous_score, band, ready, computed_at}` on a persisted change. Funding reads it for the pipeline banner. |
 | Roles (D-IR-4) | `READINESS_READ_ROLES` founder + team member; `READINESS_WRITE_ROLES` founder (`app/db/models/enums.py`). Everyone else 403. Funding's data-room share (not built) will use `GET /readiness/snapshot` for investors. |
-| Market size | `readiness_inputs`; only counts with a source URL (weight 2 of 6 in Market, so at most a third). |
+| Market size | `readiness_inputs`; only counts with a source URL (weight 2 of 6 in Market, so at most a third). SAM <= TAM and SOM <= SAM are checked against the **stored** values on every PUT; currency is NGN or USD. |
 
 **What's involved**
 
@@ -28,14 +30,15 @@
 | API | `app/api/v1/endpoints/readiness.py`, `app/schemas/readiness.py`, wired in `app/api/v1/api.py`: `GET /readiness/score`, `POST /readiness/score/recompute`, `GET /readiness/history`, `GET /readiness/snapshot`, `GET` and `PUT /readiness/inputs` |
 | Touched elsewhere | notification registry, categories, audience (`readiness.improved`), `app/worker/handlers/scheduled.py` (nightly), `tests/services/notifications/test_dashboard_audience.py` |
 
-**Verification:** unit tests `tests/services/readiness/` (scoring maths, every rule, events, throttle, notification limits, history markers) and `tests/api/test_investor_readiness_api.py` (all 7 roles on every route, validation); `tests/test_readiness_migration.py`; live journey `e2e/test_investor_readiness.py` against a real server (captures in `e2e/_captures/investor_readiness/`); migration upgrade, downgrade, upgrade and `alembic check` clean on a scratch DB. Coverage of the new service code 98%. Touched shared notification tests all pass.
+**Verification:** unit tests `tests/services/readiness/` (scoring maths, every rule, events, throttle, notification limits, history markers) and `tests/api/test_investor_readiness_api.py` (all 7 roles on every route, validation); `tests/test_readiness_migration.py`; live journey `e2e/test_investor_readiness.py` against a real server (captures in `e2e/_captures/investor_readiness/`); `tests/test_readiness_migration.py` runs upgrade, downgrade to `0088`, upgrade and `alembic check` on a throwaway database it creates and drops. Coverage of the new service code 98%. Touched shared notification tests all pass.
 
 **Operate / roll back:** no config, no env var, no AI spend. To revert, downgrade `0089` (drops the three tables) and revert the PR; the nightly handler change is two lines. A weights change is an edit to `config.py`: bump `READINESS_CONFIG_VERSION` (stored on every row and history point).
 
 **Follow-ups**
 
-- Slices B (deck review; tightens the "pitch deck" must-have to "a reviewed deck"), D (Mock Q&A), C (narrative check) add their Story signals and the History session log.
+- Slices B (deck review: replaces `_deck_reviewed`, which is `False` until `deck_reviews` exists), D (Mock Q&A), C (narrative check) add their Story signals and the History session log.
 - Founder-agreement signal is a proxy (a founder agreement document plus any completed signature) because signature requests are not linked to rich documents.
 - Revenue is scored in naira only; other currencies drop the signal until conversion exists. No month-on-month growth signal yet.
 - "Learn how" Academy link per gap: the recommender is course-ranked, not tag-keyed, so it is not attached yet.
 - Finance, validation and sales have no refresh events of their own beyond those listed; they rely on read-time staleness and the nightly pass.
+- `_investor_plan` and `_canvas_block_filled` (`signals.py`) load whole business plans and canvases to read one field; filter in SQL later.

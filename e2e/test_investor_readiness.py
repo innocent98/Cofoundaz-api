@@ -35,11 +35,34 @@ def _wh(c: httpx.Client, auth: dict) -> dict:
     return {**auth, "X-Workspace-Id": me["active_workspace_id"]}
 
 
+def _join(c: httpx.Client, wh: dict, role: str, unique_email, mailbox) -> dict:
+    """Invite `role` into the founder's workspace and accept as a freshly verified user."""
+    email = unique_email(role)
+    r = c.post(
+        "/api/v1/team/invitations", headers=wh, json={"invites": [{"email": email, "role": role}]}
+    )
+    assert r.status_code == 200, r.text
+    token = mailbox.latest_token_for(email, subject_contains="invited")
+    pw = "Member-" + email.split("@")[0][-8:] + "-9"
+    c.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    c.post(
+        "/api/v1/auth/verify",
+        json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},
+    )
+    access = c.post("/api/v1/auth/login", json={"email": email, "password": pw}).json()["data"][
+        "access_token"
+    ]
+    auth = {"Authorization": f"Bearer {access}"}
+    acc = c.post("/api/v1/invitations/accept", headers=auth, json={"token": token})
+    assert acc.status_code == 200, acc.text
+    return {**auth, "X-Workspace-Id": wh["X-Workspace-Id"]}
+
+
 def _sig(score: dict, key: str) -> dict:
     return next(s for d in score["dimensions"] for s in d["signals"] if s["key"] == key)
 
 
-def test_investor_readiness_journey(base_url, make_verified_user, capture):
+def test_investor_readiness_journey(base_url, make_verified_user, capture, unique_email, mailbox):
     with httpx.Client(base_url=base_url, timeout=15.0) as c:
         u = make_verified_user(c)
         auth = {
@@ -62,6 +85,11 @@ def test_investor_readiness_journey(base_url, make_verified_user, capture):
             "story",
         ]
         assert [m["met"] for m in s1["must_haves"]] == [False, False, False]
+        assert [m["key"] for m in s1["must_haves"]] == [
+            "financial_model",
+            "pitch_deck_reviewed",
+            "traction_proof",
+        ]
         assert 1 <= len(s1["gaps"]) <= 5
         capture("investor_readiness", "score_first_open", first)
 
@@ -165,3 +193,19 @@ def test_investor_readiness_journey(base_url, make_verified_user, capture):
         cross = c.get(f"{R}/score", headers={**sauth, "X-Workspace-Id": wh["X-Workspace-Id"]})
         assert cross.status_code == 403, cross.text
         capture("investor_readiness", "other_workspace", cross)
+
+        # 8. Roles: a team member reads the same score but cannot recalculate; a mentor is refused.
+        tm = _join(c, wh, "team_member", unique_email, mailbox)
+        tm_score = c.get(f"{R}/score", headers=tm)
+        assert tm_score.status_code == 200, tm_score.text
+        assert (
+            tm_score.json()["data"]["score"]
+            == c.get(f"{R}/score", headers=wh).json()["data"]["score"]
+        )
+        tm_recompute = c.post(f"{R}/score/recompute", headers=tm)
+        assert tm_recompute.status_code == 403, tm_recompute.text
+        capture("investor_readiness", "team_member_recompute_403", tm_recompute)
+        mentor = _join(c, wh, "mentor", unique_email, mailbox)
+        mentor_score = c.get(f"{R}/score", headers=mentor)
+        assert mentor_score.status_code == 403, mentor_score.text
+        capture("investor_readiness", "mentor_score_403", mentor_score)
