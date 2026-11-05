@@ -1,15 +1,15 @@
 """Funding Hub slice B: the data room
 
 Revision ID: 0095_funding_data_room
-Revises: 0092_marketplace_providers
+Revises: 0093_readiness_mock_qa
 Create Date: 2026-11-05
 
 Adds `data_room_folders`, `data_room_items` (references into Documents, exactly one target),
 `data_room_shares` (token hash only; email-gated; revocable), `data_room_challenges` (emailed
 one-time codes, keyed hash only) and `data_room_views` (the access log). Downgrade drops all five.
 
-CHAIN NOTE: chained on 0092 for now; 0093 (Readiness Q&A) and 0094 (Marketplace listings) are in
-flight and the lead re-chains this one if they land first.
+CHAIN NOTE: chained on develop's head, 0093 (Readiness mock Q&A); 0094 (Marketplace listings) is in
+flight; the lead re-chains this one if it lands first.
 """
 
 import sqlalchemy as sa
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0095_funding_data_room"
-down_revision = "0092_marketplace_providers"
+down_revision = "0093_readiness_mock_qa"
 branch_labels = None
 depends_on = None
 

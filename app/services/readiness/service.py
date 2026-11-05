@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.db.models.readiness import (
     DeckReview,
+    MockSession,
     ReadinessInput,
     ReadinessScore,
     ReadinessScoreHistory,
@@ -30,6 +31,8 @@ from app.services.readiness.config import (
     READINESS_CONFIG_VERSION,
     READY_AT,
 )
+from app.services.readiness.qa import RATING_LABELS
+from app.services.readiness.qa import duration_minutes as qa_minutes
 from app.services.readiness.scoring import (
     Reading,
     apply_cap,
@@ -312,7 +315,7 @@ def history(db: Session, startup: Startup, days: int) -> dict[str, Any]:
         .order_by(DeckReview.reviewed_at.desc())
         .all()
     )
-    log_rows = [
+    log_rows: list[dict[str, Any]] = [
         {
             "type": "deck_review",
             "at": r.reviewed_at.isoformat() if r.reviewed_at else r.created_at.isoformat(),
@@ -323,6 +326,32 @@ def history(db: Session, startup: Startup, days: int) -> dict[str, Any]:
         for r in reviews
     ]
     markers += [{"at": e["at"], "label": f"Deck reviewed (v{e['version']})"} for e in log_rows]
+    sessions = (
+        db.query(MockSession)
+        .filter(
+            MockSession.startup_id == startup.id,
+            MockSession.status == "scored",
+            MockSession.scored_at >= since,
+        )
+        .order_by(MockSession.scored_at.desc())
+        .all()
+    )
+    qa_rows: list[dict[str, Any]] = [
+        {
+            "type": "qa_session",
+            "at": m.scored_at.isoformat() if m.scored_at else m.started_at.isoformat(),
+            "id": str(m.id),
+            "focus": m.focus,
+            "intensity": m.intensity,
+            "duration_minutes": qa_minutes(m),
+            "rating": m.rating,
+            "rating_label": RATING_LABELS.get(m.rating or ""),
+            "average": m.average,
+        }
+        for m in sessions
+    ]
+    markers += [{"at": e["at"], "label": f"Mock Q&A scored ({e['rating_label']})"} for e in qa_rows]
+    log_rows = sorted(log_rows + qa_rows, key=lambda e: str(e["at"]), reverse=True)
     markers.sort(key=lambda m: m["at"])
     return {"range": days, "points": points, "markers": markers, "log": log_rows}
 

@@ -296,12 +296,15 @@ def test_provider_errors_retry_until_the_last_attempt(db, ws, monkeypatch):
     u, s = ws
     boom = CannedLLM(boom=RuntimeError("provider down"))
     monkeypatch.setattr(llm_budget, "get_llm_client", lambda: boom)
+    billed = []
+    monkeypatch.setattr(llm_budget, "_debit_independent", lambda sid, n: billed.append(n))
     f, _ = store_deck(db, s, u)
     review, _ = deck.create_review(db, s, u.id, f.id)
     with pytest.raises(RuntimeError):
         _run(db, review, last=False)
     assert review.status == "running"
     job = _run(db, review, last=True, attempts=settings.WORKER_MAX_ATTEMPTS)
+    assert billed == [CannedLLM.last_usage_tokens] * 2  # each failed call is billed on its own
     assert job.result["reason"] == "generation_failed" and review.status == "failed"
 
 
@@ -477,3 +480,28 @@ def test_deleting_the_file_keeps_the_review(db, ws, llm):
     db.refresh(review)
     assert review.file_id is None and review.filename == "deck.pdf"
     assert db.query(DeckReview).filter_by(id=review.id).count() == 1
+
+
+def test_reconcile_never_flips_a_review_that_finished_in_the_meantime(db, ws, llm):
+    """A reader loaded the review while it was running; the worker then committed it as ready and
+    the job as succeeded. The reader's reconcile must leave the finished review alone."""
+    from sqlalchemy import update
+
+    from app.db.models.enums import JobStatus
+
+    u, s = ws
+    f, _ = store_deck(db, s, u)
+    review, _ = deck.create_review(db, s, u.id, f.id)
+    review.status = "running"
+    db.flush()
+    db.execute(
+        update(DeckReview)
+        .where(DeckReview.id == review.id)
+        .values(status="ready")
+        .execution_options(synchronize_session=False)
+    )
+    db.get(Job, review.job_id).status = JobStatus.succeeded
+    db.flush()
+    assert review.status == "running"  # stale in memory
+    assert deck.reconcile(db, review) is False
+    assert review.status == "ready" and review.error is None

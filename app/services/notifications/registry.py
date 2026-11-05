@@ -440,6 +440,11 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "See who viewed",
     ),
+    "readiness.qa.scored": NotifSpec(
+        _founders,
+        lambda _p: "Mock Q&A session summary ready",
+        lambda _p: "See scorecard",
+    ),
     "assessment.completed": _s(
         _audience("assessment.completed"), "A startup assessment was completed"
     ),
