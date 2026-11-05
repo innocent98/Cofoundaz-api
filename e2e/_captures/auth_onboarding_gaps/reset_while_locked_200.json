@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/password/reset",
+    "headers": {
+      "X-Forwarded-For": "203.0.113.77"
+    },
+    "json": {
+      "token": "<token>",
+      "password": "<test-password>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "reset": true
+      },
+      "meta": null
+    }
+  }
+}

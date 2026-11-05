@@ -1,0 +1,71 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/onboarding/invites",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.63"
+    },
+    "json": {
+      "invites": [
+        {
+          "email": "nope",
+          "role": "team_member"
+        },
+        {
+          "email": "delivered+mate-b60ac49c7e99@resend.dev",
+          "role": "mentor"
+        },
+        {
+          "email": "delivered+mate-b60ac49c7e99@resend.dev",
+          "role": "mentor"
+        },
+        {
+          "email": "delivered+e2e-225569e3a69d@resend.dev",
+          "role": "team_member"
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "created": [
+          "delivered+mate-b60ac49c7e99@resend.dev"
+        ],
+        "skipped": [
+          "delivered+mate-b60ac49c7e99@resend.dev",
+          "delivered+e2e-225569e3a69d@resend.dev"
+        ],
+        "undelivered": [],
+        "results": [
+          {
+            "email": "nope",
+            "status": "invalid",
+            "reason": "invalid_email",
+            "message": "That doesn't look like an email address."
+          },
+          {
+            "email": "delivered+mate-b60ac49c7e99@resend.dev",
+            "status": "created",
+            "reason": null,
+            "message": null
+          },
+          {
+            "email": "delivered+mate-b60ac49c7e99@resend.dev",
+            "status": "skipped",
+            "reason": "duplicate_in_request",
+            "message": "You listed this address more than once."
+          },
+          {
+            "email": "delivered+e2e-225569e3a69d@resend.dev",
+            "status": "skipped",
+            "reason": "self_invite",
+            "message": "That's your own email address."
+          }
+        ]
+      },
+      "meta": null
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/onboarding/state",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.63"
+    },
+    "json": {
+      "step": 1,
+      "full_name": "Mate"
+    }
+  },
+  "response": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "ONBOARDING_NOT_FOR_INVITED",
+        "message": "You've been invited to a workspace. Accept the invitation to continue.",
+        "field_errors": []
+      }
+    }
+  }
+}

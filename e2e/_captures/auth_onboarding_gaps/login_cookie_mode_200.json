@@ -1,0 +1,29 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "headers": {
+      "X-Auth-Mode": "cookie",
+      "X-Forwarded-For": "198.51.100.69"
+    },
+    "json": {
+      "email": "delivered+e2e-f2cdc62b9d76@resend.dev",
+      "password": "<test-password>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "set-cookie": "cfz_refresh=<refresh-token>; HttpOnly; Max-Age=2592000; Path=/api/v1/auth; SameSite=lax"
+    },
+    "body": {
+      "data": {
+        "access_token": "<access-token>",
+        "refresh_token": null,
+        "expires_in": 900,
+        "mfa_required": false
+      },
+      "meta": null
+    }
+  }
+}

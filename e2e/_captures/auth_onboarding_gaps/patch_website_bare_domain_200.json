@@ -1,0 +1,47 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/onboarding/state",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.63"
+    },
+    "json": {
+      "step": 2,
+      "name": "WalkCo",
+      "website": "walkco.example"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "step": 2,
+        "completed": false,
+        "assessment_pending": true,
+        "pending_invite": false,
+        "founder_profile": {
+          "full_name": "Ada Founder",
+          "role_title": "Founder & CEO",
+          "country": "NG",
+          "phone": "+234 801 234 5678",
+          "how_heard": null
+        },
+        "startup": {
+          "id": "cb300426-5e4d-4b44-9775-7ad27cf95f01",
+          "name": "WalkCo",
+          "description": null,
+          "website": "https://walkco.example",
+          "logo_url": null,
+          "industry": null,
+          "business_model": null,
+          "stage": null
+        },
+        "goals": [],
+        "ai_panel": null,
+        "notes": null,
+        "invites": []
+      },
+      "meta": null
+    }
+  }
+}

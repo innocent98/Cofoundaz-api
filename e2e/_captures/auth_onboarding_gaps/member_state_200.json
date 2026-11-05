@@ -1,0 +1,30 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/onboarding/state",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.63"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "step": 4,
+        "completed": true,
+        "assessment_pending": false,
+        "pending_invite": false,
+        "founder_profile": null,
+        "startup": {
+          "id": "cb300426-5e4d-4b44-9775-7ad27cf95f01",
+          "name": "WalkCo"
+        },
+        "goals": [],
+        "ai_panel": null,
+        "notes": null,
+        "invites": []
+      },
+      "meta": null
+    }
+  }
+}

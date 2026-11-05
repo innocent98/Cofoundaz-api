@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/onboarding/complete",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.63"
+    }
+  },
+  "response": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "ONBOARDING_NOT_FOR_INVITED",
+        "message": "You've been invited to a workspace. Accept the invitation to continue.",
+        "field_errors": []
+      }
+    }
+  }
+}

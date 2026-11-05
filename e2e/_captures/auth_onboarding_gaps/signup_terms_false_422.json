@@ -1,0 +1,29 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/signup",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.67"
+    },
+    "json": {
+      "email": "delivered+consent-36332d2fce76@resend.dev",
+      "password": "<test-password>",
+      "accepted_terms": false
+    }
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "TERMS_NOT_ACCEPTED",
+        "message": "Accept the Terms and Privacy Policy to create your account.",
+        "field_errors": [
+          {
+            "field": "accepted_terms",
+            "message": "Accept the Terms and Privacy Policy to continue."
+          }
+        ]
+      }
+    }
+  }
+}
