@@ -194,9 +194,12 @@ def test_bulk_archive_is_all_or_nothing_and_never_touches_others(client, db):
     assert db.get(AiConversation, mine.id).archived_at is None
     assert db.get(AiConversation, theirs.id).archived_at is None
     # validation
-    assert client.post(f"{C}/archive", headers=h, json={"ids": []}).status_code == 422
-    assert client.post(f"{C}/archive", headers=h, json={"ids": ["nope"]}).status_code == 422
-    assert client.post(f"{C}/archive", headers=tm, json={"ids": [str(mine.id)]}).status_code == 404
+    resp1 = client.post(f"{C}/archive", headers=h, json={"ids": []})
+    assert resp1.status_code == 422
+    resp2 = client.post(f"{C}/archive", headers=h, json={"ids": ["nope"]})
+    assert resp2.status_code == 422
+    resp3 = client.post(f"{C}/archive", headers=tm, json={"ids": [str(mine.id)]})
+    assert resp3.status_code == 404
 
 
 def test_delete_forever_removes_conversation_and_messages(client, db):
@@ -206,7 +209,8 @@ def test_delete_forever_removes_conversation_and_messages(client, db):
     cid = conv.id
     db.commit()
 
-    assert client.delete(f"{C}/{cid}", headers=tm).status_code == 404  # not theirs
+    resp4 = client.delete(f"{C}/{cid}", headers=tm)
+    assert resp4.status_code == 404  # not theirs
     r = client.delete(f"{C}/{cid}", headers=h)
     assert r.status_code == 200, r.text
     assert r.json()["data"] == {"deleted": True}
@@ -214,7 +218,8 @@ def test_delete_forever_removes_conversation_and_messages(client, db):
     assert db.get(AiConversation, cid) is None
     assert db.query(AiMessage).filter_by(conversation_id=cid).count() == 0
     assert client.get(f"{C}/{cid}", headers=h).status_code == 404
-    assert client.delete(f"{C}/{cid}", headers=h).status_code == 404
+    resp5 = client.delete(f"{C}/{cid}", headers=h)
+    assert resp5.status_code == 404
 
 
 def test_delete_works_on_an_archived_conversation(client, db):
@@ -222,7 +227,8 @@ def test_delete_works_on_an_archived_conversation(client, db):
     conv = _seed(db, s, o, "old")
     client.post(f"{C}/archive", headers=h, json={"ids": [str(conv.id)]})
     db.commit()
-    assert client.delete(f"{C}/{conv.id}", headers=h).status_code == 200
+    resp6 = client.delete(f"{C}/{conv.id}", headers=h)
+    assert resp6.status_code == 200
 
 
 def test_roles_without_ai_access_get_403_on_new_routes(client, db):
@@ -233,6 +239,7 @@ def test_roles_without_ai_access_get_403_on_new_routes(client, db):
     assert (
         client.post(f"{C}/archive", headers=mentor, json={"ids": [str(conv.id)]}).status_code == 403
     )
-    assert client.delete(f"{C}/{conv.id}", headers=mentor).status_code == 403
+    resp7 = client.delete(f"{C}/{conv.id}", headers=mentor)
+    assert resp7.status_code == 403
     assert client.get(C, headers=mentor, params={"query": "xx"}).status_code == 403
     assert Job is not None
