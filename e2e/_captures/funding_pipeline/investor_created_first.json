@@ -1,0 +1,28 @@
+{
+  "data": {
+    "id": "7af4bd1f-1bd9-4bc8-9ccc-2e68afee7eba",
+    "round_id": "d147b495-b3f9-416d-bff6-83fe85cf786c",
+    "name": "Tolu Bello",
+    "firm": "Lagos Angels",
+    "type": "angel",
+    "stage": "research",
+    "warm": true,
+    "check_min_minor": 500000000,
+    "check_max_minor": 2000000000,
+    "committed_minor": null,
+    "next_step": "Send the deck",
+    "next_step_on": "2026-11-08",
+    "next_step_overdue": false,
+    "last_touch_at": null,
+    "thesis_notes": "Backs fintech founders in Lagos.",
+    "source": "manual",
+    "passed_reason": null,
+    "stage_entered_at": "2026-11-05T11:08:12.097334+00:00",
+    "days_in_stage": 0,
+    "position": 0,
+    "recorded_in_finance": false,
+    "created_at": "2026-11-05T11:08:12.090645+00:00",
+    "updated_at": "2026-11-05T11:08:12.090645+00:00"
+  },
+  "meta": null
+}

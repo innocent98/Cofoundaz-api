@@ -15,6 +15,7 @@ from app.db.models.enums import (
     BRIEFING_ROLES,
     DOCUMENT_ROLES,
     FINANCE_ROLES,
+    FUNDING_ROLES,
     MARKETING_ROLES,
     MISSION_ROLES,
     SALES_ROLES,
@@ -56,6 +57,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.launched": MARKETING_ROLES,
     "marketing.campaign.readout.ready": MARKETING_ROLES,
     "marketing.campaign.completed": MARKETING_ROLES,
+    "funding.round.committed_changed": FUNDING_ROLES,  # D-FUND-L6: F + TM, never all members
     "sales.deal.won": SALES_ROLES,
     "sales.deal.stalled": SALES_ROLES,
     "sales.sending.paused": FOUNDER_ROLES,

@@ -1,0 +1,62 @@
+{
+  "data": {
+    "round": {
+      "id": "d147b495-b3f9-416d-bff6-83fe85cf786c",
+      "name": "Seed",
+      "status": "open",
+      "currency": "NGN",
+      "target_minor": 9000000000,
+      "pre_money_minor": null,
+      "opened_at": "2026-11-05T11:08:12.128651+00:00",
+      "closed_at": null,
+      "created_at": "2026-11-05T11:08:12.090645+00:00",
+      "updated_at": "2026-11-05T11:08:12.124954+00:00"
+    },
+    "empty": false,
+    "stages": [
+      {
+        "stage": "research",
+        "count": 0
+      },
+      {
+        "stage": "outreach",
+        "count": 1
+      },
+      {
+        "stage": "meeting",
+        "count": 0
+      },
+      {
+        "stage": "diligence",
+        "count": 0
+      },
+      {
+        "stage": "term_sheet",
+        "count": 1
+      },
+      {
+        "stage": "committed",
+        "count": 1
+      },
+      {
+        "stage": "passed",
+        "count": 1
+      }
+    ],
+    "totals": {
+      "currency": "NGN",
+      "target_minor": 9000000000,
+      "soft_minor": 3000000000,
+      "committed_minor": 2000000000,
+      "soft_pct": 33,
+      "committed_pct": 22
+    },
+    "suggested_target": null,
+    "counts": {
+      "investors": 4,
+      "warm": 2,
+      "overdue_next_steps": 0
+    }
+  },
+  "meta": null
+}

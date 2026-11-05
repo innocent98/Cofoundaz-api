@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_COMMITTED",
+    "message": "Move the investor to Committed with an amount first.",
+    "field_errors": []
+  }
+}

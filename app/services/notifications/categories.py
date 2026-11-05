@@ -73,6 +73,7 @@ EVENT_CATEGORY: dict[str, str] = {
 # are in-app only and have their own switches on the Journal page.
 PREFIX_CATEGORY: dict[str, str] = {
     "finance.": "finance",
+    "funding.": "finance",  # money in; no new Preferences row until the Funding FE ships
     "kpi.": "ai_insights",
     "dashboard.": "ai_insights",
     "marketing.": "marketing",
@@ -151,6 +152,7 @@ _MODULE_BY_PREFIX: dict[str, str] = {
     "document": "documents",
     "business": "business",
     "finance": "finance",
+    "funding": "funding",
     "kpi": "dashboard",
     "dashboard": "dashboard",
     "marketing": "marketing",

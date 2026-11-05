@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "d147b495-b3f9-416d-bff6-83fe85cf786c",
+    "name": "Funding round",
+    "status": "planning",
+    "currency": "NGN",
+    "target_minor": null,
+    "pre_money_minor": null,
+    "opened_at": null,
+    "closed_at": null,
+    "created_at": "2026-11-05T11:08:12.090645+00:00",
+    "updated_at": "2026-11-05T11:08:12.090645+00:00"
+  },
+  "meta": null
+}

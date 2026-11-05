@@ -1,0 +1,36 @@
+{
+  "data": {
+    "investor": {
+      "id": "9841ba21-7eb4-48de-80df-0bbd43ee3eba",
+      "round_id": "f41b0e91-696a-45b0-a08a-452676baa5a6",
+      "name": "Emeka Obi",
+      "firm": "Atlas Capital",
+      "type": "vc",
+      "stage": "committed",
+      "warm": false,
+      "check_min_minor": null,
+      "check_max_minor": null,
+      "committed_minor": 50000000,
+      "next_step": null,
+      "next_step_on": null,
+      "next_step_overdue": false,
+      "last_touch_at": null,
+      "thesis_notes": null,
+      "source": "manual",
+      "passed_reason": null,
+      "stage_entered_at": "2026-11-05T11:08:13.384580+00:00",
+      "days_in_stage": 0,
+      "position": 0,
+      "recorded_in_finance": false,
+      "created_at": "2026-11-05T11:08:13.360579+00:00",
+      "updated_at": "2026-11-05T11:08:13.379243+00:00"
+    },
+    "record_in_finance": {
+      "amount_minor": null,
+      "currency": "USD",
+      "needs_ngn_amount": true,
+      "fits_ledger": true
+    }
+  },
+  "meta": null
+}

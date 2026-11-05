@@ -1,0 +1,31 @@
+{
+  "data": {
+    "investor": {
+      "id": "51a21e93-1665-485f-aaca-49bf39f0bda4",
+      "round_id": "d147b495-b3f9-416d-bff6-83fe85cf786c",
+      "name": "Dami Lawal",
+      "firm": "Sahara Syndicate",
+      "type": "syndicate",
+      "stage": "passed",
+      "warm": false,
+      "check_min_minor": null,
+      "check_max_minor": null,
+      "committed_minor": null,
+      "next_step": null,
+      "next_step_on": null,
+      "next_step_overdue": false,
+      "last_touch_at": null,
+      "thesis_notes": null,
+      "source": "manual",
+      "passed_reason": "stage_mismatch",
+      "stage_entered_at": "2026-11-05T11:08:12.239210+00:00",
+      "days_in_stage": 0,
+      "position": 0,
+      "recorded_in_finance": false,
+      "created_at": "2026-11-05T11:08:12.176915+00:00",
+      "updated_at": "2026-11-05T11:08:12.234139+00:00"
+    },
+    "record_in_finance": null
+  },
+  "meta": null
+}

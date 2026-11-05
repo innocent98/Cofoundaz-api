@@ -1,0 +1,22 @@
+{
+  "data": {
+    "transactions": [
+      {
+        "id": "413e928c-da23-4309-96a0-1db811ac43bd",
+        "date": "2026-11-05",
+        "description": "Funding from Chidi Okafor",
+        "category": "Funding",
+        "amount_minor": 2000000000,
+        "currency": "NGN",
+        "direction": "in",
+        "source": "manual",
+        "created_at": "2026-11-05T11:08:12.413971Z",
+        "updated_at": "2026-11-05T11:08:12.413971Z"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": 1
+  }
+}

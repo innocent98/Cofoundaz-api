@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This round already has amounts in NGN. Clear them before changing the currency.",
+    "field_errors": [
+      {
+        "field": "currency",
+        "message": "This round already has amounts in NGN. Clear them before changing the currency."
+      }
+    ]
+  }
+}

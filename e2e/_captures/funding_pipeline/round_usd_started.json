@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "f41b0e91-696a-45b0-a08a-452676baa5a6",
+    "name": "Series A",
+    "status": "planning",
+    "currency": "USD",
+    "target_minor": 200000000,
+    "pre_money_minor": null,
+    "opened_at": null,
+    "closed_at": null,
+    "created_at": "2026-11-05T11:08:13.349115+00:00",
+    "updated_at": "2026-11-05T11:08:13.349115+00:00"
+  },
+  "meta": null
+}
