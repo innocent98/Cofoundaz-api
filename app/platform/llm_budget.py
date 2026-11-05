@@ -89,7 +89,13 @@ def metered_complete_json(
     if over_budget(db, startup_id):
         return None
     client = get_llm_client()
-    result = client.complete_json(messages, schema=schema, max_tokens=max_tokens)
+    try:
+        result = client.complete_json(messages, schema=schema, max_tokens=max_tokens)
+    except Exception:
+        # Same as `metered_complete`: a failed call can still have cost tokens, and the job's
+        # savepoint rolls this session's writes back, so a retry would otherwise be free.
+        _debit_independent(startup_id, getattr(client, "last_usage_tokens", 0))
+        raise
     debit(db, startup_id, getattr(client, "last_usage_tokens", 0))
     return result
 

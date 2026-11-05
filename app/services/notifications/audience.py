@@ -32,6 +32,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "billing.payment.failed": FOUNDER_ROLES,
     "billing.usage.threshold": FOUNDER_ROLES,
     "billing.plan.changed": FOUNDER_ROLES,
+    "readiness.qa.scored": FOUNDER_ROLES,  # the scorecard quotes the founder's answers
     "readiness.improved": FOUNDER_ROLES,  # D-IR-4: the score is the founder's to act on
     "mission.ready": MISSION_ROLES,
     "mission.completed": MISSION_ROLES,

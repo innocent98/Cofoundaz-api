@@ -3886,7 +3886,13 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
   - [x] pypdfium2 thumbnails with signed links; Story signals; `pitch_deck_reviewed` must-have; history log and marker
   - [x] Unit + API (all roles) + live e2e journey (canned model); migration round trip
   - [ ] _Not verified:_ a real model run (quality, token cost), Cloudinary thumbnails
-- [ ] Slice D: Mock Q&A (`mock_sessions`, turn endpoint, scoring job, budget pre-flight)
+- [x] **Slice D: Mock Q&A** (`feature/readiness-mock-qa`, migration `0093_readiness_mock_qa`, SOP `docs/sop/2026-11-06-investor-readiness-mock-qa.md`, FE guide section 13)
+  - [x] `POST/GET /readiness/qa-sessions`, answer and end routes; 10 answers per session; 40k-token start gate; one open session; investor personas and context from real signals
+  - [x] Scoring job `ai.readiness.qa_score` under the AI budget; ratings clamped, strongest/weakest/overall decided in code; failed calls billed so retries are not free
+  - [x] Roles per D-IR-4/7: founder everything, team member ratings and counts only (tested: no words leak), others 403
+  - [x] `story.mock_qa` signal, History log + markers, "Mock Q&A session summary ready" notification (founders)
+  - [x] `expected_turn` double-submit guard, continue-time budget gate, failed scoring re-queueable; 90-day purge (transcript, context and scorecard text; daily job) tested; migration round trip; live e2e (stub investor, scripted scorer)
+  - [ ] _Not verified:_ a real model run (questions, ratings, token cost); the purge job on a live worker
 - [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
 - [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk
 - [ ] _Deferred:_ Academy "Learn how" link per gap · revenue growth and non-NGN revenue signals · founder agreement linked to a signature

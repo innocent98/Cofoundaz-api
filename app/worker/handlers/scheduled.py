@@ -32,6 +32,7 @@ from app.worker.scheduler import (
     SCHED_MISSION,
     SCHED_NOTIF_DIGEST,
     SCHED_OVERDUE,
+    SCHED_QA_RETENTION,
     SCHED_QUARTERLY,
     SCHED_SALES_STALL,
 )
@@ -215,6 +216,14 @@ def handle_documents_trash_purge(db: Session, job: Job) -> None:  # noqa: ARG001
     run_purge(db, now=datetime.now(UTC))
 
 
+def handle_qa_retention(db: Session, job: Job) -> None:  # noqa: ARG001
+    """Clear Mock Q&A transcripts older than 90 days and close forgotten open sessions."""
+    from app.services.readiness.qa import purge_expired
+
+    result = purge_expired(db)
+    logging.getLogger(__name__).info("mock q&a retention: %s", result)
+
+
 register_handler(SCHED_MISSION, handle_mission_generate)
 register_handler(SCHED_OVERDUE, handle_roadmap_overdue)
 register_handler(SCHED_DUE_SOON, handle_roadmap_due_soon)
@@ -223,6 +232,7 @@ register_handler(SCHED_KPI_SNAPSHOT, handle_kpi_snapshot)
 register_handler(SCHED_NOTIF_DIGEST, handle_notification_digest)
 register_handler(SCHED_JOURNAL_NUDGE, handle_journal_nudge)
 register_handler(SCHED_HEALTH_NIGHTLY, handle_health_nightly)
+register_handler(SCHED_QA_RETENTION, handle_qa_retention)
 register_handler(SCHED_MARKETING_PUBLISH, handle_marketing_publish)
 register_handler(SCHED_SALES_STALL, handle_sales_stall)
 register_handler(SCHED_INVOICE_OVERDUE, handle_invoice_overdue)

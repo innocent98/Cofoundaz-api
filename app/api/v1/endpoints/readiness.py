@@ -20,8 +20,8 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.platform.signed_urls import InvalidSignedToken, verify_key
-from app.schemas.readiness import DeckReviewIn, ReadinessInputsIn
-from app.services.readiness import deck, service
+from app.schemas.readiness import DeckReviewIn, QaMessageIn, QaStartIn, ReadinessInputsIn
+from app.services.readiness import deck, qa, service
 
 router = APIRouter()
 _read = require_role(*READINESS_READ_ROLES)
@@ -161,3 +161,71 @@ def deck_thumbnail(
         media_type="image/png",
         headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"},
     )
+
+
+# ---- Mock Q&A (PRD 15.3, D-IR-7) -----------------------------------------------------------
+# Founder: everything. Team member: ratings and counts only (no transcript, no scorecard text,
+# no way to start or answer). Every other role: 403.
+
+
+@router.post("/qa-sessions", status_code=status.HTTP_201_CREATED)
+def start_qa_session(
+    body: QaStartIn,
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    s = qa.start_session(db, _startup(db, membership), user.id, body.focus, body.intensity)
+    db.commit()
+    return success_response({"session": qa.detail(s), "reply": s.transcript[-1]["text"]})
+
+
+@router.post("/qa-sessions/{session_id}/messages")
+def answer_qa_session(
+    session_id: uuid.UUID,
+    body: QaMessageIn,
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    s = qa.get_for_update(db, membership.startup_id, session_id)
+    result = qa.answer(db, startup, s, body.content, body.expected_turn)
+    db.commit()
+    return success_response({"session": qa.summary(s), **result})
+
+
+@router.post("/qa-sessions/{session_id}/end")
+def end_qa_session(
+    session_id: uuid.UUID,
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    startup = _startup(db, membership)
+    s = qa.get_for_update(db, membership.startup_id, session_id)
+    qa.end_session(db, startup, s)
+    db.commit()
+    return success_response({"session": qa.summary(s)})
+
+
+@router.get("/qa-sessions")
+def list_qa_sessions(
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    rows = qa.list_sessions(db, membership.startup_id)
+    return success_response({"sessions": [qa.summary(r) for r in rows]})
+
+
+@router.get("/qa-sessions/{session_id}")
+def get_qa_session(
+    session_id: uuid.UUID,
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    s = qa.get_session(db, membership.startup_id, session_id)
+    full = membership.role in READINESS_WRITE_ROLES
+    return success_response(qa.detail(s) if full else qa.summary(s))

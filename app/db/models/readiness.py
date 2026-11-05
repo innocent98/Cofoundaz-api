@@ -5,11 +5,14 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -117,3 +120,37 @@ class DeckReview(UUIDMixin, TimestampMixin, Base):
         UniqueConstraint("startup_id", "version", name="uq_deck_reviews_startup_version"),
         Index("ix_deck_reviews_startup_sha", "startup_id", "content_sha256"),
     )
+
+
+class MockSession(UUIDMixin, TimestampMixin, Base):
+    """One Mock Q&A session (PRD 15.3, decision D-IR-7). `status` is active | ending | scored |
+    failed | abandoned. `context` and `transcript` hold the founder's own words and numbers, so
+    they are cleared after 90 days (`purged_at`); the scorecard is kept."""
+
+    __tablename__ = "mock_sessions"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    focus: Mapped[str] = mapped_column(String(20), nullable=False)
+    intensity: Mapped[str] = mapped_column(String(24), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="active")
+    error: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    turns: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    transcript: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    scorecard: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    rating: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    average: Mapped[float | None] = mapped_column(Float, nullable=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_mock_sessions_startup_started", "startup_id", "started_at"),)

@@ -22,10 +22,11 @@ REFRESH_EVENTS: tuple[str, ...] = (
     "validation.assumption.invalidated",
     "document.created",
     "readiness.deck.reviewed",
+    "readiness.qa.scored",
 )
 
 # The founder is waiting on these: refresh now instead of honouring the 15 minute throttle.
-FORCE_EVENTS: frozenset[str] = frozenset({"readiness.deck.reviewed"})
+FORCE_EVENTS: frozenset[str] = frozenset({"readiness.deck.reviewed", "readiness.qa.scored"})
 
 _registered_buses: set[int] = set()
 
