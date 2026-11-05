@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from email_validator import EmailNotValidError, validate_email
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, InviteEmailMismatch, NotFound, TokenInvalid
@@ -38,6 +39,25 @@ def _is_active_member_email(db: Session, startup: Startup, email: str) -> bool:
     )
 
 
+# Why a row was not invited: `reason` is the stable code, `message` the line to show next to it.
+_REASONS = {
+    "invalid_email": "That doesn't look like an email address.",
+    "self_invite": "That's your own email address.",
+    "duplicate_in_request": "You listed this address more than once.",
+    "already_invited": "This address already has a pending invitation.",
+    "already_member": "This person is already a member of the workspace.",
+}
+
+
+def _row(email: str, status: str, reason: str | None = None) -> dict[str, Any]:
+    return {
+        "email": email,
+        "status": status,
+        "reason": reason,
+        "message": _REASONS[reason] if reason else None,
+    }
+
+
 @dataclass
 class InviteBatch:
     """Result of `create_invitations`. The emails sit in `outbox` until the caller commits:
@@ -47,9 +67,17 @@ class InviteBatch:
     created: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     outbox: list[EmailMessage] = field(default_factory=list)
+    # One entry per submitted row, in order: {email, status: created|skipped|invalid, reason,
+    # message}. `created` / `skipped` above stay for older callers; invalid rows appear only here.
+    results: list[dict[str, Any]] = field(default_factory=list)
 
     def response(self, undelivered: list[str]) -> dict[str, Any]:
-        return {"created": self.created, "skipped": self.skipped, "undelivered": undelivered}
+        return {
+            "created": self.created,
+            "skipped": self.skipped,
+            "undelivered": undelivered,
+            "results": self.results,
+        }
 
 
 def deliver_invitations(batch: InviteBatch) -> list[str]:
@@ -94,8 +122,18 @@ def create_invitations(
     handled_this_call: set[str] = set()
     inviter_name = inviter.profile.full_name if inviter.profile else None
     for item in items:
-        email, role = item["email"], MembershipRole(item["role"])
+        raw_email, role = str(item["email"]).strip(), MembershipRole(item["role"])
+        try:
+            # Syntax only (no DNS): a typo like "nope" must never be stored or emailed.
+            email = validate_email(raw_email, check_deliverability=False).normalized
+        except EmailNotValidError:
+            batch.results.append(_row(raw_email, "invalid", "invalid_email"))
+            continue
         email_key = email.lower()
+        if email_key == inviter.email.lower():
+            batch.skipped.append(email)
+            batch.results.append(_row(email, "skipped", "self_invite"))
+            continue
         pending = (
             db.query(Invitation)
             .filter(
@@ -105,12 +143,18 @@ def create_invitations(
             )
             .first()
         )
-        if (
-            email_key in handled_this_call
-            or pending is not None
-            or _is_active_member_email(db, startup, email)
-        ):
+        reason = (
+            "duplicate_in_request"
+            if email_key in handled_this_call
+            else (
+                "already_invited"
+                if pending is not None
+                else "already_member" if _is_active_member_email(db, startup, email) else None
+            )
+        )
+        if reason is not None:
             batch.skipped.append(email)
+            batch.results.append(_row(email, "skipped", reason))
             continue
         handled_this_call.add(email_key)
         raw = secrets.token_urlsafe(32)
@@ -147,6 +191,7 @@ def create_invitations(
             {"startup_id": str(startup.id), "email": email, "role": role.value},
         )
         batch.created.append(email)
+        batch.results.append(_row(email, "created"))
     db.flush()
     return batch
 

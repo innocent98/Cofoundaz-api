@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import AccountLocked, InvalidCredentials
+from app.core.errors import InvalidCredentials
 from app.core.security import verify_password
 from app.db.models.enums import MfaType, UserStatus
 from app.db.models.user import User
@@ -14,7 +14,13 @@ from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.schemas.auth import LoginRequest
 from app.services.auth.mfa import issue_mfa_ticket
-from app.services.auth.sessions import issue_token_pair, set_refresh_cookie
+from app.services.auth.ratelimit import (
+    assert_login_allowed,
+    clear_login_failures,
+    enforce,
+    record_login_failure,
+)
+from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
 
 router = APIRouter()
 
@@ -27,29 +33,36 @@ def login(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     now = datetime.now(UTC)
-    user = db.query(User).filter(User.email == payload.email).first()
     ip = request.client.host if request.client else None
+    if ip:
+        # Credential stuffing across many emails from one address: counts every attempt.
+        enforce(
+            "login_ip",
+            ip,
+            limit=settings.AUTH_LOGIN_PER_IP_15MIN,
+            window_seconds=15 * 60,
+        )
+    # Lockout is per (email, IP) and identical for an address with no account (gap 1): the
+    # counters are keyed on the typed email, never on whether a user row exists.
+    assert_login_allowed(payload.email, ip)
+    user = db.query(User).filter(User.email == payload.email).first()
 
-    if user and user.locked_until and user.locked_until > now:
-        raise AccountLocked()
     if (
         user is None
         or user.password_hash is None
         or not verify_password(payload.password, user.password_hash)
     ):
-        if user is not None:
-            user.failed_login_count += 1
-            if user.failed_login_count >= settings.LOGIN_MAX_FAILS:
-                user.locked_until = now + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
-                user.failed_login_count = 0
+        record_login_failure(payload.email, ip)
         write_audit(db, "auth.login.failed", actor_user_id=user.id if user else None, ip=ip)
         db.commit()
         raise InvalidCredentials()
     if user.status == UserStatus.disabled:
+        # Counted like a wrong password, so a suspended account never looks different (it would
+        # otherwise be the one address that can never be locked).
+        record_login_failure(payload.email, ip)
         raise InvalidCredentials()
 
-    user.failed_login_count = 0
-    user.locked_until = None
+    clear_login_failures(payload.email, ip)
 
     if user.mfa_type != MfaType.none:
         ticket = issue_mfa_ticket(user.id)
@@ -68,6 +81,4 @@ def login(
     write_audit(db, "auth.login.success", actor_user_id=user.id, ip=ip)
     db.commit()
     set_refresh_cookie(response, refresh)
-    return success_response(
-        {"access_token": access, "refresh_token": refresh, "mfa_required": False}
-    )
+    return success_response(token_body(request, access, refresh, mfa_required=False))

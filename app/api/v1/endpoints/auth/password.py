@@ -17,8 +17,9 @@ from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.platform.email import get_email_sender
 from app.schemas.auth import ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
-from app.services.auth.emails import password_reset_email
+from app.services.auth.emails import password_changed_email, password_reset_email
 from app.services.auth.password import validate_password_strength
+from app.services.auth.ratelimit import blocked_for, clear_login_failures, enforce
 from app.services.auth.sessions import family_of, revoke_all_except, revoke_all_for_user
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
 from app.services.auth.tokens import (
@@ -33,15 +34,37 @@ _FORGOT_COOLDOWN_SECONDS = 60
 _GENERIC_SENT_MESSAGE = "If that email has an account, a reset link is on its way."
 
 
+def _notify_password_changed(email: str) -> None:
+    """Best-effort security notice, sent after the change is committed: a mail failure must
+    never undo or fail a password change."""
+    try:
+        get_email_sender().send(password_changed_email(email))
+    except EmailDeliveryFailed:
+        log.warning("password-changed notice failed: email provider refused the send")
+
+
 @router.post("/forgot")
 def forgot(
     payload: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)  # noqa: B008
 ) -> dict[str, Any]:
+    ip = request.client.host if request.client else None
+    if ip:
+        enforce("forgot_ip", ip, limit=settings.AUTH_FORGOT_PER_IP_HOURLY, window_seconds=3600)
+    # Hourly cap per typed address (not per account): over it, the request is a silent no-op
+    # with the identical generic response, so it cannot reveal whether the address has an account.
+    over_cap = blocked_for(
+        "forgot_email",
+        payload.email,
+        limit=settings.AUTH_FORGOT_PER_EMAIL_HOURLY,
+        window_seconds=3600,
+    )
     cooldown_key = f"password_reset_cooldown:{payload.email}"
     # set(..., nx=True): only the first caller within the 60s window claims the key and
     # proceeds to issue+send; a throttled retry (or an unknown email) is a no-op but still
     # gets the identical generic response below -- no enumeration signal either way.
-    if get_redis().set(cooldown_key, "1", ex=_FORGOT_COOLDOWN_SECONDS, nx=True):
+    if over_cap is None and get_redis().set(
+        cooldown_key, "1", ex=_FORGOT_COOLDOWN_SECONDS, nx=True
+    ):
         user = db.query(User).filter(User.email == payload.email).first()
         if user is not None and user.status != UserStatus.disabled:
             try:
@@ -77,6 +100,11 @@ def reset(
         raise TokenInvalid()
     user.password_hash = get_password_hash(payload.password)
     revoke_all_for_user(db, user.id)  # force re-login everywhere
+    # The lockout message tells a locked person to reset their password, so a successful reset
+    # must lift the lock (every IP), not leave them locked out with the new password.
+    clear_login_failures(user.email, everywhere=True)
+    user.failed_login_count = 0
+    user.locked_until = None
     write_audit(
         db,
         "auth.password.reset",
@@ -84,6 +112,7 @@ def reset(
         ip=request.client.host if request.client else None,
     )
     db.commit()
+    _notify_password_changed(user.email)
     return success_response({"reset": True})
 
 
@@ -123,4 +152,5 @@ def change(
     revoked = revoke_all_except(db, user.id, keep)
     write_audit(db, "auth.password.changed", actor_user_id=user.id, ip=ip)
     db.commit()
+    _notify_password_changed(user.email)
     return success_response({"changed": True, "other_sessions_signed_out": revoked})

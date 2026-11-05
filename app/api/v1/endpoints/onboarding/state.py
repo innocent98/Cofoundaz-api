@@ -13,6 +13,7 @@ from app.services.onboarding.steps import apply_step
 from app.services.onboarding.workspace import (
     ensure_draft,
     joined_workspace,
+    not_a_founder_state,
     resolve_or_create_workspace,
     serialize_member_state,
     serialize_state,
@@ -33,6 +34,10 @@ def get_state(
     joined = joined_workspace(db, user, x_workspace_id)
     if joined is not None:
         return success_response(serialize_member_state(joined))
+    # Never create a founder draft for someone who joined a workspace or holds a pending invite.
+    not_founder = not_a_founder_state(db, user)
+    if not_founder is not None:
+        return success_response(not_founder)
     startup = resolve_or_create_workspace(db, user)
     body = serialize_state(db, startup, user)
     db.commit()

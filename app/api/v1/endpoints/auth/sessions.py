@@ -12,6 +12,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.schemas.auth import RefreshRequest
+from app.services.auth.csrf import require_cookie_csrf_guard
 from app.services.auth.sessions import (
     clear_refresh_cookie,
     family_of,
@@ -21,6 +22,7 @@ from app.services.auth.sessions import (
     revoke_session,
     rotate_refresh,
     set_refresh_cookie,
+    token_body,
 )
 
 router = APIRouter()
@@ -38,6 +40,7 @@ def refresh(
     payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    require_cookie_csrf_guard(request, body_token=payload.refresh_token if payload else None)
     raw = _read_refresh(request, payload)
     if not raw:
         raise Unauthorized()
@@ -49,7 +52,7 @@ def refresh(
     )
     db.commit()
     set_refresh_cookie(response, new_refresh)
-    return success_response({"access_token": access, "refresh_token": new_refresh})
+    return success_response(token_body(request, access, new_refresh))
 
 
 @router.post("/logout")
@@ -59,6 +62,7 @@ def logout(
     payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    require_cookie_csrf_guard(request, body_token=payload.refresh_token if payload else None)
     raw = _read_refresh(request, payload)
     if raw:
         revoke_session(db, raw)
