@@ -8,12 +8,14 @@ restrictions. Bodies are captured to `e2e/_captures/team_invitations/*.json`, th
 """
 
 import httpx
+import pytest
 
 
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.mark.critical
 def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email, capture):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         u = make_verified_user(c)

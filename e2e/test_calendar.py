@@ -21,6 +21,7 @@ valid whenever it runs, and so the Month/Week range queries are meaningful rathe
 from datetime import UTC, date, datetime
 
 import httpx
+import pytest
 
 
 def _auth_header(token: str) -> dict:
@@ -61,6 +62,7 @@ def _in_month(today: date, day: int) -> date:
     return date(today.year, today.month, day)
 
 
+@pytest.mark.critical
 def test_calendar_journey(base_url, make_verified_user, capture):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         wh = _workspace(c, make_verified_user, name="Cofoundaz Calendar")

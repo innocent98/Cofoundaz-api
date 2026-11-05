@@ -71,8 +71,26 @@ name: CI
 # `cancel-in-progress` below kills superseded runs so rapid pushes cannot stack.
 #
 # Adding a job costs roughly (its minutes x runs per month). Say so in the PR.
+#
+# PIPELINE SPEED (docs/sop/2026-11-05-ci-pipeline-speed.md). The repo is now PUBLIC, so
+# minutes are no longer the constraint; developer wait time is. Four levers:
+#   1. PATH FILTER. The `changes` job classifies a PR. A docs-only PR (docs/**, *.md,
+#      e2e/_captures/**) skips lint, unit, quality, migrations, e2e and build. Security
+#      (gitleaks) still runs: handoffs are where a pasted secret would land.
+#   2. `ci-gate` always reports. It is the one check that is green for a docs-only PR and
+#      red if any job that did run failed. If branch protection is ever turned on, require
+#      "CI gate" (not the individual jobs, which are legitimately skipped on docs PRs).
+#   3. SHARDED UNIT TESTS. pytest-split cuts the suite into 4 jobs balanced by
+#      .test_durations; "Unit tests" combines their coverage and applies the 95% gate to
+#      the COMBINED number.
+#   4. TRIMMED PR E2E. PRs run `-m critical` plus the e2e files for the app areas the PR
+#      touches (scripts/ci_e2e_select.py). Pushes to develop and the nightly run ALL e2e.
+#      cd-staging.yml's live e2e gate is untouched.
 
 on:
+  # Nightly: the full e2e suite, so what PRs trim is still exercised every day.
+  schedule:
+    - cron: "17 2 * * *"
   push:
     branches: [develop]
   pull_request:
@@ -86,7 +104,7 @@ on:
     types: [opened, reopened, ready_for_review, synchronize]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   # Cancel superseded PR runs (pushing three times to a PR should not run three
   # full pipelines). Do NOT cancel on a push to `develop`: that run is the only
   # safety net a direct push gets, and cd-staging.yml is already building and
@@ -109,11 +127,56 @@ env:
 
 jobs:
   # ------------------------------------------------------------------------- #
+  changes:
+    name: Classify changes
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      # "true" unless this is a PR that changes only docs / captures.
+      code: ${{ steps.classify.outputs.code }}
+      # "all" or "critical". PRs get "critical" (+ area files) unless they touch shared plumbing.
+      e2e_select: ${{ steps.classify.outputs.e2e_select }}
+      # Space-separated e2e files for the areas a PR touches (empty = critical only).
+      e2e_area_files: ${{ steps.classify.outputs.e2e_area_files }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Classify the change set
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            # push to develop and the nightly: everything runs, everything is checked.
+            { echo "code=true"; echo "e2e_select=all"; echo "e2e_area_files="; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api --paginate "repos/$REPO/pulls/$PR/files" -q '.[].filename' > changed.txt
+          echo "::group::Changed files"; cat changed.txt; echo "::endgroup::"
+          # Docs-only = every changed file is under docs/, a markdown file, or e2e capture output.
+          if grep -qvE '^(docs/|e2e/_captures/)|\.md$' changed.txt; then CODE=true; else CODE=false; fi
+          AREA="$(python3 scripts/ci_e2e_select.py changed.txt)"
+          if [ "$AREA" = "ALL" ]; then SELECT=all; AREA=""; else SELECT=critical; fi
+          echo "code=$CODE  e2e_select=$SELECT  e2e_area_files=$AREA"
+          { echo "code=$CODE"; echo "e2e_select=$SELECT"; echo "e2e_area_files=$AREA"; } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Change classification"
+            echo "- code change: **$CODE**"
+            echo "- e2e: **$SELECT**${AREA:+ + $AREA}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------- #
   lint:
     name: Lint & type-check
-    # Runs on every push to `develop`, and on PRs once they leave draft.
-    # Drafts cost nothing.
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    needs: [changes]
+    # Skipped on a docs-only PR (see `changes`); otherwise as before.
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -141,12 +204,17 @@ jobs:
         run: poetry run mypy app
 
   # ------------------------------------------------------------------------- #
-  test:
-    name: Unit tests
-    # Runs on every push to `develop`, and on PRs once they leave draft.
-    # Drafts cost nothing.
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
+  test-shard:
+    name: Unit tests (shard ${{ matrix.group }}/4)
+    needs: [changes]
+    # Skipped on a docs-only PR (see `changes`); otherwise runs on every push to
+    # `develop`, the nightly, and PRs once they leave draft.
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4]
 
     services:
       postgres:
@@ -180,13 +248,14 @@ jobs:
 
       - name: Create the pytest database
         # tests/conftest.py drops and recreates every table in TEST_DATABASE_URL,
-        # so it must be a different database from the app's.
+        # so it must be a different database from the app's. Each shard has its
+        # own Postgres service container, so shards cannot trample each other.
         env:
           PGPASSWORD: test_password
         run: |
           psql -h localhost -U test_user -d test_db -c "CREATE DATABASE cofoundaz_test;"
 
-      - name: pytest
+      - name: pytest (shard ${{ matrix.group }} of 4)
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/cofoundaz_test
@@ -195,18 +264,84 @@ jobs:
           FIRST_SUPERUSER_EMAIL: admin@test.com
           FIRST_SUPERUSER_PASSWORD: testpassword
           LOG_FILE_PATH: ""
-        # Threshold is 95, against 98.28% measured on the tree this gate was
-        # added to. The gap is deliberate slack: a tight 98 would fail CI for
-        # adding a single lightly-covered module, which trains people to lower
-        # the number. 95 still fails loudly on a real regression. Raise it when
-        # coverage is durably higher, never lower it to make a red build green.
+          # One data file per shard; the `Unit tests` job combines them.
+          COVERAGE_FILE: .coverage.shard${{ matrix.group }}
+        # pytest-split divides the suite by the recorded per-test durations in
+        # .test_durations (least_duration balances the shards; a test missing from the
+        # file is given the average, so new tests never break the split). The coverage
+        # GATE is not applied here: a shard sees only a quarter of the code. It is applied
+        # to the combined data in `Unit tests`. --store-durations records this shard's
+        # timings, uploaded below so .test_durations can be refreshed.
         #
         # JOURNAL_ENCRYPTION_KEY is generated per run rather than stored: the
         # journal tests need a valid Fernet key, but nothing needs that key to
         # survive between runs. GITHUB_ACTIONS_SETUP.md rule 2.
         run: |
           export JOURNAL_ENCRYPTION_KEY="$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-          poetry run pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=95
+          poetry run pytest -o addopts="-v --strict-markers" -p no:cacheprovider \
+            --cov=app --cov-report= \
+            --splits 4 --group ${{ matrix.group }} --splitting-algorithm least_duration \
+            --durations-path .test_durations \
+            --store-durations --clean-durations
+
+      - name: Upload coverage data
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-data-${{ matrix.group }}
+          path: .coverage.shard${{ matrix.group }}
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Upload test durations
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-durations-${{ matrix.group }}
+          path: .test_durations
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ------------------------------------------------------------------------- #
+  test:
+    # Keeps the historical check name "Unit tests". Combines the shards' coverage and
+    # applies the gate to the COMBINED number.
+    name: Unit tests
+    needs: [changes, test-shard]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          poetry-version: ${{ env.POETRY_VERSION }}
+
+      - name: Download coverage data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: Combine coverage and apply the gate
+        # Threshold is 95, against 98.28% measured on the tree this gate was
+        # added to. The gap is deliberate slack: a tight 98 would fail CI for
+        # adding a single lightly-covered module, which trains people to lower
+        # the number. 95 still fails loudly on a real regression. Raise it when
+        # coverage is durably higher, never lower it to make a red build green.
+        #
+        # A missing shard file would silently LOWER the combined number (and fail the
+        # gate), but the explicit count below also names the cause.
+        run: |
+          N=$(ls .coverage.shard* 2>/dev/null | wc -l)
+          echo "coverage files: $N"
+          [ "$N" -eq 4 ] || { echo "::error::expected 4 shard coverage files, found $N (a shard failed before writing coverage)"; exit 1; }
+          poetry run coverage combine .coverage.shard*
+          poetry run coverage xml
+          poetry run coverage report --skip-empty --fail-under=95
 
       - name: Upload coverage artifact
         if: always()
@@ -219,8 +354,9 @@ jobs:
   # ------------------------------------------------------------------------- #
   migrations:
     name: Migrations (fresh DB, round-trip, drift)
-    # PR-only, and never while the PR is a draft. See the cost note on top.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    needs: [changes]
+    # PR-only, never a draft, and skipped on a docs-only PR. See the cost note on top.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -289,8 +425,11 @@ jobs:
   # ------------------------------------------------------------------------- #
   e2e:
     name: End-to-end
-    # PR-only, and never while the PR is a draft. See the cost note on top.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    needs: [changes]
+    # PRs: the `critical` journeys plus the files for the app areas the PR touches
+    # (scripts/ci_e2e_select.py), or everything when it touches shared plumbing.
+    # Pushes to develop and the nightly: everything. Skipped on a docs-only PR.
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -324,6 +463,9 @@ jobs:
         # The script brings up db+redis via `docker compose` (present on
         # ubuntu-latest), migrates a scratch `cofoundaz_e2e` database from zero,
         # boots real uvicorn on :8010, and tears it all down.
+        env:
+          E2E_SELECT: ${{ needs.changes.outputs.e2e_select }}
+          E2E_AREA_FILES: ${{ needs.changes.outputs.e2e_area_files }}
         run: ./scripts/e2e_run.sh
 
       - name: Upload e2e captures
@@ -338,9 +480,10 @@ jobs:
   # ------------------------------------------------------------------------- #
   security:
     name: Security (secrets, SAST, dependencies)
-    # Runs on every push to `develop`, and on PRs once they leave draft.
-    # Drafts cost nothing.
-    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    # Runs on every push to `develop`, the nightly, and on PRs once they leave draft,
+    # INCLUDING docs-only PRs: gitleaks is the check that catches a secret pasted into a
+    # handoff or capture. Drafts cost nothing.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -492,8 +635,9 @@ jobs:
   # ------------------------------------------------------------------------- #
   quality:
     name: Quality (pylint, complexity, Dockerfile)
-    # PR-only, and never while the PR is a draft. See the cost note on top.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    needs: [changes]
+    # PR-only, never a draft, and skipped on a docs-only PR. See the cost note on top.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -577,10 +721,17 @@ jobs:
     # the dependency graph are free there), or immediately by setting the
     # repository variable ENABLE_CODE_SCANNING=true once GHAS is purchased.
     # See docs/deployment/GITHUB_ACTIONS_SETUP.md.
+    #
+    # 2026-11-05: the repo went PUBLIC, which made the old `private == false` arm true, and the
+    # job then failed on every PR ("Dependency review is not supported on this repository":
+    # the Dependency graph is switched off in Settings > Code security). So the job now runs
+    # only when the variable says the graph is on. To re-enable: turn on the Dependency graph
+    # in repo settings, then set the repository variable ENABLE_CODE_SCANNING=true.
+    needs: [changes]
     if: >-
       github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false &&
-      (github.event.repository.private == false || vars.ENABLE_CODE_SCANNING == 'true')
+      needs.changes.outputs.code == 'true' &&
+      vars.ENABLE_CODE_SCANNING == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -606,14 +757,14 @@ jobs:
   # ------------------------------------------------------------------------- #
   build:
     name: Build image & scan
-    # PR-only, and never while the PR is a draft. See the cost note on top.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    # PR-only, never a draft, and skipped on a docs-only PR. See the cost note on top.
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     # The image is only built once everything that can invalidate it is green.
     # Trivy runs after the build because it scans the resolved image filesystem;
     # Semgrep (in `security`) scans source patterns. They are complementary, not
     # redundant - neither finds what the other finds.
-    needs: [lint, quality, test, migrations, e2e, security]
+    needs: [changes, lint, quality, test, migrations, e2e, security]
     permissions:
       contents: read
       security-events: write
@@ -758,3 +909,25 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           trivyignores: .trivyignore
+
+  # ------------------------------------------------------------------------- #
+  ci-gate:
+    name: CI gate
+    # The one check that ALWAYS reports on a PR. Jobs above are legitimately skipped on a
+    # docs-only PR (and a skipped required check blocks merging, which is why a gate exists).
+    # Green when every job that ran succeeded or was skipped; red if any failed or was
+    # cancelled. If branch protection is ever enabled, require this check by name.
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: [changes, lint, test, migrations, e2e, security, quality, dependency-review, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job that ran must have passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          BAD=$(echo "$RESULTS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(", ")')
+          if [ -n "$BAD" ]; then
+            echo "::error::failed or cancelled: $BAD"
+            exit 1
+          fi
