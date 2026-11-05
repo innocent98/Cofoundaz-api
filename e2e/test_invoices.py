@@ -31,6 +31,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import httpx
+import pytest
 
 # NOTE: app-internal imports (SessionLocal, worker) are done LAZILY inside the helpers, not at
 # module level -- see e2e/test_notifications_email.py: importing them at collection time would
@@ -104,6 +105,7 @@ def _backdate_due_on(invoice_id: str, due_on: date) -> None:
         db.close()
 
 
+@pytest.mark.critical
 def test_finance_invoices_journey(base_url, make_verified_user, capture, capture_json, mailbox):
     with httpx.Client(base_url=base_url, timeout=10.0) as c:
         # 0. Onboard a founder.

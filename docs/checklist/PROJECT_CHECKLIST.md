@@ -3856,3 +3856,11 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide
 - [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
 - [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view
+
+## CI pipeline speed (2026-11-05)
+- [x] Measure before-timings (last green develop pushes + a full PR run) — in the SOP/PR body
+- [x] Path filter + always-reporting `CI gate`; docs-only PR skips the heavy jobs
+- [x] Unit suite in 4 `pytest-split` shards, coverage combined, 95% gate on the combined number
+- [x] `critical` e2e marker on 10 journeys; PRs run critical + touched areas; push/nightly run all
+- [x] Poetry `.venv` cache (already in place) and PR `concurrency` cancel-in-progress verified
+- [ ] Enable Dependency graph + set `ENABLE_CODE_SCANNING=true` (Adebayo; SOP `docs/sop/2026-11-05-ci-pipeline-speed.md`)

@@ -13,6 +13,7 @@ import json
 import os
 
 import httpx
+import pytest
 
 # Generated per run by scripts/e2e_run.sh and shared with the server (no key literal in the repo).
 # Absent on the live gate, which deselects this journey but still imports the module.
@@ -77,6 +78,7 @@ def _charge(ref: str, amount: int, email: str) -> dict:
     }
 
 
+@pytest.mark.critical
 def test_billing_journey(base_url, make_verified_user, capture, capture_json):
     with httpx.Client(base_url=base_url, timeout=20.0) as c:
         u = make_verified_user(c)
