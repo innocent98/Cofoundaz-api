@@ -402,6 +402,16 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "",
     ),
+    # D-IR: Investor Readiness is the founder's; sent at most once a day (see readiness.service).
+    "readiness.improved": NotifSpec(
+        _founders,
+        lambda p: (
+            f"Your investor readiness score improved to {p['score']}"
+            if p.get("score") is not None
+            else "Your investor readiness score improved"
+        ),
+        lambda _p: "See your score",
+    ),
     "assessment.completed": _s(
         _audience("assessment.completed"), "A startup assessment was completed"
     ),

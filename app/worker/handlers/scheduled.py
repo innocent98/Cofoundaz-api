@@ -156,6 +156,9 @@ def handle_health_nightly(db: Session, job: Job) -> None:
     startup = db.get(Startup, uuid.UUID(str(job.payload["startup_id"])))
     if startup is not None:
         refresh_health_score(db, startup, trigger="nightly", force=True)
+        from app.services.readiness.service import refresh_readiness
+
+        refresh_readiness(db, startup, trigger="nightly", force=True)
 
 
 def handle_marketing_publish(db: Session, job: Job) -> None:

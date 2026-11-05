@@ -23,6 +23,7 @@ from app.api.v1.endpoints import (
     notifications,
     payment_webhooks,
     platform_status,
+    readiness,
     reports,
     roadmap,
     sales,
@@ -40,10 +41,12 @@ from app.api.v1.endpoints.onboarding import router as onboarding_router
 from app.services.documents.grants import register as register_grant_binding
 from app.services.health_score.triggers import register as register_health_triggers
 from app.services.notifications.registry import register as register_notifications
+from app.services.readiness.triggers import register as register_readiness_triggers
 
 register_notifications()
 register_grant_binding()
 register_health_triggers()
+register_readiness_triggers()
 
 api_router = APIRouter()
 
@@ -55,6 +58,7 @@ api_router.include_router(onboarding_router, prefix="/onboarding", tags=["onboar
 api_router.include_router(invitations.router, prefix="/invitations", tags=["invitations"])
 api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
 api_router.include_router(health_score.router, prefix="/health-score", tags=["health-score"])
+api_router.include_router(readiness.router, prefix="/readiness", tags=["readiness"])
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

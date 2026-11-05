@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Unknown range.",
+    "field_errors": [
+      {
+        "field": "range",
+        "message": "Use 30, 90 or 365."
+      }
+    ]
+  }
+}
