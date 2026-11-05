@@ -8,8 +8,8 @@ Marketplace slice A (providers and vetting; no money). Adds `marketplace_provide
 a table of its own like `platform_staff`), `marketplace_files` (private uploads for people with no
 workspace) and `marketplace_provider_portfolio`. Downgrade drops all three.
 
-CHAIN NOTE: `down_revision` is develop's head when this was written (0089). 0090 (Funding) and
-0091 (Readiness deck review) are open PRs; the lead re-chains this migration when they merge.
+CHAIN NOTE: `down_revision` is develop's head when last merged (0090, Funding). 0091 (Readiness
+deck review) is an open PR; the lead re-chains this migration when it merges.
 """
 
 import sqlalchemy as sa

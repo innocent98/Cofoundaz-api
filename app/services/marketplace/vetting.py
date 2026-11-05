@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext
 from app.core import pagination as core
-from app.core.errors import NotFound
+from app.core.errors import FileNotClean, NotFound
 from app.db.models.audit import AuditLog
-from app.db.models.enums import MarketplaceFilePurpose, ProviderStatus
+from app.db.models.enums import MarketplaceFilePurpose, ProviderStatus, ScanStatus
 from app.db.models.marketplace import MarketplaceFile, MarketplaceProvider
 from app.db.models.user import User
 from app.platform.audit import write_audit
@@ -57,6 +57,12 @@ REJECT_TEMPLATES: dict[str, str] = {
     "outside_scope": "Your services are outside what the Marketplace offers",
     "other": "Your application did not meet our requirements",
 }
+
+
+def not_self(ctx: StaffContext, row: MarketplaceProvider) -> None:
+    """Staff who are also experts can't vet, decide on or reinstate themselves."""
+    if row.user_id is not None and row.user_id == ctx.user.id:
+        raise err("CANNOT_ACT_ON_SELF", "You can't do that on your own expert profile.", 422)
 
 
 def _client(ctx: StaffContext, ip: str | None, ua: str | None) -> dict[str, Any]:
@@ -241,6 +247,7 @@ def set_vetting(
     ua: str | None,
 ) -> dict[str, Any]:
     row = lock_provider(db, provider_id)
+    not_self(ctx, row)
     if row.status not in VETTABLE:
         raise err("INVALID_STATE", "This application isn't ready for vetting yet.")
     if not row.category:
@@ -308,6 +315,7 @@ def _decide(
     details: dict[str, Any] | None = None,
 ) -> MarketplaceProvider:
     row = lock_provider(db, provider_id)
+    not_self(ctx, row)
     if row.status not in allowed:
         raise err(
             "INVALID_STATE",
@@ -337,6 +345,7 @@ def approve(
     ua: str | None,
 ) -> tuple[MarketplaceProvider, list[EmailMessage]]:
     row = lock_provider(db, provider_id)
+    not_self(ctx, row)
     gaps = missing_checks(row) if row.status == ProviderStatus.in_review else []
     if row.status == ProviderStatus.in_review and gaps:
         raise err(
@@ -459,6 +468,7 @@ def unsuspend(
     ua: str | None,
 ) -> MarketplaceProvider:
     row = lock_provider(db, provider_id)
+    not_self(ctx, row)
     if row.status == ProviderStatus.suspended and missing_checks(row):
         raise err("VETTING_INCOMPLETE", "Re-tick the expired or missing checks first.", 422)
     row = _decide(
@@ -504,6 +514,8 @@ def open_file(
     )
     if f is None:
         raise NotFound()
+    if f.scan_status != ScanStatus.clean:
+        raise FileNotClean()
     data = read_bytes(f)
     write_audit(
         db,

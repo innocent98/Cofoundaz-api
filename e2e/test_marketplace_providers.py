@@ -137,6 +137,10 @@ def test_marketplace_providers_journey(
     assert r.status_code == 403 and r.json()["error"]["code"] == "APPLICATIONS_CLOSED"
     capture(G, "apply_closed_403", r)
 
+    r = http.post(f"{A}/providers/invite", json={"email": mod_user["email"]}, headers=mod)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+    capture(G, "admin_invite_own_email_422", r)
+
     # ---- invite ---------------------------------------------------------------------------------
     r = http.get(f"{A}/providers/counts", headers=mod)
     assert r.status_code == 200
@@ -353,9 +357,23 @@ def test_marketplace_providers_journey(
     capture(G, "me_changes_requested", r)
     r = http.post(f"{P}/submit", headers=e_auth)
     assert r.status_code == 200
+    # resubmitting wipes the ticks: they were made against evidence that may have changed
+    r = http.get(f"{A}/providers/{pid}", headers=mod)
+    assert r.json()["data"]["checks"] == {} and r.json()["data"]["status"] == "in_review"
+    capture(G, "admin_detail_after_resubmit_ticks_cleared", r)
     r = http.put(
         f"{A}/providers/{pid}/vetting",
-        json={"checks": {"references": {"done": True, "count": 2, "note": "Two founders emailed"}}},
+        json={
+            "checks": {
+                "id": {"done": True, "note": "NIN slip seen"},
+                "licence": {
+                    "done": True,
+                    "expires_on": (date.today() + timedelta(days=365)).isoformat(),
+                    "note": "Bar roll number matched",
+                },
+                "references": {"done": True, "count": 2, "note": "Two founders emailed"},
+            }
+        },
         headers=mod,
     )
     assert r.status_code == 200 and r.json()["data"]["missing_checks"] == []

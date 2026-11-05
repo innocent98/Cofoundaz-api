@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "a1ba5716-b147-4f4c-b78c-69c05d952f31",
-    "email": "delivered+e2e-84b32daa0122@resend.dev",
+    "id": "77a15a1e-7096-477e-9b64-f89caf5c821f",
+    "email": "delivered+e2e-80136db0f1ba@resend.dev",
     "status": "invited",
     "source": "invite",
     "display_name": "Ngozi Eze",
@@ -13,7 +13,7 @@
     "timezone": "Africa/Lagos",
     "location": null,
     "avatar_file_id": null,
-    "terms_accepted_at": "2026-11-05T14:46:59.175493+00:00",
+    "terms_accepted_at": "2026-11-05T15:09:56.025277+00:00",
     "submitted_at": null,
     "review_message": null,
     "can_edit_profile": true,

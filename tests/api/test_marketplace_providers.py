@@ -1085,3 +1085,125 @@ def test_a_failing_mail_backend_does_not_undo_the_action(client, db, moderator, 
     monkeypatch.setattr(mp_emails, "get_email_sender", lambda: Boom())
     r = invite(client, moderator)
     assert r.status_code == 201 and r.json()["data"]["undelivered"] == ["ngozi@example.com"]
+
+
+# ---------------------------------------------------------------- review fixes (Opus review of #220)
+
+
+def _expert_row(db, user, status, category="Design"):
+    row = MarketplaceProvider(
+        user_id=user.id,
+        email=user.email,
+        status=status,
+        source="invite",
+        category=category,
+        categories=[],
+        languages=[],
+        vetting_json={},
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def test_staff_cannot_vet_or_decide_on_their_own_expert_profile(client, db, moderator):
+    # review the checklist and every decision on a profile that belongs to the caller
+    cases = [
+        (ProviderStatus.in_review, "approve", {}),
+        (ProviderStatus.in_review, "reject", {"template": "other"}),
+        (ProviderStatus.suspended, "unsuspend", {}),
+        (ProviderStatus.approved, "suspend", {}),
+    ]
+    for st, action, extra in cases:
+        row = _expert_row(db, moderator, st)
+        r = staff_post(client, moderator, f"/providers/{row.id}/{action}", **extra)
+        assert r.status_code == 422, (action, r.text)
+        assert r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+        db.refresh(row)
+        assert row.status == st
+        db.delete(row)
+        db.flush()
+    row = _expert_row(db, moderator, ProviderStatus.in_review)
+    h = hdr(moderator)
+    tick = client.put(
+        f"{A}/providers/{row.id}/vetting", json={"checks": {"id": {"done": True}}}, headers=h
+    )
+    assert tick.status_code == 422 and tick.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+    chg = client.post(
+        f"{A}/providers/{row.id}/request-changes",
+        json={"message": "Please send updated documents."},
+        headers=h,
+    )
+    assert chg.status_code == 422 and chg.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+    assert row.vetting_json == {}
+
+
+def test_staff_cannot_invite_their_own_email(client, db, moderator, mail):
+    r = invite(client, moderator, moderator.email)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+    assert mail.sent == []
+
+
+def test_resubmitting_after_changes_requested_clears_every_tick(client, db, moderator, mail):
+    user, pid = in_review(client, db, moderator, mail)
+    tick_all_legal(client, moderator, pid)
+    client.post(
+        f"{A}/providers/{pid}/request-changes",
+        json={"message": "Please replace the licence scan."},
+        headers=hdr(moderator),
+    )
+    h = hdr(user)
+    old = client.get(f"{P}/me", headers=h).json()["data"]["files"][0]["id"]
+    assert client.delete(f"{P}/files/{old}", headers=h).status_code == 200
+    assert upload(client, user, PDF + b"other", "new-licence.pdf").status_code == 201
+    assert (
+        client.patch(f"{P}/me", json={"display_name": "Someone Else"}, headers=h).status_code == 200
+    )
+    assert client.post(f"{P}/submit", headers=h).status_code == 200
+    d = client.get(f"{A}/providers/{pid}", headers=hdr(moderator)).json()["data"]
+    assert d["status"] == "in_review" and d["checks"] == {}
+    assert d["licence_expires_on"] is None
+    assert d["missing_checks"] == ["id", "licence", "references"]
+    r = staff_post(client, moderator, f"/providers/{pid}/approve")
+    assert r.status_code == 422 and r.json()["error"]["code"] == "VETTING_INCOMPLETE"
+
+
+def test_unscanned_files_are_not_served_to_owner_or_staff(client, db, moderator, mail):
+    from app.db.models.enums import ScanStatus
+
+    user, pid = in_review(client, db, moderator, mail)
+    fid = client.get(f"{P}/me", headers=hdr(user)).json()["data"]["files"][0]["id"]
+    db.query(MarketplaceFile).filter_by(id=uuid.UUID(fid)).update(
+        {"scan_status": ScanStatus.pending}
+    )
+    db.flush()
+    own = client.get(f"{P}/files/{fid}/content", headers=hdr(user))
+    assert own.status_code == 409 and own.json()["error"]["code"] == "FILE_NOT_CLEAN"
+    staff = client.get(f"{A}/providers/{pid}/files/{fid}", headers=hdr(moderator))
+    assert staff.status_code == 409 and staff.json()["error"]["code"] == "FILE_NOT_CLEAN"
+    assert db.query(AuditLog).filter_by(action="marketplace.file.viewed").count() == 0
+
+
+def test_replacing_the_avatar_clears_the_stale_pointer(client, db, moderator, mail):
+    user, _ = invited_and_accepted(client, db, moderator, mail)
+    h = hdr(user)
+    first = upload(client, user, PNG, "a.png", "image/png", "avatar").json()["data"]["id"]
+    assert client.patch(f"{P}/me", json={"avatar_file_id": first}, headers=h).status_code == 200
+    second = upload(client, user, JPG, "b.jpg", "image/jpeg", "avatar").json()["data"]["id"]
+    assert client.get(f"{P}/me", headers=h).json()["data"]["avatar_file_id"] is None
+    assert client.patch(f"{P}/me", json={"avatar_file_id": second}, headers=h).status_code == 200
+    assert client.get(f"{P}/me", headers=h).json()["data"]["avatar_file_id"] == second
+
+
+def test_revoke_and_reinvite_does_not_dodge_the_daily_cap(client, db, moderator, mail, monkeypatch):
+    monkeypatch.setattr("app.services.marketplace.providers.DAILY_INVITE_CAP", 2)
+    for _ in range(2):
+        r = invite(client, moderator, "loop@example.com")
+        assert r.status_code == 201
+        pid = r.json()["data"]["provider"]["id"]
+        assert (
+            client.post(f"{A}/providers/{pid}/revoke-invite", headers=hdr(moderator)).status_code
+            == 200
+        )
+    r = invite(client, moderator, "loop@example.com")
+    assert r.status_code == 429 and r.json()["error"]["code"] == "INVITE_LIMIT_REACHED"

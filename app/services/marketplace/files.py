@@ -13,7 +13,11 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
 from app.db.models.enums import MarketplaceFilePurpose, ScanStatus
-from app.db.models.marketplace import MarketplaceFile, MarketplaceProviderPortfolio
+from app.db.models.marketplace import (
+    MarketplaceFile,
+    MarketplaceProvider,
+    MarketplaceProviderPortfolio,
+)
 from app.platform.storage import get_storage
 from app.services.documents.files import EXT_BY_CONTENT_TYPE
 from app.services.documents.scanner import get_scanner
@@ -123,6 +127,9 @@ def erase(db: Session, row: MarketplaceFile) -> None:
     db.query(MarketplaceProviderPortfolio).filter(
         MarketplaceProviderPortfolio.file_id == row.id
     ).update({"file_id": None}, synchronize_session=False)
+    db.query(MarketplaceProvider).filter(MarketplaceProvider.avatar_file_id == row.id).update(
+        {"avatar_file_id": None}, synchronize_session=False
+    )
     db.flush()
 
 

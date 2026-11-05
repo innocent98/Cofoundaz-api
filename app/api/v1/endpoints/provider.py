@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_verified_user
 from app.api.provider_deps import ProviderContext, require_provider
 from app.core.envelope import success_response
-from app.core.errors import AppError
+from app.core.errors import AppError, FileNotClean
 from app.core.rate_limit import limiter
-from app.db.models.enums import MarketplaceFilePurpose
+from app.db.models.enums import MarketplaceFilePurpose, ScanStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.marketplace import (
@@ -149,6 +149,8 @@ async def upload(
 @router.get("/files/{file_id}/content")
 def download(file_id: uuid.UUID, ctx: _Provider, db: _Db) -> Response:
     row = files.get_owned(db, ctx.user.id, file_id)
+    if row.scan_status != ScanStatus.clean:
+        raise FileNotClean()
     return Response(
         content=files.read_bytes(row),
         media_type=row.mime,

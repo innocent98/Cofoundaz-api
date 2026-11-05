@@ -1,6 +1,6 @@
 {
-  "to": "delivered+e2e-84b32daa0122@resend.dev",
+  "to": "delivered+e2e-80136db0f1ba@resend.dev",
   "subject": "You're approved on the Cofoundaz Marketplace",
   "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">You're approved</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, your credentials have been verified and your profile is approved. You can now set up your services.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Open your expert portal</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider\" style=\"color:#4f46e5\">http://localhost:3000/provider</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Welcome aboard.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-05T14:47:00.671676+00:00"
+  "sent_at": "2026-11-05T15:09:56.648041+00:00"
 }

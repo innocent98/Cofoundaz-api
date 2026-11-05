@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.api.staff_deps import StaffContext
 from app.core.config import settings
 from app.core.errors import AppError, InviteEmailMismatch, NotFound, TokenInvalid
+from app.db.models.audit import AuditLog
 from app.db.models.enums import MarketplaceFilePurpose, ProviderStatus, ScanStatus
 from app.db.models.marketplace import (
     MarketplaceFile,
@@ -232,11 +233,17 @@ def invite_provider(
     ip: str | None,
     user_agent: str | None,
 ) -> tuple[MarketplaceProvider, list[EmailMessage]]:
+    if email.lower() == ctx.user.email.lower():
+        raise err("CANNOT_ACT_ON_SELF", "You can't invite your own account.", 422)
     since = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    # Count audit rows, not provider rows: a revoked invite deletes its row, and revoke + re-invite
+    # must not dodge the daily cap.
     sent_today = (
-        db.query(func.count(MarketplaceProvider.id))
+        db.query(func.count(AuditLog.id))
         .filter(
-            MarketplaceProvider.invited_by == ctx.user.id, MarketplaceProvider.created_at >= since
+            AuditLog.action == "marketplace.provider.invited",
+            AuditLog.actor_user_id == ctx.user.id,
+            AuditLog.created_at >= since,
         )
         .scalar()
         or 0
@@ -596,6 +603,11 @@ def submit(
             field_errors=missing,
         )
     refresh_prescreen(row)
+    if row.status == ProviderStatus.changes_requested:
+        # Ticks were made against the evidence as it stood. The expert may have swapped a
+        # credential or changed their name or category since, so staff re-verify from scratch.
+        row.vetting_json = {**(row.vetting_json or {}), "checks": {}}
+        row.licence_expires_on = None
     row.status = ProviderStatus.in_review
     row.submitted_at = datetime.now(UTC)
     row.review_message = None
