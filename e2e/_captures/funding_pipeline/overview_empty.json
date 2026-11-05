@@ -1,0 +1,44 @@
+{
+  "data": {
+    "round": null,
+    "empty": true,
+    "stages": [
+      {
+        "stage": "research",
+        "count": 0
+      },
+      {
+        "stage": "outreach",
+        "count": 0
+      },
+      {
+        "stage": "meeting",
+        "count": 0
+      },
+      {
+        "stage": "diligence",
+        "count": 0
+      },
+      {
+        "stage": "term_sheet",
+        "count": 0
+      },
+      {
+        "stage": "committed",
+        "count": 0
+      },
+      {
+        "stage": "passed",
+        "count": 0
+      }
+    ],
+    "totals": null,
+    "suggested_target": null,
+    "counts": {
+      "investors": 0,
+      "warm": 0,
+      "overdue_next_steps": 0
+    }
+  },
+  "meta": null
+}

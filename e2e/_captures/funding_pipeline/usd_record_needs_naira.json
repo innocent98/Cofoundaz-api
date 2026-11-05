@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This round is in USD and Finance records NGN. Enter the naira amount you received.",
+    "field_errors": [
+      {
+        "field": "amount_minor",
+        "message": "This round is in USD and Finance records NGN. Enter the naira amount you received."
+      }
+    ]
+  }
+}

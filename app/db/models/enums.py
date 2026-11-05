@@ -57,6 +57,11 @@ READINESS_READ_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
 READINESS_WRITE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
+# Funding Hub (D-FUND-5): the pipeline, data room, grants and analytics are founder + team member.
+# The cap table and term sheets (later slices) get their own founder-only set.
+FUNDING_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
 SALES_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
@@ -655,6 +660,54 @@ class ReportStatus(enum.StrEnum):
     dismissed = "dismissed"
     removed = "removed"
     restored = "restored"
+
+
+class FundingRoundStatus(enum.StrEnum):
+    planning = "planning"
+    open = "open"
+    closed = "closed"
+
+
+class FundingCurrency(enum.StrEnum):
+    """D-FUND-7: one currency per round, no conversion."""
+
+    NGN = "NGN"
+    USD = "USD"
+
+
+class InvestorType(enum.StrEnum):
+    angel = "angel"
+    vc = "vc"
+    syndicate = "syndicate"
+    other = "other"
+
+
+class InvestorStage(enum.StrEnum):
+    """The PRD's seven fixed stages (D-FUND-L8), in board order."""
+
+    research = "research"
+    outreach = "outreach"
+    meeting = "meeting"
+    diligence = "diligence"
+    term_sheet = "term_sheet"
+    committed = "committed"
+    passed = "passed"
+
+
+class PassedReason(enum.StrEnum):
+    valuation = "valuation"
+    stage_mismatch = "stage_mismatch"
+    sector_conflict = "sector_conflict"
+    ghosted = "ghosted"
+    other = "other"
+
+
+class InvestorEventKind(enum.StrEnum):
+    stage_change = "stage_change"
+    note = "note"
+    email = "email"
+    call = "call"
+    meeting = "meeting"
 
 
 class ProviderStatus(enum.StrEnum):

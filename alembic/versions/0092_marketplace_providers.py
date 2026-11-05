@@ -1,7 +1,7 @@
 """Marketplace slice A: providers, files, portfolio
 
 Revision ID: 0092_marketplace_providers
-Revises: 0089_readiness_scores
+Revises: 0090_funding_core
 Create Date: 2026-11-05
 
 Marketplace slice A (providers and vetting; no money). Adds `marketplace_providers` (an expert,
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0092_marketplace_providers"
-down_revision = "0089_readiness_scores"
+down_revision = "0090_funding_core"
 branch_labels = None
 depends_on = None
 

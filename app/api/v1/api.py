@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     finance,
     finance_integrations,
     flags,
+    funding,
     health,
     health_score,
     invitations,
@@ -61,6 +62,7 @@ api_router.include_router(invitations.router, prefix="/invitations", tags=["invi
 api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
 api_router.include_router(health_score.router, prefix="/health-score", tags=["health-score"])
 api_router.include_router(readiness.router, prefix="/readiness", tags=["readiness"])
+api_router.include_router(funding.router, prefix="/funding", tags=["funding"])
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

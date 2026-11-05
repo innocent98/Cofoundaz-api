@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick a reason for passing.",
+    "field_errors": [
+      {
+        "field": "passed_reason",
+        "message": "Pick a reason for passing."
+      }
+    ]
+  }
+}

@@ -40,6 +40,7 @@ from app.db.models.finance import Transaction  # noqa: F401
 from app.db.models.finance_connection import FinanceConnection, ProviderEvent  # noqa: F401
 from app.db.models.finance_runway import FinanceRunwaySettings  # noqa: F401
 from app.db.models.financial_model import FinancialModel  # noqa: F401
+from app.db.models.funding import FundingRound, Investor, InvestorEvent  # noqa: F401
 from app.db.models.health_score import (  # noqa: F401
     HealthRecommendation,
     HealthScore,

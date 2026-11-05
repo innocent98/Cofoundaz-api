@@ -270,6 +270,19 @@ def _s(
 # (app/services/onboarding/invites.py::accept_invitation) publishes
 # "workspace.member.joined" with {startup_id, user_id, role} — the key below
 # matches the event actually published so the handler fires.
+def _money(minor: int, currency: str) -> str:
+    symbol = {"NGN": "₦", "USD": "$"}.get(currency, f"{currency} ")
+    whole, cents = divmod(int(minor), 100)
+    return f"{symbol}{whole:,}" + (f".{cents:02d}" if cents else "")
+
+
+def _committed_title(p: dict) -> str:
+    cur = p.get("currency") or "NGN"
+    got = _money(p.get("committed_minor") or 0, cur)
+    target = p.get("target_minor")
+    return f"Funding committed is now {got}" + (f" of {_money(target, cur)}" if target else "")
+
+
 def _founders(db: Session, payload: dict) -> list[uuid.UUID]:
     """Billing is the founder's: only active founders hear about payments, usage and plan changes."""
     return _with_roles(db, payload["startup_id"], FOUNDER_ROLES)
@@ -411,6 +424,12 @@ SPECS: dict[str, NotifSpec] = {
             else "Your investor readiness score improved"
         ),
         lambda _p: "See your score",
+    ),
+    # D-FUND-L6: committed total moved. Founder + team members (minus the one who moved it).
+    "funding.round.committed_changed": NotifSpec(
+        _audience("funding.round.committed_changed"),
+        lambda p: _committed_title(p),
+        lambda _p: "See pipeline",
     ),
     "assessment.completed": _s(
         _audience("assessment.completed"), "A startup assessment was completed"

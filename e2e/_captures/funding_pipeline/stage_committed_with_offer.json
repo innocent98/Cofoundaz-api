@@ -1,0 +1,36 @@
+{
+  "data": {
+    "investor": {
+      "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
+      "name": "Chidi Okafor",
+      "firm": null,
+      "type": "angel",
+      "stage": "committed",
+      "warm": true,
+      "check_min_minor": null,
+      "check_max_minor": null,
+      "committed_minor": 2000000000,
+      "next_step": null,
+      "next_step_on": null,
+      "next_step_overdue": false,
+      "last_touch_at": null,
+      "thesis_notes": null,
+      "source": "manual",
+      "passed_reason": null,
+      "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
+      "days_in_stage": 0,
+      "position": 0,
+      "recorded_in_finance": false,
+      "created_at": "2026-11-05T13:48:33.301074+00:00",
+      "updated_at": "2026-11-05T13:48:33.500247+00:00"
+    },
+    "record_in_finance": {
+      "amount_minor": 2000000000,
+      "currency": "NGN",
+      "needs_ngn_amount": false,
+      "fits_ledger": true
+    }
+  },
+  "meta": null
+}
