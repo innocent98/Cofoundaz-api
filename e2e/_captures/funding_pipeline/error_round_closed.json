@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ROUND_CLOSED",
+    "message": "Your last round is closed. Start a new round first.",
+    "field_errors": []
+  }
+}

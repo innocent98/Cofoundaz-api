@@ -1,0 +1,40 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "577f87c4-3728-4130-a6a4-587802b58818",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "kind": "stage_change",
+        "body": null,
+        "from_stage": "research",
+        "to_stage": "outreach",
+        "occurred_at": "2026-11-05T13:48:33.388328+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
+      },
+      {
+        "id": "4c487ee6-bc81-43c4-9313-bbd76f7096c3",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "kind": "stage_change",
+        "body": null,
+        "from_stage": null,
+        "to_stage": "research",
+        "occurred_at": "2026-11-05T13:48:33.142920+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
+      },
+      {
+        "id": "0fdcafbc-18ac-44e8-bc08-8e6bf77c5895",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "kind": "call",
+        "body": "30 minute intro. Wants the cohort numbers.",
+        "from_stage": null,
+        "to_stage": null,
+        "occurred_at": "2026-11-04T13:48:33.654042+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
+      }
+    ],
+    "total": 3,
+    "limit": 50,
+    "offset": 0
+  },
+  "meta": null
+}

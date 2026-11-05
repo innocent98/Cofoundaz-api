@@ -1,0 +1,9 @@
+{
+  "data": {
+    "transactions": []
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "check_max_minor",
+        "message": "The maximum cheque can't be below the minimum."
+      }
+    ]
+  }
+}

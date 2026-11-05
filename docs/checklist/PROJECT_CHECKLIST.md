@@ -3857,6 +3857,7 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
 - [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view
 
+
 ## CI pipeline speed (2026-11-05)
 - [x] Measure before-timings (last green develop pushes + a full PR run) — in the SOP/PR body
 - [x] Path filter + always-reporting `CI gate`; docs-only PR skips the heavy jobs
@@ -3889,3 +3890,28 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 - [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
 - [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk
 - [ ] _Deferred:_ Academy "Learn how" link per gap · revenue growth and non-NGN revenue signals · founder agreement linked to a signature
+
+---
+
+## Module 14 — Funding Hub (design accepted 2026-11-05; slice A built)
+
+Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gaps and D-FUND-1..8 (all accepted):
+`cofoundaz/docs/checklist/funding-prd-gaps.md`. Order: A, B, C, D, E, F, then FE pass, every-control re-walk, unhide with Investor Readiness.
+
+- [x] **Slice A: round + pipeline** (`feature/funding-pipeline`, migration `0090_funding_core`, stacked on `feature/readiness-score`; SOP `docs/sop/2026-11-05-funding-pipeline.md`, FE guide `docs/fe-integration-guide-funding.md`)
+  - [x] `funding_rounds` (one unfinished per workspace), `investors`, `investor_events`
+  - [x] `GET/PUT /funding/round`, `GET /funding/overview`, investors CRUD, `POST .../stage`, `GET/POST .../events`
+  - [x] Seven fixed stages, Passed reason required, stage history, `stage_entered_at`, reorder
+  - [x] Header bar: soft (Term Sheet) vs committed, uncapped %, suggested target hint (18 months of burn, NGN only)
+  - [x] One currency per round (NGN/USD), locked once amounts exist
+  - [x] `POST .../record-funding`: founder-confirmed Finance `Funding` inflow, once only; offer on commit, never automatic (L3)
+  - [x] `funding.round.committed_changed` notification (F + TM minus actor); `funding` Scale module gate behind `PLAN_ENFORCEMENT`
+  - [x] Roles F + TM (D-FUND-5), a test per role; unit + API + migration tests; live e2e journey; live-captured FE guide
+  - [ ] Investor directory (D-FUND-1 b, after Adebayo approves the list): "Find investors"
+- [ ] Slice B: data room (references to Documents, shares with email OTP, viewer log, watermark) — security-critical
+- [ ] Slice C: cap table (holders, entries, SAFE conversion, round model, scenarios, SAFE draft on commit)
+- [ ] Slice D: term sheets (deterministic flags, AI extraction + confirm)
+- [ ] Slice E: grants (curated catalogue, match job, applications)
+- [ ] Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
+- [ ] FE pass (six pages real, unhide the sidebar with Investor Readiness), lead re-walk of every control
+- [ ] _Deferred:_ Finance ledger 32-bit amount cap (a ₦90M raise cannot be one entry) · Health Score signals from Funding · investor updates (Module 22.3) · exit/waterfall modelling

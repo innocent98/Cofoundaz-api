@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_RECORDED",
+    "message": "This money is already recorded in Finance.",
+    "field_errors": []
+  }
+}

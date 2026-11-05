@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVESTOR_RECORDED",
+    "message": "This money is already recorded in Finance, so the amount can't change here.",
+    "field_errors": []
+  }
+}
