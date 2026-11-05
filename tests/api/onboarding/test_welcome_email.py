@@ -1,4 +1,4 @@
-"""Gap 21: finishing onboarding sends "Welcome to Cofoundaz — let's build {startup}", once."""
+"""Gap 21: finishing onboarding sends "Welcome to Cofoundaz: let's build {startup}", once."""
 
 from tests.api.onboarding.test_complete import _fill
 from tests.auth_helpers import active_user, bearer, record_emails
@@ -19,7 +19,7 @@ def test_completing_onboarding_sends_one_welcome_email(client, db, monkeypatch):
     assert r.status_code == 200, r.text
     (msg,) = sender.sent
     assert msg.to == "ada@x.com"
-    assert msg.subject == "Welcome to Cofoundaz — let's build Cofoundaz"
+    assert msg.subject == "Welcome to Cofoundaz: let's build Cofoundaz"
     assert "/dashboard" in msg.html and "Open your dashboard" in msg.html
     assert "Hi Ada" in msg.html
 
@@ -45,3 +45,18 @@ def test_an_incomplete_onboarding_sends_nothing(client, db, monkeypatch):
     client.get("/api/v1/onboarding/state", headers=bearer(u))
     assert client.post("/api/v1/onboarding/complete", headers=bearer(u)).status_code == 422
     assert sender.sent == []
+
+
+def test_completing_onboarding_posts_the_in_app_workspace_ready_notice(client, db, monkeypatch):
+    from app.db.models.notification import Notification
+
+    record_emails(monkeypatch)
+    h = _founder(client, db)
+    user_id = db.query(Notification).count()  # nothing yet for anyone
+    assert user_id == 0
+    assert client.post("/api/v1/onboarding/complete", headers=h).status_code == 200
+    rows = db.query(Notification).filter_by(type="notification.onboarding_complete").all()
+    assert len(rows) == 1
+    assert rows[0].title == "Your workspace is ready"
+    client.post("/api/v1/onboarding/complete", headers=h)  # a repeat call posts nothing more
+    assert db.query(Notification).filter_by(type="notification.onboarding_complete").count() == 1

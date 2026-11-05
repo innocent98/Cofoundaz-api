@@ -52,6 +52,11 @@ def _existing_members(db: Session, payload: dict) -> list[uuid.UUID]:
     return _active_member_ids(db, payload["startup_id"], exclude=joiner)
 
 
+def _the_user(_db: Session, payload: dict) -> list[uuid.UUID]:
+    actor = _actor({"user_id": payload.get("user_id")})
+    return [actor] if actor else []
+
+
 def _with_roles(db: Session, startup_id: Any, roles: frozenset[MembershipRole]) -> list[uuid.UUID]:
     rows = (
         db.query(Membership.user_id)
@@ -435,6 +440,14 @@ SPECS: dict[str, NotifSpec] = {
         _audience("assessment.completed"), "A startup assessment was completed"
     ),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
+    # PRD Module 01 notifications: the founder who just finished onboarding (payload `user_id`).
+    # The event was already published by onboarding completion; nothing listened to it, so the
+    # in-app "workspace is ready" notice never appeared.
+    "notification.onboarding_complete": _s(
+        _the_user,
+        "Your workspace is ready",
+        "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+    ),
     "mission.ready": NotifSpec(
         _audience("mission.ready"),
         lambda _p: "Your mission for today is ready",

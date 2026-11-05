@@ -60,6 +60,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "readiness.improved": "health_assessment",
     "assessment.completed": "health_assessment",
     "workspace.member.joined": "team",
+    "notification.onboarding_complete": "roadmap_missions",
     "team.comment.mentioned": "team",
     "mission.ready": "roadmap_missions",
     "roadmap.milestone.overdue": "roadmap_missions",

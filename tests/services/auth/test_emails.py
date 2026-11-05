@@ -78,7 +78,7 @@ def test_welcome_and_password_changed_emails(monkeypatch):
 
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
     w = welcome_email("u@x.com", startup_name="Novă <Pay>", full_name="Ada Obi")
-    assert w.subject == "Welcome to Cofoundaz — let's build Novă <Pay>"
+    assert w.subject == "Welcome to Cofoundaz: let's build Novă <Pay>"
     assert "Novă &lt;Pay&gt;" in w.html and "<Pay>" not in w.html  # escaped in the body
     assert 'href="https://app.example.test/dashboard"' in w.html
     p = password_changed_email("u@x.com")

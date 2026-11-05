@@ -67,6 +67,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
 # Addressed to named users, not to a whole role audience (stalled: the deal owner, else the
 # founders; always inside the Sales hub audience, covered in test_sales_notifications.py).
 DIRECT = {
+    "notification.onboarding_complete",  # the founder who finished onboarding
     "journal.reminder",  # the one founder who opted in; see tests/api/test_journal_gaps.py
     "journal.prompt.daily",
     "team.comment.mentioned",

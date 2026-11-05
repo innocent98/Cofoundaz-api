@@ -135,7 +135,7 @@ def welcome_email(to: str, *, startup_name: str, full_name: str | None) -> Email
     first = escape(full_name.split()[0]) if full_name and full_name.split() else None
     return EmailMessage(
         to=to,
-        subject=_one_line(f"Welcome to Cofoundaz \u2014 let's build {startup_name}"),
+        subject=_one_line(f"Welcome to Cofoundaz: let's build {startup_name}"),
         html=_render(
             title=f"Let's build {workspace}",
             intro=(
