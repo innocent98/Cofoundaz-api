@@ -46,7 +46,7 @@ def _target(
     db: Session, user: User, m: Membership, item_type: ReportItemType, item_id: uuid.UUID
 ) -> tuple[str, uuid.UUID | None]:
     """The text to copy and who wrote it, for an item this person may report."""
-    if item_type in (ReportItemType.listing, ReportItemType.provider, ReportItemType.review):
+    if item_type in (ReportItemType.listing, ReportItemType.provider):
         return _marketplace_target(db, user, item_type, item_id)
     if item_type == ReportItemType.ai_message:
         msg = (
@@ -88,10 +88,7 @@ def _target(
 def _marketplace_target(
     db: Session, user: User, item_type: ReportItemType, item_id: uuid.UUID
 ) -> tuple[str, uuid.UUID | None]:
-    """A listing or expert the reporter can actually see in the directory (anything else is a 404).
-    Reviews arrive with slice F and can't be reported yet."""
-    if item_type == ReportItemType.review:
-        raise NotFound()
+    """A listing or expert the reporter can actually see in the directory (anything else is a 404)."""
     if item_type == ReportItemType.listing:
         listing, owner = directory.get_listing(db, item_id)
         text = f"{listing.title}\n{listing.summary}"

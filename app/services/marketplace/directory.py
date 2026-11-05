@@ -46,6 +46,18 @@ def _visible(db: Session) -> Query[Any]:
     )
 
 
+def has_live_listing(db: Session, provider_id: uuid.UUID) -> bool:
+    return (
+        db.query(MarketplaceListing.id)
+        .filter(
+            MarketplaceListing.provider_id == provider_id,
+            MarketplaceListing.status == ListingStatus.active,
+        )
+        .first()
+        is not None
+    )
+
+
 def _rating(p: MarketplaceProvider) -> dict[str, Any]:
     is_new = p.rating_count < NEW_BELOW_REVIEWS
     return {

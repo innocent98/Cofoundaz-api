@@ -81,8 +81,8 @@ def provider_profile(provider_id: uuid.UUID, m: _Member, u: _User, db: _Db) -> d
 
 def _visible_provider(db: Session, provider_id: uuid.UUID) -> MarketplaceProvider:
     p = db.get(MarketplaceProvider, provider_id)
-    if p is None or p.status != ProviderStatus.approved:
-        raise NotFound()
+    if p is None or p.status != ProviderStatus.approved or not directory.has_live_listing(db, p.id):
+        raise NotFound()  # same rule as the profile: approved AND a live listing
     return p
 
 

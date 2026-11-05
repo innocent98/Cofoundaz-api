@@ -145,7 +145,7 @@ def test_long_snippet_is_capped(client, db, world):
 @pytest.mark.parametrize(
     "bad",
     [
-        {"item_type": "invoice"},
+        {"item_type": "review"},
         {"reason": "nope"},
         {"reason": "other"},  # needs a note
         {"note": "n" * 501},
@@ -319,7 +319,7 @@ def test_queue_tabs_filters_search_and_paging(client, db, world):
     assert {x["id"] for x in nxt["data"]["reports"]}.isdisjoint(
         {x["id"] for x in two["data"]["reports"]}
     )
-    for bad in ({"tab": "nope"}, {"type": "invoice"}, {"reason": "x"}, {"cursor": "junk"}):
+    for bad in ({"tab": "nope"}, {"type": "review"}, {"reason": "x"}, {"cursor": "junk"}):
         resp = client.get(S, params=bad, headers=hdr(mod))
         assert resp.status_code == 422
     counts = client.get(f"{S}/counts", headers=hdr(mod)).json()["data"]

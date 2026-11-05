@@ -648,10 +648,9 @@ class ReportItemType(enum.StrEnum):
 
     ai_message = "ai_message"
     comment = "comment"
-    # Marketplace (slice B). `review` is reserved for slice F and can't be reported yet.
+    # Marketplace (slice B). Reviews join in slice F.
     listing = "listing"
     provider = "provider"
-    review = "review"
 
 
 class ReportReason(enum.StrEnum):

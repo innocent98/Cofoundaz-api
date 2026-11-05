@@ -5,7 +5,7 @@
     "field_errors": [
       {
         "field": "item_type",
-        "message": "Input should be 'ai_message', 'comment', 'listing', 'provider' or 'review'"
+        "message": "Input should be 'ai_message' or 'comment'"
       }
     ]
   }

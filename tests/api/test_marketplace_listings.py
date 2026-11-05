@@ -830,3 +830,105 @@ def test_a_failed_availability_put_leaves_the_old_schedule(client, db):
     resp14 = client.put(f"{P}/availability", json=bad, headers=h)
     assert resp14.status_code == 422
     assert client.get(f"{P}/availability", headers=h).json()["data"]["rules"][0]["weekday"] == 1
+
+
+# ---------------------------------------------------------------- review fixes (Opus review of #224)
+
+
+def test_a_flagged_at_once_edit_reaches_the_queue_while_the_listing_stays_live(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    lid = live_listing(client, db, moderator, user)
+    h, mh = hdr(user), hdr(moderator)
+    f, ws = founder(db)
+    # a clean at-once edit is not queued
+    clean = client.patch(f"{P}/listings/{lid}", json={"price_minor": 1_100_000}, headers=h)
+    assert clean.status_code == 200
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
+    # a price far below the sane floor, and a phone number in the tags, both trip the pre-screen
+    r = client.patch(
+        f"{P}/listings/{lid}", json={"price_minor": 5000, "tags": ["call +234 803 123 4567"]}, headers=h
+    )
+    assert r.status_code == 200 and r.json()["data"]["status"] == "active"
+    assert r.json()["data"]["price_minor"] == 5000  # at-once edits are live
+    assert "flag" not in json.dumps(r.json()["data"])  # staff-only
+    q = client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
+    assert [x["id"] for x in q] == [lid] and q[0]["has_flag"] is True and q[0]["has_revision"] is False
+    assert {x["rule"] for x in q[0]["flag"]["flags"]} == {"price_out_of_range", "contact_details"}
+    assert client.get(f"{A}/listings/counts", headers=mh).json()["data"]["flagged_edits"] == 1
+    live = client.get(f"{M}/listings/{lid}", headers=fh(f, ws)).json()["data"]
+    assert live["price_minor"] == 5000  # still visible
+    # approving accepts what is live and sets the new baseline
+    ok = staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False)
+    assert ok.status_code == 200
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
+    again = client.patch(f"{P}/listings/{lid}", json={"price_minor": 6000}, headers=h)
+    assert again.status_code == 200  # same flag as the accepted baseline: not queued again
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
+    assert client.get(f"{A}/listings/counts", headers=mh).json()["data"]["flagged_edits"] == 0
+
+
+def test_a_flagged_edit_can_be_sent_back_without_a_revision(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    lid = live_listing(client, db, moderator, user)
+    client.patch(f"{P}/listings/{lid}", json={"price_minor": 5000}, headers=hdr(user))
+    mh = hdr(moderator)
+    msg = "That price looks like a typo, please fix it."
+    r = client.post(f"{A}/listings/{lid}/request-changes", json={"message": msg}, headers=mh)
+    assert r.status_code == 200 and r.json()["data"]["status"] == "active"
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
+    assert client.get(f"{P}/listings/{lid}", headers=hdr(user)).json()["data"]["review_message"] == msg
+    # nothing left to decide
+    assert staff_post(client, moderator, f"/listings/{lid}/approve", step_up=False).status_code == 409
+
+
+def test_a_flagged_listing_can_be_unlisted_from_the_queue(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    lid = live_listing(client, db, moderator, user)
+    client.patch(f"{P}/listings/{lid}", json={"tags": ["whatsapp me"]}, headers=hdr(user))
+    assert client.get(f"{A}/listings?queue=true", headers=hdr(moderator)).json()["data"]["listings"]
+    r = staff_post(client, moderator, f"/listings/{lid}/unlist", reason="Off-platform dealing in tags")
+    assert r.status_code == 200 and r.json()["data"]["status"] == "unlisted"
+
+
+def test_fields_belong_to_a_listing_type(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    h = hdr(user)
+    r = client.post(f"{P}/listings", json=create_body(delivery_days=5), headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    r = client.post(f"{P}/listings", json=create_body(deliverables=["A memo"]), headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    pkg = dict(type="package", duration_min=None, meeting_url=None, delivery_days=5, deliverables=["A memo"])
+    r = client.post(f"{P}/listings", json=create_body(**{**pkg, "duration_min": 60}), headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    r = client.post(f"{P}/listings", json=create_body(**{**pkg, "meeting_url": MEET}), headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    ok = client.post(f"{P}/listings", json=create_body(**pkg), headers=h)
+    assert ok.status_code == 201
+    d = client.patch(f"{P}/listings/{ok.json()['data']['id']}", json={"duration_min": 60}, headers=h)
+    assert d.status_code == 422 and d.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    c = new_listing(client, user)
+    d = client.patch(f"{P}/listings/{c['id']}", json={"delivery_days": 3}, headers=h)
+    assert d.status_code == 422 and d.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    # emptying a foreign field is harmless
+    assert client.patch(f"{P}/listings/{c['id']}", json={"deliverables": None}, headers=h).status_code == 200
+
+
+def test_a_live_listing_cannot_lose_the_fields_its_type_needs(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    h = hdr(user)
+    lid = live_listing(client, db, moderator, user)
+    for body in ({"duration_min": None}, {"meeting_url": None}):
+        r = client.patch(f"{P}/listings/{lid}", json=body, headers=h)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_REQUIRED", body
+    live = client.get(f"{P}/listings/{lid}", headers=h).json()["data"]
+    assert live["duration_min"] == 60 and live["meeting_url"] == MEET
+    pkg = live_listing(
+        client, db, moderator, user, type="package", duration_min=None, meeting_url=None,
+        delivery_days=5, deliverables=["A memo"], title="A package listing",
+    )
+    for body in ({"delivery_days": None}, {"deliverables": None}, {"deliverables": []}):
+        r = client.patch(f"{P}/listings/{pkg}", json=body, headers=h)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_REQUIRED", body
+    # a draft may be emptied (it can't be submitted that way)
+    d = new_listing(client, user, title="Draft being reworked")
+    assert client.patch(f"{P}/listings/{d['id']}", json={"meeting_url": None}, headers=h).status_code == 200

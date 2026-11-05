@@ -19,7 +19,7 @@ from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.email import EmailMessage
 from app.services.marketplace import emails
-from app.services.marketplace.listings import _k, err, refresh_prescreen
+from app.services.marketplace.listings import err, public_name, refresh_prescreen
 from app.services.marketplace.providers import badge
 from app.services.staff.like import contains_pattern
 
@@ -62,6 +62,13 @@ def exists_or_404(db: Session, listing_id: uuid.UUID) -> None:
         raise err("LISTING_NOT_FOUND", "No such listing.", 404)
 
 
+def has_flag(row: MarketplaceListing) -> bool:
+    """A live listing whose at-once edit (tags, price) tripped the pre-screen."""
+    return row.status in (ListingStatus.active, ListingStatus.paused) and bool(
+        (row.prescreen_json or {}).get("review")
+    )
+
+
 def has_revision(row: MarketplaceListing) -> bool:
     return row.status in (ListingStatus.active, ListingStatus.paused) and bool(
         row.pending_revision_json
@@ -80,6 +87,8 @@ def summary(row: MarketplaceListing, provider: MarketplaceProvider) -> dict[str,
         "price_minor": row.price_minor,
         "status": row.status.value,
         "has_revision": has_revision(row),
+        "has_flag": has_flag(row),
+        "flag": (row.prescreen_json or {}).get("review") if has_flag(row) else None,
         "submitted_at": row.submitted_at.isoformat() if row.submitted_at else None,
         "revision_submitted_at": (
             row.revision_submitted_at.isoformat() if row.revision_submitted_at else None
@@ -92,7 +101,7 @@ def summary(row: MarketplaceListing, provider: MarketplaceProvider) -> dict[str,
 def _diff(row: MarketplaceListing) -> list[dict[str, Any]]:
     out = []
     for key, new in (row.pending_revision_json or {}).items():
-        out.append({"field": _k(key), "from": getattr(row, key), "to": new})
+        out.append({"field": public_name(key), "from": getattr(row, key), "to": new})
     return out
 
 
@@ -125,7 +134,7 @@ def detail(db: Session, listing_id: uuid.UUID) -> dict[str, Any]:
         "unlisted_reason": row.unlisted_reason,
         "published_at": row.published_at.isoformat() if row.published_at else None,
         "pending_revision": (
-            {_k(k): v for k, v in row.pending_revision_json.items()}
+            {public_name(k): v for k, v in row.pending_revision_json.items()}
             if row.pending_revision_json
             else None
         ),
@@ -163,9 +172,19 @@ def counts(db: Session) -> dict[str, Any]:
         .scalar()
         or 0
     )
+    flagged = (
+        db.query(func.count(MarketplaceListing.id))
+        .filter(
+            MarketplaceListing.status.in_([ListingStatus.active, ListingStatus.paused]),
+            MarketplaceListing.prescreen_json.has_key("review"),  # noqa: W601
+        )
+        .scalar()
+        or 0
+    )
     return {
         "by_status": {s.value: by_status.get(s, 0) for s in ListingStatus},
         "pending_revisions": int(revisions),
+        "flagged_edits": int(flagged),
     }
 
 
@@ -188,7 +207,10 @@ def list_listings(
             or_(
                 MarketplaceListing.status == ListingStatus.pending_review,
                 (MarketplaceListing.status.in_([ListingStatus.active, ListingStatus.paused]))
-                & MarketplaceListing.pending_revision_json.isnot(None),
+                & (
+                    MarketplaceListing.pending_revision_json.isnot(None)
+                    | MarketplaceListing.prescreen_json.has_key("review")  # noqa: W601
+                ),
             )
         )
     if query and query.strip():
@@ -225,6 +247,8 @@ def _reviewable(row: MarketplaceListing) -> str:
         return "first"
     if has_revision(row):
         return "revision"
+    if has_flag(row):
+        return "flag"
     raise err("INVALID_STATE", "There's nothing waiting for review on this listing.")
 
 
@@ -247,13 +271,18 @@ def approve(
     if kind == "first":
         row.status = ListingStatus.active
         row.published_at = datetime.now(UTC)
-    else:
+    else:  # an edit, or a flagged at-once edit: approving accepts everything now live
         for key, value in (row.pending_revision_json or {}).items():
             setattr(row, key, value)
         row.pending_revision_json = None
         row.revision_submitted_at = None
     row.review_message = None
     refresh_prescreen(row)
+    # What staff approved is the new baseline: only flags beyond it reach the queue again.
+    row.prescreen_json = {
+        **{k: v for k, v in row.prescreen_json.items() if k != "review"},
+        "accepted": row.prescreen_json.get("flags", []),
+    }
     write_audit(
         db,
         "marketplace.listing.approved",
@@ -290,9 +319,13 @@ def _send_back(
     kind = _reviewable(row)
     if kind == "first":
         row.status = first_status
-    else:  # the live version stays; only the edit is discarded
+    elif kind == "revision":  # the live version stays; only the edit is discarded
         row.pending_revision_json = None
         row.revision_submitted_at = None
+    else:
+        # A flagged at-once edit is already live. The message goes to the expert and the queue
+        # item closes; to take the listing down staff unlist it (reason + authenticator code).
+        row.prescreen_json = {k: v for k, v in (row.prescreen_json or {}).items() if k != "review"}
     row.review_message = message
     refresh_prescreen(row)
     write_audit(

@@ -489,6 +489,38 @@ def test_marketplace_listings_journey(
     r = fc.get(f"{M}/listings/{consult}", headers=f)
     assert r.json()["data"]["title"] == "Contract and term sheet review"
 
+    # ---- an at-once edit that trips the pre-screen is queued; type rules ---------------------------
+    r = http.patch(f"{P}/listings/{consult}", json={"tags": ["contracts", "whatsapp me"]}, headers=e)
+    assert r.status_code == 200 and r.json()["data"]["status"] == "active"
+    r = http.get(f"{A}/listings", params={"queue": "true", "query": "Ngozi"}, headers=mod)
+    flagged = [x for x in r.json()["data"]["listings"] if x["id"] == consult]
+    assert flagged and flagged[0]["has_flag"] is True
+    capture(G, "admin_listing_queue_flagged_edit", r)
+    r = http.get(f"{A}/listings/counts", headers=mod)
+    assert r.json()["data"]["flagged_edits"] >= 1
+    r = http.post(
+        f"{A}/listings/{consult}/approve",
+        json={"reason": "Tag is fine, not a contact detail"},
+        headers=mod,
+    )
+    assert r.status_code == 200
+    r = http.patch(f"{P}/listings/{consult}", json={"duration_min": None}, headers=e)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_REQUIRED"
+    capture(G, "listing_live_remove_required_field_422", r)
+    r = http.post(
+        f"{P}/listings",
+        json={
+            "type": "package",
+            "title": "Cross type package",
+            "category": "Legal",
+            "price_minor": 5_000_000,
+            "duration_min": 60,
+        },
+        headers=e,
+    )
+    assert r.status_code == 422 and r.json()["error"]["code"] == "FIELD_NOT_FOR_TYPE"
+    capture(G, "listing_field_not_for_type_422", r)
+
     # ---- pause hides, resume shows --------------------------------------------------------------
     r = http.post(f"{P}/listings/{consult}/pause", headers=e)
     assert r.status_code == 200 and r.json()["data"]["status"] == "paused"
@@ -518,8 +550,8 @@ def test_marketplace_listings_journey(
         headers=f,
         json={"item_type": "review", "item_id": consult, "reason": "spam"},
     )
-    assert r.status_code == 404
-    capture(G, "report_review_not_yet_404", r)
+    assert r.status_code == 422
+    capture(G, "report_review_not_reportable_422", r)
     r = http.get(AR, params={"tab": "open"}, headers=mod)
     assert report_id in [x["id"] for x in r.json()["data"]["reports"]]
     capture(G, "admin_reports_queue_with_listing", r)

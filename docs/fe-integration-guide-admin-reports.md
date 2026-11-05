@@ -10,7 +10,7 @@ The AI replies in the captures read `[stub-llm] ...` because the e2e server runs
 2. **Reports tab (Admin console, scope `moderation`; Super Admin too).** A queue with tabs Open / Escalated / Closed, filters by type and reason, per-page search. Each report shows only the snippet the founder reported. Actions: dismiss, escalate, remove content, restore.
 3. **Removed content.** When staff remove an item, the author (and everyone who can see it) gets it back with `removed_by_moderation: true` and the text replaced by `Removed by moderation`. It is a soft hide and can be restored.
 
-Marketplace slice B added `listing` and `provider` as reportable types (see `docs/fe-integration-guide-marketplace-listings.md`); `review` is accepted by the schema but answers 404 until Marketplace reviews exist. In this guide's journey the report types are `ai_message` and `comment`.
+Marketplace **reviews are not reportable yet** (Marketplace isn't built); `item_type` only accepts `ai_message` and `comment`.
 
 ## Product calls (R1 to R12, defaults set by the build session; Adebayo may change them)
 
@@ -33,7 +33,7 @@ Marketplace slice B added `listing` and `provider` as reportable types (see `doc
 
 ### `POST /reports` (201)
 
-Body: `{"item_type": "ai_message" | "comment" | "listing" | "provider", "item_id": uuid, "reason": spam|abusive|harmful|inaccurate|privacy|other, "note": optional, 1-500 chars}`. Any other field is a 422. `item_id` is the id the FE already has: the AI message `id` from `GET /ai/conversations/{id}`, or the comment `id` from `GET /team/comments`. The response never reveals what staff decide: `status` is always `received`.
+Body: `{"item_type": "ai_message" | "comment", "item_id": uuid, "reason": spam|abusive|harmful|inaccurate|privacy|other, "note": optional, 1-500 chars}`. Any other field is a 422. `item_id` is the id the FE already has: the AI message `id` from `GET /ai/conversations/{id}`, or the comment `id` from `GET /team/comments`. The response never reveals what staff decide: `status` is always `received`.
 
 
 `report_comment_ok` (201):
@@ -77,7 +77,7 @@ Body: `{"item_type": "ai_message" | "comment" | "listing" | "provider", "item_id
     "field_errors": [
       {
         "field": "item_type",
-        "message": "Input should be 'ai_message', 'comment', 'listing', 'provider' or 'review'"
+        "message": "Input should be 'ai_message' or 'comment'"
       }
     ]
   }

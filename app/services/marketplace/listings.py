@@ -79,19 +79,72 @@ def _text_view(row: MarketplaceListing, pending: dict[str, Any] | None = None) -
         "description": row.description,
         "deliverables": row.deliverables_json,
         "tags": row.tags,
-        **{_k(k): v for k, v in (pending or {}).items()},
+        **{public_name(k): v for k, v in (pending or {}).items()},
     }
     return merged
 
 
-def _k(name: str) -> str:
+def public_name(name: str) -> str:
     return "deliverables" if name == "deliverables_json" else name
 
 
 def refresh_prescreen(row: MarketplaceListing) -> None:
-    row.prescreen_json = prescreen_listing(
-        _text_view(row, row.pending_revision_json), row.price_minor
-    )
+    """Re-run the pre-screen. `accepted` (the flags staff approved) and `review` (a live edit that
+    tripped a new flag, waiting for staff) survive a refresh."""
+    old = row.prescreen_json or {}
+    row.prescreen_json = {
+        **prescreen_listing(_text_view(row, row.pending_revision_json), row.price_minor),
+        **{k: old[k] for k in ("accepted", "review") if k in old},
+    }
+
+
+IMMEDIATE_SCREENED = ("tags", "price_minor")
+
+
+def flag_live_edit(row: MarketplaceListing) -> None:
+    """A live edit that applies at once (tags, price) can still trip the pre-screen. If it adds a
+    flag staff haven't accepted, park it in `prescreen_json["review"]` so it reaches the queue; the
+    listing stays live meanwhile (same rule as an approved expert's flagged profile edit)."""
+    screen = row.prescreen_json or {}
+    accepted = screen.get("accepted", [])
+    fresh = [
+        f for f in screen.get("flags", []) if f not in accepted and f["field"] in IMMEDIATE_SCREENED
+    ]
+    if not fresh:
+        return
+    prior = screen.get("review") or {}
+    merged = list(prior.get("flags", []))
+    merged += [f for f in fresh if f not in merged]
+    now = datetime.now(UTC).isoformat()
+    row.prescreen_json = {
+        **screen,
+        "review": {"at": prior.get("at", now), "updated_at": now, "flags": merged},
+    }
+
+
+CONSULT_ONLY = ("duration_min", "meeting_url")
+PACKAGE_ONLY = ("delivery_days", "deliverables_json")
+
+
+def check_type_fields(row_type: ListingType, changes: dict[str, Any], *, live: bool) -> None:
+    """Fields belong to a type (consultation: duration, meeting link; package: delivery days,
+    deliverables), and a live listing can't lose the ones its type needs."""
+    foreign = PACKAGE_ONLY if row_type == ListingType.consultation else CONSULT_ONLY
+    for name in foreign:
+        if name in changes and changes[name] not in (None, []):
+            raise err(
+                "FIELD_NOT_FOR_TYPE",
+                f"'{public_name(name)}' doesn't apply to a {row_type.value}.",
+                422,
+            )
+    if live:
+        for name in CONSULT_ONLY if row_type == ListingType.consultation else PACKAGE_ONLY:
+            if name in changes and changes[name] in (None, [], ""):
+                raise err(
+                    "FIELD_REQUIRED",
+                    f"A live {row_type.value} needs '{public_name(name)}'. Pause it to remove that.",
+                    422,
+                )
 
 
 def lock_listing(db: Session, provider_id: uuid.UUID, listing_id: uuid.UUID) -> MarketplaceListing:
@@ -126,7 +179,7 @@ def serialize_for_provider(
         "revisions_included": row.revisions_included,
         "meeting_url": row.meeting_url,
         "pending_revision": (
-            {_k(k): v for k, v in row.pending_revision_json.items()}
+            {public_name(k): v for k, v in row.pending_revision_json.items()}
             if row.pending_revision_json
             else None
         ),
@@ -180,6 +233,9 @@ def create_listing(db: Session, ctx: ProviderContext, data: dict[str, Any]) -> M
             "LISTING_LIMIT_REACHED", f"You can have up to {MAX_LISTINGS_PER_PROVIDER} listings."
         )
     check_category(provider, data["category"])
+    check_type_fields(
+        ListingType(data["type"]), {_column(k): v for k, v in data.items()}, live=False
+    )
     row = MarketplaceListing(
         provider_id=provider.id,
         type=ListingType(data["type"]),
@@ -218,6 +274,7 @@ def update_listing(
     changes = {_column(k): v for k, v in raw.items()}
     if "category" in changes and changes["category"] != row.category:
         check_category(ctx.provider, changes["category"])
+    check_type_fields(row.type, changes, live=row.status in LIVE)
     if row.status in DRAFTISH:
         _apply(row, changes)
         refresh_prescreen(row)
@@ -252,6 +309,7 @@ def _edit_live(
     if reviewed:
         row.review_message = None
     refresh_prescreen(row)
+    flag_live_edit(row)
     db.flush()
     if started:
         write_audit(
@@ -260,7 +318,7 @@ def _edit_live(
             actor_user_id=ctx.user.id,
             entity_type="marketplace_listing",
             entity_id=row.id,
-            details={"fields": sorted(_k(k) for k in pending)},
+            details={"fields": sorted(public_name(k) for k in pending)},
         )
 
 

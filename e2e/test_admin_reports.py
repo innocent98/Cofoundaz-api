@@ -191,7 +191,7 @@ def test_admin_reports_journey(
 
     # ---- founder: report -----------------------------------------------------------------------
     for name, bad in (
-        ("report_bad_item_type", {"item_type": "invoice", "item_id": comment_id, "reason": "spam"}),
+        ("report_bad_item_type", {"item_type": "review", "item_id": comment_id, "reason": "spam"}),
         ("report_bad_reason", {"item_type": "comment", "item_id": comment_id, "reason": "meh"}),
         (
             "report_other_needs_note",

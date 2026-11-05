@@ -15,11 +15,13 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.core.redis import get_redis
 from app.db.models.ai_chat import AiMessage
+from app.db.models.audit import AuditLog
 from app.db.models.comment import Comment
 from app.db.models.content_report import ContentReport
 from app.db.models.enums import ListingStatus, ReportItemType
 from app.db.models.marketplace import MarketplaceListing, MarketplaceProvider
 from app.db.models.notification import Notification
+from app.platform.audit import write_audit
 
 SNIPPET_MAX = 2000  # R4
 REPORTS_PER_HOUR = 10  # R3
@@ -65,13 +67,19 @@ def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         ) from exc
 
 
-def set_removed(db: Session, report: ContentReport, removed: bool, now: datetime) -> bool:
+def set_removed(
+    db: Session,
+    report: ContentReport,
+    removed: bool,
+    now: datetime,
+    actor_id: uuid.UUID | None = None,
+) -> bool:
     """Hide (or show again) the reported item. False when the item no longer exists (the author
     deleted it): the report still closes, there is just nothing left to hide."""
     if report.item_type == ReportItemType.listing:
-        return _set_listing_unlisted(db, report, removed)
-    if report.item_type in (ReportItemType.provider, ReportItemType.review):
-        # Experts are suspended through vetting (step-up, emails); reviews arrive in slice F.
+        return _set_listing_unlisted(db, report, removed, actor_id)
+    if report.item_type == ReportItemType.provider:
+        # Experts are suspended through vetting (step-up, emails), not by removing a report item.
         raise AppError(
             "USE_VETTING",
             "Suspend an expert from the vetting queue instead of removing the report's item.",
@@ -90,8 +98,33 @@ def set_removed(db: Session, report: ContentReport, removed: bool, now: datetime
     return True
 
 
-def _set_listing_unlisted(db: Session, report: ContentReport, removed: bool) -> bool:
-    """Unlist (or relist) the reported listing. Active bookings are honoured; no new ones."""
+def _unlisted_by_report(db: Session, listing_id: uuid.UUID) -> bool:
+    """Was the listing's CURRENT unlisting done by the report flow? Read from the audit trail (the
+    latest unlist/relist row), so a listing a moderator unlisted for their own reasons is never
+    relisted by restoring a report about it."""
+    last = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.entity_type == "marketplace_listing",
+            AuditLog.entity_id == listing_id,
+            AuditLog.action.in_(("marketplace.listing.unlisted", "marketplace.listing.relisted")),
+        )
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .first()
+    )
+    return (
+        last is not None
+        and last.action == "marketplace.listing.unlisted"
+        and (last.details or {}).get("via") == "report"
+    )
+
+
+def _set_listing_unlisted(
+    db: Session, report: ContentReport, removed: bool, actor_id: uuid.UUID | None
+) -> bool:
+    """Unlist (or relist) the reported listing. Active bookings are honoured; no new ones. Both
+    directions are audited on the listing and carry `via: report`; a restore only relists what
+    the report flow itself unlisted."""
     listing = (
         db.query(MarketplaceListing)
         .filter(MarketplaceListing.id == report.item_id)
@@ -102,10 +135,30 @@ def _set_listing_unlisted(db: Session, report: ContentReport, removed: bool) -> 
         return False
     if removed and listing.status in (ListingStatus.active, ListingStatus.paused):
         listing.status = ListingStatus.unlisted
-        listing.unlisted_reason = "Unlisted after a report."
-    elif not removed and listing.status == ListingStatus.unlisted:
+        listing.unlisted_by, listing.unlisted_reason = actor_id, "Unlisted after a report."
+        write_audit(
+            db,
+            "marketplace.listing.unlisted",
+            actor_user_id=actor_id,
+            entity_type="marketplace_listing",
+            entity_id=listing.id,
+            details={"via": "report", "report_id": str(report.id)},
+        )
+    elif (
+        not removed
+        and listing.status == ListingStatus.unlisted
+        and _unlisted_by_report(db, listing.id)
+    ):
         listing.status = ListingStatus.active
         listing.unlisted_by, listing.unlisted_reason = None, None
+        write_audit(
+            db,
+            "marketplace.listing.relisted",
+            actor_user_id=actor_id,
+            entity_type="marketplace_listing",
+            entity_id=listing.id,
+            details={"via": "report", "report_id": str(report.id)},
+        )
     return True
 
 

@@ -726,7 +726,7 @@ def test_reports_need_a_visible_item_and_not_your_own(client, db, fx):
         ("provider", drafty.id),
     ):
         assert report(client, f, ws, t, i).status_code == 404, (t, i)
-    assert report(client, f, ws, "review", uuid.uuid4()).status_code == 404  # slice F
+    assert report(client, f, ws, "review", uuid.uuid4()).status_code == 422  # not reportable until slice F
     own_u, own = mk_provider(db, user=f)
     mine = mk_listing(db, own)
     r = report(client, f, ws, "listing", mine.id)
@@ -788,3 +788,100 @@ def test_staff_cannot_decide_a_report_about_their_own_listing(client, db, modera
     db.refresh(lst)
     assert lst.status == ListingStatus.active
     assert db.get(ContentReport, uuid.UUID(rid)).status == ReportStatus.open
+
+
+# ---------------------------------------------------------------- review fixes (Opus review of #224)
+
+
+def _audit_rows(db, listing_id, action):
+    from app.db.models.audit import AuditLog
+
+    return db.query(AuditLog).filter_by(action=action, entity_id=listing_id).all()
+
+
+def test_report_unlist_and_relist_are_audited_and_carry_the_actor(client, db, moderator, fx):
+    f, ws = fx
+    _, prov = mk_provider(db)
+    lst = mk_listing(db, prov)
+    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
+    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
+    db.refresh(lst)
+    assert lst.status == ListingStatus.unlisted and lst.unlisted_by == moderator.id
+    (row,) = _audit_rows(db, lst.id, "marketplace.listing.unlisted")
+    assert row.actor_user_id == moderator.id and row.details == {"via": "report", "report_id": rid}
+    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    db.refresh(lst)
+    assert lst.status == ListingStatus.active and lst.unlisted_by is None
+    (back,) = _audit_rows(db, lst.id, "marketplace.listing.relisted")
+    assert back.details == {"via": "report", "report_id": rid}
+
+
+def test_restoring_a_report_never_relists_what_a_moderator_unlisted(client, db, moderator, fx):
+    f, ws = fx
+    _, prov = mk_provider(db)
+    lst = mk_listing(db, prov)
+    # a moderator takes it down for fraud, with step-up
+    r = staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Fraudulent claims")
+    assert r.status_code == 200
+    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
+    # the report removal is a no-op on a listing that is already down...
+    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
+    db.refresh(lst)
+    assert lst.unlisted_reason == "Fraudulent claims"  # not overwritten by the report flow
+    assert _audit_rows(db, lst.id, "marketplace.listing.unlisted")[0].details.get("via") != "report"
+    # ...and restoring it must not bring the listing back
+    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    db.refresh(lst)
+    assert lst.status == ListingStatus.unlisted
+    assert _audit_rows(db, lst.id, "marketplace.listing.relisted") == []
+    assert get(client, f, ws, f"/listings/{lst.id}").status_code == 404
+
+
+def test_a_later_moderator_unlist_also_blocks_a_report_restore(client, db, moderator, fx):
+    f, ws = fx
+    _, prov = mk_provider(db)
+    lst = mk_listing(db, prov)
+    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
+    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200  # report unlists
+    assert staff_post(client, moderator, f"/listings/{lst.id}/relist").status_code == 200
+    assert staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Second offence").status_code == 200
+    assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
+    db.refresh(lst)
+    assert lst.status == ListingStatus.unlisted  # the latest unlisting is the moderator's
+
+
+def test_staff_cannot_dismiss_or_escalate_reports_about_their_own_items(client, db, moderator, fx):
+    f, ws = fx
+    _, prov = mk_provider(db, user=moderator)
+    lst = mk_listing(db, prov)
+    mh = hdr(moderator)
+    for item_type, item_id in (("listing", lst.id), ("provider", prov.id)):
+        rid = report(client, f, ws, item_type, item_id, "harmful").json()["data"]["id"]
+        for action in ("dismiss", "escalate"):
+            r = client.post(
+                f"/api/v1/admin/reports/{rid}/{action}",
+                json={"reason": "Reviewed against the marketplace rules"},
+                headers=mh,
+            )
+            assert r.status_code == 422, (item_type, action, r.text)
+            assert r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+        assert db.get(ContentReport, uuid.UUID(rid)).status == ReportStatus.open
+
+
+def test_review_is_not_a_reportable_type_yet(client, db, fx):
+    f, ws = fx
+    r = report(client, f, ws, "review", uuid.uuid4())
+    assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert not any(t.value == "review" for t in ReportItemType)
+
+
+def test_avatar_and_portfolio_files_need_a_live_listing_too(client, db, fx):
+    f, ws = fx
+    u, prov = mk_provider(db)
+    av = _file(db, u, MarketplaceFilePurpose.avatar)
+    prov.avatar_file_id = av.id
+    db.flush()
+    url = f"{M}/providers/{prov.id}/avatar"
+    assert client.get(url, headers=fh(f, ws)).status_code == 404  # approved but nothing live
+    mk_listing(db, prov)
+    assert client.get(url, headers=fh(f, ws)).status_code == 200
