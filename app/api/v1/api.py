@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     admin,
     admin_marketplace,
+    admin_marketplace_listings,
     ai,
     assessments,
     billing,
@@ -21,11 +22,13 @@ from app.api.v1.endpoints import (
     journal,
     learning,
     marketing,
+    marketplace,
     mission,
     notifications,
     payment_webhooks,
     platform_status,
     provider,
+    provider_listings,
     readiness,
     reports,
     roadmap,
@@ -99,7 +102,15 @@ api_router.include_router(
     tags=["admin-marketplace"],
     include_in_schema=False,
 )
+api_router.include_router(
+    admin_marketplace_listings.router,
+    prefix="/admin/marketplace",
+    tags=["admin-marketplace"],
+    include_in_schema=False,
+)
 api_router.include_router(provider.router, prefix="/provider", tags=["provider"])
+api_router.include_router(provider_listings.router, prefix="/provider", tags=["provider"])
+api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
 )

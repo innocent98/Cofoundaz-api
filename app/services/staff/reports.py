@@ -283,6 +283,7 @@ def remove(
 ) -> dict[str, Any]:
     r, siblings = _load_with_siblings(db, report_id)
     _live_only(ctx, r)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     now = core.now_utc()
     # R8: everyone who reported this item is answered by the one removal.
     others = [x for x in siblings if x.status in (ReportStatus.open, ReportStatus.escalated)]
@@ -318,6 +319,7 @@ def restore(
     r, siblings = _load_with_siblings(db, report_id)
     if r.status != ReportStatus.removed:
         raise core.err("NOT_REMOVED", "Only a removed item can be restored.", 409)
+    core.refuse_own_marketplace_item(db, r, ctx.user.id)
     now = core.now_utc()
     others = [x for x in siblings if x.status == ReportStatus.removed]
     # Undoing a Super Admin's decision on an escalated report is theirs too (R7).

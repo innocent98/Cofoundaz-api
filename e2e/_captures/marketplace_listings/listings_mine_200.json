@@ -1,0 +1,71 @@
+{
+  "data": {
+    "listings": [
+      {
+        "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+        "type": "package",
+        "status": "pending_review",
+        "title": "Shareholder agreement drafting",
+        "summary": "A tailored shareholder agreement for your startup.",
+        "description": "A focused tailored agreement drafting your contract or term sheet, with written notes after.",
+        "category": "Legal",
+        "tags": [],
+        "price_minor": 25000000,
+        "currency": "NGN",
+        "duration_min": null,
+        "delivery_days": 7,
+        "deliverables": [
+          "Shareholder agreement (Word)",
+          "One round of edits"
+        ],
+        "revisions_included": 2,
+        "meeting_url": null,
+        "pending_revision": null,
+        "review_message": null,
+        "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+        "published_at": null,
+        "unlisted_reason": null,
+        "earnings_preview": {
+          "commission_bps": 1500,
+          "commission_minor": 3750000,
+          "net_minor": 21250000
+        },
+        "created_at": "2026-11-05T19:48:58.583662+00:00",
+        "updated_at": "2026-11-05T19:48:58.652475+00:00"
+      },
+      {
+        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "type": "consultation",
+        "status": "pending_review",
+        "title": "Contract review session",
+        "summary": "A one hour review of your contract with written notes.",
+        "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
+        "category": "Legal",
+        "tags": [
+          "contracts",
+          "term sheets"
+        ],
+        "price_minor": 1000000,
+        "currency": "NGN",
+        "duration_min": 60,
+        "delivery_days": null,
+        "deliverables": [],
+        "revisions_included": 2,
+        "meeting_url": "https://meet.example.com/ngozi-eze",
+        "pending_revision": null,
+        "review_message": null,
+        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+        "published_at": null,
+        "unlisted_reason": null,
+        "earnings_preview": {
+          "commission_bps": 1500,
+          "commission_minor": 150000,
+          "net_minor": 850000
+        },
+        "created_at": "2026-11-05T19:48:58.563977+00:00",
+        "updated_at": "2026-11-05T19:48:58.636735+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

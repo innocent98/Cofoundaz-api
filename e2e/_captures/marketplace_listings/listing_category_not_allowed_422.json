@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CATEGORY_NOT_ALLOWED",
+    "message": "You can only list services in the categories you were vetted for.",
+    "field_errors": []
+  }
+}

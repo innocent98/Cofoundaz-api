@@ -5,6 +5,8 @@ where to look."""
 import re
 from typing import Any
 
+from app.services.marketplace.constants import PRICE_MIN_MINOR, PRICE_SANE_MAX_MINOR
+
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]?){9,}(?!\d)")
 _HANDLE = re.compile(r"\b(whatsapp|telegram|t\.me|wa\.me|signal)\b", re.IGNORECASE)
@@ -36,4 +38,28 @@ def prescreen(fields: dict[str, str | None]) -> dict[str, Any]:
             if (rule, name) not in seen and pattern.search(text):
                 seen.add((rule, name))
                 flags.append({"rule": rule, "field": name})
+    return {"flags": flags, "clean": not flags}
+
+
+LISTING_FIELDS = ("title", "summary", "description", "deliverables", "tags")
+
+
+def prescreen_listing(fields: dict[str, object], price_minor: int | None) -> dict[str, Any]:
+    """The same deterministic rules over a listing's text, plus a price sanity chip."""
+    flat: dict[str, str | None] = {}
+    for name in LISTING_FIELDS:
+        value = fields.get(name)
+        if isinstance(value, list):
+            flat[name] = " ".join(str(v) for v in value)
+        else:
+            flat[name] = str(value) if value else None
+    flags: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for name, text in flat.items():
+        for rule, pattern in _RULES:
+            if (rule, name) not in seen and text and pattern.search(text):
+                seen.add((rule, name))
+                flags.append({"rule": rule, "field": name})
+    if price_minor is not None and not PRICE_MIN_MINOR <= price_minor <= PRICE_SANE_MAX_MINOR:
+        flags.append({"rule": "price_out_of_range", "field": "price_minor"})
     return {"flags": flags, "clean": not flags}

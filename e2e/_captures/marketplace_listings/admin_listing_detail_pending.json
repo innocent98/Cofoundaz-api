@@ -1,0 +1,63 @@
+{
+  "data": {
+    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+    "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "provider_name": "Ngozi Eze",
+    "provider_status": "approved",
+    "type": "package",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "price_minor": 25000000,
+    "status": "pending_review",
+    "has_revision": false,
+    "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+    "revision_submitted_at": null,
+    "prescreen_flags": [],
+    "created_at": "2026-11-05T19:48:58.583662+00:00",
+    "summary": "A tailored shareholder agreement for your startup.",
+    "description": "A focused tailored agreement drafting your contract or term sheet, with written notes after.",
+    "tags": [],
+    "duration_min": null,
+    "delivery_days": 7,
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "revisions_included": 2,
+    "meeting_url": null,
+    "review_message": null,
+    "unlisted_reason": null,
+    "published_at": null,
+    "pending_revision": null,
+    "diff": [],
+    "provider": {
+      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "display_name": "Ngozi Eze",
+      "category": "Legal",
+      "status": "approved",
+      "badge": {
+        "vetted": true,
+        "checks": [
+          "Identity verified",
+          "Professional licence verified",
+          "2 client references checked"
+        ]
+      }
+    },
+    "history": [
+      {
+        "action": "marketplace.listing.submitted",
+        "at": "2026-11-05T19:48:58.652475+00:00",
+        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.listing.created",
+        "at": "2026-11-05T19:48:58.583662+00:00",
+        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "reason": null
+      }
+    ]
+  },
+  "meta": null
+}

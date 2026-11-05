@@ -50,7 +50,7 @@ def test_0092_upgrade_downgrade_upgrade_on_a_scratch_database():
         down = _alembic(
             scratch_url,
             "downgrade",
-            "-1",  # one step back: survives the lead re-chaining 0092 after 0090/0091
+            "0092_marketplace_providers-1",  # one step below this migration, wherever later ones are chained
         )
         assert down.returncode == 0, down.stderr
         assert not TABLES & set(inspect(eng).get_table_names())

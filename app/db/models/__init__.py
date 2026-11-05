@@ -83,7 +83,10 @@ from app.db.models.marketing import (  # noqa: F401
     MarketingMedia,
 )
 from app.db.models.marketplace import (  # noqa: E402, F401
+    MarketplaceAvailabilityException,
+    MarketplaceAvailabilityRule,
     MarketplaceFile,
+    MarketplaceListing,
     MarketplaceProvider,
     MarketplaceProviderPortfolio,
 )

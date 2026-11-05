@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "LISTING_LOCKED",
+    "message": "This listing is under review. You can edit it after the decision.",
+    "field_errors": []
+  }
+}

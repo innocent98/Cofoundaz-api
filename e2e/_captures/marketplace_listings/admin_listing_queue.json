@@ -1,0 +1,42 @@
+{
+  "data": {
+    "listings": [
+      {
+        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "provider_name": "Ngozi Eze",
+        "provider_status": "approved",
+        "type": "consultation",
+        "title": "Contract review session",
+        "category": "Legal",
+        "price_minor": 1000000,
+        "status": "pending_review",
+        "has_revision": false,
+        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+        "revision_submitted_at": null,
+        "prescreen_flags": [],
+        "created_at": "2026-11-05T19:48:58.563977+00:00"
+      },
+      {
+        "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "provider_name": "Ngozi Eze",
+        "provider_status": "approved",
+        "type": "package",
+        "title": "Shareholder agreement drafting",
+        "category": "Legal",
+        "price_minor": 25000000,
+        "status": "pending_review",
+        "has_revision": false,
+        "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+        "revision_submitted_at": null,
+        "prescreen_flags": [],
+        "created_at": "2026-11-05T19:48:58.583662+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

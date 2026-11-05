@@ -1,0 +1,41 @@
+{
+  "data": {
+    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "type": "consultation",
+    "title": "Contract review session",
+    "summary": "A one hour review of your contract with written notes.",
+    "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
+    "category": "Legal",
+    "tags": [
+      "contracts",
+      "term sheets"
+    ],
+    "price_minor": 1200000,
+    "currency": "NGN",
+    "duration_min": 60,
+    "delivery_days": null,
+    "deliverables": [],
+    "revisions_included": 2,
+    "next_available_at": "2026-11-06T08:00:00+00:00",
+    "provider": {
+      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "display_name": "Ngozi Eze",
+      "headline": "Corporate lawyer for early-stage startups",
+      "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+      "badge": {
+        "vetted": true,
+        "checks": [
+          "Identity verified",
+          "Professional licence verified",
+          "2 client references checked"
+        ]
+      },
+      "rating": {
+        "avg": null,
+        "count": 0,
+        "is_new": true
+      }
+    }
+  },
+  "meta": null
+}

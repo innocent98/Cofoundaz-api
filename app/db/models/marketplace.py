@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -12,8 +12,10 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
+    Time,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB
@@ -22,7 +24,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
-from app.db.models.enums import MarketplaceFilePurpose, ProviderStatus, ScanStatus
+from app.db.models.enums import (
+    AvailabilityKind,
+    ListingStatus,
+    ListingType,
+    MarketplaceFilePurpose,
+    ProviderStatus,
+    ScanStatus,
+)
 
 
 class MarketplaceProvider(UUIDMixin, TimestampMixin, Base):
@@ -89,6 +98,13 @@ class MarketplaceProvider(UUIDMixin, TimestampMixin, Base):
     # The latest message staff sent back (changes requested / rejection / suspension reason).
     review_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     suspended_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Availability settings (slice B): apply to every consultation listing of this expert.
+    min_notice_h: Mapped[int] = mapped_column(
+        Integer, default=24, server_default=text("24"), nullable=False
+    )
+    buffer_min: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"), nullable=False
+    )
     commission_bps: Mapped[int | None] = mapped_column(Integer, nullable=True)  # null = default
     rating_avg: Mapped[Decimal] = mapped_column(
         Numeric(3, 2), default=Decimal("0"), server_default=text("0"), nullable=False
@@ -151,3 +167,93 @@ class MarketplaceProviderPortfolio(UUIDMixin, TimestampMixin, Base):
         PGUUID(as_uuid=True), ForeignKey("marketplace_files.id", ondelete="SET NULL"), nullable=True
     )
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class MarketplaceListing(UUIDMixin, TimestampMixin, Base):
+    """One service an expert sells. `price_minor` is kobo (NGN only, D-MP-L15). Edits to the
+    reviewed fields of a live listing wait in `pending_revision_json` while the live version stays
+    up (D-MP-L8); a booking (slice C) will snapshot title, price and deliverables at purchase."""
+
+    __tablename__ = "marketplace_listings"
+
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    type: Mapped[ListingType] = mapped_column(
+        Enum(ListingType, native_enum=False, length=20), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    summary: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, nullable=False)
+    price_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    duration_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    delivery_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deliverables_json: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    revisions_included: Mapped[int] = mapped_column(
+        Integer, default=2, server_default=text("2"), nullable=False
+    )
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[ListingStatus] = mapped_column(
+        Enum(ListingStatus, native_enum=False, length=20),
+        default=ListingStatus.draft,
+        nullable=False,
+        index=True,
+    )
+    # none_as_null: clearing the revision must store SQL NULL, or the queue's IS NOT NULL filter
+    # would still match a JSON `null`.
+    pending_revision_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB(none_as_null=True), nullable=True
+    )
+    revision_submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    prescreen_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    review_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unlisted_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    unlisted_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class MarketplaceAvailabilityRule(UUIDMixin, TimestampMixin, Base):
+    """A weekly window in the expert's own timezone (`weekday` 0 = Monday)."""
+
+    __tablename__ = "marketplace_availability_rules"
+
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    weekday: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    slot_min: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
+
+
+class MarketplaceAvailabilityException(UUIDMixin, TimestampMixin, Base):
+    """A date override: `blocked` (all day when the times are null, else that window) or `extra`
+    hours on top of the weekly rules."""
+
+    __tablename__ = "marketplace_availability_exceptions"
+
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    on_date: Mapped[date] = mapped_column(Date, nullable=False)
+    kind: Mapped[AvailabilityKind] = mapped_column(
+        Enum(AvailabilityKind, native_enum=False, length=20), nullable=False
+    )
+    start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    end_time: Mapped[time | None] = mapped_column(Time, nullable=True)

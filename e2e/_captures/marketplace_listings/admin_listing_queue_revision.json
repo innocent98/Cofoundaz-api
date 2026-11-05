@@ -1,0 +1,26 @@
+{
+  "data": {
+    "listings": [
+      {
+        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "provider_name": "Ngozi Eze",
+        "provider_status": "approved",
+        "type": "consultation",
+        "title": "Contract review session",
+        "category": "Legal",
+        "price_minor": 1200000,
+        "status": "active",
+        "has_revision": true,
+        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+        "revision_submitted_at": "2026-11-05T19:48:59.099541+00:00",
+        "prescreen_flags": [],
+        "created_at": "2026-11-05T19:48:58.563977+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}
