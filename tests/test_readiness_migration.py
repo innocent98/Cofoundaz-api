@@ -9,7 +9,7 @@ from sqlalchemy.engine import make_url
 
 from app.core.config import settings
 
-TABLES = {"readiness_scores", "readiness_score_history", "readiness_inputs"}
+TABLES = {"readiness_scores", "readiness_score_history", "readiness_inputs", "deck_reviews"}
 
 
 def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
@@ -23,15 +23,16 @@ def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_migration_chain_single_head_includes_0089():
+def test_migration_chain_includes_0089_and_0091():
     heads = _alembic(str(settings.DATABASE_URL), "heads")
     assert heads.returncode == 0, heads.stderr
-    assert heads.stdout.count("(head)") == 1
+    assert heads.stdout.count("(head)") == 1, heads.stdout
     history = _alembic(str(settings.DATABASE_URL), "history")
     assert "0089_readiness_scores" in history.stdout
+    assert "0091_readiness_deck_reviews" in history.stdout
 
 
-def test_0089_upgrade_downgrade_upgrade_on_a_scratch_database():
+def test_0089_and_0091_upgrade_downgrade_upgrade_on_a_scratch_database():
     base = make_url(settings.TEST_DATABASE_URL or str(settings.DATABASE_URL))
     name = f"readiness_mig_{uuid.uuid4().hex[:8]}"
     admin = create_engine(base, isolation_level="AUTOCOMMIT")
@@ -47,6 +48,12 @@ def test_0089_upgrade_downgrade_upgrade_on_a_scratch_database():
         up = _alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr
         assert TABLES <= set(inspect(eng).get_table_names())
+        one = _alembic(scratch_url, "downgrade", "0090_funding_core")
+        assert one.returncode == 0, one.stderr
+        left = set(inspect(eng).get_table_names())
+        assert "deck_reviews" not in left and "readiness_scores" in left
+        back = _alembic(scratch_url, "upgrade", "head")
+        assert back.returncode == 0, back.stderr
         down = _alembic(scratch_url, "downgrade", "0088_content_reports")
         assert down.returncode == 0, down.stderr
         assert not TABLES & set(inspect(eng).get_table_names())

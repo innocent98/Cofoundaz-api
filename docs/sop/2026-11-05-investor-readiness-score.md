@@ -11,7 +11,7 @@
 | Engine (D-IR-1) | Deterministic. One declarative table of 23 signals in `app/services/readiness/signals.py` (key, dimension, stage targets, href, reader, gap-note template, weight). No LLM, no tokens. |
 | Reuse | Health Score readers are imported (`health_score.live_signals.SIGNALS_BY_KEY[...].read`): members, activity, roadmap, mission, assumptions, interviews, transactions, runway. New readers read Sales, Invoices, Validation, Business Builder, Documents, Financial Model directly. |
 | Weights (D-IR-2) | Traction 25, Financials 20, Product 15, Market 15, Team 15, Story 10 (`config.py`). A signal scores `min(value/target,1)*100` against its stage target; a dimension is the weighted mean of its applicable signals; a signal that does not apply yet (`None`) drops out instead of counting 0. Overall renormalises over scored dimensions. |
-| Cap (D-IR-2) | Overall is held at 69 until three must-haves exist: a financial model, **a reviewed pitch deck** (`pitch_deck_reviewed`), one traction proof point. `raw_score` and `must_haves` (each with `label`, `href` and a `reason` while unmet) are always returned so the FE can say why. **Until slice B ships deck reviews the deck must-have is never met, so no workspace can pass 69, by design.** |
+| Cap (D-IR-2) | Overall is held at 69 until three must-haves exist: a financial model, **a reviewed pitch deck** (`pitch_deck_reviewed`), one traction proof point. `raw_score` and `must_haves` (each with `label`, `href` and a `reason` while unmet) are always returned so the FE can say why. **The deck must-have is met by a finished deck review (slice B, `docs/sop/2026-11-06-investor-readiness-deck-review.md`).** |
 | Gaps | Candidate per below-target signal, ranked by overall points gained, at most 2 per dimension, top 5. Notes are templates filled with the real numbers, never model prose. |
 | Concurrency | `recompute_readiness` takes `pg_advisory_xact_lock` on the workspace first, so concurrent recomputes cannot write duplicate history rows or duplicate notifications (`tests/services/readiness/test_concurrency.py` fails without the lock). |
 | Nightly | The readiness refresh runs inside the Health nightly job, in a savepoint with its own try/except and logging, so a readiness error cannot fail Health's refresh. |
@@ -36,7 +36,7 @@
 
 **Follow-ups**
 
-- Slices B (deck review: replaces `_deck_reviewed`, which is `False` until `deck_reviews` exists), D (Mock Q&A), C (narrative check) add their Story signals and the History session log.
+- Slice B (deck review) shipped: see its SOP. Slices D (Mock Q&A) and C (narrative check) add their Story signals and the History session log.
 - Founder-agreement signal is a proxy (a founder agreement document plus any completed signature) because signature requests are not linked to rich documents.
 - Revenue is scored in naira only; other currencies drop the signal until conversion exists. No month-on-month growth signal yet.
 - "Learn how" Academy link per gap: the recommender is course-ranked, not tag-keyed, so it is not attached yet.

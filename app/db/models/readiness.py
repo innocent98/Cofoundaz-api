@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -73,4 +82,38 @@ class ReadinessInput(UUIDMixin, TimestampMixin, Base):
     source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class DeckReview(UUIDMixin, TimestampMixin, Base):
+    """One review of one pitch deck PDF (PRD 15.2). `version` counts reviews per workspace, so
+    "Re-review new version" is review N+1; `content_sha256` stops the same bytes spending tokens
+    twice. `status` is queued | running | ready | failed (`error` says why)."""
+
+    __tablename__ = "deck_reviews"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"), nullable=False
+    )
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("document_files.id", ondelete="SET NULL"), nullable=True
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="queued")
+    error: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    slide_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    scores: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    top_fixes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    slides: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("startup_id", "version", name="uq_deck_reviews_startup_version"),
+        Index("ix_deck_reviews_startup_sha", "startup_id", "content_sha256"),
     )

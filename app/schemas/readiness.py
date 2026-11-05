@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
@@ -22,3 +23,9 @@ class ReadinessInputsIn(BaseModel):
         if sam is not None and som is not None and som > sam:
             raise ValueError("SOM cannot be larger than SAM.")
         return self
+
+
+class DeckReviewIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file_id: uuid.UUID

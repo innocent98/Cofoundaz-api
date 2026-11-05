@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db.models.document import Document
-from app.db.models.enums import DocumentKind, MembershipRole
+from app.db.models.enums import DocumentKind, FinancialModelStatus, MembershipRole
+from app.db.models.financial_model import FinancialModel
 from app.db.models.job import Job
 from app.db.models.notification import Notification
 from app.db.models.readiness import ReadinessScoreHistory
@@ -33,6 +34,15 @@ def test_concurrent_recomputes_serialise(engine, monkeypatch):
         with Session(engine) as work:
             work.add(Document(startup_id=sid, title="Deck", kind=DocumentKind.pitch_deck))
             work.add(Document(startup_id=sid, title="One", kind=DocumentKind.one_pager))
+            work.add(Document(startup_id=sid, title="FA", kind=DocumentKind.founder_agreement))
+            work.add(
+                FinancialModel(
+                    startup_id=sid,
+                    status=FinancialModelStatus.complete,
+                    overrides_rev=0,
+                    calculated_rev=0,
+                )
+            )
             work.commit()
 
         # Without the lock both threads meet here, having both read the old row. With it the

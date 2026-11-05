@@ -72,6 +72,24 @@ def test_reap_stale_requeues_running(db):
     assert job.status == JobStatus.queued
 
 
+def test_reap_stale_fails_a_job_that_already_used_all_its_attempts(db):
+    """A job that keeps killing its worker is finished, not re-queued for ever."""
+    from app.core.config import settings
+
+    spent = _job(db, status=JobStatus.running)
+    spent.attempts = settings.WORKER_MAX_ATTEMPTS
+    fresh = _job(db, status=JobStatus.running)
+    fresh.attempts = 1
+    for j in (spent, fresh):
+        j.updated_at = datetime.now(UTC) - timedelta(seconds=999)
+    db.flush()
+    assert runner.reap_stale(db, stale_seconds=300) == 2
+    db.refresh(spent)
+    db.refresh(fresh)
+    assert spent.status == JobStatus.failed and "worker stopped" in spent.error
+    assert fresh.status == JobStatus.queued
+
+
 def test_self_managed_handler_may_commit(db):
     """Handlers registered with manages_transactions=True run outside the runner's SAVEPOINT, so
     they can commit as they go (the outreach send tick and bounce poll; see

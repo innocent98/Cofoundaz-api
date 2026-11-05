@@ -13,7 +13,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.db.models.readiness import ReadinessInput, ReadinessScore, ReadinessScoreHistory
+from app.db.models.readiness import (
+    DeckReview,
+    ReadinessInput,
+    ReadinessScore,
+    ReadinessScoreHistory,
+)
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.services.readiness.config import (
@@ -289,7 +294,7 @@ def history(db: Session, startup: Startup, days: int) -> dict[str, Any]:
         }
         for r in rows
     ]
-    markers = []
+    markers: list[dict[str, Any]] = []
     last: ReadinessScoreHistory | None = None
     for r in rows:
         if last is not None and last.band != r.band:
@@ -297,7 +302,29 @@ def history(db: Session, startup: Startup, days: int) -> dict[str, Any]:
         if last is not None and last.capped and not r.capped:
             markers.append({"at": r.created_at.isoformat(), "label": "Cap lifted"})
         last = r
-    return {"range": days, "points": points, "markers": markers}
+    reviews = (
+        db.query(DeckReview)
+        .filter(
+            DeckReview.startup_id == startup.id,
+            DeckReview.status == "ready",
+            DeckReview.reviewed_at >= since,
+        )
+        .order_by(DeckReview.reviewed_at.desc())
+        .all()
+    )
+    log_rows = [
+        {
+            "type": "deck_review",
+            "at": r.reviewed_at.isoformat() if r.reviewed_at else r.created_at.isoformat(),
+            "id": str(r.id),
+            "version": r.version,
+            "overall": (r.scores or {}).get("overall"),
+        }
+        for r in reviews
+    ]
+    markers += [{"at": e["at"], "label": f"Deck reviewed (v{e['version']})"} for e in log_rows]
+    markers.sort(key=lambda m: m["at"])
+    return {"range": days, "points": points, "markers": markers, "log": log_rows}
 
 
 # ---- Inputs --------------------------------------------------------------------------------

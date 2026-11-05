@@ -350,19 +350,17 @@ def test_read_signals_marks_dropped_when_not_applicable(db, ws):
     assert "financials.runway" not in keys and "team.assessment" not in keys
 
 
-def test_deck_must_have_needs_a_review_so_it_stays_unmet_in_slice_a(db, ws):
+def test_deck_must_have_needs_a_finished_review_not_just_a_file(db, ws):
     _u, s = ws
     first = {m["key"]: m for m in must_haves(db, s)}
     assert first["pitch_deck_reviewed"]["met"] is False
-    assert "Create a pitch deck" in first["pitch_deck_reviewed"]["reason"]
-    assert first["pitch_deck_reviewed"]["href"] == "/documents"
+    assert "run a deck review" in first["pitch_deck_reviewed"]["reason"]
+    assert first["pitch_deck_reviewed"]["href"] == "/investor-readiness/deck"
     db.add(Document(startup_id=s.id, title="Deck", kind=DocumentKind.pitch_deck))
     db.flush()
     second = {m["key"]: m for m in must_haves(db, s)}
-    # A deck that exists is not a reviewed deck; the FE is told why and sent to the review page.
+    # A deck document exists, but it has not been reviewed.
     assert second["pitch_deck_reviewed"]["met"] is False
-    assert second["pitch_deck_reviewed"]["href"] == "/investor-readiness/deck"
-    assert "not available yet" in second["pitch_deck_reviewed"]["reason"]
     assert all(m["reason"] for m in second.values())
 
 

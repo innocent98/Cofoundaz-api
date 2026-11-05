@@ -24,18 +24,21 @@ def register() -> None:
     import app.worker.handlers.learning  # noqa: F401
     import app.worker.handlers.marketing_ai  # noqa: F401
     import app.worker.handlers.plan  # noqa: F401
+    import app.worker.handlers.readiness  # noqa: F401
     import app.worker.handlers.sales_ai  # noqa: F401
     import app.worker.handlers.sales_outreach  # noqa: F401
     import app.worker.handlers.scheduled  # noqa: F401
     import app.worker.handlers.validation  # noqa: F401
     from app.services.health_score.triggers import register as register_health_triggers
     from app.services.notifications.registry import register as register_notifications
+    from app.services.readiness.triggers import register as register_readiness_triggers
 
     # Events published inside jobs (business.plan.generated, dashboard.briefing.ready, and
     # the scheduler's mission.ready / milestone.overdue / quarterly.due) only become
     # notifications if this process's bus has the subscribers too, not just the API's.
     register_notifications()
     register_health_triggers()  # job-published events refresh the Health Score too
+    register_readiness_triggers()  # ... and the Investor Readiness score (deck reviews)
 
 
 def main_loop(stop: Callable[[], bool]) -> None:
