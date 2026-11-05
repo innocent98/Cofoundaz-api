@@ -54,7 +54,9 @@ def test_roadmap_prd_journey(base_url, make_verified_user, mailbox, unique_email
                 "stage": "validation",
             },
         )
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+        c.patch(
+            "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
         mate_email = unique_email("mate")
         inv = c.post(
             "/api/v1/onboarding/invites",

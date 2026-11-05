@@ -72,7 +72,9 @@ def test_documents_library_journey(
             headers=auth,
             json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "validation"},
         )
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+        c.patch(
+            "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
         _resp = c.post("/api/v1/onboarding/complete", headers=auth)
         assert _resp.status_code == 200
         ws = c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]

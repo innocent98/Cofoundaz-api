@@ -31,7 +31,9 @@ def test_mission_prd_journey(base_url, make_verified_user, capture):
                 "stage": "validation",
             },
         )
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+        c.patch(
+            "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
         assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
         ws = c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]
         wh = {**auth, "X-Workspace-Id": ws}
