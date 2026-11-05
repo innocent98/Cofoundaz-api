@@ -33,6 +33,25 @@ def _never_touch_the_real_outreach_mailbox(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.fixture(autouse=True)
+def _fresh_auth_rate_limit_counters() -> None:
+    """The per-route limits and the sign-in lockout live in the shared Redis, keyed on the test
+    client's address: clear them so one test's attempts never count against the next."""
+    from app.core.redis import get_redis
+
+    redis = get_redis()
+    for pattern in ("rl:*", "lf:*", "lfe:*", "mfa_ticket_attempts:*"):
+        for key in redis.scan_iter(match=pattern):
+            redis.delete(key)
+
+
+@pytest.fixture(autouse=True)
+def _signup_terms_not_required_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Most tests sign users up as a means to something else and do not tick the Terms box.
+    The consent rules are tested in tests/api/auth/test_signup_consent.py, which turns it on."""
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", False)
+
+
+@pytest.fixture(autouse=True)
 def _isolated_local_storage(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Uploads (and the signing flow, which reads the stored PDF) write under the test's tmp dir,
     never `var/storage`."""
