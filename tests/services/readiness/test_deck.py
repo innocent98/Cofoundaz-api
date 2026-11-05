@@ -124,6 +124,31 @@ def test_thumbnails_render_png_per_page():
     assert thumbs[1][:8] == b"\x89PNG\r\n\x1a\n"
 
 
+def test_thumbnail_size_is_bounded_whatever_the_page_declares():
+    import io as _io
+
+    from PIL import Image
+    from reportlab.pdfgen.canvas import Canvas
+
+    buf = _io.BytesIO()
+    c = Canvas(buf, pagesize=(14000, 14000))  # a huge page: unbounded scale would be ~12k px
+    c.drawString(100, 100, "big")
+    c.showPage()
+    c.setPageSize((300, 100))
+    c.drawString(10, 10, "small")
+    c.showPage()
+    c.save()
+    thumbs = deck.render_thumbnails(buf.getvalue(), 2)
+    for png in thumbs.values():
+        assert max(Image.open(_io.BytesIO(png)).size) <= deck.THUMB_MAX_SIDE + 1
+    assert sorted(thumbs) == [1, 2]
+
+
+def test_a_page_over_the_pdf_size_limit_is_skipped(monkeypatch):
+    monkeypatch.setattr(deck, "THUMB_MAX_PAGE_POINTS", 100)
+    assert deck.render_thumbnails(deck_pdf(["a", "b"]), 2) == {}
+
+
 # ---- create ---------------------------------------------------------------------------------
 
 

@@ -37,7 +37,8 @@ MAX_SLIDES = 30
 PAGE_CHARS = 1500  # per slide sent to the model
 TOTAL_CHARS = 24000  # about 6k tokens of deck text
 MIN_TEXT_CHARS = 200  # less than this is a scanned or image-only deck
-THUMB_SCALE = 0.35
+THUMB_MAX_SIDE = 480  # pixels: a thumbnail never exceeds this, whatever the page size says
+THUMB_MAX_PAGE_POINTS = 14400  # PDF's own maximum page side (200 in); larger is malformed
 THUMB_TTL_SECONDS = 900
 THUMB_PATH = "/api/v1/readiness/deck-thumbnails"
 LLM_MAX_TOKENS = 2500
@@ -146,8 +147,15 @@ def render_thumbnails(content: bytes, count: int) -> dict[int, bytes]:
     try:
         for i in range(min(count, len(pdf))):
             try:
+                page = pdf[i]
+                width, height = page.get_size()
+                longest = max(width, height)
+                # Size the bitmap from the page's declared size, so a hostile MediaBox cannot
+                # make us allocate a huge image; an absurd or empty page is skipped.
+                if not 0 < longest <= THUMB_MAX_PAGE_POINTS:
+                    continue
                 buf = io.BytesIO()
-                pdf[i].render(scale=THUMB_SCALE).to_pil().save(buf, format="PNG")
+                page.render(scale=THUMB_MAX_SIDE / longest).to_pil().save(buf, format="PNG")
                 out[i + 1] = buf.getvalue()
             except Exception:
                 log.exception("deck thumbnail for page {} failed", i + 1)
