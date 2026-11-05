@@ -58,8 +58,10 @@ def test_reads_by_role(client, team, role, path):
 
 def _drain(db):
     from app.worker import runner
-    from app.worker.handlers import readiness as _h  # noqa: F401  (registers the handler)
+    from app.worker.handlers import readiness as handlers
 
+    # Other tests clear the registry; the import only registers once per process.
+    runner.register_handler(deck.JOB_TYPE, handlers.handle_deck_review)
     for _ in range(20):
         if runner.run_once(db) == 0:
             break

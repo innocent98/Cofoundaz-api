@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AiBudgetExhausted, AppError, FileNotClean, NotFound
 from app.core.logger import log
 from app.db.models.document import DocumentFile
-from app.db.models.enums import ScanStatus
+from app.db.models.enums import JobStatus, ScanStatus
 from app.db.models.job import Job
 from app.db.models.readiness import DeckReview
 from app.db.models.startup import Startup
@@ -249,6 +249,22 @@ def _lock(db: Session, startup_id: uuid.UUID) -> None:
     )
 
 
+def reconcile(db: Session, review: DeckReview) -> bool:
+    """A queued or running review whose job is gone or finished (the worker died, or the last
+    attempt failed and the handler's writes were rolled back) will never complete: mark it failed
+    so it neither shows "queued" forever nor blocks a retry of the same file."""
+    if review.status not in ("queued", "running"):
+        return False
+    job = db.get(Job, review.job_id) if review.job_id else None
+    if job is not None and job.status in (JobStatus.queued, JobStatus.running):
+        return False
+    review.status = "failed"
+    review.error = "job_failed"
+    review.reviewed_at = datetime.now(UTC)
+    db.flush()
+    return True
+
+
 def create_review(
     db: Session, startup: Startup, user_id: uuid.UUID, file_id: uuid.UUID
 ) -> tuple[DeckReview, bool]:
@@ -271,7 +287,7 @@ def create_review(
         raise NotFound()
     sha = hashlib.sha256(content).hexdigest()
     _lock(db, startup.id)
-    same = (
+    candidates = (
         db.query(DeckReview)
         .filter(
             DeckReview.startup_id == startup.id,
@@ -279,10 +295,11 @@ def create_review(
             DeckReview.status != "failed",
         )
         .order_by(DeckReview.version.desc())
-        .first()
+        .all()
     )
-    if same is not None:
-        return same, False
+    for same in candidates:
+        if not reconcile(db, same):  # still alive (or ready): it is the answer
+            return same, False
     if over_budget(db, startup.id):
         raise AiBudgetExhausted()
     version = (
@@ -390,16 +407,19 @@ def run_review(db: Session, job: Job, *, last_attempt: bool) -> None:
     review.reviewed_at = datetime.now(UTC)
     job.result = {"status": "ready", "review_id": str(review.id)}
     db.flush()
-    event_bus.publish(
-        db,
-        "readiness.deck.reviewed",
-        {
-            "startup_id": str(startup.id),
-            "review_id": str(review.id),
-            "version": review.version,
-            "overall": review.scores["overall"],
-        },
-    )
+    try:  # best effort for the same reason as the thumbnails: the model call is already paid for
+        event_bus.publish(
+            db,
+            "readiness.deck.reviewed",
+            {
+                "startup_id": str(startup.id),
+                "review_id": str(review.id),
+                "version": review.version,
+                "overall": review.scores["overall"],
+            },
+        )
+    except Exception:
+        log.exception("readiness.deck.reviewed handlers failed for review {}", review.id)
 
 
 def _store_thumbnails(
@@ -410,11 +430,16 @@ def _store_thumbnails(
     except Exception:
         log.exception("deck thumbnails for review {} failed", review_id)
         return {}
-    storage = get_storage()
     keys = {}
     for n, png in images.items():
         key = f"readiness/{startup_id}/{review_id}/{n}.png"
-        storage.save_private(key, png, "image/png")
+        try:
+            get_storage().save_private(key, png, "image/png")
+        except Exception:
+            # Best effort: this runs after the model call has been paid for, and an error here
+            # would roll the whole job back and spend those tokens again on the retry.
+            log.exception("deck thumbnail {} of review {} was not stored", n, review_id)
+            continue
         keys[n] = key
     return keys
 
@@ -469,19 +494,25 @@ def detail(r: DeckReview, api_public_url: str) -> dict[str, Any]:
 
 
 def list_reviews(db: Session, startup_id: uuid.UUID) -> list[DeckReview]:
-    return (
+    rows = (
         db.query(DeckReview)
         .filter_by(startup_id=startup_id)
         .order_by(DeckReview.version.desc())
         .limit(LIST_LIMIT)
         .all()
     )
+    changed = [reconcile(db, r) for r in rows]  # every row, not just up to the first change
+    if any(changed):
+        db.commit()
+    return rows
 
 
 def get_review(db: Session, startup_id: uuid.UUID, review_id: uuid.UUID) -> DeckReview:
     r = db.query(DeckReview).filter_by(id=review_id, startup_id=startup_id).first()
     if r is None:
         raise NotFound()
+    if reconcile(db, r):
+        db.commit()
     return r
 
 

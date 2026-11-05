@@ -1085,8 +1085,9 @@ Notes:
 ### 12.5 A review that fails
 
 The job still ends `succeeded`; the review says why. `error` is one of `no_text` (a scanned or image-only deck, under 200 characters of text),
-`unreadable` (damaged or password-protected PDF), `file_missing`, `over_budget` (today's AI allowance ran out) or `generation_failed`
-(the model errored on every retry). Only `no_text` was captured live:
+`unreadable` (damaged or password-protected PDF), `file_missing`, `over_budget` (today's AI allowance ran out) `generation_failed`
+(the model errored on every retry) or `job_failed` (the job died or ran out of retries without finishing; a review that is still
+`queued` or `running` but whose job is dead is reported `failed` with this code the next time it is read). Only `no_text` was captured live:
 
 ```json
 {
@@ -1425,7 +1426,7 @@ spend twice. Warn the user before "Re-review" if they re-upload an unchanged fil
 | Thumbnail render and signed fetch (PNG), bad token 404 | live |
 | Dedupe 200, version 2, list newest first, empty list | live |
 | Failed review `no_text` (blank scan), job result | live |
-| Failed `unreadable`, `file_missing`, `over_budget`, `generation_failed`; 429 on POST when out of budget; 409 `FILE_NOT_CLEAN` | unit-tested only |
+| Failed `unreadable`, `file_missing`, `over_budget`, `generation_failed`, `job_failed`; 429 on POST when out of budget; 409 `FILE_NOT_CLEAN` | unit-tested only |
 | Not a PDF 422, file not found 404, invalid body 422, review 404, cross-workspace 404 | live |
 | Team member read OK and create 403, mentor 403 | live; all 7 roles on create and read: unit-tested |
 | Must-have unmet then met, Story lifted, history log and marker | live |

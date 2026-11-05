@@ -318,6 +318,93 @@ def test_thumbnail_failure_does_not_fail_the_review(db, ws, llm, monkeypatch):
     assert review.status == "ready" and review.slides[0]["thumbnail_key"] is None
 
 
+def _used(db, s):
+    from datetime import date
+
+    from app.db.models.llm_usage import LlmUsageDaily
+
+    row = db.query(LlmUsageDaily).filter_by(startup_id=s.id, usage_date=date.today()).one_or_none()
+    return row.tokens_used if row else 0
+
+
+def test_storage_error_after_the_model_call_keeps_the_review_and_counts_tokens_once(
+    db, ws, llm, monkeypatch
+):
+    u, s = ws
+    f, _ = store_deck(db, s, u)
+    review, _ = deck.create_review(db, s, u.id, f.id)
+    real = get_storage()
+
+    class Broken:
+        def read_private(self, key):
+            return real.read_private(key)
+
+        def save_private(self, *_a, **_k):
+            raise OSError("storage is down")
+
+    monkeypatch.setattr(deck, "get_storage", lambda: Broken())
+    job = _run(db, review)
+    assert job.result["status"] == "ready" and review.status == "ready"
+    assert all(sl["thumbnail_key"] is None for sl in review.slides)
+    assert len(llm.calls) == 1 and _used(db, s) == CannedLLM.last_usage_tokens
+
+
+def test_a_failing_event_handler_does_not_undo_a_paid_review(db, ws, llm, monkeypatch):
+    u, s = ws
+    f, _ = store_deck(db, s, u)
+    review, _ = deck.create_review(db, s, u.id, f.id)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("subscriber exploded")
+
+    monkeypatch.setattr(deck.event_bus, "publish", boom)
+    job = _run(db, review)
+    assert job.result["status"] == "ready" and review.status == "ready"
+    assert len(llm.calls) == 1
+
+
+def test_a_dead_job_does_not_lock_the_deck_and_a_live_one_still_dedupes(db, ws, llm):
+    from app.db.models.enums import JobStatus
+
+    u, s = ws
+    f, content = store_deck(db, s, u)
+    first, _ = deck.create_review(db, s, u.id, f.id)
+    job = db.get(Job, first.job_id)
+    job.status = JobStatus.running  # a worker has it
+    first.status = "running"
+    db.flush()
+    again, created = deck.create_review(db, s, u.id, f.id)
+    assert created is False and again.id == first.id
+    # The last attempt failed: the handler's writes were rolled back, so the review still says
+    # "queued" while its job is failed. Re-uploading the same bytes must start over.
+    job.status = JobStatus.failed
+    first.status = "queued"
+    db.flush()
+    retry, created2 = deck.create_review(db, s, u.id, f.id)
+    assert created2 is True and retry.id != first.id and retry.version == 2
+    assert first.status == "failed" and first.error == "job_failed"
+
+
+def test_reading_a_review_whose_job_died_reports_it_failed(db, ws, llm):
+    from app.db.models.enums import JobStatus
+
+    u, s = ws
+    f, _ = store_deck(db, s, u)
+    review, _ = deck.create_review(db, s, u.id, f.id)
+    db.get(Job, review.job_id).status = JobStatus.failed
+    db.flush()
+    got = deck.get_review(db, s.id, review.id)
+    assert got.status == "failed" and got.error == "job_failed"
+    other, _ = store_deck(db, s, u, name="o.pdf", content=deck_pdf(["other deck"]))
+    r2, _ = deck.create_review(db, s, u.id, other.id)
+    db.get(Job, r2.job_id).status = JobStatus.cancelled
+    db.flush()
+    listed = {r.id: r for r in deck.list_reviews(db, s.id)}
+    assert listed[r2.id].status == "failed"
+    ready_review = listed[review.id]
+    assert deck.reconcile(db, ready_review) is False  # already failed: nothing to do
+
+
 def test_run_review_with_a_gone_review_or_bad_payload(db, ws):
     job = SimpleNamespace(payload={"review_id": "not-a-uuid"}, result=None, attempts=1)
     deck.run_review(db, job, last_attempt=False)
