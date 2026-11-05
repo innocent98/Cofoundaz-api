@@ -171,6 +171,7 @@ def _conversations(db: Session, s: Startup, u: User, p: str) -> Query[Any]:
         .filter(
             AiConversation.startup_id == s.id,
             AiConversation.created_by == u.id,
+            AiConversation.archived_at.is_(None),  # archived chats are not searchable (D-AI-4)
             _has(AiConversation.title, p),
         )
         .order_by(AiConversation.updated_at.desc())

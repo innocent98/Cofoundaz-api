@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import String, cast, exists, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,6 +21,9 @@ BUDGET_FAILED_TEXT = (
 )
 
 _TITLE_MAX = 80
+_LIST_LIMIT = 200
+_SNIPPET_RADIUS = 60
+MIN_QUERY, MAX_QUERY = 2, 100
 
 
 def _title_from(text: str) -> str:
@@ -27,32 +31,91 @@ def _title_from(text: str) -> str:
 
 
 def create_conversation(
-    db: Session, startup: Startup, user: User, first_message: str | None
+    db: Session, startup: Startup, user: User, first_message: str
 ) -> AiConversation:
     conv = AiConversation(
         startup_id=startup.id,
         created_by=user.id,
-        title=_title_from(first_message) if first_message else None,
+        title=_title_from(first_message),
     )
     db.add(conv)
     db.flush()
-    if first_message:
-        post_message(db, conv, first_message)
+    post_message(db, conv, first_message)
     return conv
 
 
-def list_conversations(db: Session, startup: Startup, user: User) -> list[AiConversation]:
-    # Conversations are private to their creator (a founder's AI chat is personal and
-    # context-rich), not shared across the whole workspace.
-    return (
-        db.query(AiConversation)
-        .filter(
-            AiConversation.startup_id == startup.id,
-            AiConversation.created_by == user.id,
-        )
-        .order_by(AiConversation.updated_at.desc())
-        .all()
+def _like(term: str) -> str:
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def _snippet(text: str, term: str) -> str:
+    """A short window of `text` around the first case-insensitive hit of `term`."""
+    flat = " ".join(text.split())
+    at = flat.lower().find(term.lower())
+    if at < 0:
+        return flat[: 2 * _SNIPPET_RADIUS]
+    lo, hi = max(0, at - _SNIPPET_RADIUS), min(len(flat), at + len(term) + _SNIPPET_RADIUS)
+    return ("…" if lo else "") + flat[lo:hi] + ("…" if hi < len(flat) else "")
+
+
+def list_conversations(
+    db: Session,
+    startup: Startup,
+    user: User,
+    *,
+    query: str | None = None,
+    topic: str | None = None,
+    archived: bool = False,
+) -> list[tuple[AiConversation, str | None]]:
+    """The caller's own conversations, newest activity first, each with a match snippet when
+    `query` is given. Conversations are private to their creator (a founder's AI chat is
+    personal and context-rich), not shared across the whole workspace. Archived ones are only
+    listed with `archived=True` and are never searched (D-AI-4)."""
+    q = db.query(AiConversation).filter(
+        AiConversation.startup_id == startup.id,
+        AiConversation.created_by == user.id,
+        (
+            AiConversation.archived_at.is_not(None)
+            if archived
+            else AiConversation.archived_at.is_(None)
+        ),
     )
+    if topic is not None:
+        q = q.filter(AiConversation.topic == topic)
+    term = (query or "").strip()
+    if term:
+        pattern = _like(term)
+        readable = (
+            AiMessage.conversation_id == AiConversation.id,
+            AiMessage.status == ChatMessageStatus.ready,
+            AiMessage.removed_by_moderation_at.is_(None),
+            cast(AiMessage.content, String).ilike(pattern, escape="\\"),
+        )
+        q = q.filter(
+            or_(
+                cast(AiConversation.title, String).ilike(pattern, escape="\\"),
+                exists().where(*readable),
+            )
+        )
+    convs = q.order_by(AiConversation.updated_at.desc()).limit(_LIST_LIMIT).all()
+    if not term:
+        return [(c, None) for c in convs]
+    out: list[tuple[AiConversation, str | None]] = []
+    for c in convs:
+        hit = (
+            db.query(AiMessage.content)
+            .filter(
+                AiMessage.conversation_id == c.id,
+                AiMessage.status == ChatMessageStatus.ready,
+                AiMessage.removed_by_moderation_at.is_(None),
+                cast(AiMessage.content, String).ilike(pattern, escape="\\"),
+            )
+            .order_by(AiMessage.created_at.asc(), AiMessage.id.asc())
+            .first()
+        )
+        out.append((c, _snippet(hit[0], term) if hit else _snippet(c.title or "", term)))
+    return out
 
 
 def get_conversation(
@@ -115,6 +178,10 @@ def fail_stale_generating(db: Session, conversation: AiConversation) -> int:
 def post_message(db: Session, conversation: AiConversation, content: str) -> AiMessage:
     """Store the founder's turn + an empty `generating` assistant turn, and enqueue the
     `ai.cofounder.reply` job that fills it. Returns the assistant turn to poll for."""
+    if conversation.archived_at is not None:
+        raise AppError(
+            "CONVERSATION_ARCHIVED", "This conversation is archived. Unarchive it to continue.", 409
+        )
     fail_stale_generating(db, conversation)
     # Guard against spam / LLM-cost amplification: refuse a new turn while one is still
     # being generated in this conversation (the FE should be polling the existing one).
@@ -168,6 +235,44 @@ def post_message(db: Session, conversation: AiConversation, content: str) -> AiM
     return assistant
 
 
+def _owned(db: Session, startup: Startup, user: User, ids: list[uuid.UUID]) -> list[AiConversation]:
+    wanted = set(ids)
+    convs = (
+        db.query(AiConversation)
+        .filter(
+            AiConversation.id.in_(wanted),
+            AiConversation.startup_id == startup.id,
+            AiConversation.created_by == user.id,
+        )
+        .all()
+    )
+    # All or nothing: an id that is not yours looks exactly like one that does not exist.
+    if len(convs) != len(wanted):
+        raise NotFound()
+    return convs
+
+
+def set_archived(
+    db: Session, startup: Startup, user: User, ids: list[uuid.UUID], *, archived: bool
+) -> int:
+    """Archive (or unarchive) the caller's conversations. Idempotent; returns how many changed."""
+    changed = 0
+    now = datetime.now(UTC)
+    for conv in _owned(db, startup, user, ids):
+        if (conv.archived_at is not None) != archived:
+            conv.archived_at = now if archived else None
+            changed += 1
+    db.flush()
+    return changed
+
+
+def delete_conversation(db: Session, conversation: AiConversation) -> None:
+    """ "Delete forever": the conversation and all its messages go (FK cascade). A reply job still
+    in flight finds no message and does nothing."""
+    db.delete(conversation)
+    db.flush()
+
+
 def serialize_message(m: AiMessage) -> dict[str, Any]:
     removed = m.removed_by_moderation_at is not None
     return {
@@ -186,6 +291,8 @@ def serialize_conversation(
     out: dict[str, Any] = {
         "id": str(conv.id),
         "title": conv.title,
+        "topic": conv.topic,
+        "archived_at": conv.archived_at.isoformat() if conv.archived_at else None,
         "created_at": conv.created_at.isoformat() if conv.created_at else None,
         "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
     }
