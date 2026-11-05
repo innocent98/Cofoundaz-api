@@ -1,11 +1,11 @@
 {
   "data": {
-    "score": 32,
+    "score": 29,
     "band": "not_yet",
     "verdict": "Not yet, and that's fine. Here's the shortest path.",
     "ready": false,
     "capped": false,
-    "raw_score": 32,
+    "raw_score": 29,
     "dimensions": [
       {
         "key": "team",
@@ -250,18 +250,28 @@
       {
         "key": "story",
         "label": "Story",
-        "score": 75,
+        "score": 40,
         "weight": 10,
         "signals": [
           {
             "key": "story.pitch_deck",
-            "href": "/documents",
+            "href": "/investor-readiness/deck",
             "note": null,
             "unit": "step",
             "label": "Pitch deck",
             "score": 100.0,
             "value": 1.0,
             "target": 1
+          },
+          {
+            "key": "story.deck_review",
+            "href": "/investor-readiness/deck",
+            "note": "Your deck has not been reviewed yet.",
+            "unit": "/10",
+            "label": "Pitch deck review score (out of 10)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 7
           },
           {
             "key": "story.investor_plan",
@@ -299,7 +309,7 @@
         "met": false,
         "href": "/investor-readiness/deck",
         "label": "A reviewed pitch deck",
-        "reason": "Deck review is not available yet. A reviewed deck is required to pass 69."
+        "reason": "Upload your pitch deck PDF and run a deck review."
       },
       {
         "key": "traction_proof",
@@ -332,21 +342,21 @@
         "signal_key": "traction.customers"
       },
       {
+        "href": "/investor-readiness/deck",
+        "lift": 4,
+        "note": "Your deck has not been reviewed yet.",
+        "dimension": "story",
+        "signal_key": "story.deck_review"
+      },
+      {
         "href": "/validation/experiments",
         "lift": 4,
         "note": "0 experiment(s) run. Launch a test that shows people want it.",
         "dimension": "product",
         "signal_key": "product.experiments"
-      },
-      {
-        "href": "/mission",
-        "lift": 4,
-        "note": "Mission completion is 0% against 70%. Finish today's mission.",
-        "dimension": "product",
-        "signal_key": "product.mission_completion"
       }
     ],
-    "computed_at": "2026-11-05T10:56:29.582389+00:00",
+    "computed_at": "2026-11-05T14:17:37.071387+00:00",
     "config_version": 1
   },
   "meta": null

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "file_id",
+        "message": "Input should be a valid UUID, invalid character: found `n` at 1"
+      }
+    ]
+  }
+}

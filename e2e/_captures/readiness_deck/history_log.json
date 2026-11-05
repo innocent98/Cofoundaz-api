@@ -1,0 +1,51 @@
+{
+  "data": {
+    "range": 30,
+    "points": [
+      {
+        "at": "2026-11-05T14:17:12.503312+00:00",
+        "score": 1,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 0,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      },
+      {
+        "at": "2026-11-05T14:17:13.052605+00:00",
+        "score": 7,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 60,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      }
+    ],
+    "markers": [
+      {
+        "at": "2026-11-05T14:17:13.427427+00:00",
+        "label": "Deck reviewed (v1)"
+      }
+    ],
+    "log": [
+      {
+        "type": "deck_review",
+        "at": "2026-11-05T14:17:13.427427+00:00",
+        "id": "52d82d23-6e3d-4aef-a690-418c476ebe50",
+        "version": 1,
+        "overall": 7.3
+      }
+    ]
+  },
+  "meta": null
+}

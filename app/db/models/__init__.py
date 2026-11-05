@@ -89,6 +89,7 @@ from app.db.models.notification_preference import NotificationPreference  # noqa
 from app.db.models.platform_setting import PlatformSetting  # noqa: F401
 from app.db.models.platform_staff import PlatformStaff  # noqa: F401
 from app.db.models.readiness import (  # noqa: F401
+    DeckReview,
     ReadinessInput,
     ReadinessScore,
     ReadinessScoreHistory,

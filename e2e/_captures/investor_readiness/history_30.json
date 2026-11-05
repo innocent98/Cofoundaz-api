@@ -3,7 +3,7 @@
     "range": 30,
     "points": [
       {
-        "at": "2026-11-05T10:56:29.287718+00:00",
+        "at": "2026-11-05T14:17:36.696981+00:00",
         "score": 1,
         "band": "not_yet",
         "capped": false,
@@ -17,13 +17,13 @@
         }
       },
       {
-        "at": "2026-11-05T10:56:29.516051+00:00",
-        "score": 32,
+        "at": "2026-11-05T14:17:36.994486+00:00",
+        "score": 29,
         "band": "not_yet",
         "capped": false,
         "dimensions": {
           "team": 8,
-          "story": 75,
+          "story": 40,
           "market": 56,
           "product": 25,
           "traction": 12,
@@ -31,7 +31,8 @@
         }
       }
     ],
-    "markers": []
+    "markers": [],
+    "log": []
   },
   "meta": null
 }

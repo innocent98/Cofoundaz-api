@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A deck review needs a PDF.",
+    "field_errors": []
+  }
+}

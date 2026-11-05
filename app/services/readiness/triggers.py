@@ -21,7 +21,11 @@ REFRESH_EVENTS: tuple[str, ...] = (
     "validation.assumption.validated",
     "validation.assumption.invalidated",
     "document.created",
+    "readiness.deck.reviewed",
 )
+
+# The founder is waiting on these: refresh now instead of honouring the 15 minute throttle.
+FORCE_EVENTS: frozenset[str] = frozenset({"readiness.deck.reviewed"})
 
 _registered_buses: set[int] = set()
 
@@ -34,7 +38,7 @@ def _refresh(db: Session, event: str, payload: dict) -> None:
         return
     startup = db.get(Startup, uuid.UUID(str(sid)))
     if startup is not None:
-        refresh_readiness(db, startup, trigger=event[:40])
+        refresh_readiness(db, startup, trigger=event[:40], force=event in FORCE_EVENTS)
 
 
 def register(bus: Any = event_bus) -> None:

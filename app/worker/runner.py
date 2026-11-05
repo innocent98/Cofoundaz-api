@@ -34,13 +34,24 @@ def backoff_seconds(attempts: int) -> int:
 def reap_stale(db: Session, *, stale_seconds: int) -> int:
     """Re-queue jobs stuck in RUNNING past the stale window (crashed worker)."""
     cutoff = datetime.now(UTC) - timedelta(seconds=stale_seconds)
+    stale = (Job.status == JobStatus.running) & (Job.updated_at < cutoff)
+    # A job that keeps killing its worker (a hostile PDF, say) has already been claimed
+    # WORKER_MAX_ATTEMPTS times: finish it as failed instead of re-queuing it for ever.
+    dead: int = (
+        db.query(Job)
+        .filter(stale, Job.attempts >= settings.WORKER_MAX_ATTEMPTS)
+        .update(
+            {Job.status: JobStatus.failed, Job.error: "worker stopped before the job finished"},
+            synchronize_session=False,
+        )
+    )
     n: int = (
         db.query(Job)
-        .filter(Job.status == JobStatus.running, Job.updated_at < cutoff)
+        .filter(stale)
         .update({Job.status: JobStatus.queued}, synchronize_session=False)
     )
     db.commit()
-    return n
+    return n + dead
 
 
 def claim_batch(db: Session, *, batch: int, stale_seconds: int) -> list[Job]:

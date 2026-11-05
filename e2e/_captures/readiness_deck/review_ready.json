@@ -1,0 +1,101 @@
+{
+  "data": {
+    "id": "52d82d23-6e3d-4aef-a690-418c476ebe50",
+    "version": 1,
+    "status": "ready",
+    "error": null,
+    "filename": "Acme Pay seed deck.pdf",
+    "slide_count": 8,
+    "scores": {
+      "design": 10,
+      "layout": {
+        "slides": 8,
+        "dense_slides": 0,
+        "near_empty_slides": 0,
+        "slides_with_images": 8,
+        "avg_words_per_slide": 10.1
+      },
+      "overall": 7.3,
+      "narrative": 7,
+      "data_clarity": 5
+    },
+    "job_id": "3d3ee0de-e1ff-4bd9-8fa3-76e769d2ac49",
+    "created_at": "2026-11-05T14:17:12.665161+00:00",
+    "reviewed_at": "2026-11-05T14:17:13.427427+00:00",
+    "top_fixes": [
+      "Slide 4: cite the source for the market size.",
+      "Slide 5: show cumulative revenue, not monthly.",
+      "Slide 8: break the ask down by use of funds.",
+      "Slide 2: quantify the problem for one customer.",
+      "Slide 7: add advisors."
+    ],
+    "slides": [
+      {
+        "n": 1,
+        "notes": "Strong hook.",
+        "title": "Title",
+        "words": 8,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMS5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.sSmyxnL5e2ZQfARJV54HFDToxiz1LUJhlXsuy0DObq8"
+      },
+      {
+        "n": 2,
+        "notes": "",
+        "title": "Problem",
+        "words": 13,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMi5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.l8jTHKo8GMXwrtq4DW111mzHZLqLFwHvaO70wKhij0I"
+      },
+      {
+        "n": 3,
+        "notes": "",
+        "title": "Solution",
+        "words": 9,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMy5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.bRNTBMkqLqWsCaLA_xp9JFTLwATlDf7GACmUZ9OaJBE"
+      },
+      {
+        "n": 4,
+        "notes": "SAM versus SOM is unclear.",
+        "title": "Market",
+        "words": 13,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNC5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.wWJfLdbAvxJC-GqnYdPgdjyGdxsXGH5i2_8oA1S2f7A"
+      },
+      {
+        "n": 5,
+        "notes": "",
+        "title": "Traction",
+        "words": 12,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNS5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.WnopJi1yNfRdKo9fiTIZBxwzqFBJoKdeVDH_V9G0Yaw"
+      },
+      {
+        "n": 6,
+        "notes": "",
+        "title": "Business model",
+        "words": 8,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNi5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.62yXGmXM0iCmgGuc6RMWrkapu2dSv_OjpGO4Pzze_SA"
+      },
+      {
+        "n": 7,
+        "notes": "",
+        "title": "Team",
+        "words": 6,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNy5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.0RXMt5iK-Cn0MsbytK-GuNVBJd5sZFOkff2ESLaTwZU"
+      },
+      {
+        "n": 8,
+        "notes": "",
+        "title": "The ask",
+        "words": 12,
+        "images": 1,
+        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvOC5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.iuvDFwtrBJwq9kK7vGXWddDoyB5cypjCfrzhC9E9HxY"
+      }
+    ],
+    "thumbnail_ttl_seconds": 900
+  },
+  "meta": null
+}

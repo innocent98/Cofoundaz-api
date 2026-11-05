@@ -245,13 +245,23 @@
         "signals": [
           {
             "key": "story.pitch_deck",
-            "href": "/documents",
-            "note": "You have no pitch deck. Create one in Documents.",
+            "href": "/investor-readiness/deck",
+            "note": "You have no pitch deck. Upload your PDF and have it reviewed.",
             "unit": "step",
             "label": "Pitch deck",
             "score": 0.0,
             "value": 0.0,
             "target": 1
+          },
+          {
+            "key": "story.deck_review",
+            "href": "/investor-readiness/deck",
+            "note": "Your deck has not been reviewed yet.",
+            "unit": "/10",
+            "label": "Pitch deck review score (out of 10)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 7
           },
           {
             "key": "story.investor_plan",
@@ -287,9 +297,9 @@
       {
         "key": "pitch_deck_reviewed",
         "met": false,
-        "href": "/documents",
+        "href": "/investor-readiness/deck",
         "label": "A reviewed pitch deck",
-        "reason": "Create a pitch deck, then have it reviewed. Deck review is not available yet."
+        "reason": "Upload your pitch deck PDF and run a deck review."
       },
       {
         "key": "traction_proof",
@@ -329,14 +339,14 @@
         "signal_key": "market.size"
       },
       {
-        "href": "/documents",
+        "href": "/sales/pipeline",
         "lift": 5,
-        "note": "You have no pitch deck. Create one in Documents.",
-        "dimension": "story",
-        "signal_key": "story.pitch_deck"
+        "note": "0 paying customer(s) against 10. Close a deal or record a paid invoice.",
+        "dimension": "traction",
+        "signal_key": "traction.customers"
       }
     ],
-    "computed_at": "2026-11-05T10:56:29.287718+00:00",
+    "computed_at": "2026-11-05T14:17:36.696981+00:00",
     "config_version": 1
   },
   "meta": null
