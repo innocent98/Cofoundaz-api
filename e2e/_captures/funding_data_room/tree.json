@@ -1,0 +1,31 @@
+{
+  "data": {
+    "folders": [
+      {
+        "id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
+        "name": "Financials",
+        "items": [
+          {
+            "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+            "name": "pitch-deck.pdf",
+            "content_type": "application/pdf",
+            "size_bytes": 1371,
+            "viewer": "pdf",
+            "viewable": true
+          },
+          {
+            "id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+            "name": "model-notes.txt",
+            "content_type": "text/plain",
+            "size_bytes": 23,
+            "viewer": "text",
+            "viewable": false
+          }
+        ]
+      }
+    ],
+    "allow_download": false,
+    "viewer_email": "delivered+investor-578313484f65@resend.dev"
+  },
+  "meta": null
+}

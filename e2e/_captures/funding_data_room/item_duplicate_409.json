@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ITEM_EXISTS",
+    "message": "That item is already in this folder.",
+    "field_errors": []
+  }
+}

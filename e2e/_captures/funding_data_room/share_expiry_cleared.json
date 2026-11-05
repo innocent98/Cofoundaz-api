@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
+    "investor_name": "Tolu Bello",
+    "folder_ids": [
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
+    ],
+    "allow_download": true,
+    "watermark": true,
+    "status": "active",
+    "expires_at": null,
+    "revoked_at": null,
+    "last_viewed_at": "2026-11-05T20:08:00.418634+00:00",
+    "view_count": 2,
+    "total_duration_s": 2,
+    "unviewable_items": [],
+    "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
+  },
+  "meta": null
+}
