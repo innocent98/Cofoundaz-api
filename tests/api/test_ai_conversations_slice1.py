@@ -243,3 +243,46 @@ def test_roles_without_ai_access_get_403_on_new_routes(client, db):
     assert resp7.status_code == 403
     assert client.get(C, headers=mentor, params={"query": "xx"}).status_code == 403
     assert Job is not None
+
+
+def test_query_is_trimmed_before_it_is_checked(client, db):
+    o, s, h = _world(db)
+    _seed(db, s, o, "Runway question")
+    _seed(db, s, o, "Other")
+    db.commit()
+    # blank means no search: everything, and no snippet key
+    for q in ("  ", ""):
+        got = client.get(C, headers=h, params={"query": q}).json()["data"]
+        assert len(got) == 2 and all("match_snippet" not in c for c in got)
+    # one real character after trimming is too short, not a one-letter ILIKE
+    short = client.get(C, headers=h, params={"query": " a"})
+    assert short.status_code == 422 and "2 to 100" in short.json()["error"]["message"]
+    assert client.get(C, headers=h, params={"query": "x" * 101}).status_code == 422
+    # padding is stripped for the search itself
+    got = client.get(C, headers=h, params={"query": "  runway "}).json()["data"]
+    assert [c["title"] for c in got] == ["Runway question"]
+    # a blank query with the archive filter is just the archive list, not a misleading 422
+    arch = client.get(C, headers=h, params={"archived": "true", "query": "  "})
+    assert arch.status_code == 200
+
+
+def test_delete_is_refused_while_a_reply_is_generating(client, db):
+    o, s, h = _world(db)
+    created = client.post(C, headers=h, json={"message": "How long is my runway?"})
+    cid = created.json()["data"]["id"]
+    r = client.delete(f"{C}/{cid}", headers=h)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "REPLY_IN_PROGRESS"
+    assert client.get(f"{C}/{cid}", headers=h).status_code == 200
+
+
+def test_delete_ends_a_stale_generating_turn_first_then_deletes(client, db, monkeypatch):
+    from datetime import timedelta
+
+    o, s, h = _world(db)
+    created = client.post(C, headers=h, json={"message": "hello"}).json()["data"]
+    cid = created["id"]
+    msg = db.query(AiMessage).filter_by(conversation_id=cid, role=ChatMessageRole.assistant).one()
+    msg.created_at = datetime.now(UTC) - timedelta(hours=2)
+    db.commit()
+    resp = client.delete(f"{C}/{cid}", headers=h)
+    assert resp.status_code == 200

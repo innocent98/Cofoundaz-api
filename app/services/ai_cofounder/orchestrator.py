@@ -58,9 +58,21 @@ def _stored_route(db: Session, msg: AiMessage) -> AiAgentRoute | None:
     return db.query(AiAgentRoute).filter_by(message_id=msg.id).first()
 
 
+def _turn_still_exists(db: Session, msg: AiMessage) -> bool:
+    """Re-read the assistant row under a row lock: a concurrent DELETE of the conversation then
+    waits for us, or has already removed the row (see the delete guard in `service`)."""
+    return (
+        db.query(AiMessage.id).filter(AiMessage.id == msg.id).with_for_update().first() is not None
+    )
+
+
 def _decide_and_store(
     db: Session, conversation: AiConversation, msg: AiMessage, prior: list[AiMessage]
-) -> AiAgentRoute:
+) -> AiAgentRoute | None:
+    """Route, store the decision and commit. None when the conversation was deleted while the
+    router ran: the router's debit is committed (the call was paid for) and nothing else is
+    written, because a route row for a gone message would violate its foreign key, raise, and
+    roll the debit back with it."""
     # the founder's message that this turn answers is the user row just before it
     asked = (
         db.query(AiMessage)
@@ -93,6 +105,9 @@ def _decide_and_store(
         confidence=d.confidence,
         prompt_version=agent.version,
     )
+    if not _turn_still_exists(db, msg):
+        db.commit()
+        return None
     db.add(route)
     # Tag the conversation at its first routed reply (History / list topic filter).
     if conversation.topic is None:
@@ -141,8 +156,8 @@ def run_reply(db: Session, job: Job) -> None:
     route = _stored_route(db, msg)
     if route is None:
         route = _decide_and_store(db, conversation, msg, prior)
-        if msg.status != ChatMessageStatus.generating:  # cancelled while routing
-            return
+        if route is None or msg.status != ChatMessageStatus.generating:
+            return  # deleted or cancelled while routing
     agent = AGENTS[route.agent_key]
 
     context, used = build_context(db, startup, conversation.created_by, agent.sections)
@@ -168,12 +183,17 @@ def run_reply(db: Session, job: Job) -> None:
         ):
             raise  # the runner rolls back and retries with backoff; the route is already stored
         log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
-        fail_message(db, msg, REPLY_FAILED_TEXT)
+        if _turn_still_exists(db, msg):
+            fail_message(db, msg, REPLY_FAILED_TEXT)
         db.commit()
         return
     if text is None:  # over budget: no templated fallback for a chat turn
-        fail_message(db, msg, BUDGET_FAILED_TEXT)
+        if _turn_still_exists(db, msg):
+            fail_message(db, msg, BUDGET_FAILED_TEXT)
         db.commit()
+        return
+    if not _turn_still_exists(db, msg):
+        db.commit()  # deleted while the model ran: the call is paid for, so bill it
         return
 
     # From here to the commit nothing can fail: the model call is already paid for.

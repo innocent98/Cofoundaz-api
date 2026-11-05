@@ -433,3 +433,56 @@ def test_cancel_unknown_message_is_not_found(db):
     with pytest.raises(NotFound):
         cancel_message(db, conv, uuid.uuid4())
     assert conv.id and MissionTaskStatus.done and AiConversation
+
+
+# ---- delete racing the job (review of #226: the spend must still be billed) ---------------
+
+
+def test_deleting_the_conversation_during_the_agent_call_bills_the_tokens(db, monkeypatch):
+    u, s, conv, msg, job = _start(db, "How long is my runway?")
+    cid, mid = conv.id, msg.id
+
+    class _DeletesMidCall(_LLM):
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            db.delete(db.get(AiConversation, cid))  # the founder's DELETE landed
+            db.flush()
+            return super().complete(messages, max_tokens=max_tokens, temperature=temperature)
+
+    _use(monkeypatch, _DeletesMidCall(tokens=21))
+    orchestrator.run_reply(db, job)  # must not raise
+    assert _used(db, s) == 21
+    assert db.query(AiMessage).filter_by(id=mid).count() == 0
+
+
+def test_deleting_the_conversation_during_routing_bills_the_router_and_writes_no_route(
+    db, monkeypatch
+):
+    u, s, conv, msg, job = _start(db, "hello there")  # vague: needs the router call
+    cid, mid = conv.id, msg.id
+
+    class _DeletesDuringRouting(_LLM):
+        def complete_json(self, messages, *, schema, max_tokens):
+            db.delete(db.get(AiConversation, cid))
+            db.flush()
+            return super().complete_json(messages, schema=schema, max_tokens=max_tokens)
+
+    llm = _use(monkeypatch, _DeletesDuringRouting(tokens=14))
+    orchestrator.run_reply(db, job)  # must not raise (a route row would break its FK)
+    assert _used(db, s) == 14 and llm.text_calls == []
+    assert db.query(AiAgentRoute).filter_by(message_id=mid).count() == 0
+
+
+def test_deleting_during_a_failing_agent_call_is_quiet(db, monkeypatch):
+    u, s, conv, msg, job = _start(db, "How long is my runway?")
+    cid = conv.id
+    job.attempts = settings.WORKER_MAX_ATTEMPTS
+
+    class _FailsAfterDelete(_LLM):
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            db.delete(db.get(AiConversation, cid))
+            db.flush()
+            raise RuntimeError("provider 500")
+
+    _use(monkeypatch, _FailsAfterDelete())
+    monkeypatch.setattr(llm_budget, "_debit_independent", lambda sid, n: None)
+    orchestrator.run_reply(db, job)  # no StaleDataError, no failure write to a gone row

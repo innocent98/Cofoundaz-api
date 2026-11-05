@@ -312,8 +312,27 @@ def set_archived(
 
 
 def delete_conversation(db: Session, conversation: AiConversation) -> None:
-    """ "Delete forever": the conversation and all its messages go (FK cascade). A reply job still
-    in flight finds no message and does nothing."""
+    """ "Delete forever": the conversation and all its messages go (FK cascade).
+
+    Refused (409) while a reply is still being generated: deleting under a running model call
+    would let the worker's result land on a deleted row. (The worker also re-checks, see
+    `handle_cofounder_reply`.) Reported-message snippets kept by Admin moderation are separate
+    copies and are not removed (D-ADM-9)."""
+    fail_stale_generating(db, conversation)
+    in_flight = (
+        db.query(AiMessage.id)
+        .filter(
+            AiMessage.conversation_id == conversation.id,
+            AiMessage.status == ChatMessageStatus.generating,
+        )
+        .first()
+    )
+    if in_flight is not None:
+        raise AppError(
+            "REPLY_IN_PROGRESS",
+            "A reply is still being generated. Wait for it to finish, then delete.",
+            409,
+        )
     db.delete(conversation)
     db.flush()
 

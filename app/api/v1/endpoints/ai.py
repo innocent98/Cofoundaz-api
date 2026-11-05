@@ -162,9 +162,7 @@ def create_conversation_endpoint(
 
 @router.get("/conversations")
 def list_conversations_endpoint(
-    query: str | None = Query(
-        default=None, min_length=MIN_QUERY, max_length=MAX_QUERY
-    ),  # noqa: B008
+    query: str | None = Query(default=None),  # noqa: B008
     topic: str | None = Query(default=None),  # noqa: B008
     archived: bool = Query(default=False),  # noqa: B008
     membership: Membership = Depends(_chat_access),  # noqa: B008
@@ -173,6 +171,11 @@ def list_conversations_endpoint(
 ) -> dict[str, Any]:
     if topic is not None and topic not in TOPICS:
         raise AppError("VALIDATION_ERROR", f"topic must be one of: {', '.join(TOPICS)}.", 422)
+    query = (query or "").strip() or None  # blank means no search
+    if query is not None and not MIN_QUERY <= len(query) <= MAX_QUERY:
+        raise AppError(
+            "VALIDATION_ERROR", f"query must be {MIN_QUERY} to {MAX_QUERY} characters.", 422
+        )
     if archived and query:
         raise AppError("VALIDATION_ERROR", "Archived conversations can't be searched.", 422)
     startup = _startup(db, membership)

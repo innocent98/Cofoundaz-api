@@ -46,6 +46,12 @@ def _onboard(c: httpx.Client, auth: dict) -> dict:
     return {**auth, "X-Workspace-Id": me.json()["data"]["active_workspace_id"]}
 
 
+def _ask_new(c, h) -> str:
+    r = c.post(C, headers=h, json={"message": "Anything on my mind"})
+    assert r.status_code == 201
+    return r.json()["data"]["id"]
+
+
 def test_conversation_management(base_url, make_verified_user, capture):
     with httpx.Client(base_url=base_url, timeout=15.0) as c:
         u = make_verified_user(c)
@@ -91,7 +97,7 @@ def test_conversation_management(base_url, make_verified_user, capture):
         assert [x["id"] for x in title_hit.json()["data"]] == [b_id]
         capture("ai_conversations", "list_query_title_match", title_hit)
 
-        short = c.get(C, headers=h, params={"query": "a"})
+        short = c.get(C, headers=h, params={"query": " a "})
         assert short.status_code == 422
         capture("ai_conversations", "list_query_too_short_422", short)
 
@@ -125,6 +131,16 @@ def test_conversation_management(base_url, make_verified_user, capture):
         un = c.post(f"{C}/unarchive", headers=h, json={"ids": [a_id]})
         assert un.status_code == 200
         capture("ai_conversations", "unarchive_200", un)
+
+        # --- delete is refused while a reply is generating (no worker run in between)
+        busy = _ask_new(c, h)
+        refused = c.delete(f"{C}/{busy}", headers=h)
+        assert refused.status_code == 409
+        capture("ai_conversations", "delete_while_generating_409", refused)
+        blank_q = c.get(C, headers=h, params={"query": "   "})
+        assert blank_q.status_code == 200 and "match_snippet" not in blank_q.text
+        capture("ai_conversations", "list_blank_query_is_no_query", blank_q)
+        _drain()
 
         # --- delete forever
         gone = c.delete(f"{C}/{a_id}", headers=h)

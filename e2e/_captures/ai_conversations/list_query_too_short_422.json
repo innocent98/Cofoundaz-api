@@ -1,12 +1,7 @@
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Please check the highlighted fields.",
-    "field_errors": [
-      {
-        "field": "query.query",
-        "message": "String should have at least 2 characters"
-      }
-    ]
+    "message": "query must be 2 to 100 characters.",
+    "field_errors": []
   }
 }
