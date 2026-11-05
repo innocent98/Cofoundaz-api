@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
-from fastapi import Response
+from fastapi import Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import Unauthorized
@@ -14,6 +14,7 @@ from app.db.models.auth import AuthSession
 from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.platform.state import lock_session_issue
+from app.services.auth.csrf import is_cookie_mode
 
 
 def hash_token(raw: str) -> str:
@@ -207,3 +208,18 @@ def revoke_all_except(db: Session, user_id: uuid.UUID, keep_family: uuid.UUID | 
     n = q.update({AuthSession.revoked_at: datetime.now(UTC)}, synchronize_session=False)
     db.flush()
     return int(n)
+
+
+def token_body(request: Request, access: str, refresh: str, **extra: object) -> dict[str, object]:
+    """Response body for an endpoint that issues a session.
+
+    A client that sends `X-Auth-Mode: cookie` keeps the refresh token only in the HttpOnly
+    cookie, so its body carries `refresh_token: null` (nothing for an XSS to read). Every other
+    client (the current FE, scripts) still gets the token in the body as before.
+    """
+    return {
+        "access_token": access,
+        "refresh_token": None if is_cookie_mode(request) else refresh,
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **extra,
+    }

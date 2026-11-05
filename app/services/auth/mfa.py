@@ -1,7 +1,7 @@
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 import pyotp
 from cryptography.fernet import Fernet
@@ -16,6 +16,7 @@ from app.services.auth.sessions import hash_token
 
 _MFA_TICKET_TTL = 300  # 5 minutes
 _MFA_TICKET_PREFIX = "mfa_ticket:"
+_MFA_ATTEMPTS_PREFIX = "mfa_ticket_attempts:"
 
 
 class MfaNotConfigured(AppError):  # noqa: N818
@@ -83,10 +84,22 @@ def issue_mfa_ticket(user_id: uuid.UUID) -> str:
     return ticket
 
 
-def resolve_mfa_ticket(ticket: str) -> uuid.UUID | None:
-    key = f"{_MFA_TICKET_PREFIX}{ticket}"
-    val = cast(str | None, get_redis().get(key))
-    if val is None:
-        return None
-    get_redis().delete(key)
-    return uuid.UUID(val)
+def peek_mfa_ticket(ticket: str) -> uuid.UUID | None:
+    """Who the ticket is for, without using it up: a wrong code must leave it usable (up to
+    `MFA_TICKET_MAX_ATTEMPTS` tries), so a typo does not strand the person on the code screen."""
+    val = cast(str | None, get_redis().get(f"{_MFA_TICKET_PREFIX}{ticket}"))
+    return uuid.UUID(val) if val is not None else None
+
+
+def count_mfa_attempt(ticket: str) -> int:
+    """Count one code attempt against the ticket; returns the attempts used so far (atomic)."""
+    redis = get_redis()
+    key = f"{_MFA_ATTEMPTS_PREFIX}{ticket}"
+    used = int(cast(Any, redis.incr(key)))
+    if used == 1:
+        redis.expire(key, _MFA_TICKET_TTL)
+    return used
+
+
+def burn_mfa_ticket(ticket: str) -> None:
+    get_redis().delete(f"{_MFA_TICKET_PREFIX}{ticket}", f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
