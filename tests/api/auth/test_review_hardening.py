@@ -178,6 +178,20 @@ def test_ip_bucket_collapses_ipv6_only():
     assert ratelimit.ip_bucket(None) is None
 
 
+def test_ipv4_carrying_addresses_key_on_the_embedded_ipv4():
+    # IPv4-mapped clients are not one /64 (all of ::ffff:0:0/96 would share it)
+    assert ratelimit.ip_bucket("::ffff:1.2.3.4") == "1.2.3.4"
+    assert ratelimit.ip_bucket("::ffff:1.2.3.4") != ratelimit.ip_bucket("::ffff:5.6.7.8")
+    assert ratelimit.ip_bucket("::ffff:1.2.3.4") == ratelimit.ip_bucket("1.2.3.4")
+    # 6to4 (2002:aabb:ccdd::/48) embeds the client's IPv4 in bits 16 to 47
+    assert ratelimit.ip_bucket("2002:0102:0304::1") == "1.2.3.4"
+    assert ratelimit.ip_bucket("2002:0102:0304::1") != ratelimit.ip_bucket("2002:0506:0708::1")
+    # Teredo (2001:0::/32) embeds the client's (obfuscated) IPv4: different clients, different keys
+    a = ratelimit.ip_bucket("2001:0:4136:e378:8000:63bf:3fff:fdd2")
+    b = ratelimit.ip_bucket("2001:0:4136:e378:8000:63bf:3fff:fdd3")
+    assert a != b and ":" not in a
+
+
 def test_one_caller_cannot_use_up_the_owners_reset_mail_share(db, monkeypatch):
     monkeypatch.setattr(settings, "AUTH_FORGOT_PER_EMAIL_IP_HOURLY", 2)
     monkeypatch.setattr(settings, "AUTH_FORGOT_PER_EMAIL_HOURLY", 4)

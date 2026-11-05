@@ -37,9 +37,18 @@ def ip_bucket(ip: str | None) -> str | None:
         addr = ipaddress.ip_address(ip)
     except ValueError:
         return ip
-    if addr.version == 6:
-        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
-    return ip
+    if addr.version == 4:
+        return ip
+    # Addresses that carry an IPv4 client must key on that IPv4: grouping them by /64 would put
+    # every IPv4-mapped client (::ffff:a.b.c.d) in the same bucket and let one lock out all.
+    v6 = cast(ipaddress.IPv6Address, addr)
+    if v6.ipv4_mapped is not None:
+        return str(v6.ipv4_mapped)
+    if v6.sixtofour is not None:
+        return str(v6.sixtofour)
+    if v6.teredo is not None:
+        return str(v6.teredo[1])
+    return str(ipaddress.ip_network(f"{ip}/64", strict=False))
 
 
 def _count_and_ttl(key: str) -> tuple[int, int]:
