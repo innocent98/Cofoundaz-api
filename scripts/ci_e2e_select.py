@@ -63,7 +63,7 @@ def tokens(path: str) -> set[str]:
 def main() -> int:
     src = sys.stdin if sys.argv[1] == "-" else open(sys.argv[1])
     changed = [line.strip() for line in src if line.strip()]
-    if False and any(c.startswith(ALL_TRIGGERS) for c in changed):  # TEMP-MEASURE
+    if any(c.startswith(ALL_TRIGGERS) for c in changed):
         print("ALL")
         return 0
     wanted: set[str] = set()
@@ -79,7 +79,7 @@ def main() -> int:
         name_tokens = tokens(f.stem)
         if name_tokens & wanted:
             picked.append(str(f))
-    print("" if True else " ".join(picked))  # TEMP-MEASURE
+    print(" ".join(picked))
     return 0
 
 
