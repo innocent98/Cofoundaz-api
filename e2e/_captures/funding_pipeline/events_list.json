@@ -2,34 +2,34 @@
   "data": {
     "items": [
       {
-        "id": "9b084bc7-9942-41f2-9c6a-c1e81ae3dc25",
-        "investor_id": "7af4bd1f-1bd9-4bc8-9ccc-2e68afee7eba",
+        "id": "e742f57c-c7be-445f-aaa7-63e3c059a908",
+        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
         "kind": "stage_change",
         "body": null,
         "from_stage": "research",
         "to_stage": "outreach",
-        "occurred_at": "2026-11-05T11:08:12.204299+00:00",
-        "actor_id": "6e0470c6-3d62-4842-b5bd-794d9b2e7f18"
+        "occurred_at": "2026-11-05T11:12:55.963719+00:00",
+        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
       },
       {
-        "id": "b343ab14-9d5f-42fa-af5d-05f19a73a931",
-        "investor_id": "7af4bd1f-1bd9-4bc8-9ccc-2e68afee7eba",
+        "id": "74672526-7bb9-417b-8226-cb313a3b0fc3",
+        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
         "kind": "stage_change",
         "body": null,
         "from_stage": null,
         "to_stage": "research",
-        "occurred_at": "2026-11-05T11:08:12.097334+00:00",
-        "actor_id": "6e0470c6-3d62-4842-b5bd-794d9b2e7f18"
+        "occurred_at": "2026-11-05T11:12:55.842728+00:00",
+        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
       },
       {
-        "id": "778ca750-02ac-4f78-ab19-0c68c30da7e5",
-        "investor_id": "7af4bd1f-1bd9-4bc8-9ccc-2e68afee7eba",
+        "id": "c3e71006-e273-4c1b-b1da-98094ca55756",
+        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
         "kind": "call",
         "body": "30 minute intro. Wants the cohort numbers.",
         "from_stage": null,
         "to_stage": null,
-        "occurred_at": "2026-11-04T11:08:12.374131+00:00",
-        "actor_id": "6e0470c6-3d62-4842-b5bd-794d9b2e7f18"
+        "occurred_at": "2026-11-04T11:12:56.197208+00:00",
+        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
       }
     ],
     "total": 3,

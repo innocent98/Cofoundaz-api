@@ -42,7 +42,7 @@ def _wh(c: httpx.Client, auth: dict) -> dict:
     return {**auth, "X-Workspace-Id": me["active_workspace_id"]}
 
 
-def test_funding_pipeline_journey(base_url, make_verified_user, capture):
+def test_funding_pipeline_journey(base_url, make_verified_user, capture, mailbox, unique_email):
     with httpx.Client(base_url=base_url, timeout=15.0) as c:
         u = make_verified_user(c)
         auth = _login(c, u)
@@ -252,6 +252,31 @@ def test_funding_pipeline_journey(base_url, make_verified_user, capture):
         r = c.get(f"{F}/investors", headers={**oauth, "X-Workspace-Id": wh["X-Workspace-Id"]})
         assert r.status_code == 403
         capture("funding_pipeline", "error_other_workspace_header", r)
+
+        # A mentor in the founder's own workspace is refused on every route (403, not 404).
+        mentor_email = unique_email("mentor")
+        r = c.post(
+            "/api/v1/team/invitations",
+            headers=wh,
+            json={"invites": [{"email": mentor_email, "role": "mentor"}]},
+        )
+        assert r.status_code == 200, r.text
+        token = mailbox.latest_token_for(mentor_email, subject_contains="invited")
+        pw = "Mentor-" + mentor_email.split("@")[0][-8:] + "-9"
+        c.post("/api/v1/auth/signup", json={"email": mentor_email, "password": pw})
+        vt = mailbox.latest_token_for(mentor_email, subject_contains="Verify")
+        c.post("/api/v1/auth/verify", json={"token": vt})
+        mentor = _login(c, {"email": mentor_email, "password": pw})
+        acc = c.post("/api/v1/invitations/accept", headers=mentor, json={"token": token})
+        assert acc.status_code == 200, acc.text
+        mh = {**mentor, "X-Workspace-Id": wh["X-Workspace-Id"]}
+        r = c.get(f"{F}/investors", headers=mh)
+        assert r.status_code == 403
+        capture("funding_pipeline", "error_mentor_forbidden_read", r)
+        r = c.post(f"{F}/investors", headers=mh, json={"name": "Nope"})
+        assert r.status_code == 403
+        capture("funding_pipeline", "error_mentor_forbidden_write", r)
+        assert c.get(f"{F}/investors/{tolu['id']}", headers=mh).status_code == 403
 
         # 11. Delete a card; close the round; the closed round is history.
         r = c.delete(f"{F}/investors/{dami['id']}", headers=wh)

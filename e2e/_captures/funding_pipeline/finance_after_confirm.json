@@ -2,7 +2,7 @@
   "data": {
     "transactions": [
       {
-        "id": "413e928c-da23-4309-96a0-1db811ac43bd",
+        "id": "2ea01804-9fdc-4853-ae8d-e8317fa04c5b",
         "date": "2026-11-05",
         "description": "Funding from Chidi Okafor",
         "category": "Funding",
@@ -10,8 +10,8 @@
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-11-05T11:08:12.413971Z",
-        "updated_at": "2026-11-05T11:08:12.413971Z"
+        "created_at": "2026-11-05T11:12:56.242550Z",
+        "updated_at": "2026-11-05T11:12:56.242550Z"
       }
     ]
   },

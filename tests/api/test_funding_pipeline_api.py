@@ -615,3 +615,22 @@ def test_record_funding_above_the_ledger_cap_is_refused_clearly(client, db, team
     r = client.post(f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder)
     assert r.status_code == 422 and "21,474,836.47" in r.json()["error"]["message"]
     assert db.query(Transaction).filter_by(startup_id=team[0].id).count() == 0
+
+
+def test_record_funding_takes_a_row_lock_on_the_investor(client, db, team, founder, monkeypatch):
+    """The 'already recorded?' read decides a ledger write, so it must hold the investor row."""
+    from sqlalchemy.orm import Query
+
+    seen: list[bool] = []
+    real = Query.with_for_update
+
+    def spy(self, *a, **k):
+        seen.append(True)
+        return real(self, *a, **k)
+
+    inv = _add(client, founder, committed_minor=1_000_00)
+    _move(client, founder, inv, "committed")
+    monkeypatch.setattr(Query, "with_for_update", spy)
+    r = client.post(f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder)
+    assert r.status_code == 201
+    assert seen == [True]

@@ -1,8 +1,8 @@
 {
   "data": {
     "investor": {
-      "id": "9841ba21-7eb4-48de-80df-0bbd43ee3eba",
-      "round_id": "f41b0e91-696a-45b0-a08a-452676baa5a6",
+      "id": "63b81fb6-6275-4661-bc0e-243dcea670f0",
+      "round_id": "8a377bd5-cba7-462c-a4d4-cbfeb7b61750",
       "name": "Emeka Obi",
       "firm": "Atlas Capital",
       "type": "vc",
@@ -18,15 +18,15 @@
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:08:13.384580+00:00",
+      "stage_entered_at": "2026-11-05T11:12:58.112925+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": true,
-      "created_at": "2026-11-05T11:08:13.360579+00:00",
-      "updated_at": "2026-11-05T11:08:13.409482+00:00"
+      "created_at": "2026-11-05T11:12:58.077789+00:00",
+      "updated_at": "2026-11-05T11:12:58.158608+00:00"
     },
     "transaction": {
-      "id": "1adfadec-f21d-4ab7-85ee-b3178feaa50c",
+      "id": "d3b4efcd-5a97-4504-804a-302472288de5",
       "date": "2026-11-05",
       "description": "Funding from Emeka Obi (Atlas Capital)",
       "category": "Funding",
@@ -34,8 +34,8 @@
       "currency": "NGN",
       "direction": "in",
       "source": "manual",
-      "created_at": "2026-11-05T11:08:13.409482Z",
-      "updated_at": "2026-11-05T11:08:13.409482Z"
+      "created_at": "2026-11-05T11:12:58.158608Z",
+      "updated_at": "2026-11-05T11:12:58.158608Z"
     }
   },
   "meta": null

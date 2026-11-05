@@ -448,7 +448,16 @@ def record_funding(
 ) -> tuple[Investor, Any]:
     """Write one Funding inflow (cash, never revenue, D-FIN-11) through the Finance ledger service,
     only on the founder's explicit confirmation."""
-    row = get_investor(db, startup_id, investor_id)
+    get_investor(db, startup_id, investor_id)  # 404 for another workspace's id
+    # Row lock: the "already recorded?" read decides a ledger write, so two concurrent confirms
+    # must queue here and the second one sees the first one's transaction id.
+    row = (
+        db.query(Investor)
+        .filter_by(id=investor_id, startup_id=startup_id)
+        .with_for_update()
+        .populate_existing()
+        .one()
+    )
     rnd = db.get(FundingRound, row.round_id)
     assert rnd is not None  # noqa: S101
     if row.stage != InvestorStage.committed.value or not row.committed_minor:

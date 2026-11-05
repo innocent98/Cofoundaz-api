@@ -1,13 +1,13 @@
 {
   "data": {
-    "id": "778ca750-02ac-4f78-ab19-0c68c30da7e5",
-    "investor_id": "7af4bd1f-1bd9-4bc8-9ccc-2e68afee7eba",
+    "id": "c3e71006-e273-4c1b-b1da-98094ca55756",
+    "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
     "kind": "call",
     "body": "30 minute intro. Wants the cohort numbers.",
     "from_stage": null,
     "to_stage": null,
-    "occurred_at": "2026-11-04T11:08:12.374131+00:00",
-    "actor_id": "6e0470c6-3d62-4842-b5bd-794d9b2e7f18"
+    "occurred_at": "2026-11-04T11:12:56.197208+00:00",
+    "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
   },
   "meta": null
 }
