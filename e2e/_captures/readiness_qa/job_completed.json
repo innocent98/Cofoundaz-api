@@ -1,11 +1,11 @@
 {
   "data": {
-    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
     "type": "ai.readiness.qa_score",
     "status": "succeeded",
     "result": {
       "status": "scored",
-      "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62"
+      "session_id": "2f66a465-bff4-4464-a1e2-e525133066e5"
     },
     "error": null
   },

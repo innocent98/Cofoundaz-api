@@ -42,3 +42,6 @@ class QaMessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     content: str = Field(..., min_length=1, max_length=2000)
+    # How many answers the client believes are already recorded (the session's `turns`). A stale
+    # value means this is a retry of an answer that was already received: 409 TURN_MISMATCH.
+    expected_turn: int = Field(..., ge=0, le=10)

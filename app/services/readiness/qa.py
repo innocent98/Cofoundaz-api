@@ -13,9 +13,10 @@ per-answer ratings, which are validated and clamped.
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import text
+from sqlalchemy import text, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.errors import AiBudgetExhausted, AppError, NotFound
@@ -37,6 +38,7 @@ INTENSITIES = ("friendly_angel", "skeptical_vc", "term_sheet_grilling")
 MAX_ANSWERS = 10
 MAX_ANSWER_CHARS = 2000
 MIN_HEADROOM_TOKENS = 40_000
+TURN_RESERVE_TOKENS = 12_000  # one more turn (~3.5k) plus the scoring call (~8k)
 RETENTION_DAYS = 90
 STALE_ACTIVE = timedelta(hours=2)  # an untouched active session stops blocking a new one
 PURGE_ABANDON_AFTER = timedelta(hours=24)
@@ -250,6 +252,25 @@ def _same_weakest(raw: dict[str, Any], weakest: dict[str, Any]) -> bool:
         return False
 
 
+def strip_scorecard_text(card: dict[str, Any] | None) -> dict[str, Any] | None:
+    """What a scorecard may keep once the 90 days are up: the numbers and which answers were
+    picked, never a question, an answer, feedback or a model answer (those are the founder's
+    words, or derived from them)."""
+    if not card:
+        return card
+    out: dict[str, Any] = {
+        "rating": card.get("rating"),
+        "rating_label": card.get("rating_label"),
+        "average": card.get("average"),
+        "answers": [{"i": a["i"], "rating": a["rating"]} for a in card.get("answers") or []],
+        "strongest": {"i": card["strongest"]["i"]} if card.get("strongest") else None,
+        "weakest": {"i": card["weakest"]["i"]} if card.get("weakest") else None,
+        "trend": card.get("trend"),
+        "text_purged": True,
+    }
+    return out
+
+
 # ---- Lifecycle -----------------------------------------------------------------------------
 
 
@@ -266,19 +287,36 @@ def _now() -> datetime:
 
 def reconcile(db: Session, s: MockSession) -> bool:
     """Tidy a session that can no longer progress: an `ending` one whose scoring job died is
-    `failed`; an `active` one untouched for a long time is `abandoned`."""
+    `failed`; an `active` one untouched for a long time is `abandoned`.
+
+    Readers call this without a lock, and `s` may have been loaded before the worker committed the
+    score. So the change is a conditional UPDATE on the status we saw, then a refresh: a session
+    that was scored in the meantime matches no row and is left alone."""
     if s.status == "ending":
         job = db.get(Job, s.job_id) if s.job_id else None
-        if job is None or job.status not in (JobStatus.queued, JobStatus.running):
-            s.status, s.error = "failed", "job_failed"
-            s.scored_at = None
-            db.flush()
-            return True
+        if job is not None and job.status in (JobStatus.queued, JobStatus.running):
+            return False
+        changed = cast(
+            CursorResult,
+            db.execute(
+                update(MockSession)
+                .where(MockSession.id == s.id, MockSession.status == "ending")
+                .values(status="failed", error="job_failed")
+            ),
+        ).rowcount
     elif s.status == "active" and _now() - s.updated_at > STALE_ACTIVE:
-        s.status, s.ended_at = "abandoned", _now()
-        db.flush()
-        return True
-    return False
+        changed = cast(
+            CursorResult,
+            db.execute(
+                update(MockSession)
+                .where(MockSession.id == s.id, MockSession.status == "active")
+                .values(status="abandoned", ended_at=_now())
+            ),
+        ).rowcount
+    else:
+        return False
+    db.refresh(s)
+    return bool(changed)
 
 
 def start_session(
@@ -338,11 +376,31 @@ def get_for_update(db: Session, startup_id: uuid.UUID, session_id: uuid.UUID) ->
     return s
 
 
-def answer(db: Session, startup: Startup, session: MockSession, content: str) -> dict[str, Any]:
-    """Record one founder answer and return the investor's next question, or none at the cap."""
+def answer(
+    db: Session, startup: Startup, session: MockSession, content: str, expected_turn: int
+) -> dict[str, Any]:
+    """Record one founder answer and return the investor's next question, or none at the cap.
+
+    `expected_turn` is how many answers the client believes are already recorded. A retried
+    request (a lost response, a double click) carries a stale count and is refused instead of
+    being recorded as the answer to the next question and charged again."""
     reconcile(db, session)
     if session.status != "active":
         raise AppError("SESSION_NOT_ACTIVE", "This session has ended.", 409)
+    if expected_turn != (session.turns or 0):
+        raise AppError(
+            "TURN_MISMATCH",
+            "That answer was already received. Reload the session to see the investor's reply.",
+            409,
+        )
+    left = headroom(db, startup.id)
+    if left is not None and left < TURN_RESERVE_TOKENS and (session.turns or 0) + 1 < MAX_ANSWERS:
+        raise AppError(
+            "AI_BUDGET_LOW",
+            "Not enough of today's AI allowance is left to keep going. End the session to score "
+            "your answers so far, or come back tomorrow.",
+            409,
+        )
     text_ = content.strip()
     if not text_:
         raise AppError("VALIDATION_ERROR", "Type an answer first.", 422)
@@ -365,7 +423,7 @@ def answer(db: Session, startup: Startup, session: MockSession, content: str) ->
 
 
 def queue_scoring(db: Session, startup: Startup, session: MockSession) -> None:
-    session.ended_at = _now()
+    session.ended_at = session.ended_at or _now()
     if session.turns == 0:  # nothing to score and nothing to spend
         session.status = "abandoned"
         db.flush()
@@ -377,10 +435,16 @@ def queue_scoring(db: Session, startup: Startup, session: MockSession) -> None:
 
 
 def end_session(db: Session, startup: Startup, session: MockSession) -> MockSession:
+    """End an active session and queue scoring. A `failed` session whose transcript still exists
+    (the provider was down, the allowance ran out, the job died) is re-queued, so ten answers are
+    never lost to a dead end. Anything else (ending, scored, abandoned) is left as it is."""
     reconcile(db, session)
     if session.status == "active":
         queue_scoring(db, startup, session)
-    return session  # already ending, scored or abandoned: ending twice is harmless
+    elif session.status == "failed" and session.turns > 0 and session.purged_at is None:
+        session.error = None
+        queue_scoring(db, startup, session)
+    return session
 
 
 def _fail(db: Session, s: MockSession, job: Job, reason: str) -> None:
@@ -456,7 +520,7 @@ def run_scoring(db: Session, job: Job, *, last_attempt: bool) -> None:
 
 
 def purge_expired(db: Session, *, now: datetime | None = None) -> dict[str, int]:
-    """Clear transcripts and context older than 90 days (the scorecard is kept) and close
+    """Clear transcripts, context and the scorecard's text older than 90 days (its ratings are kept) and close
     sessions that were left open for a day. Returns counts. No commit."""
     now = now or _now()
     cutoff = now - timedelta(days=RETENTION_DAYS)
@@ -465,6 +529,7 @@ def purge_expired(db: Session, *, now: datetime | None = None) -> dict[str, int]
         MockSession.started_at < cutoff, MockSession.purged_at.is_(None)
     ):
         s.transcript, s.context, s.purged_at = [], "", now
+        s.scorecard = strip_scorecard_text(s.scorecard)
         purged += 1
     abandoned = 0
     for s in db.query(MockSession).filter(

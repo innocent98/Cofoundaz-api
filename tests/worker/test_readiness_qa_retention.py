@@ -4,10 +4,12 @@ from types import SimpleNamespace
 from app.db.models.enums import MembershipRole
 from app.db.models.job import Job
 from app.db.models.readiness import MockSession
+from app.services.readiness import qa
 from app.worker import scheduler
 from app.worker.handlers.scheduled import handle_qa_retention
 from app.worker.scheduler import SCHED_QA_RETENTION, scheduler_tick
 from tests.factories import create_membership, create_startup, create_user
+from tests.qa_helpers import ScriptedLLM
 
 NOW = datetime(2026, 11, 6, 9, 0, tzinfo=UTC)
 
@@ -39,7 +41,14 @@ def test_the_handler_clears_old_transcripts_and_keeps_scorecards(db):
         transcript=[{"role": "founder", "text": "secret"}],
         context="numbers",
         turns=1,
-        scorecard={"answers": [{"i": 1}]},
+        scorecard=qa.build_scorecard(
+            ScriptedLLM().score,
+            [
+                {"role": "investor", "text": "What is your runway?"},
+                {"role": "founder", "text": "secret"},
+            ],
+            [],
+        ),
         rating="good",
         average=3.0,
         started_at=datetime.now(UTC) - timedelta(days=120),
@@ -48,4 +57,7 @@ def test_the_handler_clears_old_transcripts_and_keeps_scorecards(db):
     db.flush()
     handle_qa_retention(db, SimpleNamespace(payload={}))
     assert old.transcript == [] and old.context == "" and old.purged_at is not None
-    assert old.scorecard == {"answers": [{"i": 1}]} and old.rating == "good"
+    assert old.rating == "good" and old.scorecard["text_purged"] is True
+    blob = repr(old.scorecard)
+    assert "secret" not in blob and "What is your runway" not in blob and "Specific" not in blob
+    assert old.scorecard["answers"] == [{"i": 1, "rating": 4}]

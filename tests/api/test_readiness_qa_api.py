@@ -62,7 +62,9 @@ def test_start_by_role(client, team, role):
 def test_answer_and_end_by_role(client, team, role):
     _s, heads = team
     sid = _start(client, heads[MembershipRole.founder]).json()["data"]["session"]["id"]
-    m = client.post(f"{BASE}/{sid}/messages", headers=heads[role], json={"content": "hello"})
+    m = client.post(
+        f"{BASE}/{sid}/messages", headers=heads[role], json={"content": "hello", "expected_turn": 0}
+    )
     e = client.post(f"{BASE}/{sid}/end", headers=heads[role])
     if role in READINESS_WRITE_ROLES:
         assert m.status_code == 200 and e.status_code == 200, (m.text, e.text)
@@ -86,8 +88,10 @@ def test_a_team_member_never_sees_what_the_founder_said(client, db, team):
     s, heads = team
     f, tm = heads[MembershipRole.founder], heads[MembershipRole.team_member]
     sid = _start(client, f).json()["data"]["session"]["id"]
-    for _ in range(3):
-        client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": SECRET})
+    for _n in range(3):
+        client.post(
+            f"{BASE}/{sid}/messages", headers=f, json={"content": SECRET, "expected_turn": _n}
+        )
     client.post(f"{BASE}/{sid}/end", headers=f)
     _drain(db)
     db.expire_all()
@@ -112,13 +116,21 @@ def test_the_flow_start_answer_cap_score_and_list(client, db, team):
     clash = _start(client, f)
     assert clash.status_code == 409 and clash.json()["error"]["code"] == "SESSION_ACTIVE"
     for n in range(1, 10):
-        r = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": f"answer {n}"})
+        r = client.post(
+            f"{BASE}/{sid}/messages",
+            headers=f,
+            json={"content": f"answer {n}", "expected_turn": n - 1},
+        )
         assert r.status_code == 200, r.text
         assert r.json()["data"]["reply"] == f"Investor question {n + 1}?"
-    last = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "answer 10"})
+    last = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "answer 10", "expected_turn": 9}
+    )
     d = last.json()["data"]
     assert d["reply"] is None and d["ended"] is True and d["session"]["status"] == "ending"
-    after = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "11"})
+    after = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "11", "expected_turn": 10}
+    )
     assert after.status_code == 409 and after.json()["error"]["code"] == "SESSION_NOT_ACTIVE"
     _drain(db)
     db.expire_all()
@@ -146,7 +158,9 @@ def test_ending_early_and_with_no_answers(client, db, team):
     assert empty.status_code == 200 and empty.json()["data"]["session"]["status"] == "abandoned"
     assert db.query(Job).filter_by(type=qa.JOB_TYPE).count() == 0
     sid2 = _start(client, f).json()["data"]["session"]["id"]
-    client.post(f"{BASE}/{sid2}/messages", headers=f, json={"content": "one answer"})
+    client.post(
+        f"{BASE}/{sid2}/messages", headers=f, json={"content": "one answer", "expected_turn": 0}
+    )
     ended = client.post(f"{BASE}/{sid2}/end", headers=f)
     assert ended.json()["data"]["session"]["status"] == "ending"
     again = client.post(f"{BASE}/{sid2}/end", headers=f)
@@ -167,17 +181,28 @@ def test_validation_and_tenancy(client, db, team):
         == 422
     )
     sid = _start(client, f).json()["data"]["session"]["id"]
-    assert client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": ""}).status_code == 422
-    too_long = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "x" * 2001})
+    assert (
+        client.post(
+            f"{BASE}/{sid}/messages", headers=f, json={"content": "", "expected_turn": 0}
+        ).status_code
+        == 422
+    )
+    too_long = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "x" * 2001, "expected_turn": 0}
+    )
     assert too_long.status_code == 422
-    blank = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "   "})
+    blank = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "   ", "expected_turn": 0}
+    )
     assert blank.status_code == 422
     other = create_startup(db, owner=create_user(db, email_verified_at=datetime.now(UTC)))
     oh = _member(db, other, MembershipRole.founder)
     db.commit()
     for r in (
         client.get(f"{BASE}/{sid}", headers=oh),
-        client.post(f"{BASE}/{sid}/messages", headers=oh, json={"content": "hi"}),
+        client.post(
+            f"{BASE}/{sid}/messages", headers=oh, json={"content": "hi", "expected_turn": 0}
+        ),
         client.post(f"{BASE}/{sid}/end", headers=oh),
     ):
         assert r.status_code == 404
@@ -195,3 +220,51 @@ def test_budget_gates(client, db, team, monkeypatch):
     low = _start(client, f)
     assert low.status_code == 409 and low.json()["error"]["code"] == "AI_BUDGET_LOW"
     assert db.query(Job).count() == 0
+
+
+def test_expected_turn_is_required_and_a_retry_gets_409(client, db, team):
+    s, heads = team
+    f = heads[MembershipRole.founder]
+    sid = _start(client, f).json()["data"]["session"]["id"]
+    missing = client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "hi"})
+    negative = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "hi", "expected_turn": -1}
+    )
+    assert missing.status_code == 422 and negative.status_code == 422
+    first = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "hi", "expected_turn": 0}
+    )
+    assert first.status_code == 200 and first.json()["data"]["session"]["turns"] == 1
+    retry = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "hi", "expected_turn": 0}
+    )
+    assert retry.status_code == 409 and retry.json()["error"]["code"] == "TURN_MISMATCH"
+    one = client.get(f"{BASE}/{sid}", headers=f).json()["data"]
+    assert one["turns"] == 1 and [m["role"] for m in one["transcript"]] == [
+        "investor",
+        "founder",
+        "investor",
+    ]
+
+
+def test_continue_gate_and_requeue_after_a_failed_scoring(client, db, team, monkeypatch):
+    from app.core.config import settings
+
+    s, heads = team
+    f = heads[MembershipRole.founder]
+    sid = _start(client, f).json()["data"]["session"]["id"]
+    client.post(f"{BASE}/{sid}/messages", headers=f, json={"content": "one", "expected_turn": 0})
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100_000)
+    llm_budget.debit(db, s.id, 95_000)
+    db.commit()
+    low = client.post(
+        f"{BASE}/{sid}/messages", headers=f, json={"content": "two", "expected_turn": 1}
+    )
+    assert low.status_code == 409 and low.json()["error"]["code"] == "AI_BUDGET_LOW"
+    # Ending is still allowed; scoring then fails for lack of allowance, and ending again re-queues.
+    ended = client.post(f"{BASE}/{sid}/end", headers=f)
+    assert ended.json()["data"]["session"]["status"] == "ending"
+    _drain(db)
+    db.expire_all()
+    failed = client.get(f"{BASE}/{sid}", headers=f).json()["data"]
+    assert failed["status"] == "scored" or failed["error"] == "over_budget"

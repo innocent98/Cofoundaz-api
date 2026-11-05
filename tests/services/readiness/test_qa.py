@@ -52,7 +52,7 @@ def _started(db, ws, **kw):
 
 def _answer_n(db, s, session, n):
     for i in range(n):
-        qa.answer(db, s, session, f"Answer {i + 1}: we make 1.6m naira a month.")
+        qa.answer(db, s, session, f"Answer {i + 1}: we make 1.6m naira a month.", session.turns)
 
 
 def _score(db, session, *, last=False, attempts=1):
@@ -210,7 +210,7 @@ def test_start_with_the_allowance_spent_mid_call_raises(db, ws, monkeypatch):
 def test_answers_build_the_transcript_and_the_tenth_queues_scoring(db, ws, llm):
     _u, s = ws
     session = _started(db, ws)
-    out = qa.answer(db, s, session, "  We make 1.6m a month.  ")
+    out = qa.answer(db, s, session, "  We make 1.6m a month.  ", 0)
     assert out == {"reply": "Investor question 2?", "ended": False}
     assert session.turns == 1 and session.transcript[1] == {
         "role": "founder",
@@ -221,14 +221,14 @@ def test_answers_build_the_transcript_and_the_tenth_queues_scoring(db, ws, llm):
     assert [m.role for m in llm.turn_calls[-1]] == ["system", "assistant", "user"]
     _answer_n(db, s, session, 8)
     assert session.turns == 9 and session.status == "active"
-    last = qa.answer(db, s, session, "Final answer")
+    last = qa.answer(db, s, session, "Final answer", 9)
     assert last == {"reply": None, "ended": True}
     assert session.status == "ending" and session.turns == qa.MAX_ANSWERS
     job = db.get(Job, session.job_id)
     assert job.type == qa.JOB_TYPE and llm_budget.is_ai_enrichment_job(job.type)
     assert len(llm.turn_calls) == 10  # opening + 9 replies; none after the cap
     with pytest.raises(AppError) as e:
-        qa.answer(db, s, session, "one more")
+        qa.answer(db, s, session, "one more", 10)
     assert e.value.code == "SESSION_NOT_ACTIVE"
 
 
@@ -236,11 +236,11 @@ def test_blank_answer_and_spent_allowance(db, ws, llm, monkeypatch):
     _u, s = ws
     session = _started(db, ws)
     with pytest.raises(AppError) as e:
-        qa.answer(db, s, session, "   ")
+        qa.answer(db, s, session, "   ", 0)
     assert e.value.http_status == 422
     monkeypatch.setattr(qa, "metered_complete", lambda *_a, **_k: None)
     with pytest.raises(AiBudgetExhausted):
-        qa.answer(db, s, session, "A real answer")
+        qa.answer(db, s, session, "A real answer", 0)
 
 
 def test_end_with_no_answers_costs_nothing_and_ending_twice_is_harmless(db, ws, llm):
@@ -313,7 +313,6 @@ def test_scoring_compares_with_earlier_sessions(db, ws, llm):
 
 
 def test_scoring_failures_are_honest_and_retries_do_not_double_spend(db, ws, monkeypatch):
-    u, s = ws
     boom = ScriptedLLM(boom_on="score")
     monkeypatch.setattr(llm_budget, "get_llm_client", lambda: boom)
     billed = []
@@ -420,7 +419,13 @@ def test_purge_clears_transcripts_after_90_days_keeps_scorecards_and_closes_forg
     out = qa.purge_expired(db)
     assert out == {"purged": 1, "abandoned": 1}
     assert old.transcript == [] and old.context == "" and old.purged_at is not None
-    assert old.scorecard["answers"] and old.rating == "good"  # the scorecard stays
+    assert old.rating == "good" and old.average == 3.67  # the ratings stay
+    blob = repr(old.scorecard)
+    for word in ("1.6m naira", "Investor question", "Specific and numbers-backed", "We compete"):
+        assert word not in blob  # no question, answer, feedback or model answer survives
+    assert old.scorecard["text_purged"] is True
+    assert old.scorecard["answers"][0] == {"i": 1, "rating": 4}
+    assert old.scorecard["weakest"] == {"i": 2} and old.scorecard["strongest"] == {"i": 3}
     assert fresh.transcript and fresh.purged_at is None
     assert forgotten.status == "abandoned"
     assert qa.detail(old)["transcript_purged"] is True
@@ -465,3 +470,150 @@ def test_history_logs_the_session_and_marks_it(db, ws, llm):
     assert entry["id"] == str(session.id) and entry["rating"] == "good"
     assert entry["focus"] == "financials" and entry["duration_minutes"] >= 1
     assert any(m["label"] == "Mock Q&A scored (Good)" for m in out["markers"])
+
+
+def test_strip_scorecard_text_keeps_numbers_only():
+    card = qa.build_scorecard(ScriptedLLM().score, _transcript(), [3.0])
+    out = qa.strip_scorecard_text(card)
+    assert set(out) == {
+        "rating",
+        "rating_label",
+        "average",
+        "answers",
+        "strongest",
+        "weakest",
+        "trend",
+        "text_purged",
+    }
+    assert out["trend"] == card["trend"] and out["rating_label"] == "Good"
+    assert qa.strip_scorecard_text(None) is None
+    assert qa.strip_scorecard_text({"answers": []})["strongest"] is None
+
+
+# ---- review fixes -----------------------------------------------------------------------------
+
+
+def test_reconcile_never_flips_a_session_scored_in_the_meantime(db, ws, llm):
+    """A reader loaded the session while it was `ending`; the worker then committed the score and
+    the job. The reader's reconcile must not overwrite that with `failed`."""
+    from sqlalchemy import update
+
+    session = _ended(db, ws)
+    stale_status = session.status
+    assert stale_status == "ending"
+    db.execute(
+        update(MockSession)
+        .where(MockSession.id == session.id)
+        .values(status="scored", rating="good")
+        .execution_options(synchronize_session=False)
+    )
+    db.get(Job, session.job_id).status = JobStatus.succeeded
+    db.flush()
+    assert session.status == "ending"  # the object in memory is stale
+    assert qa.reconcile(db, session) is False
+    assert session.status == "scored" and session.error is None
+
+
+def test_a_forgotten_active_session_is_closed_only_if_still_active(db, ws, llm):
+    from sqlalchemy import update
+
+    session = _started(db, ws)
+    session.updated_at = datetime.now(UTC) - timedelta(hours=3)
+    db.flush()
+    db.execute(
+        update(MockSession)
+        .where(MockSession.id == session.id)
+        .values(status="ending")
+        .execution_options(synchronize_session=False)
+    )
+    db.flush()
+    assert session.status == "active"  # stale in memory
+    assert qa.reconcile(db, session) is False and session.status == "ending"
+
+
+def test_continuing_is_refused_when_the_day_cannot_pay_for_a_turn_and_scoring(
+    db, ws, llm, monkeypatch
+):
+    u, s = ws
+    session = _started(db, ws)
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100_000)
+    llm_budget.debit(db, s.id, 100_000 - qa.TURN_RESERVE_TOKENS + 1)
+    calls = len(llm.turn_calls)
+    with pytest.raises(AppError) as e:
+        qa.answer(db, s, session, "An answer", 0)
+    assert e.value.code == "AI_BUDGET_LOW" and e.value.http_status == 409
+    assert session.turns == 0 and len(session.transcript) == 1 and len(llm.turn_calls) == calls
+    # The founder can still end it and have what they have scored.
+    qa.end_session(db, s, session)
+    assert session.status == "abandoned"  # nothing answered, nothing to score
+
+
+def test_the_last_answer_needs_no_turn_budget_and_unlimited_never_refuses(db, ws, llm, monkeypatch):
+    u, s = ws
+    session = _started(db, ws)
+    _answer_n(db, s, session, 9)
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 100_000)
+    llm_budget.debit(db, s.id, 99_000)  # almost nothing left
+    assert qa.answer(db, s, session, "Final", 9) == {"reply": None, "ended": True}
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 0)
+    again = qa.start_session(db, s, u.id, "team", "friendly_angel")
+    assert qa.answer(db, s, again, "Fine", 0)["ended"] is False
+
+
+def test_a_failed_scoring_with_a_transcript_can_be_requeued(db, ws, llm):
+    u, s = ws
+    session = _ended(db, ws)
+    first_job = session.job_id
+    ended_at = session.ended_at
+    db.get(Job, first_job).status = JobStatus.failed
+    db.flush()
+    assert qa.get_session(db, s.id, session.id).status == "failed"
+    qa.end_session(db, s, session)
+    assert session.status == "ending" and session.error is None
+    assert session.job_id != first_job and session.ended_at == ended_at
+    assert _score(db, session).result["status"] == "scored"
+    # A scored session is not re-queued, nor a purged or empty one.
+    n = db.query(Job).filter_by(type=qa.JOB_TYPE).count()
+    qa.end_session(db, s, session)
+    assert db.query(Job).filter_by(type=qa.JOB_TYPE).count() == n
+    purged = MockSession(
+        startup_id=s.id,
+        focus="team",
+        intensity="friendly_angel",
+        status="failed",
+        turns=3,
+        transcript=[],
+        context="",
+        purged_at=datetime.now(UTC),
+    )
+    empty = MockSession(
+        startup_id=s.id,
+        focus="team",
+        intensity="friendly_angel",
+        status="failed",
+        turns=0,
+        transcript=[],
+        context="",
+    )
+    db.add_all([purged, empty])
+    db.flush()
+    qa.end_session(db, s, purged)
+    qa.end_session(db, s, empty)
+    assert purged.status == "failed" and empty.status == "failed"
+    assert db.query(Job).filter_by(type=qa.JOB_TYPE).count() == n
+
+
+def test_a_retried_answer_is_refused_not_recorded_twice_or_charged_twice(db, ws, llm):
+    _u, s = ws
+    session = _started(db, ws)
+    qa.answer(db, s, session, "First answer", 0)
+    calls, used = len(llm.turn_calls), _used(db, s)
+    with pytest.raises(AppError) as e:  # the same request again: the client still says 0
+        qa.answer(db, s, session, "First answer", 0)
+    assert e.value.code == "TURN_MISMATCH" and e.value.http_status == 409
+    with pytest.raises(AppError):
+        qa.answer(db, s, session, "From the future", 5)
+    assert session.turns == 1 and len(llm.turn_calls) == calls and _used(db, s) == used
+    assert [m["role"] for m in session.transcript] == ["investor", "founder", "investor"]
+    qa.answer(db, s, session, "Second answer", 1)
+    assert session.turns == 2

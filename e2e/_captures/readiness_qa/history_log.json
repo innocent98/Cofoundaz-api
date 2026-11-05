@@ -3,7 +3,7 @@
     "range": 30,
     "points": [
       {
-        "at": "2026-11-05T19:31:39.483610+00:00",
+        "at": "2026-11-05T20:00:47.369119+00:00",
         "score": 4,
         "band": "not_yet",
         "capped": false,
@@ -19,15 +19,15 @@
     ],
     "markers": [
       {
-        "at": "2026-11-05T19:31:39.500412+00:00",
+        "at": "2026-11-05T20:00:47.386528+00:00",
         "label": "Mock Q&A scored (Good)"
       }
     ],
     "log": [
       {
         "type": "qa_session",
-        "at": "2026-11-05T19:31:39.500412+00:00",
-        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "at": "2026-11-05T20:00:47.386528+00:00",
+        "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
         "focus": "financials",
         "intensity": "skeptical_vc",
         "duration_minutes": 1,

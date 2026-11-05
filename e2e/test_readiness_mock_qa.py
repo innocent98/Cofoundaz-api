@@ -127,14 +127,31 @@ def test_mock_qa_journey(base_url, make_verified_user, capture, unique_email, ma
 
         # 5. Answer a few times.
         for n in range(3):
-            ans = c.post(f"{Q}/{sid}/messages", headers=wh, json={"content": f"{SECRET} ({n})"})
+            ans = c.post(
+                f"{Q}/{sid}/messages",
+                headers=wh,
+                json={"content": f"{SECRET} ({n})", "expected_turn": n},
+            )
             assert ans.status_code == 200, ans.text
             if n == 0:
                 capture(G, "answer_200", ans)
-        blank = c.post(f"{Q}/{sid}/messages", headers=wh, json={"content": "   "})
+        retry = c.post(
+            f"{Q}/{sid}/messages", headers=wh, json={"content": SECRET, "expected_turn": 0}
+        )
+        assert retry.status_code == 409, retry.text
+        assert retry.json()["error"]["code"] == "TURN_MISMATCH"
+        capture(G, "answer_retry_409", retry)
+        missing = c.post(f"{Q}/{sid}/messages", headers=wh, json={"content": "no turn given"})
+        assert missing.status_code == 422, missing.text
+        capture(G, "answer_missing_expected_turn_422", missing)
+        blank = c.post(
+            f"{Q}/{sid}/messages", headers=wh, json={"content": "   ", "expected_turn": 3}
+        )
         assert blank.status_code == 422, blank.text
         capture(G, "answer_blank_422", blank)
-        long = c.post(f"{Q}/{sid}/messages", headers=wh, json={"content": "x" * 2001})
+        long = c.post(
+            f"{Q}/{sid}/messages", headers=wh, json={"content": "x" * 2001, "expected_turn": 3}
+        )
         assert long.status_code == 422, long.text
         capture(G, "answer_too_long_422", long)
 
@@ -147,7 +164,9 @@ def test_mock_qa_journey(base_url, make_verified_user, capture, unique_email, ma
         again = c.post(f"{Q}/{sid}/end", headers=wh)
         assert again.status_code == 200 and again.json()["data"]["session"]["status"] == "ending"
         capture(G, "job_queued", c.get(f"/api/v1/jobs/{job_id}", headers=wh))
-        no_more = c.post(f"{Q}/{sid}/messages", headers=wh, json={"content": "one more"})
+        no_more = c.post(
+            f"{Q}/{sid}/messages", headers=wh, json={"content": "one more", "expected_turn": 3}
+        )
         assert no_more.status_code == 409, no_more.text
         assert no_more.json()["error"]["code"] == "SESSION_NOT_ACTIVE"
         capture(G, "answer_after_end_409", no_more)
@@ -198,7 +217,9 @@ def test_mock_qa_journey(base_url, make_verified_user, capture, unique_email, ma
         tm_start = c.post(Q, headers=tm, json={"focus": "market", "intensity": "friendly_angel"})
         assert tm_start.status_code == 403, tm_start.text
         capture(G, "team_member_start_403", tm_start)
-        tm_answer = c.post(f"{Q}/{sid}/messages", headers=tm, json={"content": "hi"})
+        tm_answer = c.post(
+            f"{Q}/{sid}/messages", headers=tm, json={"content": "hi", "expected_turn": 3}
+        )
         assert tm_answer.status_code == 403
 
         # 10. A mentor sees nothing; a stranger's session id is a 404.

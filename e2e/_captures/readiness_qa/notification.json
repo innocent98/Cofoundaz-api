@@ -1,17 +1,17 @@
 {
-  "id": "d492fa9d-8f34-4593-975f-05252ab16885",
+  "id": "e2172c0a-8e3d-4c2c-adbd-f1d1f18671a8",
   "type": "readiness.qa.scored",
   "title": "Mock Q&A session summary ready",
   "body": "See scorecard",
   "data": {
     "rating": "good",
     "average": 3.67,
-    "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
-    "startup_id": "da1b27fb-85a1-4a49-af54-a2dd6e2d52e7"
+    "session_id": "2f66a465-bff4-4464-a1e2-e525133066e5",
+    "startup_id": "711cc824-9685-47d6-8b59-4aeb264a8ebd"
   },
   "read": false,
   "archived": false,
   "priority": "normal",
   "module": "readiness",
-  "created_at": "2026-11-05T19:31:39.483610+00:00"
+  "created_at": "2026-11-05T20:00:47.369119+00:00"
 }

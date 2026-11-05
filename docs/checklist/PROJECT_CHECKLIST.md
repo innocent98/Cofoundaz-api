@@ -3891,7 +3891,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
   - [x] Scoring job `ai.readiness.qa_score` under the AI budget; ratings clamped, strongest/weakest/overall decided in code; failed calls billed so retries are not free
   - [x] Roles per D-IR-4/7: founder everything, team member ratings and counts only (tested: no words leak), others 403
   - [x] `story.mock_qa` signal, History log + markers, "Mock Q&A session summary ready" notification (founders)
-  - [x] 90-day transcript purge (daily job) tested; migration round trip; live e2e (stub investor, scripted scorer)
+  - [x] `expected_turn` double-submit guard, continue-time budget gate, failed scoring re-queueable; 90-day purge (transcript, context and scorecard text; daily job) tested; migration round trip; live e2e (stub investor, scripted scorer)
   - [ ] _Not verified:_ a real model run (questions, ratings, token cost); the purge job on a live worker
 - [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
 - [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk

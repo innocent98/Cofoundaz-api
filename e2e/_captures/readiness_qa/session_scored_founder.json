@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
     "focus": "financials",
     "intensity": "skeptical_vc",
     "status": "scored",
@@ -10,43 +10,43 @@
     "rating": "good",
     "rating_label": "Good",
     "average": 3.67,
-    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
-    "started_at": "2026-11-05T19:31:38.452348+00:00",
-    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "job_id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
+    "started_at": "2026-11-05T20:00:46.166375+00:00",
+    "ended_at": "2026-11-05T20:00:46.563408+00:00",
     "duration_minutes": 1,
     "transcript": [
       {
-        "at": "2026-11-05T19:31:38.459148+00:00",
+        "at": "2026-11-05T20:00:46.170561+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       },
       {
-        "at": "2026-11-05T19:31:38.540306+00:00",
+        "at": "2026-11-05T20:00:46.342190+00:00",
         "role": "founder",
         "text": "Our runway is 4.2 months and we are talking to two banks. (0)"
       },
       {
-        "at": "2026-11-05T19:31:38.541379+00:00",
+        "at": "2026-11-05T20:00:46.342775+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       },
       {
-        "at": "2026-11-05T19:31:38.573663+00:00",
+        "at": "2026-11-05T20:00:46.391282+00:00",
         "role": "founder",
         "text": "Our runway is 4.2 months and we are talking to two banks. (1)"
       },
       {
-        "at": "2026-11-05T19:31:38.574387+00:00",
+        "at": "2026-11-05T20:00:46.391921+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       },
       {
-        "at": "2026-11-05T19:31:38.602842+00:00",
+        "at": "2026-11-05T20:00:46.417716+00:00",
         "role": "founder",
         "text": "Our runway is 4.2 months and we are talking to two banks. (2)"
       },
       {
-        "at": "2026-11-05T19:31:38.604184+00:00",
+        "at": "2026-11-05T20:00:46.418526+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       }

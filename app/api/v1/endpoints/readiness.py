@@ -190,7 +190,7 @@ def answer_qa_session(
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
     s = qa.get_for_update(db, membership.startup_id, session_id)
-    result = qa.answer(db, startup, s, body.content)
+    result = qa.answer(db, startup, s, body.content, body.expected_turn)
     db.commit()
     return success_response({"session": qa.summary(s), **result})
 

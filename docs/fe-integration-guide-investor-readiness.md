@@ -1457,7 +1457,8 @@ The words a founder typed in an answer practice interview are never returned to 
 
 1. `POST /qa-sessions` `{"focus", "intensity"}`. `focus` is `general | financials | market | team`; `intensity` is `friendly_angel | skeptical_vc | term_sheet_grilling`
    (the FE maps these to "Friendly angel", "Skeptical VC", "Term-sheet grilling"). It returns **201** with the session and the investor's opening question.
-2. `POST /qa-sessions/{id}/messages` `{"content"}` (1 to 2000 characters) once per answer. Each call is one model call and returns the next question.
+2. `POST /qa-sessions/{id}/messages` `{"content", "expected_turn"}` once per answer. `content` is 1 to 2000 characters. **`expected_turn` is required**:
+   the session's current `turns` (0 for the first answer, then the `turns` from the last response). It makes a retry safe: see 13.5. Each call is one model call and returns the next question.
    Show a typing state: it takes a few seconds with a real model. **The 10th answer returns `reply: null, ended: true`** and starts scoring by itself.
 3. `POST /qa-sessions/{id}/end` ends early and starts scoring (the Q&A "End session" button). Ending twice is harmless.
 4. Poll `GET /api/v1/jobs/{job_id}` every 2 s (stop after about 90 s), or poll the session, until `status` is `scored` or `failed`. Show
@@ -1500,7 +1501,7 @@ Started. The founder's response includes the full `session` (with `transcript`),
 {
   "data": {
     "session": {
-      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
       "focus": "financials",
       "intensity": "skeptical_vc",
       "status": "active",
@@ -1511,12 +1512,12 @@ Started. The founder's response includes the full `session` (with `transcript`),
       "rating_label": null,
       "average": null,
       "job_id": null,
-      "started_at": "2026-11-05T19:31:38.452348+00:00",
+      "started_at": "2026-11-05T20:00:46.166375+00:00",
       "ended_at": null,
       "duration_minutes": null,
       "transcript": [
         {
-          "at": "2026-11-05T19:31:38.459148+00:00",
+          "at": "2026-11-05T20:00:46.170561+00:00",
           "role": "investor",
           "text": "[stub-llm] AI-generated assessment narrative."
         }
@@ -1558,7 +1559,7 @@ The response carries a summary `session` (no transcript), the next `reply`, and 
 {
   "data": {
     "session": {
-      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
       "focus": "financials",
       "intensity": "skeptical_vc",
       "status": "active",
@@ -1569,7 +1570,7 @@ The response carries a summary `session` (no transcript), the next `reply`, and 
       "rating_label": null,
       "average": null,
       "job_id": null,
-      "started_at": "2026-11-05T19:31:38.452348+00:00",
+      "started_at": "2026-11-05T20:00:46.166375+00:00",
       "ended_at": null,
       "duration_minutes": null
     },
@@ -1579,6 +1580,43 @@ The response carries a summary `session` (no transcript), the next `reply`, and 
   "meta": null
 }
 ```
+
+**Double submits and retries.** Send `expected_turn` equal to the `turns` you last saw. If a request is repeated (a lost response, a double click, a
+network retry), the server has already recorded that answer, `turns` has moved on, and the repeat is refused with **409 `TURN_MISMATCH`** instead of being
+recorded as the answer to the next question and charged again:
+
+```json
+{
+  "error": {
+    "code": "TURN_MISMATCH",
+    "message": "That answer was already received. Reload the session to see the investor's reply.",
+    "field_errors": []
+  }
+}
+```
+
+FE: on `TURN_MISMATCH`, do not resend. Reload the session (`GET /qa-sessions/{id}`) and show the investor's reply from `transcript`, then continue with
+the new `turns`. A missing `expected_turn` is a 422:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "expected_turn",
+        "message": "Field required"
+      }
+    ]
+  }
+}
+```
+
+**Running low mid-session.** Before each answer (except the 10th, which needs no reply) the server checks that the day's allowance can pay for one more turn
+and for scoring (about 12,000 tokens). If not it returns **409 `AI_BUDGET_LOW`** ("Not enough of today's AI allowance is left to keep going. End the
+session to score your answers so far, or come back tomorrow.") and records nothing: offer "End and score" or "Come back tomorrow". Unit-tested and
+API-tested, not captured live.
 
 Rejected:
 
@@ -1625,7 +1663,7 @@ After the session has ended (or is scoring):
 {
   "data": {
     "session": {
-      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
       "focus": "financials",
       "intensity": "skeptical_vc",
       "status": "ending",
@@ -1635,9 +1673,9 @@ After the session has ended (or is scoring):
       "rating": null,
       "rating_label": null,
       "average": null,
-      "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
-      "started_at": "2026-11-05T19:31:38.452348+00:00",
-      "ended_at": "2026-11-05T19:31:38.733848+00:00",
+      "job_id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
+      "started_at": "2026-11-05T20:00:46.166375+00:00",
+      "ended_at": "2026-11-05T20:00:46.563408+00:00",
       "duration_minutes": 1
     }
   },
@@ -1651,7 +1689,7 @@ Ending a session with **no answers** is not scored and costs nothing: its status
 {
   "data": {
     "session": {
-      "id": "9a17cbfc-0b35-48d1-8758-fa6a41f01973",
+      "id": "5610cd73-d6ae-432a-b1c9-1cbe26ab7038",
       "focus": "team",
       "intensity": "friendly_angel",
       "status": "abandoned",
@@ -1662,8 +1700,8 @@ Ending a session with **no answers** is not scored and costs nothing: its status
       "rating_label": null,
       "average": null,
       "job_id": null,
-      "started_at": "2026-11-05T19:31:43.205717+00:00",
-      "ended_at": "2026-11-05T19:31:43.254956+00:00",
+      "started_at": "2026-11-05T20:00:51.349732+00:00",
+      "ended_at": "2026-11-05T20:00:51.373382+00:00",
       "duration_minutes": 1
     }
   },
@@ -1678,7 +1716,7 @@ Queued, then after the worker ran it:
 ```json
 {
   "data": {
-    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
     "type": "ai.readiness.qa_score",
     "status": "queued",
     "result": null,
@@ -1691,12 +1729,12 @@ Queued, then after the worker ran it:
 ```json
 {
   "data": {
-    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
     "type": "ai.readiness.qa_score",
     "status": "succeeded",
     "result": {
       "status": "scored",
-      "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62"
+      "session_id": "2f66a465-bff4-4464-a1e2-e525133066e5"
     },
     "error": null
   },
@@ -1707,12 +1745,16 @@ Queued, then after the worker ran it:
 Like deck reviews, a job can end `succeeded` while the session says `failed`: **read the session's `status`**. `error` is `over_budget`,
 `generation_failed`, `transcript_gone` or `job_failed` (the job died; set the next time the session is read).
 
+**A failed scoring is recoverable.** While the transcript still exists (not purged, at least one answer), calling `POST /qa-sessions/{id}/end` on a
+`failed` session queues scoring again (status goes back to `ending`, `error` clears, a new `job_id`). Show a "Try scoring again" button on a failed
+session with `transcript_purged: false`; the ten answers are not lost. A `failed` session with `error: "transcript_gone"` cannot be re-queued.
+
 The founder's scorecard (transcript and answers trimmed here; the rest has the same shape):
 
 ```json
 {
   "data": {
-    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
     "focus": "financials",
     "intensity": "skeptical_vc",
     "status": "scored",
@@ -1722,23 +1764,23 @@ The founder's scorecard (transcript and answers trimmed here; the rest has the s
     "rating": "good",
     "rating_label": "Good",
     "average": 3.67,
-    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
-    "started_at": "2026-11-05T19:31:38.452348+00:00",
-    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "job_id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
+    "started_at": "2026-11-05T20:00:46.166375+00:00",
+    "ended_at": "2026-11-05T20:00:46.563408+00:00",
     "duration_minutes": 1,
     "transcript": [
       {
-        "at": "2026-11-05T19:31:38.459148+00:00",
+        "at": "2026-11-05T20:00:46.170561+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       },
       {
-        "at": "2026-11-05T19:31:38.540306+00:00",
+        "at": "2026-11-05T20:00:46.342190+00:00",
         "role": "founder",
         "text": "Our runway is 4.2 months and we are talking to two banks. (0)"
       },
       {
-        "at": "2026-11-05T19:31:38.541379+00:00",
+        "at": "2026-11-05T20:00:46.342775+00:00",
         "role": "investor",
         "text": "[stub-llm] AI-generated assessment narrative."
       },
@@ -1796,7 +1838,11 @@ Notes:
 - `trend` is `null` for the first scored session; afterwards it compares this average with up to the last five scored sessions.
 - Answers the scorer did not rate default to 1. With a real model every answer is rated; this capture's scripted scorer rated only three.
 - `transcript[].role` is `investor` or `founder`. Transcripts are kept for **90 days**; after that `transcript` is `[]` and `transcript_purged` is
-  `true`, but the `scorecard` stays. Say so on old sessions.
+  `true`, and **the scorecard loses all its text too**: it keeps only the numbers and which answers were picked. The purged shape (unit-tested, not
+  captured live because it needs a 90-day-old session):
+  `{"rating", "rating_label", "average", "answers": [{"i": 1, "rating": 4}, ...], "strongest": {"i": 3}, "weakest": {"i": 2}, "trend", "text_purged": true}`.
+  On a purged session show the ratings only and say the words were removed after 90 days. Do not assume `question`, `answer`, `feedback` or
+  `model_answer` exist when `scorecard.text_purged` is `true`.
 - Closing copy "Rough edges found here are cheap. Found in the room, they're expensive." is the FE's.
 
 ### 13.8 What a team member gets
@@ -1806,7 +1852,7 @@ The same session, as a team member sees it. No `transcript`, `scorecard` or `ans
 ```json
 {
   "data": {
-    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
     "focus": "financials",
     "intensity": "skeptical_vc",
     "status": "scored",
@@ -1816,9 +1862,9 @@ The same session, as a team member sees it. No `transcript`, `scorecard` or `ans
     "rating": "good",
     "rating_label": "Good",
     "average": 3.67,
-    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
-    "started_at": "2026-11-05T19:31:38.452348+00:00",
-    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "job_id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
+    "started_at": "2026-11-05T20:00:46.166375+00:00",
+    "ended_at": "2026-11-05T20:00:46.563408+00:00",
     "duration_minutes": 1
   },
   "meta": null
@@ -1832,7 +1878,7 @@ And the list (same summary per session, newest first):
   "data": {
     "sessions": [
       {
-        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
         "focus": "financials",
         "intensity": "skeptical_vc",
         "status": "scored",
@@ -1842,9 +1888,9 @@ And the list (same summary per session, newest first):
         "rating": "good",
         "rating_label": "Good",
         "average": 3.67,
-        "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
-        "started_at": "2026-11-05T19:31:38.452348+00:00",
-        "ended_at": "2026-11-05T19:31:38.733848+00:00",
+        "job_id": "6404e4ca-8f40-45c9-9f6a-d091b6a75e8d",
+        "started_at": "2026-11-05T20:00:46.166375+00:00",
+        "ended_at": "2026-11-05T20:00:46.563408+00:00",
         "duration_minutes": 1
       }
     ]
@@ -1916,7 +1962,7 @@ page's session table (Date, Focus, Intensity, Duration, Rating); `markers` gets 
     "range": 30,
     "points": [
       {
-        "at": "2026-11-05T19:31:39.483610+00:00",
+        "at": "2026-11-05T20:00:47.369119+00:00",
         "score": 4,
         "band": "not_yet",
         "capped": false,
@@ -1932,15 +1978,15 @@ page's session table (Date, Focus, Intensity, Duration, Rating); `markers` gets 
     ],
     "markers": [
       {
-        "at": "2026-11-05T19:31:39.500412+00:00",
+        "at": "2026-11-05T20:00:47.386528+00:00",
         "label": "Mock Q&A scored (Good)"
       }
     ],
     "log": [
       {
         "type": "qa_session",
-        "at": "2026-11-05T19:31:39.500412+00:00",
-        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "at": "2026-11-05T20:00:47.386528+00:00",
+        "id": "2f66a465-bff4-4464-a1e2-e525133066e5",
         "focus": "financials",
         "intensity": "skeptical_vc",
         "duration_minutes": 1,
@@ -1958,21 +2004,21 @@ The bell notification (founders only) when scoring finishes. Route it to the sco
 
 ```json
 {
-  "id": "d492fa9d-8f34-4593-975f-05252ab16885",
+  "id": "e2172c0a-8e3d-4c2c-adbd-f1d1f18671a8",
   "type": "readiness.qa.scored",
   "title": "Mock Q&A session summary ready",
   "body": "See scorecard",
   "data": {
     "rating": "good",
     "average": 3.67,
-    "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
-    "startup_id": "da1b27fb-85a1-4a49-af54-a2dd6e2d52e7"
+    "session_id": "2f66a465-bff4-4464-a1e2-e525133066e5",
+    "startup_id": "711cc824-9685-47d6-8b59-4aeb264a8ebd"
   },
   "read": false,
   "archived": false,
   "priority": "normal",
   "module": "readiness",
-  "created_at": "2026-11-05T19:31:39.483610+00:00"
+  "created_at": "2026-11-05T20:00:47.369119+00:00"
 }
 ```
 
@@ -1985,12 +2031,12 @@ characters per answer, one open session per workspace.
 
 | Behaviour | Verified |
 |---|---|
-| Start 201, opening question, one-session 409, answers, blank and over-long 422, answer after end 409 | live (stub investor) |
+| Start 201, opening question, one-session 409, answers, blank and over-long 422, answer after end 409, retry 409 `TURN_MISMATCH`, missing `expected_turn` 422 | live (stub investor) |
 | End (early and with no answers), job queued then succeeded, scorecard shape, ratings, strongest, weakest | live (scripted scorer) |
 | Real model questions, real ratings and feedback, real token cost | **not verified**: stub and scripted models only |
 | Story signal, score refresh, history log and marker, bell notification | live |
 | Team member sees ratings and counts only; start and answer 403; mentor 403; other workspace 404 | live; all 7 roles on every route: unit-tested |
 | 10th answer ends the session by itself | unit-tested and API-tested; not in the live run (it would need 10 calls) |
-| 409 `AI_BUDGET_LOW`, 429 mid-session, scoring failures (`over_budget`, `generation_failed`, `job_failed`, `transcript_gone`) | unit-tested only |
-| Transcripts cleared after 90 days, forgotten sessions closed after a day (daily job) | unit-tested; the daily job was not run live |
+| 409 `AI_BUDGET_LOW` (start and mid-session), 429 mid-call, scoring failures (`over_budget`, `generation_failed`, `job_failed`, `transcript_gone`), re-queue of a failed scoring | unit-tested only |
+| Transcripts and scorecard text cleared after 90 days, forgotten sessions closed after a day (daily job) | unit-tested; the daily job was not run live |
 | Prompt-injection fence on founder answers | unit-tested (prompt shape), not tested against a real model |

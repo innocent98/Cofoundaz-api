@@ -1,7 +1,7 @@
 {
   "data": {
     "session": {
-      "id": "9a17cbfc-0b35-48d1-8758-fa6a41f01973",
+      "id": "5610cd73-d6ae-432a-b1c9-1cbe26ab7038",
       "focus": "team",
       "intensity": "friendly_angel",
       "status": "abandoned",
@@ -12,8 +12,8 @@
       "rating_label": null,
       "average": null,
       "job_id": null,
-      "started_at": "2026-11-05T19:31:43.205717+00:00",
-      "ended_at": "2026-11-05T19:31:43.254956+00:00",
+      "started_at": "2026-11-05T20:00:51.349732+00:00",
+      "ended_at": "2026-11-05T20:00:51.373382+00:00",
       "duration_minutes": 1
     }
   },
