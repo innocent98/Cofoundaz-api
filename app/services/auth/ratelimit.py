@@ -133,6 +133,8 @@ _KNOWN_IP_DAYS = 30
 
 def _is_known_ip(email: str, ip: str | None) -> bool:
     """Has this account signed in successfully from this address in the last 30 days?"""
+    if not ip:
+        return False  # no address, nothing to recognise (never match the shared "unknown" bucket)
     redis = get_redis()
     key = _known_ips_key(email)
     score = redis.zscore(key, _h(ip_bucket(ip) or "unknown", 16))
@@ -143,6 +145,8 @@ def record_successful_sign_in(email: str, ip: str | None) -> None:
     """Remember the address of a good sign-in (hashed, /64 for IPv6). The email-wide counter
     never refuses these, so a spread-out guess at someone's password cannot lock them out of
     their own devices."""
+    if not ip:
+        return  # never remember "no address": it would exempt every client that lacks one
     redis = get_redis()
     key = _known_ips_key(email)
     now = time.time()
@@ -156,13 +160,27 @@ def record_successful_sign_in(email: str, ip: str | None) -> None:
 
 def reserve_login_attempt(email: str, ip: str | None) -> None:
     """Count this attempt, or raise ACCOUNT_LOCKED when the (email, IP) is past its limit, or
-    the email is past its all-IP ceiling and this address has no recent good sign-in."""
+    the email is past its all-IP ceiling and this address has no recent good sign-in.
+
+    The pair is reserved FIRST and a refused pair never touches the email total: otherwise one
+    address hammering past its own lock would fill the email-wide counter and lock the owner out
+    of every network they have not used in 30 days."""
     pair, pair_ttl = _incr(_pair_key(email, ip), settings.LOGIN_LOCKOUT_MINUTES * 60)
-    total, total_ttl = _incr(_email_key(email), _LOGIN_WINDOW)
     if pair > settings.LOGIN_MAX_FAILS:
         raise AccountLocked(pair_ttl)
+    total, total_ttl = _incr(_email_key(email), _LOGIN_WINDOW)
     if total > settings.LOGIN_EMAIL_MAX_FAILS and not _is_known_ip(email, ip):
         raise AccountLocked(total_ttl)
+
+
+def release_login_attempt(email: str, ip: str | None) -> None:
+    """Give back this attempt's slot (right password, 2FA still pending): it was not a failure,
+    but it is not a completed sign-in either, so earlier failures stay and the address is not
+    marked as known."""
+    redis = get_redis()
+    for key in (_pair_key(email, ip), _email_key(email)):
+        if int(cast(Any, redis.get(key)) or 0) > 0:
+            redis.decr(key)
 
 
 def record_login_failure(email: str, ip: str | None) -> None:

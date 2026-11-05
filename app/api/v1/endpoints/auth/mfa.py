@@ -22,6 +22,7 @@ from app.schemas.auth import (
 )
 from app.services.auth import mfa
 from app.services.auth.ratelimit import (
+    clear_login_failures,
     clear_mfa_failures,
     record_mfa_failure,
     record_successful_sign_in,
@@ -192,6 +193,7 @@ def challenge(
     if not mfa.claim_mfa_ticket(ticket):  # single use: only one concurrent winner gets a session
         raise MfaTicketExpired()
     clear_mfa_failures(user.id)
+    clear_login_failures(user.email, ip)
     record_successful_sign_in(user.email, ip)
     user.last_login_at = datetime.now(UTC)
     access, refresh = issue_token_pair(

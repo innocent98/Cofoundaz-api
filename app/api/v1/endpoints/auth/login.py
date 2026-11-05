@@ -22,6 +22,7 @@ from app.services.auth.ratelimit import (
     ip_bucket,
     record_login_failure,
     record_successful_sign_in,
+    release_login_attempt,
     reserve_login_attempt,
 )
 from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
@@ -73,10 +74,10 @@ def login(
         record_login_failure(payload.email, ip)
         raise InvalidCredentials()
 
-    clear_login_failures(payload.email, ip)
-    record_successful_sign_in(payload.email, ip)
-
     if user.mfa_type != MfaType.none:
+        # Right password, 2FA still to come: not a failure, not yet a sign-in. Give the slot back;
+        # the address is recorded as known only once the code is accepted (mfa.py).
+        release_login_attempt(payload.email, ip)
         ticket = issue_mfa_ticket(user.id)
         db.commit()
         # nosec B105 - not a hardcoded password. Bandit pattern-matches the
@@ -86,6 +87,8 @@ def login(
             {"mfa_required": True, "mfa_ticket": ticket, "access_token": None}  # nosec B105
         )
 
+    clear_login_failures(payload.email, ip)
+    record_successful_sign_in(payload.email, ip)
     user.last_login_at = now
     access, refresh = issue_token_pair(
         db, user, ip=ip, user_agent=request.headers.get("user-agent")

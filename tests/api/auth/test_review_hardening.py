@@ -272,3 +272,74 @@ def test_the_investor_role_cannot_be_invited_from_onboarding(client, db):
         json={"invites": [{"email": "inv@x.com", "role": "investor"}]},
     )
     assert r.status_code == 422
+
+
+# fix-check follow-ups
+
+
+def test_an_ip_hammering_past_its_own_lock_does_not_move_the_email_counter(db):
+    redis = get_redis()
+    for _ in range(settings.LOGIN_MAX_FAILS):
+        ratelimit.reserve_login_attempt("amp@x.com", "203.0.113.70")
+    email_key = ratelimit._email_key("amp@x.com")
+    before = int(redis.get(email_key))
+    for _ in range(100):  # the locked address keeps hitting
+        with pytest.raises(AccountLocked):
+            ratelimit.reserve_login_attempt("amp@x.com", "203.0.113.70")
+    assert int(redis.get(email_key)) == before == settings.LOGIN_MAX_FAILS
+
+
+def test_one_noisy_address_cannot_lock_the_owners_unused_networks(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "LOGIN_EMAIL_MAX_FAILS", 8)
+    active_user(db, "noisy@x.com")
+    db.flush()
+    hammer = _from_ip("203.0.113.71")
+    for _ in range(30):
+        hammer.post(LOGIN, json={"email": "noisy@x.com", "password": "wrong-pass-1"})
+    fresh_network = _login(_from_ip("198.51.100.77"), "noisy@x.com")
+    assert fresh_network.status_code == 200  # the email-wide total only saw the first 5
+
+
+def _mfa_user(db, email):
+    from datetime import UTC, datetime
+
+    from app.db.models.enums import MfaType
+
+    user = active_user(db, email, mfa_type=MfaType.totp, mfa_enabled_at=datetime.now(UTC))
+    db.flush()
+    return user
+
+
+def test_a_correct_password_with_2fa_pending_is_not_a_known_address_and_keeps_failures(client, db):
+    _mfa_user(db, "tfa@x.com")
+    ip = "198.51.100.81"
+    redis = get_redis()
+    pair_key = ratelimit._pair_key("tfa@x.com", ip)
+    bad = _from_ip(ip).post(LOGIN, json={"email": "tfa@x.com", "password": "wrong-pass-1"})
+    assert bad.status_code == 401
+    assert int(redis.get(pair_key)) == 1
+    ok = _login(_from_ip(ip), "tfa@x.com")
+    assert ok.json()["data"]["mfa_required"] is True
+    assert ratelimit._is_known_ip("tfa@x.com", ip) is False  # no 2FA yet: not recognised
+    assert (
+        int(redis.get(pair_key)) == 1
+    )  # the earlier failure stays; this attempt gave its slot back
+    assert int(redis.get(ratelimit._email_key("tfa@x.com"))) == 1
+
+
+def test_repeated_correct_password_logins_with_2fa_never_lock_the_pair(client, db):
+    _mfa_user(db, "tfa2@x.com")
+    c = _from_ip("198.51.100.82")
+    for _ in range(settings.LOGIN_MAX_FAILS + 3):
+        r = _login(c, "tfa2@x.com")
+        assert r.status_code == 200
+
+
+def test_a_missing_address_is_never_recorded_or_recognised(db):
+    redis = get_redis()
+    ratelimit.record_successful_sign_in("noip@x.com", None)
+    assert redis.exists(ratelimit._known_ips_key("noip@x.com")) == 0
+    # even if the shared "unknown" bucket had somehow been stored, None never matches it
+    redis.zadd(ratelimit._known_ips_key("noip@x.com"), {ratelimit._h("unknown", 16): 9e12})
+    assert ratelimit._is_known_ip("noip@x.com", None) is False
+    assert ratelimit._is_known_ip("noip@x.com", "") is False
