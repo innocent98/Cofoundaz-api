@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "status": "unlisted",
     "title": "Contract and term sheet review",
@@ -9,7 +9,7 @@
     "category": "Legal",
     "tags": [
       "contracts",
-      "term sheets"
+      "whatsapp me"
     ],
     "price_minor": 1200000,
     "currency": "NGN",
@@ -20,16 +20,16 @@
     "meeting_url": "https://meet.example.com/ngozi-eze",
     "pending_revision": null,
     "review_message": null,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "unlisted_reason": "Unlisted after a report.",
     "earnings_preview": {
       "commission_bps": 1500,
       "commission_minor": 180000,
       "net_minor": 1020000
     },
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
-    "updated_at": "2026-11-05T19:48:59.559863+00:00"
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "updated_at": "2026-11-05T20:51:59.966790+00:00"
   },
   "meta": null
 }

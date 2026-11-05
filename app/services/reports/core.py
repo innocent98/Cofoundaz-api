@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.core.redis import get_redis
 from app.db.models.ai_chat import AiMessage
-from app.db.models.audit import AuditLog
 from app.db.models.comment import Comment
 from app.db.models.content_report import ContentReport
 from app.db.models.enums import ListingStatus, ReportItemType
@@ -98,24 +97,16 @@ def set_removed(
     return True
 
 
-def _unlisted_by_report(db: Session, listing_id: uuid.UUID) -> bool:
-    """Was the listing's CURRENT unlisting done by the report flow? Read from the audit trail (the
-    latest unlist/relist row), so a listing a moderator unlisted for their own reasons is never
-    relisted by restoring a report about it."""
-    last = (
-        db.query(AuditLog)
-        .filter(
-            AuditLog.entity_type == "marketplace_listing",
-            AuditLog.entity_id == listing_id,
-            AuditLog.action.in_(("marketplace.listing.unlisted", "marketplace.listing.relisted")),
-        )
-        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
-        .first()
-    )
+REPORT_UNLIST_REASON = "Unlisted after a report."
+
+
+def _unlisted_by_report(listing: MarketplaceListing) -> bool:
+    """Was the listing's CURRENT unlisting done by the report flow? Its marker reason says so: a
+    listing a moderator unlisted for their own reasons carries theirs, and restoring a report about
+    it must never relist it. (Read from the listing, not the audit trail: each request is its own
+    transaction, but a timestamp tie between two audit rows would make the trail ambiguous.)"""
     return (
-        last is not None
-        and last.action == "marketplace.listing.unlisted"
-        and (last.details or {}).get("via") == "report"
+        listing.status == ListingStatus.unlisted and listing.unlisted_reason == REPORT_UNLIST_REASON
     )
 
 
@@ -135,7 +126,7 @@ def _set_listing_unlisted(
         return False
     if removed and listing.status in (ListingStatus.active, ListingStatus.paused):
         listing.status = ListingStatus.unlisted
-        listing.unlisted_by, listing.unlisted_reason = actor_id, "Unlisted after a report."
+        listing.unlisted_by, listing.unlisted_reason = actor_id, REPORT_UNLIST_REASON
         write_audit(
             db,
             "marketplace.listing.unlisted",
@@ -144,11 +135,7 @@ def _set_listing_unlisted(
             entity_id=listing.id,
             details={"via": "report", "report_id": str(report.id)},
         )
-    elif (
-        not removed
-        and listing.status == ListingStatus.unlisted
-        and _unlisted_by_report(db, listing.id)
-    ):
+    elif not removed and _unlisted_by_report(listing):
         listing.status = ListingStatus.active
         listing.unlisted_by, listing.unlisted_reason = None, None
         write_audit(

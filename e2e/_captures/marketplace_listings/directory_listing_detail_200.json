@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "title": "Contract review session",
     "summary": "A one hour review of your contract with written notes.",
@@ -18,10 +18,10 @@
     "revisions_included": 2,
     "next_available_at": "2026-11-06T08:00:00+00:00",
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "headline": "Corporate lawyer for early-stage startups",
-      "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+      "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
       "badge": {
         "vetted": true,
         "checks": [

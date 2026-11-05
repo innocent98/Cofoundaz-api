@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
-    "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
+    "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
     "provider_name": "Ngozi Eze",
     "provider_status": "approved",
     "type": "package",
@@ -10,10 +10,12 @@
     "price_minor": 25000000,
     "status": "rejected",
     "has_revision": false,
-    "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+    "has_flag": false,
+    "flag": null,
+    "submitted_at": "2026-11-05T20:51:59.442582+00:00",
     "revision_submitted_at": null,
     "prescreen_flags": [],
-    "created_at": "2026-11-05T19:48:58.583662+00:00",
+    "created_at": "2026-11-05T20:51:59.380263+00:00",
     "summary": "A tailored shareholder agreement for your startup.",
     "description": "A focused tailored agreement drafting your contract or term sheet, with written notes after.",
     "tags": [],
@@ -31,7 +33,7 @@
     "pending_revision": null,
     "diff": [],
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "category": "Legal",
       "status": "approved",
@@ -47,20 +49,20 @@
     "history": [
       {
         "action": "marketplace.listing.rejected",
-        "at": "2026-11-05T19:48:58.787389+00:00",
-        "actor_email": "delivered+e2e-9fa732e48235@resend.dev",
+        "at": "2026-11-05T20:51:59.560854+00:00",
+        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
         "reason": "Price does not match scope"
       },
       {
         "action": "marketplace.listing.submitted",
-        "at": "2026-11-05T19:48:58.652475+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.438820+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.created",
-        "at": "2026-11-05T19:48:58.583662+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.380263+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       }
     ]

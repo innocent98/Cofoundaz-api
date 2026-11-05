@@ -2,7 +2,7 @@
   "data": {
     "providers": [
       {
-        "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "display_name": "Ngozi Eze",
         "headline": "Corporate lawyer for early-stage startups",
         "category": "Legal",
@@ -13,7 +13,7 @@
         ],
         "location": "Lagos, Nigeria",
         "timezone": "Africa/Lagos",
-        "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+        "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
         "badge": {
           "vetted": true,
           "checks": [

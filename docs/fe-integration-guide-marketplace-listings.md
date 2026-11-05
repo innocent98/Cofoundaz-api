@@ -27,13 +27,41 @@ Founder payloads are an allow-list. They never contain: the expert's email or us
 | `unlisted` | Staff took it down | nothing (403 `LISTING_UNLISTED`) | no |
 | `rejected` | Staff said no to a first submission | edit, then submit again, or delete | no |
 
-**Editing a live listing (D-MP-L8, accepted by design).** `price_minor`, `duration_min`, `delivery_days`, `revisions_included`, `meeting_url` and `tags` change **immediately**. `title`, `summary`, `description`, `category` and `deliverables` do not: they are stored as `pending_revision` and go to the staff queue while the approved version stays live. The expert's own view shows both (`title` is still the live one, `pending_revision.title` is the proposed one). Staff approve (the edit goes live), or reject / request changes (the edit is discarded and the live listing is untouched; `review_message` says why). An edit that sets a field back to its live value is not a change. A booking (slice C) will snapshot price and text at purchase.
+**Editing a live listing (D-MP-L8, accepted by design).** `price_minor`, `duration_min`, `delivery_days`, `revisions_included`, `meeting_url` and `tags` change **immediately**. `title`, `summary`, `description`, `category` and `deliverables` do not: they are stored as `pending_revision` and go to the staff queue while the approved version stays live. The expert's own view shows both (`title` is still the live one, `pending_revision.title` is the proposed one). Staff approve (the edit goes live), or reject / request changes (the edit is discarded and the live listing is untouched; `review_message` says why). An edit that sets a field back to its live value is not a change.
+
+**A flagged at-once edit.** Price and tags go live immediately, but if the deterministic pre-screen trips on them (a phone number or "WhatsApp" in the tags, a price below N1,000 or above N10,000,000) and the flag is new compared with what staff last approved, the listing **stays live** and appears in the staff queue as a flagged edit (`has_flag`). Staff approve it (that becomes the new baseline, so the same flag is not queued again), send a message back (the item closes, the listing stays live), or unlist it. The expert never sees `flag`. A booking (slice C) will snapshot price and text at purchase.
 
 ## Money and shapes
 
 All prices are integers in **kobo** (`price_minor`, NGN only). Send integers: a string or a float is a 422. The expert's `earnings_preview` is `{commission_bps, commission_minor, net_minor}`: 15% off the expert's side by default, rounded half up to the kobo, and `commission_minor + net_minor` is always the price. The founder pays exactly the listed price.
 
 Page-numbered lists (the founder directory) return `data.pagination = {page, page_size, total}` (12 per page) and `meta: null`. Cursor lists (Admin) use `meta.next_cursor`.
+
+### Type rules (consultation vs package)
+
+Fields belong to a type: a consultation has `duration_min` and `meeting_url`; a package has `delivery_days` and `deliverables`. Sending a field for the other type is 422 `FIELD_NOT_FOR_TYPE` (on create and on edit; sending it empty is harmless). A **live** (active or paused) listing cannot lose the fields its type needs: nulling `duration_min`, `meeting_url`, `delivery_days` or emptying `deliverables` is 422 `FIELD_REQUIRED`. A draft may be emptied; it simply cannot be submitted that way.
+
+`listing_field_not_for_type_422`:
+```json
+{
+  "error": {
+    "code": "FIELD_NOT_FOR_TYPE",
+    "message": "'duration_min' doesn't apply to a package.",
+    "field_errors": []
+  }
+}
+```
+
+`listing_live_remove_required_field_422`:
+```json
+{
+  "error": {
+    "code": "FIELD_REQUIRED",
+    "message": "A live consultation needs 'duration_min'. Pause it to remove that.",
+    "field_errors": []
+  }
+}
+```
 
 ## Expert: availability
 
@@ -179,7 +207,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "status": "draft",
     "title": "Contract review session",
@@ -207,8 +235,8 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
       "commission_minor": 150000,
       "net_minor": 850000
     },
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
-    "updated_at": "2026-11-05T19:48:58.563977+00:00"
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "updated_at": "2026-11-05T20:51:59.361749+00:00"
   },
   "meta": null
 }
@@ -265,7 +293,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
     "type": "package",
     "status": "draft",
     "title": "Shareholder agreement drafting",
@@ -293,8 +321,8 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
       "commission_minor": 3750000,
       "net_minor": 21250000
     },
-    "created_at": "2026-11-05T19:48:58.583662+00:00",
-    "updated_at": "2026-11-05T19:48:58.620165+00:00"
+    "created_at": "2026-11-05T20:51:59.380263+00:00",
+    "updated_at": "2026-11-05T20:51:59.409666+00:00"
   },
   "meta": null
 }
@@ -304,7 +332,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "status": "active",
     "title": "Contract review session",
@@ -326,16 +354,16 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
       "title": "Contract and term sheet review"
     },
     "review_message": null,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "unlisted_reason": null,
     "earnings_preview": {
       "commission_bps": 1500,
       "commission_minor": 180000,
       "net_minor": 1020000
     },
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
-    "updated_at": "2026-11-05T19:48:59.094686+00:00"
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "updated_at": "2026-11-05T20:51:59.764020+00:00"
   },
   "meta": null
 }
@@ -369,7 +397,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
   "data": {
     "listings": [
       {
-        "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+        "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
         "type": "package",
         "status": "pending_review",
         "title": "Shareholder agreement drafting",
@@ -389,7 +417,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
         "meeting_url": null,
         "pending_revision": null,
         "review_message": null,
-        "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+        "submitted_at": "2026-11-05T20:51:59.442582+00:00",
         "published_at": null,
         "unlisted_reason": null,
         "earnings_preview": {
@@ -397,11 +425,11 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
           "commission_minor": 3750000,
           "net_minor": 21250000
         },
-        "created_at": "2026-11-05T19:48:58.583662+00:00",
-        "updated_at": "2026-11-05T19:48:58.652475+00:00"
+        "created_at": "2026-11-05T20:51:59.380263+00:00",
+        "updated_at": "2026-11-05T20:51:59.438820+00:00"
       },
       {
-        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
         "type": "consultation",
         "status": "pending_review",
         "title": "Contract review session",
@@ -421,7 +449,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
         "meeting_url": "https://meet.example.com/ngozi-eze",
         "pending_revision": null,
         "review_message": null,
-        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+        "submitted_at": "2026-11-05T20:51:59.428576+00:00",
         "published_at": null,
         "unlisted_reason": null,
         "earnings_preview": {
@@ -429,8 +457,8 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
           "commission_minor": 150000,
           "net_minor": 850000
         },
-        "created_at": "2026-11-05T19:48:58.563977+00:00",
-        "updated_at": "2026-11-05T19:48:58.636735+00:00"
+        "created_at": "2026-11-05T20:51:59.361749+00:00",
+        "updated_at": "2026-11-05T20:51:59.424812+00:00"
       }
     ]
   },
@@ -470,7 +498,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "status": "paused",
     "title": "Contract and term sheet review",
@@ -479,7 +507,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
     "category": "Legal",
     "tags": [
       "contracts",
-      "term sheets"
+      "whatsapp me"
     ],
     "price_minor": 1200000,
     "currency": "NGN",
@@ -490,16 +518,16 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
     "meeting_url": "https://meet.example.com/ngozi-eze",
     "pending_revision": null,
     "review_message": null,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "unlisted_reason": null,
     "earnings_preview": {
       "commission_bps": 1500,
       "commission_minor": 180000,
       "net_minor": 1020000
     },
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
-    "updated_at": "2026-11-05T19:48:59.216600+00:00"
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "updated_at": "2026-11-05T20:51:59.889236+00:00"
   },
   "meta": null
 }
@@ -509,7 +537,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
     "type": "package",
     "status": "rejected",
     "title": "Shareholder agreement drafting",
@@ -529,7 +557,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
     "meeting_url": null,
     "pending_revision": null,
     "review_message": "N250,000 looks too high for the deliverables listed. Please revise.",
-    "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+    "submitted_at": "2026-11-05T20:51:59.442582+00:00",
     "published_at": null,
     "unlisted_reason": null,
     "earnings_preview": {
@@ -537,8 +565,8 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
       "commission_minor": 3750000,
       "net_minor": 21250000
     },
-    "created_at": "2026-11-05T19:48:58.583662+00:00",
-    "updated_at": "2026-11-05T19:48:58.787389+00:00"
+    "created_at": "2026-11-05T20:51:59.380263+00:00",
+    "updated_at": "2026-11-05T20:51:59.560854+00:00"
   },
   "meta": null
 }
@@ -548,7 +576,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "status": "unlisted",
     "title": "Contract and term sheet review",
@@ -557,7 +585,7 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
     "category": "Legal",
     "tags": [
       "contracts",
-      "term sheets"
+      "whatsapp me"
     ],
     "price_minor": 1200000,
     "currency": "NGN",
@@ -568,16 +596,16 @@ Body: `type` (`consultation` or `package`, fixed after creation), `title` (3-160
     "meeting_url": "https://meet.example.com/ngozi-eze",
     "pending_revision": null,
     "review_message": null,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "unlisted_reason": "Unlisted after a report.",
     "earnings_preview": {
       "commission_bps": 1500,
       "commission_minor": 180000,
       "net_minor": 1020000
     },
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
-    "updated_at": "2026-11-05T19:48:59.559863+00:00"
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
+    "updated_at": "2026-11-05T20:51:59.966790+00:00"
   },
   "meta": null
 }
@@ -610,7 +638,8 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
       "unlisted": 0,
       "rejected": 0
     },
-    "pending_revisions": 0
+    "pending_revisions": 0,
+    "flagged_edits": 0
   },
   "meta": null
 }
@@ -618,7 +647,7 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
 
 ### `GET /admin/marketplace/listings?status&queue&query&limit&cursor`
 
-`queue=true` returns what needs a decision: first submissions (`pending_review`) and live listings with a pending edit (`has_revision: true`). Oldest first; `meta.next_cursor` pages. `prescreen_flags` are deterministic chips (`contact_details`, `guaranteed_outcome`, `prohibited_content`, `price_out_of_range`, each with the `field`); they never block anything.
+`queue=true` returns what needs a decision: first submissions (`pending_review`), live listings with a pending edit (`has_revision: true`) and live listings with a flagged at-once edit (`has_flag: true`, details in `flag`). `GET …/listings/counts` also returns `flagged_edits`. Oldest first; `meta.next_cursor` pages. `prescreen_flags` are deterministic chips (`contact_details`, `guaranteed_outcome`, `prohibited_content`, `price_out_of_range`, each with the `field`); they never block anything.
 
 `admin_listing_queue`:
 ```json
@@ -626,8 +655,8 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
   "data": {
     "listings": [
       {
-        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
-        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+        "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "provider_name": "Ngozi Eze",
         "provider_status": "approved",
         "type": "consultation",
@@ -636,14 +665,16 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
         "price_minor": 1000000,
         "status": "pending_review",
         "has_revision": false,
-        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+        "has_flag": false,
+        "flag": null,
+        "submitted_at": "2026-11-05T20:51:59.428576+00:00",
         "revision_submitted_at": null,
         "prescreen_flags": [],
-        "created_at": "2026-11-05T19:48:58.563977+00:00"
+        "created_at": "2026-11-05T20:51:59.361749+00:00"
       },
       {
-        "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
-        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
+        "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "provider_name": "Ngozi Eze",
         "provider_status": "approved",
         "type": "package",
@@ -652,10 +683,58 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
         "price_minor": 25000000,
         "status": "pending_review",
         "has_revision": false,
-        "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+        "has_flag": false,
+        "flag": null,
+        "submitted_at": "2026-11-05T20:51:59.442582+00:00",
         "revision_submitted_at": null,
         "prescreen_flags": [],
-        "created_at": "2026-11-05T19:48:58.583662+00:00"
+        "created_at": "2026-11-05T20:51:59.380263+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}
+```
+
+`admin_listing_queue_flagged_edit` (a live listing whose tags tripped the pre-screen; it is still live, and `flag.flags` says why):
+```json
+{
+  "data": {
+    "listings": [
+      {
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+        "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
+        "provider_name": "Ngozi Eze",
+        "provider_status": "approved",
+        "type": "consultation",
+        "title": "Contract and term sheet review",
+        "category": "Legal",
+        "price_minor": 1200000,
+        "status": "active",
+        "has_revision": false,
+        "has_flag": true,
+        "flag": {
+          "at": "2026-11-05T20:51:59.833758+00:00",
+          "flags": [
+            {
+              "rule": "contact_details",
+              "field": "tags"
+            }
+          ],
+          "updated_at": "2026-11-05T20:51:59.833758+00:00"
+        },
+        "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+        "revision_submitted_at": null,
+        "prescreen_flags": [
+          {
+            "rule": "contact_details",
+            "field": "tags"
+          }
+        ],
+        "created_at": "2026-11-05T20:51:59.361749+00:00"
       }
     ]
   },
@@ -672,8 +751,8 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
   "data": {
     "listings": [
       {
-        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
-        "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+        "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "provider_name": "Ngozi Eze",
         "provider_status": "approved",
         "type": "consultation",
@@ -682,10 +761,12 @@ Guard: active staff with TOTP and scope `moderation` (Super Admin passes). Other
         "price_minor": 1200000,
         "status": "active",
         "has_revision": true,
-        "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-        "revision_submitted_at": "2026-11-05T19:48:59.099541+00:00",
+        "has_flag": false,
+        "flag": null,
+        "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+        "revision_submitted_at": "2026-11-05T20:51:59.767830+00:00",
         "prescreen_flags": [],
-        "created_at": "2026-11-05T19:48:58.563977+00:00"
+        "created_at": "2026-11-05T20:51:59.361749+00:00"
       }
     ]
   },
@@ -704,8 +785,8 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
 ```json
 {
   "data": {
-    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
-    "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
+    "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
     "provider_name": "Ngozi Eze",
     "provider_status": "approved",
     "type": "package",
@@ -714,10 +795,12 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "price_minor": 25000000,
     "status": "pending_review",
     "has_revision": false,
-    "submitted_at": "2026-11-05T19:48:58.655734+00:00",
+    "has_flag": false,
+    "flag": null,
+    "submitted_at": "2026-11-05T20:51:59.442582+00:00",
     "revision_submitted_at": null,
     "prescreen_flags": [],
-    "created_at": "2026-11-05T19:48:58.583662+00:00",
+    "created_at": "2026-11-05T20:51:59.380263+00:00",
     "summary": "A tailored shareholder agreement for your startup.",
     "description": "A focused tailored agreement drafting your contract or term sheet, with written notes after.",
     "tags": [],
@@ -735,7 +818,7 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "pending_revision": null,
     "diff": [],
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "category": "Legal",
       "status": "approved",
@@ -751,14 +834,14 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "history": [
       {
         "action": "marketplace.listing.submitted",
-        "at": "2026-11-05T19:48:58.652475+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.438820+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.created",
-        "at": "2026-11-05T19:48:58.583662+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.380263+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       }
     ]
@@ -771,8 +854,8 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
-    "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+    "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
     "provider_name": "Ngozi Eze",
     "provider_status": "approved",
     "type": "consultation",
@@ -781,10 +864,12 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "price_minor": 1200000,
     "status": "active",
     "has_revision": true,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
-    "revision_submitted_at": "2026-11-05T19:48:59.099541+00:00",
+    "has_flag": false,
+    "flag": null,
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
+    "revision_submitted_at": "2026-11-05T20:51:59.767830+00:00",
     "prescreen_flags": [],
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
     "summary": "A one hour review of your contract with written notes.",
     "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
     "tags": [
@@ -798,7 +883,7 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "meeting_url": "https://meet.example.com/ngozi-eze",
     "review_message": null,
     "unlisted_reason": null,
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "pending_revision": {
       "title": "Contract and term sheet review"
     },
@@ -810,7 +895,7 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
       }
     ],
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "category": "Legal",
       "status": "approved",
@@ -826,26 +911,26 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
     "history": [
       {
         "action": "marketplace.listing.revision_submitted",
-        "at": "2026-11-05T19:48:59.094686+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.764020+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.approved",
-        "at": "2026-11-05T19:48:58.749437+00:00",
-        "actor_email": "delivered+e2e-9fa732e48235@resend.dev",
+        "at": "2026-11-05T20:51:59.532015+00:00",
+        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
         "reason": "Scope and price are clear"
       },
       {
         "action": "marketplace.listing.submitted",
-        "at": "2026-11-05T19:48:58.636735+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.424812+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.created",
-        "at": "2026-11-05T19:48:58.563977+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.361749+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       }
     ]
@@ -856,8 +941,8 @@ The full listing, the expert's summary and `badge`, the audit `history`, and for
 
 ### Decisions
 
-- `POST …/approve` `{"reason"}`: a first submission goes live (and the expert is emailed); an edit is applied. The expert must be approved themselves (409 `PROVIDER_NOT_APPROVED`).
-- `POST …/reject` `{"template", "message"?, "reason"}`, `template` one of `unclear_scope`, `pricing`, `prohibited_content`, `contact_details`, `other`: a first submission becomes `rejected`; an edit is discarded.
+- `POST …/approve` `{"reason"}`: a first submission goes live (and the expert is emailed); an edit is applied; a flagged at-once edit is accepted as the new baseline. The expert must be approved themselves (409 `PROVIDER_NOT_APPROVED`).
+- `POST …/reject` `{"template", "message"?, "reason"}`, `template` one of `unclear_scope`, `pricing`, `prohibited_content`, `contact_details`, `other`: a first submission becomes `rejected`; an edit is discarded; a flagged at-once edit closes the queue item with the message (the listing stays live, so unlist it to take it down).
 - `POST …/request-changes` `{"message"}` (10-1000 chars): a first submission goes back to `draft`; an edit is discarded.
 - `POST …/unlist` and `…/relist` `{"reason", "totp_code"}`.
 Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STATE`.
@@ -882,10 +967,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "status": "active",
     "title": "Contract review session",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "review_message": null,
     "unlisted_reason": null,
     "pending_revision": null,
@@ -897,10 +982,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 `email_listing_approved`:
 ```json
 {
-  "to": "delivered+e2e-20848a09232b@resend.dev",
+  "to": "delivered+e2e-5b5aabf98398@resend.dev",
   "subject": "Your Marketplace listing is live",
   "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">Approved</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, your listing <strong>Contract review session</strong> has been approved and is live.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider/listings\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Open your listings</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider/listings\" style=\"color:#4f46e5\">http://localhost:3000/provider/listings</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Founders can find it in the Marketplace now.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-05T19:48:58.755696+00:00"
+  "sent_at": "2026-11-05T20:51:59.540337+00:00"
 }
 ```
 
@@ -908,10 +993,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "status": "active",
     "title": "Contract and term sheet review",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "review_message": null,
     "unlisted_reason": null,
     "pending_revision": null,
@@ -940,7 +1025,7 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "883e8b17-4ade-42c2-bae6-14787121fe36",
+    "id": "b89c22dd-2c7d-4498-b7c4-e103a4c26491",
     "status": "rejected",
     "title": "Shareholder agreement drafting",
     "published_at": null,
@@ -956,10 +1041,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "status": "unlisted",
     "title": "Contract and term sheet review",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "review_message": null,
     "unlisted_reason": "Reviewed against the marketplace rules",
     "pending_revision": null,
@@ -972,10 +1057,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "status": "active",
     "title": "Contract and term sheet review",
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "review_message": null,
     "unlisted_reason": null,
     "pending_revision": null,
@@ -997,30 +1082,35 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 
 ## Reports on listings and experts
 
-`POST /reports` now also takes `item_type: "listing"` or `"provider"` (the ids from the directory). Rules: the item must be visible to the reporter (else 404); you cannot report your own listing or profile (422 `OWN_ITEM`); one live report per person per item (409 `ALREADY_REPORTED`); `"review"` is accepted by the schema but returns 404 until reviews exist (slice F). In the Admin Reports tab the item shows as `listing` / `provider`. **Remove** on a reported listing **unlists** it (with the usual authenticator code) and **restore** relists it; **remove** on a reported expert is refused with 422 `USE_VETTING` (suspend them from the vetting queue instead); dismiss and escalate work as for any report.
+`POST /reports` now also takes `item_type: "listing"` or `"provider"` (the ids from the directory). Rules: the item must be visible to the reporter (else 404); you cannot report your own listing or profile (422 `OWN_ITEM`); one live report per person per item (409 `ALREADY_REPORTED`); `"review"` is **not** a report type yet (it joins in slice F), so it is a plain 422 `VALIDATION_ERROR`. In the Admin Reports tab the item shows as `listing` / `provider`. **Remove** on a reported listing **unlists** it (with the usual authenticator code) and **restore** relists it **only if the report flow itself did the unlisting**: a listing a moderator unlisted for their own reasons (or unlisted again later) stays down when a report about it is restored. Both directions write a `marketplace_listing` audit row (`via: report`). Staff cannot remove, restore, **dismiss or escalate** a report about their own listing or profile (422 `CANNOT_ACT_ON_SELF`). **Remove** on a reported expert is refused with 422 `USE_VETTING` (suspend them from the vetting queue instead); dismiss and escalate work as for any report.
 
 `report_listing_201`:
 ```json
 {
   "data": {
-    "id": "6883ba60-aa9b-4d3b-b45a-6b64365a2b98",
+    "id": "7cbddcda-eaf1-4c16-8b46-8150197d295c",
     "item_type": "listing",
-    "item_id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "item_id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "reason": "other",
     "status": "received",
-    "created_at": "2026-11-05T19:48:59.443375+00:00"
+    "created_at": "2026-11-05T20:51:59.931527+00:00"
   },
   "meta": null
 }
 ```
 
-`report_review_not_yet_404`:
+`report_review_not_reportable_422`:
 ```json
 {
   "error": {
-    "code": "NOT_FOUND",
-    "message": "Not found.",
-    "field_errors": []
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "item_type",
+        "message": "Input should be 'ai_message', 'comment', 'listing' or 'provider'"
+      }
+    ]
   }
 }
 ```
@@ -1031,7 +1121,7 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
   "data": {
     "reports": [
       {
-        "id": "6883ba60-aa9b-4d3b-b45a-6b64365a2b98",
+        "id": "7cbddcda-eaf1-4c16-8b46-8150197d295c",
         "item_type": "listing",
         "reason": "other",
         "note": "Misleading price",
@@ -1039,20 +1129,20 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
         "snippet": "Contract and term sheet review\nA one hour review of your contract with written notes.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "c8765b31-3d28-485e-9cdf-e5f089396303",
+          "id": "4b7a5bfe-fa01-49fd-ba6d-9bebc0e9ad66",
           "name": "Ada Obi",
-          "email": "delivered+e2e-36c6c83cc4f1@resend.dev"
+          "email": "delivered+e2e-f531c105b386@resend.dev"
         },
         "author": {
-          "id": "6136dc2d-03ac-428c-b9de-765dc7a0f2ed",
-          "name": "delivered+e2e-20848a09232b@resend.dev"
+          "id": "4fc2d63c-e645-40ea-859b-884847a13fe0",
+          "name": "delivered+e2e-5b5aabf98398@resend.dev"
         },
         "workspace": {
-          "id": "02ca0683-5c77-49c3-8a77-304ee050edeb",
+          "id": "8154af4b-112a-435e-816d-3fbe408349a8",
           "name": "Browse Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-05T19:48:59.443375+00:00",
+        "created_at": "2026-11-05T20:51:59.931527+00:00",
         "escalated_at": null,
         "decided_at": null
       }
@@ -1069,10 +1159,10 @@ Each returns the detail. Anything not waiting for a decision is 409 `INVALID_STA
 ```json
 {
   "data": {
-    "id": "6883ba60-aa9b-4d3b-b45a-6b64365a2b98",
+    "id": "7cbddcda-eaf1-4c16-8b46-8150197d295c",
     "status": "removed",
     "item_type": "listing",
-    "decided_at": "2026-11-05T19:48:59.579791+00:00"
+    "decided_at": "2026-11-05T20:51:59.976587+00:00"
   }
 }
 ```
@@ -1113,7 +1203,7 @@ Expert cards. `category` matches the expert's main or secondary category; `min_p
   "data": {
     "providers": [
       {
-        "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "display_name": "Ngozi Eze",
         "headline": "Corporate lawyer for early-stage startups",
         "category": "Legal",
@@ -1124,7 +1214,7 @@ Expert cards. `category` matches the expert's main or secondary category; `min_p
         ],
         "location": "Lagos, Nigeria",
         "timezone": "Africa/Lagos",
-        "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+        "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
         "badge": {
           "vetted": true,
           "checks": [
@@ -1163,7 +1253,7 @@ Expert cards. `category` matches the expert's main or secondary category; `min_p
   "data": {
     "providers": [
       {
-        "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+        "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
         "display_name": "Ngozi Eze",
         "headline": "Corporate lawyer for early-stage startups",
         "category": "Legal",
@@ -1174,7 +1264,7 @@ Expert cards. `category` matches the expert's main or secondary category; `min_p
         ],
         "location": "Lagos, Nigeria",
         "timezone": "Africa/Lagos",
-        "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+        "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
         "badge": {
           "vetted": true,
           "checks": [
@@ -1247,7 +1337,7 @@ The card plus `bio`, `portfolio` and the expert's live `listings`. Portfolio ite
 ```json
 {
   "data": {
-    "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
     "display_name": "Ngozi Eze",
     "headline": "Corporate lawyer for early-stage startups",
     "category": "Legal",
@@ -1258,7 +1348,7 @@ The card plus `bio`, `portfolio` and the expert's live `listings`. Portfolio ite
     ],
     "location": "Lagos, Nigeria",
     "timezone": "Africa/Lagos",
-    "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+    "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
     "badge": {
       "vetted": true,
       "checks": [
@@ -1283,7 +1373,7 @@ The card plus `bio`, `portfolio` and the expert's live `listings`. Portfolio ite
     "portfolio": [],
     "listings": [
       {
-        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
         "type": "consultation",
         "title": "Contract review session",
         "summary": "A one hour review of your contract with written notes.",
@@ -1301,10 +1391,10 @@ The card plus `bio`, `portfolio` and the expert's live `listings`. Portfolio ite
         "revisions_included": 2,
         "next_available_at": "2026-11-06T08:00:00+00:00",
         "provider": {
-          "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+          "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
           "display_name": "Ngozi Eze",
           "headline": "Corporate lawyer for early-stage startups",
-          "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+          "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
           "badge": {
             "vetted": true,
             "checks": [
@@ -1358,7 +1448,7 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
   "data": {
     "listings": [
       {
-        "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+        "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
         "type": "consultation",
         "title": "Contract review session",
         "summary": "A one hour review of your contract with written notes.",
@@ -1376,10 +1466,10 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
         "revisions_included": 2,
         "next_available_at": "2026-11-06T08:00:00+00:00",
         "provider": {
-          "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+          "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
           "display_name": "Ngozi Eze",
           "headline": "Corporate lawyer for early-stage startups",
-          "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+          "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
           "badge": {
             "vetted": true,
             "checks": [
@@ -1410,7 +1500,7 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "title": "Contract review session",
     "summary": "A one hour review of your contract with written notes.",
@@ -1428,10 +1518,10 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
     "revisions_included": 2,
     "next_available_at": "2026-11-06T08:00:00+00:00",
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "headline": "Corporate lawyer for early-stage startups",
-      "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+      "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
       "badge": {
         "vetted": true,
         "checks": [
@@ -1455,7 +1545,7 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
 ```json
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "type": "consultation",
     "title": "Contract review session",
     "summary": "A one hour review of your contract with written notes.",
@@ -1473,10 +1563,10 @@ Live listings. `type` is `consultation` or `package`; `max_delivery_days` applie
     "revisions_included": 2,
     "next_available_at": "2026-11-06T08:00:00+00:00",
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "headline": "Corporate lawyer for early-stage startups",
-      "avatar_url": "/api/v1/marketplace/providers/c34d176b-c7ae-4852-9d49-335f92c84764/avatar",
+      "avatar_url": "/api/v1/marketplace/providers/6f1d312c-6f16-4a0a-b59c-75edaef7ff4d/avatar",
       "badge": {
         "vetted": true,
         "checks": [
@@ -1517,7 +1607,7 @@ Daylight-saving behaviour (worked examples in `tests/services/marketplace/test_s
 ```json
 {
   "data": {
-    "listing_id": "281348fa-be7c-4bbc-ae18-e34744476243",
+    "listing_id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
     "timezone": "Africa/Lagos",
     "duration_min": 60,
     "from": "2026-11-09",
@@ -1564,7 +1654,7 @@ Not exercised live (unit-tested): `RANGE_OUT_OF_BOUNDS`, `from` after `to`, a ma
 
 ### Avatars and portfolio files
 
-`GET /marketplace/providers/{id}/avatar` and `GET /marketplace/providers/{id}/portfolio/{item_id}/file` return the file bytes (attachment, `nosniff`, `no-store`) for visible experts only, never an unscanned file (409 `FILE_NOT_CLEAN`), and only the avatar / portfolio uploads (a credential scan is unreachable here). Fetch with `Authorization` and `X-Workspace-Id` and turn the response into an object URL; they are not public URLs.
+`GET /marketplace/providers/{id}/avatar` and `GET /marketplace/providers/{id}/portfolio/{item_id}/file` return the file bytes (attachment, `nosniff`, `no-store`) for experts who are visible (approved **and** with a live listing, like the profile), never an unscanned file (409 `FILE_NOT_CLEAN`), and only the avatar / portfolio uploads (a credential scan is unreachable here). Fetch with `Authorization` and `X-Workspace-Id` and turn the response into an object URL; they are not public URLs.
 
 `avatar_headers` (the response is the image bytes, so only headers are captured):
 ```json
@@ -1607,6 +1697,8 @@ Not exercised live (unit-tested): `RANGE_OUT_OF_BOUNDS`, `from` after `to`, a ma
 | Rating "New" under 3 reviews | | yes | live (no reviews exist) |
 | Roles: founder, team member, mentor, anonymous | yes (TM 200, mentor 403, anonymous 401) | yes (accountant, legal advisor, investor) | |
 | Avatar / portfolio files | avatar yes | yes (scope, unclean, suspended) | |
-| Reports on listings / experts; remove unlists | yes (file, remove, unlist, relist) | yes (own item, hidden item, `USE_VETTING`, self-act) | |
+| Reports on listings / experts; remove unlists | yes (file, remove, unlist, relist, review rejected) | yes (own item, hidden item, `USE_VETTING`, self-act incl. dismiss and escalate, relist only what the report unlisted, audit rows) | |
+| Flagged at-once edit queued, approve / send back / unlist | yes (queue item, counts) | yes (price and tags, baseline after approve, send back) | |
+| Type rules (`FIELD_NOT_FOR_TYPE`, `FIELD_REQUIRED`) | yes | yes | |
 | Real email delivery | | | yes (file mailbox only) |
 | Large catalogue performance | | | yes (sort and page are in Python; fine for tens of experts) |

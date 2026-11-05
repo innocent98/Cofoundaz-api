@@ -8,7 +8,8 @@
       "unlisted": 0,
       "rejected": 0
     },
-    "pending_revisions": 0
+    "pending_revisions": 0,
+    "flagged_edits": 0
   },
   "meta": null
 }

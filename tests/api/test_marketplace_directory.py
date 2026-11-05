@@ -32,6 +32,7 @@ from tests.api.test_marketplace_listings import (
     mk_listing,
     mk_provider,
     open_week,
+    staff_post,
 )
 from tests.api.test_staff_users import hdr, mk_staff, mk_user
 
@@ -726,7 +727,9 @@ def test_reports_need_a_visible_item_and_not_your_own(client, db, fx):
         ("provider", drafty.id),
     ):
         assert report(client, f, ws, t, i).status_code == 404, (t, i)
-    assert report(client, f, ws, "review", uuid.uuid4()).status_code == 422  # not reportable until slice F
+    assert (
+        report(client, f, ws, "review", uuid.uuid4()).status_code == 422
+    )  # not reportable until slice F
     own_u, own = mk_provider(db, user=f)
     mine = mk_listing(db, own)
     r = report(client, f, ws, "listing", mine.id)
@@ -820,15 +823,17 @@ def test_restoring_a_report_never_relists_what_a_moderator_unlisted(client, db, 
     f, ws = fx
     _, prov = mk_provider(db)
     lst = mk_listing(db, prov)
+    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
     # a moderator takes it down for fraud, with step-up
     r = staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Fraudulent claims")
     assert r.status_code == 200
-    rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
     # the report removal is a no-op on a listing that is already down...
     assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
     db.refresh(lst)
     assert lst.unlisted_reason == "Fraudulent claims"  # not overwritten by the report flow
-    assert _audit_rows(db, lst.id, "marketplace.listing.unlisted")[0].details.get("via") != "report"
+    assert (_audit_rows(db, lst.id, "marketplace.listing.unlisted")[0].details or {}).get(
+        "via"
+    ) != "report"
     # ...and restoring it must not bring the listing back
     assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
     db.refresh(lst)
@@ -842,9 +847,16 @@ def test_a_later_moderator_unlist_also_blocks_a_report_restore(client, db, moder
     _, prov = mk_provider(db)
     lst = mk_listing(db, prov)
     rid = report(client, f, ws, "listing", lst.id, "harmful").json()["data"]["id"]
-    assert _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200  # report unlists
+    assert (
+        _admin_reports_post(client, moderator, f"/{rid}/remove").status_code == 200
+    )  # report unlists
     assert staff_post(client, moderator, f"/listings/{lst.id}/relist").status_code == 200
-    assert staff_post(client, moderator, f"/listings/{lst.id}/unlist", reason="Second offence").status_code == 200
+    assert (
+        staff_post(
+            client, moderator, f"/listings/{lst.id}/unlist", reason="Second offence"
+        ).status_code
+        == 200
+    )
     assert _admin_reports_post(client, moderator, f"/{rid}/restore").status_code == 200
     db.refresh(lst)
     assert lst.status == ListingStatus.unlisted  # the latest unlisting is the moderator's

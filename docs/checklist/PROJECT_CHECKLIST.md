@@ -3934,7 +3934,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Provider profile, portfolio, submit; credential upload (magic-byte sniff, private storage, 15 MB), audited staff reads, files erased on reject
   - [x] Admin vetting queue: per-category checklist (D-MP-6), approve / reject / request changes / suspend / unsuspend with reason + step-up, deterministic pre-screen, provider emails, audit rows
   - [x] Unit + API tests, migration round trip, live e2e journey, live-captured FE guide
-- [x] **Slice B: listings and directory** (`feature/marketplace-listings`, migration `0094_marketplace_listings` on `0092`, lead re-chains against 0093, SOP `docs/sop/2026-11-05-marketplace-listings.md`, FE guide `docs/fe-integration-guide-marketplace-listings.md`; PR open, not merged)
+- [x] **Slice B: listings and directory** (`feature/marketplace-listings`, migration `0094_marketplace_listings` on `0093`, SOP `docs/sop/2026-11-05-marketplace-listings.md`, FE guide `docs/fe-integration-guide-marketplace-listings.md`; PR open, not merged)
   - [x] `marketplace_listings` (+ pending revision, D-MP-L8), `marketplace_availability_rules` / `_exceptions`, provider `min_notice_h` / `buffer_min`
   - [x] Slot generator with timezone/DST/exception worked examples (21 tests)
   - [x] Expert `/provider/listings` and `/provider/availability`; deterministic listing pre-screen; kobo money with earnings preview

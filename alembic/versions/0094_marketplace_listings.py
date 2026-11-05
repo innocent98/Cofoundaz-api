@@ -1,7 +1,7 @@
 """Marketplace slice B: listings, availability
 
 Revision ID: 0094_marketplace_listings
-Revises: 0092_marketplace_providers
+Revises: 0093_readiness_mock_qa
 Create Date: 2026-11-05
 
 Marketplace slice B (listings and directory; no money). Adds `marketplace_listings`,
@@ -10,8 +10,8 @@ settings on `marketplace_providers` (`min_notice_h`, `buffer_min`). The new `con
 item types (`listing`, `provider`, `review`) fit the existing non-native enum column, so they need
 no DDL. Downgrade drops the tables and the two columns.
 
-CHAIN NOTE: chained on 0092. 0093 (Readiness Q&A) is in parallel; the lead re-chains whichever of
-the two merges later.
+CHAIN NOTE: chained on 0093 (Readiness mock Q&A), develop's head when last merged. #222 chains 0095
+onto whichever of 0093 / 0094 merges first.
 """
 
 import sqlalchemy as sa
@@ -20,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0094_marketplace_listings"
-down_revision = "0092_marketplace_providers"
+down_revision = "0093_readiness_mock_qa"
 branch_labels = None
 depends_on = None
 

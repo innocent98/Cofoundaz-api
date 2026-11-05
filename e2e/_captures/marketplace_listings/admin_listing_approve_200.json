@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "281348fa-be7c-4bbc-ae18-e34744476243",
-    "provider_id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+    "id": "df1134a9-5fcd-40e6-b8ae-f07eae3d8f14",
+    "provider_id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
     "provider_name": "Ngozi Eze",
     "provider_status": "approved",
     "type": "consultation",
@@ -10,10 +10,12 @@
     "price_minor": 1000000,
     "status": "active",
     "has_revision": false,
-    "submitted_at": "2026-11-05T19:48:58.640306+00:00",
+    "has_flag": false,
+    "flag": null,
+    "submitted_at": "2026-11-05T20:51:59.428576+00:00",
     "revision_submitted_at": null,
     "prescreen_flags": [],
-    "created_at": "2026-11-05T19:48:58.563977+00:00",
+    "created_at": "2026-11-05T20:51:59.361749+00:00",
     "summary": "A one hour review of your contract with written notes.",
     "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
     "tags": [
@@ -27,11 +29,11 @@
     "meeting_url": "https://meet.example.com/ngozi-eze",
     "review_message": null,
     "unlisted_reason": null,
-    "published_at": "2026-11-05T19:48:58.753724+00:00",
+    "published_at": "2026-11-05T20:51:59.538082+00:00",
     "pending_revision": null,
     "diff": [],
     "provider": {
-      "id": "c34d176b-c7ae-4852-9d49-335f92c84764",
+      "id": "6f1d312c-6f16-4a0a-b59c-75edaef7ff4d",
       "display_name": "Ngozi Eze",
       "category": "Legal",
       "status": "approved",
@@ -47,20 +49,20 @@
     "history": [
       {
         "action": "marketplace.listing.approved",
-        "at": "2026-11-05T19:48:58.749437+00:00",
-        "actor_email": "delivered+e2e-9fa732e48235@resend.dev",
+        "at": "2026-11-05T20:51:59.532015+00:00",
+        "actor_email": "delivered+e2e-5ec8266ed33c@resend.dev",
         "reason": "Scope and price are clear"
       },
       {
         "action": "marketplace.listing.submitted",
-        "at": "2026-11-05T19:48:58.636735+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.424812+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       },
       {
         "action": "marketplace.listing.created",
-        "at": "2026-11-05T19:48:58.563977+00:00",
-        "actor_email": "delivered+e2e-20848a09232b@resend.dev",
+        "at": "2026-11-05T20:51:59.361749+00:00",
+        "actor_email": "delivered+e2e-5b5aabf98398@resend.dev",
         "reason": null
       }
     ]
