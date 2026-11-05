@@ -58,8 +58,10 @@ def test_a_backup_code_still_works_after_a_typo(client, db):
     user, _secret = _mfa_user(db, "backup-typo@x.com")
     codes = mfa.generate_backup_codes(db, user)
     ticket = mfa.issue_mfa_ticket(user.id)
-    assert _try(client, ticket, "000000").status_code == 401
-    assert _try(client, ticket, codes[0]).status_code == 200
+    resp = _try(client, ticket, "000000")
+    assert resp.status_code == 401
+    resp = _try(client, ticket, codes[0])
+    assert resp.status_code == 200
 
 
 def test_five_wrong_codes_burn_the_ticket(client, db):
@@ -67,7 +69,8 @@ def test_five_wrong_codes_burn_the_ticket(client, db):
     ticket = mfa.issue_mfa_ticket(user.id)
     maximum = settings.MFA_TICKET_MAX_ATTEMPTS
     for _ in range(maximum - 1):
-        assert _try(client, ticket, "000000").json()["error"]["code"] == "MFA_INVALID_CODE"
+        resp = _try(client, ticket, "000000")
+        assert resp.json()["error"]["code"] == "MFA_INVALID_CODE"
     last = _try(client, ticket, "000000")
     assert last.status_code == 401
     assert last.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
@@ -82,13 +85,15 @@ def test_the_fifth_attempt_may_still_be_the_right_one(client, db):
     ticket = mfa.issue_mfa_ticket(user.id)
     for _ in range(settings.MFA_TICKET_MAX_ATTEMPTS - 1):
         _try(client, ticket, "000000")
-    assert _try(client, ticket, pyotp.TOTP(secret).now()).status_code == 200
+    resp = _try(client, ticket, pyotp.TOTP(secret).now())
+    assert resp.status_code == 200
 
 
 def test_a_ticket_is_single_use_after_success(client, db):
     user, secret = _mfa_user(db, "once@x.com")
     ticket = mfa.issue_mfa_ticket(user.id)
-    assert _try(client, ticket, pyotp.TOTP(secret).now()).status_code == 200
+    resp = _try(client, ticket, pyotp.TOTP(secret).now())
+    assert resp.status_code == 200
     again = _try(client, ticket, "000000")
     assert again.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
 
@@ -137,6 +142,8 @@ def test_a_good_code_clears_the_per_account_counter(client, db, monkeypatch):
     t1 = mfa.issue_mfa_ticket(user.id)
     _try(client, t1, "000000")
     _try(client, t1, "000000")
-    assert _try(client, t1, pyotp.TOTP(secret).now()).status_code == 200
+    resp = _try(client, t1, pyotp.TOTP(secret).now())
+    assert resp.status_code == 200
     t2 = mfa.issue_mfa_ticket(user.id)
-    assert _try(client, t2, "000000").json()["error"]["code"] == "MFA_INVALID_CODE"
+    resp = _try(client, t2, "000000")
+    assert resp.json()["error"]["code"] == "MFA_INVALID_CODE"

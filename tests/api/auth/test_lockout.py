@@ -69,7 +69,8 @@ def test_lockout_is_per_ip_so_a_stranger_cannot_lock_the_owner_out(client, db):
     db.flush()
     attacker = _from_ip("203.0.113.7")
     _fail(attacker, "victim@x.com", settings.LOGIN_MAX_FAILS + 1)
-    assert _fail(attacker, "victim@x.com").status_code == 429
+    resp = _fail(attacker, "victim@x.com")
+    assert resp.status_code == 429
     owner = _from_ip("198.51.100.20")
     ok = owner.post(LOGIN, json={"email": "victim@x.com", "password": PASSWORD})
     assert ok.status_code == 200, ok.text
@@ -95,7 +96,8 @@ def test_a_good_login_resets_the_counter(client, db):
         == 200
     )
     # four more wrong passwords do not lock: the earlier four no longer count
-    assert _fail(client, "reset-count@x.com", settings.LOGIN_MAX_FAILS - 1).status_code == 401
+    resp = _fail(client, "reset-count@x.com", settings.LOGIN_MAX_FAILS - 1)
+    assert resp.status_code == 401
 
 
 def test_a_suspended_account_counts_failures_like_any_other(client, db):
@@ -110,7 +112,8 @@ def test_a_suspended_account_counts_failures_like_any_other(client, db):
     assert r.status_code == 401
     for _ in range(settings.LOGIN_MAX_FAILS - 1):
         client.post(LOGIN, json={"email": "susp@x.com", "password": PASSWORD})
-    assert client.post(LOGIN, json={"email": "susp@x.com", "password": PASSWORD}).status_code == 429
+    resp = client.post(LOGIN, json={"email": "susp@x.com", "password": PASSWORD})
+    assert resp.status_code == 429
 
 
 @pytest.mark.parametrize("locked_from_other_ip", [False, True])
@@ -119,7 +122,8 @@ def test_a_password_reset_lifts_the_lock(client, db, locked_from_other_ip):
     db.flush()
     locker = _from_ip("203.0.113.55") if locked_from_other_ip else client
     _fail(locker, user.email, settings.LOGIN_MAX_FAILS)
-    assert locker.post(LOGIN, json={"email": user.email, "password": PASSWORD}).status_code == 429
+    resp = locker.post(LOGIN, json={"email": user.email, "password": PASSWORD})
+    assert resp.status_code == 429
 
     raw = issue_auth_token(db, user, AuthTokenPurpose.password_reset, timedelta(hours=1))
     db.flush()

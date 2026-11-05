@@ -17,7 +17,8 @@ def _signup(client, n):
 def test_signup_is_limited_per_ip(client, monkeypatch):
     record_emails(monkeypatch)
     monkeypatch.setattr(settings, "AUTH_SIGNUP_PER_IP_HOURLY", 3)
-    assert [_signup(client, i).status_code for i in range(3)] == [201, 201, 201]
+    codes = [_signup(client, i).status_code for i in range(3)]
+    assert codes == [201, 201, 201]
     r = _signup(client, 3)
     assert r.status_code == 429
     err = r.json()["error"]
@@ -31,7 +32,8 @@ def test_forgot_is_limited_per_ip(client, monkeypatch):
     record_emails(monkeypatch)
     monkeypatch.setattr(settings, "AUTH_FORGOT_PER_IP_HOURLY", 2)
     for i in range(2):
-        assert client.post(FORGOT, json={"email": f"f{i}@x.com"}).status_code == 200
+        resp = client.post(FORGOT, json={"email": f"f{i}@x.com"})
+        assert resp.status_code == 200
     r = client.post(FORGOT, json={"email": "f9@x.com"})
     assert r.status_code == 429 and r.json()["error"]["code"] == "RATE_LIMITED"
 
@@ -57,8 +59,10 @@ def test_resend_is_limited_per_ip(client, monkeypatch):
     record_emails(monkeypatch)
     monkeypatch.setattr(settings, "AUTH_RESEND_PER_IP_HOURLY", 2)
     for i in range(2):
-        assert client.post(RESEND, json={"email": f"r{i}@x.com"}).status_code == 200
-    assert client.post(RESEND, json={"email": "r9@x.com"}).status_code == 429
+        resp = client.post(RESEND, json={"email": f"r{i}@x.com"})
+        assert resp.status_code == 200
+    resp = client.post(RESEND, json={"email": "r9@x.com"})
+    assert resp.status_code == 429
 
 
 def test_resend_per_email_cap_reports_not_sent_with_a_wait(client, db, monkeypatch):

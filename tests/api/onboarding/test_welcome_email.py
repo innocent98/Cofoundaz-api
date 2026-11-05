@@ -43,7 +43,8 @@ def test_an_incomplete_onboarding_sends_nothing(client, db, monkeypatch):
     u = active_user(db, "early@x.com")
     db.commit()
     client.get("/api/v1/onboarding/state", headers=bearer(u))
-    assert client.post("/api/v1/onboarding/complete", headers=bearer(u)).status_code == 422
+    resp = client.post("/api/v1/onboarding/complete", headers=bearer(u))
+    assert resp.status_code == 422
     assert sender.sent == []
 
 
@@ -54,7 +55,8 @@ def test_completing_onboarding_posts_the_in_app_workspace_ready_notice(client, d
     h = _founder(client, db)
     user_id = db.query(Notification).count()  # nothing yet for anyone
     assert user_id == 0
-    assert client.post("/api/v1/onboarding/complete", headers=h).status_code == 200
+    resp = client.post("/api/v1/onboarding/complete", headers=h)
+    assert resp.status_code == 200
     rows = db.query(Notification).filter_by(type="notification.onboarding_complete").all()
     assert len(rows) == 1
     assert rows[0].title == "Your workspace is ready"

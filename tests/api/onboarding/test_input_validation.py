@@ -65,7 +65,8 @@ def test_phone_must_look_like_a_phone_number(client, db, phone):
 
 @pytest.mark.parametrize("phone", ["+234 801 234 5678", "(555) 010-9999", "08012345678"])
 def test_real_phone_numbers_pass(client, db, phone):
-    assert _patch(client, db, "ph-ok@x.com", {"phone": phone}).status_code == 200
+    resp = _patch(client, db, "ph-ok@x.com", {"phone": phone})
+    assert resp.status_code == 200
 
 
 @pytest.mark.parametrize(

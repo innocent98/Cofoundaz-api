@@ -92,13 +92,15 @@ def test_a_body_token_needs_no_header_so_the_current_fe_keeps_working(client, db
 
 
 def test_refresh_with_no_credential_at_all_is_401_not_403(client):
-    assert client.post("/api/v1/auth/refresh").status_code == 401
+    resp = client.post("/api/v1/auth/refresh")
+    assert resp.status_code == 401
 
 
 def test_cookie_only_logout_needs_the_header_and_then_revokes_and_clears(client, db):
     refresh = _login(client, db, "bye@x.com").json()["data"]["refresh_token"]
     _holding_only_the_cookie(client, refresh)
-    assert client.post("/api/v1/auth/logout").status_code == 403
+    resp = client.post("/api/v1/auth/logout")
+    assert resp.status_code == 403
     r = client.post("/api/v1/auth/logout", headers={**COOKIE_MODE, "Origin": ALLOWED_ORIGIN})
     assert r.status_code == 200 and r.json()["data"] == {"logged_out": True}
     assert "max-age=0" in r.headers["set-cookie"].lower()
@@ -114,4 +116,5 @@ def test_requests_without_a_browser_origin_or_from_ours_pass(client, db, origin)
     headers = dict(COOKIE_MODE)
     if origin:
         headers["Origin"] = origin
-    assert client.post("/api/v1/auth/refresh", headers=headers).status_code == 200
+    resp = client.post("/api/v1/auth/refresh", headers=headers)
+    assert resp.status_code == 200
