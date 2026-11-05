@@ -28,6 +28,7 @@ from app.schemas.ai_chat import (
 from app.services.ai_cofounder.service import (
     MAX_QUERY,
     MIN_QUERY,
+    cancel_message,
     create_conversation,
     delete_conversation,
     fail_stale_generating,
@@ -236,6 +237,22 @@ def post_message_endpoint(
     assistant = post_message(db, conv, payload.content)
     db.commit()
     return success_response(serialize_message(assistant))
+
+
+@router.post("/conversations/{conversation_id}/messages/{message_id}/cancel")
+def cancel_message_endpoint(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """"Cancel" a reply that is still generating (D-AI-2). 200 with the message, now `cancelled`
+    (also when it already was); 409 `REPLY_NOT_RUNNING` if it finished first."""
+    conv = get_conversation(db, _startup(db, membership), user, conversation_id)
+    msg = cancel_message(db, conv, message_id)
+    db.commit()
+    return success_response(serialize_message(msg))
 
 
 @router.delete("/conversations/{conversation_id}")

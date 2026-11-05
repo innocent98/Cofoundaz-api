@@ -5,16 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError
-from app.core.logger import log
-from app.db.models.ai_chat import AiConversation, AiMessage
 from app.db.models.assessment import AssessmentResult
 from app.db.models.business import BusinessCanvas, BusinessRecord
 from app.db.models.dashboard import DailyBriefing
 from app.db.models.enums import (
     BriefingStatus,
     CanvasType,
-    ChatMessageRole,
-    ChatMessageStatus,
     EnrichmentStatus,
     RecommendationStatus,
     RecordKind,
@@ -29,12 +25,9 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.activity import write_activity
 from app.platform.events import event_bus
-from app.platform.llm import EmptyCompletionError
 from app.platform.llm_budget import metered_complete, metered_complete_json
-from app.services.ai_cofounder.finance_context import finance_context_for
-from app.services.ai_cofounder.prompts import build_cofounder_messages
-from app.services.ai_cofounder.service import BUDGET_FAILED_TEXT, REPLY_FAILED_TEXT, fail_message
-from app.services.ai_preferences import founder_tone, get_prefs
+from app.services.ai_cofounder.orchestrator import run_reply
+from app.services.ai_preferences import founder_tone
 from app.services.assessment.narrative import build_narrative_messages
 from app.services.business.ai_fill import build_canvas_fill_messages, build_record_fill_messages
 from app.services.business.canvas_defs import CANVAS_BLOCKS, canvas_json_schema
@@ -527,81 +520,12 @@ register_handler("ai.journal.prompt", handle_journal_prompt)
 
 
 def handle_cofounder_reply(db: Session, job: Job) -> None:
-    """Fill the assistant turn of an AI Co-Founder chat via the LLM (prose). No commit.
-
-    Idempotent: no-ops unless the assistant row is still `generating`. A chat turn has no
-    templated fallback, so over budget -> status `failed` (the FE polls and surfaces it).
-    """
-    msg = db.get(AiMessage, uuid.UUID(job.payload["message_id"]))
-    if (
-        msg is None
-        or msg.role != ChatMessageRole.assistant
-        or msg.status != ChatMessageStatus.generating
-    ):
-        return
-    conversation = db.get(AiConversation, msg.conversation_id)
-    if conversation is None:
-        return
-    startup = db.get(Startup, conversation.startup_id)
-    if startup is None:
-        return
-    # Cap history to the most recent turns so one long conversation can't amplify the
-    # LLM input cost of every subsequent reply.
-    prior = list(
-        reversed(
-            db.query(AiMessage)
-            .filter(
-                AiMessage.conversation_id == conversation.id,
-                AiMessage.id != msg.id,
-                AiMessage.status == ChatMessageStatus.ready,
-                AiMessage.removed_by_moderation_at.is_(None),  # removed by staff: never re-fed
-            )
-            .order_by(AiMessage.created_at.desc(), AiMessage.id.desc())
-            .limit(20)
-            .all()
-        )
-    )
-    profile = startup.profile
-    messages = build_cofounder_messages(
-        name=startup.name,
-        industry=startup.industry,
-        stage=(startup.stage.value if startup.stage else None),
-        description=startup.description,
-        goals=(list(profile.goals) if profile and profile.goals else []),
-        history=[(m.role.value, m.content) for m in prior if m.content],
-        # Role-gated: only a member who may read Finance gets the money figures.
-        finance_context=finance_context_for(
-            db, startup_id=startup.id, user_id=conversation.created_by
-        ),
-        tone=(
-            get_prefs(db, user_id=conversation.created_by, startup_id=startup.id).tone
-            if conversation.created_by
-            else None
-        ),
-    )
-    try:
-        text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
-    except Exception as exc:  # noqa: BLE001 - any provider failure must end the turn eventually
-        # An empty completion repeats for the same prompt, so end the turn now instead of
-        # spending the daily token budget on retries.
-        if (
-            not isinstance(exc, EmptyCompletionError)
-            and job.attempts < settings.WORKER_MAX_ATTEMPTS
-        ):
-            raise  # let the runner retry with backoff
-        log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
-        fail_message(db, msg, REPLY_FAILED_TEXT)
-        return
-    if text is None:
-        # over budget — no templated fallback for a chat turn
-        fail_message(db, msg, BUDGET_FAILED_TEXT)
-        return
-    msg.content = text.strip()
-    msg.status = ChatMessageStatus.ready
-    db.flush()
+    """Route and answer one AI Co-Founder turn. Self-managed: it commits its own units of work
+    (see `ai_cofounder.orchestrator`)."""
+    run_reply(db, job)
 
 
-register_handler("ai.cofounder.reply", handle_cofounder_reply)
+register_handler("ai.cofounder.reply", handle_cofounder_reply, manages_transactions=True)
 
 
 def handle_roadmap_breakdown(db: Session, job: Job) -> None:

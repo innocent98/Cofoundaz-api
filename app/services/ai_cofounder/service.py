@@ -1,8 +1,10 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from typing import cast as typing_cast
 
-from sqlalchemy import String, cast, exists, or_
+from sqlalchemy import String, cast, exists, or_, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,6 +15,7 @@ from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.ai_cofounder.agents import AGENTS
 from app.services.reports.core import REMOVED_PLACEHOLDER
 
 REPLY_FAILED_TEXT = "Sorry, I couldn't put a reply together. Please try asking again."
@@ -144,16 +147,58 @@ def messages_for(db: Session, conversation: AiConversation) -> list[AiMessage]:
     )
 
 
+def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content: str) -> bool:
+    """Move a `generating` assistant turn to a terminal status with one conditional UPDATE. A turn
+    that is no longer `generating` (the founder pressed Cancel, or another path ended it) matches
+    no row and is left exactly as it is, so a late worker or reaper can never overwrite a
+    cancel or a finished reply. Returns whether this call ended the turn."""
+    changed = typing_cast(
+        CursorResult,
+        db.execute(
+            update(AiMessage)
+            .where(AiMessage.id == msg.id, AiMessage.status == ChatMessageStatus.generating)
+            .values(status=status, content=content)
+        ),
+    ).rowcount
+    db.refresh(msg)
+    return bool(changed)
+
+
 def fail_message(db: Session, msg: AiMessage, text: str) -> None:
     """End an assistant turn as `failed` with a founder-visible message (the FE polls it)."""
-    msg.status = ChatMessageStatus.failed
-    msg.content = text
-    db.flush()
+    if not _end_turn(db, msg, status=ChatMessageStatus.failed, content=text):
+        return
     event_bus.publish(
         db,
         "ai.cofounder.reply.failed",
         {"message_id": str(msg.id), "conversation_id": str(msg.conversation_id)},
     )
+
+
+def cancel_message(db: Session, conversation: AiConversation, message_id: uuid.UUID) -> AiMessage:
+    """ "Cancel" (D-AI-2): stop a reply that is still generating. Idempotent on an already
+    cancelled turn; a turn that already finished is a 409. The queued or running job notices the
+    status and does nothing more (tokens already spent stay billed)."""
+    msg = (
+        db.query(AiMessage)
+        .filter(
+            AiMessage.id == message_id,
+            AiMessage.conversation_id == conversation.id,
+            AiMessage.role == ChatMessageRole.assistant,
+        )
+        .first()
+    )
+    if msg is None:
+        raise NotFound()
+    if _end_turn(db, msg, status=ChatMessageStatus.cancelled, content=""):
+        event_bus.publish(
+            db,
+            "ai.cofounder.reply.cancelled",
+            {"message_id": str(msg.id), "conversation_id": str(msg.conversation_id)},
+        )
+    elif msg.status != ChatMessageStatus.cancelled:
+        raise AppError("REPLY_NOT_RUNNING", "This reply has already finished.", 409)
+    return msg
 
 
 def fail_stale_generating(db: Session, conversation: AiConversation) -> int:
@@ -275,12 +320,17 @@ def delete_conversation(db: Session, conversation: AiConversation) -> None:
 
 def serialize_message(m: AiMessage) -> dict[str, Any]:
     removed = m.removed_by_moderation_at is not None
+    agent = AGENTS.get(m.agent_key) if m.agent_key and not removed else None
     return {
         "id": str(m.id),
         "role": m.role.value,
         "status": m.status.value,
         "content": REMOVED_PLACEHOLDER if removed else m.content,
         "removed_by_moderation": removed,
+        "agent": {"key": agent.key, "name": agent.name} if agent else None,
+        "reasoning_summary": None if removed else m.reasoning_summary,
+        "disclaimer": None if removed else m.disclaimer,
+        "sources": None if removed else m.sources,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
 
