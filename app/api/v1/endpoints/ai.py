@@ -247,7 +247,7 @@ def cancel_message_endpoint(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    """"Cancel" a reply that is still generating (D-AI-2). 200 with the message, now `cancelled`
+    """ "Cancel" a reply that is still generating (D-AI-2). 200 with the message, now `cancelled`
     (also when it already was); 409 `REPLY_NOT_RUNNING` if it finished first."""
     conv = get_conversation(db, _startup(db, membership), user, conversation_id)
     msg = cancel_message(db, conv, message_id)

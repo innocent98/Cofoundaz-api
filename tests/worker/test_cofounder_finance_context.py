@@ -16,12 +16,12 @@ from app.db.models.enums import (
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from app.platform import llm_budget
+from app.services.ai_cofounder.agents import AGENTS
 from app.services.ai_cofounder.finance_context import (
     can_read_finance,
     finance_context_for,
     finance_summary,
 )
-from app.services.ai_cofounder.agents import AGENTS
 from app.services.ai_cofounder.prompts import build_agent_messages
 from app.services.ai_cofounder.service import create_conversation
 from app.worker.handlers.ai import handle_cofounder_reply
