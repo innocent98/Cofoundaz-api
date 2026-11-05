@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "template",
+        "message": "Input should be 'incomplete_documents', 'licence_not_verified', 'references_not_verified', 'outside_scope' or 'other'"
+      }
+    ]
+  }
+}

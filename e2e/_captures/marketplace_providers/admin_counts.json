@@ -1,0 +1,16 @@
+{
+  "data": {
+    "by_status": {
+      "invited": 0,
+      "applied": 0,
+      "in_review": 0,
+      "changes_requested": 0,
+      "approved": 1,
+      "suspended": 0,
+      "rejected": 1
+    },
+    "licence_expiring": 0,
+    "flagged_edits": 0
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CATEGORY_LOCKED",
+    "message": "You were vetted for this category. Contact support to change it.",
+    "field_errors": []
+  }
+}

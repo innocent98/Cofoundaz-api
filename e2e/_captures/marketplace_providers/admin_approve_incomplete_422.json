@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VETTING_INCOMPLETE",
+    "message": "Tick every check this category needs before approving: id, licence, references.",
+    "field_errors": []
+  }
+}

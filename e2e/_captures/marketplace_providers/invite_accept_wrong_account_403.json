@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVITE_EMAIL_MISMATCH",
+    "message": "This invitation was sent to a different email address.",
+    "field_errors": []
+  }
+}

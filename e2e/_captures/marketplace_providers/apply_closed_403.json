@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "APPLICATIONS_CLOSED",
+    "message": "Expert applications aren't open right now.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ALREADY_INVITED",
+    "message": "That person already has a pending invitation. Re-send it.",
+    "field_errors": []
+  }
+}

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin,
+    admin_marketplace,
     ai,
     assessments,
     billing,
@@ -24,6 +25,7 @@ from app.api.v1.endpoints import (
     notifications,
     payment_webhooks,
     platform_status,
+    provider,
     readiness,
     reports,
     roadmap,
@@ -91,6 +93,13 @@ api_router.include_router(flags.router, prefix="/flags", tags=["flags"])
 api_router.include_router(support.router, prefix="/support", tags=["support"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"], include_in_schema=False)
+api_router.include_router(
+    admin_marketplace.router,
+    prefix="/admin/marketplace",
+    tags=["admin-marketplace"],
+    include_in_schema=False,
+)
+api_router.include_router(provider.router, prefix="/provider", tags=["provider"])
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
 )

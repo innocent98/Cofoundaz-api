@@ -82,6 +82,11 @@ from app.db.models.marketing import (  # noqa: F401
     MarketingChannel,
     MarketingMedia,
 )
+from app.db.models.marketplace import (  # noqa: E402, F401
+    MarketplaceFile,
+    MarketplaceProvider,
+    MarketplaceProviderPortfolio,
+)
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401
 from app.db.models.notification import Notification  # noqa: F401

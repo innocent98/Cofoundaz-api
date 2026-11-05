@@ -1,0 +1,6 @@
+{
+  "to": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+  "subject": "We received your Marketplace application",
+  "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px\">Application received</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Hi Ngozi Eze, thanks for submitting your profile. Our team reviews every expert before they appear on the Marketplace. We'll email you when there's a decision or if we need anything more.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/provider\" style=\"display:inline-block;padding:12px 22px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Open your expert portal</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/provider\" style=\"color:#4f46e5\">http://localhost:3000/provider</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Reviews usually take a few working days.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
+  "sent_at": "2026-11-05T15:24:59.482814+00:00"
+}

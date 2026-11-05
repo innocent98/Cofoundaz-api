@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PROFILE_LOCKED",
+    "message": "Your application is under review. You can edit it if we ask for changes.",
+    "field_errors": []
+  }
+}

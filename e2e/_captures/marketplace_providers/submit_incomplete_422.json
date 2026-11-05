@@ -1,0 +1,24 @@
+{
+  "error": {
+    "code": "SUBMISSION_INCOMPLETE",
+    "message": "A few things are still needed before you can submit.",
+    "field_errors": [
+      {
+        "field": "headline",
+        "message": "Add a one-line headline."
+      },
+      {
+        "field": "bio",
+        "message": "Write a bio of at least 50 characters."
+      },
+      {
+        "field": "languages",
+        "message": "Add at least one language."
+      },
+      {
+        "field": "credentials",
+        "message": "Upload at least one credential document (ID or licence)."
+      }
+    ]
+  }
+}

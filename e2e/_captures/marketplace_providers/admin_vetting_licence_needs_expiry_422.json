@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Enter a licence expiry date in the future.",
+    "field_errors": []
+  }
+}

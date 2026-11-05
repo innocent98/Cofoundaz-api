@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "accept_terms",
+        "message": "Value error, You need to accept the expert terms to continue."
+      }
+    ]
+  }
+}

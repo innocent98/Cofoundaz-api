@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PROVIDER_REJECTED",
+    "message": "Your expert application was not approved.",
+    "field_errors": []
+  }
+}

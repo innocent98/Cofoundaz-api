@@ -1,0 +1,43 @@
+{
+  "data": {
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+    "status": "invited",
+    "source": "invite",
+    "display_name": "Ngozi Eze",
+    "headline": "Corporate lawyer for early-stage startups",
+    "bio": "Fifteen years advising founders on contracts, shareholder agreements and fundraising.",
+    "category": "Legal",
+    "categories": [],
+    "languages": [
+      "English",
+      "Igbo"
+    ],
+    "timezone": "Africa/Lagos",
+    "location": "Lagos, Nigeria",
+    "avatar_file_id": null,
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "submitted_at": null,
+    "review_message": null,
+    "can_edit_profile": true,
+    "can_submit": true,
+    "submit_blockers": [],
+    "badge": {
+      "vetted": false,
+      "checks": []
+    },
+    "portfolio": [],
+    "files": [
+      {
+        "id": "4b0db48d-73f2-46c4-8730-d635f55b800f",
+        "purpose": "credential",
+        "filename": "bar-licence.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 38,
+        "scan_status": "clean",
+        "created_at": "2026-11-05T15:24:59.394784+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

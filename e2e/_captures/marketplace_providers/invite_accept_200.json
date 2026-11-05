@@ -1,0 +1,47 @@
+{
+  "data": {
+    "id": "68d40396-575e-4bff-a5ec-27ed0e1014c5",
+    "email": "delivered+e2e-7aaf23cfaaa6@resend.dev",
+    "status": "invited",
+    "source": "invite",
+    "display_name": "Ngozi Eze",
+    "headline": null,
+    "bio": null,
+    "category": "Legal",
+    "categories": [],
+    "languages": [],
+    "timezone": "Africa/Lagos",
+    "location": null,
+    "avatar_file_id": null,
+    "terms_accepted_at": "2026-11-05T15:24:59.227438+00:00",
+    "submitted_at": null,
+    "review_message": null,
+    "can_edit_profile": true,
+    "can_submit": true,
+    "submit_blockers": [
+      {
+        "field": "headline",
+        "message": "Add a one-line headline."
+      },
+      {
+        "field": "bio",
+        "message": "Write a bio of at least 50 characters."
+      },
+      {
+        "field": "languages",
+        "message": "Add at least one language."
+      },
+      {
+        "field": "credentials",
+        "message": "Upload at least one credential document (ID or licence)."
+      }
+    ],
+    "badge": {
+      "vetted": false,
+      "checks": []
+    },
+    "portfolio": [],
+    "files": []
+  },
+  "meta": null
+}

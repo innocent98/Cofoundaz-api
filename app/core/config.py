@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Encrypts founders' payment-provider secrets at rest. Optional so the app boots without
     # it; connect/replace/webhook/sync raise FinanceConnectionsNotConfigured at use time.
     FINANCE_CONNECTIONS_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
+    # Marketplace (D-MP-1 hybrid): false = experts join by staff invite only; true also opens
+    # POST /provider/apply. Production card charging has its own switch in a later slice.
+    MARKETPLACE_OPEN_APPLICATIONS: bool = False
     # Public base URL of this API, used to build per-connection webhook URLs.
     API_PUBLIC_URL: str = ""
     # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.

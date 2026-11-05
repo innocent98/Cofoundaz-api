@@ -1,0 +1,7 @@
+{
+  "status": 200,
+  "content_type": "application/pdf",
+  "content_disposition": "attachment; filename=\"bar-licence.pdf\"; filename*=UTF-8''bar-licence.pdf",
+  "x_content_type_options": "nosniff",
+  "cache_control": "private, no-store"
+}
