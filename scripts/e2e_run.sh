@@ -189,10 +189,29 @@ if [[ -z "${ready}" ]]; then
 fi
 echo "==> server healthy"
 
-echo "==> running e2e suite (smoke + journeys)"
+# E2E_SELECT=all (default): every journey. E2E_SELECT=critical: only `-m critical` journeys, plus
+# the files in E2E_AREA_FILES (space separated; the app areas a PR touches, from
+# scripts/ci_e2e_select.py). Used by PR runs in CI; nightly and pushes to develop run `all`.
+E2E_SELECT="${E2E_SELECT:-all}"
 set +e
-poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider
-CODE=$?
+if [[ "${E2E_SELECT}" == "critical" ]]; then
+  echo "==> running e2e suite (critical journeys)"
+  poetry run pytest e2e/ -m critical -o addopts="" -v -p no:cacheprovider
+  CODE=$?
+  if [[ -n "${E2E_AREA_FILES:-}" ]]; then
+    echo "==> running e2e suite (touched areas: ${E2E_AREA_FILES})"
+    # shellcheck disable=SC2086
+    poetry run pytest ${E2E_AREA_FILES} -m "not critical" -o addopts="" -v -p no:cacheprovider
+    AREA_CODE=$?
+    # exit 5 = nothing left to collect (a file whose only journey is critical): not a failure
+    [[ "${AREA_CODE}" == "5" ]] && AREA_CODE=0
+    [[ "${CODE}" == "0" ]] && CODE="${AREA_CODE}"
+  fi
+else
+  echo "==> running e2e suite (smoke + journeys)"
+  poetry run pytest e2e/ -o addopts="" -v -p no:cacheprovider
+  CODE=$?
+fi
 set -e
 
 echo "==> server log tail:"; tail -15 "${SERVER_LOG}" || true

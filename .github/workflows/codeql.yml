@@ -48,6 +48,8 @@ on:
     # guard below would skip every event it did receive. The two must be added
     # together or the guard silently becomes "never run on a PR".
     types: [opened, reopened, ready_for_review, synchronize]
+    # Docs-only PRs have nothing to analyse (CodeQL scans code, not markdown).
+    paths-ignore: ["docs/**", "**/*.md", "e2e/_captures/**"]
   schedule:
     # Mondays 04:17 UTC. Deliberately not on the hour - GitHub heavily throttles
     # cron at :00, and a delayed weekly baseline is a stale weekly baseline.
