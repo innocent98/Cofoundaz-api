@@ -1,12 +1,11 @@
 """Investor Readiness: pitch deck reviews
 
 Revision ID: 0091_readiness_deck_reviews
-Revises: 0089_readiness_scores
+Revises: 0090_funding_core
 Create Date: 2026-11-06
 
-Slice B of Investor Readiness (PRD 15.2). Adds `deck_reviews`. Chained on 0089 because Funding's
-0090 was not on develop when this was written: if 0090 merges first, set `down_revision` to
-"0090_funding_pipeline" (check its id) and keep the revision id. Downgrade drops the table.
+Slice B of Investor Readiness (PRD 15.2). Adds `deck_reviews`. Chained on Funding's
+0090_funding_core. Downgrade drops the table.
 """
 
 import sqlalchemy as sa
@@ -15,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0091_readiness_deck_reviews"
-down_revision = "0089_readiness_scores"
+down_revision = "0090_funding_core"
 branch_labels = None
 depends_on = None
 

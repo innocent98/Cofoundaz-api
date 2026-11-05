@@ -48,7 +48,7 @@ def test_0089_and_0091_upgrade_downgrade_upgrade_on_a_scratch_database():
         up = _alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr
         assert TABLES <= set(inspect(eng).get_table_names())
-        one = _alembic(scratch_url, "downgrade", "0089_readiness_scores")
+        one = _alembic(scratch_url, "downgrade", "0090_funding_core")
         assert one.returncode == 0, one.stderr
         left = set(inspect(eng).get_table_names())
         assert "deck_reviews" not in left and "readiness_scores" in left
