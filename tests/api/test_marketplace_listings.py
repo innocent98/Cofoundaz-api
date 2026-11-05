@@ -181,7 +181,8 @@ def new_listing(client, user, **over):
 
 def live_listing(client, db, moderator, user, **over):
     row = new_listing(client, user, **over)
-    assert client.post(f"{P}/listings/{row['id']}/submit", headers=hdr(user)).status_code == 200
+    resp1 = client.post(f"{P}/listings/{row['id']}/submit", headers=hdr(user))
+    assert resp1.status_code == 200
     r = staff_post(client, moderator, f"/listings/{row['id']}/approve", step_up=False)
     assert r.status_code == 200, r.text
     return row["id"]
@@ -341,14 +342,16 @@ def test_patch_rules_on_a_draft(client, db, moderator, mail):
     user, _ = approved(client, db, moderator, mail)
     d = new_listing(client, user)
     h = hdr(user)
-    assert client.patch(f"{P}/listings/{d['id']}", json={}, headers=h).status_code == 422
+    resp2 = client.patch(f"{P}/listings/{d['id']}", json={}, headers=h)
+    assert resp2.status_code == 422
     for bad in (
         {"title": None},
         {"price_minor": None},
         {"category": None},
         {"revisions_included": None},
     ):
-        assert client.patch(f"{P}/listings/{d['id']}", json=bad, headers=h).status_code == 422, bad
+        resp3 = client.patch(f"{P}/listings/{d['id']}", json=bad, headers=h)
+        assert resp3.status_code == 422, bad
     r = client.patch(
         f"{P}/listings/{d['id']}",
         json={"tags": None, "deliverables": ["A memo"], "price_minor": 2_000_000},
@@ -394,7 +397,8 @@ def test_submit_locks_the_listing_and_shows_in_the_queue(client, db, moderator, 
     assert r.status_code == 200 and r.json()["data"]["status"] == "pending_review"
     lock = client.patch(f"{P}/listings/{d['id']}", json={"title": "New title here"}, headers=h)
     assert lock.status_code == 409 and lock.json()["error"]["code"] == "LISTING_LOCKED"
-    assert client.post(f"{P}/listings/{d['id']}/submit", headers=h).status_code == 409
+    resp4 = client.post(f"{P}/listings/{d['id']}/submit", headers=h)
+    assert resp4.status_code == 409
     q = client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
     assert [x["id"] for x in q] == [d["id"]]
     assert (
@@ -442,7 +446,8 @@ def test_reject_and_request_changes_send_it_back(client, db, moderator, mail):
         ).status_code
         == 200
     )
-    assert client.post(f"{P}/listings/{a['id']}/submit", headers=h).status_code == 200  # resubmit
+    resp5 = client.post(f"{P}/listings/{a['id']}/submit", headers=h)
+    assert resp5.status_code == 200  # resubmit
 
     b = new_listing(client, user, title="Second listing")
     client.post(f"{P}/listings/{b['id']}/submit", headers=h)
@@ -580,17 +585,22 @@ def test_pause_resume_and_delete_rules(client, db, moderator, mail):
     user, _ = approved(client, db, moderator, mail)
     h = hdr(user)
     lid = live_listing(client, db, moderator, user)
-    assert client.post(f"{P}/listings/{lid}/resume", headers=h).status_code == 409
+    resp6 = client.post(f"{P}/listings/{lid}/resume", headers=h)
+    assert resp6.status_code == 409
     r = client.post(f"{P}/listings/{lid}/pause", headers=h)
     assert r.status_code == 200 and r.json()["data"]["status"] == "paused"
-    assert client.post(f"{P}/listings/{lid}/pause", headers=h).status_code == 409
+    resp7 = client.post(f"{P}/listings/{lid}/pause", headers=h)
+    assert resp7.status_code == 409
     # a paused listing is editable like a live one
     e = client.patch(f"{P}/listings/{lid}", json={"title": "Edited while paused"}, headers=h)
     assert e.status_code == 200 and e.json()["data"]["pending_revision"]
-    assert client.delete(f"{P}/listings/{lid}", headers=h).status_code == 409  # pause, don't delete
-    assert client.post(f"{P}/listings/{lid}/resume", headers=h).json()["data"]["status"] == "active"
+    resp8 = client.delete(f"{P}/listings/{lid}", headers=h)
+    assert resp8.status_code == 409  # pause, don't delete
+    resp9 = client.post(f"{P}/listings/{lid}/resume", headers=h)
+    assert resp9.json()["data"]["status"] == "active"
     draft = new_listing(client, user, title="Throwaway draft")
-    assert client.delete(f"{P}/listings/{draft['id']}", headers=h).status_code == 200
+    resp10 = client.delete(f"{P}/listings/{draft['id']}", headers=h)
+    assert resp10.status_code == 200
     assert client.get(f"{P}/listings/{draft['id']}", headers=h).status_code == 404
 
 
@@ -614,7 +624,8 @@ def test_unlist_and_relist_need_a_code_and_hide_the_listing(client, db, moderato
         f"{P}/listings/{lid}", json={"title": "Trying to edit"}, headers=hdr(user)
     )
     assert locked.status_code == 403 and locked.json()["error"]["code"] == "LISTING_UNLISTED"
-    assert client.post(f"{P}/listings/{lid}/resume", headers=hdr(user)).status_code == 409
+    resp11 = client.post(f"{P}/listings/{lid}/resume", headers=hdr(user))
+    assert resp11.status_code == 409
     back = staff_post(client, moderator, f"/listings/{lid}/relist")
     assert back.status_code == 200 and back.json()["data"]["status"] == "active"
     assert client.get(f"{M}/listings/{lid}", headers=fh(f, ws)).status_code == 200
@@ -800,7 +811,8 @@ def test_availability_validation(client, db, mutate):
     u, _ = mk_provider(db)
     body = {"min_notice_h": 24, "buffer_min": 0, "rules": [], "exceptions": []}
     mutate(body)
-    assert client.put(f"{P}/availability", json=body, headers=hdr(u)).status_code == 422
+    resp12 = client.put(f"{P}/availability", json=body, headers=hdr(u))
+    assert resp12.status_code == 422
 
 
 def test_a_failed_availability_put_leaves_the_old_schedule(client, db):
@@ -812,7 +824,9 @@ def test_a_failed_availability_put_leaves_the_old_schedule(client, db):
         "rules": [{"weekday": 1, "start": "09:00", "end": "10:00", "slot_min": 30}],
         "exceptions": [],
     }
-    assert client.put(f"{P}/availability", json=ok, headers=h).status_code == 200
+    resp13 = client.put(f"{P}/availability", json=ok, headers=h)
+    assert resp13.status_code == 200
     bad = {**ok, "rules": [{"weekday": 2, "start": "11:00", "end": "10:00", "slot_min": 30}]}
-    assert client.put(f"{P}/availability", json=bad, headers=h).status_code == 422
+    resp14 = client.put(f"{P}/availability", json=bad, headers=h)
+    assert resp14.status_code == 422
     assert client.get(f"{P}/availability", headers=h).json()["data"]["rules"][0]["weekday"] == 1

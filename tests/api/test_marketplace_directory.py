@@ -532,7 +532,8 @@ def test_slots_follow_the_schedule_exceptions_and_timezone(client, db, fx):
         ],
         "exceptions": [{"on_date": tue.isoformat(), "kind": "blocked"}],
     }
-    assert client.put(f"{P}/availability", json=body, headers=hdr(u)).status_code == 200
+    resp = client.put(f"{P}/availability", json=body, headers=hdr(u))
+    assert resp.status_code == 200
     r = get(
         client,
         f,

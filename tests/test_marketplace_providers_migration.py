@@ -47,11 +47,9 @@ def test_0092_upgrade_downgrade_upgrade_on_a_scratch_database():
         up = _alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr
         assert TABLES <= set(inspect(eng).get_table_names())
-        down = _alembic(
-            scratch_url,
-            "downgrade",
-            "0092_marketplace_providers-1",  # one step below this migration, wherever later ones are chained
-        )
+        # Pin the target: "-1" from head only undoes 0092 while 0092 is the head,
+        # and fails as soon as a later migration is chained on top of it.
+        down = _alembic(scratch_url, "downgrade", "0091_readiness_deck_reviews")
         assert down.returncode == 0, down.stderr
         assert not TABLES & set(inspect(eng).get_table_names())
         again = _alembic(scratch_url, "upgrade", "head")
