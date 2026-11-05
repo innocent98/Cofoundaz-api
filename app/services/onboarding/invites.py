@@ -215,6 +215,26 @@ def preview_invitation(db: Session, token: str) -> dict[str, Any]:
     }
 
 
+def decline_invitation(db: Session, user: User, token: str) -> None:
+    """The invitee turns an invitation down. Same checks as accepting (live token, their own
+    email), so a stranger holding a leaked link cannot decline someone else's."""
+    inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
+    if inv is None or inv.status != InvitationStatus.pending or inv.expires_at < datetime.now(UTC):
+        raise TokenInvalid()
+    if user.email.lower() != inv.email.lower():
+        raise InviteEmailMismatch()
+    inv.status = InvitationStatus.declined
+    db.flush()
+    write_audit(
+        db,
+        "team.invitation.declined",
+        actor_user_id=user.id,
+        startup_id=inv.startup_id,
+        entity_type="invitation",
+        entity_id=inv.id,
+    )
+
+
 def accept_invitation(db: Session, user: User, token: str) -> Membership:
     inv = db.query(Invitation).filter(Invitation.token_hash == hash_token(token)).first()
     now = datetime.now(UTC)

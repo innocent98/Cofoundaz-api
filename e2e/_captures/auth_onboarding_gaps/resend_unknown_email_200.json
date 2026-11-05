@@ -3,10 +3,10 @@
     "method": "POST",
     "path": "/api/v1/auth/verify/resend",
     "headers": {
-      "X-Forwarded-For": "198.51.100.41"
+      "X-Forwarded-For": "198.51.100.67"
     },
     "json": {
-      "email": "delivered+nobody-1c62d04adb92@resend.dev"
+      "email": "delivered+nobody-733cb6f5a716@resend.dev"
     }
   },
   "response": {

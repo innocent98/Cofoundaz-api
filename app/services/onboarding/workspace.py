@@ -107,11 +107,14 @@ def joined_any_workspace(db: Session, user: User) -> Startup | None:
 
 
 def not_a_founder_state(db: Session, user: User) -> dict[str, Any] | None:
-    """Onboarding state for someone the wizard is not for: a person who joined a workspace, or
-    who holds a pending invitation and has no workspace of their own. None for everyone else.
+    """What `GET /onboarding/state` answers for someone the wizard is not for: a person who
+    joined a workspace, or who holds a pending invitation and has no workspace of their own.
+    None for everyone else.
 
-    The wizard builds a founder's startup, so it must never create a draft for these people
-    (an invited mentor used to leave a stray "Founder & CEO" startup behind on first load)."""
+    Reading never creates a founder draft for these people (an invited mentor used to leave a
+    stray "Founder & CEO" startup behind on first load). A pending invitation only changes what
+    is DISPLAYED: it does not block writing, so a stranger who invites an address cannot stop
+    its owner from starting their own startup; `POST /invitations/decline` clears it."""
     if _own_workspace(db, user) is not None:
         return None
     joined = joined_any_workspace(db, user)
@@ -142,10 +145,11 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
     )
     if existing is not None:
         return existing
-    if not_a_founder_state(db, user) is not None:
+    if joined_any_workspace(db, user) is not None:
+        # A member (they accepted an invitation) is not a founder: no draft of their own.
         raise AppError(
             code="ONBOARDING_NOT_FOR_INVITED",
-            message="You've been invited to a workspace. Accept the invitation to continue.",
+            message="You joined a workspace as a team member, so there is no startup to set up.",
             http_status=409,
         )
 

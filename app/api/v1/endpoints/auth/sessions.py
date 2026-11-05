@@ -29,8 +29,11 @@ router = APIRouter()
 
 
 def _read_refresh(request: Request, payload: RefreshRequest | None) -> str:
+    """The refresh token the caller is presenting: the body's when there is one, else the
+    cookie's. Body first matters for CSRF: the guard waives its checks for a body token (not
+    ambient), so the body token must be the one actually used, never a decoy next to a cookie."""
     body_token = payload.refresh_token if payload else None
-    return request.cookies.get(settings.REFRESH_COOKIE_NAME) or (body_token or "")
+    return body_token or request.cookies.get(settings.REFRESH_COOKIE_NAME) or ""
 
 
 @router.post("/refresh")
@@ -64,10 +67,15 @@ def logout(
 ) -> dict[str, Any]:
     require_cookie_csrf_guard(request, body_token=payload.refresh_token if payload else None)
     raw = _read_refresh(request, payload)
+    from_body = bool(payload and payload.refresh_token)
+    known = revoke_session(db, raw) if raw else False
     if raw:
-        revoke_session(db, raw)
         db.commit()
-    clear_refresh_cookie(response)
+    # A body token is not ambient, but it must not be a decoy that clears the browser's cookie
+    # (forced sign-out): the cookie is cleared only when the token presented was a real session's
+    # or the cookie itself is the credential (and passed the CSRF guard above).
+    if known or not from_body:
+        clear_refresh_cookie(response)
     return success_response({"logged_out": True})
 
 

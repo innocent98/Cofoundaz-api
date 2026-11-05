@@ -33,9 +33,13 @@ class Settings(BaseSettings):
     AUTH_LOGIN_PER_IP_15MIN: int = 60
     AUTH_SIGNUP_PER_IP_HOURLY: int = 10
     AUTH_FORGOT_PER_IP_HOURLY: int = 20
-    AUTH_FORGOT_PER_EMAIL_HOURLY: int = 5
+    # Mail an address can be sent per hour: per (address, caller IP) first, then the address overall.
+    # The overall cap is deliberately higher so one stranger cannot use it to silence the owner.
+    AUTH_FORGOT_PER_EMAIL_IP_HOURLY: int = 5
+    AUTH_FORGOT_PER_EMAIL_HOURLY: int = 20
     AUTH_RESEND_PER_IP_HOURLY: int = 20
-    AUTH_RESEND_PER_EMAIL_HOURLY: int = 5
+    AUTH_RESEND_PER_EMAIL_IP_HOURLY: int = 5
+    AUTH_RESEND_PER_EMAIL_HOURLY: int = 20
     # MFA sign-in ticket: wrong codes allowed before the ticket burns.
     MFA_TICKET_MAX_ATTEMPTS: int = 5
     # Wrong MFA codes per account, across tickets, before the challenge locks for the lockout time.

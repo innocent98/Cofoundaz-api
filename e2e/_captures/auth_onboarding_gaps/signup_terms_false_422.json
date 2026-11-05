@@ -3,10 +3,10 @@
     "method": "POST",
     "path": "/api/v1/auth/signup",
     "headers": {
-      "X-Forwarded-For": "198.51.100.67"
+      "X-Forwarded-For": "198.51.100.3"
     },
     "json": {
-      "email": "delivered+consent-36332d2fce76@resend.dev",
+      "email": "delivered+consent-1e018f45f9ff@resend.dev",
       "password": "<test-password>",
       "accepted_terms": false
     }

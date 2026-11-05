@@ -47,24 +47,33 @@ def test_a_pending_invitee_gets_a_not_a_founder_state_and_no_draft(client, db):
     assert db.query(Startup).filter_by(created_by=invitee.id).count() == 0
 
 
-def test_writing_state_as_a_pending_invitee_is_refused_without_creating_anything(client, db):
+def test_a_pending_invitation_does_not_stop_the_owner_starting_their_own_startup(client, db):
+    """Anyone can invite any address. The invitation changes what GET shows, never what the
+    person may do: they can still write their own onboarding (no griefing lock)."""
     _owner, s = _workspace(db, onboarded=True)
     invitee = active_user(db, "invitee2@x.com")
     create_invitation(db, s, email="invitee2@x.com", role=MembershipRole.mentor)
     db.commit()
+    r = client.patch(STATE, headers=bearer(invitee), json={"step": 1, "full_name": "Ib"})
+    assert r.status_code == 200, r.text
+    assert db.query(Startup).filter_by(created_by=invitee.id).count() == 1
+    after = client.get(STATE, headers=bearer(invitee))
+    assert after.json()["data"]["pending_invite"] is False  # they have a workspace of their own now
+
+
+def test_a_member_of_another_workspace_cannot_write_a_founder_draft(client, db):
+    _owner, s = _workspace(db, onboarded=True)
+    mentor = active_user(db, "joined@x.com")
+    create_membership(db, mentor, s, role=MembershipRole.mentor)
+    db.commit()
     for call in (
-        lambda: client.patch(STATE, headers=bearer(invitee), json={"step": 1, "full_name": "Ib"}),
-        lambda: client.post("/api/v1/onboarding/complete", headers=bearer(invitee)),
-        lambda: client.post(
-            "/api/v1/onboarding/invites",
-            headers=bearer(invitee),
-            json={"invites": [{"email": "x@x.com", "role": "mentor"}]},
-        ),
+        lambda: client.patch(STATE, headers=bearer(mentor), json={"step": 1, "full_name": "Ib"}),
+        lambda: client.post("/api/v1/onboarding/complete", headers=bearer(mentor)),
     ):
         r = call()
         assert r.status_code == 409, r.text
         assert r.json()["error"]["code"] == "ONBOARDING_NOT_FOR_INVITED"
-    assert db.query(Startup).filter_by(created_by=invitee.id).count() == 0
+    assert db.query(Startup).filter_by(created_by=mentor.id).count() == 0
 
 
 def test_an_expired_or_used_invitation_does_not_block_a_real_founder(client, db):

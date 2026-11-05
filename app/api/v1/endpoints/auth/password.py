@@ -20,10 +20,11 @@ from app.schemas.auth import ChangePasswordRequest, ForgotPasswordRequest, Reset
 from app.services.auth.emails import password_changed_email, password_reset_email
 from app.services.auth.password import validate_password_strength
 from app.services.auth.ratelimit import (
-    blocked_for,
     clear_login_failures,
     clear_mfa_failures,
     enforce,
+    ip_bucket,
+    mail_blocked_for,
 )
 from app.services.auth.sessions import family_of, revoke_all_except, revoke_all_for_user
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
@@ -54,14 +55,22 @@ def forgot(
 ) -> dict[str, Any]:
     ip = request.client.host if request.client else None
     if ip:
-        enforce("forgot_ip", ip, limit=settings.AUTH_FORGOT_PER_IP_HOURLY, window_seconds=3600)
-    # Hourly cap per typed address (not per account): over it, the request is a silent no-op
-    # with the identical generic response, so it cannot reveal whether the address has an account.
-    over_cap = blocked_for(
-        "forgot_email",
+        enforce(
+            "forgot_ip",
+            ip_bucket(ip) or ip,
+            limit=settings.AUTH_FORGOT_PER_IP_HOURLY,
+            window_seconds=3600,
+        )
+    # Hourly caps per typed address (not per account), per caller IP and overall: over either,
+    # the request is a silent no-op with the identical generic response, so it cannot reveal
+    # whether the address has an account. The overall cap is higher than the per-IP one, so a
+    # stranger spamming the form cannot burn the owner's reset emails.
+    over_cap = mail_blocked_for(
+        "forgot",
         payload.email,
-        limit=settings.AUTH_FORGOT_PER_EMAIL_HOURLY,
-        window_seconds=3600,
+        ip,
+        pair_limit=settings.AUTH_FORGOT_PER_EMAIL_IP_HOURLY,
+        email_limit=settings.AUTH_FORGOT_PER_EMAIL_HOURLY,
     )
     cooldown_key = f"password_reset_cooldown:{payload.email}"
     # set(..., nx=True): only the first caller within the 60s window claims the key and

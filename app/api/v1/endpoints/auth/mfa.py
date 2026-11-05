@@ -21,7 +21,12 @@ from app.schemas.auth import (
     TotpVerifyRequest,
 )
 from app.services.auth import mfa
-from app.services.auth.ratelimit import assert_mfa_allowed, clear_mfa_failures, record_mfa_failure
+from app.services.auth.ratelimit import (
+    clear_mfa_failures,
+    record_mfa_failure,
+    record_successful_sign_in,
+    reserve_mfa_attempt,
+)
 from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
 
@@ -164,7 +169,7 @@ def challenge(
         mfa.burn_mfa_ticket(ticket)
         raise MfaTicketExpired()
     ip = request.client.host if request.client else None
-    assert_mfa_allowed(user.id)  # per-account cap across tickets (ACCOUNT_LOCKED when reached)
+    reserve_mfa_attempt(user.id)  # per-account cap across tickets, reserved atomically
     # The attempt is counted before the code is checked (atomic INCR) and an attempt past the
     # cap is refused without looking at the code, so concurrent guesses cannot slip past it.
     # A typo leaves the ticket alive; the 5th wrong code burns it.
@@ -187,6 +192,7 @@ def challenge(
     if not mfa.claim_mfa_ticket(ticket):  # single use: only one concurrent winner gets a session
         raise MfaTicketExpired()
     clear_mfa_failures(user.id)
+    record_successful_sign_in(user.email, ip)
     user.last_login_at = datetime.now(UTC)
     access, refresh = issue_token_pair(
         db, user, ip=ip, user_agent=request.headers.get("user-agent")

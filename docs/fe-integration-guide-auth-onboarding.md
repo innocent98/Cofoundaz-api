@@ -63,9 +63,19 @@ sends an `Origin` it must be one of the API's allowed origins (the same list as 
 → 403   {"error": {"code": "CSRF_REJECTED", "message": "This request didn't come from the Cofoundaz app.", "field_errors": []}}
 ```
 A browser sends `Origin` by itself; you never set it. A refresh token supplied in the body needs neither header nor origin (an attacker
-cannot know it). `CSRF_REJECTED` means the FE forgot the header (a bug), not a user problem: treat it as "signed out" and log it.
+cannot know it). **Which token is used:** the body's when there is one, the cookie's only when the body is empty. So a decoy body token
+next to the browser's cookie is just a wrong token: [`refresh_cookie_decoy_body_401`] `401 {"error": {"code": "UNAUTHORIZED", "message": "Not authenticated.", "field_errors": []}}`
+with no `Set-Cookie` (the cookie is not rotated), and [`logout_cookie_decoy_body_200`] `200 {"data": {"logged_out": true}, "meta": null}`
+with **no `Set-Cookie`** (a decoy cannot clear the browser's cookie or sign the user out; a body token that is a real session's still
+signs out and clears the cookie). The real cookie session survives both (the journey refreshes with it afterwards). `CSRF_REJECTED` means the FE forgot the header (a bug), not a user problem: treat it as "signed out" and log it.
 Why this works: a plain HTML form cannot add a custom header, and a cross-origin `fetch` that adds one triggers a CORS preflight that
 only allowed origins pass; `SameSite=lax` keeps the cookie off cross-site sub-requests in the first place.
+
+### Refresh-token reuse kills the sign-in [`refresh_reuse_401`], [`refresh_newest_after_reuse_401`]
+Presenting an already-rotated refresh token is treated as theft: the whole sign-in (every token in its family) is revoked and the
+revocation is committed. Captured: reuse of the old token `401 UNAUTHORIZED`, then the newest token of the same sign-in also `401`.
+**FE:** any `401` from refresh means "signed out": go to `/login`. Two tabs refreshing at the same instant can trigger this, which is why
+refresh must be single-flight.
 
 ### Logout [`logout_cookie_mode_200`]
 ```
@@ -100,18 +110,25 @@ logout, and do not promise "signed out everywhere instantly" in copy.
   "reset your password" link to `/forgot-password`. For a live countdown use `retry_after_seconds`; the `Retry-After` header carries the same number.
 - **A password reset lifts the lock** [`reset_while_locked_200`] then [`login_after_reset_from_locked_ip_200`]: `{"data": {"reset": true}, "meta": null}`,
   and the next login with the new password from the previously locked IP succeeds.
-- A suspended account counts as a failure like any other (it never looks different).
+- A suspended account counts as a failure like any other (it never looks different), and an unknown email or a Google-only account still
+  pays for one password check, so response time does not tell which addresses exist.
+- **How it is counted (no race):** each attempt is reserved atomically before the password is checked, so a burst of parallel requests
+  gets exactly 5 tries, not 60. A good sign-in clears the (email, IP) counter.
+- **The email-wide ceiling (30 failures over all IPs) refuses only addresses with no good sign-in to that account in the last 30 days.**
+  The owner's usual networks are never locked out by someone spreading guesses across many IPs; a stranger's address is.
+- **IPv6** counters (here and in the limits below) are keyed on the /64, so rotating through addresses of one block does not help.
 
 ### Per-route limits: 429 `RATE_LIMITED`
-Sign-up (10/hour per IP), forgot password (20/hour per IP; plus 5/hour per email, silent), verify-resend (20/hour per IP; plus 5/hour per
-email, silent) and login (60 attempts per 15 minutes per IP, across emails). Defaults, tunable by env. The strict test server lowered
+Sign-up (10/hour per IP), forgot password (20/hour per IP; plus a silent cap of 5/hour per (email, caller IP) and 20/hour per email overall),
+verify-resend (20/hour per IP; the same two silent caps) and login (60 attempts per 15 minutes per IP, across emails). The overall
+per-email cap only counts calls the per-IP one let through, so one caller can use at most 5 an hour of an address's 20 and cannot silence its owner. Defaults, tunable by env. The strict test server lowered
 three of them to 12 / 6 / 20 to reach them live. [`signup_rate_limited_429`], [`forgot_rate_limited_429`], [`login_ip_rate_limited_429`]:
 ```
 → 429   Retry-After: 3597
 {"error": {"code": "RATE_LIMITED", "message": "Too many requests. Try again in 60 minutes.", "field_errors": [], "retry_after_seconds": 3597}}
 ```
 Login's is `retry_after_seconds: 900` and "Try again in 15 minutes." Show `message`; disable the submit button for `retry_after_seconds`.
-**Silent caps are not errors:** past the per-email hourly cap, forgot returns the normal `200 {"sent": true, ...}` and sends nothing
+**Silent caps are not errors:** past either per-email hourly cap, forgot returns the normal `200 {"sent": true, ...}` and sends nothing
 (by design: an error there would reveal whether the address has an account). The 60-second repeat gets the same body [`forgot_repeat_200`]:
 `{"data": {"sent": true, "message": "If that email has an account, a reset link is on its way."}, "meta": null}`.
 (The per-email cap itself is unit-tested, not captured live: the live run only reached the 60 s cooldown and the per-IP cap.)
@@ -183,18 +200,29 @@ on the challenge call, even for the right code until it lifts (a password reset 
 (`assessment_pending: true` on a draft is how the API has always answered; it only matters after `completed`.)
 
 ### Someone the wizard is not for (gap 11)
-**A person with a pending invitation and no workspace of their own** [`invitee_state_pending_invite_200`]:
+**A person with a pending invitation and no workspace of their own** [`invitee_state_pending_invite_200`], the state is only a display:
 ```
 {"data": {"step": 1, "completed": false, "assessment_pending": false, "pending_invite": true, "founder_profile": null,
   "startup": null, "goals": [], "ai_panel": null, "notes": null, "invites": []}, "meta": null}
 ```
-**FE:** `pending_invite: true` means "send them to their invitation", not into the wizard. `startup` is **null** here but an object
-elsewhere, and `founder_profile` is null here and for members: check before reading. The API creates no draft startup for them, and
-writes are refused [`invitee_patch_409`], [`invitee_complete_409`] (`POST /onboarding/invites` too; unit-tested):
+**FE:** `pending_invite: true` means "show them their invitation" (with Accept and Decline), not "block the wizard". `GET` creates no draft
+startup for them. `startup` is **null** here but an object elsewhere, and `founder_profile` is null here and for members: check before
+reading. **A pending invitation never blocks writing:** anyone can invite any address, so the invitee can still `PATCH /onboarding/state`
+and start their own startup [`pending_invitee_patch_200`] (the next `GET` then has `pending_invite: false`). To clear the invitation
+without accepting, decline it:
+
 ```
-→ 409   {"error": {"code": "ONBOARDING_NOT_FOR_INVITED", "message": "You've been invited to a workspace. Accept the invitation to continue.", "field_errors": []}}
+POST /api/v1/invitations/decline    {"token": "<token from the invite link>"}     (signed in, verified, same email as the invite)
+→ 200   {"data": {"declined": true}, "meta": null}                                            [decline_invite_200]
+→ 400   {"error": {"code": "TOKEN_INVALID", "message": "That link is invalid or has expired.", "field_errors": []}}      [decline_invite_again_400]
+→ 403   {"error": {"code": "INVITE_EMAIL_MISMATCH", "message": "This invitation was sent to a different email address.", "field_errors": []}}   [decline_invite_wrong_account_403]
 ```
-**A member of a workspace** (after accepting) [`member_state_200`], note `completed: true` even if the founder is still onboarding,
+After a decline, `GET /onboarding/state` is a normal draft (`pending_invite: false`, `startup` an object) [`state_after_decline_200`]. A declined
+invitation cannot be accepted later (the same `400 TOKEN_INVALID`; the inviter can invite again).
+
+**A member of a workspace** (after accepting) gets `409 ONBOARDING_NOT_FOR_INVITED` on `PATCH /onboarding/state` and `POST /onboarding/complete`
+[`member_patch_409`], [`member_complete_409`]: `{"error": {"code": "ONBOARDING_NOT_FOR_INVITED", "message": "You joined a workspace as a team member, so there is no startup to set up.", "field_errors": []}}`.
+Their state [`member_state_200`]: note `completed: true` even if the founder is still onboarding,
 and `startup` has only `id` and `name`:
 ```
 {"data": {"step": 4, "completed": true, "assessment_pending": false, "pending_invite": false, "founder_profile": null,
@@ -236,7 +264,7 @@ POST /api/v1/onboarding/invites
     {"email": "<founder's own email>", "status": "skipped", "reason": "self_invite", "message": "That's your own email address."}]}, "meta": null}
 ```
 `results` has one entry per submitted row, in order. `status` is `created`, `skipped` or `invalid`; `message` is the line to show beside the row.
-Other reasons, unit-tested only: `already_invited`, `already_member`. An invalid address is never stored or emailed. `created`/`skipped`/
+Other reasons, unit-tested only: `already_invited`, `already_member`. The `investor` role is no longer accepted here (422); use the six roles of the invite modal. An invalid address is never stored or emailed. `created`/`skipped`/
 `undelivered` stay for older callers (invalid rows appear only in `results`). `POST /team/invitations` returns the same `results`.
 **FE:** the request no longer fails as a whole for one bad address: render the failed rows and let the user fix them before Continue.
 
@@ -261,7 +289,7 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 3. **Verify page countdown** comes from `retry_after`; never claim a link was sent when `sent` is `false`.
 4. **2FA code screen:** a typo no longer strands the person; after the 5th wrong code the next screen is `/login` with "Your sign-in timed out. Log in again."
 5. **Invites step:** show per-row failures; do not assume `created` equals what was typed.
-6. **Invited people are not founders:** do not route `pending_invite: true` or a member into the wizard; empty `role_title` is normal for them.
+6. **Invitations:** show a pending invitation with Accept and Decline (`POST /invitations/decline`), but never block the wizard on it; a member (accepted) must not see the wizard. Empty `role_title` is normal for invited people.
 7. **Goals are now eight fixed chips;** old free-text goals will be rejected with "Pick goals from the list."
 8. **Sign-up must send `accepted_terms`,** or sign-up fails with `TERMS_NOT_ACCEPTED` (see the deploy-ordering note in section 3).
 9. **Cookie mode:** `X-Auth-Mode: cookie` and `credentials: "include"` on `/auth/*`; access token in memory only; one shared refresh in flight.
@@ -284,6 +312,10 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 | Resend `{sent, retry_after}` for real, repeated and unknown addresses | live |
 | MFA ticket: typo keeps it, 5th wrong burns it, burned/used/unknown give `MFA_TICKET_EXPIRED`, `attempts_remaining` | live |
 | MFA per-account cap across tickets (`ACCOUNT_LOCKED` on the challenge), atomic cap and single-use claim under concurrency | unit tests only |
+| Atomic attempt reservation (a parallel burst gets exactly the limit); known addresses exempt from the email-wide ceiling; IPv6 /64 keys; mail caps per (email, IP) and overall; counters that lost their expiry repair themselves; backup code spent once; bcrypt on unknown emails | unit tests only (the burst test uses 16 threads against Redis) |
+| Refresh-token reuse revokes the family and the revocation survives the failed request | live (`refresh_reuse_401`, `refresh_newest_after_reuse_401`) and unit-tested including the rollback |
+| Decoy body token cannot rotate the cookie or force a logout | live (`refresh_cookie_decoy_body_401`, `logout_cookie_decoy_body_200`) |
+| Pending invitee can still write; decline invitation (200, again 400, wrong account 403); state after decline; member writes 409 | live |
 | Cookie-mode login, silent refresh, rotation, logout revokes | live |
 | CSRF: no header 403, foreign `Origin` 403, header-less body token OK | live (no header, foreign origin, logout no header); allowed-`Origin` pass-through is unit-tested |
 | Cookie `Secure` flag | unit test only (the live server is HTTP with `Secure` off) |
@@ -292,7 +324,7 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 | Access token valid after logout (gap 25) | live |
 | Onboarding input validation: website, phone, goals, empty names | live; the remaining limits and the website/phone positive cases are unit-tested |
 | Invite per-row results | live for `invalid`, `created`, `duplicate_in_request`, `self_invite`; `already_invited`, `already_member` unit-tested |
-| No draft startup for a pending invitee / member; 409 on writes | live (PATCH, complete); invites POST unit-tested |
+| No draft startup created by reading for a pending invitee / member | live (`invitee_state_pending_invite_200`, `member_state_200`) |
 | `role_title` empty for invited people, "Founder & CEO" for founders | live (`member_me_200`, `onboarding_state_200`) |
 | Welcome email once, invite subject and brand colours, password-changed email | live (reset path); change-from-Settings send unit-tested |
 | In-app `notification.onboarding_complete` | live (asserted in the journey's feed read) and unit-tested |

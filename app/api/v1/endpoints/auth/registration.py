@@ -19,7 +19,7 @@ from app.platform.events import event_bus
 from app.schemas.auth import EmailRequest, SignupRequest, TokenRequest
 from app.services.auth.emails import verification_email
 from app.services.auth.password import validate_password_strength
-from app.services.auth.ratelimit import blocked_for, enforce
+from app.services.auth.ratelimit import enforce, ip_bucket, mail_blocked_for
 from app.services.auth.tokens import (
     consume_auth_token,
     invalidate_unconsumed_tokens,
@@ -45,7 +45,12 @@ def signup(
     if ip:
         # D-AUTH-1 keeps the explicit "email already has an account" answer, so volume per
         # address is what stops address harvesting.
-        enforce("signup_ip", ip, limit=settings.AUTH_SIGNUP_PER_IP_HOURLY, window_seconds=3600)
+        enforce(
+            "signup_ip",
+            ip_bucket(ip) or ip,
+            limit=settings.AUTH_SIGNUP_PER_IP_HOURLY,
+            window_seconds=3600,
+        )
     if settings.SIGNUP_REQUIRE_TERMS and not payload.accepted_terms:
         raise AppError(
             code="TERMS_NOT_ACCEPTED",
@@ -105,16 +110,22 @@ def resend(
 ) -> dict[str, Any]:
     ip = request.client.host if request.client else None
     if ip:
-        enforce("resend_ip", ip, limit=settings.AUTH_RESEND_PER_IP_HOURLY, window_seconds=3600)
+        enforce(
+            "resend_ip",
+            ip_bucket(ip) or ip,
+            limit=settings.AUTH_RESEND_PER_IP_HOURLY,
+            window_seconds=3600,
+        )
     redis = get_redis()
     cooldown_key = f"verify_resend_cooldown:{payload.email}"
     # The cooldown and the hourly cap are keyed on the typed address, never on whether it has an
     # account, so `sent` / `retry_after` are the same for every address: no enumeration signal.
-    capped = blocked_for(
-        "resend_email",
+    capped = mail_blocked_for(
+        "resend",
         payload.email,
-        limit=settings.AUTH_RESEND_PER_EMAIL_HOURLY,
-        window_seconds=3600,
+        ip,
+        pair_limit=settings.AUTH_RESEND_PER_EMAIL_IP_HOURLY,
+        email_limit=settings.AUTH_RESEND_PER_EMAIL_HOURLY,
     )
     # set(..., nx=True): only the first caller within the 60s window claims the key and
     # proceeds to issue+send; every other caller gets a no-op with the time left to wait.

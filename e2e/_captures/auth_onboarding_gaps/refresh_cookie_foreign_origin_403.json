@@ -5,7 +5,7 @@
     "headers": {
       "X-Auth-Mode": "cookie",
       "Origin": "https://evil.example",
-      "X-Forwarded-For": "198.51.100.69"
+      "X-Forwarded-For": "198.51.100.39"
     }
   },
   "response": {

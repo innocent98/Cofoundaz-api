@@ -3,10 +3,10 @@
     "method": "POST",
     "path": "/api/v1/auth/login",
     "headers": {
-      "X-Forwarded-For": "198.51.100.233"
+      "X-Forwarded-For": "198.51.100.88"
     },
     "json": {
-      "email": "delivered+e2e-d61d69e66448@resend.dev",
+      "email": "delivered+e2e-647fda0b2757@resend.dev",
       "password": "<test-password>"
     }
   },

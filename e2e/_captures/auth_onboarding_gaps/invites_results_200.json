@@ -3,7 +3,7 @@
     "method": "POST",
     "path": "/api/v1/onboarding/invites",
     "headers": {
-      "X-Forwarded-For": "198.51.100.63"
+      "X-Forwarded-For": "198.51.100.5"
     },
     "json": {
       "invites": [
@@ -12,15 +12,15 @@
           "role": "team_member"
         },
         {
-          "email": "delivered+mate-b60ac49c7e99@resend.dev",
+          "email": "delivered+mate-d70da397724f@resend.dev",
           "role": "mentor"
         },
         {
-          "email": "delivered+mate-b60ac49c7e99@resend.dev",
+          "email": "delivered+mate-d70da397724f@resend.dev",
           "role": "mentor"
         },
         {
-          "email": "delivered+e2e-225569e3a69d@resend.dev",
+          "email": "delivered+e2e-bb0dbbae6c0c@resend.dev",
           "role": "team_member"
         }
       ]
@@ -31,11 +31,11 @@
     "body": {
       "data": {
         "created": [
-          "delivered+mate-b60ac49c7e99@resend.dev"
+          "delivered+mate-d70da397724f@resend.dev"
         ],
         "skipped": [
-          "delivered+mate-b60ac49c7e99@resend.dev",
-          "delivered+e2e-225569e3a69d@resend.dev"
+          "delivered+mate-d70da397724f@resend.dev",
+          "delivered+e2e-bb0dbbae6c0c@resend.dev"
         ],
         "undelivered": [],
         "results": [
@@ -46,19 +46,19 @@
             "message": "That doesn't look like an email address."
           },
           {
-            "email": "delivered+mate-b60ac49c7e99@resend.dev",
+            "email": "delivered+mate-d70da397724f@resend.dev",
             "status": "created",
             "reason": null,
             "message": null
           },
           {
-            "email": "delivered+mate-b60ac49c7e99@resend.dev",
+            "email": "delivered+mate-d70da397724f@resend.dev",
             "status": "skipped",
             "reason": "duplicate_in_request",
             "message": "You listed this address more than once."
           },
           {
-            "email": "delivered+e2e-225569e3a69d@resend.dev",
+            "email": "delivered+e2e-bb0dbbae6c0c@resend.dev",
             "status": "skipped",
             "reason": "self_invite",
             "message": "That's your own email address."

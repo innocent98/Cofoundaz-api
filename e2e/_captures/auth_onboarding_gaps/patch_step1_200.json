@@ -3,7 +3,7 @@
     "method": "PATCH",
     "path": "/api/v1/onboarding/state",
     "headers": {
-      "X-Forwarded-For": "198.51.100.63"
+      "X-Forwarded-For": "198.51.100.5"
     },
     "json": {
       "step": 1,
@@ -28,7 +28,7 @@
           "how_heard": null
         },
         "startup": {
-          "id": "cb300426-5e4d-4b44-9775-7ad27cf95f01",
+          "id": "97a11092-52cf-4121-a928-00db0dd5f1e9",
           "name": null,
           "description": null,
           "website": null,

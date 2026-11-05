@@ -91,6 +91,9 @@ def rotate_refresh(
         # double-submit logs the whole family out, same as actual token theft. We can't
         # tell the two apart, so we don't try.
         _revoke_family(db, session.family_id)
+        # Commit BEFORE raising: get_db never commits and the error rolls the request back, which
+        # would undo the revocation and leave a thief's rotated token alive.
+        db.commit()
         raise Unauthorized()
 
     user = db.query(User).filter(User.id == session.user_id).first()
@@ -115,15 +118,19 @@ def _revoke_family(db: Session, family_id: uuid.UUID) -> None:
     db.flush()
 
 
-def revoke_session(db: Session, raw_refresh: str) -> None:
+def revoke_session(db: Session, raw_refresh: str) -> bool:
+    """Revoke the sign-in this token belongs to. True when the token was a real session's."""
     session = (
         db.query(AuthSession)
         .filter(AuthSession.refresh_token_hash == hash_token(raw_refresh))
         .first()
     )
-    if session and session.revoked_at is None:
+    if session is None:
+        return False
+    if session.revoked_at is None:
         session.revoked_at = datetime.now(UTC)
         db.flush()
+    return True
 
 
 def revoke_all_for_user(db: Session, user_id: uuid.UUID) -> int:

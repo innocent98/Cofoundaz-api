@@ -62,20 +62,19 @@ def generate_backup_codes(db: Session, user: User) -> list[str]:
 
 
 def consume_backup_code(db: Session, user: User, code: str) -> bool:
-    row = (
+    """Spend a backup code. One conditional UPDATE: of two concurrent challenges that present
+    the same code, exactly one sees a row to update and wins."""
+    spent = (
         db.query(MfaBackupCode)
         .filter(
             MfaBackupCode.user_id == user.id,
             MfaBackupCode.code_hash == hash_token(code),
             MfaBackupCode.consumed_at.is_(None),
         )
-        .first()
+        .update({MfaBackupCode.consumed_at: datetime.now(UTC)}, synchronize_session=False)
     )
-    if row is None:
-        return False
-    row.consumed_at = datetime.now(UTC)
     db.flush()
-    return True
+    return int(spent) == 1
 
 
 def issue_mfa_ticket(user_id: uuid.UUID) -> str:
@@ -93,12 +92,11 @@ def peek_mfa_ticket(ticket: str) -> uuid.UUID | None:
 
 def count_mfa_attempt(ticket: str) -> int:
     """Count one code attempt against the ticket; returns the attempts used so far (atomic)."""
-    redis = get_redis()
-    key = f"{_MFA_ATTEMPTS_PREFIX}{ticket}"
-    used = int(cast(Any, redis.incr(key)))
-    if used == 1:
-        redis.expire(key, _MFA_TICKET_TTL)
-    return used
+    pipe = get_redis().pipeline(transaction=True)
+    pipe.incr(f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+    pipe.expire(f"{_MFA_ATTEMPTS_PREFIX}{ticket}", _MFA_TICKET_TTL, nx=True)
+    used, _ = cast(list[Any], pipe.execute())
+    return int(used)
 
 
 def burn_mfa_ticket(ticket: str) -> None:

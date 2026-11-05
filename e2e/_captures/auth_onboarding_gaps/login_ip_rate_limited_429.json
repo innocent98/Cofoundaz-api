@@ -6,21 +6,21 @@
       "X-Forwarded-For": "192.0.2.70"
     },
     "json": {
-      "email": "delivered+stuff-328c7e41c0c5@resend.dev",
+      "email": "delivered+stuff-727ce642dd5f@resend.dev",
       "password": "<test-password>"
     }
   },
   "response": {
     "status": 429,
     "headers": {
-      "retry-after": "900"
+      "retry-after": "895"
     },
     "body": {
       "error": {
         "code": "RATE_LIMITED",
         "message": "Too many requests. Try again in 15 minutes.",
         "field_errors": [],
-        "retry_after_seconds": 900
+        "retry_after_seconds": 895
       }
     }
   }

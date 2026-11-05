@@ -365,6 +365,28 @@ def test_cookie_mode_login_refresh_and_csrf_guard(http, make_verified_user, ip):
     again = call(http, "POST", "/api/v1/auth/refresh", headers={**COOKIE_MODE, **ip})
     assert again.status_code == 200
 
+    # a decoy refresh token in the body cannot dodge the guard: the body token is the one used
+    decoy = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="refresh_cookie_decoy_body_401",
+        json_body={"refresh_token": "not-the-token"},
+        headers=ip,
+    )
+    assert decoy.status_code == 401 and "set-cookie" not in decoy.headers
+    decoy_out = call(
+        http,
+        "POST",
+        "/api/v1/auth/logout",
+        name="logout_cookie_decoy_body_200",
+        json_body={"refresh_token": "not-the-token"},
+        headers=ip,
+    )
+    assert decoy_out.status_code == 200 and "set-cookie" not in decoy_out.headers
+    still = http.post("/api/v1/auth/refresh", headers={**COOKIE_MODE, **ip})
+    assert still.status_code == 200  # neither decoy touched the real session
+
     out_no = call(
         http, "POST", "/api/v1/auth/logout", name="logout_cookie_no_header_403", headers=ip
     )
@@ -385,6 +407,33 @@ def test_cookie_mode_login_refresh_and_csrf_guard(http, make_verified_user, ip):
         headers={**COOKIE_MODE, **ip},
     )
     assert gone.status_code == 401
+
+
+def test_reusing_a_rotated_refresh_token_kills_the_whole_sign_in(http, make_verified_user, ip):
+    u = make_verified_user(http)
+    r0 = http.post(LOGIN, json=u, headers=ip).json()["data"]["refresh_token"]
+    http.cookies.clear()
+    rot = http.post("/api/v1/auth/refresh", json={"refresh_token": r0}, headers=ip)
+    r1 = rot.json()["data"]["refresh_token"]
+    http.cookies.clear()
+    reuse = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="refresh_reuse_401",
+        json_body={"refresh_token": r0},
+        headers=ip,
+    )
+    assert reuse.status_code == 401
+    newest = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="refresh_newest_after_reuse_401",
+        json_body={"refresh_token": r1},
+        headers=ip,
+    )
+    assert newest.status_code == 401  # the revocation was kept: the thief's token died too
 
 
 def test_header_clients_still_get_the_refresh_token_in_the_body(http, make_verified_user, ip):
@@ -571,24 +620,6 @@ def test_onboarding_validation_invites_draft_guard_and_welcome_email(
             headers=mh,
         )
         assert s1.json()["data"]["pending_invite"] is True and s1.json()["data"]["startup"] is None
-        s2 = call(
-            mate_http,
-            "PATCH",
-            "/api/v1/onboarding/state",
-            name="invitee_patch_409",
-            json_body={"step": 1, "full_name": "Mate"},
-            headers=mh,
-        )
-        assert s2.status_code == 409 and s2.json()["error"]["code"] == "ONBOARDING_NOT_FOR_INVITED"
-        s3 = call(
-            mate_http,
-            "POST",
-            "/api/v1/onboarding/complete",
-            name="invitee_complete_409",
-            headers=mh,
-        )
-        assert s3.status_code == 409
-
         # accept the invite; the member's state is a member state and still no draft appears
         tok = mailbox.latest_token_for(mate, subject_contains="invited")
         acc = mate_http.post("/api/v1/invitations/accept", json={"token": tok}, headers=mh)
@@ -599,6 +630,92 @@ def test_onboarding_validation_invites_draft_guard_and_welcome_email(
         )
         me = call(mate_http, "GET", "/api/v1/auth/me", name="member_me_200", headers=mh)
         assert me.status_code == 200
+        # a member has joined someone else's startup: no founder draft of their own
+        w1 = call(
+            mate_http,
+            "PATCH",
+            "/api/v1/onboarding/state",
+            name="member_patch_409",
+            json_body={"step": 1, "full_name": "Mate"},
+            headers=mh,
+        )
+        assert w1.status_code == 409 and w1.json()["error"]["code"] == "ONBOARDING_NOT_FOR_INVITED"
+        w2 = call(
+            mate_http, "POST", "/api/v1/onboarding/complete", name="member_complete_409", headers=mh
+        )
+        assert w2.status_code == 409
+
+    # an invitation is only a display: it neither blocks writing nor needs the invitee to act.
+    # `loner` declines; `keeper` ignores it and starts their own startup.
+    people = {}
+    for who in ("loner", "keeper"):
+        email = unique_email(who)
+        pw = _pw()
+        r = http.post(
+            "/api/v1/onboarding/invites",
+            headers=h,
+            json={"invites": [{"email": email, "role": "mentor"}]},
+        )
+        assert r.status_code == 200, r.text
+        token = mailbox.latest_token_for(email, subject_contains="invited")
+        with httpx.Client(base_url=http.base_url, timeout=10.0) as c:
+            c.post(
+                "/api/v1/auth/signup",
+                json={"email": email, "password": pw, "accepted_terms": True},
+                headers=ip,
+            )
+            c.post(
+                "/api/v1/auth/verify",
+                json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},
+            )
+            hh = {**_bearer(_login_access(c, {"email": email, "password": pw}, ip)), **ip}
+            people[who] = (c.base_url, hh, token)
+    # wrong account cannot decline someone else's invitation
+    wrong = call(
+        http,
+        "POST",
+        "/api/v1/invitations/decline",
+        name="decline_invite_wrong_account_403",
+        json_body={"token": people["loner"][2]},
+        headers=h,
+    )
+    assert wrong.status_code == 403 and wrong.json()["error"]["code"] == "INVITE_EMAIL_MISMATCH"
+    with httpx.Client(base_url=people["loner"][0], timeout=10.0) as c:
+        lh, ltok = people["loner"][1], people["loner"][2]
+        pend = c.get("/api/v1/onboarding/state", headers=lh)
+        assert pend.json()["data"]["pending_invite"] is True
+        dec = call(
+            c,
+            "POST",
+            "/api/v1/invitations/decline",
+            name="decline_invite_200",
+            json_body={"token": ltok},
+            headers=lh,
+        )
+        assert dec.status_code == 200 and dec.json()["data"] == {"declined": True}
+        again = call(
+            c,
+            "POST",
+            "/api/v1/invitations/decline",
+            name="decline_invite_again_400",
+            json_body={"token": ltok},
+            headers=lh,
+        )
+        assert again.status_code == 400 and again.json()["error"]["code"] == "TOKEN_INVALID"
+        st = call(c, "GET", "/api/v1/onboarding/state", name="state_after_decline_200", headers=lh)
+        assert st.json()["data"]["pending_invite"] is False and st.json()["data"]["startup"]
+    with httpx.Client(base_url=people["keeper"][0], timeout=10.0) as c:
+        kh = people["keeper"][1]
+        patch = call(
+            c,
+            "PATCH",
+            "/api/v1/onboarding/state",
+            name="pending_invitee_patch_200",
+            json_body={"step": 1, "full_name": "Keeper"},
+            headers=kh,
+        )
+        assert patch.status_code == 200, patch.text
+        assert patch.json()["data"]["pending_invite"] is False
 
     # gap 21: completing sends the welcome email once, and the in-app notification appears
     done = call(http, "POST", "/api/v1/onboarding/complete", name="complete_200", headers=h)

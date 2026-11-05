@@ -3,7 +3,7 @@
     "method": "PATCH",
     "path": "/api/v1/onboarding/state",
     "headers": {
-      "X-Forwarded-For": "198.51.100.63"
+      "X-Forwarded-For": "198.51.100.5"
     },
     "json": {
       "step": 1,
@@ -15,7 +15,7 @@
     "body": {
       "error": {
         "code": "ONBOARDING_NOT_FOR_INVITED",
-        "message": "You've been invited to a workspace. Accept the invitation to continue.",
+        "message": "You joined a workspace as a team member, so there is no startup to set up.",
         "field_errors": []
       }
     }

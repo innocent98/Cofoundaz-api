@@ -4,10 +4,10 @@
     "path": "/api/v1/auth/login",
     "headers": {
       "X-Auth-Mode": "cookie",
-      "X-Forwarded-For": "198.51.100.69"
+      "X-Forwarded-For": "198.51.100.39"
     },
     "json": {
-      "email": "delivered+e2e-f2cdc62b9d76@resend.dev",
+      "email": "delivered+e2e-e6576dd21bb5@resend.dev",
       "password": "<test-password>"
     }
   },
