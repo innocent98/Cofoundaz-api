@@ -7,7 +7,7 @@ captures (`Placeholder Co`, `example.com`) are fake. **What is not covered live 
 verification table at the end and marked inline.**
 
 Scope: this guide covers the **Score & Gaps** page, the **History** page and (section 12) the **Deck Review** page.
-Mock Q&A and Narrative Check have no API yet (slices D, C); keep them on the mock until their guides exist.
+Section 13 covers **Mock Q&A**. Narrative Check has no API yet (slice C); keep it on the mock until its guide exists.
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.md`. Product calls
 D-IR-1..7 were accepted 2026-11-05.
 
@@ -711,7 +711,7 @@ Bad range:
 ```
 
 `log` lists finished deck reviews newest first (`type: "deck_review"`, `id`, `version`, `overall`); Mock Q&A sessions join it
-with their slice, so keep the Q&A table on the mock until then. `markers` now also carries "Deck reviewed (vN)" (captured in section 12).
+(section 13.9). `markers` now also carries "Deck reviewed (vN)" (captured in section 12).
 
 ## 6. Market size: `GET` and `PUT /readiness/inputs`
 
@@ -1431,3 +1431,566 @@ spend twice. Warn the user before "Re-review" if they re-upload an unchanged fil
 | Team member read OK and create 403, mentor 403 | live; all 7 roles on create and read: unit-tested |
 | Must-have unmet then met, Story lifted, history log and marker | live |
 | Cloudinary-backed thumbnails (provider-signed URLs instead of the local signed link) | **not verified**: local storage only |
+
+## 13. Mock Q&A (slice D)
+
+Routes (`/api/v1/readiness`): `POST /qa-sessions`, `POST /qa-sessions/{id}/messages`, `POST /qa-sessions/{id}/end`, `GET /qa-sessions`,
+`GET /qa-sessions/{id}`. Captures are `e2e/_captures/readiness_qa/*.json`.
+
+**What was and was not live.** The API server in this run used the stub language model, so every investor question in the captures reads
+`[stub-llm] AI-generated assessment narrative.` (a real model asks real questions). The **scoring job** was drained in-process with a scripted
+scorer (fixed ratings: answer 1 rated 4, answer 2 rated 2, answer 3 rated 5), so the ratings and feedback texts are the script's. What is live:
+the API, the transcript handling, the one-session rule, the queue, the scoring maths, the score and history wiring, the notification and the
+privacy shapes.
+
+### 13.1 Who sees what (D-IR-4, D-IR-7)
+
+| Role | Start, answer, end | List, one session |
+|---|---|---|
+| founder | yes | full: transcript and scorecard text |
+| team_member | **403** | **ratings and counts only**: no transcript, no scorecard, no answers |
+| mentor, consultant, accountant, legal advisor, investor | 403 | 403 |
+
+The words a founder typed in an answer practice interview are never returned to anyone else. Do not build a team-member transcript view.
+
+### 13.2 The flow
+
+1. `POST /qa-sessions` `{"focus", "intensity"}`. `focus` is `general | financials | market | team`; `intensity` is `friendly_angel | skeptical_vc | term_sheet_grilling`
+   (the FE maps these to "Friendly angel", "Skeptical VC", "Term-sheet grilling"). It returns **201** with the session and the investor's opening question.
+2. `POST /qa-sessions/{id}/messages` `{"content"}` (1 to 2000 characters) once per answer. Each call is one model call and returns the next question.
+   Show a typing state: it takes a few seconds with a real model. **The 10th answer returns `reply: null, ended: true`** and starts scoring by itself.
+3. `POST /qa-sessions/{id}/end` ends early and starts scoring (the Q&A "End session" button). Ending twice is harmless.
+4. Poll `GET /api/v1/jobs/{job_id}` every 2 s (stop after about 90 s), or poll the session, until `status` is `scored` or `failed`. Show
+   "Generating scorecard…" meanwhile.
+5. `GET /qa-sessions/{id}` for the scorecard.
+
+### 13.3 List, nothing yet
+
+```json
+{
+  "data": {
+    "sessions": []
+  },
+  "meta": null
+}
+```
+
+### 13.4 Start
+
+Rejected input (nothing is spent):
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "focus",
+        "message": "Input should be 'general', 'financials', 'market' or 'team'"
+      }
+    ]
+  }
+}
+```
+
+Started. The founder's response includes the full `session` (with `transcript`), and `reply` repeats the opening question:
+
+```json
+{
+  "data": {
+    "session": {
+      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "focus": "financials",
+      "intensity": "skeptical_vc",
+      "status": "active",
+      "error": null,
+      "turns": 0,
+      "max_answers": 10,
+      "rating": null,
+      "rating_label": null,
+      "average": null,
+      "job_id": null,
+      "started_at": "2026-11-05T19:31:38.452348+00:00",
+      "ended_at": null,
+      "duration_minutes": null,
+      "transcript": [
+        {
+          "at": "2026-11-05T19:31:38.459148+00:00",
+          "role": "investor",
+          "text": "[stub-llm] AI-generated assessment narrative."
+        }
+      ],
+      "transcript_purged": false,
+      "scorecard": null
+    },
+    "reply": "[stub-llm] AI-generated assessment narrative."
+  },
+  "meta": null
+}
+```
+
+Only one session can be open at a time; starting another returns:
+
+```json
+{
+  "error": {
+    "code": "SESSION_ACTIVE",
+    "message": "You already have a session in progress.",
+    "field_errors": []
+  }
+}
+```
+
+The FE should resume the open session (find it with `GET /qa-sessions`, `status: "active"`). A session left untouched for 2 hours stops blocking and
+becomes `abandoned`.
+
+**Not enough allowance left.** Starting needs about 40,000 tokens of the day's 100,000 allowance (a session costs roughly 35,000). With less
+left, `POST /qa-sessions` returns **409** `AI_BUDGET_LOW` ("Not enough of today's AI allowance is left for a full session (it needs about 40,000
+tokens). Try again tomorrow."). Unit-tested, not captured live. If the allowance runs out mid-session, an answer returns **429**
+`AI_BUDGET_EXHAUSTED` and that answer is not recorded; the founder can end the session to score what they have (also unit-tested only).
+
+### 13.5 Answer
+
+The response carries a summary `session` (no transcript), the next `reply`, and `ended`:
+
+```json
+{
+  "data": {
+    "session": {
+      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "focus": "financials",
+      "intensity": "skeptical_vc",
+      "status": "active",
+      "error": null,
+      "turns": 1,
+      "max_answers": 10,
+      "rating": null,
+      "rating_label": null,
+      "average": null,
+      "job_id": null,
+      "started_at": "2026-11-05T19:31:38.452348+00:00",
+      "ended_at": null,
+      "duration_minutes": null
+    },
+    "reply": "[stub-llm] AI-generated assessment narrative.",
+    "ended": false
+  },
+  "meta": null
+}
+```
+
+Rejected:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Type an answer first.",
+    "field_errors": []
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "content",
+        "message": "String should have at most 2000 characters"
+      }
+    ]
+  }
+}
+```
+
+After the session has ended (or is scoring):
+
+```json
+{
+  "error": {
+    "code": "SESSION_NOT_ACTIVE",
+    "message": "This session has ended.",
+    "field_errors": []
+  }
+}
+```
+
+### 13.6 End
+
+```json
+{
+  "data": {
+    "session": {
+      "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+      "focus": "financials",
+      "intensity": "skeptical_vc",
+      "status": "ending",
+      "error": null,
+      "turns": 3,
+      "max_answers": 10,
+      "rating": null,
+      "rating_label": null,
+      "average": null,
+      "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+      "started_at": "2026-11-05T19:31:38.452348+00:00",
+      "ended_at": "2026-11-05T19:31:38.733848+00:00",
+      "duration_minutes": 1
+    }
+  },
+  "meta": null
+}
+```
+
+Ending a session with **no answers** is not scored and costs nothing: its status becomes `abandoned` and `job_id` stays `null`:
+
+```json
+{
+  "data": {
+    "session": {
+      "id": "9a17cbfc-0b35-48d1-8758-fa6a41f01973",
+      "focus": "team",
+      "intensity": "friendly_angel",
+      "status": "abandoned",
+      "error": null,
+      "turns": 0,
+      "max_answers": 10,
+      "rating": null,
+      "rating_label": null,
+      "average": null,
+      "job_id": null,
+      "started_at": "2026-11-05T19:31:43.205717+00:00",
+      "ended_at": "2026-11-05T19:31:43.254956+00:00",
+      "duration_minutes": 1
+    }
+  },
+  "meta": null
+}
+```
+
+### 13.7 The scoring job and the scorecard
+
+Queued, then after the worker ran it:
+
+```json
+{
+  "data": {
+    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "type": "ai.readiness.qa_score",
+    "status": "queued",
+    "result": null,
+    "error": null
+  },
+  "meta": null
+}
+```
+
+```json
+{
+  "data": {
+    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "type": "ai.readiness.qa_score",
+    "status": "succeeded",
+    "result": {
+      "status": "scored",
+      "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62"
+    },
+    "error": null
+  },
+  "meta": null
+}
+```
+
+Like deck reviews, a job can end `succeeded` while the session says `failed`: **read the session's `status`**. `error` is `over_budget`,
+`generation_failed`, `transcript_gone` or `job_failed` (the job died; set the next time the session is read).
+
+The founder's scorecard (transcript and answers trimmed here; the rest has the same shape):
+
+```json
+{
+  "data": {
+    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "focus": "financials",
+    "intensity": "skeptical_vc",
+    "status": "scored",
+    "error": null,
+    "turns": 3,
+    "max_answers": 10,
+    "rating": "good",
+    "rating_label": "Good",
+    "average": 3.67,
+    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "started_at": "2026-11-05T19:31:38.452348+00:00",
+    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "duration_minutes": 1,
+    "transcript": [
+      {
+        "at": "2026-11-05T19:31:38.459148+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      },
+      {
+        "at": "2026-11-05T19:31:38.540306+00:00",
+        "role": "founder",
+        "text": "Our runway is 4.2 months and we are talking to two banks. (0)"
+      },
+      {
+        "at": "2026-11-05T19:31:38.541379+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      },
+      // ... the rest of the transcript, same shape (7 entries in this session)
+    ],
+    "transcript_purged": false,
+    "scorecard": {
+      "trend": null,
+      "rating": "good",
+      "answers": [
+        {
+          "i": 1,
+          "answer": "Our runway is 4.2 months and we are talking to two banks. (0)",
+          "rating": 4,
+          "feedback": "Specific and numbers-backed.",
+          "question": "[stub-llm] AI-generated assessment narrative."
+        },
+        {
+          "i": 2,
+          "answer": "Our runway is 4.2 months and we are talking to two banks. (1)",
+          "rating": 2,
+          "feedback": "Vague about competitors.",
+          "question": "[stub-llm] AI-generated assessment narrative."
+        },
+        // ... the third answer, same shape
+      ],
+      "average": 3.67,
+      "weakest": {
+        "i": 2,
+        "answer": "Our runway is 4.2 months and we are talking to two banks. (1)",
+        "rating": 2,
+        "feedback": "Vague about competitors.",
+        "question": "[stub-llm] AI-generated assessment narrative.",
+        "model_answer": "We compete with X on workflow and Y on data, and own the gap between."
+      },
+      "strongest": {
+        "i": 3,
+        "answer": "Our runway is 4.2 months and we are talking to two banks. (2)",
+        "rating": 5,
+        "feedback": "Owned the weak spot.",
+        "question": "[stub-llm] AI-generated assessment narrative."
+      },
+      "rating_label": "Good"
+    }
+  },
+  "meta": null
+}
+```
+
+Notes:
+
+- `rating` is `needs_work` (average under 2.5), `good` (under 4) or `strong`; `rating_label` is the display text. Each answer is rated 1 to 5.
+- `strongest` and `weakest` are chosen **in code from the ratings**, not by the model. `weakest.model_answer` is a suggested better answer and is
+  `null` whenever the model's suggestion was written for a different answer than the weakest one: **hide the "Model answer" block when it is null**.
+- `trend` is `null` for the first scored session; afterwards it compares this average with up to the last five scored sessions.
+- Answers the scorer did not rate default to 1. With a real model every answer is rated; this capture's scripted scorer rated only three.
+- `transcript[].role` is `investor` or `founder`. Transcripts are kept for **90 days**; after that `transcript` is `[]` and `transcript_purged` is
+  `true`, but the `scorecard` stays. Say so on old sessions.
+- Closing copy "Rough edges found here are cheap. Found in the room, they're expensive." is the FE's.
+
+### 13.8 What a team member gets
+
+The same session, as a team member sees it. No `transcript`, `scorecard` or `answers` keys exist in this response:
+
+```json
+{
+  "data": {
+    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "focus": "financials",
+    "intensity": "skeptical_vc",
+    "status": "scored",
+    "error": null,
+    "turns": 3,
+    "max_answers": 10,
+    "rating": "good",
+    "rating_label": "Good",
+    "average": 3.67,
+    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "started_at": "2026-11-05T19:31:38.452348+00:00",
+    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "duration_minutes": 1
+  },
+  "meta": null
+}
+```
+
+And the list (same summary per session, newest first):
+
+```json
+{
+  "data": {
+    "sessions": [
+      {
+        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "focus": "financials",
+        "intensity": "skeptical_vc",
+        "status": "scored",
+        "error": null,
+        "turns": 3,
+        "max_answers": 10,
+        "rating": "good",
+        "rating_label": "Good",
+        "average": 3.67,
+        "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+        "started_at": "2026-11-05T19:31:38.452348+00:00",
+        "ended_at": "2026-11-05T19:31:38.733848+00:00",
+        "duration_minutes": 1
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+Refused:
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+Another workspace's session id:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Not found.",
+    "field_errors": []
+  }
+}
+```
+
+### 13.9 Score, history, notification
+
+The Story dimension has a new signal, `story.mock_qa` ("Defended the pitch"): the latest scored session's average rating out of 5, against a target of
+3 (early stages) up to 4 (scale); `0` and a "run a mock session" note when there is none. The score refreshes the moment scoring finishes (it
+bypasses the 15 minute throttle), so refetch `GET /score` when the job succeeds. The signal as captured (`note` is `null` because 3.67 meets the
+target of 3.5 for a launch-stage startup):
+
+```json
+{
+  "key": "story.mock_qa",
+  "href": "/investor-readiness/qa",
+  "note": null,
+  "unit": "/5",
+  "label": "Defended the pitch (mock Q&A rating, out of 5)",
+  "score": 100.0,
+  "value": 3.67,
+  "target": 3.5
+}
+```
+
+History: `log` now also lists scored sessions (`type: "qa_session"`, newest first, mixed with deck reviews), which is the data for the History
+page's session table (Date, Focus, Intensity, Duration, Rating); `markers` gets "Mock Q&A scored (Good)":
+
+```json
+{
+  "data": {
+    "range": 30,
+    "points": [
+      {
+        "at": "2026-11-05T19:31:39.483610+00:00",
+        "score": 4,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 29,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      }
+    ],
+    "markers": [
+      {
+        "at": "2026-11-05T19:31:39.500412+00:00",
+        "label": "Mock Q&A scored (Good)"
+      }
+    ],
+    "log": [
+      {
+        "type": "qa_session",
+        "at": "2026-11-05T19:31:39.500412+00:00",
+        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "focus": "financials",
+        "intensity": "skeptical_vc",
+        "duration_minutes": 1,
+        "rating": "good",
+        "rating_label": "Good",
+        "average": 3.67
+      }
+    ]
+  },
+  "meta": null
+}
+```
+
+The bell notification (founders only) when scoring finishes. Route it to the scorecard with `data.session_id` (module `readiness`):
+
+```json
+{
+  "id": "d492fa9d-8f34-4593-975f-05252ab16885",
+  "type": "readiness.qa.scored",
+  "title": "Mock Q&A session summary ready",
+  "body": "See scorecard",
+  "data": {
+    "rating": "good",
+    "average": 3.67,
+    "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "startup_id": "da1b27fb-85a1-4a49-af54-a2dd6e2d52e7"
+  },
+  "read": false,
+  "archived": false,
+  "priority": "normal",
+  "module": "readiness",
+  "created_at": "2026-11-05T19:31:39.483610+00:00"
+}
+```
+
+### 13.10 Cost and limits
+
+About 35,000 tokens per full session (10 answers plus scoring), so at most two a day on the default allowance. 10 answers per session, 2000
+characters per answer, one open session per workspace.
+
+### 13.11 Mock Q&A verification
+
+| Behaviour | Verified |
+|---|---|
+| Start 201, opening question, one-session 409, answers, blank and over-long 422, answer after end 409 | live (stub investor) |
+| End (early and with no answers), job queued then succeeded, scorecard shape, ratings, strongest, weakest | live (scripted scorer) |
+| Real model questions, real ratings and feedback, real token cost | **not verified**: stub and scripted models only |
+| Story signal, score refresh, history log and marker, bell notification | live |
+| Team member sees ratings and counts only; start and answer 403; mentor 403; other workspace 404 | live; all 7 roles on every route: unit-tested |
+| 10th answer ends the session by itself | unit-tested and API-tested; not in the live run (it would need 10 calls) |
+| 409 `AI_BUDGET_LOW`, 429 mid-session, scoring failures (`over_budget`, `generation_failed`, `job_failed`, `transcript_gone`) | unit-tested only |
+| Transcripts cleared after 90 days, forgotten sessions closed after a day (daily job) | unit-tested; the daily job was not run live |
+| Prompt-injection fence on founder answers | unit-tested (prompt shape), not tested against a real model |

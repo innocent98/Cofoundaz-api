@@ -1,0 +1,13 @@
+{
+  "data": {
+    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "type": "ai.readiness.qa_score",
+    "status": "succeeded",
+    "result": {
+      "status": "scored",
+      "session_id": "6129dd31-973f-4f97-9f9b-346aba2f9e62"
+    },
+    "error": null
+  },
+  "meta": null
+}

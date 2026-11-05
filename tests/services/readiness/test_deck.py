@@ -296,12 +296,15 @@ def test_provider_errors_retry_until_the_last_attempt(db, ws, monkeypatch):
     u, s = ws
     boom = CannedLLM(boom=RuntimeError("provider down"))
     monkeypatch.setattr(llm_budget, "get_llm_client", lambda: boom)
+    billed = []
+    monkeypatch.setattr(llm_budget, "_debit_independent", lambda sid, n: billed.append(n))
     f, _ = store_deck(db, s, u)
     review, _ = deck.create_review(db, s, u.id, f.id)
     with pytest.raises(RuntimeError):
         _run(db, review, last=False)
     assert review.status == "running"
     job = _run(db, review, last=True, attempts=settings.WORKER_MAX_ATTEMPTS)
+    assert billed == [CannedLLM.last_usage_tokens] * 2  # each failed call is billed on its own
     assert job.result["reason"] == "generation_failed" and review.status == "failed"
 
 

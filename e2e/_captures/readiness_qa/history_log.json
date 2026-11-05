@@ -1,0 +1,41 @@
+{
+  "data": {
+    "range": 30,
+    "points": [
+      {
+        "at": "2026-11-05T19:31:39.483610+00:00",
+        "score": 4,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 8,
+          "story": 29,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      }
+    ],
+    "markers": [
+      {
+        "at": "2026-11-05T19:31:39.500412+00:00",
+        "label": "Mock Q&A scored (Good)"
+      }
+    ],
+    "log": [
+      {
+        "type": "qa_session",
+        "at": "2026-11-05T19:31:39.500412+00:00",
+        "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+        "focus": "financials",
+        "intensity": "skeptical_vc",
+        "duration_minutes": 1,
+        "rating": "good",
+        "rating_label": "Good",
+        "average": 3.67
+      }
+    ]
+  },
+  "meta": null
+}

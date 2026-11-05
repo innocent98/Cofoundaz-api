@@ -33,7 +33,7 @@ from app.db.models.enums import (
 from app.db.models.financial_model import FinancialModel
 from app.db.models.invoice import Invoice
 from app.db.models.membership import Membership
-from app.db.models.readiness import ReadinessInput
+from app.db.models.readiness import MockSession, ReadinessInput
 from app.db.models.sales import Deal, PipelineStage
 from app.db.models.startup import Startup
 from app.db.models.validation import Assumption, Experiment, SmokeTestEvent, SurveyResponse
@@ -290,6 +290,18 @@ def _deck_review_score(db: Session, s: Startup) -> float:
     finding)."""
     latest = deck.latest_ready(db, s.id)
     return float((latest.scores or {}).get("overall", 0)) if latest else 0.0
+
+
+def _qa_average(db: Session, s: Startup) -> float:
+    """Average answer rating (out of 5) of the latest scored mock Q&A; 0 when there is none
+    (absence is the finding)."""
+    latest = (
+        db.query(MockSession.average)
+        .filter(MockSession.startup_id == s.id, MockSession.status == "scored")
+        .order_by(MockSession.scored_at.desc())
+        .first()
+    )
+    return float(latest[0] or 0) if latest else 0.0
 
 
 def _investor_plan(db: Session, s: Startup) -> float:
@@ -552,6 +564,21 @@ SIGNALS: tuple[Signal, ...] = (
             "Your deck has not been reviewed yet."
             if v <= 0
             else f"Your deck review scored {v:g} of 10 against {t:g}. Work through the top fixes."
+        ),
+        2.0,
+    ),
+    Signal(
+        "story.mock_qa",
+        "story",
+        "Defended the pitch (mock Q&A rating, out of 5)",
+        "/5",
+        by_stage(3, 3, 3, 3.5, 3.5, 4),
+        "/investor-readiness/qa",
+        _qa_average,
+        lambda v, t: (
+            "You have not rehearsed an investor Q&A yet. Run a mock session."
+            if v <= 0
+            else f"Your last mock Q&A averaged {v:g} of 5 against {t:g}. Run another and fix your weakest answer."
         ),
         2.0,
     ),

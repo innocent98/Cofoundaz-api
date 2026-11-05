@@ -29,3 +29,16 @@ class DeckReviewIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     file_id: uuid.UUID
+
+
+class QaStartIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    focus: Literal["general", "financials", "market", "team"]
+    intensity: Literal["friendly_angel", "skeptical_vc", "term_sheet_grilling"]
+
+
+class QaMessageIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(..., min_length=1, max_length=2000)

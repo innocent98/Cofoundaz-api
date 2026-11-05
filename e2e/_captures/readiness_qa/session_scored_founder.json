@@ -1,0 +1,101 @@
+{
+  "data": {
+    "id": "6129dd31-973f-4f97-9f9b-346aba2f9e62",
+    "focus": "financials",
+    "intensity": "skeptical_vc",
+    "status": "scored",
+    "error": null,
+    "turns": 3,
+    "max_answers": 10,
+    "rating": "good",
+    "rating_label": "Good",
+    "average": 3.67,
+    "job_id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "started_at": "2026-11-05T19:31:38.452348+00:00",
+    "ended_at": "2026-11-05T19:31:38.733848+00:00",
+    "duration_minutes": 1,
+    "transcript": [
+      {
+        "at": "2026-11-05T19:31:38.459148+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      },
+      {
+        "at": "2026-11-05T19:31:38.540306+00:00",
+        "role": "founder",
+        "text": "Our runway is 4.2 months and we are talking to two banks. (0)"
+      },
+      {
+        "at": "2026-11-05T19:31:38.541379+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      },
+      {
+        "at": "2026-11-05T19:31:38.573663+00:00",
+        "role": "founder",
+        "text": "Our runway is 4.2 months and we are talking to two banks. (1)"
+      },
+      {
+        "at": "2026-11-05T19:31:38.574387+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      },
+      {
+        "at": "2026-11-05T19:31:38.602842+00:00",
+        "role": "founder",
+        "text": "Our runway is 4.2 months and we are talking to two banks. (2)"
+      },
+      {
+        "at": "2026-11-05T19:31:38.604184+00:00",
+        "role": "investor",
+        "text": "[stub-llm] AI-generated assessment narrative."
+      }
+    ],
+    "transcript_purged": false,
+    "scorecard": {
+      "trend": null,
+      "rating": "good",
+      "answers": [
+        {
+          "i": 1,
+          "answer": "Our runway is 4.2 months and we are talking to two banks. (0)",
+          "rating": 4,
+          "feedback": "Specific and numbers-backed.",
+          "question": "[stub-llm] AI-generated assessment narrative."
+        },
+        {
+          "i": 2,
+          "answer": "Our runway is 4.2 months and we are talking to two banks. (1)",
+          "rating": 2,
+          "feedback": "Vague about competitors.",
+          "question": "[stub-llm] AI-generated assessment narrative."
+        },
+        {
+          "i": 3,
+          "answer": "Our runway is 4.2 months and we are talking to two banks. (2)",
+          "rating": 5,
+          "feedback": "Owned the weak spot.",
+          "question": "[stub-llm] AI-generated assessment narrative."
+        }
+      ],
+      "average": 3.67,
+      "weakest": {
+        "i": 2,
+        "answer": "Our runway is 4.2 months and we are talking to two banks. (1)",
+        "rating": 2,
+        "feedback": "Vague about competitors.",
+        "question": "[stub-llm] AI-generated assessment narrative.",
+        "model_answer": "We compete with X on workflow and Y on data, and own the gap between."
+      },
+      "strongest": {
+        "i": 3,
+        "answer": "Our runway is 4.2 months and we are talking to two banks. (2)",
+        "rating": 5,
+        "feedback": "Owned the weak spot.",
+        "question": "[stub-llm] AI-generated assessment narrative."
+      },
+      "rating_label": "Good"
+    }
+  },
+  "meta": null
+}

@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": "7543e809-981c-4900-83cf-3cf70a5ede7e",
+    "type": "ai.readiness.qa_score",
+    "status": "queued",
+    "result": null,
+    "error": null
+  },
+  "meta": null
+}
