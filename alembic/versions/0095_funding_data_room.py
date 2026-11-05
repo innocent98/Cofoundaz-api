@@ -66,9 +66,7 @@ def upgrade() -> None:
         sa.Column("is_standard", sa.Boolean(), nullable=False),
         *_stamps(),
     )
-    op.create_index(
-        "ix_data_room_folders_startup", "data_room_folders", ["startup_id", "position"]
-    )
+    op.create_index("ix_data_room_folders_startup", "data_room_folders", ["startup_id", "position"])
 
     op.create_table(
         "data_room_items",

@@ -431,6 +431,15 @@ SPECS: dict[str, NotifSpec] = {
         lambda p: _committed_title(p),
         lambda _p: "See pipeline",
     ),
+    # D-FUND-L6: an investor opened the data room. The event is published once per share per day.
+    "funding.dataroom.viewed": NotifSpec(
+        _audience("funding.dataroom.viewed", minus_actor=False),
+        lambda p: (
+            f"{p.get('investor_name') or p.get('viewer_email') or 'Someone'} viewed your data "
+            f"room, {p.get('document') or 'a document'}"
+        ),
+        lambda _p: "See who viewed",
+    ),
     "assessment.completed": _s(
         _audience("assessment.completed"), "A startup assessment was completed"
     ),

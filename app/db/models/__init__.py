@@ -33,13 +33,6 @@ from app.db.models.calendar import (  # noqa: F401
 from app.db.models.comment import Comment  # noqa: F401
 from app.db.models.content_report import ContentReport  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
-from app.db.models.document import Document  # noqa: F401
-from app.db.models.expense import Expense  # noqa: F401
-from app.db.models.feature_flag import FeatureFlag  # noqa: F401
-from app.db.models.finance import Transaction  # noqa: F401
-from app.db.models.finance_connection import FinanceConnection, ProviderEvent  # noqa: F401
-from app.db.models.finance_runway import FinanceRunwaySettings  # noqa: F401
-from app.db.models.financial_model import FinancialModel  # noqa: F401
 from app.db.models.data_room import (  # noqa: F401
     DataRoomChallenge,
     DataRoomFolder,
@@ -47,6 +40,13 @@ from app.db.models.data_room import (  # noqa: F401
     DataRoomShare,
     DataRoomView,
 )
+from app.db.models.document import Document  # noqa: F401
+from app.db.models.expense import Expense  # noqa: F401
+from app.db.models.feature_flag import FeatureFlag  # noqa: F401
+from app.db.models.finance import Transaction  # noqa: F401
+from app.db.models.finance_connection import FinanceConnection, ProviderEvent  # noqa: F401
+from app.db.models.finance_runway import FinanceRunwaySettings  # noqa: F401
+from app.db.models.financial_model import FinancialModel  # noqa: F401
 from app.db.models.funding import FundingRound, Investor, InvestorEvent  # noqa: F401
 from app.db.models.health_score import (  # noqa: F401
     HealthRecommendation,

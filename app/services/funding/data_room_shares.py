@@ -231,8 +231,12 @@ def access_log(
     if share_id is not None:
         q = q.filter_by(share_id=share_id)
     total = q.count()
-    rows = q.order_by(DataRoomView.started_at.desc(), DataRoomView.id).limit(limit).offset(offset)
-    rows = rows.all()
+    rows = (
+        q.order_by(DataRoomView.started_at.desc(), DataRoomView.id)
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
     share_rows = {
         s.id: s
         for s in db.query(DataRoomShare).filter(DataRoomShare.id.in_({r.share_id for r in rows}))

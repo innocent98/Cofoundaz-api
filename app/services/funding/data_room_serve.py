@@ -47,9 +47,7 @@ def authorise(db: Session, share: DataRoomShare, item_id: uuid.UUID) -> Authoris
     db.refresh(share)  # never trust an in-memory copy: revocation must be seen
     if status_of(share) != "active":
         raise NotFound()
-    item = (
-        db.query(DataRoomItem).filter_by(id=item_id, startup_id=share.startup_id).first()
-    )
+    item = db.query(DataRoomItem).filter_by(id=item_id, startup_id=share.startup_id).first()
     if item is None or str(item.folder_id) not in set(share.scopes):
         raise NotFound()
     doc, file = room.live_target(db, item)
@@ -78,7 +76,7 @@ def visible_tree(db: Session, share: DataRoomShare) -> dict[str, Any]:
             doc, file = room.live_target(db, it)
             if doc is None and file is None:
                 continue
-            facts = room._facts(doc, file)
+            facts = room.facts(doc, file)
             shown.append(
                 {
                     "id": str(it.id),
@@ -95,7 +93,8 @@ def visible_tree(db: Session, share: DataRoomShare) -> dict[str, Any]:
 def _investor_name(db: Session, share: DataRoomShare) -> str | None:
     if share.investor_id is None:
         return None
-    return db.query(Investor.name).filter(Investor.id == share.investor_id).scalar()
+    name: str | None = db.query(Investor.name).filter(Investor.id == share.investor_id).scalar()
+    return name
 
 
 def open_item(
@@ -151,9 +150,9 @@ def heartbeat(db: Session, share: DataRoomShare, view: DataRoomView) -> int:
     return view.duration_s
 
 
-def deliver(db: Session, share: DataRoomShare, auth: Authorised, *, viewer_email: str) -> tuple[
-    bytes, str, str
-]:
+def deliver(
+    db: Session, share: DataRoomShare, auth: Authorised, *, viewer_email: str
+) -> tuple[bytes, str, str]:
     """(bytes, content_type, filename) ready to send. A PDF is stamped with the viewer's email
     and the time; a rich document is rendered to PDF then stamped. Other types are served as they
     are (view-only unless the share allows download, D-FUND-8)."""

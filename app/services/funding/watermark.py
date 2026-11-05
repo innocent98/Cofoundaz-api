@@ -60,8 +60,8 @@ def stamp_pdf(source: bytes, *, email: str, at: datetime | None = None) -> bytes
             key = (round(w, 1), round(h, 1))
             if key not in cache:
                 cache[key] = _overlay(w, h, label)
-            page.merge_page(PdfReader(io.BytesIO(cache[key])).pages[0])
-            writer.add_page(page)
+            added = writer.add_page(page)
+            added.merge_page(PdfReader(io.BytesIO(cache[key])).pages[0])
         out = io.BytesIO()
         writer.write(out)
         return out.getvalue()

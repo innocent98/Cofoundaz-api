@@ -247,7 +247,7 @@ def live_target(db: Session, item: DataRoomItem) -> tuple[Document | None, Docum
     return doc, None
 
 
-def _facts(doc: Document | None, file: DocumentFile | None) -> dict[str, Any]:
+def facts(doc: Document | None, file: DocumentFile | None) -> dict[str, Any]:
     if file is not None:
         return {
             "kind": "file",
@@ -277,7 +277,7 @@ def serialize_item(db: Session, item: DataRoomItem) -> dict[str, Any]:
         "document_id": str(item.document_id) if item.document_id else None,
         "file_id": str(item.file_id) if item.file_id else None,
         "available": doc is not None or file is not None,
-        **(_facts(doc, file) or _gone(db, item)),
+        **(facts(doc, file) or _gone(db, item)),
     }
     return out
 

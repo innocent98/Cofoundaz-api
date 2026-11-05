@@ -183,9 +183,7 @@ def send_code_email(to: str, code: str, company: str) -> None:
 # ---- proving the email ----
 
 
-def verify_code(
-    db: Session, share: DataRoomShare, email: str, code: str
-) -> tuple[str, datetime]:
+def verify_code(db: Session, share: DataRoomShare, email: str, code: str) -> tuple[str, datetime]:
     """Exchange email + code for a session. Every failure is the same 401 and counts against the
     share. `share` must have been loaded with a row lock so guesses are serialised."""
     now = datetime.now(UTC)
@@ -256,9 +254,7 @@ def issue_ticket(share: DataRoomShare, item_id: uuid.UUID, view_id: uuid.UUID) -
     )
 
 
-def read_ticket(
-    share: DataRoomShare, item_id: uuid.UUID, ticket: str
-) -> uuid.UUID | None:
+def read_ticket(share: DataRoomShare, item_id: uuid.UUID, ticket: str) -> uuid.UUID | None:
     """The view id a valid ticket for this share + item carries, else None."""
     try:
         claims = verify_claims("ticket", ticket)
