@@ -1,0 +1,28 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "40ba388c-77ac-4f1d-9228-9b176120494d",
+        "type": "funding.dataroom.viewed",
+        "title": "Tolu Bello viewed your data room, pitch-deck.pdf",
+        "body": "See who viewed",
+        "data": {
+          "href": "/funding/data-room",
+          "document": "pitch-deck.pdf",
+          "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
+          "startup_id": "bf78c7f7-42ba-46c2-a7b5-601a11773460",
+          "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+          "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+          "investor_name": "Tolu Bello"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "funding",
+        "created_at": "2026-11-05T19:35:45.568988+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

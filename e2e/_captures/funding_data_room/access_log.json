@@ -1,0 +1,28 @@
+{
+  "data": {
+    "total": 2,
+    "items": [
+      {
+        "id": "0cd1e30e-843f-473a-8a5f-ee3772b582c7",
+        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
+        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "investor_name": "Tolu Bello",
+        "document": "model-notes.txt",
+        "item_id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
+        "started_at": "2026-11-05T19:35:47.625808+00:00",
+        "duration_s": 0
+      },
+      {
+        "id": "11e6289d-aadb-47b9-8ce6-c785f15d0f03",
+        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
+        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "investor_name": "Tolu Bello",
+        "document": "pitch-deck.pdf",
+        "item_id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
+        "started_at": "2026-11-05T19:35:45.572709+00:00",
+        "duration_s": 2
+      }
+    ]
+  },
+  "meta": null
+}

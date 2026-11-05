@@ -1,0 +1,13 @@
+{
+  "data": {
+    "view_id": "11e6289d-aadb-47b9-8ce6-c785f15d0f03",
+    "name": "pitch-deck.pdf",
+    "content_type": "application/pdf",
+    "viewer": "pdf",
+    "allow_download": false,
+    "content_url": "/api/v1/funding/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA/items/def5eeef-b2b6-4bd5-8d64-ecac9862d928/content?ticket=eyJzaWQiOiJmZjMyOWEwNS0zZmFkLTQxMzctOTlkYi1lOGYyZDBlMWVkOGUiLCJpaWQiOiJkZWY1ZWVlZi1iMmI2LTRiZDUtOGQ2NC1lY2FjOTg2MmQ5MjgiLCJ2aWQiOiIxMWU2Mjg5ZC1hYWRiLTQ3YjktOGNlNi1jNzg1ZjE1ZDBmMDMiLCJlbSI6ImRlbGl2ZXJlZCtpbnZlc3Rvci1kMmRhZjVhZWJmYmJAcmVzZW5kLmRldiIsImUiOjE3OTM5MDc0NjV9.MmBRZSBhjA3qfNkwkUXo5CAjzX2mFKEnRUPqFDb3-G8",
+    "expires_in_s": 120,
+    "heartbeat_every_s": 15
+  },
+  "meta": null
+}

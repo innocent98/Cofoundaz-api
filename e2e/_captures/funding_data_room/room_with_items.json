@@ -1,0 +1,94 @@
+{
+  "data": {
+    "set_up": true,
+    "standard_folders": [
+      "Corporate",
+      "Financials",
+      "Product",
+      "Market",
+      "Team",
+      "Legal"
+    ],
+    "folders": [
+      {
+        "id": "51b50166-17ad-4acb-9e0b-24f05d8069a2",
+        "name": "Corporate",
+        "position": 0,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "365df93e-30ed-4077-b45c-d4784df7d739",
+        "name": "Financials",
+        "position": 1,
+        "is_standard": true,
+        "items": [
+          {
+            "id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
+            "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+            "position": 0,
+            "document_id": null,
+            "file_id": "a2a86e7c-94e3-42e3-bd87-b2bacd0340f1",
+            "available": true,
+            "kind": "file",
+            "name": "pitch-deck.pdf",
+            "content_type": "application/pdf",
+            "size_bytes": 1371,
+            "viewer": "pdf"
+          },
+          {
+            "id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
+            "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+            "position": 1,
+            "document_id": null,
+            "file_id": "c0d9b14c-a726-428c-a499-c3686a01e1fa",
+            "available": true,
+            "kind": "file",
+            "name": "model-notes.txt",
+            "content_type": "text/plain",
+            "size_bytes": 23,
+            "viewer": "text"
+          }
+        ]
+      },
+      {
+        "id": "967f19db-d256-4094-a73c-04fb2ef5b2fc",
+        "name": "Product",
+        "position": 2,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "9ad25fe0-acd1-4494-85f2-5b1037bbe51c",
+        "name": "Market",
+        "position": 3,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "63a66a25-dacf-4ec6-94f5-0d528c13d7ac",
+        "name": "Team",
+        "position": 4,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "59335fef-ff0a-4282-a79f-6d488d48a368",
+        "name": "Legal",
+        "position": 5,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "68a08bf6-5ce1-4647-9eee-1cffc66b25f5",
+        "name": "Board",
+        "position": 6,
+        "is_standard": false,
+        "items": []
+      }
+    ],
+    "item_count": 2,
+    "shares": []
+  },
+  "meta": null
+}

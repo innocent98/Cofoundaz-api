@@ -1,0 +1,17 @@
+{
+  "data": {
+    "set_up": false,
+    "standard_folders": [
+      "Corporate",
+      "Financials",
+      "Product",
+      "Market",
+      "Team",
+      "Legal"
+    ],
+    "folders": [],
+    "item_count": 0,
+    "shares": []
+  },
+  "meta": null
+}

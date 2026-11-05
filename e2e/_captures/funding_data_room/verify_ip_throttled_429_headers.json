@@ -1,0 +1,7 @@
+{
+  "date": "Thu, 05 Nov 2026 19:35:47 GMT",
+  "server": "uvicorn",
+  "retry-after": "60",
+  "content-length": "102",
+  "content-type": "application/json"
+}

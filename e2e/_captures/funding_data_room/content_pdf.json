@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "application/pdf",
+    "content-disposition": "inline; filename=\"pitch-deck.pdf\"",
+    "cache-control": "private, no-store",
+    "x-data-room-view": "11e6289d-aadb-47b9-8ce6-c785f15d0f03"
+  },
+  "extracted_text": "Pitch deck (placeholder)\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\n"
+}

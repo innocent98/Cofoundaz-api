@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_CODE",
+    "message": "That code didn't work. Check it or ask for a new one.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "data": {
+    "set_up": true,
+    "standard_folders": [
+      "Corporate",
+      "Financials",
+      "Product",
+      "Market",
+      "Team",
+      "Legal"
+    ],
+    "folders": [
+      {
+        "id": "51b50166-17ad-4acb-9e0b-24f05d8069a2",
+        "name": "Corporate",
+        "position": 0,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "365df93e-30ed-4077-b45c-d4784df7d739",
+        "name": "Financials",
+        "position": 1,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "967f19db-d256-4094-a73c-04fb2ef5b2fc",
+        "name": "Product",
+        "position": 2,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "9ad25fe0-acd1-4494-85f2-5b1037bbe51c",
+        "name": "Market",
+        "position": 3,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "63a66a25-dacf-4ec6-94f5-0d528c13d7ac",
+        "name": "Team",
+        "position": 4,
+        "is_standard": true,
+        "items": []
+      },
+      {
+        "id": "59335fef-ff0a-4282-a79f-6d488d48a368",
+        "name": "Legal",
+        "position": 5,
+        "is_standard": true,
+        "items": []
+      }
+    ],
+    "item_count": 0
+  },
+  "meta": null
+}

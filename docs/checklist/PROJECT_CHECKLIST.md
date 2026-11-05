@@ -3893,7 +3893,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 
 ---
 
-## Module 14 — Funding Hub (design accepted 2026-11-05; slice A built)
+## Module 14 — Funding Hub (design accepted 2026-11-05; slices A and B built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gaps and D-FUND-1..8 (all accepted):
 `cofoundaz/docs/checklist/funding-prd-gaps.md`. Order: A, B, C, D, E, F, then FE pass, every-control re-walk, unhide with Investor Readiness.
@@ -3908,7 +3908,16 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] `funding.round.committed_changed` notification (F + TM minus actor); `funding` Scale module gate behind `PLAN_ENFORCEMENT`
   - [x] Roles F + TM (D-FUND-5), a test per role; unit + API + migration tests; live e2e journey; live-captured FE guide
   - [ ] Investor directory (D-FUND-1 b, after Adebayo approves the list): "Find investors"
-- [ ] Slice B: data room (references to Documents, shares with email OTP, viewer log, watermark) — security-critical
+- [x] **Slice B: data room** (`feature/funding-data-room`, migration `0095_funding_data_room`, chained on 0092 for now; SOP `docs/sop/2026-11-05-funding-data-room.md`, FE guide `docs/fe-integration-guide-funding-data-room.md`) — security-critical, PR open 2026-11-05
+  - [x] `data_room_folders`, `data_room_items` (reference a Documents file or rich Document), `data_room_shares` (token hash only), `data_room_challenges` (keyed-hash codes), `data_room_views` (access log)
+  - [x] Founder routes: `GET /data-room`, `POST /data-room/setup`, folder + item CRUD, shares CRUD + revoke, `GET /data-room/access-log`; F + TM only (D-FUND-5)
+  - [x] Public viewer `/funding/dr/{token}`: meta, `otp`, `verify` (email + 6-digit code, no accounts, D-FUND-3), `tree`, `items/{id}/open`, `items/{id}/content`, `heartbeat`
+  - [x] Serve-time authorisation on every item request (revoked, expired, removed item or folder, narrowed scope, trashed or non-clean Documents file); uniform 404 for dead links
+  - [x] Brute-force limits: per share (5 codes/hour, 5 tries/code, 10 failures lock 15 min) and per IP (slowapi); no email enumeration
+  - [x] PDF watermark with viewer email + time at serve time, fail closed (D-FUND-8); 2-minute signed content tickets; downloads off by default
+  - [x] `funding.dataroom.viewed` event and notification (one per share per day, F + TM); heartbeat durations
+  - [x] 71 API tests + migration tests; live e2e journey; live-captured FE guide
+  - [ ] Pitch-deck pinned item and `readiness` share scope (needs Investor Readiness; spec section 9) · investor accounts B2 (not needed under D-FUND-3 a)
 - [ ] Slice C: cap table (holders, entries, SAFE conversion, round model, scenarios, SAFE draft on commit)
 - [ ] Slice D: term sheets (deterministic flags, AI extraction + confirm)
 - [ ] Slice E: grants (curated catalogue, match job, applications)
