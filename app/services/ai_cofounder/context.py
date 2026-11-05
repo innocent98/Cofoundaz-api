@@ -47,7 +47,10 @@ _MAX_ITEMS = 5
 
 
 def _clip(value: Any, cap: int = _CAP) -> str:
-    return " ".join(str(value).split())[:cap]
+    """Clip user-authored text for the prompt. Angle brackets are escaped so workspace data can
+    never contain the closing `</workspace_data>` fence (or any other tag) and break out of it."""
+    flat = " ".join(str(value).split()).replace("<", "&lt;").replace(">", "&gt;")
+    return flat[:cap]
 
 
 @dataclass(frozen=True)

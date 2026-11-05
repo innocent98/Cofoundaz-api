@@ -277,9 +277,6 @@ class BriefingStatus(enum.StrEnum):
     generating = "generating"
     ready = "ready"
     failed = "failed"
-    # The founder pressed Cancel while the reply was generating (D-AI-2). Terminal; the content
-    # stays empty and the conversation accepts a new message.
-    cancelled = "cancelled"
 
 
 class ChatMessageRole(enum.StrEnum):
