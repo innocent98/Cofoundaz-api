@@ -62,11 +62,14 @@ def upgrade() -> None:
         _id(),
         _startup(),
         sa.Column("name", sa.String(120), nullable=False),
-        sa.Column("position", sa.Integer(), nullable=False),
-        sa.Column("is_standard", sa.Boolean(), nullable=False),
+        sa.Column("position", sa.Integer(), nullable=False, server_default=sa.text("0")),
+        sa.Column("is_standard", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         *_stamps(),
     )
     op.create_index("ix_data_room_folders_startup", "data_room_folders", ["startup_id", "position"])
+    op.create_index(
+        "uq_data_room_folder_name", "data_room_folders", ["startup_id", "name"], unique=True
+    )
 
     op.create_table(
         "data_room_items",
@@ -75,7 +78,7 @@ def upgrade() -> None:
         _fk("folder_id", "data_room_folders.id", "CASCADE", False),
         _fk("document_id", "documents.id", "CASCADE", True),
         _fk("file_id", "document_files.id", "CASCADE", True),
-        sa.Column("position", sa.Integer(), nullable=False),
+        sa.Column("position", sa.Integer(), nullable=False, server_default=sa.text("0")),
         _fk("added_by_id", "users.id", "SET NULL", True),
         *_stamps(),
         sa.CheckConstraint(
@@ -108,13 +111,13 @@ def upgrade() -> None:
         _fk("created_by_id", "users.id", "SET NULL", True),
         sa.Column("email", sa.String(320), nullable=False),
         sa.Column("scopes", postgresql.JSONB(), nullable=False),
-        sa.Column("allow_download", sa.Boolean(), nullable=False),
+        sa.Column("allow_download", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("token_hash", sa.String(64), nullable=False),
-        sa.Column("token_version", sa.Integer(), nullable=False),
+        sa.Column("token_version", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_viewed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("failed_attempts", sa.Integer(), nullable=False),
+        sa.Column("failed_attempts", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("locked_until", sa.DateTime(timezone=True), nullable=True),
         *_stamps(),
     )
@@ -128,13 +131,21 @@ def upgrade() -> None:
         _fk("share_id", "data_room_shares.id", "CASCADE", False),
         sa.Column("code_hash", sa.String(64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("attempts", sa.Integer(), nullable=False),
+        sa.Column("attempts", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("consumed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("ip_hash", sa.String(64), nullable=True),
         *_stamps(),
     )
     op.create_index(
         "ix_data_room_challenges_share", "data_room_challenges", ["share_id", "created_at"]
+    )
+
+    op.create_index(
+        "uq_data_room_challenge_live",
+        "data_room_challenges",
+        ["share_id"],
+        unique=True,
+        postgresql_where=sa.text("consumed_at IS NULL"),
     )
 
     op.create_table(
@@ -147,7 +158,7 @@ def upgrade() -> None:
         sa.Column("viewer_email", sa.String(320), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("duration_s", sa.Integer(), nullable=False),
+        sa.Column("duration_s", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("ip_hash", sa.String(64), nullable=True),
         *_stamps(),
     )

@@ -206,6 +206,22 @@ def test_funding_data_room_journey(
         r = c.post(f"{F}/dr/{token}/heartbeat", headers=sess, json={"view_id": opened["view_id"]})
         assert r.status_code == 200 and r.json()["data"]["duration_s"] >= 1
         capture(G, "heartbeat", r)
+        # A text file cannot be watermarked, so with downloads off it is refused, and a refusal is
+        # not logged as a view.
+        r = c.post(f"{F}/dr/{token}/items/{txt_item['id']}/open", headers=sess)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "VIEW_ONLY_UNSUPPORTED"
+        capture(G, "open_text_view_only_422", r)
+        r = c.get(f"{F}/dr/{token}/items/{txt_item['id']}/content", headers=sess)
+        assert r.status_code == 422
+        capture(G, "content_text_view_only_422", r)
+        assert c.get(f"{DR}/access-log", headers=wh).json()["data"]["total"] == 1
+        # The founder allows downloads; the viewer already inside gets the raw file straight away.
+        r = c.patch(f"{DR}/shares/{share['id']}", headers=wh, json={"allow_download": True})
+        assert r.json()["data"]["allow_download"] is True
+        capture(G, "share_updated", r)
+        r = c.get(f"{F}/dr/{token}/tree", headers=sess)
+        assert all(i["viewable"] for i in r.json()["data"]["folders"][0]["items"])
+        capture(G, "tree_downloads_on", r)
         r = c.get(f"{F}/dr/{token}/items/{txt_item['id']}/content", headers=sess)
         assert r.status_code == 200 and r.content == b"Placeholder model notes"
         capture_json(
@@ -231,21 +247,11 @@ def test_funding_data_room_journey(
         r = c.get(f"{DR}/shares", headers=wh)
         assert r.json()["data"]["items"][0]["view_count"] == 2
         capture(G, "shares_list", r)
-        r = (
-            c.get(f"{F}/../notifications", headers=wh)
-            if False
-            else c.get("/api/v1/notifications", headers=wh)
-        )
-        kinds = (
-            [n["type"] for n in r.json()["data"]["items"]] if "items" in r.json()["data"] else []
-        )
+        r = c.get("/api/v1/notifications", headers=wh)
         capture(G, "notifications", r)
         assert "funding.dataroom.viewed" in str(r.json())
 
         # 7. Change the share; revoke; everything dies at once.
-        r = c.patch(f"{DR}/shares/{share['id']}", headers=wh, json={"allow_download": True})
-        assert r.json()["data"]["allow_download"] is True
-        capture(G, "share_updated", r)
         r = c.patch(f"{DR}/shares/{share['id']}", headers=wh, json={"expires_at": None})
         capture(G, "share_expiry_cleared", r)
         r = c.delete(f"{DR}/shares/{share['id']}", headers=wh)

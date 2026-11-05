@@ -58,7 +58,7 @@ def request_code(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     """Always the same answer, whether or not the address is the invited one."""
-    share = gate.resolve_share(db, token)
+    share = gate.resolve_share(db, token, lock=True)
     mail = gate.request_code(db, share, str(payload.email), ip=_ip(request))
     db.commit()
     if mail is not None:
@@ -108,6 +108,7 @@ def open_item(
     share = gate.resolve_share(db, token)
     email = _viewer(share, x_data_room_session)
     auth = serve.authorise(db, share, item_id)
+    serve.assert_viewable(share, auth)  # before anything is logged
     view = serve.open_item(db, share, auth, viewer_email=email, iph=gate.ip_hash(_ip(request)))
     ticket = gate.issue_ticket(share, item_id, view.id)
     facts = serve.room.facts(auth.doc, auth.file)
@@ -119,6 +120,7 @@ def open_item(
             "content_type": facts["content_type"],
             "viewer": facts["viewer"],
             "allow_download": share.allow_download,
+            "viewable": True,
             "content_url": f"/api/v1/funding/dr/{token}/items/{item_id}/content?ticket={ticket}",
             "expires_in_s": gate.TICKET_TTL_SECONDS,
             "heartbeat_every_s": 15,
@@ -148,6 +150,7 @@ def item_content(
     auth = serve.authorise(db, share, item_id)
     if view_id is not None and serve.get_view(db, share, view_id) is None:
         raise NotFound()
+    serve.assert_viewable(share, auth)
     if view_id is None:
         view = serve.open_item(db, share, auth, viewer_email=email, iph=gate.ip_hash(_ip(request)))
         view_id = view.id

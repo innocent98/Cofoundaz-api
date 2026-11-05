@@ -3,23 +3,23 @@
     "total": 2,
     "items": [
       {
-        "id": "0cd1e30e-843f-473a-8a5f-ee3772b582c7",
-        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "id": "e63b60ff-3c44-4481-899f-5af101a2cb0f",
+        "share_id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+        "viewer_email": "delivered+investor-578313484f65@resend.dev",
         "investor_name": "Tolu Bello",
         "document": "model-notes.txt",
-        "item_id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
-        "started_at": "2026-11-05T19:35:47.625808+00:00",
+        "item_id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+        "started_at": "2026-11-05T20:08:00.418634+00:00",
         "duration_s": 0
       },
       {
-        "id": "11e6289d-aadb-47b9-8ce6-c785f15d0f03",
-        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "id": "727aabca-5360-44dc-b48f-2a9340250594",
+        "share_id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+        "viewer_email": "delivered+investor-578313484f65@resend.dev",
         "investor_name": "Tolu Bello",
         "document": "pitch-deck.pdf",
-        "item_id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
-        "started_at": "2026-11-05T19:35:45.572709+00:00",
+        "item_id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+        "started_at": "2026-11-05T20:07:58.299905+00:00",
         "duration_s": 2
       }
     ]

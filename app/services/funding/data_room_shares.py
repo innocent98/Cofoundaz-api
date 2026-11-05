@@ -23,6 +23,7 @@ from app.platform.email import EmailMessage, get_email_sender
 from app.schemas.data_room import ShareCreate, ShareUpdate
 from app.services.documents.links import derive_token, token_hash
 from app.services.documents.shares import resolve_expiry
+from app.services.funding import data_room as room
 from app.services.funding.errors import _validation
 
 PURPOSE = "dataroom"
@@ -203,6 +204,11 @@ def serialize_shares(db: Session, rows: list[DataRoomShare]) -> list[dict[str, A
                 "last_viewed_at": s.last_viewed_at.isoformat() if s.last_viewed_at else None,
                 "view_count": views,
                 "total_duration_s": seconds,
+                "unviewable_items": (
+                    room.unviewable_items(db, s.startup_id, list(s.scopes))
+                    if not s.allow_download
+                    else []
+                ),
                 "link": link_for(s) if status == "active" else None,
                 "created_at": s.created_at.isoformat(),
             }

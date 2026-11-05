@@ -2,7 +2,8 @@
 shares are token links gated by an emailed one-time code (D-FUND-3); every view is logged.
 
 Only the SHA-256 of a share token is stored. A code is stored as a keyed hash. Every row carries
-`startup_id` and every query filters by it.
+`startup_id` and every query filters by it, except challenges, which are reached only through
+their share.
 """
 
 import uuid
@@ -38,10 +39,19 @@ class DataRoomFolder(UUIDMixin, TimestampMixin, Base):
 
     startup_id: Mapped[uuid.UUID] = _startup_fk()
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    is_standard: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    position: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    is_standard: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     __table_args__ = (Index("ix_data_room_folders_startup", "startup_id", "position"),)
+
+
+# Exact-name uniqueness in the database; the case-insensitive rule is enforced by the service
+# under a per-workspace row lock (alembic cannot compare a unique expression index).
+Index("uq_data_room_folder_name", DataRoomFolder.startup_id, DataRoomFolder.name, unique=True)
 
 
 class DataRoomItem(UUIDMixin, TimestampMixin, Base):
@@ -59,7 +69,9 @@ class DataRoomItem(UUIDMixin, TimestampMixin, Base):
     file_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("document_files.id", ondelete="CASCADE"), nullable=True
     )
-    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    position: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     added_by_id: Mapped[uuid.UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -102,14 +114,20 @@ class DataRoomShare(UUIDMixin, TimestampMixin, Base):
     )
     email: Mapped[str] = mapped_column(String(320), nullable=False)  # stored lower-case
     scopes: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)  # folder ids
-    allow_download: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_download: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Brute-force guard (per share): consecutive wrong codes lock the gate for a while.
-    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
@@ -129,11 +147,22 @@ class DataRoomChallenge(UUIDMixin, TimestampMixin, Base):
     )
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    __table_args__ = (Index("ix_data_room_challenges_share", "share_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_data_room_challenges_share", "share_id", "created_at"),
+        # One live code per share, enforced by the database.
+        Index(
+            "uq_data_room_challenge_live",
+            "share_id",
+            unique=True,
+            postgresql_where=text("consumed_at IS NULL"),
+        ),
+    )
 
 
 class DataRoomView(UUIDMixin, TimestampMixin, Base):
@@ -152,7 +181,9 @@ class DataRoomView(UUIDMixin, TimestampMixin, Base):
     viewer_email: Mapped[str] = mapped_column(String(320), nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    duration_s: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duration_s: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     __table_args__ = (

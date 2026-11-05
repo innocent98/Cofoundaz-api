@@ -82,14 +82,14 @@ capture `setup`
     ],
     "folders": [
       {
-        "id": "51b50166-17ad-4acb-9e0b-24f05d8069a2",
+        "id": "6f6d472f-53d4-4e20-9852-c7a60b217083",
         "name": "Corporate",
         "position": 0,
         "is_standard": true,
         "items": []
       },
       {
-        "id": "365df93e-30ed-4077-b45c-d4784df7d739",
+        "id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
         "name": "Financials",
         "position": 1,
         "is_standard": true,
@@ -114,7 +114,7 @@ capture `folder_created`
 ```json
 {
   "data": {
-    "id": "68a08bf6-5ce1-4647-9eee-1cffc66b25f5",
+    "id": "00389fb2-4c0e-455f-9e3e-1118ea07b80f",
     "name": "Board",
     "position": 6,
     "is_standard": false,
@@ -142,17 +142,18 @@ capture `item_added`
 ```json
 {
   "data": {
-    "id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
-    "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+    "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+    "folder_id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
     "position": 0,
     "document_id": null,
-    "file_id": "a2a86e7c-94e3-42e3-bd87-b2bacd0340f1",
+    "file_id": "936efb03-8267-4543-8c6c-af2128041a00",
     "available": true,
     "kind": "file",
     "name": "pitch-deck.pdf",
     "content_type": "application/pdf",
     "size_bytes": 1371,
-    "viewer": "pdf"
+    "viewer": "pdf",
+    "viewable": true
   },
   "meta": null
 }
@@ -197,41 +198,43 @@ capture `room_with_items`
     ],
     "folders": [
       {
-        "id": "365df93e-30ed-4077-b45c-d4784df7d739",
+        "id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
         "name": "Financials",
         "position": 1,
         "is_standard": true,
         "items": [
           {
-            "id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
-            "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+            "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+            "folder_id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
             "position": 0,
             "document_id": null,
-            "file_id": "a2a86e7c-94e3-42e3-bd87-b2bacd0340f1",
+            "file_id": "936efb03-8267-4543-8c6c-af2128041a00",
             "available": true,
             "kind": "file",
             "name": "pitch-deck.pdf",
             "content_type": "application/pdf",
             "size_bytes": 1371,
-            "viewer": "pdf"
+            "viewer": "pdf",
+            "viewable": true
           },
           {
-            "id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
-            "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+            "id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+            "folder_id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
             "position": 1,
             "document_id": null,
-            "file_id": "c0d9b14c-a726-428c-a499-c3686a01e1fa",
+            "file_id": "e4b24ef2-945e-4a58-920f-83ca664ff8e2",
             "available": true,
             "kind": "file",
             "name": "model-notes.txt",
             "content_type": "text/plain",
             "size_bytes": 23,
-            "viewer": "text"
+            "viewer": "text",
+            "viewable": false
           }
         ]
       },
       {
-        "id": "68a08bf6-5ce1-4647-9eee-1cffc66b25f5",
+        "id": "00389fb2-4c0e-455f-9e3e-1118ea07b80f",
         "name": "Board",
         "position": 6,
         "is_standard": false,
@@ -258,23 +261,30 @@ capture `share_created`
 ```json
 {
   "data": {
-    "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-    "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-    "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
     "investor_name": "Tolu Bello",
     "folder_ids": [
-      "365df93e-30ed-4077-b45c-d4784df7d739"
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
     ],
     "allow_download": false,
     "watermark": true,
     "status": "active",
-    "expires_at": "2026-12-05T19:35:45.149892+00:00",
+    "expires_at": "2026-12-05T20:07:57.827262+00:00",
     "revoked_at": null,
     "last_viewed_at": null,
     "view_count": 0,
     "total_duration_s": 0,
-    "link": "http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA",
-    "created_at": "2026-11-05T19:35:45.143852+00:00"
+    "unviewable_items": [
+      {
+        "item_id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+        "name": "model-notes.txt",
+        "code": "VIEW_ONLY_UNSUPPORTED"
+      }
+    ],
+    "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
   },
   "meta": null
 }
@@ -285,12 +295,19 @@ The invite email, as delivered (file email backend):
 capture `email_invite`
 ```json
 {
-  "to": "delivered+investor-d2daf5aebfbb@resend.dev",
+  "to": "delivered+investor-578313484f65@resend.dev",
   "subject": "Placeholder Co shared their data room with you",
-  "html": "<p><strong>Placeholder Co</strong> invited you to their data room on Cofoundaz.</p><p><a href=\"http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA\">Open the data room</a></p><p>You will be asked for a 6-digit code sent to this address. The link only works for this email.</p>",
-  "sent_at": "2026-11-05T19:35:45.154075+00:00"
+  "html": "<p><strong>Placeholder Co</strong> invited you to their data room on Cofoundaz.</p><p><a href=\"http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM\">Open the data room</a></p><p>You will be asked for a 6-digit code sent to this address. The link only works for this email.</p>",
+  "sent_at": "2026-11-05T20:07:57.829337+00:00"
 }
 ```
+
+**Trap, view-only types:** with `allow_download: false` only PDFs, rich Documents and PNG/JPEG images can be
+shown (they are watermarked; images are converted to a PDF page). Any other file type (docx, xlsx, pptx, csv,
+txt, md) would leave as raw bytes, so the investor gets **422 `VIEW_ONLY_UNSUPPORTED`** for it. `unviewable_items`
+lists those items for the scoped folders when the share is created or listed (empty when downloads are on).
+Show the founder a warning before they send: "These files can't be shown view-only: upload a PDF or allow
+downloads." In the founder's room list every item also carries `viewable` (false for those types).
 
 Validation (empty folder list):
 
@@ -320,23 +337,24 @@ capture `shares_list`
   "data": {
     "items": [
       {
-        "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-        "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-        "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+        "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+        "email": "delivered+investor-578313484f65@resend.dev",
+        "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
         "investor_name": "Tolu Bello",
         "folder_ids": [
-          "365df93e-30ed-4077-b45c-d4784df7d739"
+          "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
         ],
-        "allow_download": false,
+        "allow_download": true,
         "watermark": true,
         "status": "active",
-        "expires_at": "2026-12-05T19:35:45.149892+00:00",
+        "expires_at": "2026-12-05T20:07:57.827262+00:00",
         "revoked_at": null,
-        "last_viewed_at": "2026-11-05T19:35:47.625808+00:00",
+        "last_viewed_at": "2026-11-05T20:08:00.418634+00:00",
         "view_count": 2,
         "total_duration_s": 2,
-        "link": "http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA",
-        "created_at": "2026-11-05T19:35:45.143852+00:00"
+        "unviewable_items": [],
+        "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+        "created_at": "2026-11-05T20:07:57.822309+00:00"
       }
     ]
   },
@@ -352,23 +370,24 @@ capture `share_updated`
 ```json
 {
   "data": {
-    "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-    "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-    "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
     "investor_name": "Tolu Bello",
     "folder_ids": [
-      "365df93e-30ed-4077-b45c-d4784df7d739"
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
     ],
     "allow_download": true,
     "watermark": true,
     "status": "active",
-    "expires_at": "2026-12-05T19:35:45.149892+00:00",
+    "expires_at": "2026-12-05T20:07:57.827262+00:00",
     "revoked_at": null,
-    "last_viewed_at": "2026-11-05T19:35:47.625808+00:00",
-    "view_count": 2,
+    "last_viewed_at": "2026-11-05T20:07:58.299905+00:00",
+    "view_count": 1,
     "total_duration_s": 2,
-    "link": "http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA",
-    "created_at": "2026-11-05T19:35:45.143852+00:00"
+    "unviewable_items": [],
+    "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
   },
   "meta": null
 }
@@ -378,23 +397,24 @@ capture `share_expiry_cleared`
 ```json
 {
   "data": {
-    "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-    "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-    "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
     "investor_name": "Tolu Bello",
     "folder_ids": [
-      "365df93e-30ed-4077-b45c-d4784df7d739"
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
     ],
     "allow_download": true,
     "watermark": true,
     "status": "active",
     "expires_at": null,
     "revoked_at": null,
-    "last_viewed_at": "2026-11-05T19:35:47.625808+00:00",
+    "last_viewed_at": "2026-11-05T20:08:00.418634+00:00",
     "view_count": 2,
     "total_duration_s": 2,
-    "link": "http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA",
-    "created_at": "2026-11-05T19:35:45.143852+00:00"
+    "unviewable_items": [],
+    "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
   },
   "meta": null
 }
@@ -407,23 +427,24 @@ capture `share_revoked`
 ```json
 {
   "data": {
-    "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-    "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-    "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
     "investor_name": "Tolu Bello",
     "folder_ids": [
-      "365df93e-30ed-4077-b45c-d4784df7d739"
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
     ],
     "allow_download": true,
     "watermark": true,
     "status": "revoked",
     "expires_at": null,
-    "revoked_at": "2026-11-05T19:35:47.743606+00:00",
-    "last_viewed_at": "2026-11-05T19:35:47.625808+00:00",
+    "revoked_at": "2026-11-05T20:08:00.473577+00:00",
+    "last_viewed_at": "2026-11-05T20:08:00.418634+00:00",
     "view_count": 2,
     "total_duration_s": 2,
+    "unviewable_items": [],
     "link": null,
-    "created_at": "2026-11-05T19:35:45.143852+00:00"
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
   },
   "meta": null
 }
@@ -454,23 +475,23 @@ capture `access_log`
     "total": 2,
     "items": [
       {
-        "id": "0cd1e30e-843f-473a-8a5f-ee3772b582c7",
-        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "id": "e63b60ff-3c44-4481-899f-5af101a2cb0f",
+        "share_id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+        "viewer_email": "delivered+investor-578313484f65@resend.dev",
         "investor_name": "Tolu Bello",
         "document": "model-notes.txt",
-        "item_id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
-        "started_at": "2026-11-05T19:35:47.625808+00:00",
+        "item_id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+        "started_at": "2026-11-05T20:08:00.418634+00:00",
         "duration_s": 0
       },
       {
-        "id": "11e6289d-aadb-47b9-8ce6-c785f15d0f03",
-        "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-        "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+        "id": "727aabca-5360-44dc-b48f-2a9340250594",
+        "share_id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+        "viewer_email": "delivered+investor-578313484f65@resend.dev",
         "investor_name": "Tolu Bello",
         "document": "pitch-deck.pdf",
-        "item_id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
-        "started_at": "2026-11-05T19:35:45.572709+00:00",
+        "item_id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+        "started_at": "2026-11-05T20:07:58.299905+00:00",
         "duration_s": 2
       }
     ]
@@ -489,24 +510,24 @@ capture `notifications`
   "data": {
     "notifications": [
       {
-        "id": "40ba388c-77ac-4f1d-9228-9b176120494d",
+        "id": "99d2fefb-6de2-432e-82d7-d5f077cc303c",
         "type": "funding.dataroom.viewed",
         "title": "Tolu Bello viewed your data room, pitch-deck.pdf",
         "body": "See who viewed",
         "data": {
           "href": "/funding/data-room",
           "document": "pitch-deck.pdf",
-          "share_id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-          "startup_id": "bf78c7f7-42ba-46c2-a7b5-601a11773460",
-          "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
-          "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev",
+          "share_id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+          "startup_id": "5926493c-a014-46bc-bebd-dd01ecfc7a13",
+          "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
+          "viewer_email": "delivered+investor-578313484f65@resend.dev",
           "investor_name": "Tolu Bello"
         },
         "read": false,
         "archived": false,
         "priority": "normal",
         "module": "funding",
-        "created_at": "2026-11-05T19:35:45.568988+00:00"
+        "created_at": "2026-11-05T20:07:58.291766+00:00"
       }
     ],
     "next_cursor": "..."
@@ -562,8 +583,10 @@ capture `public_unknown_link_404`
 **Step 2: ask for a code.** `POST /dr/{token}/otp` `{"email"}`. The answer is **identical whether or not
 the address is the invited one**; the email is only sent if it is. The page must say "If that address can
 open this room, a code is on its way." and must **not** claim a code was sent. Codes last 10 minutes, work
-once, and a new request replaces the old code. At most 5 codes an hour per share and 10 an hour per client
-address (429).
+once, and a new request replaces the old code. At most 5 code requests an hour per share and 10 an hour per client
+address. **Over the per-share cap the answer is still the same 202 and nothing is sent** (a 429 would reveal
+whether an address was invited), so a "didn't get it" state must not rely on an error: offer "Send a new
+code" again after a few minutes. The per-address limit is a 429 `RATE_LIMITED`.
 
 capture `otp_unknown_email_202`
 ```json
@@ -592,10 +615,10 @@ The email the investor receives:
 capture `email_code`
 ```json
 {
-  "to": "delivered+investor-d2daf5aebfbb@resend.dev",
+  "to": "delivered+investor-578313484f65@resend.dev",
   "subject": "Your data room code",
-  "html": "<p>Your code to open the <strong>Placeholder Co</strong> data room is <strong>369960</strong>.</p><p>It works once and expires in 10 minutes. If you didn't ask for it, ignore this email.</p>",
-  "sent_at": "2026-11-05T19:35:45.210115+00:00"
+  "html": "<p>Your code to open the <strong>Placeholder Co</strong> data room is <strong>577195</strong>.</p><p>It works once and expires in 10 minutes. If you didn't ask for it, ignore this email.</p>",
+  "sent_at": "2026-11-05T20:07:57.908125+00:00"
 }
 ```
 
@@ -606,8 +629,8 @@ capture `verify_ok`
 ```json
 {
   "data": {
-    "session": "eyJzaWQiOiJmZjMyOWEwNS0zZmFkLTQxMzctOTlkYi1lOGYyZDBlMWVkOGUiLCJlbSI6ImRlbGl2ZXJlZCtpbnZlc3Rvci1kMmRhZjVhZWJmYmJAcmVzZW5kLmRldiIsImUiOjE3OTM5MTQ1NDV9.Ijlf5vVoiJSJPw7RV2eF9-bcTKUACyXj18UYN1gbwJ4",
-    "expires_at": "2026-11-05T21:35:45.538696+00:00"
+    "session": "eyJzaWQiOiI2NTkyZTRhYS1kYTQyLTRhMjItYWRkNS05NWEzODA3Y2U3ZjYiLCJlbSI6ImRlbGl2ZXJlZCtpbnZlc3Rvci01NzgzMTM0ODRmNjVAcmVzZW5kLmRldiIsImUiOjE3OTM5MTY0Nzh9.6HwEnq_m5GdXJSrboe2B6RfiR3d3SbETSC_8kgb_o5k",
+    "expires_at": "2026-11-05T22:07:58.227916+00:00"
   },
   "meta": null
 }
@@ -640,10 +663,11 @@ capture `verify_code_reused_401`
 
 **UX consequences to surface**
 
-- 5 wrong tries kill the current code ("Ask for a new code"). 10 wrong tries on the share lock it for 15
-  minutes: **429 `TOO_MANY_ATTEMPTS`**, "Too many attempts. Try again in a few minutes.", on `/otp` and
-  `/verify` (*unit-tested, not captured: the per-address throttle below trips first in a live run*). Anyone
-  holding the link can therefore lock the real investor out for 15 minutes; this is a known tradeoff.
+- 5 wrong tries kill the current code ("Ask for a new code"). 10 wrong tries against live codes lock the
+  share for 15 minutes: **429 `TOO_MANY_ATTEMPTS`**, "Too many attempts. Try again in a few minutes.", on
+  `/otp` and `/verify` (*unit-tested, not captured: the per-address throttle below trips first in a live
+  run*). Wrong guesses made while no code is outstanding are not counted, so someone holding only the link
+  cannot lock the room.
 - Per client address the throttle is 8 verifies a minute and 20 an hour: **429 `RATE_LIMITED`**. Show "Too
   many requests, wait a minute".
 
@@ -659,8 +683,8 @@ capture `verify_ip_throttled_429`
 ```
 
 **Step 4: browse.** `GET /dr/{token}/tree` needs the session header. Only folders in the share's scope and
-only items viewable right now are returned. **Trap:** `allow_download` is at the top level of `tree`, not per
-item.
+only items viewable right now are returned. **Traps:** `allow_download` is at the top level of `tree`, not per item; each item has `viewable`. With
+downloads off, show an item with `viewable: false` greyed out with "Not available as a view-only copy".
 
 capture `tree`
 ```json
@@ -668,28 +692,30 @@ capture `tree`
   "data": {
     "folders": [
       {
-        "id": "365df93e-30ed-4077-b45c-d4784df7d739",
+        "id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
         "name": "Financials",
         "items": [
           {
-            "id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
+            "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
             "name": "pitch-deck.pdf",
             "content_type": "application/pdf",
             "size_bytes": 1371,
-            "viewer": "pdf"
+            "viewer": "pdf",
+            "viewable": true
           },
           {
-            "id": "dfc85383-efd2-4ff0-818a-eba8ad06a98d",
+            "id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
             "name": "model-notes.txt",
             "content_type": "text/plain",
             "size_bytes": 23,
-            "viewer": "text"
+            "viewer": "text",
+            "viewable": false
           }
         ]
       }
     ],
     "allow_download": false,
-    "viewer_email": "delivered+investor-d2daf5aebfbb@resend.dev"
+    "viewer_email": "delivered+investor-578313484f65@resend.dev"
   },
   "meta": null
 }
@@ -720,12 +746,13 @@ capture `open_pdf`
 ```json
 {
   "data": {
-    "view_id": "11e6289d-aadb-47b9-8ce6-c785f15d0f03",
+    "view_id": "727aabca-5360-44dc-b48f-2a9340250594",
     "name": "pitch-deck.pdf",
     "content_type": "application/pdf",
     "viewer": "pdf",
     "allow_download": false,
-    "content_url": "/api/v1/funding/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA/items/def5eeef-b2b6-4bd5-8d64-ecac9862d928/content?ticket=eyJzaWQiOiJmZjMyOWEwNS0zZmFkLTQxMzctOTlkYi1lOGYyZDBlMWVkOGUiLCJpaWQiOiJkZWY1ZWVlZi1iMmI2LTRiZDUtOGQ2NC1lY2FjOTg2MmQ5MjgiLCJ2aWQiOiIxMWU2Mjg5ZC1hYWRiLTQ3YjktOGNlNi1jNzg1ZjE1ZDBmMDMiLCJlbSI6ImRlbGl2ZXJlZCtpbnZlc3Rvci1kMmRhZjVhZWJmYmJAcmVzZW5kLmRldiIsImUiOjE3OTM5MDc0NjV9.MmBRZSBhjA3qfNkwkUXo5CAjzX2mFKEnRUPqFDb3-G8",
+    "viewable": true,
+    "content_url": "/api/v1/funding/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM/items/724306c2-e35b-4914-981f-20c8d226ab9c/content?ticket=eyJzaWQiOiI2NTkyZTRhYS1kYTQyLTRhMjItYWRkNS05NWEzODA3Y2U3ZjYiLCJpaWQiOiI3MjQzMDZjMi1lMzViLTQ5MTQtOTgxZi0yMGM4ZDIyNmFiOWMiLCJ2aWQiOiI3MjdhYWJjYS01MzYwLTQ0ZGMtYjQ4Zi0yYTkzNDAyNTA1OTQiLCJlbSI6ImRlbGl2ZXJlZCtpbnZlc3Rvci01NzgzMTM0ODRmNjVAcmVzZW5kLmRldiIsImUiOjE3OTM5MDkzOTh9.7LLzJk4jK6pFD-3an_QojSJFEE8SJn5LH0qcSr7v5RQ",
     "expires_in_s": 120,
     "heartbeat_every_s": 15
   },
@@ -745,16 +772,77 @@ capture `content_pdf`
     "content-type": "application/pdf",
     "content-disposition": "inline; filename=\"pitch-deck.pdf\"",
     "cache-control": "private, no-store",
-    "x-data-room-view": "11e6289d-aadb-47b9-8ce6-c785f15d0f03"
+    "x-data-room-view": "727aabca-5360-44dc-b48f-2a9340250594"
   },
-  "extracted_text": "Pitch deck (placeholder)\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\ndelivered+investor-d2daf5aebfbb@resend.dev  |  2026-11-05 19:35 UTC  |  Confidential\n"
+  "extracted_text": "Pitch deck (placeholder)\ndelivered+investor-578313484f65@resend.dev  |  2026-11-05 20:07 UTC  |  Confidential\ndelivered+investor-578313484f65@resend.dev  |  2026-11-05 20:07 UTC  |  Confidential\ndelivered+investor-578313484f65@resend.dev  |  2026-11-05 20:07 UTC  |  Confidential\ndelivered+investor-578313484f65@resend.dev  |  2026-11-05 20:07 UTC  |  Confidential\n"
 }
 ```
 
-Other types are served as they are, **view-only**: `Content-Disposition: inline`, no watermark (D-FUND-8).
-`?download=true` gives `attachment` **only if the share has `allow_download: true`**; otherwise the flag is
-ignored. When downloads are on, say so in the UI: "Downloaded files are not watermarked." (PDFs are still
-stamped.) *`attachment` behaviour is unit-tested, not captured.*
+**Downloads off (the default):** PDFs and rich Documents are stamped; PNG/JPEG images are converted to a
+one-page PDF and stamped (*unit-tested, not captured*). Any other type is refused **before** a view is logged:
+
+capture `open_text_view_only_422`
+```json
+{
+  "error": {
+    "code": "VIEW_ONLY_UNSUPPORTED",
+    "message": "This file type can't be shown view-only. Ask the sender for a PDF.",
+    "field_errors": []
+  }
+}
+```
+
+capture `content_text_view_only_422`
+```json
+{
+  "error": {
+    "code": "VIEW_ONLY_UNSUPPORTED",
+    "message": "This file type can't be shown view-only. Ask the sender for a PDF.",
+    "field_errors": []
+  }
+}
+```
+
+**Downloads on:** other types are served as they are, `Content-Disposition: inline` and unwatermarked
+(D-FUND-8), and images are served as the original. `?download=true` gives `attachment` **only if the share has
+`allow_download: true`**; otherwise the flag is ignored. When downloads are on, say so in the UI: "Downloaded
+files are not watermarked." (PDFs are still stamped.) The founder turning downloads on applies to a viewer
+already inside; refetch `tree` to refresh `viewable`. *`attachment` behaviour is unit-tested, not captured.*
+
+capture `tree_downloads_on`
+```json
+{
+  "data": {
+    "folders": [
+      {
+        "id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
+        "name": "Financials",
+        "items": [
+          {
+            "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+            "name": "pitch-deck.pdf",
+            "content_type": "application/pdf",
+            "size_bytes": 1371,
+            "viewer": "pdf",
+            "viewable": true
+          },
+          {
+            "id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+            "name": "model-notes.txt",
+            "content_type": "text/plain",
+            "size_bytes": 23,
+            "viewer": "text",
+            "viewable": true
+          }
+        ]
+      }
+    ],
+    "allow_download": true,
+    "viewer_email": "delivered+investor-578313484f65@resend.dev"
+  },
+  "meta": null
+}
+```
 
 capture `content_text`
 ```json
@@ -831,10 +919,11 @@ capture `after_revoke_content_404`
 | Where | Status | `code` | Meaning / FE action |
 |---|---|---|---|
 | any `/dr` route | 404 | `NOT_FOUND` | dead link, revoked, expired, or item no longer visible. Neutral page. |
-| `/otp`, `/verify` | 429 | `TOO_MANY_ATTEMPTS` | share locked 15 min, or 5 codes this hour. "Try again later." |
+| `/otp`, `/verify` | 429 | `TOO_MANY_ATTEMPTS` | share locked 15 min. "Try again later." (the hourly code cap is a silent 202) |
 | `/verify` | 401 | `INVALID_CODE` | any wrong-code case. |
 | any `/dr` route | 429 | `RATE_LIMITED` | per-address throttle. |
 | `/tree`, `/open`, `/heartbeat`, `/content` | 401 | `SESSION_REQUIRED` | session missing or expired: back to the email step. |
+| `/open`, `/content` | 422 | `VIEW_ONLY_UNSUPPORTED` | type can't be watermarked and downloads are off. |
 | `/content` | 422 | `DOCUMENT_UNAVAILABLE` | cannot be stamped. |
 | founder items POST | 409 | `FILE_NOT_CLEAN`, `ITEM_EXISTS` | see section 3. |
 | founder folders POST/PATCH | 409 | `FOLDER_EXISTS` | duplicate name. |
@@ -854,6 +943,8 @@ capture `after_revoke_content_404`
 | Heartbeat accumulates, access log, share stats, notification | live |
 | Revocation cuts off meta, tree, content, heartbeat | live |
 | Per-address throttle 429 | live |
+| `VIEW_ONLY_UNSUPPORTED` 422 and not logged as a view; allow-downloads then serves the raw file | live |
+| `unviewable_items` warning, image conversion, silent hourly code cap, one live code per share | unit tests (the warning is also visible in the live `share_created` capture) |
 | Role 403s, 402 plan gate | unit tests only |
 | 15-minute per-share lock, 5 codes an hour, 5 tries per code, code, session and ticket expiry | unit tests only |
 | Trashed file, scan-failed file, trashed Document, removed item or folder, narrowed scope cut-off | unit tests only |

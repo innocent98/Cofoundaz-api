@@ -5,7 +5,8 @@ which Documents already depends on. Fails closed: a PDF we cannot stamp is never
 import io
 from datetime import UTC, datetime
 
-from pypdf import PdfReader, PdfWriter
+from PIL import Image
+from pypdf import PdfReader, PdfWriter, Transformation
 from reportlab.lib import colors
 from reportlab.pdfgen.canvas import Canvas
 
@@ -44,6 +45,17 @@ def _overlay(width: float, height: float, label: str) -> bytes:
     return buf.getvalue()
 
 
+def image_to_pdf(raw: bytes) -> bytes:
+    """One-page PDF of a PNG/JPEG so an image can carry the same watermark as a PDF."""
+    try:
+        with Image.open(io.BytesIO(raw)) as img:
+            out = io.BytesIO()
+            img.convert("RGB").save(out, "PDF")
+            return out.getvalue()
+    except Exception:  # noqa: BLE001 - Pillow raises many types for a bad or oversized image
+        raise unstampable() from None
+
+
 def stamp_pdf(source: bytes, *, email: str, at: datetime | None = None) -> bytes:
     """The same pages with the viewer's email and the time on each. Raises `unstampable` for an
     encrypted, damaged or over-long PDF."""
@@ -56,12 +68,18 @@ def stamp_pdf(source: bytes, *, email: str, at: datetime | None = None) -> bytes
         writer = PdfWriter()
         cache: dict[tuple[float, float], bytes] = {}
         for page in reader.pages:
-            w, h = float(page.mediabox.width), float(page.mediabox.height)
+            # The visible area is the crop box (it defaults to the media box), and its corner need
+            # not be the origin: place the overlay on that box, not on (0, 0).
+            box = page.cropbox
+            w, h = float(box.width), float(box.height)
             key = (round(w, 1), round(h, 1))
             if key not in cache:
                 cache[key] = _overlay(w, h, label)
             added = writer.add_page(page)
-            added.merge_page(PdfReader(io.BytesIO(cache[key])).pages[0])
+            overlay = PdfReader(io.BytesIO(cache[key])).pages[0]
+            added.merge_transformed_page(
+                overlay, Transformation().translate(float(box.left), float(box.bottom))
+            )
         out = io.BytesIO()
         writer.write(out)
         return out.getvalue()

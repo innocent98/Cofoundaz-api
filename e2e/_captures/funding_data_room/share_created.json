@@ -1,22 +1,29 @@
 {
   "data": {
-    "id": "ff329a05-3fad-4137-99db-e8f2d0e1ed8e",
-    "email": "delivered+investor-d2daf5aebfbb@resend.dev",
-    "investor_id": "0076df1b-7b12-483c-ad6d-78ede72c3285",
+    "id": "6592e4aa-da42-4a22-add5-95a3807ce7f6",
+    "email": "delivered+investor-578313484f65@resend.dev",
+    "investor_id": "fc4755b2-d2dc-4e43-87f3-fbec9c222e9e",
     "investor_name": "Tolu Bello",
     "folder_ids": [
-      "365df93e-30ed-4077-b45c-d4784df7d739"
+      "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8"
     ],
     "allow_download": false,
     "watermark": true,
     "status": "active",
-    "expires_at": "2026-12-05T19:35:45.149892+00:00",
+    "expires_at": "2026-12-05T20:07:57.827262+00:00",
     "revoked_at": null,
     "last_viewed_at": null,
     "view_count": 0,
     "total_duration_s": 0,
-    "link": "http://localhost:3000/dr/pPa9weDIOYkDRrskV2xKXY9RItetb_VUIM0HW7p3GFA",
-    "created_at": "2026-11-05T19:35:45.143852+00:00"
+    "unviewable_items": [
+      {
+        "item_id": "3c279f72-5ff3-42ec-94c1-7393c8fb8cae",
+        "name": "model-notes.txt",
+        "code": "VIEW_ONLY_UNSUPPORTED"
+      }
+    ],
+    "link": "http://localhost:3000/dr/apeVwQjDlTOh8aNFvPOXlMTKKLTQd3DqXUwFaeEPMLM",
+    "created_at": "2026-11-05T20:07:57.822309+00:00"
   },
   "meta": null
 }

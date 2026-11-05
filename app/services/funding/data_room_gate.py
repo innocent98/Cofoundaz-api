@@ -24,7 +24,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import false, func, true
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -124,14 +124,18 @@ def _too_many() -> AppError:
 def request_code(
     db: Session, share: DataRoomShare, email: str, *, ip: str | None
 ) -> tuple[str, str, str] | None:
-    """Create a code when `email` is the invited address; the caller answers identically either
-    way. Returns (to, code, company) for the mail to send after the response, or None when nothing
-    should be sent. Raises 429 only on share-level state that does not depend on the email."""
+    """Record one code request and return (to, code, company) for the mail to send after the
+    response, or None when nothing should be sent. The caller answers 202 identically in every
+    case. The share must have been loaded with a row lock.
+
+    Every request, invited address or not, inserts exactly one challenge row and counts against
+    the hourly cap, so the work done and the cap do not depend on the email. An uninvited address
+    gets an already-consumed decoy row; over the cap nothing is sent and the answer is unchanged.
+    Only a locked share answers differently (429), and that does not depend on the email either.
+    """
     now = datetime.now(UTC)
     if share.locked_until is not None and share.locked_until > now:
         raise _too_many()
-    if email.strip().lower() != share.email:
-        return None
     recent = (
         db.query(func.count(DataRoomChallenge.id))
         .filter(
@@ -141,11 +145,14 @@ def request_code(
         .scalar()
     )
     if recent >= CODES_PER_HOUR:
-        raise _too_many()
-    # One live code at a time: asking again replaces the previous one.
+        return None
+    invited = hmac.compare_digest(email.strip().lower().encode(), share.email.encode())
+    # One live code at a time: a code for the invited address replaces the previous one.
     db.query(DataRoomChallenge).filter(
-        DataRoomChallenge.share_id == share.id, DataRoomChallenge.consumed_at.is_(None)
-    ).update({"consumed_at": now})
+        DataRoomChallenge.share_id == share.id,
+        DataRoomChallenge.consumed_at.is_(None),
+        true() if invited else false(),  # same statement either way; only the invited one matches
+    ).update({"consumed_at": now}, synchronize_session=False)
     code = f"{secrets.randbelow(1_000_000):06d}"
     cid = uuid.uuid4()
     db.add(
@@ -154,12 +161,13 @@ def request_code(
             share_id=share.id,
             code_hash=_code_hash(cid, code),
             expires_at=now + CODE_TTL,
+            consumed_at=None if invited else now,
             ip_hash=ip_hash(ip),
         )
     )
     company = db.query(Startup.name).filter(Startup.id == share.startup_id).scalar() or "A founder"
     db.flush()
-    return share.email, code, company
+    return (share.email, code, company) if invited else None
 
 
 def send_code_email(to: str, code: str, company: str) -> None:
@@ -199,23 +207,28 @@ def verify_code(db: Session, share: DataRoomShare, email: str, code: str) -> tup
         .order_by(DataRoomChallenge.created_at.desc())
         .first()
     )
-    ok = False
-    if challenge is not None:
-        challenge.attempts += 1
-        right_code = hmac.compare_digest(challenge.code_hash, _code_hash(challenge.id, code))
-        right_email = hmac.compare_digest(email.strip().lower(), share.email)
-        ok = right_code and right_email
-        if ok:
-            challenge.consumed_at = now
-        elif challenge.attempts >= CODE_MAX_TRIES:
-            challenge.consumed_at = now
+    invalid = AppError("INVALID_CODE", "That code didn't work. Check it or ask for a new one.", 401)
+    if challenge is None:
+        # Nothing to guess against: not counted, so a stranger holding only the link cannot lock
+        # the real investor out.
+        raise invalid
+    challenge.attempts += 1
+    right_code = hmac.compare_digest(
+        challenge.code_hash.encode(), _code_hash(challenge.id, code).encode()
+    )
+    right_email = hmac.compare_digest(email.strip().lower().encode(), share.email.encode())
+    ok = right_code and right_email
+    if ok:
+        challenge.consumed_at = now
+    elif challenge.attempts >= CODE_MAX_TRIES:
+        challenge.consumed_at = now
     if not ok:
         share.failed_attempts += 1
         if share.failed_attempts >= LOCK_AFTER_FAILURES:
             share.locked_until = now + LOCK_FOR
             share.failed_attempts = 0
         db.commit()  # the failure must persist even though we raise
-        raise AppError("INVALID_CODE", "That code didn't work. Check it or ask for a new one.", 401)
+        raise invalid
     share.failed_attempts = 0
     share.locked_until = None
     expires = now + SESSION_TTL

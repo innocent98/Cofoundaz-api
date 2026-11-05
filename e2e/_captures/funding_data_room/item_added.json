@@ -1,16 +1,17 @@
 {
   "data": {
-    "id": "def5eeef-b2b6-4bd5-8d64-ecac9862d928",
-    "folder_id": "365df93e-30ed-4077-b45c-d4784df7d739",
+    "id": "724306c2-e35b-4914-981f-20c8d226ab9c",
+    "folder_id": "dff52cb5-59d1-4bfa-b6c4-2357f70ad4e8",
     "position": 0,
     "document_id": null,
-    "file_id": "a2a86e7c-94e3-42e3-bd87-b2bacd0340f1",
+    "file_id": "936efb03-8267-4543-8c6c-af2128041a00",
     "available": true,
     "kind": "file",
     "name": "pitch-deck.pdf",
     "content_type": "application/pdf",
     "size_bytes": 1371,
-    "viewer": "pdf"
+    "viewer": "pdf",
+    "viewable": true
   },
   "meta": null
 }

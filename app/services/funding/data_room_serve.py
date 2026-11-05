@@ -10,9 +10,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import or_, update
 from sqlalchemy.orm import Session
 
-from app.core.errors import NotFound
+from app.core.errors import AppError, NotFound
 from app.db.models.data_room import DataRoomItem, DataRoomShare, DataRoomView
 from app.db.models.document import Document, DocumentFile
 from app.db.models.funding import Investor
@@ -22,7 +23,7 @@ from app.services.documents.export import render_pdf
 from app.services.documents.template_defs import disclaimer_for
 from app.services.funding import data_room as room
 from app.services.funding.data_room_shares import status_of
-from app.services.funding.watermark import stamp_pdf, unstampable
+from app.services.funding.watermark import image_to_pdf, stamp_pdf, unstampable
 
 # One heartbeat can add at most this much, so a stalled tab or a replayed call can't inflate time.
 MAX_HEARTBEAT_GAP = 45
@@ -84,6 +85,9 @@ def visible_tree(db: Session, share: DataRoomShare) -> dict[str, Any]:
                     "content_type": facts["content_type"],
                     "size_bytes": facts["size_bytes"],
                     "viewer": facts["viewer"],
+                    "viewable": room.viewable(
+                        facts["content_type"], allow_download=share.allow_download
+                    ),
                 }
             )
         out.append({"id": str(f.id), "name": f.name, "items": shown})
@@ -115,9 +119,30 @@ def open_item(
         ip_hash=iph,
     )
     db.add(view)
-    first_today = share.last_viewed_at is None or share.last_viewed_at.date() != now.date()
-    share.last_viewed_at = now
     db.flush()
+    # Atomic "first view today": exactly one concurrent open sees the row come back.
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    first_today = (
+        db.execute(
+            update(DataRoomShare)
+            .where(
+                DataRoomShare.id == share.id,
+                or_(
+                    DataRoomShare.last_viewed_at.is_(None),
+                    DataRoomShare.last_viewed_at < day_start,
+                ),
+            )
+            .values(last_viewed_at=now)
+            .returning(DataRoomShare.id)
+        ).first()
+        is not None
+    )
+    if not first_today:
+        db.execute(
+            update(DataRoomShare)
+            .where(DataRoomShare.id == share.id, DataRoomShare.last_viewed_at < now)
+            .values(last_viewed_at=now)
+        )
     if first_today:
         event_bus.publish(
             db,
@@ -150,6 +175,20 @@ def heartbeat(db: Session, share: DataRoomShare, view: DataRoomView) -> int:
     return view.duration_s
 
 
+def assert_viewable(share: DataRoomShare, auth: Authorised) -> None:
+    """With downloads off, only what we can watermark may be shown. Anything else would leave as
+    raw bytes, so it is refused (422) until the founder allows downloads or uploads a PDF. Checked
+    before a view is logged."""
+    if auth.file is not None and not room.viewable(
+        auth.file.content_type, allow_download=share.allow_download
+    ):
+        raise AppError(
+            "VIEW_ONLY_UNSUPPORTED",
+            "This file type can't be shown view-only. Ask the sender for a PDF.",
+            422,
+        )
+
+
 def deliver(
     db: Session, share: DataRoomShare, auth: Authorised, *, viewer_email: str
 ) -> tuple[bytes, str, str]:
@@ -157,12 +196,17 @@ def deliver(
     and the time; a rich document is rendered to PDF then stamped. Other types are served as they
     are (view-only unless the share allows download, D-FUND-8)."""
     if auth.file is not None:
+        ctype = auth.file.content_type
+        assert_viewable(share, auth)
         raw = get_storage().read_private(auth.file.storage_key)
         if raw is None:
             raise NotFound()
-        if auth.file.content_type == room.PDF:
+        if ctype == room.PDF:
             return stamp_pdf(raw, email=viewer_email), room.PDF, auth.file.filename
-        return raw, auth.file.content_type, auth.file.filename
+        if ctype in room.IMAGE_TYPES and not share.allow_download:
+            pdf = image_to_pdf(raw)
+            return stamp_pdf(pdf, email=viewer_email), room.PDF, f"{auth.file.filename}.pdf"
+        return raw, ctype, auth.file.filename
     doc = auth.doc
     if doc is None:
         raise unstampable()

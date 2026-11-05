@@ -22,6 +22,15 @@ STANDARD_FOLDERS = ("Corporate", "Financials", "Product", "Market", "Team", "Leg
 MAX_FOLDERS = 50
 MAX_ITEMS = 500
 PDF = "application/pdf"
+IMAGE_TYPES = frozenset({"image/png", "image/jpeg"})
+# Types that can be shown to a viewer with a watermark when downloads are off (D-FUND-8): PDFs
+# and rich Documents (rendered to PDF) and images (converted to PDF). Everything else would go
+# out as raw bytes, so it needs "allow downloads".
+WATERMARKABLE_TYPES = frozenset({PDF}) | IMAGE_TYPES
+
+
+def viewable(content_type: str | None, *, allow_download: bool) -> bool:
+    return allow_download or content_type in WATERMARKABLE_TYPES
 
 
 def _name_taken(name: str) -> AppError:
@@ -255,6 +264,7 @@ def facts(doc: Document | None, file: DocumentFile | None) -> dict[str, Any]:
             "content_type": file.content_type,
             "size_bytes": file.size_bytes,
             "viewer": VIEWER_BY_CONTENT_TYPE.get(file.content_type, "download"),
+            "viewable": file.content_type in WATERMARKABLE_TYPES,
         }
     if doc is not None:
         # A rich document is rendered to PDF when served.
@@ -264,6 +274,7 @@ def facts(doc: Document | None, file: DocumentFile | None) -> dict[str, Any]:
             "content_type": PDF,
             "size_bytes": None,
             "viewer": "pdf",
+            "viewable": True,
         }
     return {}
 
@@ -295,6 +306,7 @@ def _gone(db: Session, item: DataRoomItem) -> dict[str, Any]:
             "content_type": file.content_type,
             "size_bytes": file.size_bytes,
             "viewer": None,
+            "viewable": False,
             "reason": reason,
         }
     doc = db.query(Document).filter_by(id=item.document_id).first()
@@ -331,3 +343,28 @@ def tree(db: Session, startup_id: uuid.UUID) -> dict[str, Any]:
         "folders": [{**serialize_folder(f), "items": by_folder[f.id]} for f in folders],
         "item_count": len(items),
     }
+
+
+def unviewable_items(
+    db: Session, startup_id: uuid.UUID, folder_ids: list[str]
+) -> list[dict[str, Any]]:
+    """Items in these folders that cannot be shown view-only (they would need downloads on), so
+    the founder is told when creating a share, not when the investor hits a refusal."""
+    if not folder_ids:
+        return []
+    rows = (
+        db.query(DataRoomItem)
+        .filter(
+            DataRoomItem.startup_id == startup_id,
+            DataRoomItem.folder_id.in_([uuid.UUID(f) for f in folder_ids]),
+        )
+        .all()
+    )
+    out = []
+    for it in rows:
+        doc, file = live_target(db, it)
+        if file is not None and file.content_type not in WATERMARKABLE_TYPES:
+            out.append(
+                {"item_id": str(it.id), "name": file.filename, "code": "VIEW_ONLY_UNSUPPORTED"}
+            )
+    return out
