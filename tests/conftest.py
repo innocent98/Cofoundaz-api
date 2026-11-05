@@ -39,7 +39,7 @@ def _fresh_auth_rate_limit_counters() -> None:
     from app.core.redis import get_redis
 
     redis = get_redis()
-    for pattern in ("rl:*", "lf:*", "lfe:*", "mfa_ticket_attempts:*"):
+    for pattern in ("rl:*", "lf:*", "lfe:*", "mfa_ticket_attempts:*", "mfa_fail:*"):
         for key in redis.scan_iter(match=pattern):
             redis.delete(key)
 

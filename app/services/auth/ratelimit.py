@@ -109,3 +109,33 @@ def clear_login_failures(email: str, ip: str | None = None, *, everywhere: bool 
         redis.delete(_email_key(email))
         for key in redis.scan_iter(match=f"lf:{_h(email)}:*"):
             redis.delete(key)
+
+
+# --- MFA challenge, per user ----------------------------------------------------------------
+# The ticket's own attempt cap bounds guesses per sign-in; this bounds them per account across
+# tickets, so someone who knows the password cannot mint ticket after ticket (each is just a
+# login) and keep guessing the code.
+
+
+def _mfa_key(user_id: object) -> str:
+    return f"mfa_fail:{user_id}"
+
+
+def assert_mfa_allowed(user_id: object) -> None:
+    count, ttl = _count_and_ttl(_mfa_key(user_id))
+    if count >= settings.MFA_USER_MAX_FAILS:
+        raise AccountLocked(max(ttl, 1))
+
+
+def record_mfa_failure(user_id: object) -> None:
+    redis = get_redis()
+    key = _mfa_key(user_id)
+    count = int(cast(Any, redis.incr(key)))
+    if count == 1:
+        redis.expire(key, _LOGIN_WINDOW)
+    if count >= settings.MFA_USER_MAX_FAILS:
+        redis.expire(key, settings.LOGIN_LOCKOUT_MINUTES * 60)
+
+
+def clear_mfa_failures(user_id: object) -> None:
+    get_redis().delete(_mfa_key(user_id))

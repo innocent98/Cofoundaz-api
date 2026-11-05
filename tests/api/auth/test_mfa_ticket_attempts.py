@@ -8,6 +8,7 @@ import pytest
 from cryptography.fernet import Fernet
 
 from app.core.config import settings
+from app.core.redis import get_redis
 from app.core.security import get_password_hash
 from app.db.models.enums import MfaType, UserStatus
 from app.services.auth import mfa
@@ -95,3 +96,47 @@ def test_a_ticket_is_single_use_after_success(client, db):
 def test_an_unknown_ticket_is_expired_not_invalid_code(client):
     r = _try(client, "no-such-ticket", "123456")
     assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
+
+
+def test_attempts_past_the_cap_are_refused_without_checking_the_code(client, db):
+    """Concurrent guesses can push the counter past the cap before any burn lands: the over-cap
+    attempt must be refused even when its code is right."""
+    user, secret = _mfa_user(db, "overcap@x.com")
+    ticket = mfa.issue_mfa_ticket(user.id)
+    get_redis().set(f"mfa_ticket_attempts:{ticket}", settings.MFA_TICKET_MAX_ATTEMPTS)
+    r = _try(client, ticket, pyotp.TOTP(secret).now())
+    assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
+
+
+def test_two_correct_submissions_mint_one_session(client, db, monkeypatch):
+    """The second of two concurrent correct submissions loses the atomic claim on the ticket."""
+    user, secret = _mfa_user(db, "race@x.com")
+    ticket = mfa.issue_mfa_ticket(user.id)
+    monkeypatch.setattr(mfa, "claim_mfa_ticket", lambda _t: False)  # another request won it
+    r = _try(client, ticket, pyotp.TOTP(secret).now())
+    assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
+    assert "access_token" not in r.text
+
+
+def test_wrong_codes_are_capped_per_account_across_tickets(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "MFA_USER_MAX_FAILS", 4)
+    user, secret = _mfa_user(db, "perUser@x.com")
+    for _ in range(2):  # two tickets, two wrong codes each: four failures on one account
+        ticket = mfa.issue_mfa_ticket(user.id)
+        _try(client, ticket, "000000")
+        _try(client, ticket, "000000")
+    fresh = mfa.issue_mfa_ticket(user.id)
+    r = _try(client, fresh, pyotp.TOTP(secret).now())  # even the right code is refused
+    assert r.status_code == 429 and r.json()["error"]["code"] == "ACCOUNT_LOCKED"
+    assert r.json()["error"]["retry_after_seconds"] > 0
+
+
+def test_a_good_code_clears_the_per_account_counter(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "MFA_USER_MAX_FAILS", 3)
+    user, secret = _mfa_user(db, "clears@x.com")
+    t1 = mfa.issue_mfa_ticket(user.id)
+    _try(client, t1, "000000")
+    _try(client, t1, "000000")
+    assert _try(client, t1, pyotp.TOTP(secret).now()).status_code == 200
+    t2 = mfa.issue_mfa_ticket(user.id)
+    assert _try(client, t2, "000000").json()["error"]["code"] == "MFA_INVALID_CODE"

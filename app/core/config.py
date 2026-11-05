@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     AUTH_RESEND_PER_EMAIL_HOURLY: int = 5
     # MFA sign-in ticket: wrong codes allowed before the ticket burns.
     MFA_TICKET_MAX_ATTEMPTS: int = 5
+    # Wrong MFA codes per account, across tickets, before the challenge locks for the lockout time.
+    MFA_USER_MAX_FAILS: int = 10
     # Version of the Terms of Service + Privacy Policy stored with a sign-up's consent.
     TERMS_VERSION: str = "2026-11-05"
     # Escape hatch for deploy ordering: the sign-up form must send `accepted_terms` before the

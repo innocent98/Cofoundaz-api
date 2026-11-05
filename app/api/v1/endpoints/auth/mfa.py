@@ -21,6 +21,7 @@ from app.schemas.auth import (
     TotpVerifyRequest,
 )
 from app.services.auth import mfa
+from app.services.auth.ratelimit import assert_mfa_allowed, clear_mfa_failures, record_mfa_failure
 from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
 
@@ -163,13 +164,19 @@ def challenge(
         mfa.burn_mfa_ticket(ticket)
         raise MfaTicketExpired()
     ip = request.client.host if request.client else None
-    # The attempt is counted before the code is checked (atomic INCR), so concurrent guesses
-    # cannot slip past the cap. A typo leaves the ticket alive; the 5th wrong code burns it.
+    assert_mfa_allowed(user.id)  # per-account cap across tickets (ACCOUNT_LOCKED when reached)
+    # The attempt is counted before the code is checked (atomic INCR) and an attempt past the
+    # cap is refused without looking at the code, so concurrent guesses cannot slip past it.
+    # A typo leaves the ticket alive; the 5th wrong code burns it.
     used = mfa.count_mfa_attempt(ticket)
+    if used > settings.MFA_TICKET_MAX_ATTEMPTS:
+        mfa.burn_mfa_ticket(ticket)
+        raise MfaTicketExpired()
     ok = mfa.verify_totp(
         mfa.decrypt_secret(user.mfa_secret), payload.code
     ) or mfa.consume_backup_code(db, user, payload.code)
     if not ok:
+        record_mfa_failure(user.id)
         write_audit(db, "auth.mfa.challenge.failed", actor_user_id=user.id, ip=ip)
         db.commit()
         left = settings.MFA_TICKET_MAX_ATTEMPTS - used
@@ -177,7 +184,9 @@ def challenge(
             mfa.burn_mfa_ticket(ticket)
             raise MfaTicketExpired()
         raise MfaInvalidCode(extra={"attempts_remaining": left})
-    mfa.burn_mfa_ticket(ticket)  # single use
+    if not mfa.claim_mfa_ticket(ticket):  # single use: only one concurrent winner gets a session
+        raise MfaTicketExpired()
+    clear_mfa_failures(user.id)
     user.last_login_at = datetime.now(UTC)
     access, refresh = issue_token_pair(
         db, user, ip=ip, user_agent=request.headers.get("user-agent")

@@ -19,7 +19,12 @@ from app.platform.email import get_email_sender
 from app.schemas.auth import ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services.auth.emails import password_changed_email, password_reset_email
 from app.services.auth.password import validate_password_strength
-from app.services.auth.ratelimit import blocked_for, clear_login_failures, enforce
+from app.services.auth.ratelimit import (
+    blocked_for,
+    clear_login_failures,
+    clear_mfa_failures,
+    enforce,
+)
 from app.services.auth.sessions import family_of, revoke_all_except, revoke_all_for_user
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
 from app.services.auth.tokens import (
@@ -103,6 +108,7 @@ def reset(
     # The lockout message tells a locked person to reset their password, so a successful reset
     # must lift the lock (every IP), not leave them locked out with the new password.
     clear_login_failures(user.email, everywhere=True)
+    clear_mfa_failures(user.id)
     user.failed_login_count = 0
     user.locked_until = None
     write_audit(

@@ -103,3 +103,12 @@ def count_mfa_attempt(ticket: str) -> int:
 
 def burn_mfa_ticket(ticket: str) -> None:
     get_redis().delete(f"{_MFA_TICKET_PREFIX}{ticket}", f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+
+
+def claim_mfa_ticket(ticket: str) -> bool:
+    """Use the ticket up atomically (DEL reports whether this caller removed it). Two concurrent
+    correct submissions race for it and exactly one wins, so one ticket mints one session."""
+    redis = get_redis()
+    claimed = int(cast(Any, redis.delete(f"{_MFA_TICKET_PREFIX}{ticket}"))) == 1
+    redis.delete(f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+    return claimed
