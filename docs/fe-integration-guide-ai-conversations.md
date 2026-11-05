@@ -114,7 +114,7 @@ On an archived conversation:
 ### GET `/conversations?query=&topic=&archived=`
 | Param | Rule |
 |---|---|
-| `query` | 2 to 100 chars; case-insensitive; matches the **title** and any **ready, non-removed message** (user or assistant). `%` and `_` are literal. Adds `match_snippet` to each item (about 120 chars around the first hit, with `…` at a cut end; the title if only the title matched). Absent when no `query`. |
+| `query` | trimmed, then 2 to 100 chars (blank = no query); case-insensitive; matches the **title** and any **ready, non-removed message** (user or assistant). `%` and `_` are literal. Adds `match_snippet` to each item (about 120 chars around the first hit, with `…` at a cut end; the title if only the title matched). Absent when no `query`. |
 | `topic` | one of `strategy`, `finance`, `legal`, `mentoring`; anything else is `422`. Conversations get a topic when a reply is routed (next slice), so until then every `topic` is `null` and a topic filter returns `[]`. |
 | `archived` | `true` lists only archived conversations; default `false` hides them. |
 
@@ -208,22 +208,50 @@ Archive view:
   "meta": null
 }
 ```
-Errors:
+Errors. `query` is **trimmed first**, then checked (2 to 100 characters); a blank query (`""` or spaces) is
+treated as no query and returns the normal list (no `match_snippet`):
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Please check the highlighted fields.",
-    "field_errors": [
-      {
-        "field": "query.query",
-        "message": "String should have at least 2 characters"
-      }
-    ]
+    "message": "query must be 2 to 100 characters.",
+    "field_errors": []
   }
 }
 ```
-**Trap:** the field name here is `query.query` (a query-string param is nested under `query`).
+Blank query is "no query":
+```json
+{
+  "data": [
+    {
+      "id": "9d5dff24-7097-4705-b122-ddcf46b85e71",
+      "title": "Anything on my mind",
+      "topic": null,
+      "archived_at": null,
+      "created_at": "2026-11-05T21:42:51.631197+00:00",
+      "updated_at": "2026-11-05T21:42:51.643964+00:00"
+    },
+    {
+      "id": "e7d5ad26-011d-46c7-a6ef-be5e55fb19e5",
+      "title": "Draft an NDA for a contractor",
+      "topic": null,
+      "archived_at": null,
+      "created_at": "2026-11-05T21:42:49.501598+00:00",
+      "updated_at": "2026-11-05T21:42:51.615355+00:00"
+    },
+    {
+      "id": "6da39e36-81a4-47d3-9138-23625dd75d0e",
+      "title": "How long is my runway?",
+      "topic": null,
+      "archived_at": null,
+      "created_at": "2026-11-05T21:42:51.379977+00:00",
+      "updated_at": "2026-11-05T21:42:51.388272+00:00"
+    }
+  ],
+  "meta": null
+}
+```
+(`field_errors` is empty for this error: it carries the message only. For `topic` the shape is the same.)
 ```json
 {
   "error": {
@@ -316,5 +344,6 @@ key that is present *only* when `query` was sent. Messages are unchanged.
 | Role gate on `/ai/status`, archive, delete (403 for mentor, accountant) | API tests (`tests/api/test_ai_conversations_slice1.py`); founder `200` verified live; **403 not captured live** |
 | Another member's ids (404, nothing changed) | API tests only |
 | ⌘K search skipping archived chats | API test only |
+| Delete blocked while generating (409) | verified live; the worker side of a delete racing a model call is unit-tested only |
 | Real-model reply text in snippets | not verified (stub) |
 | `topic` set on a conversation | not yet: slice 2 |
