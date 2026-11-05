@@ -343,3 +343,30 @@ def test_a_missing_address_is_never_recorded_or_recognised(db):
     redis.zadd(ratelimit._known_ips_key("noip@x.com"), {ratelimit._h("unknown", 16): 9e12})
     assert ratelimit._is_known_ip("noip@x.com", None) is False
     assert ratelimit._is_known_ip("noip@x.com", "") is False
+
+
+def test_finishing_a_2fa_sign_in_does_not_give_the_email_slot_back_twice(client, db, monkeypatch):
+    import pyotp
+    from cryptography.fernet import Fernet
+
+    from app.services.auth import mfa
+
+    monkeypatch.setattr(settings, "MFA_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    user = _mfa_user(db, "twice@x.com")
+    secret = mfa.generate_totp_secret()
+    user.mfa_secret = mfa.encrypt_secret(secret)
+    db.flush()
+    redis = get_redis()
+    c = _from_ip("198.51.100.90")
+    stranger = _from_ip("203.0.113.90")
+    for _ in range(3):  # three wrong passwords from elsewhere: the email total is 3
+        stranger.post(LOGIN, json={"email": "twice@x.com", "password": "wrong-pass-1"})
+    total_key = ratelimit._email_key("twice@x.com")
+    assert int(redis.get(total_key)) == 3
+    ticket = _login(c, "twice@x.com").json()["data"]["mfa_ticket"]
+    assert int(redis.get(total_key)) == 3  # the password step gave its own slot back, once
+    done = c.post(
+        "/api/v1/auth/mfa/challenge", json={"mfa_ticket": ticket, "code": pyotp.TOTP(secret).now()}
+    )
+    assert done.status_code == 200, done.text
+    assert int(redis.get(total_key)) == 3  # finishing the sign-in did not take a second slot back

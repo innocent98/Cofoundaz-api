@@ -196,6 +196,13 @@ def record_login_failure(email: str, ip: str | None) -> None:
             redis.expire(key, lock_seconds)
 
 
+def clear_login_pair(email: str, ip: str | None) -> None:
+    """Forget the failures of this (email, IP) only. For a sign-in finished by the MFA code: the
+    password step already gave its slot in the email total back (`release_login_attempt`), so
+    the total must not be decremented a second time."""
+    get_redis().delete(_pair_key(email, ip))
+
+
 def clear_login_failures(email: str, ip: str | None = None, *, everywhere: bool = False) -> None:
     """A good sign-in clears this (email, IP) and gives back its slot in the email total. A
     password reset (`everywhere`) clears every IP and the email total: the message tells a locked
