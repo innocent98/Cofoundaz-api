@@ -4,7 +4,7 @@
 
 **Why:** most PRs are docs (handoffs, re-walk evidence) yet ran the whole pipeline: ~4,500 unit tests in one 10 to 16 minute job and every e2e journey in one ~19 minute job (a PR's wall time was the e2e job, then `build`). Adebayo asked on 2026-10-29 for "just the criticals" in e2e.
 
-**Before** (last 3 green develop pushes, lint/unit/security only): unit 649 s, 950 s, 551 s. Last full PR run with every job (#213 head `feature/google-sign-in`): e2e 1140 s, unit 598 s, quality 102 s, build 109 s, migrations 54 s, lint 67 s, security 68 s. **After**: numbers in the PR body (measured on the PR itself).
+**Before** (last 3 green develop pushes, lint/unit/security only): unit 649 s, 950 s, 551 s. Last full PR run with every job (#213 head `feature/google-sign-in`): e2e 1140 s, unit 598 s, quality 102 s, build 109 s, migrations 54 s, lint 67 s, security 68 s. **After** (measured on PR #215): unit 4 shards of 186 to 275 s (+ ~45 s combine) against 551 to 950 s; e2e on a PR that touches no shared plumbing and no mapped area (`-m critical` only) 290 s against 1,110 to 1,212 s for the full suite. A PR touching the finance area adds the 8 `test_finance*.py` files, so area runs vary; this PR itself measured 1,110 s because it touches 10 mapped journeys' files.
 
 ## How
 
