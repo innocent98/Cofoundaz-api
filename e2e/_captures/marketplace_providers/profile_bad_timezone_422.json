@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Unknown timezone.",
+    "field_errors": []
+  }
+}

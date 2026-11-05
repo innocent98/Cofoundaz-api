@@ -1,0 +1,99 @@
+{
+  "data": {
+    "id": "d46ab90c-3040-41a0-bc3a-89fa65a62b3e",
+    "user_id": "25643317-52cd-400e-8ca5-b48957945033",
+    "email": "delivered+e2e-855ae9012707@resend.dev",
+    "display_name": "Tolu Ade",
+    "headline": "Brand and product designer",
+    "category": "Design",
+    "status": "rejected",
+    "source": "invite",
+    "submitted_at": "2026-11-05T14:48:31.659349+00:00",
+    "created_at": "2026-11-05T14:48:31.148732+00:00",
+    "invite_pending": false,
+    "invite_expires_at": null,
+    "licence_expires_on": null,
+    "licence_expiring": false,
+    "prescreen_flags": [],
+    "vetted_at": null,
+    "bio": "Fifteen years advising founders on brand systems, shareholder agreements and fundraising.",
+    "categories": [],
+    "languages": [
+      "English"
+    ],
+    "timezone": "Africa/Lagos",
+    "location": null,
+    "terms_version": "draft-2026-11",
+    "terms_accepted_at": "2026-11-05T14:48:31.452886+00:00",
+    "review_message": "The ID scan is unreadable.",
+    "suspended_reason": null,
+    "commission_bps": null,
+    "required_checks": [
+      "id",
+      "portfolio",
+      "references"
+    ],
+    "references_required": 1,
+    "missing_checks": [
+      "id",
+      "portfolio",
+      "references"
+    ],
+    "checks": {},
+    "badge": {
+      "vetted": false,
+      "checks": []
+    },
+    "badge_preview": [],
+    "portfolio": [
+      {
+        "id": "f9a73205-d1d7-412c-923a-a6269b04516b",
+        "title": "Fintech rebrand",
+        "description": null,
+        "url": "https://portfolio.example.com/fintech",
+        "file_id": null,
+        "position": 0
+      }
+    ],
+    "files": [],
+    "history": [
+      {
+        "action": "marketplace.provider.files_erased",
+        "at": "2026-11-05T14:49:30.967914+00:00",
+        "actor_email": "delivered+e2e-53becda216e7@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.rejected",
+        "at": "2026-11-05T14:49:30.967914+00:00",
+        "actor_email": "delivered+e2e-53becda216e7@resend.dev",
+        "reason": "Checked the documents against the rubric"
+      },
+      {
+        "action": "marketplace.provider.submitted",
+        "at": "2026-11-05T14:48:31.640677+00:00",
+        "actor_email": "delivered+e2e-855ae9012707@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.profile_updated",
+        "at": "2026-11-05T14:48:31.468728+00:00",
+        "actor_email": "delivered+e2e-855ae9012707@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.invite_accepted",
+        "at": "2026-11-05T14:48:31.445619+00:00",
+        "actor_email": "delivered+e2e-855ae9012707@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.provider.invited",
+        "at": "2026-11-05T14:48:31.148732+00:00",
+        "actor_email": "delivered+e2e-53becda216e7@resend.dev",
+        "reason": null
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_STATE",
+    "message": "Can't do that while the expert is 'approved'.",
+    "field_errors": []
+  }
+}

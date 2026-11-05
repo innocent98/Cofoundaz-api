@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "SUBMISSION_INCOMPLETE",
+    "message": "A few things are still needed before you can submit.",
+    "field_errors": [
+      {
+        "field": "credentials",
+        "message": "Upload at least one credential document (ID or licence)."
+      },
+      {
+        "field": "portfolio",
+        "message": "Add at least one portfolio item."
+      }
+    ]
+  }
+}

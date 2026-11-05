@@ -1,0 +1,28 @@
+{
+  "data": {
+    "providers": [
+      {
+        "id": "a1ba5716-b147-4f4c-b78c-69c05d952f31",
+        "user_id": "b8303f2e-f388-4dfa-b787-eaf636923123",
+        "email": "delivered+e2e-84b32daa0122@resend.dev",
+        "display_name": "Ngozi Eze",
+        "headline": "Corporate lawyer for early-stage startups",
+        "category": "Legal",
+        "status": "in_review",
+        "source": "invite",
+        "submitted_at": "2026-11-05T14:46:59.646704+00:00",
+        "created_at": "2026-11-05T14:46:58.231582+00:00",
+        "invite_pending": false,
+        "invite_expires_at": null,
+        "licence_expires_on": null,
+        "licence_expiring": false,
+        "prescreen_flags": [],
+        "vetted_at": null
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

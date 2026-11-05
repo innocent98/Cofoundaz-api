@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FILE_CONTENT_MISMATCH",
+    "message": "That file's contents don't match its type, or the file is empty.",
+    "field_errors": []
+  }
+}

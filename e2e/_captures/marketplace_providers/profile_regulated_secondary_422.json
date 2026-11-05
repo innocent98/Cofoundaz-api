@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REGULATED_CATEGORY",
+    "message": "Legal and Accounting experts must be vetted for it as their main category.",
+    "field_errors": []
+  }
+}

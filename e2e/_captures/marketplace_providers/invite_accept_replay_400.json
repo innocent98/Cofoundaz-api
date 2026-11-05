@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TOKEN_INVALID",
+    "message": "That link is invalid or has expired.",
+    "field_errors": []
+  }
+}

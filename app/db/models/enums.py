@@ -655,3 +655,25 @@ class ReportStatus(enum.StrEnum):
     dismissed = "dismissed"
     removed = "removed"
     restored = "restored"
+
+
+class ProviderStatus(enum.StrEnum):
+    """Where a Marketplace expert is in vetting (design §2). Only `approved` is ever visible to
+    founders. `invited` and `applied` are drafts the expert is still filling in."""
+
+    invited = "invited"
+    applied = "applied"
+    in_review = "in_review"
+    changes_requested = "changes_requested"
+    approved = "approved"
+    suspended = "suspended"
+    rejected = "rejected"
+
+
+class MarketplaceFilePurpose(enum.StrEnum):
+    credential = "credential"
+    portfolio = "portfolio"
+    avatar = "avatar"
+    brief = "brief"
+    delivery = "delivery"
+    message = "message"

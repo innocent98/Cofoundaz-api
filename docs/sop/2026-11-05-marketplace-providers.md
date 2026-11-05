@@ -1,0 +1,46 @@
+# Marketplace slice A: experts (providers) and vetting
+
+**What shipped:** the expert side of Marketplace (PRD Module 16) with no money in it: an expert record, invite and open-application onboarding, a profile and portfolio API, private credential uploads, the `require_provider` guard, and the Admin vetting queue with a per-category checklist, decisions and audited file reads. API only. FE guide `docs/fe-integration-guide-marketplace-providers.md`. Branch `feature/marketplace-providers`, PR: see the branch. Migration **`0092_marketplace_providers`**, chained on develop's head `0089_readiness_scores`; 0090 (Funding) and 0091 (Readiness deck review) are open PRs, so **the lead re-chains this migration when they merge** (change `down_revision` in `alembic/versions/0092_marketplace_providers.py`; the migration test downgrades one step with `-1`, so it survives that).
+
+**Why:** Module 16 has six mock pages and no API. Experts must exist, be trusted and be reachable before listings, bookings or payments can be built on them (slices B to F). Slice A is the safe first step: no listings, no founder-facing data, no money, so production exposure is limited to staff and invited experts. Design and the accepted product calls D-MP-1..9: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md` (§1, §2, §3.8, §4, §5, §9).
+
+**How**
+
+| Topic | Decision |
+|---|---|
+| Identity (D-MP-2) | A provider is a `marketplace_providers` row linked to a normal `users` row, not a column on `users` (same shape as `platform_staff`), so no mass-assignment bug can make anyone an expert. `user_id` is NULL while an invite is outstanding; `email` is unique (CITEXT). |
+| Guard | `app/api/provider_deps.py::require_provider(approved=False)`. Reads the row from the DB on every request (never the JWT) so a reject or suspension applies on the next call. Verified email and active account required. Not an expert: 403 `NOT_A_PROVIDER`; rejected: 403 `PROVIDER_REJECTED`; `approved=True` and not approved: 403 `PROVIDER_NOT_APPROVED` (slices B+ use this one). Experts have no workspace and no workspace route accepts the guard, so the two sets of routes cannot be crossed. |
+| Invite | Staff create an `invited` row with a 14-day token. Only the SHA-256 is stored (`invite_token_hash`, unique). Accept links the signed-in account, **clears the hash** (single use: a replay finds nothing) and stamps terms. The email match is checked before the token is spent so the wrong account cannot burn it. Resend rotates the token; revoke deletes the row. One 404 for unknown, expired, replaced and used tokens on the public preview, which is rate limited (30/min shared). |
+| Open applications (D-MP-1 hybrid) | `POST /provider/apply`, gated by `MARKETPLACE_OPEN_APPLICATIONS` (env, default false). Feeds the same queue. Chosen over a DB flag because providers have no workspace, so the workspace-bucketed `feature_flags` do not fit; env is enough for "open the door when we want supply". |
+| State machine | `invited/applied` → `in_review` → `approved`; `in_review` → `changes_requested` → `in_review`; `in_review/changes_requested` → `rejected` (terminal); `approved` ↔ `suspended`. Every mutation row-locks the provider; an illegal move is 409 `INVALID_STATE` (parametrised test). `in_review` is read-only so evidence cannot change mid-review. |
+| Vetting rubric (D-MP-6) | Regulated (Legal, Accounting): `id` + `licence` (future expiry) + 2 `references`. Others: `id` + `portfolio` + 1 `references`. Approve is refused (422 `VETTING_INCOMPLETE`) until every required check is ticked; unsuspend re-checks (an expired licence blocks it). Constants in `app/services/marketplace/constants.py`. |
+| Vetted badge | Generated from the ticked checks and **shown only once approved** (`badge`); staff get `badge_preview`. A live-capture review found the first version leaked a half-done checklist to the expert as `badge.checks`; fixed before shipping and covered by `test_expert_view_hides_staff_only_fields`. |
+| Credentials (design §1.3.4, §4) | `marketplace_files`, stored through the existing private storage (`save_private`), no public URL. Reuses the Documents sniffing (`declared_type` + `sniff_content_type`) and scanner hook; purpose allowlists (credential PDF/PNG/JPEG, avatar PNG/JPEG, portfolio adds PPTX), 15 MB (avatar 5 MB), per-purpose quotas. Staff reads go through `GET /admin/marketplace/providers/{id}/files/{file_id}` and **write an audit row each time**; a file is reachable only through its owner's provider row. A **reject erases all the expert's files** (NDPA: delete on rejection). |
+| Admin actions (D-MP-L19, P9) | Scope `moderation`. Approve, reject, suspend, unsuspend: reason (10+ chars) **and** the staff member's own fresh TOTP (same pattern as Reported-issues remove/restore, `verify_step_up`, run after an existence check so a typo does not burn a code). Checklist ticks, request-changes, invite, resend, revoke: no code, still audited (request-changes' message is its reason). Not Super-Admin-only: the design assigns vetting to `moderation`. |
+| Pre-screen (D-MP-L9) | Deterministic regex rules (`prescreen.py`: contact details, guaranteed outcomes, prohibited phrases) run on submit and on every profile edit; stored in `vetting_json.prescreen`, shown to staff as chips. Never blocks. |
+| Emails | `app/services/marketplace/emails.py`: invite, received, changes requested, approved, rejected, suspended. Built inside the transaction, **sent after commit**; a mail failure is logged and returned as `undelivered`, never rolls back the action. Staff-typed text is HTML-escaped. |
+| Audit | `marketplace.provider.{invited,invite_resent,invite_revoked,invite_accepted,applied,profile_updated,submitted,vetting_updated,approved,rejected,changes_requested,suspended,unsuspended,files_erased}`, `marketplace.file.{viewed,deleted}`. Events `marketplace.provider.approved|rejected` are published for later slices. |
+
+Alternatives rejected: a role column on `users` (mass-assignment risk, D-MP-2); storing invite tokens in plaintext or reusing `invitations` (workspace-bound, different lifecycle); making the checklist Super-Admin-only (the design gives vetting to `moderation`); blocking submit on pre-screen hits (false positives would stall good experts; staff judge).
+
+**What's involved**
+
+| Area | Paths |
+|---|---|
+| Models, migration | `app/db/models/marketplace.py` (`MarketplaceProvider`, `MarketplaceFile`, `MarketplaceProviderPortfolio`), enums `ProviderStatus`, `MarketplaceFilePurpose` in `app/db/models/enums.py`, `alembic/versions/0092_marketplace_providers.py` |
+| Guard | `app/api/provider_deps.py` |
+| Services | `app/services/marketplace/{constants,prescreen,files,providers,vetting,emails}.py` |
+| API | `app/api/v1/endpoints/provider.py` (`/provider/*`), `app/api/v1/endpoints/admin_marketplace.py` (`/admin/marketplace/*`), `app/schemas/marketplace.py`, wired in `app/api/v1/api.py` |
+| Config | `MARKETPLACE_OPEN_APPLICATIONS` in `app/core/config.py` (default `false`) |
+
+**Verification:** `tests/api/test_marketplace_providers.py` (69 tests: guard on every provider route for founder, team member and staff; every admin route for anonymous, founder, wrong scope, Super Admin; invite token replay, expiry, wrong account, resend, revoke, cap; apply closed/open; profile validation and locks; upload sniffing, 15 MB boundary, quota, ownership, sanitised names; submit blockers; the state machine; step-up and reason rules; audited reads; email escaping and mail failure) and `tests/test_marketplace_providers_migration.py` (single head, upgrade, downgrade one step, upgrade, `alembic check`). Live journey `e2e/test_marketplace_providers.py` against a real uvicorn on a scratch Postgres/Redis: 63 captured bodies in `e2e/_captures/marketplace_providers/` feed the FE guide. Local gates: black, isort, ruff, mypy, bandit clean. CI runs the full suite and scans.
+
+**Operate / roll back:** no secrets or new services. Open applications are off by default; set `MARKETPLACE_OPEN_APPLICATIONS=true` to open the door. To create the first experts, a `moderation` Admin (or Super Admin) calls `POST /admin/marketplace/providers/invite`; the Marketplace stays hidden in the FE sidebar regardless. To revert: downgrade `0092` (drops the three tables, deleting expert records) and revert the PR; uploaded files under `marketplace/` in storage are not removed by a downgrade (delete that prefix by hand if needed). The scanner is still the Documents no-op placeholder: wire a real one before accepting credential files from the public (`app/services/documents/scanner.py`).
+
+**Follow-ups**
+
+- Terms text: `TERMS_VERSION` is `draft-2026-11`; counsel's expert terms replace it (design §1.3.9) and the version should then change to force re-acceptance.
+- A job that emails staff and the expert when a licence is within 30 days of expiry and flags the yearly re-vet (the data, `licence_expires_on` and `licence_expiring`, exists; no scheduler yet).
+- A rejected expert cannot re-apply (their row and unique email remain); decide the re-apply path with Admin.
+- Self-service avatar and portfolio file serving to founders arrives with slice B (public profile).
+- Staff vetting FE (`/admin/marketplace`) and the provider portal FE go to the FE developer by exact-scope brief after merge (design §9, FE-3 and FE-4).

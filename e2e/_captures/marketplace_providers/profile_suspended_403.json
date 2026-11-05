@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "PROVIDER_SUSPENDED",
+    "message": "Your profile is paused. Contact support.",
+    "field_errors": []
+  }
+}
