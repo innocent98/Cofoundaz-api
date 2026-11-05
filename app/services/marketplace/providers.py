@@ -219,8 +219,10 @@ def _prescreen_fields(row: MarketplaceProvider) -> dict[str, str | None]:
     return {name: getattr(row, name) for name in SCANNED_FIELDS}
 
 
-def refresh_prescreen(row: MarketplaceProvider) -> None:
-    row.vetting_json = {**(row.vetting_json or {}), "prescreen": prescreen(_prescreen_fields(row))}
+def refresh_prescreen(row: MarketplaceProvider) -> dict[str, Any]:
+    result = prescreen(_prescreen_fields(row))
+    row.vetting_json = {**(row.vetting_json or {}), "prescreen": result}
+    return result
 
 
 def invite_provider(
@@ -457,6 +459,37 @@ def check_editable(row: MarketplaceProvider) -> None:
     raise err("PROVIDER_REJECTED", "This application was not approved.", 403)
 
 
+def flag_if_screened(
+    db: Session,
+    user: User,
+    row: MarketplaceProvider,
+    changes: dict[str, Any],
+    *,
+    ip: str | None,
+    user_agent: str | None,
+) -> None:
+    """Re-run the pre-screen after an edit. D-MP-L-new: an approved expert's edit stays live, but
+    if the screen trips on what they changed it lands in the Admin queue for a human to look at."""
+    screen = refresh_prescreen(row)
+    flagged = [f for f in screen["flags"] if f["field"] in changes]
+    if row.status != ProviderStatus.approved or not flagged:
+        return
+    row.vetting_json = {
+        **row.vetting_json,
+        "profile_flag": {"at": datetime.now(UTC).isoformat(), "flags": flagged},
+    }
+    write_audit(
+        db,
+        "marketplace.provider.profile_edit_flagged",
+        actor_user_id=user.id,
+        entity_type="marketplace_provider",
+        entity_id=row.id,
+        ip=ip,
+        user_agent=user_agent,
+        details={"flags": flagged},
+    )
+
+
 def update_profile(
     db: Session,
     user: User,
@@ -499,9 +532,19 @@ def update_profile(
         f = get_owned(db, user.id, changes["avatar_file_id"])
         if f.purpose != MarketplaceFilePurpose.avatar:
             raise err("VALIDATION_ERROR", "That file isn't an avatar image.", 422)
+    if (
+        row.status == ProviderStatus.approved
+        and "display_name" in changes
+        and changes["display_name"] != row.display_name
+    ):
+        raise err(
+            "NAME_LOCKED",
+            "Your name was verified, so it can't be changed here. Contact support to change it.",
+            422,
+        )
     for field, value in changes.items():
         setattr(row, field, list(value) if isinstance(value, list) else value)
-    refresh_prescreen(row)
+    flag_if_screened(db, user, row, changes, ip=ip, user_agent=user_agent)
     db.flush()
     write_audit(
         db,

@@ -19,6 +19,7 @@ from app.db.models.marketplace import MarketplaceProvider
 from app.db.session import get_db
 from app.schemas.marketplace import (
     InviteRequest,
+    ReasonRequest,
     RejectRequest,
     RequestChangesRequest,
     StepUpReasonRequest,
@@ -58,11 +59,18 @@ def list_providers(
     status_: Annotated[ProviderStatus | None, Query(alias="status")] = None,
     category: Annotated[str | None, Query(max_length=20)] = None,
     query: Annotated[str | None, Query(max_length=120)] = None,
+    flagged: bool = False,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     cursor: str | None = None,
 ) -> dict[str, Any]:
     items, nxt = vetting.list_providers(
-        db, status=status_, category=category, query=query, limit=limit, cursor=cursor
+        db,
+        status=status_,
+        category=category,
+        query=query,
+        flagged=flagged,
+        limit=limit,
+        cursor=cursor,
     )
     return success_response({"providers": items}, Meta(next_cursor=nxt))
 
@@ -217,3 +225,15 @@ def read_file(
     f, data = vetting.open_file(db, ctx, provider_id, file_id, ip=ip, ua=ua)
     db.commit()
     return Response(content=data, media_type=f.mime, headers=file_headers(f.filename))
+
+
+@router.post("/providers/{provider_id}/clear-flag")
+def clear_flag(
+    provider_id: uuid.UUID, payload: ReasonRequest, request: Request, ctx: _Moderation, db: _Db
+) -> dict[str, Any]:
+    """Dismiss a flagged profile edit (the expert stays approved and live). To act on it instead,
+    suspend with the usual step-up."""
+    ip, ua = _client(request)
+    vetting.clear_profile_flag(db, ctx, provider_id, reason=payload.reason, ip=ip, ua=ua)
+    db.commit()
+    return success_response(vetting.detail(db, provider_id))

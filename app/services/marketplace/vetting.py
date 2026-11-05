@@ -117,6 +117,7 @@ def summary(row: MarketplaceProvider) -> dict[str, Any]:
             row.licence_expires_on.isoformat() if row.licence_expires_on else None
         ),
         "licence_expiring": licence_expiring(row),
+        "profile_flag": (row.vetting_json or {}).get("profile_flag"),
         "prescreen_flags": ((row.vetting_json or {}).get("prescreen") or {}).get("flags", []),
         "vetted_at": row.vetted_at.isoformat() if row.vetted_at else None,
     }
@@ -185,9 +186,16 @@ def counts(db: Session) -> dict[str, Any]:
         .scalar()
         or 0
     )
+    flagged = (
+        db.query(func.count(MarketplaceProvider.id))
+        .filter(MarketplaceProvider.vetting_json.has_key("profile_flag"))  # noqa: W601
+        .scalar()
+        or 0
+    )
     return {
         "by_status": {s.value: by_status.get(s, 0) for s in ProviderStatus},
         "licence_expiring": int(expiring),
+        "flagged_edits": int(flagged),
     }
 
 
@@ -197,6 +205,7 @@ def list_providers(
     status: ProviderStatus | None,
     category: str | None,
     query: str | None,
+    flagged: bool,
     limit: int,
     cursor: str | None,
 ) -> tuple[list[dict[str, Any]], str | None]:
@@ -205,6 +214,8 @@ def list_providers(
         q = q.filter(MarketplaceProvider.status == status)
     if category:
         q = q.filter(MarketplaceProvider.category == category)
+    if flagged:
+        q = q.filter(MarketplaceProvider.vetting_json.has_key("profile_flag"))
     if query and query.strip():
         pat = contains_pattern(query.strip())
         q = q.filter(
@@ -531,3 +542,30 @@ def open_file(
         **_client(ctx, ip, ua),
     )
     return f, data
+
+
+def clear_profile_flag(
+    db: Session,
+    ctx: StaffContext,
+    provider_id: uuid.UUID,
+    *,
+    reason: str,
+    ip: str | None,
+    ua: str | None,
+) -> MarketplaceProvider:
+    row = lock_provider(db, provider_id)
+    not_self(ctx, row)
+    flag = (row.vetting_json or {}).get("profile_flag")
+    if flag is None:
+        raise err("NO_FLAGGED_EDIT", "There's no flagged profile edit to clear.")
+    row.vetting_json = {k: v for k, v in row.vetting_json.items() if k != "profile_flag"}
+    write_audit(
+        db,
+        "marketplace.provider.profile_flag_cleared",
+        entity_type="marketplace_provider",
+        entity_id=row.id,
+        reason=reason,
+        details={"flags": flag.get("flags", [])},
+        **_client(ctx, ip, ua),
+    )
+    return row

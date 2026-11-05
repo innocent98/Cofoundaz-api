@@ -271,6 +271,7 @@ ADMIN_ROUTES = [
     ("post", f"/providers/{uuid.uuid4()}/unsuspend"),
     ("post", f"/providers/{uuid.uuid4()}/resend-invite"),
     ("post", f"/providers/{uuid.uuid4()}/revoke-invite"),
+    ("post", f"/providers/{uuid.uuid4()}/clear-flag"),
     ("get", f"/providers/{uuid.uuid4()}/files/{uuid.uuid4()}"),
 ]
 
@@ -1207,3 +1208,88 @@ def test_revoke_and_reinvite_does_not_dodge_the_daily_cap(client, db, moderator,
         )
     r = invite(client, moderator, "loop@example.com")
     assert r.status_code == 429 and r.json()["error"]["code"] == "INVITE_LIMIT_REACHED"
+
+
+# ---------------------------------------------------------------- approved edits: lock name, queue flagged
+
+
+def test_approved_expert_cannot_change_their_name(client, db, moderator, mail):
+    user, pid = approved(client, db, moderator, mail)
+    h = hdr(user)
+    r = client.patch(f"{P}/me", json={"display_name": "Someone Else"}, headers=h)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "NAME_LOCKED"
+    assert "support" in r.json()["error"]["message"]
+    assert db.get(MarketplaceProvider, uuid.UUID(pid)).display_name == "Ngozi Eze"
+    same = client.patch(
+        f"{P}/me", json={"display_name": "Ngozi Eze", "headline": "Senior counsel"}, headers=h
+    )
+    assert same.status_code == 200  # re-sending the same name is not a change
+
+
+def test_clean_edit_by_an_approved_expert_goes_live_unflagged(client, db, moderator, mail):
+    user, pid = approved(client, db, moderator, mail)
+    r = client.patch(f"{P}/me", json={"bio": BIO + " Now also advising on IP."}, headers=hdr(user))
+    assert r.status_code == 200 and r.json()["data"]["status"] == "approved"
+    d = client.get(f"{A}/providers/{pid}", headers=hdr(moderator)).json()["data"]
+    assert d["profile_flag"] is None
+    assert (
+        client.get(f"{A}/providers?flagged=true", headers=hdr(moderator)).json()["data"][
+            "providers"
+        ]
+        == []
+    )
+    assert "marketplace.provider.profile_edit_flagged" not in audit_actions(db, pid)
+
+
+def test_flagged_edit_stays_live_and_lands_in_the_queue_until_cleared(client, db, moderator, mail):
+    user, pid = approved(client, db, moderator, mail)
+    h, mh = hdr(user), hdr(moderator)
+    r = client.patch(
+        f"{P}/me", json={"headline": "Call +234 803 123 4567 for guaranteed approval"}, headers=h
+    )
+    assert r.status_code == 200 and r.json()["data"]["status"] == "approved"
+    assert r.json()["data"]["badge"]["vetted"] is True  # still live
+    assert "profile_flag" not in r.json()["data"]  # staff-only
+    q = client.get(f"{A}/providers?flagged=true", headers=mh).json()["data"]["providers"]
+    assert [p["id"] for p in q] == [pid]
+    assert {f["rule"] for f in q[0]["profile_flag"]["flags"]} >= {"contact_details"}
+    assert client.get(f"{A}/providers/counts", headers=mh).json()["data"]["flagged_edits"] == 1
+    assert "marketplace.provider.profile_edit_flagged" in audit_actions(db, pid)
+    # a later clean edit does not silently clear the flag
+    client.patch(f"{P}/me", json={"bio": BIO + " More detail."}, headers=h)
+    assert client.get(f"{A}/providers/{pid}", headers=mh).json()["data"]["profile_flag"] is not None
+    short = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": "ok"}, headers=mh)
+    assert short.status_code == 422
+    ok = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": REASON}, headers=mh)
+    assert ok.status_code == 200 and ok.json()["data"]["profile_flag"] is None
+    assert client.get(f"{A}/providers/counts", headers=mh).json()["data"]["flagged_edits"] == 0
+    again = client.post(f"{A}/providers/{pid}/clear-flag", json={"reason": REASON}, headers=mh)
+    assert again.status_code == 409 and again.json()["error"]["code"] == "NO_FLAGGED_EDIT"
+    ev = db.query(AuditLog).filter_by(action="marketplace.provider.profile_flag_cleared").one()
+    assert ev.reason == REASON
+
+
+def test_flagged_edit_can_be_answered_with_a_suspension(client, db, moderator, mail):
+    user, pid = approved(client, db, moderator, mail)
+    client.patch(f"{P}/me", json={"bio": BIO + " Email me@lawfirm.com"}, headers=hdr(user))
+    r = staff_post(client, moderator, f"/providers/{pid}/suspend", reason="Contact details in bio")
+    assert r.status_code == 200 and r.json()["data"]["status"] == "suspended"
+
+
+def test_clear_flag_cannot_be_used_on_your_own_profile(client, db, moderator):
+    row = _expert_row(db, moderator, ProviderStatus.approved)
+    row.vetting_json = {"profile_flag": {"at": "2026-11-05T00:00:00+00:00", "flags": []}}
+    db.flush()
+    r = client.post(
+        f"{A}/providers/{row.id}/clear-flag", json={"reason": REASON}, headers=hdr(moderator)
+    )
+    assert r.status_code == 422 and r.json()["error"]["code"] == "CANNOT_ACT_ON_SELF"
+
+
+def test_edits_before_approval_are_never_flagged(client, db, moderator, mail):
+    user, pid = invited_and_accepted(client, db, moderator, mail)
+    fill_profile(client, user, bio=BIO + " Call +234 803 123 4567")
+    d = client.get(f"{A}/providers/{pid}", headers=hdr(moderator)).json()["data"]
+    assert (
+        d["profile_flag"] is None and d["prescreen_flags"]
+    )  # still a pre-screen chip, not a queue item
