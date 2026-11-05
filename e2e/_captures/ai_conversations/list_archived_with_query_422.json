@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Archived conversations can't be searched.",
+    "field_errors": []
+  }
+}
