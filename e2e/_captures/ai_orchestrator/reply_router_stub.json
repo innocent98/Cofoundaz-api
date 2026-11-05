@@ -1,0 +1,49 @@
+{
+  "data": {
+    "id": "c933a044-cd50-466c-aac7-4b92f558c7e1",
+    "title": "hello there",
+    "topic": "finance",
+    "archived_at": null,
+    "created_at": "2026-11-05T21:34:45.077873+00:00",
+    "updated_at": "2026-11-05T21:34:46.963409+00:00",
+    "messages": [
+      {
+        "id": "89e90c91-b6f4-44c0-9f59-a4818e300648",
+        "role": "user",
+        "status": "ready",
+        "content": "hello there",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "created_at": "2026-11-05T21:34:45.086357+00:00"
+      },
+      {
+        "id": "8823f6f2-eecb-4c61-9c1c-69e1343eed70",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "finance",
+          "name": "Finance Advisor"
+        },
+        "reasoning_summary": "Answered by the Finance Advisor because the orchestrator classified your message as finance. I used: Your startup profile, Your finance snapshot.",
+        "disclaimer": "This is general guidance based on the figures in your workspace, not financial, tax or investment advice. Check important decisions with a qualified accountant or adviser.",
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          },
+          {
+            "key": "finance",
+            "label": "Your finance snapshot"
+          }
+        ],
+        "created_at": "2026-11-05T21:34:45.087357+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

@@ -1,0 +1,45 @@
+{
+  "data": {
+    "id": "842a9cb4-0701-45e8-b730-3dd09fe466c0",
+    "title": "Draft an NDA for a contractor",
+    "topic": "legal",
+    "archived_at": null,
+    "created_at": "2026-11-05T21:34:45.015401+00:00",
+    "updated_at": "2026-11-05T21:34:46.868944+00:00",
+    "messages": [
+      {
+        "id": "a899c4e4-4c80-4067-bd7f-f71304f19c1d",
+        "role": "user",
+        "status": "ready",
+        "content": "Draft an NDA for a contractor",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "created_at": "2026-11-05T21:34:45.023823+00:00"
+      },
+      {
+        "id": "bedf9570-7236-43bd-b12c-f8dd3857d631",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "legal",
+          "name": "Legal Assistant"
+        },
+        "reasoning_summary": "Answered by the Legal Assistant because your message is about legal. I used: Your startup profile.",
+        "disclaimer": "I'm an AI, not a lawyer. This is general information, not legal advice. Have a qualified lawyer review anything before you rely on it or sign it.",
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          }
+        ],
+        "created_at": "2026-11-05T21:34:45.024823+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

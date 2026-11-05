@@ -115,7 +115,7 @@ On an archived conversation:
 | Param | Rule |
 |---|---|
 | `query` | 2 to 100 chars; case-insensitive; matches the **title** and any **ready, non-removed message** (user or assistant). `%` and `_` are literal. Adds `match_snippet` to each item (about 120 chars around the first hit, with `…` at a cut end; the title if only the title matched). Absent when no `query`. |
-| `topic` | one of `strategy`, `finance`, `legal`, `mentoring`; anything else is `422`. Conversations get a topic when a reply is routed (next slice), so until then every `topic` is `null` and a topic filter returns `[]`. |
+| `topic` | one of `strategy`, `finance`, `legal`, `mentoring`; anything else is `422`. A conversation gets its topic when its first reply is routed (see `fe-integration-guide-ai-cofounder.md` §5), so it is `null` until the worker picks the message up and for conversations from before routing existed. |
 | `archived` | `true` lists only archived conversations; default `false` hides them. |
 
 Default list (newest activity first, at most 200, only the caller's own):
@@ -317,4 +317,4 @@ key that is present *only* when `query` was sent. Messages are unchanged.
 | Another member's ids (404, nothing changed) | API tests only |
 | ⌘K search skipping archived chats | API test only |
 | Real-model reply text in snippets | not verified (stub) |
-| `topic` set on a conversation | not yet: slice 2 |
+| `topic` set on a conversation | verified live in slice 2 (`e2e/_captures/ai_orchestrator/list_topic_legal.json`) |

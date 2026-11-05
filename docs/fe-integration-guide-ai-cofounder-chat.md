@@ -15,6 +15,10 @@ Base path `/api/v1/ai`. Every route needs a Bearer token **and** `X-Workspace-Id
 chat they didn't start, and `GET /ai/conversations` returns only the caller's own. Success
 envelope `{"data": …, "meta": null}`.
 
+> **Update 2026-11-05:** replies are now routed to a specialist and messages carry `agent`, `reasoning_summary`,
+> `sources`, `disclaimer`; status `cancelled` and `POST .../messages/{id}/cancel` exist. The bodies below pre-date
+> that and lack those keys. Current shapes: `fe-integration-guide-ai-cofounder.md` §5.
+
 ---
 
 ## 0. Shape: Pattern B (202 → poll), reusing the app's async seam

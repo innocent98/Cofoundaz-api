@@ -1,0 +1,27 @@
+# AI Co-Founder: orchestrator and four agents (slice 2)
+
+**What shipped:** the AI Co-Founder MVP core (D-AI-1): every chat reply is routed to one of four specialists (Strategist, Finance Advisor, Legal Assistant, Mentor), answered from read-only workspace context, with a code-appended disclaimer for legal and financial answers, a "why" summary, sources, and a Cancel for a running reply. Gap rows 1, 2, 6, 21 (events), plus D-AI-2 (polling + Cancel). Branch `feature/ai-cofounder-orchestrator`, stacked on slice 1 (`feature/ai-cofounder-slice-1`), migration **`0098_ai_orchestrator`** on `0097`. FE guide `docs/fe-integration-guide-ai-cofounder.md` §5.
+
+**Why:** one generic persona ignored the workspace's data, had no specialist, left legal and money disclaimers to the model's mood, and a founder could not stop a slow reply.
+
+**How / decisions**
+
+| Topic | Decision |
+|---|---|
+| Registry | `app/services/ai_cofounder/agents.py`: an agent is configuration (versioned persona prompt `agent.<key>@v1`, context sections, topic, disclaimer). Adding an agent later is one entry. |
+| Routing | `router.py`, cheapest first: keyword rules (no tokens) decide clear cases; an ambiguous follow-up carries over to the last specialist; only then one small metered JSON call (`orchestrator.intent@v1`); failure, no budget or an invalid answer falls back to the Strategist. Rejected: an LLM call per message (cost and latency for no gain on clear cases). |
+| Route record | `ai_agent_routes` (one per assistant message: agent, method, confidence, prompt version), written and **committed before the agent call**. A worker retry or reaped job reuses it, so routing is never paid twice. The conversation `topic` is set at the first routed reply. |
+| Context | `context.py`: read-only sections (profile, roadmap, mission, health, assessment, business canvas, pipeline, finance), each gated by the same role sets the module routes use, each in its own savepoint (a broken section is skipped, not fatal). Journal is not a section. User-authored text is clipped to 160 chars and fenced in `<workspace_data>` with an untrusted-data instruction. |
+| Disclaimer (row 6) | `Agent.disclaimer`, stored in its own column and appended by the FE as a block; never part of the model text, so the model cannot omit or alter it. |
+| "Why I said this" | `reasoning_summary` is built in code from the route and the sources actually used: no extra model call, nothing the model could invent. |
+| Metering | Every call goes through `metered_complete` / `metered_complete_json` (failed calls billed on an independent session). The handler is self-managed (commits its own units): router + route row + debit commit together, then the reply and its debit commit together in one conditional UPDATE after which nothing can raise. Duplicate delivery of a finished turn is a no-op. The existing `reap_stale` re-queue cap applies unchanged. |
+| Cancel (D-AI-2) | `POST .../messages/{id}/cancel`: conditional `UPDATE ... WHERE status = 'generating'` to `cancelled`. The worker's final write and `fail_message` are conditional the same way (`_end_turn`), so a late result or failure can never overwrite a cancel or a finished reply. Tokens already spent stay billed. Idempotent; 409 `REPLY_NOT_RUNNING` if finished. |
+| Events (row 21) | New `ai.cofounder.reply.completed` and `.cancelled` (Analytics). `.failed` still has no notification, by recommendation. `ai.action.executed` / `ai.suggestion.created` belong to actions and suggestions (slice 3). |
+
+**What's involved:** `app/db/models/ai_chat.py` (`AiAgentRoute`, message columns), `alembic/versions/0098_ai_orchestrator.py`, `app/services/ai_cofounder/{agents,context,router,orchestrator,prompts,service}.py`, `app/worker/handlers/ai.py` (`handle_cofounder_reply` now delegates, registered self-managed), `app/api/v1/endpoints/ai.py` (cancel route), `ChatMessageStatus.cancelled`.
+
+**Verification:** `tests/services/ai_cofounder/test_orchestrator.py` (routing by rules, carryover, router success/invalid/failure/over-budget; each agent's prompt version, topic, disclaimer; context per agent, role gating, tenancy, clipping and fencing, broken section; metering once, retry reuses route and bills failed calls, last-attempt failure, over budget; cancel before, during, after; late failure cannot overwrite), `tests/api/test_ai_orchestrator_api.py` (shapes over HTTP, topic filter, cancel per role, privacy), existing chat tests updated, migration round trip, live journey `e2e/test_ai_cofounder_orchestrator.py` (captures in `e2e/_captures/ai_orchestrator/`). **Not verified:** any real model (answer quality, router accuracy on vague messages, cost per reply); the stub picks the first enum value for the router call.
+
+**Operate / roll back:** no env var. The worker must run the new handler (same job type, `ai.cofounder.reply`; deploy API and worker together). Roll back by reverting the PR and downgrading `0098` (drops `ai_agent_routes` and the four message columns; replies already stored keep their text). Messages left `cancelled` would be an unknown status to an older build.
+
+**Follow-ups:** slice 3 (confirm-first actions, feedback/regenerate, suggestions, `GET /ai/agents`); pin a conversation to an agent (`agent_key` on create, row 19); tune the keyword lists and measure real router accuracy and token cost with a real model; context sections link to the underlying items (sources have no URLs yet); memory is deferred (D-AI-5).
