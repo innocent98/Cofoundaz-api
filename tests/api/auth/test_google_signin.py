@@ -420,3 +420,15 @@ def test_auth_url_uses_pkce_openid_scopes_only_and_its_own_redirect(client):
     assert q["code_challenge_method"] == "S256" and q["code_challenge"] and q["nonce"]
     assert q["redirect_uri"] == "https://api.example.test/api/v1/auth/oauth/google/callback"
     assert "calendar" not in q["scope"]
+
+
+def test_exchange_in_cookie_mode_keeps_the_refresh_token_out_of_the_body(client, db):
+    """D-AUTH-6: a client that sends `X-Auth-Mode: cookie` gets the session in the HttpOnly
+    cookie only; the body has `refresh_token: null` and the lifetime to schedule a refresh."""
+    q = _signin(client, email="cookiemode@example.com")
+    r = client.post(EXCHANGE, json={"ticket": q["ticket"]}, headers={"X-Auth-Mode": "cookie"})
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["refresh_token"] is None and d["access_token"]
+    assert d["expires_in"] == settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    assert settings.REFRESH_COOKIE_NAME in r.cookies
