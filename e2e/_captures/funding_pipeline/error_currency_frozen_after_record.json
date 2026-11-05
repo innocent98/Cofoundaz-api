@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ROUND_HAS_RECORDED_MONEY",
+    "message": "Money from this round is already recorded in Finance, so its currency is fixed.",
+    "field_errors": []
+  }
+}
