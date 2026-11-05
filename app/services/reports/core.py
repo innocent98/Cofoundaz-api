@@ -17,8 +17,11 @@ from app.core.redis import get_redis
 from app.db.models.ai_chat import AiMessage
 from app.db.models.comment import Comment
 from app.db.models.content_report import ContentReport
-from app.db.models.enums import ReportItemType
+from app.db.models.enums import ListingStatus, ReportItemType
+from app.db.models.marketplace import MarketplaceListing, MarketplaceProvider
 from app.db.models.notification import Notification
+from app.platform.audit import write_audit
+from app.services.marketplace.takedown import put_back, take_down
 
 SNIPPET_MAX = 2000  # R4
 REPORTS_PER_HOUR = 10  # R3
@@ -64,9 +67,24 @@ def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         ) from exc
 
 
-def set_removed(db: Session, report: ContentReport, removed: bool, now: datetime) -> bool:
+def set_removed(
+    db: Session,
+    report: ContentReport,
+    removed: bool,
+    now: datetime,
+    actor_id: uuid.UUID | None = None,
+) -> bool:
     """Hide (or show again) the reported item. False when the item no longer exists (the author
     deleted it): the report still closes, there is just nothing left to hide."""
+    if report.item_type == ReportItemType.listing:
+        return _set_listing_unlisted(db, report, removed, actor_id)
+    if report.item_type == ReportItemType.provider:
+        # Experts are suspended through vetting (step-up, emails), not by removing a report item.
+        raise AppError(
+            "USE_VETTING",
+            "Suspend an expert from the vetting queue instead of removing the report's item.",
+            422,
+        )
     item: Comment | AiMessage | None
     if report.item_type == ReportItemType.comment:
         item = db.query(Comment).filter(Comment.id == report.item_id).with_for_update().first()
@@ -78,6 +96,73 @@ def set_removed(db: Session, report: ContentReport, removed: bool, now: datetime
     if removed and report.item_type == ReportItemType.comment:
         _scrub_mentions(db, report.item_id)
     return True
+
+
+REPORT_UNLIST_REASON = (
+    "Unlisted after a report."  # shown to the expert; not used to decide anything
+)
+
+
+def _set_listing_unlisted(
+    db: Session, report: ContentReport, removed: bool, actor_id: uuid.UUID | None
+) -> bool:
+    """Unlist (or relist) the reported listing. Active bookings are honoured; no new ones. Both
+    directions are audited on the listing and carry `via: report`. A restore relists only a
+    listing THIS report took down (`unlisted_via_report_id`), and puts it back to the status it
+    had (an expert's own pause survives)."""
+    listing = (
+        db.query(MarketplaceListing)
+        .filter(MarketplaceListing.id == report.item_id)
+        .with_for_update()
+        .first()
+    )
+    if listing is None:
+        return False
+    if removed:
+        if take_down(
+            listing, actor_id=actor_id, reason=REPORT_UNLIST_REASON, via_report_id=report.id
+        ):
+            write_audit(
+                db,
+                "marketplace.listing.unlisted",
+                actor_user_id=actor_id,
+                entity_type="marketplace_listing",
+                entity_id=listing.id,
+                details={"via": "report", "report_id": str(report.id)},
+            )
+    elif listing.status == ListingStatus.unlisted and listing.unlisted_via_report_id is not None:
+        restored = put_back(listing)
+        write_audit(
+            db,
+            "marketplace.listing.relisted",
+            actor_user_id=actor_id,
+            entity_type="marketplace_listing",
+            entity_id=listing.id,
+            details={"via": "report", "report_id": str(report.id), "restored_to": restored.value},
+        )
+    return True
+
+
+def refuse_own_marketplace_item(db: Session, report: ContentReport, actor_id: uuid.UUID) -> None:
+    """Staff can't decide on a report about their own listing or expert profile."""
+    owner: uuid.UUID | None = None
+    if report.item_type == ReportItemType.listing:
+        row = (
+            db.query(MarketplaceProvider.user_id)
+            .join(MarketplaceListing, MarketplaceListing.provider_id == MarketplaceProvider.id)
+            .filter(MarketplaceListing.id == report.item_id)
+            .first()
+        )
+        owner = row[0] if row else None
+    elif report.item_type == ReportItemType.provider:
+        row = (
+            db.query(MarketplaceProvider.user_id)
+            .filter(MarketplaceProvider.id == report.item_id)
+            .first()
+        )
+        owner = row[0] if row else None
+    if owner is not None and owner == actor_id:
+        raise err("CANNOT_ACT_ON_SELF", "You can't decide a report about your own listing.", 422)
 
 
 def _scrub_mentions(db: Session, comment_id: uuid.UUID) -> None:

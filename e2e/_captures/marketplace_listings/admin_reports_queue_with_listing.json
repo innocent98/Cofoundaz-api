@@ -1,0 +1,36 @@
+{
+  "data": {
+    "reports": [
+      {
+        "id": "478bf2fa-bd92-4839-afa3-3ddf2fb87572",
+        "item_type": "listing",
+        "reason": "other",
+        "note": "Misleading price",
+        "status": "open",
+        "snippet": "Contract and term sheet review\nA one hour review of your contract with written notes.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "1805b33f-3bc2-412c-bf02-23a9c4592720",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-e0631b4c27b7@resend.dev"
+        },
+        "author": {
+          "id": "09fbe2cd-50f2-4137-9024-d48182995cc5",
+          "name": "delivered+e2e-c1e1f86ec07f@resend.dev"
+        },
+        "workspace": {
+          "id": "25ae8c75-2bdc-445b-bd72-6e9500b4aa49",
+          "name": "Browse Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-05T21:10:00.299437+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}

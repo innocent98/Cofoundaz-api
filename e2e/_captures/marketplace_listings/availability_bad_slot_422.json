@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "rules.0.slot_min",
+        "message": "Input should be 15, 30 or 60"
+      }
+    ]
+  }
+}

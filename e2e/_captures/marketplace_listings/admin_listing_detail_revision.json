@@ -1,0 +1,85 @@
+{
+  "data": {
+    "id": "d0392fdc-d011-432f-b83d-7a2faa76f665",
+    "provider_id": "b026d0dc-5208-49d3-b48d-4770296e06e9",
+    "provider_name": "Ngozi Eze",
+    "provider_status": "approved",
+    "type": "consultation",
+    "title": "Contract review session",
+    "category": "Legal",
+    "price_minor": 1200000,
+    "status": "active",
+    "has_revision": true,
+    "has_flag": false,
+    "flag": null,
+    "submitted_at": "2026-11-05T21:09:59.335255+00:00",
+    "revision_submitted_at": "2026-11-05T21:09:59.910161+00:00",
+    "prescreen_flags": [],
+    "created_at": "2026-11-05T21:09:59.245382+00:00",
+    "summary": "A one hour review of your contract with written notes.",
+    "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
+    "tags": [
+      "contracts",
+      "term sheets"
+    ],
+    "duration_min": 60,
+    "delivery_days": null,
+    "deliverables": [],
+    "revisions_included": 2,
+    "meeting_url": "https://meet.example.com/ngozi-eze",
+    "review_message": null,
+    "unlisted_reason": null,
+    "published_at": "2026-11-05T21:09:59.496920+00:00",
+    "pending_revision": {
+      "title": "Contract and term sheet review"
+    },
+    "diff": [
+      {
+        "field": "title",
+        "from": "Contract review session",
+        "to": "Contract and term sheet review"
+      }
+    ],
+    "provider": {
+      "id": "b026d0dc-5208-49d3-b48d-4770296e06e9",
+      "display_name": "Ngozi Eze",
+      "category": "Legal",
+      "status": "approved",
+      "badge": {
+        "vetted": true,
+        "checks": [
+          "Identity verified",
+          "Professional licence verified",
+          "2 client references checked"
+        ]
+      }
+    },
+    "history": [
+      {
+        "action": "marketplace.listing.revision_submitted",
+        "at": "2026-11-05T21:09:59.903109+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.listing.approved",
+        "at": "2026-11-05T21:09:59.484934+00:00",
+        "actor_email": "delivered+e2e-e725d22671f2@resend.dev",
+        "reason": "Scope and price are clear"
+      },
+      {
+        "action": "marketplace.listing.submitted",
+        "at": "2026-11-05T21:09:59.328152+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
+        "reason": null
+      },
+      {
+        "action": "marketplace.listing.created",
+        "at": "2026-11-05T21:09:59.245382+00:00",
+        "actor_email": "delivered+e2e-c1e1f86ec07f@resend.dev",
+        "reason": null
+      }
+    ]
+  },
+  "meta": null
+}

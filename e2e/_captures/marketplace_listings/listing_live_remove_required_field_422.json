@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FIELD_REQUIRED",
+    "message": "A live consultation needs 'duration_min'. Pause it to remove that.",
+    "field_errors": []
+  }
+}

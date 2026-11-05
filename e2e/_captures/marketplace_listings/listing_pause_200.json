@@ -1,0 +1,35 @@
+{
+  "data": {
+    "id": "d0392fdc-d011-432f-b83d-7a2faa76f665",
+    "type": "consultation",
+    "status": "paused",
+    "title": "Contract and term sheet review",
+    "summary": "A one hour review of your contract with written notes.",
+    "description": "A focused one hour session reviewing your contract or term sheet, with written notes after.",
+    "category": "Legal",
+    "tags": [
+      "contracts",
+      "whatsapp me"
+    ],
+    "price_minor": 1200000,
+    "currency": "NGN",
+    "duration_min": 60,
+    "delivery_days": null,
+    "deliverables": [],
+    "revisions_included": 2,
+    "meeting_url": "https://meet.example.com/ngozi-eze",
+    "pending_revision": null,
+    "review_message": "The price doesn't match the scope",
+    "submitted_at": "2026-11-05T21:09:59.335255+00:00",
+    "published_at": "2026-11-05T21:09:59.496920+00:00",
+    "unlisted_reason": null,
+    "earnings_preview": {
+      "commission_bps": 1500,
+      "commission_minor": 180000,
+      "net_minor": 1020000
+    },
+    "created_at": "2026-11-05T21:09:59.245382+00:00",
+    "updated_at": "2026-11-05T21:10:00.211520+00:00"
+  },
+  "meta": null
+}

@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "price_minor",
+        "message": "Input should be a valid integer"
+      }
+    ]
+  }
+}

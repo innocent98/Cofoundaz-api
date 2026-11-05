@@ -1,0 +1,42 @@
+{
+  "data": {
+    "listings": [
+      {
+        "id": "d0392fdc-d011-432f-b83d-7a2faa76f665",
+        "provider_id": "b026d0dc-5208-49d3-b48d-4770296e06e9",
+        "provider_name": "Ngozi Eze",
+        "provider_status": "approved",
+        "type": "consultation",
+        "title": "Contract and term sheet review",
+        "category": "Legal",
+        "price_minor": 1200000,
+        "status": "active",
+        "has_revision": false,
+        "has_flag": true,
+        "flag": {
+          "at": "2026-11-05T21:10:00.021915+00:00",
+          "flags": [
+            {
+              "rule": "contact_details",
+              "field": "tags"
+            }
+          ],
+          "updated_at": "2026-11-05T21:10:00.021915+00:00"
+        },
+        "submitted_at": "2026-11-05T21:09:59.335255+00:00",
+        "revision_submitted_at": null,
+        "prescreen_flags": [
+          {
+            "rule": "contact_details",
+            "field": "tags"
+          }
+        ],
+        "created_at": "2026-11-05T21:09:59.245382+00:00"
+      }
+    ]
+  },
+  "meta": {
+    "next_cursor": null,
+    "total_estimate": null
+  }
+}
