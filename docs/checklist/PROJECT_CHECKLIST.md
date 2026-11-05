@@ -3914,7 +3914,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] `funding.round.committed_changed` notification (F + TM minus actor); `funding` Scale module gate behind `PLAN_ENFORCEMENT`
   - [x] Roles F + TM (D-FUND-5), a test per role; unit + API + migration tests; live e2e journey; live-captured FE guide
   - [ ] Investor directory (D-FUND-1 b, after Adebayo approves the list): "Find investors"
-- [x] **Slice B: data room** (`feature/funding-data-room`, migration `0095_funding_data_room`, chained on 0092 for now; SOP `docs/sop/2026-11-05-funding-data-room.md`, FE guide `docs/fe-integration-guide-funding-data-room.md`) — security-critical, PR open 2026-11-05
+- [x] **Slice B: data room** (`feature/funding-data-room`, migration `0095_funding_data_room`, chained on 0093; SOP `docs/sop/2026-11-05-funding-data-room.md`, FE guide `docs/fe-integration-guide-funding-data-room.md`) — security-critical, PR open 2026-11-05
   - [x] `data_room_folders`, `data_room_items` (reference a Documents file or rich Document), `data_room_shares` (token hash only), `data_room_challenges` (keyed-hash codes), `data_room_views` (access log)
   - [x] Founder routes: `GET /data-room`, `POST /data-room/setup`, folder + item CRUD, shares CRUD + revoke, `GET /data-room/access-log`; F + TM only (D-FUND-5)
   - [x] Public viewer `/funding/dr/{token}`: meta, `otp`, `verify` (email + 6-digit code, no accounts, D-FUND-3), `tree`, `items/{id}/open`, `items/{id}/content`, `heartbeat`
