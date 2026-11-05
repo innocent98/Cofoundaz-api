@@ -127,6 +127,7 @@ class Investor(UUIDMixin, TimestampMixin, Base):
         ),
         Index("ix_investors_startup_round", "startup_id", "round_id"),
         Index("ix_investors_round_stage", "round_id", "stage", "position"),
+        Index("ix_investors_recorded_transaction", "recorded_transaction_id"),
     )
 
 

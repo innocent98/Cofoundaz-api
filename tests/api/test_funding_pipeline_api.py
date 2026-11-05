@@ -98,15 +98,19 @@ def test_team_member_has_full_pipeline_access(client, team):
     _s, heads, _u = team
     h = heads[MembershipRole.team_member]
     inv = _add(client, h)
-    assert _move(client, h, inv, "outreach").status_code == 200
-    assert client.delete(f"{BASE}/investors/{inv['id']}", headers=h).status_code == 200
+    resp = _move(client, h, inv, "outreach")
+    assert resp.status_code == 200
+    resp = client.delete(f"{BASE}/investors/{inv['id']}", headers=h)
+    assert resp.status_code == 200
 
 
 def test_requires_auth_and_workspace(client, team):
     _s, heads, _u = team
-    assert client.get(BASE + "/round").status_code in (401, 422)
+    resp = client.get(BASE + "/round")
+    assert resp.status_code in (401, 422)
     only_auth = {"Authorization": heads[MembershipRole.founder]["Authorization"]}
-    assert client.get(BASE + "/round", headers=only_auth).status_code == 422
+    resp = client.get(BASE + "/round", headers=only_auth)
+    assert resp.status_code == 422
 
 
 def test_workspace_header_for_another_workspace_is_forbidden(client, db, team):
@@ -114,7 +118,8 @@ def test_workspace_header_for_another_workspace_is_forbidden(client, db, team):
     other = create_startup(db, owner=create_user(db, email_verified_at=datetime.now(UTC)))
     db.commit()
     h = {**heads[MembershipRole.founder], "X-Workspace-Id": str(other.id)}
-    assert client.get(BASE + "/investors", headers=h).status_code == 403
+    resp = client.get(BASE + "/investors", headers=h)
+    assert resp.status_code == 403
 
 
 def test_another_workspaces_investor_is_404(client, db, team):
@@ -123,15 +128,18 @@ def test_another_workspaces_investor_is_404(client, db, team):
     s2 = create_startup(db, owner=create_user(db, email_verified_at=datetime.now(UTC)))
     _u2, h2 = _member(db, s2, MembershipRole.founder)
     db.commit()
-    assert client.get(f"{BASE}/investors/{inv['id']}", headers=h2).status_code == 404
-    assert (
-        client.patch(f"{BASE}/investors/{inv['id']}", json={"warm": True}, headers=h2).status_code
-        == 404
-    )
-    assert client.delete(f"{BASE}/investors/{inv['id']}", headers=h2).status_code == 404
-    assert _move(client, h2, inv, "outreach").status_code == 404
-    assert client.get(f"{BASE}/investors/{inv['id']}/events", headers=h2).status_code == 404
-    assert client.get(f"{BASE}/investors", headers=h2).json()["data"]["total"] == 0
+    resp = client.get(f"{BASE}/investors/{inv['id']}", headers=h2)
+    assert resp.status_code == 404
+    resp = client.patch(f"{BASE}/investors/{inv['id']}", json={"warm": True}, headers=h2)
+    assert resp.status_code == 404
+    resp = client.delete(f"{BASE}/investors/{inv['id']}", headers=h2)
+    assert resp.status_code == 404
+    resp = _move(client, h2, inv, "outreach")
+    assert resp.status_code == 404
+    resp = client.get(f"{BASE}/investors/{inv['id']}/events", headers=h2)
+    assert resp.status_code == 404
+    resp = client.get(f"{BASE}/investors", headers=h2)
+    assert resp.json()["data"]["total"] == 0
 
 
 # ---- plan gate ----
@@ -139,7 +147,8 @@ def test_plan_gate_is_dark_then_402_on_starter_and_open_on_scale(client, db, tea
     s, heads, _u = team
     h = heads[MembershipRole.founder]
     seed_plans(db)
-    assert client.get(f"{BASE}/round", headers=h).status_code == 200  # enforcement off
+    resp = client.get(f"{BASE}/round", headers=h)
+    assert resp.status_code == 200  # enforcement off
     monkeypatch.setattr(settings, "PLAN_ENFORCEMENT", True)
     sub = subs.get_or_create(db, s.id)
     sub.trial_used_at = subs.now()
@@ -148,16 +157,19 @@ def test_plan_gate_is_dark_then_402_on_starter_and_open_on_scale(client, db, tea
     assert r.status_code == 402 and r.json()["error"]["code"] == "PLAN_REQUIRED"
     assert r.json()["error"]["message"] == "Upgrade to Scale to use this."
     # A refused role is 403 before the plan check.
-    assert client.get(f"{BASE}/round", headers=heads[MembershipRole.mentor]).status_code == 403
+    resp = client.get(f"{BASE}/round", headers=heads[MembershipRole.mentor])
+    assert resp.status_code == 403
     sub.status, sub.plan_key = "active", "scale"
     sub.current_period_end = subs.now() + timedelta(days=5)
     db.flush()
-    assert client.get(f"{BASE}/round", headers=h).status_code == 200
+    resp = client.get(f"{BASE}/round", headers=h)
+    assert resp.status_code == 200
 
 
 # ---- round ----
 def test_no_round_until_one_is_made(client, founder):
-    assert client.get(f"{BASE}/round", headers=founder).json()["data"] is None
+    resp = client.get(f"{BASE}/round", headers=founder)
+    assert resp.json()["data"] is None
     ov = client.get(f"{BASE}/overview", headers=founder).json()["data"]
     assert ov["empty"] is True and ov["round"] is None and ov["totals"] is None
     assert [s["stage"] for s in ov["stages"]] == [
@@ -201,9 +213,8 @@ def test_round_validation(client, founder):
     ):
         r = client.put(f"{BASE}/round", json=body, headers=founder)
         assert r.status_code == 422, (body, r.text)
-    assert (
-        client.put(f"{BASE}/round", json={"status": "closed"}, headers=founder).status_code == 422
-    )
+    resp = client.put(f"{BASE}/round", json={"status": "closed"}, headers=founder)
+    assert resp.status_code == 422
 
 
 def test_currency_cannot_change_once_amounts_exist(client, founder):
@@ -221,7 +232,8 @@ def test_first_investor_creates_a_planning_round_and_closed_round_needs_a_new_on
     r = client.post(f"{BASE}/investors", json={"name": "Late"}, headers=founder)
     assert r.status_code == 409 and r.json()["error"]["code"] == "ROUND_CLOSED"
     # Closed round's investors stay readable.
-    assert client.get(f"{BASE}/investors", headers=founder).json()["data"]["total"] == 1
+    resp = client.get(f"{BASE}/investors", headers=founder)
+    assert resp.json()["data"]["total"] == 1
 
 
 # ---- investors ----
@@ -255,10 +267,10 @@ def test_add_edit_delete_investor(client, founder):
     assert p["name"] == "Ada Obi"  # untouched
     got = client.get(f"{BASE}/investors/{inv['id']}", headers=founder).json()["data"]
     assert got["thesis_notes"] == "Fintech only"
-    assert client.delete(f"{BASE}/investors/{inv['id']}", headers=founder).json()["data"] == {
-        "deleted": True
-    }
-    assert client.get(f"{BASE}/investors/{inv['id']}", headers=founder).status_code == 404
+    resp = client.delete(f"{BASE}/investors/{inv['id']}", headers=founder)
+    assert resp.json()["data"] == {"deleted": True}
+    resp = client.get(f"{BASE}/investors/{inv['id']}", headers=founder)
+    assert resp.status_code == 404
 
 
 def test_investor_validation(client, founder):
@@ -273,16 +285,13 @@ def test_investor_validation(client, founder):
         {"name": "A", "committed_minor": 10**16},
     ]
     for body in bad:
-        assert client.post(f"{BASE}/investors", json=body, headers=founder).status_code == 422, body
+        resp = client.post(f"{BASE}/investors", json=body, headers=founder)
+        assert resp.status_code == 422, body
     inv = _add(client, founder, check_min_minor=10)
     r = client.patch(f"{BASE}/investors/{inv['id']}", json={"check_max_minor": 5}, headers=founder)
     assert r.status_code == 422  # checked against the stored minimum too
-    assert (
-        client.patch(
-            f"{BASE}/investors/{inv['id']}", json={"stage": "meeting"}, headers=founder
-        ).status_code
-        == 422
-    )
+    resp = client.patch(f"{BASE}/investors/{inv['id']}", json={"stage": "meeting"}, headers=founder)
+    assert resp.status_code == 422
 
 
 def test_list_filters_search_and_board_order(client, founder):
@@ -301,7 +310,8 @@ def test_list_filters_search_and_board_order(client, founder):
     assert q(q="alpha_")["total"] == 1  # `_` is literal, not a wildcard
     assert q(q="%")["total"] == 0
     assert q(limit=1, offset=1)["items"][0]["name"] == "Bola"
-    assert client.get(f"{BASE}/investors?stage=bogus", headers=founder).status_code == 422
+    resp = client.get(f"{BASE}/investors?stage=bogus", headers=founder)
+    assert resp.status_code == 422
 
 
 # ---- stages ----
@@ -310,10 +320,8 @@ def test_move_stage_writes_history_and_resets_the_clock(client, db, founder):
     row = db.get(Investor, inv["id"])
     row.stage_entered_at = datetime.now(UTC) - timedelta(days=9)
     db.commit()
-    assert (
-        client.get(f"{BASE}/investors/{inv['id']}", headers=founder).json()["data"]["days_in_stage"]
-        == 9
-    )
+    resp = client.get(f"{BASE}/investors/{inv['id']}", headers=founder)
+    assert resp.json()["data"]["days_in_stage"] == 9
     r = _move(client, founder, inv, "meeting", note="Intro call booked")
     assert r.status_code == 200
     d = r.json()["data"]["investor"]
@@ -334,12 +342,14 @@ def test_passed_needs_a_reason_and_leaving_clears_it(client, founder):
     inv = _add(client, founder)
     r = _move(client, founder, inv, "passed")
     assert r.status_code == 422 and r.json()["error"]["field_errors"][0]["field"] == "passed_reason"
-    assert _move(client, founder, inv, "passed", passed_reason="vibes").status_code == 422
+    resp = _move(client, founder, inv, "passed", passed_reason="vibes")
+    assert resp.status_code == 422
     ok = _move(client, founder, inv, "passed", passed_reason="valuation").json()["data"]["investor"]
     assert ok["stage"] == "passed" and ok["passed_reason"] == "valuation"
     back = _move(client, founder, inv, "outreach").json()["data"]["investor"]
     assert back["passed_reason"] is None
-    assert _move(client, founder, inv, "meeting", passed_reason="ghosted").status_code == 422
+    resp = _move(client, founder, inv, "meeting", passed_reason="ghosted")
+    assert resp.status_code == 422
 
 
 def test_reorder_within_a_column_and_across(client, founder):
@@ -350,14 +360,8 @@ def test_reorder_within_a_column_and_across(client, founder):
         i["name"] for i in client.get(f"{BASE}/investors", headers=founder).json()["data"]["items"]
     ]
     assert names == ["C", "A", "B"]
-    assert (
-        len(
-            client.get(f"{BASE}/investors/{c['id']}/events", headers=founder).json()["data"][
-                "items"
-            ]
-        )
-        == 1
-    )
+    resp = client.get(f"{BASE}/investors/{c['id']}/events", headers=founder)
+    assert len(resp.json()["data"]["items"]) == 1
     _move(client, founder, a, "outreach")
     items = client.get(f"{BASE}/investors", headers=founder).json()["data"]["items"]
     assert [(i["name"], i["stage"], i["position"]) for i in items] == [
@@ -394,19 +398,17 @@ def test_interaction_log_and_last_touch(client, founder):
 def test_event_validation(client, founder):
     inv = _add(client, founder)
     url = f"{BASE}/investors/{inv['id']}/events"
-    assert (
-        client.post(url, json={"kind": "stage_change", "body": "x"}, headers=founder).status_code
-        == 422
-    )
-    assert client.post(url, json={"kind": "note", "body": ""}, headers=founder).status_code == 422
-    assert client.post(url, json={"kind": "tweet", "body": "x"}, headers=founder).status_code == 422
+    resp = client.post(url, json={"kind": "stage_change", "body": "x"}, headers=founder)
+    assert resp.status_code == 422
+    resp = client.post(url, json={"kind": "note", "body": ""}, headers=founder)
+    assert resp.status_code == 422
+    resp = client.post(url, json={"kind": "tweet", "body": "x"}, headers=founder)
+    assert resp.status_code == 422
     future = (datetime.now(UTC) + timedelta(days=2)).isoformat()
-    assert (
-        client.post(
-            url, json={"kind": "note", "body": "x", "occurred_at": future}, headers=founder
-        ).status_code
-        == 422
+    resp = client.post(
+        url, json={"kind": "note", "body": "x", "occurred_at": future}, headers=founder
     )
+    assert resp.status_code == 422
 
 
 # ---- overview + totals ----
@@ -495,9 +497,8 @@ def test_suggested_target_is_18_months_of_net_burn_for_ngn_only(client, db, team
         and st["amount_minor"] == st["monthly_burn_minor"] * 18
     )
     client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
-    assert (
-        client.get(f"{BASE}/overview", headers=founder).json()["data"]["suggested_target"] is None
-    )
+    resp = client.get(f"{BASE}/overview", headers=founder)
+    assert resp.json()["data"]["suggested_target"] is None
 
 
 # ---- committed-changed notification ----
@@ -554,18 +555,15 @@ def test_moving_to_committed_offers_but_never_writes_to_finance(client, db, team
 
 def test_no_offer_without_an_amount(client, founder):
     inv = _add(client, founder)
-    assert _move(client, founder, inv, "committed").json()["data"]["record_in_finance"] is None
+    resp = _move(client, founder, inv, "committed")
+    assert resp.json()["data"]["record_in_finance"] is None
 
 
 def test_record_funding_writes_one_funding_inflow_once(client, db, team, founder):
     s = team[0]
     inv = _add(client, founder, committed_minor=2_000_000_00)
-    assert (
-        client.post(
-            f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder
-        ).status_code
-        == 409
-    )
+    resp = client.post(f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder)
+    assert resp.status_code == 409
     _move(client, founder, inv, "committed")
     r = client.post(
         f"{BASE}/investors/{inv['id']}/record-funding",
@@ -587,8 +585,10 @@ def test_record_funding_writes_one_funding_inflow_once(client, db, team, founder
     assert again.status_code == 409 and again.json()["error"]["code"] == "ALREADY_RECORDED"
     assert db.query(Transaction).filter_by(startup_id=s.id).count() == 1
     # Already recorded: no second offer.
-    assert _move(client, founder, inv, "diligence").json()["data"]["record_in_finance"] is None
-    assert _move(client, founder, inv, "committed").json()["data"]["record_in_finance"] is None
+    resp = _move(client, founder, inv, "diligence")
+    assert resp.json()["data"]["record_in_finance"] is None
+    resp = _move(client, founder, inv, "committed")
+    assert resp.json()["data"]["record_in_finance"] is None
 
 
 def test_record_funding_for_a_usd_round_needs_the_naira_amount(client, db, team, founder):
@@ -633,4 +633,88 @@ def test_record_funding_takes_a_row_lock_on_the_investor(client, db, team, found
     monkeypatch.setattr(Query, "with_for_update", spy)
     r = client.post(f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder)
     assert r.status_code == 201
+    assert seen == [True]
+
+
+# ---- review fixes: races, frozen money, locks ----
+def test_lost_race_on_first_investor_reuses_the_round_instead_of_a_500(
+    client, db, founder, monkeypatch
+):
+    from app.services.funding import rounds as rounds_svc
+
+    client.put(f"{BASE}/round", json={"name": "Seed"}, headers=founder)  # the winner's round
+    real_latest, real_active = rounds_svc.latest_round, rounds_svc.active_round
+    calls = {"latest": 0}
+
+    def stale_latest(db_, sid):
+        calls["latest"] += 1
+        return None if calls["latest"] == 1 else real_latest(db_, sid)
+
+    monkeypatch.setattr(rounds_svc, "latest_round", stale_latest)
+    r = client.post(f"{BASE}/investors", json={"name": "Racer"}, headers=founder)
+    assert r.status_code == 201, r.text
+    monkeypatch.setattr(rounds_svc, "latest_round", real_latest)
+    rounds = client.get(f"{BASE}/round", headers=founder).json()["data"]
+    assert rounds["name"] == "Seed"  # joined the winner's round, did not create a second
+    assert real_active is rounds_svc.active_round
+
+
+def test_lost_race_on_put_round_applies_on_top_of_the_winner(client, founder, monkeypatch):
+    from app.services.funding import rounds as rounds_svc
+
+    client.put(f"{BASE}/round", json={"name": "Seed"}, headers=founder)
+    real_active = rounds_svc.active_round
+    calls = {"n": 0}
+
+    def stale_active(db_, sid):
+        calls["n"] += 1
+        return None if calls["n"] == 1 else real_active(db_, sid)
+
+    monkeypatch.setattr(rounds_svc, "active_round", stale_active)
+    r = client.put(f"{BASE}/round", json={"target_minor": 500}, headers=founder)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["name"] == "Seed" and r.json()["data"]["target_minor"] == 500
+
+
+def _recorded(client, founder):
+    inv = _add(client, founder, committed_minor=2_000_000_00)
+    _move(client, founder, inv, "committed")
+    resp = client.post(f"{BASE}/investors/{inv['id']}/record-funding", json={}, headers=founder)
+    assert resp.status_code == 201
+    return inv
+
+
+def test_amount_is_frozen_once_recorded_in_finance(client, founder):
+    inv = _recorded(client, founder)
+    url = f"{BASE}/investors/{inv['id']}"
+    r = client.patch(url, json={"committed_minor": 3_000_000_00}, headers=founder)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "INVESTOR_RECORDED"
+    same = client.patch(url, json={"committed_minor": 2_000_000_00, "warm": True}, headers=founder)
+    assert same.status_code == 200  # an unchanged amount and other edits are fine
+    other = client.patch(url, json={"next_step": "Thank them"}, headers=founder)
+    assert other.status_code == 200
+
+
+def test_round_currency_is_frozen_once_money_is_recorded(client, founder):
+    _recorded(client, founder)
+    r = client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "ROUND_HAS_RECORDED_MONEY"
+    ok = client.put(f"{BASE}/round", json={"currency": "NGN", "target_minor": 1}, headers=founder)
+    assert ok.status_code == 200  # same currency is not a change
+
+
+def test_move_stage_takes_the_investor_row_lock(client, founder, monkeypatch):
+    from sqlalchemy.orm import Query
+
+    inv = _add(client, founder)
+    seen: list[bool] = []
+    real = Query.with_for_update
+
+    def spy(self, *a, **k):
+        seen.append(True)
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(Query, "with_for_update", spy)
+    resp = _move(client, founder, inv, "outreach")
+    assert resp.status_code == 200
     assert seen == [True]

@@ -200,6 +200,10 @@ def test_funding_pipeline_journey(base_url, make_verified_user, capture, mailbox
         assert r.json()["data"]["last_touch_at"]
         capture("funding_pipeline", "investor_detail", r)
 
+        r = c.put(f"{F}/round", headers=wh, json={"currency": "USD"})
+        assert r.status_code == 422
+        capture("funding_pipeline", "error_currency_locked", r)
+
         # 9. The founder confirms the money arrived: one Funding inflow, once.
         r = c.post(
             f"{F}/investors/{chidi['id']}/record-funding",
@@ -219,6 +223,16 @@ def test_funding_pipeline_journey(base_url, make_verified_user, capture, mailbox
         assert len(r.json()["data"]["transactions"]) == 1
         capture("funding_pipeline", "finance_after_confirm", r)
 
+        # Once money is recorded, the amount and the round currency are frozen (409).
+        r = c.patch(
+            f"{F}/investors/{chidi['id']}", headers=wh, json={"committed_minor": 2_500_000_000}
+        )
+        assert r.status_code == 409 and r.json()["error"]["code"] == "INVESTOR_RECORDED"
+        capture("funding_pipeline", "error_amount_frozen_after_record", r)
+        r = c.put(f"{F}/round", headers=wh, json={"currency": "USD"})
+        assert r.status_code == 409 and r.json()["error"]["code"] == "ROUND_HAS_RECORDED_MONEY"
+        capture("funding_pipeline", "error_currency_frozen_after_record", r)
+
         # 10. Validation and guard rails.
         r = c.post(f"{F}/investors", headers=wh, json={"name": ""})
         assert r.status_code == 422
@@ -230,9 +244,6 @@ def test_funding_pipeline_journey(base_url, make_verified_user, capture, mailbox
         )
         assert r.status_code == 422
         capture("funding_pipeline", "error_cheque_range", r)
-        r = c.put(f"{F}/round", headers=wh, json={"currency": "USD"})
-        assert r.status_code == 422
-        capture("funding_pipeline", "error_currency_locked", r)
         r = c.get(f"{F}/investors/00000000-0000-0000-0000-000000000000", headers=wh)
         assert r.status_code == 404
         capture("funding_pipeline", "error_not_found", r)

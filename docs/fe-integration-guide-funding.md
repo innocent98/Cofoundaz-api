@@ -123,7 +123,7 @@ capture `round_auto_created` (GET /round straight after the first investor)
 ```json
 {
   "data": {
-    "id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Funding round",
     "status": "planning",
     "currency": "NGN",
@@ -131,8 +131,8 @@ capture `round_auto_created` (GET /round straight after the first investor)
     "pre_money_minor": null,
     "opened_at": null,
     "closed_at": null,
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:55.835180+00:00"
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:33.129466+00:00"
   },
   "meta": null
 }
@@ -148,16 +148,16 @@ capture `round_set` (request: `{"name": "Seed", "status": "open", "target_minor"
 ```json
 {
   "data": {
-    "id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Seed",
     "status": "open",
     "currency": "NGN",
     "target_minor": 9000000000,
     "pre_money_minor": null,
-    "opened_at": "2026-11-05T11:12:55.870829+00:00",
+    "opened_at": "2026-11-05T13:48:33.190929+00:00",
     "closed_at": null,
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:55.867149+00:00"
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:33.180395+00:00"
   },
   "meta": null
 }
@@ -189,16 +189,16 @@ capture `round_closed` (request: `{"status": "closed"}`)
 ```json
 {
   "data": {
-    "id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Seed",
     "status": "closed",
     "currency": "NGN",
     "target_minor": 9000000000,
     "pre_money_minor": null,
-    "opened_at": "2026-11-05T11:12:55.870829+00:00",
-    "closed_at": "2026-11-05T11:12:58.009307+00:00",
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:58.006101+00:00"
+    "opened_at": "2026-11-05T13:48:33.190929+00:00",
+    "closed_at": "2026-11-05T13:48:35.527352+00:00",
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:35.514099+00:00"
   },
   "meta": null
 }
@@ -223,7 +223,7 @@ capture `round_usd_started` (request: `{"name": "Series A", "currency": "USD", "
 ```json
 {
   "data": {
-    "id": "8a377bd5-cba7-462c-a4d4-cbfeb7b61750",
+    "id": "e12c6f10-3b53-4127-9c27-14dbba6a25ee",
     "name": "Series A",
     "status": "planning",
     "currency": "USD",
@@ -231,8 +231,8 @@ capture `round_usd_started` (request: `{"name": "Series A", "currency": "USD", "
     "pre_money_minor": null,
     "opened_at": null,
     "closed_at": null,
-    "created_at": "2026-11-05T11:12:58.059942+00:00",
-    "updated_at": "2026-11-05T11:12:58.059942+00:00"
+    "created_at": "2026-11-05T13:48:35.581113+00:00",
+    "updated_at": "2026-11-05T13:48:35.581113+00:00"
   },
   "meta": null
 }
@@ -298,16 +298,16 @@ capture `overview_with_totals`
 {
   "data": {
     "round": {
-      "id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Seed",
       "status": "open",
       "currency": "NGN",
       "target_minor": 9000000000,
       "pre_money_minor": null,
-      "opened_at": "2026-11-05T11:12:55.870829+00:00",
+      "opened_at": "2026-11-05T13:48:33.190929+00:00",
       "closed_at": null,
-      "created_at": "2026-11-05T11:12:55.835180+00:00",
-      "updated_at": "2026-11-05T11:12:55.867149+00:00"
+      "created_at": "2026-11-05T13:48:33.129466+00:00",
+      "updated_at": "2026-11-05T13:48:33.180395+00:00"
     },
     "empty": false,
     "stages": [
@@ -397,11 +397,11 @@ capture `investors_board`
 ```json
 {
   "data": {
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "items": [
       {
-        "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Tolu Bello",
         "firm": "Lagos Angels",
         "type": "angel",
@@ -417,16 +417,16 @@ capture `investors_board`
         "thesis_notes": "Backs fintech founders in Lagos.",
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.835180+00:00",
-        "updated_at": "2026-11-05T11:12:55.956634+00:00"
+        "created_at": "2026-11-05T13:48:33.129466+00:00",
+        "updated_at": "2026-11-05T13:48:33.371666+00:00"
       },
       {
-        "id": "04888369-f5b7-4559-a61f-049022d07f3b",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "d61bd622-64c7-469e-abf2-8d99e6316a6a",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Bola Adeyemi",
         "firm": "Kora Ventures",
         "type": "vc",
@@ -442,16 +442,16 @@ capture `investors_board`
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.059754+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.477247+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.880198+00:00",
-        "updated_at": "2026-11-05T11:12:56.052384+00:00"
+        "created_at": "2026-11-05T13:48:33.234531+00:00",
+        "updated_at": "2026-11-05T13:48:33.461839+00:00"
       },
       {
-        "id": "0beec052-50ef-4e25-85c9-df9708f3b7fe",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Chidi Okafor",
         "firm": null,
         "type": "angel",
@@ -467,16 +467,16 @@ capture `investors_board`
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.090697+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.896242+00:00",
-        "updated_at": "2026-11-05T11:12:56.080480+00:00"
+        "created_at": "2026-11-05T13:48:33.301074+00:00",
+        "updated_at": "2026-11-05T13:48:33.500247+00:00"
       },
       {
-        "id": "38eb59c8-c391-4ca3-a53f-b2586a16ccc7",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "4f0ad609-61b6-4ef9-be55-a90ddf00fc6a",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Dami Lawal",
         "firm": "Sahara Syndicate",
         "type": "syndicate",
@@ -492,12 +492,12 @@ capture `investors_board`
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": "stage_mismatch",
-        "stage_entered_at": "2026-11-05T11:12:56.026716+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.443722+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.922532+00:00",
-        "updated_at": "2026-11-05T11:12:56.018079+00:00"
+        "created_at": "2026-11-05T13:48:33.343592+00:00",
+        "updated_at": "2026-11-05T13:48:33.429471+00:00"
       }
     ],
     "total": 4,
@@ -513,11 +513,11 @@ capture `investors_filtered`
 ```json
 {
   "data": {
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "items": [
       {
-        "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Tolu Bello",
         "firm": "Lagos Angels",
         "type": "angel",
@@ -533,12 +533,12 @@ capture `investors_filtered`
         "thesis_notes": "Backs fintech founders in Lagos.",
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.835180+00:00",
-        "updated_at": "2026-11-05T11:12:55.956634+00:00"
+        "created_at": "2026-11-05T13:48:33.129466+00:00",
+        "updated_at": "2026-11-05T13:48:33.371666+00:00"
       }
     ],
     "total": 1,
@@ -554,11 +554,11 @@ capture `investors_closed_round_history`
 ```json
 {
   "data": {
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "items": [
       {
-        "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Tolu Bello",
         "firm": "Lagos Angels",
         "type": "angel",
@@ -570,20 +570,20 @@ capture `investors_closed_round_history`
         "next_step": "Send the deck",
         "next_step_on": "2026-11-08",
         "next_step_overdue": false,
-        "last_touch_at": "2026-11-04T11:12:56.197208+00:00",
+        "last_touch_at": "2026-11-04T13:48:33.654042+00:00",
         "thesis_notes": "Backs fintech founders in Lagos and Accra.",
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.835180+00:00",
-        "updated_at": "2026-11-05T11:12:56.202434+00:00"
+        "created_at": "2026-11-05T13:48:33.129466+00:00",
+        "updated_at": "2026-11-05T13:48:33.657511+00:00"
       },
       {
-        "id": "04888369-f5b7-4559-a61f-049022d07f3b",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "d61bd622-64c7-469e-abf2-8d99e6316a6a",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Bola Adeyemi",
         "firm": "Kora Ventures",
         "type": "vc",
@@ -599,16 +599,16 @@ capture `investors_closed_round_history`
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.059754+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.477247+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.880198+00:00",
-        "updated_at": "2026-11-05T11:12:56.052384+00:00"
+        "created_at": "2026-11-05T13:48:33.234531+00:00",
+        "updated_at": "2026-11-05T13:48:33.461839+00:00"
       },
       {
-        "id": "0beec052-50ef-4e25-85c9-df9708f3b7fe",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Chidi Okafor",
         "firm": null,
         "type": "angel",
@@ -624,12 +624,12 @@ capture `investors_closed_round_history`
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.090697+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": true,
-        "created_at": "2026-11-05T11:12:55.896242+00:00",
-        "updated_at": "2026-11-05T11:12:56.242550+00:00"
+        "created_at": "2026-11-05T13:48:33.301074+00:00",
+        "updated_at": "2026-11-05T13:48:33.743818+00:00"
       }
     ],
     "total": 3,
@@ -666,8 +666,8 @@ capture `investor_created_first`
 ```json
 {
   "data": {
-    "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Tolu Bello",
     "firm": "Lagos Angels",
     "type": "angel",
@@ -683,12 +683,12 @@ capture `investor_created_first`
     "thesis_notes": "Backs fintech founders in Lagos.",
     "source": "manual",
     "passed_reason": null,
-    "stage_entered_at": "2026-11-05T11:12:55.842728+00:00",
+    "stage_entered_at": "2026-11-05T13:48:33.142920+00:00",
     "days_in_stage": 0,
     "position": 0,
     "recorded_in_finance": false,
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:55.835180+00:00"
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:33.129466+00:00"
   },
   "meta": null
 }
@@ -736,8 +736,8 @@ capture `investor_patched`
 ```json
 {
   "data": {
-    "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Tolu Bello",
     "firm": "Lagos Angels",
     "type": "angel",
@@ -753,12 +753,12 @@ capture `investor_patched`
     "thesis_notes": "Backs fintech founders in Lagos and Accra.",
     "source": "manual",
     "passed_reason": null,
-    "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+    "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
     "days_in_stage": 0,
     "position": 0,
     "recorded_in_finance": false,
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:56.185719+00:00"
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:33.638055+00:00"
   },
   "meta": null
 }
@@ -770,8 +770,8 @@ capture `investor_detail`
 ```json
 {
   "data": {
-    "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "name": "Tolu Bello",
     "firm": "Lagos Angels",
     "type": "angel",
@@ -783,16 +783,16 @@ capture `investor_detail`
     "next_step": "Send the deck",
     "next_step_on": "2026-11-08",
     "next_step_overdue": false,
-    "last_touch_at": "2026-11-04T11:12:56.197208+00:00",
+    "last_touch_at": "2026-11-04T13:48:33.654042+00:00",
     "thesis_notes": "Backs fintech founders in Lagos and Accra.",
     "source": "manual",
     "passed_reason": null,
-    "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+    "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
     "days_in_stage": 0,
     "position": 0,
     "recorded_in_finance": false,
-    "created_at": "2026-11-05T11:12:55.835180+00:00",
-    "updated_at": "2026-11-05T11:12:56.202434+00:00"
+    "created_at": "2026-11-05T13:48:33.129466+00:00",
+    "updated_at": "2026-11-05T13:48:33.657511+00:00"
   },
   "meta": null
 }
@@ -830,8 +830,8 @@ capture `stage_moved` (request: `{"stage": "outreach"}`)
 {
   "data": {
     "investor": {
-      "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Tolu Bello",
       "firm": "Lagos Angels",
       "type": "angel",
@@ -847,12 +847,12 @@ capture `stage_moved` (request: `{"stage": "outreach"}`)
       "thesis_notes": "Backs fintech founders in Lagos.",
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:55.835180+00:00",
-      "updated_at": "2026-11-05T11:12:55.956634+00:00"
+      "created_at": "2026-11-05T13:48:33.129466+00:00",
+      "updated_at": "2026-11-05T13:48:33.371666+00:00"
     },
     "record_in_finance": null
   },
@@ -883,8 +883,8 @@ capture `stage_passed` (request: `{"stage": "passed", "passed_reason": "stage_mi
 {
   "data": {
     "investor": {
-      "id": "38eb59c8-c391-4ca3-a53f-b2586a16ccc7",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "4f0ad609-61b6-4ef9-be55-a90ddf00fc6a",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Dami Lawal",
       "firm": "Sahara Syndicate",
       "type": "syndicate",
@@ -900,12 +900,12 @@ capture `stage_passed` (request: `{"stage": "passed", "passed_reason": "stage_mi
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": "stage_mismatch",
-      "stage_entered_at": "2026-11-05T11:12:56.026716+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.443722+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:55.922532+00:00",
-      "updated_at": "2026-11-05T11:12:56.018079+00:00"
+      "created_at": "2026-11-05T13:48:33.343592+00:00",
+      "updated_at": "2026-11-05T13:48:33.429471+00:00"
     },
     "record_in_finance": null
   },
@@ -922,8 +922,8 @@ capture `stage_reorder_same_column` (request: `{"stage": "outreach", "position":
 {
   "data": {
     "investor": {
-      "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Tolu Bello",
       "firm": "Lagos Angels",
       "type": "angel",
@@ -939,12 +939,12 @@ capture `stage_reorder_same_column` (request: `{"stage": "outreach", "position":
       "thesis_notes": "Backs fintech founders in Lagos.",
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:55.835180+00:00",
-      "updated_at": "2026-11-05T11:12:55.956634+00:00"
+      "created_at": "2026-11-05T13:48:33.129466+00:00",
+      "updated_at": "2026-11-05T13:48:33.371666+00:00"
     },
     "record_in_finance": null
   },
@@ -965,8 +965,8 @@ capture `stage_committed_with_offer` (request: `{"stage": "committed"}`)
 {
   "data": {
     "investor": {
-      "id": "0beec052-50ef-4e25-85c9-df9708f3b7fe",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Chidi Okafor",
       "firm": null,
       "type": "angel",
@@ -982,12 +982,12 @@ capture `stage_committed_with_offer` (request: `{"stage": "committed"}`)
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:56.090697+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:55.896242+00:00",
-      "updated_at": "2026-11-05T11:12:56.080480+00:00"
+      "created_at": "2026-11-05T13:48:33.301074+00:00",
+      "updated_at": "2026-11-05T13:48:33.500247+00:00"
     },
     "record_in_finance": {
       "amount_minor": 2000000000,
@@ -1026,8 +1026,8 @@ capture `record_funding` (request: `{"received_on": "<today>"}`)
 {
   "data": {
     "investor": {
-      "id": "0beec052-50ef-4e25-85c9-df9708f3b7fe",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Chidi Okafor",
       "firm": null,
       "type": "angel",
@@ -1043,15 +1043,15 @@ capture `record_funding` (request: `{"received_on": "<today>"}`)
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:56.090697+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": true,
-      "created_at": "2026-11-05T11:12:55.896242+00:00",
-      "updated_at": "2026-11-05T11:12:56.242550+00:00"
+      "created_at": "2026-11-05T13:48:33.301074+00:00",
+      "updated_at": "2026-11-05T13:48:33.743818+00:00"
     },
     "transaction": {
-      "id": "2ea01804-9fdc-4853-ae8d-e8317fa04c5b",
+      "id": "bc299daf-0652-4213-bdca-38b31f0cbded",
       "date": "2026-11-05",
       "description": "Funding from Chidi Okafor",
       "category": "Funding",
@@ -1059,8 +1059,8 @@ capture `record_funding` (request: `{"received_on": "<today>"}`)
       "currency": "NGN",
       "direction": "in",
       "source": "manual",
-      "created_at": "2026-11-05T11:12:56.242550Z",
-      "updated_at": "2026-11-05T11:12:56.242550Z"
+      "created_at": "2026-11-05T13:48:33.743818Z",
+      "updated_at": "2026-11-05T13:48:33.743818Z"
     }
   },
   "meta": null
@@ -1072,7 +1072,7 @@ capture `finance_after_confirm`
   "data": {
     "transactions": [
       {
-        "id": "2ea01804-9fdc-4853-ae8d-e8317fa04c5b",
+        "id": "bc299daf-0652-4213-bdca-38b31f0cbded",
         "date": "2026-11-05",
         "description": "Funding from Chidi Okafor",
         "category": "Funding",
@@ -1080,8 +1080,8 @@ capture `finance_after_confirm`
         "currency": "NGN",
         "direction": "in",
         "source": "manual",
-        "created_at": "2026-11-05T11:12:56.242550Z",
-        "updated_at": "2026-11-05T11:12:56.242550Z"
+        "created_at": "2026-11-05T13:48:33.743818Z",
+        "updated_at": "2026-11-05T13:48:33.743818Z"
       }
     ]
   },
@@ -1116,6 +1116,35 @@ capture `record_funding_not_committed`
 ```
 Once recorded, `record_in_finance` is `null` on later moves (no second offer).
 
+### After the money is recorded, the amount and currency are frozen
+
+So the pipeline and the ledger can't disagree, once an investor is `recorded_in_finance`:
+changing that investor's `committed_minor` is a **409 `INVESTOR_RECORDED`**, and changing the round's
+currency is a **409 `ROUND_HAS_RECORDED_MONEY`** (both verified live). Re-sending the same amount, or
+editing any other field, still works. Disable the amount input on a recorded card with a note
+"Recorded in Finance"; if the number was wrong, the fix is in Finance.
+
+capture `error_amount_frozen_after_record` (request: `{"committed_minor": 2500000000}`)
+```json
+{
+  "error": {
+    "code": "INVESTOR_RECORDED",
+    "message": "This money is already recorded in Finance, so the amount can't change here.",
+    "field_errors": []
+  }
+}
+```
+capture `error_currency_frozen_after_record` (request: `{"currency": "USD"}`)
+```json
+{
+  "error": {
+    "code": "ROUND_HAS_RECORDED_MONEY",
+    "message": "Money from this round is already recorded in Finance, so its currency is fixed.",
+    "field_errors": []
+  }
+}
+```
+
 ### USD rounds: Finance is naira only
 
 Finance records NGN only. For a USD round the offer says so, and `amount_minor` (naira, kobo) is
@@ -1126,8 +1155,8 @@ capture `usd_stage_committed_offer`
 {
   "data": {
     "investor": {
-      "id": "63b81fb6-6275-4661-bc0e-243dcea670f0",
-      "round_id": "8a377bd5-cba7-462c-a4d4-cbfeb7b61750",
+      "id": "40f152c2-5c97-4b59-b65b-f025d9753c35",
+      "round_id": "e12c6f10-3b53-4127-9c27-14dbba6a25ee",
       "name": "Emeka Obi",
       "firm": "Atlas Capital",
       "type": "vc",
@@ -1143,12 +1172,12 @@ capture `usd_stage_committed_offer`
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:58.112925+00:00",
+      "stage_entered_at": "2026-11-05T13:48:35.725274+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:58.077789+00:00",
-      "updated_at": "2026-11-05T11:12:58.105386+00:00"
+      "created_at": "2026-11-05T13:48:35.635349+00:00",
+      "updated_at": "2026-11-05T13:48:35.685026+00:00"
     },
     "record_in_finance": {
       "amount_minor": null,
@@ -1180,8 +1209,8 @@ capture `usd_record_funding` (request: `{"amount_minor": 75000000}`)
 {
   "data": {
     "investor": {
-      "id": "63b81fb6-6275-4661-bc0e-243dcea670f0",
-      "round_id": "8a377bd5-cba7-462c-a4d4-cbfeb7b61750",
+      "id": "40f152c2-5c97-4b59-b65b-f025d9753c35",
+      "round_id": "e12c6f10-3b53-4127-9c27-14dbba6a25ee",
       "name": "Emeka Obi",
       "firm": "Atlas Capital",
       "type": "vc",
@@ -1197,15 +1226,15 @@ capture `usd_record_funding` (request: `{"amount_minor": 75000000}`)
       "thesis_notes": null,
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:58.112925+00:00",
+      "stage_entered_at": "2026-11-05T13:48:35.725274+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": true,
-      "created_at": "2026-11-05T11:12:58.077789+00:00",
-      "updated_at": "2026-11-05T11:12:58.158608+00:00"
+      "created_at": "2026-11-05T13:48:35.635349+00:00",
+      "updated_at": "2026-11-05T13:48:35.850435+00:00"
     },
     "transaction": {
-      "id": "d3b4efcd-5a97-4504-804a-302472288de5",
+      "id": "6be6e056-043c-436c-a666-82c63349abb6",
       "date": "2026-11-05",
       "description": "Funding from Emeka Obi (Atlas Capital)",
       "category": "Funding",
@@ -1213,8 +1242,8 @@ capture `usd_record_funding` (request: `{"amount_minor": 75000000}`)
       "currency": "NGN",
       "direction": "in",
       "source": "manual",
-      "created_at": "2026-11-05T11:12:58.158608Z",
-      "updated_at": "2026-11-05T11:12:58.158608Z"
+      "created_at": "2026-11-05T13:48:35.850435Z",
+      "updated_at": "2026-11-05T13:48:35.850435Z"
     }
   },
   "meta": null
@@ -1243,14 +1272,14 @@ capture `event_created` (request: `{"kind": "call", "body": "...", "occurred_at"
 ```json
 {
   "data": {
-    "id": "c3e71006-e273-4c1b-b1da-98094ca55756",
-    "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
+    "id": "0fdcafbc-18ac-44e8-bc08-8e6bf77c5895",
+    "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
     "kind": "call",
     "body": "30 minute intro. Wants the cohort numbers.",
     "from_stage": null,
     "to_stage": null,
-    "occurred_at": "2026-11-04T11:12:56.197208+00:00",
-    "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
+    "occurred_at": "2026-11-04T13:48:33.654042+00:00",
+    "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
   },
   "meta": null
 }
@@ -1261,34 +1290,34 @@ capture `events_list`
   "data": {
     "items": [
       {
-        "id": "e742f57c-c7be-445f-aaa7-63e3c059a908",
-        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
+        "id": "577f87c4-3728-4130-a6a4-587802b58818",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
         "kind": "stage_change",
         "body": null,
         "from_stage": "research",
         "to_stage": "outreach",
-        "occurred_at": "2026-11-05T11:12:55.963719+00:00",
-        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
+        "occurred_at": "2026-11-05T13:48:33.388328+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
       },
       {
-        "id": "74672526-7bb9-417b-8226-cb313a3b0fc3",
-        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
+        "id": "4c487ee6-bc81-43c4-9313-bbd76f7096c3",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
         "kind": "stage_change",
         "body": null,
         "from_stage": null,
         "to_stage": "research",
-        "occurred_at": "2026-11-05T11:12:55.842728+00:00",
-        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
+        "occurred_at": "2026-11-05T13:48:33.142920+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
       },
       {
-        "id": "c3e71006-e273-4c1b-b1da-98094ca55756",
-        "investor_id": "931b6f0d-818e-48bb-a649-878d897d446d",
+        "id": "0fdcafbc-18ac-44e8-bc08-8e6bf77c5895",
+        "investor_id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
         "kind": "call",
         "body": "30 minute intro. Wants the cohort numbers.",
         "from_stage": null,
         "to_stage": null,
-        "occurred_at": "2026-11-04T11:12:56.197208+00:00",
-        "actor_id": "d050a1ee-07a2-45cc-8bd2-0e0e097a3aba"
+        "occurred_at": "2026-11-04T13:48:33.654042+00:00",
+        "actor_id": "f25734ab-8edb-462a-9b47-5cb57d5c4184"
       }
     ],
     "total": 3,
@@ -1342,7 +1371,7 @@ asserted in `test_committed_change_notifies_founder_and_team_minus_actor_only`.
 ## 12. UX consequences the FE must surface
 
 1. Money is minor units in the **round's** currency; show the right symbol and never mix currencies.
-2. The currency cannot change once amounts exist: say why when the control is refused.
+2. The currency cannot change once amounts exist (422), nor once money is recorded (409): say why when the control is refused. A recorded investor's amount is read-only.
 3. After closing a round, the board is read-only history until a new round is started explicitly.
 4. Passed always needs a reason; Passed investors never count toward the bar.
 5. The Finance prompt is a prompt: nothing is written until the founder confirms the money arrived.
@@ -1368,6 +1397,8 @@ asserted in `test_committed_change_notifies_founder_and_team_minus_actor_only`.
 | Offer only, nothing written to Finance until confirm | verified live |
 | `record-funding` NGN, 409 repeat, 409 not committed | verified live |
 | `record-funding` on a USD round (naira amount) | verified live |
+| Amount and currency frozen after recording (409s) | verified live |
+| Two requests racing to create the first round (no 500; the loser joins the winner's round) | **not live** (needs true concurrency); unit tested by simulating the lost race |
 | Ledger 32-bit cap message (`fits_ledger: false`) | **not live**; unit tested |
 | Suggested target (18 months of net burn) | **not live**; unit tested |
 | `next_step_overdue`, `overdue_next_steps` | **not live**; unit tested |

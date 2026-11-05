@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -47,13 +48,23 @@ def round_for_new_investor(db: Session, startup_id: uuid.UUID) -> FundingRound:
     explicitly (PUT /round), never silently."""
     current = latest_round(db, startup_id)
     if current is None:
-        return _create(db, startup_id, RoundUpdate())
+        return _create(db, startup_id, RoundUpdate()) or _lost_race(db, startup_id)
     if current.status == FundingRoundStatus.closed.value:
         raise AppError("ROUND_CLOSED", "Your last round is closed. Start a new round first.", 409)
     return current
 
 
-def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound:
+def _lost_race(db: Session, startup_id: uuid.UUID) -> FundingRound:
+    """Another request created the unfinished round between our read and our insert."""
+    row = active_round(db, startup_id)
+    if row is None:  # closed again in the meantime: ask the caller to retry
+        raise AppError("ROUND_CONFLICT", "The round just changed. Try again.", 409)
+    return row
+
+
+def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound | None:
+    """Insert in a savepoint. None means the one-unfinished-round index fired (a concurrent
+    create won); the caller re-reads instead of surfacing a 500."""
     given = data.model_fields_set
     status = data.status.value if data.status else FundingRoundStatus.planning.value
     if status == FundingRoundStatus.closed.value:
@@ -67,17 +78,34 @@ def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRou
         pre_money_minor=data.pre_money_minor if "pre_money_minor" in given else None,
         opened_at=datetime.now(UTC) if status == FundingRoundStatus.open.value else None,
     )
-    db.add(row)
-    db.flush()
+    try:
+        with db.begin_nested():
+            db.add(row)
+    except IntegrityError:
+        return None
     return row
 
 
 def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound:
     row = active_round(db, startup_id)
     if row is None:
-        return _create(db, startup_id, data)
+        row = _create(db, startup_id, data)
+        if row is not None:
+            return row
+        row = _lost_race(db, startup_id)  # then apply this request on top of the winner
     given = data.model_fields_set
     if data.currency is not None and data.currency.value != row.currency:
+        recorded = (
+            db.query(func.count(Investor.id))
+            .filter(Investor.round_id == row.id, Investor.recorded_transaction_id.isnot(None))
+            .scalar()
+        )
+        if recorded:
+            raise AppError(
+                "ROUND_HAS_RECORDED_MONEY",
+                "Money from this round is already recorded in Finance, so its currency is fixed.",
+                409,
+            )
         has_money = (
             db.query(func.count(Investor.id))
             .filter(

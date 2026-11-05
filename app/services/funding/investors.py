@@ -40,6 +40,19 @@ def _iso(v: datetime | date | None) -> str | None:
     return v.isoformat() if v else None
 
 
+def get_investor_locked(db: Session, startup_id: uuid.UUID, investor_id: uuid.UUID) -> Investor:
+    """The investor with a row lock held to the end of the transaction, for any write that decides
+    from what it reads (stage moves, record-funding)."""
+    get_investor(db, startup_id, investor_id)  # 404 for another workspace's id
+    return (
+        db.query(Investor)
+        .filter_by(id=investor_id, startup_id=startup_id)
+        .with_for_update()
+        .populate_existing()
+        .one()
+    )
+
+
 # ---- reads ----
 def get_investor(db: Session, startup_id: uuid.UUID, investor_id: uuid.UUID) -> Investor:
     row = db.query(Investor).filter_by(id=investor_id, startup_id=startup_id).one_or_none()
@@ -272,6 +285,16 @@ def update_investor(
     assert rnd is not None  # noqa: S101 - FK guarantees it
     before = _committed_now(db, rnd)
     given = data.model_fields_set
+    if (
+        row.recorded_transaction_id is not None
+        and "committed_minor" in given
+        and data.committed_minor != row.committed_minor
+    ):
+        raise AppError(
+            "INVESTOR_RECORDED",
+            "This money is already recorded in Finance, so the amount can't change here.",
+            409,
+        )
     # Validate the merged range before touching the row, so a refused edit leaves nothing dirty.
     lo = data.check_min_minor if "check_min_minor" in given else row.check_min_minor
     hi = data.check_max_minor if "check_max_minor" in given else row.check_max_minor
@@ -312,7 +335,7 @@ def move_stage(
     investor_id: uuid.UUID,
     data: StageMove,
 ) -> tuple[Investor, dict[str, Any] | None]:
-    row = get_investor(db, startup_id, investor_id)
+    row = get_investor_locked(db, startup_id, investor_id)
     rnd = db.get(FundingRound, row.round_id)
     assert rnd is not None  # noqa: S101
     target = data.stage.value
@@ -448,16 +471,9 @@ def record_funding(
 ) -> tuple[Investor, Any]:
     """Write one Funding inflow (cash, never revenue, D-FIN-11) through the Finance ledger service,
     only on the founder's explicit confirmation."""
-    get_investor(db, startup_id, investor_id)  # 404 for another workspace's id
     # Row lock: the "already recorded?" read decides a ledger write, so two concurrent confirms
     # must queue here and the second one sees the first one's transaction id.
-    row = (
-        db.query(Investor)
-        .filter_by(id=investor_id, startup_id=startup_id)
-        .with_for_update()
-        .populate_existing()
-        .one()
-    )
+    row = get_investor_locked(db, startup_id, investor_id)
     rnd = db.get(FundingRound, row.round_id)
     assert rnd is not None  # noqa: S101
     if row.stage != InvestorStage.committed.value or not row.committed_minor:

@@ -1,10 +1,10 @@
 {
   "data": {
-    "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+    "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
     "items": [
       {
-        "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Tolu Bello",
         "firm": "Lagos Angels",
         "type": "angel",
@@ -20,16 +20,16 @@
         "thesis_notes": "Backs fintech founders in Lagos.",
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.835180+00:00",
-        "updated_at": "2026-11-05T11:12:55.956634+00:00"
+        "created_at": "2026-11-05T13:48:33.129466+00:00",
+        "updated_at": "2026-11-05T13:48:33.371666+00:00"
       },
       {
-        "id": "04888369-f5b7-4559-a61f-049022d07f3b",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "d61bd622-64c7-469e-abf2-8d99e6316a6a",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Bola Adeyemi",
         "firm": "Kora Ventures",
         "type": "vc",
@@ -45,16 +45,16 @@
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.059754+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.477247+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.880198+00:00",
-        "updated_at": "2026-11-05T11:12:56.052384+00:00"
+        "created_at": "2026-11-05T13:48:33.234531+00:00",
+        "updated_at": "2026-11-05T13:48:33.461839+00:00"
       },
       {
-        "id": "0beec052-50ef-4e25-85c9-df9708f3b7fe",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "925e6ff2-61a1-4e3c-a68a-d1949ece7f22",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Chidi Okafor",
         "firm": null,
         "type": "angel",
@@ -70,16 +70,16 @@
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": null,
-        "stage_entered_at": "2026-11-05T11:12:56.090697+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.511554+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.896242+00:00",
-        "updated_at": "2026-11-05T11:12:56.080480+00:00"
+        "created_at": "2026-11-05T13:48:33.301074+00:00",
+        "updated_at": "2026-11-05T13:48:33.500247+00:00"
       },
       {
-        "id": "38eb59c8-c391-4ca3-a53f-b2586a16ccc7",
-        "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+        "id": "4f0ad609-61b6-4ef9-be55-a90ddf00fc6a",
+        "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
         "name": "Dami Lawal",
         "firm": "Sahara Syndicate",
         "type": "syndicate",
@@ -95,12 +95,12 @@
         "thesis_notes": null,
         "source": "manual",
         "passed_reason": "stage_mismatch",
-        "stage_entered_at": "2026-11-05T11:12:56.026716+00:00",
+        "stage_entered_at": "2026-11-05T13:48:33.443722+00:00",
         "days_in_stage": 0,
         "position": 0,
         "recorded_in_finance": false,
-        "created_at": "2026-11-05T11:12:55.922532+00:00",
-        "updated_at": "2026-11-05T11:12:56.018079+00:00"
+        "created_at": "2026-11-05T13:48:33.343592+00:00",
+        "updated_at": "2026-11-05T13:48:33.429471+00:00"
       }
     ],
     "total": 4,

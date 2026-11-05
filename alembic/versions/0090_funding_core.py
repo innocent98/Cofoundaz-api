@@ -143,6 +143,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_investors_startup_round", "investors", ["startup_id", "round_id"])
     op.create_index("ix_investors_round_stage", "investors", ["round_id", "stage", "position"])
+    op.create_index("ix_investors_recorded_transaction", "investors", ["recorded_transaction_id"])
 
     op.create_table(
         "investor_events",

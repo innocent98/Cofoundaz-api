@@ -16,6 +16,8 @@
 | Finance hand-off (L3) | Moving to Committed with an amount returns an **offer** only. `POST /investors/{id}/record-funding` (founder confirms the money arrived) writes one `Funding` inflow through `finance.service.create_transaction` and the same runway re-evaluation Finance's own route runs. `recorded_transaction_id` makes it once-only (409). A USD round needs a naira `amount_minor` because Finance is NGN only. |
 | Roles (D-FUND-5) | `FUNDING_ROLES` = founder + team member via `require_role`; everyone else 403, other workspace's ids 404. Plan gate: `assert_feature("funding")` after the role check (L10), dark until `PLAN_ENFORCEMENT`. |
 | Notification (L6) | `funding.round.committed_changed`, fired only when the Committed total changes. Audience `FUNDING_ROLES` minus the actor; category Finance via the `funding.` prefix (no new Preferences row until the Funding FE exists). |
+| Concurrency (review fixes) | `record-funding` and `move_stage` take a row lock on the investor (`get_investor_locked`). A concurrent first-investor create or `PUT /round` that trips `uq_funding_round_one_active` is caught in a savepoint and re-read (joins the winner's round) instead of a 500. |
+| Frozen once recorded | After `recorded_transaction_id` is set, changing that investor's `committed_minor` is `409 INVESTOR_RECORDED` and changing the round currency is `409 ROUND_HAS_RECORDED_MONEY`, so the ledger and pipeline can't disagree. `investors.recorded_transaction_id` is indexed (edited into `0090` in place, unmerged). |
 | Not logged to activity | Investor names are deliberately kept out of the workspace activity feed (the open activity-feed role leak). |
 
 **What's involved**
@@ -34,6 +36,7 @@
 
 **Follow-ups**
 
+- A real two-session concurrency test for the record lock and the round race (two DB connections, one blocked on the other's `FOR UPDATE`); today the lock is asserted by a spy and the race by simulating a stale read.
 - **Finance ledger cap:** `transactions.amount_minor` is a 32-bit integer, so one Finance entry is at most ₦21,474,836.47. A ₦90M raise cannot be recorded in one entry; `record-funding` refuses clearly (`fits_ledger: false`) and allows one smaller part. The proper fix is a Finance change (BIGINT + schema limit); Adebayo's call.
 - Investor directory (D-FUND-1 b) follows once Adebayo approves the list; `investors.source` and `directory_id` are ready for it.
 - "Prep me for this meeting", calendar link on the Meeting stage, readiness banner and analytics are slice F.

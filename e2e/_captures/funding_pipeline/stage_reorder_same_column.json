@@ -1,8 +1,8 @@
 {
   "data": {
     "investor": {
-      "id": "931b6f0d-818e-48bb-a649-878d897d446d",
-      "round_id": "fc0acb4b-5ad9-4c21-aa3a-7844d0de4a66",
+      "id": "09b70b75-0e38-47f0-8584-a86e9ad4061f",
+      "round_id": "cce45c65-f17e-4530-b999-da4d670cb42c",
       "name": "Tolu Bello",
       "firm": "Lagos Angels",
       "type": "angel",
@@ -18,12 +18,12 @@
       "thesis_notes": "Backs fintech founders in Lagos.",
       "source": "manual",
       "passed_reason": null,
-      "stage_entered_at": "2026-11-05T11:12:55.963719+00:00",
+      "stage_entered_at": "2026-11-05T13:48:33.388328+00:00",
       "days_in_stage": 0,
       "position": 0,
       "recorded_in_finance": false,
-      "created_at": "2026-11-05T11:12:55.835180+00:00",
-      "updated_at": "2026-11-05T11:12:55.956634+00:00"
+      "created_at": "2026-11-05T13:48:33.129466+00:00",
+      "updated_at": "2026-11-05T13:48:33.371666+00:00"
     },
     "record_in_finance": null
   },
