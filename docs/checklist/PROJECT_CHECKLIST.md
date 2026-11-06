@@ -4008,6 +4008,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Two Opus reviews of the money path, all findings fixed; unit + API + migration + live e2e; live-captured FE guide
   - [x] Slice B lows: getattr-in-assert hoisted, stale `review` flag dropped
   - [x] Final Opus review (1 high, 2 medium, 4 low) fixed 2026-11-06: payment mismatch flagged + staff attention queue, retryable webhook (409 / non-2xx), verify-before-expire, signed refund settle, saved-card status handling, second live-charging gate, replay re-check after locks, audit `startup_id`, honest refund email copy; awaiting Lead 24's check of the fix diff and the 0099 re-chain
+  - [x] Round three (Opus fix-check, 2026-11-07): N3 verify failures after a charge → `PAYMENT_UNCONFIRMED`; N1 mismatch closes the checkout (`payment_review`); N2/N4/N6 bounded, per-hold, failure-isolated `expire_unpaid`; L5 consent `ON CONFLICT`; N5 webhook dedupe on both refund ids; SOP contradiction fixed. N2's real Paystack status code is unconfirmed
 - [ ] Slice D: fulfilment and messaging (threads, briefs and Documents grants, deliveries, Calendar event + ICS, auto-release timers, notifications)
 - [ ] Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task
 - [ ] Slice F: reviews, matches, tools and purchases

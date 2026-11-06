@@ -180,6 +180,29 @@ def flag_attention(
     )
 
 
+def close_for_payment_review(db: Session, booking: MarketplaceBooking) -> None:
+    """Booking must be locked. `expired` + `closed_reason: payment_review` (no new enum value)."""
+    booking.status = BookingStatus.expired
+    booking.closed_reason = "payment_review"
+    booking.slot_hold_expires_at = None
+    write_audit(
+        db,
+        "marketplace.booking.expired",
+        startup_id=booking.startup_id,
+        entity_type="marketplace_booking",
+        entity_id=booking.id,
+        details={"why": "payment_review"},
+    )
+    booker = db.get(User, booking.booked_by)
+    if booker is not None:
+        outbox.queue(
+            db,
+            emails.payment_problem_email(
+                booker.email, title=booking.title_snap, kind="payment_review"
+            ),
+        )
+
+
 def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
     """Apply a payment Paystack has CONFIRMED for `reference` (`tx` is the answer of Paystack's
     verify call, never the webhook body). Idempotent: a second call finds the order paid and does
@@ -215,6 +238,10 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
         # different currency, a tampered request). We can't book it against this order, and we
         # must not lose it: flag the order for staff with what Paystack says it took.
         flag_attention(db, order, booking, "payment_mismatch", tx.get("amount"))
+        if booking.status == BookingStatus.pending_payment:
+            # Terminal for the checkout: release the slot, stop the timer re-verifying it every
+            # minute, and tell the founder. The order stays pending and flagged for staff.
+            close_for_payment_review(db, booking)
         return "payment_mismatch"
     t = now()
     order.status = OrderStatus.paid
@@ -487,12 +514,26 @@ def _refund_retry(
     return outcome
 
 
-def settle_from_webhook(db: Session, order_id: uuid.UUID, amount: int, refund_ref: str) -> str:
+def settle_from_webhook(
+    db: Session,
+    order_id: uuid.UUID,
+    amount: int,
+    refund_ref: str,
+    other_ref: str | None = None,
+) -> str:
     """Paystack's signed `refund.processed` says it refunded `amount` on this transaction. The
     only case that needs it is a send we never saw answered (the in-flight marker is set): then it
     books exactly that amount, keyed by Paystack's `refund_reference` (idempotent), up to what is
     due. With no unanswered send the refund is already on our books and it is only noted, so a
-    late webhook for an earlier refund can never be booked as a later one."""
+    late webhook for an earlier refund can never be booked as a later one.
+
+    A refund we sent and saw answered is on the ledger under Paystack's `id` or its
+    `refund_reference` (whichever the answer carried), so the event is matched against BOTH. The
+    one residual risk: an earlier refund that our books only learned of through the list
+    reconcile (ledger key `reconcile:N`, no Paystack reference stored), whose late
+    `refund.processed` arrives while a LATER send of the same or a larger amount is unanswered.
+    It would be booked as that later send; if the later send then failed, `refunded_minor` would
+    over-state what was refunded until staff see `refund.failed`/`refund_failed_at`."""
     order = lock_order(db, order_id)
     booking = db.get(MarketplaceBooking, order.booking_id)
     if (
@@ -502,9 +543,14 @@ def settle_from_webhook(db: Session, order_id: uuid.UUID, amount: int, refund_re
     ):
         return "refund_noted"
     key = f"refund:{refund_ref}"[:80]
+    known = [key] + ([f"refund:{other_ref}"[:80]] if other_ref and other_ref != refund_ref else [])
     if (
         db.query(MarketplaceLedgerEntry.id)
-        .filter_by(order_id=order.id, kind=LedgerKind.refund, external_ref=key)
+        .filter(
+            MarketplaceLedgerEntry.order_id == order.id,
+            MarketplaceLedgerEntry.kind == LedgerKind.refund,
+            MarketplaceLedgerEntry.external_ref.in_(known),
+        )
         .first()
         is not None
     ):

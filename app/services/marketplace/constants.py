@@ -60,6 +60,10 @@ BRIEF_MAX = 4000
 MARKETPLACE_TERMS_VERSION: Final = "draft-2026-11"  # counsel's founder terms replace this (§1.3.9)
 CONSENT_KIND_TERMS: Final = "marketplace_terms"
 TIMER_BATCH = 200
+# A hold Paystack can't answer for (outage, or an unexpected refusal) is retried every minute for
+# this long past its expiry, then closed so it can never starve the rest of the batch. Closing is
+# safe: a payment that turns up later still revives or refunds the booking (apply_payment).
+UNVERIFIED_HOLD_GRACE = timedelta(hours=1)
 REFUND_RETRY_BACKOFF_MIN: Final = (1, 5, 30, 120, 720)  # minutes, by attempt number
 MAX_REFUND_ATTEMPTS: Final = 12
 REFUND_INFLIGHT_WAIT = timedelta(hours=2)  # an unconfirmed refund isn't re-sent before this

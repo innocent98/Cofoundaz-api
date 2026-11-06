@@ -14,6 +14,7 @@ from datetime import datetime
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.core.logger import log
 from app.db.models.enums import BookingStatus, OrderStatus
 from app.db.models.marketplace import MarketplaceBooking, MarketplaceOrder, MarketplaceProvider
@@ -22,60 +23,95 @@ from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.billing import paystack
 from app.services.marketplace import emails, orders, outbox
-from app.services.marketplace.constants import MAX_REFUND_ATTEMPTS, TIMER_BATCH
+from app.services.marketplace.constants import (
+    MAX_REFUND_ATTEMPTS,
+    TIMER_BATCH,
+    UNVERIFIED_HOLD_GRACE,
+)
+
+
+def _expire_hold(db: Session, booking_id: uuid.UUID, *, unverified: bool) -> int:
+    """Close one lapsed hold (booking locked first, then order). Returns 1 if it expired."""
+    b = (
+        db.query(MarketplaceBooking)
+        .filter(MarketplaceBooking.id == booking_id)
+        .with_for_update(skip_locked=True)
+        .first()
+    )
+    if b is None or b.status != BookingStatus.pending_payment:
+        return 0
+    order = orders.lock_order(db, db.query(MarketplaceOrder.id).filter_by(booking_id=b.id).scalar())
+    if order.status == OrderStatus.pending:
+        order.status = OrderStatus.failed
+    b.status = BookingStatus.expired
+    b.closed_reason = "payment_not_completed"
+    write_audit(
+        db,
+        "marketplace.booking.expired",
+        startup_id=b.startup_id,
+        entity_type="marketplace_booking",
+        entity_id=b.id,
+        details={"why": "payment_not_completed", "verified": not unverified},
+    )
+    if unverified:
+        log.warning(f"marketplace timers: closed hold {b.id} Paystack could not answer for")
+        booker = db.get(User, b.booked_by)
+        if booker is not None:
+            outbox.queue(
+                db,
+                emails.payment_problem_email(booker.email, title=b.title_snap, kind="unverified"),
+            )
+    return 1
 
 
 def expire_unpaid(db: Session, t: datetime) -> int:
     """Expire lapsed checkout holds, but never before asking Paystack: a charge that actually
-    went through (the founder closed the tab, the webhook was lost) is applied, not failed. If
-    Paystack can't be asked, the hold is left for the next minute."""
+    went through (the founder closed the tab, the webhook was lost) is applied, not failed.
+
+    Each hold is its own transaction (committed, then its emails sent) and its own failure domain:
+    no expert lock is held across candidates or across the network call, and one bad hold can't
+    abort the tick. A hold Paystack can't answer for is retried every minute until
+    UNVERIFIED_HOLD_GRACE past its expiry, then closed (a payment that turns up later still
+    revives or refunds it). Orders flagged for staff are skipped."""
     candidates = [
-        (bid, ref)
-        for bid, ref in db.query(MarketplaceBooking.id, MarketplaceOrder.paystack_reference)
+        (bid, ref, exp)
+        for bid, ref, exp in db.query(
+            MarketplaceBooking.id,
+            MarketplaceOrder.paystack_reference,
+            MarketplaceBooking.slot_hold_expires_at,
+        )
         .join(MarketplaceOrder, MarketplaceOrder.booking_id == MarketplaceBooking.id)
         .filter(
             MarketplaceBooking.status == BookingStatus.pending_payment,
             MarketplaceBooking.slot_hold_expires_at < t,
+            MarketplaceOrder.attention_reason.is_(None),
         )
         .order_by(MarketplaceBooking.slot_hold_expires_at)
         .limit(TIMER_BATCH)
         .all()
     ]
+    db.commit()  # the read above is done; hold nothing while we talk to Paystack
     expired = 0
-    for booking_id, reference in candidates:
+    for booking_id, reference, hold_expired_at in candidates:
         try:
-            tx = paystack.verify(reference)
-        except paystack.PaystackNotFound:
-            tx = None  # Paystack never saw this payment: it really is unpaid
-        except (paystack.PaystackUnavailable, paystack.PaystackRejected):
-            continue  # can't tell: leave the hold, try again next minute
-        if tx is not None and tx.get("status") == "success":
-            orders.apply_payment(db, reference, tx)  # money arrived: revive or refund, never lose
-            continue
-        b = (
-            db.query(MarketplaceBooking)
-            .filter(MarketplaceBooking.id == booking_id)
-            .with_for_update(skip_locked=True)
-            .first()
-        )
-        if b is None or b.status != BookingStatus.pending_payment:
-            continue
-        order = orders.lock_order(
-            db, db.query(MarketplaceOrder.id).filter_by(booking_id=b.id).scalar()
-        )
-        if order.status == OrderStatus.pending:
-            order.status = OrderStatus.failed
-        b.status = BookingStatus.expired
-        b.closed_reason = "payment_not_completed"
-        write_audit(
-            db,
-            "marketplace.booking.expired",
-            startup_id=b.startup_id,
-            entity_type="marketplace_booking",
-            entity_id=b.id,
-            details={"why": "payment_not_completed"},
-        )
-        expired += 1
+            unverified = False
+            try:
+                tx = paystack.verify(reference)
+            except paystack.PaystackNotFound:
+                tx = None  # Paystack never saw this payment: it really is unpaid
+            except AppError:
+                if hold_expired_at is None or t - hold_expired_at < UNVERIFIED_HOLD_GRACE:
+                    continue  # can't tell yet: leave the hold, try again next minute
+                tx, unverified = None, True  # out of patience: close it, never retry forever
+            if tx is not None and tx.get("status") == "success":
+                orders.apply_payment(db, reference, tx)  # money arrived: revive or refund
+            else:
+                expired += _expire_hold(db, booking_id, unverified=unverified)
+            db.commit()
+            outbox.flush(db)
+        except Exception as exc:  # noqa: BLE001 - one bad hold must not stop the rest
+            db.rollback()
+            log.warning(f"marketplace timers: hold {booking_id} failed: {exc}")
     return expired
 
 

@@ -380,14 +380,14 @@ Other codes, **unit-tested but not captured live**: `403 PAYMENTS_DISABLED` (the
 
 ### Saved card (`pay_with: "saved_card"`)
 
-Charges the workspace's saved Billing card at once. Success: the booking comes back already `awaiting_provider`, `order.status: "paid"`. A declined card is **402 `CARD_DECLINED`** and the booking is cancelled (nothing charged). If Paystack doesn't answer, or says the charge is still open (for example it wants an OTP), **502 `PAYMENT_UNCONFIRMED`** with the booking id in `field_errors[0].message`: the hold is kept, the card may or may not have been charged. Poll `GET /marketplace/bookings/{id}` (and call `verify-payment`) before letting the founder retry; the confirmation, if it happened, arrives by webhook. **Not exercised live** (no saved card exists in the e2e database); unit-tested, shapes follow the standard envelope with those codes.
+Charges the workspace's saved Billing card at once. Success: the booking comes back already `awaiting_provider`, `order.status: "paid"`. A declined card is **402 `CARD_DECLINED`** and the booking is cancelled (nothing charged). If Paystack doesn't answer, or says the charge is still open (for example it wants an OTP), **502 `PAYMENT_UNCONFIRMED`** with the booking id in `field_errors[0].message` (the same code and shape also come back whenever the charge succeeded but we then couldn't get Paystack's confirmation, for example a 429 or an outage; it is never `PAYSTACK_UNAVAILABLE "Try again"` or "Nothing was charged", because the card may have been charged: do NOT let the founder retry with a new key until the booking is checked): the hold is kept, the card may or may not have been charged. Poll `GET /marketplace/bookings/{id}` (and call `verify-payment`) before letting the founder retry; the confirmation, if it happened, arrives by webhook. **Not exercised live** (no saved card exists in the e2e database); unit-tested, shapes follow the standard envelope with those codes.
 
 ## Confirming payment
 
 After Paystack's page, the founder returns to the callback URL `{APP_BASE_URL}/marketplace/bookings/{id}`. Two things confirm the payment, whichever is first, and applying is idempotent:
 
 1. Paystack's **webhook** (server to server).
-2. **`POST /marketplace/bookings/{id}/verify-payment`** (founder): asks Paystack what happened. Call it when the founder lands on the callback page, then poll `GET /marketplace/bookings/{id}` every 3 s for up to 30 s while `status` is `pending_payment` and `order.status` is `pending`; after that show "Payment not confirmed yet. If you were charged it will appear shortly" and keep the hold countdown (`slot_hold_expires_at`) visible. `outcome`: `paid`, `already_applied`, `payment_not_successful` (still unpaid), `payment_mismatch` (Paystack's amount didn't match; not applied), `not_found_at_paystack`.
+2. **`POST /marketplace/bookings/{id}/verify-payment`** (founder): asks Paystack what happened. Call it when the founder lands on the callback page, then poll `GET /marketplace/bookings/{id}` every 3 s for up to 30 s while `status` is `pending_payment` and `order.status` is `pending`; after that show "Payment not confirmed yet. If you were charged it will appear shortly" and keep the hold countdown (`slot_hold_expires_at`) visible. If Paystack can't be asked at all, this endpoint also answers **502 `PAYMENT_UNCONFIRMED`** (hold and order stay pending; keep polling `GET /marketplace/bookings/{id}`). `outcome`: `paid`, `already_applied`, `payment_not_successful` (still unpaid), `payment_mismatch` (Paystack's amount didn't match; not applied: the booking becomes `expired` with `closed_reason: "payment_review"`, the slot is released, the founder is emailed that the team is checking and not to pay again, and staff see it in the attention queue), `not_found_at_paystack`.
 
 `booking_get_pending_payment`:
 ```json
@@ -643,6 +643,8 @@ After Paystack's page, the founder returns to the callback URL `{APP_BASE_URL}/m
   "meta": null
 }
 ```
+
+**New `closed_reason` values the FE must render** (status is `expired`): `payment_review` ("We're checking your payment. You don't need to pay again.") and `payment_not_completed` (the hold lapsed; when Paystack could not be asked for over an hour after the hold ended the founder is also emailed "we couldn't confirm your payment; if you were charged we'll confirm or refund automatically; don't pay again"). A payment that turns up after `payment_not_completed` still revives or refunds the booking; after `payment_review` staff resolve it. All unit-tested; **not captured live** (the e2e stub cannot produce a mismatch or an unanswerable Paystack).
 
 **Money that arrives for a booking that can no longer go ahead** (the hold lapsed and the slot was taken, or the booking was cancelled): it is refunded in full automatically (`order.status` `paid` with `refund_pending_minor`, then `refunded`). Unit-tested, not captured.
 
@@ -1274,7 +1276,9 @@ Provider: a new paid booking request with the 48-hour deadline. Founder: decline
 | Slot hold blocks a rival; paid booking keeps the slot | yes (hold) | yes | |
 | Signed webhook confirms; forged 401; replay once; unknown reference | yes | yes | |
 | Webhook never trusts the body for the amount; a payment Paystack hasn't confirmed answers 409 and is retried; verify refusal / outage answers non-2xx; unknown transaction 200 | | yes | |
-| Amount mismatch is flagged (attention columns, audit, staff queue `GET /admin/marketplace/orders/attention`, guards) | | yes | |
+| Amount mismatch is flagged (attention columns, audit, staff queue `GET /admin/marketplace/orders/attention`, guards), closes the checkout as `payment_review`, frees the slot, emails the founder, and is never re-verified by the timer | | yes | |
+| Charge succeeded but verify fails (saved card and `verify-payment`) answers `PAYMENT_UNCONFIRMED`, never "nothing charged" | | yes | |
+| Hold Paystack can't answer for is retried for 1 h past expiry, then closed with an audit row and email; a late payment still revives it; one failing hold doesn't abort the tick | | yes | **what status Paystack's real verify returns for an unknown reference (404 vs 400) is NOT confirmed against Paystack TEST mode**: the code treats 404 as "unpaid" and anything else as "can't tell", bounded by the grace, so either answer ends safely |
 | Unpaid hold that was in fact paid is applied, not expired; Paystack unreachable leaves it pending | | yes | live (needs a clock) |
 | Two gates on real charging (`MARKETPLACE_LIVE_CHARGING_CONFIRMED`) | | yes | live (e2e uses test keys) |
 | Double submit racing the replay check is still a replay | | yes | |

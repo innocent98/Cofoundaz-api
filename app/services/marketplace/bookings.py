@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -285,10 +286,12 @@ def _ensure_terms(db: Session, user: User, accept_terms: bool) -> None:
             http_status=422,
             field_errors=[{"field": "accept_terms", "message": "You need to accept the terms."}],
         )
-    db.add(
-        MarketplaceConsent(
-            user_id=user.id, kind=CONSENT_KIND_TERMS, version=MARKETPLACE_TERMS_VERSION
-        )
+    # ON CONFLICT DO NOTHING, executed at once: a double submit (same user, first booking) must
+    # not trip the unique consent row of its twin, and nothing is left for autoflush to hit.
+    db.execute(
+        pg_insert(MarketplaceConsent)
+        .values(user_id=user.id, kind=CONSENT_KIND_TERMS, version=MARKETPLACE_TERMS_VERSION)
+        .on_conflict_do_nothing()
     )
 
 
@@ -473,7 +476,12 @@ def charge_saved_card(
         return "card_error"
     status = data.get("status")
     if status == "success":
-        return verify_and_apply(db, order.paystack_reference)
+        try:
+            return verify_and_apply(db, order.paystack_reference, booking.id)
+        except AppError:
+            # The card WAS charged; we just couldn't confirm it. Never tell the founder "nothing
+            # was charged": leave the hold and order pending for the webhook or the timer.
+            return "card_error"
     if status == "failed":
         return _fail_checkout(db, booking, order, "card_declined")
     # pending, send_otp, send_pin, ...: the charge is not over. Neither confirm nor cancel: keep
@@ -508,14 +516,32 @@ def _fail_checkout(
     return reason
 
 
-def verify_and_apply(db: Session, reference: str) -> str:
+def payment_unconfirmed(booking_id: uuid.UUID | None) -> AppError:
+    """We asked Paystack and couldn't get an answer. After a charge attempt the money may have
+    moved, so this is never "try again" or "nothing was charged"."""
+    return AppError(
+        "PAYMENT_UNCONFIRMED",
+        "We couldn't confirm the charge. If your card was charged the booking will confirm "
+        "shortly; if not, nothing was charged. Check this booking before trying again.",
+        502,
+        field_errors=(
+            [{"field": "booking_id", "message": str(booking_id)}] if booking_id else None
+        ),
+    )
+
+
+def verify_and_apply(db: Session, reference: str, booking_id: uuid.UUID | None = None) -> str:
     """Ask Paystack what happened to `reference` and apply a confirmed payment. The webhook, the
     founder's verify button and the saved-card path all end here, so there is one code path and
-    the amount is always checked against what Paystack says it took."""
+    the amount is always checked against what Paystack says it took. Any failure to get an answer
+    other than Paystack's definitive "no such transaction" is `PAYMENT_UNCONFIRMED` (502): the
+    hold and order stay pending."""
     try:
         tx = paystack.verify(reference)
     except paystack.PaystackNotFound:
         return "not_found_at_paystack"
+    except AppError:
+        raise payment_unconfirmed(booking_id) from None
     return orders.apply_payment(db, reference, tx)
 
 

@@ -104,9 +104,10 @@ def _refund_processed(db: Session, reference: str, data: dict[str, Any]) -> str:
     )
     amount = data.get("amount")
     ref = data.get("refund_reference") or data.get("id")
+    other = data.get("id") if data.get("refund_reference") else None
     if order_id is None or not isinstance(amount, int) or not ref:
         return "refund_noted"
-    return orders.settle_from_webhook(db, order_id, amount, str(ref))
+    return orders.settle_from_webhook(db, order_id, amount, str(ref), str(other) if other else None)
 
 
 def _refund_failed(db: Session, reference: str, data: dict[str, Any]) -> str:

@@ -93,13 +93,7 @@ def create_booking(
         db.commit()
         outbox.flush(db)
         if outcome == "card_error":
-            raise AppError(
-                "PAYMENT_UNCONFIRMED",
-                "We couldn't confirm the charge. If your card was charged the booking will confirm "
-                "shortly; if not, nothing was charged. Check this booking before trying again.",
-                502,
-                field_errors=[{"field": "booking_id", "message": str(booking.id)}],
-            )
+            raise bookings.payment_unconfirmed(booking.id)
         if outcome in ("card_declined", "no_saved_card"):
             raise AppError(
                 "CARD_DECLINED",
@@ -140,7 +134,7 @@ def verify_payment(booking_id: uuid.UUID, m: _Founder, db: _Db) -> dict[str, Any
     behind). Idempotent: the payment is applied once whichever of the two arrives first."""
     booking = bookings.get_for_founder(db, m, booking_id)
     order = db.query(MarketplaceOrder).filter_by(booking_id=booking.id).one()
-    outcome = bookings.verify_and_apply(db, order.paystack_reference)
+    outcome = bookings.verify_and_apply(db, order.paystack_reference, booking.id)
     db.commit()
     outbox.flush(db)
     return success_response(

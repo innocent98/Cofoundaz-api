@@ -200,6 +200,38 @@ def booking_request_email(
     )
 
 
+def payment_problem_email(to: str, *, title: str, kind: str) -> EmailMessage:
+    """To the founder when a checkout can't be settled automatically. `payment_review`: Paystack
+    took a different amount than the price. `unverified`: we couldn't confirm the payment before
+    the hold ran out. Either way: don't pay again, and money is never lost."""
+    name = escape(title)
+    if kind == "payment_review":
+        subject = "We're checking your payment"
+        intro = (
+            f"We received a payment for <strong>{name}</strong> that doesn't match the price, so "
+            "we haven't confirmed the booking and the time has been released. Our team is "
+            "looking at it and will sort it out with you. You don't need to pay again."
+        )
+    else:
+        subject = "We couldn't confirm your payment"
+        intro = (
+            f"We couldn't confirm your payment for <strong>{name}</strong> before the hold ran "
+            "out. If you were charged, we'll either confirm the booking or refund you "
+            "automatically. You don't need to pay again."
+        )
+    return EmailMessage(
+        to=to,
+        subject=subject,
+        html=_render(
+            title=subject,
+            intro=intro,
+            cta_label="View your bookings",
+            action_url=f"{_base_url()}/marketplace/bookings",
+            expiry_note="If you have questions, reply to this email.",
+        ),
+    )
+
+
 def booking_closed_email(to: str, *, provider: str | None, title: str, reason: str) -> EmailMessage:
     """To the founder when a PAID booking closes. The refund is requested, not yet in their hands,
     and says so: it goes back to the card they paid with and can take a few working days."""
