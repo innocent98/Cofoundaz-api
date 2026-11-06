@@ -41,6 +41,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "assessment.completed": CORE_ROLES,  # D-ASM-1
     "learning.course.completed": CORE_ROLES,  # the Academy is F + TM (PRD 17)
     "learning.course.recommended": CORE_ROLES,
+    "ai.suggestion.created": CORE_ROLES,  # F + TM, the same people who can open the AI Co-Founder
     # D-DOC-1: Documents is F + TM until grants land; the read filter hides rows stored before.
     "document.shared": DOCUMENT_ROLES,
     "document.signature.requested": DOCUMENT_ROLES,

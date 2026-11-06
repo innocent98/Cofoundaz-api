@@ -34,6 +34,8 @@ class Agent:
     persona: str
     sections: tuple[str, ...]
     disclaimer: str | None = None
+    # confirm-first action kinds this agent may propose (see actions.py)
+    actions: tuple[str, ...] = ()
 
 
 AGENTS: dict[str, Agent] = {
@@ -59,6 +61,7 @@ AGENTS: dict[str, Agent] = {
                 "canvas",
                 "pipeline",
             ),
+            actions=("add_task", "update_roadmap", "draft_document"),
         ),
         Agent(
             key="finance",
@@ -72,6 +75,7 @@ AGENTS: dict[str, Agent] = {
                 "ledger data yet, say what to record first."
             ),
             sections=("profile", "finance", "pipeline"),
+            actions=("draft_document",),
             disclaimer=FINANCIAL_DISCLAIMER,
         ),
         Agent(
@@ -86,6 +90,7 @@ AGENTS: dict[str, Agent] = {
                 "lawyer is needed."
             ),
             sections=("profile",),
+            actions=("draft_document",),
             disclaimer=LEGAL_DISCLAIMER,
         ),
         Agent(
@@ -100,6 +105,7 @@ AGENTS: dict[str, Agent] = {
                 "next action. Use their mission and health data to be specific."
             ),
             sections=("profile", "mission", "health", "roadmap"),
+            actions=("add_task",),
         ),
     )
 }
