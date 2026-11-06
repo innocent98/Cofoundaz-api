@@ -1,0 +1,261 @@
+{
+  "data": {
+    "check": {
+      "id": "0f516d0b-ff18-4a27-982e-ccd298e2e6a8",
+      "status": "ready",
+      "error": null,
+      "job_id": "5a604001-2d6d-4ff1-9111-a247f7e49554",
+      "deck_review_id": "e56fb0cb-4280-4a0a-a259-9ae5f881310c",
+      "draft_sha256": "a28f354cd266a373f591e16a4409961358e39950e8b4a9053df625ae07fa0447",
+      "tokens_used": 6100,
+      "counts": {
+        "high": 1,
+        "medium": 1,
+        "info": 2,
+        "ok": 2
+      },
+      "findings": [
+        {
+          "fact": null,
+          "kind": "inconsistent",
+          "claim": {
+            "unit": "minor",
+            "quote": "2m NGN MRR",
+            "slide": null,
+            "value": 200000000,
+            "metric": "mrr",
+            "source": "draft",
+            "currency": "NGN"
+          },
+          "metric": "mrr",
+          "message": "Deck (slide 5) says \u20a61.6M MRR; your narrative says \u20a62M. Pick one number.",
+          "severity": "high",
+          "other_claim": {
+            "unit": "minor",
+            "quote": "MRR 1.6m NGN",
+            "slide": 5,
+            "value": 160000000,
+            "metric": "mrr",
+            "source": "deck",
+            "currency": "NGN"
+          }
+        },
+        {
+          "fact": {
+            "says": "your books show",
+            "unit": "minor",
+            "value": 160000000,
+            "source": "books",
+            "currency": "NGN"
+          },
+          "kind": "mismatch",
+          "claim": {
+            "unit": "minor",
+            "quote": "2m NGN MRR",
+            "slide": null,
+            "value": 200000000,
+            "metric": "mrr",
+            "source": "draft",
+            "currency": "NGN"
+          },
+          "metric": "mrr",
+          "message": "Your narrative says \u20a62M MRR; your books show \u20a61.6M. Fix the number or the story.",
+          "severity": "medium"
+        },
+        {
+          "fact": {
+            "says": "your books show",
+            "unit": "minor",
+            "value": 0,
+            "source": "books",
+            "currency": "NGN"
+          },
+          "kind": "unverified",
+          "claim": {
+            "unit": "minor",
+            "quote": "burn 500k NGN a month",
+            "slide": null,
+            "value": 50000000,
+            "metric": "burn",
+            "source": "draft",
+            "currency": "NGN"
+          },
+          "metric": "burn",
+          "message": "Your narrative says \u20a6500k monthly burn; your books show no net burn (income covers costs), so a gross burn figure cannot be checked.",
+          "severity": "info"
+        },
+        {
+          "fact": null,
+          "kind": "unverified",
+          "claim": {
+            "unit": "percent",
+            "quote": "12% month on month growth",
+            "slide": 5,
+            "value": 12.0,
+            "metric": "growth_pct",
+            "source": "deck",
+            "currency": null
+          },
+          "metric": "growth_pct",
+          "message": "Deck (slide 5) says 12% monthly growth, but Cofoundaz has no figure to check it against yet.",
+          "severity": "info"
+        },
+        {
+          "fact": {
+            "says": "your books show",
+            "unit": "minor",
+            "value": 160000000,
+            "source": "books",
+            "currency": "NGN"
+          },
+          "kind": "match",
+          "claim": {
+            "unit": "minor",
+            "quote": "MRR 1.6m NGN",
+            "slide": 5,
+            "value": 160000000,
+            "metric": "mrr",
+            "source": "deck",
+            "currency": "NGN"
+          },
+          "metric": "mrr",
+          "message": "Deck (slide 5) says \u20a61.6M MRR; your books show \u20a61.6M. Consistent.",
+          "severity": "ok"
+        },
+        {
+          "fact": {
+            "says": "your Funding round targets",
+            "unit": "minor",
+            "value": 9000000000,
+            "source": "funding",
+            "currency": "NGN"
+          },
+          "kind": "match",
+          "claim": {
+            "unit": "minor",
+            "quote": "Raising 90m NGN",
+            "slide": 8,
+            "value": 9000000000,
+            "metric": "ask",
+            "source": "deck",
+            "currency": "NGN"
+          },
+          "metric": "ask",
+          "message": "Deck (slide 8) says \u20a690M raise; your Funding round targets \u20a690M. Consistent.",
+          "severity": "ok"
+        }
+      ],
+      "claims": [
+        {
+          "unit": "minor",
+          "quote": "MRR 1.6m NGN",
+          "slide": 5,
+          "value": 160000000,
+          "metric": "mrr",
+          "source": "deck",
+          "currency": "NGN"
+        },
+        {
+          "unit": "percent",
+          "quote": "12% month on month growth",
+          "slide": 5,
+          "value": 12.0,
+          "metric": "growth_pct",
+          "source": "deck",
+          "currency": null
+        },
+        {
+          "unit": "minor",
+          "quote": "Raising 90m NGN",
+          "slide": 8,
+          "value": 9000000000,
+          "metric": "ask",
+          "source": "deck",
+          "currency": "NGN"
+        },
+        {
+          "unit": "minor",
+          "quote": "2m NGN MRR",
+          "slide": null,
+          "value": 200000000,
+          "metric": "mrr",
+          "source": "draft",
+          "currency": "NGN"
+        },
+        {
+          "unit": "minor",
+          "quote": "burn 500k NGN a month",
+          "slide": null,
+          "value": 50000000,
+          "metric": "burn",
+          "source": "draft",
+          "currency": "NGN"
+        }
+      ],
+      "use_of_funds": [
+        {
+          "label": "Engineering hires",
+          "quote": "60% for engineering hires",
+          "source": "draft",
+          "percent": 60.0,
+          "amount_minor": null
+        },
+        {
+          "label": "Open Ghana",
+          "quote": "40% to open Ghana",
+          "source": "draft",
+          "percent": 40.0,
+          "amount_minor": null
+        }
+      ],
+      "facts": {
+        "arr": {
+          "says": "your books show (12 x MRR)",
+          "unit": "minor",
+          "value": 1920000000,
+          "source": "books",
+          "currency": "NGN"
+        },
+        "ask": {
+          "says": "your Funding round targets",
+          "unit": "minor",
+          "value": 9000000000,
+          "source": "funding",
+          "currency": "NGN"
+        },
+        "mrr": {
+          "says": "your books show",
+          "unit": "minor",
+          "value": 160000000,
+          "source": "books",
+          "currency": "NGN"
+        },
+        "burn": {
+          "says": "your books show",
+          "unit": "minor",
+          "value": 0,
+          "source": "books",
+          "currency": "NGN"
+        },
+        "cash": {
+          "says": "your books show",
+          "unit": "minor",
+          "value": 480000000,
+          "source": "books",
+          "currency": "NGN"
+        },
+        "headcount": {
+          "says": "your workspace has",
+          "unit": "people",
+          "value": 2,
+          "source": "team",
+          "currency": null
+        }
+      },
+      "stale": false,
+      "created_at": "2026-11-06T22:12:58.639392+00:00",
+      "checked_at": "2026-11-06T22:12:58.741475+00:00"
+    }
+  },
+  "meta": null
+}

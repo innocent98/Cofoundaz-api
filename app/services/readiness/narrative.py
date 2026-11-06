@@ -83,37 +83,41 @@ SYMBOL = {"NGN": "₦", "USD": "$"}
 SEVERITY_ORDER = {"high": 0, "medium": 1, "info": 2, "ok": 3}
 SOURCE_LABEL = {"deck": "Deck", "draft": "Your narrative"}
 
+# OpenAI strict structured output: every object closes `additionalProperties` and lists every key
+# as required (nullable ones use a type pair). Proven against the real model in the live e2e.
+_CLAIM_ITEM: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["metric", "value", "currency", "source", "slide", "quote", "tense"],
+    "properties": {
+        "metric": {"type": "string"},
+        "value": {"type": "number"},
+        "currency": {"type": ["string", "null"]},
+        "source": {"type": "string"},
+        "slide": {"type": ["integer", "null"]},
+        "quote": {"type": "string"},
+        "tense": {"type": "string"},
+    },
+}
+_FUNDS_ITEM: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["label", "amount", "percent", "source", "quote"],
+    "properties": {
+        "label": {"type": "string"},
+        "amount": {"type": ["number", "null"]},
+        "percent": {"type": ["number", "null"]},
+        "source": {"type": "string"},
+        "quote": {"type": "string"},
+    },
+}
 CLAIMS_SCHEMA: dict[str, Any] = {
     "type": "object",
+    "additionalProperties": False,
+    "required": ["claims", "use_of_funds"],
     "properties": {
-        "claims": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "metric": {"type": "string"},
-                    "value": {"type": "number"},
-                    "currency": {"type": ["string", "null"]},
-                    "source": {"type": "string"},
-                    "slide": {"type": ["integer", "null"]},
-                    "quote": {"type": "string"},
-                    "tense": {"type": "string"},
-                },
-            },
-        },
-        "use_of_funds": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "label": {"type": "string"},
-                    "amount": {"type": ["number", "null"]},
-                    "percent": {"type": ["number", "null"]},
-                    "source": {"type": "string"},
-                    "quote": {"type": "string"},
-                },
-            },
-        },
+        "claims": {"type": "array", "items": _CLAIM_ITEM},
+        "use_of_funds": {"type": "array", "items": _FUNDS_ITEM},
     },
 }
 

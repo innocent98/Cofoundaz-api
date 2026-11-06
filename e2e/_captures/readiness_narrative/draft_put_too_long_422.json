@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "String should have at most 20000 characters"
+      }
+    ]
+  }
+}

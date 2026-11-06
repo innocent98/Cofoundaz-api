@@ -635,3 +635,19 @@ def test_a_failure_after_the_paid_call_keeps_the_debit_and_does_not_retry(db, ws
     _run(db, check)  # must not raise: a raise would roll back the debit and retry for free
     assert check.status == "failed" and check.error == "processing_failed"
     assert llm_budget._used_today(db, s.id) == 6100 and check.tokens_used == 6100
+
+
+def test_claims_schema_is_valid_for_openai_strict_mode():
+    """Strict structured output rejects an object without additionalProperties: false or with a
+    property missing from `required` (the live run hit exactly this 400)."""
+
+    def walk(node):
+        if node.get("type") == "object":
+            assert node["additionalProperties"] is False
+            assert set(node["required"]) == set(node["properties"])
+            for child in node["properties"].values():
+                walk(child)
+        if node.get("type") == "array":
+            walk(node["items"])
+
+    walk(narrative.CLAIMS_SCHEMA)
