@@ -23,7 +23,7 @@ from app.platform.audit import write_audit
 from app.schemas.auth import GoogleExchangeRequest, GoogleStartRequest
 from app.services.auth import google_signin as svc
 from app.services.auth.mfa import issue_mfa_ticket
-from app.services.auth.sessions import issue_token_pair, set_refresh_cookie
+from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
 
 router = APIRouter(prefix="/oauth/google")
 
@@ -150,6 +150,4 @@ def exchange(
     )
     db.commit()
     set_refresh_cookie(response, refresh)
-    return success_response(
-        {"access_token": access, "refresh_token": refresh, "mfa_required": False, **extras}
-    )
+    return success_response(token_body(request, access, refresh, mfa_required=False, **extras))

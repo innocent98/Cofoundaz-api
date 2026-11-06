@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.88"
+    },
+    "json": {
+      "email": "delivered+e2e-647fda0b2757@resend.dev",
+      "password": "<test-password>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "mfa_required": true,
+        "mfa_ticket": "<mfa-ticket>",
+        "access_token": null
+      },
+      "meta": null
+    }
+  }
+}

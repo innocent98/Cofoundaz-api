@@ -12,6 +12,7 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.schemas.auth import RefreshRequest
+from app.services.auth.csrf import require_cookie_csrf_guard
 from app.services.auth.sessions import (
     clear_refresh_cookie,
     family_of,
@@ -21,14 +22,18 @@ from app.services.auth.sessions import (
     revoke_session,
     rotate_refresh,
     set_refresh_cookie,
+    token_body,
 )
 
 router = APIRouter()
 
 
 def _read_refresh(request: Request, payload: RefreshRequest | None) -> str:
+    """The refresh token the caller is presenting: the body's when there is one, else the
+    cookie's. Body first matters for CSRF: the guard waives its checks for a body token (not
+    ambient), so the body token must be the one actually used, never a decoy next to a cookie."""
     body_token = payload.refresh_token if payload else None
-    return request.cookies.get(settings.REFRESH_COOKIE_NAME) or (body_token or "")
+    return body_token or request.cookies.get(settings.REFRESH_COOKIE_NAME) or ""
 
 
 @router.post("/refresh")
@@ -38,6 +43,7 @@ def refresh(
     payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    require_cookie_csrf_guard(request, body_token=payload.refresh_token if payload else None)
     raw = _read_refresh(request, payload)
     if not raw:
         raise Unauthorized()
@@ -49,7 +55,7 @@ def refresh(
     )
     db.commit()
     set_refresh_cookie(response, new_refresh)
-    return success_response({"access_token": access, "refresh_token": new_refresh})
+    return success_response(token_body(request, access, new_refresh))
 
 
 @router.post("/logout")
@@ -59,11 +65,17 @@ def logout(
     payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    require_cookie_csrf_guard(request, body_token=payload.refresh_token if payload else None)
     raw = _read_refresh(request, payload)
+    from_body = bool(payload and payload.refresh_token)
+    known = revoke_session(db, raw) if raw else False
     if raw:
-        revoke_session(db, raw)
         db.commit()
-    clear_refresh_cookie(response)
+    # A body token is not ambient, but it must not be a decoy that clears the browser's cookie
+    # (forced sign-out): the cookie is cleared only when the token presented was a real session's
+    # or the cookie itself is the credential (and passed the CSRF guard above).
+    if known or not from_body:
+        clear_refresh_cookie(response)
     return success_response({"logged_out": True})
 
 

@@ -230,7 +230,10 @@ def make_verified_user(mailbox, unique_email):
         # keeps each e2e user's secret unique.
         password = password or f"Ev-{uuid.uuid4().hex[:12]}-9"
         email = unique_email()
-        r = http.post("/api/v1/auth/signup", json={"email": email, "password": password})
+        r = http.post(
+            "/api/v1/auth/signup",
+            json={"email": email, "password": password, "accepted_terms": True},
+        )
         assert r.status_code == 201, r.text
         token = mailbox.latest_token_for(email, subject_contains="Verify")
         r = http.post("/api/v1/auth/verify", json={"token": token})

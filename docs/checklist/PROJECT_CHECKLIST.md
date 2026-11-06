@@ -16,6 +16,8 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
+_Auth & Onboarding PRD gaps, API (2026-11-05): branch `feature/auth-onboarding-gaps`, migration `0096_auth_onboarding_gaps` (chained on 0092 for now; the lead re-chains after 0093 to 0095). Gaps 1, 2, 3, 4, 6, 7, 8, 11, 12, 14, 21, 22 and the note for 25 of `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md`, plus the backend half of D-AUTH-6 (cookie session mode with a CSRF guard). Live e2e `e2e/test_auth_onboarding_gaps.py`, 55 captures in `e2e/_captures/auth_onboarding_gaps/`; SOP `docs/sop/2026-11-05-auth-onboarding-gaps.md`; FE guide `docs/fe-integration-guide-auth-onboarding.md`. PR open, not merged; proxy-IP handling not verified on staging._
+
 _AI Co-Founder MVP slice 2 (2026-11-05): branch `feature/ai-cofounder-orchestrator`, stacked on slice 1, migration `0098_ai_orchestrator` — orchestrator + Strategist, Finance Advisor, Legal Assistant, Mentor; read-only workspace context per agent; code-appended legal/financial disclaimers; `reasoning_summary` + `sources`; Cancel (D-AI-2); `ai.cofounder.reply.completed|cancelled` events. Live-verified with the stub LLM (routing by rules, sources, disclaimers, cancel, roles); **real model quality, router accuracy and token cost NOT verified**. FE guide `docs/fe-integration-guide-ai-cofounder.md` §5; SOP `docs/sop/2026-11-05-ai-cofounder-orchestrator.md`. Slice 3 (actions, feedback, suggestions, `GET /ai/agents`) next; PR open, not merged._
 
 _AI Co-Founder MVP slice 1 (2026-11-05): branch `feature/ai-cofounder-slice-1`, migration `0097_ai_conversation_archive` (chained on `0095`, lead re-chains) — gap rows 12, 13, 14, 10 (`query`/`topic`/`archived` params), 17 (bulk archive, unarchive, "Delete forever"; archived chats not searchable, D-AI-4). Live-verified with the stub LLM; 403s for non-F/TM roles API-tested only. FE guide `docs/fe-integration-guide-ai-conversations.md`; SOP `docs/sop/2026-11-05-ai-cofounder-conversations.md`. Slice 2 (orchestrator + 4 agents) next; PR open, not merged._
@@ -642,6 +644,31 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
 - [ ] _Deferred:_ ~~onboarding AI panel (Module 03)~~ now shipped via **Module 03 Slice 7**
       (`ai.onboarding.panel`, 2026-09-21 — templated instant value + AI-upgrade-second, one-shot on
       signals-complete — see that module's own section) · real notification delivery (Module 20)
+
+## 🚧 Module 01 — Auth & Onboarding PRD gaps (API) — *PR open, not merged (2026-11-05)*
+
+Source: `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md` (build-order step 1). SOP `docs/sop/2026-11-05-auth-onboarding-gaps.md`; FE guide `docs/fe-integration-guide-auth-onboarding.md`.
+
+- [x] Gap 1 + D-AUTH-2: lockout per (email, IP), per-email ceiling, same answer for unknown emails (Redis, hashed keys)
+- [x] Gap 2 (body): `retry_after_seconds` + `Retry-After`, PRD sentence with minutes (FE shows it: FE PR)
+- [x] Gap 3: a successful password reset lifts the lock (every IP)
+- [x] Gap 4: per-route limits (sign-up, forgot, resend, login per IP; forgot and resend per email, silent)
+  - [ ] Confirm proxy IP handling on staging (`FORWARDED_ALLOW_IPS`, nginx `X-Forwarded-For`): not checkable locally
+- [x] Gap 6: onboarding input validation (website, phone, goals = eight PRD chips, name/text caps, blanks refused)
+- [x] Gap 7: invite per-row results `{email, status, reason, message}`, invalid addresses never stored or emailed
+- [x] Gap 8: MFA ticket survives a typo (5 tries, atomic cap, single-use claim, `MFA_TICKET_EXPIRED`) + per-account cap across tickets
+- [x] Gap 11: no draft startup for members or pending invitees (`pending_invite`, 409 `ONBOARDING_NOT_FOR_INVITED`); "Founder & CEO" only for founders
+- [x] Gap 12: verify-resend `{sent, retry_after}`
+- [x] Gap 14: `accepted_terms` required, `terms_accepted_at` + `terms_version` stored (migration `0096`)
+- [x] Gap 21: welcome email after commit, once; in-app "Your workspace is ready" notice (the event had no listener)
+- [x] Gap 22: invite subject `{Founder} invited you to join {Startup} on Cofoundaz`, brand colours, password-changed notice
+- [x] Gap 25: note only (access tokens outlive sign-out; in the FE guide)
+- [x] D-AUTH-6 backend: `X-Auth-Mode: cookie` session mode, `refresh_token: null` in the body, CSRF guard on refresh and logout, `expires_in`
+- [x] Opus review fixes (2026-11-05): reuse revocation committed, CSRF token-source order, atomic reservation, known-address exemption + /64, mail caps per (email, IP), decline-invitation endpoint, backup-code race, bcrypt on unknown emails
+- [x] Live e2e journey + captures + SOP + FE guide
+- [ ] FE PR (gaps 2, 5, 8, 9, 10, 12, 13, 15, 16, 18, 20, 23, 24; 17 and 19 after D-AUTH-5 / -7): not started
+- [ ] Re-walk every control on merged develop, all roles, 1440 + 375
+- [ ] Deferred: consent record for Google-created accounts; backfill stale "Founder & CEO" titles; drop unused `users.failed_login_count` / `locked_until`; gap 19 AI follow-up questions; industry list validation after Adebayo edits D-AUTH-7
 
 ## ✅ Module 07 — Startup Assessment — *shipped (PR #4)*
 

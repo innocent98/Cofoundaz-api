@@ -101,7 +101,8 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
         capture(g, "inbox_page1", r)
         r = c.get(f"{n}/counts", headers=wh)
         counts = r.json()["data"]
-        assert counts["all"] == 6 and counts["urgent"] == 2 and counts["deadlines"] == 2
+        # six published here, plus the founder's own "Your workspace is ready" notice from onboarding
+        assert counts["all"] == 7 and counts["urgent"] == 2 and counts["deadlines"] == 2
         capture(g, "counts", r)
         for chip in ("urgent", "deadlines", "ai", "mentions", "billing", "unread"):
             r = c.get(f"{n}?filter={chip}", headers=wh)
@@ -121,7 +122,7 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
         assert [x["id"] for x in r.json()["data"]["notifications"]] == [target["id"]]
         capture(g, "archived_list", r)
         r = c.get(f"{n}/unread-count", headers=wh)
-        assert r.json()["data"]["unread"] == 5
+        assert r.json()["data"]["unread"] == 6  # five of the six published, plus the onboarding notice
         capture(g, "unread_after_archive", r)
         r = c.post(f"{n}/{target['id']}/restore", headers=wh)
         assert r.json()["data"]["archived"] is False

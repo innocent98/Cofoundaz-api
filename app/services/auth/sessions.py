@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
-from fastapi import Response
+from fastapi import Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import Unauthorized
@@ -14,6 +14,7 @@ from app.db.models.auth import AuthSession
 from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.platform.state import lock_session_issue
+from app.services.auth.csrf import is_cookie_mode
 
 
 def hash_token(raw: str) -> str:
@@ -90,6 +91,9 @@ def rotate_refresh(
         # double-submit logs the whole family out, same as actual token theft. We can't
         # tell the two apart, so we don't try.
         _revoke_family(db, session.family_id)
+        # Commit BEFORE raising: get_db never commits and the error rolls the request back, which
+        # would undo the revocation and leave a thief's rotated token alive.
+        db.commit()
         raise Unauthorized()
 
     user = db.query(User).filter(User.id == session.user_id).first()
@@ -114,15 +118,19 @@ def _revoke_family(db: Session, family_id: uuid.UUID) -> None:
     db.flush()
 
 
-def revoke_session(db: Session, raw_refresh: str) -> None:
+def revoke_session(db: Session, raw_refresh: str) -> bool:
+    """Revoke the sign-in this token belongs to. True when the token was a real session's."""
     session = (
         db.query(AuthSession)
         .filter(AuthSession.refresh_token_hash == hash_token(raw_refresh))
         .first()
     )
-    if session and session.revoked_at is None:
+    if session is None:
+        return False
+    if session.revoked_at is None:
         session.revoked_at = datetime.now(UTC)
         db.flush()
+    return True
 
 
 def revoke_all_for_user(db: Session, user_id: uuid.UUID) -> int:
@@ -207,3 +215,18 @@ def revoke_all_except(db: Session, user_id: uuid.UUID, keep_family: uuid.UUID | 
     n = q.update({AuthSession.revoked_at: datetime.now(UTC)}, synchronize_session=False)
     db.flush()
     return int(n)
+
+
+def token_body(request: Request, access: str, refresh: str, **extra: object) -> dict[str, object]:
+    """Response body for an endpoint that issues a session.
+
+    A client that sends `X-Auth-Mode: cookie` keeps the refresh token only in the HttpOnly
+    cookie, so its body carries `refresh_token: null` (nothing for an XSS to read). Every other
+    client (the current FE, scripts) still gets the token in the body as before.
+    """
+    return {
+        "access_token": access,
+        "refresh_token": None if is_cookie_mode(request) else refresh,
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **extra,
+    }

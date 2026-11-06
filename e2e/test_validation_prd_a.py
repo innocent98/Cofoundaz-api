@@ -24,7 +24,7 @@ def _onboard(c: httpx.Client, auth: dict) -> None:
         json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "validation"},
     )
     c.patch(
-        "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Validate demand"]}
+        "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Validate my idea"]}
     )
     assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
 

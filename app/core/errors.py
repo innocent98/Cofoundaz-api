@@ -20,11 +20,15 @@ class AppError(Exception):
         message: str | None = None,
         http_status: int | None = None,
         field_errors: list[dict[str, Any]] | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         self.code = code or self.code
         self.message = message or self.message
         self.http_status = http_status or self.http_status
         self.field_errors = field_errors or []
+        # Extra machine-readable members merged into the `error` object (e.g.
+        # `retry_after_seconds` on a 429). `retry_after_seconds` also becomes a Retry-After header.
+        self.extra = extra or {}
         super().__init__(self.message)
 
 
@@ -64,9 +68,41 @@ class InvalidCredentials(AppError):  # noqa: N818
     message = "That email and password don't match."
 
 
+def _minutes(seconds: int) -> int:
+    return max(1, -(-seconds // 60))
+
+
 class AccountLocked(AppError):  # noqa: N818
+    """Too many failed sign-ins for this (email, IP). The same answer for an unknown email."""
+
     code, http_status = "ACCOUNT_LOCKED", 429
     message = "Too many attempts. Try again in a few minutes or reset your password."
+
+    def __init__(self, retry_after_seconds: int | None = None) -> None:
+        if retry_after_seconds is None:
+            super().__init__()
+            return
+        m = _minutes(retry_after_seconds)
+        unit = "minute" if m == 1 else "minutes"
+        super().__init__(
+            message=f"Too many attempts. Try again in {m} {unit} or reset your password.",
+            extra={"retry_after_seconds": retry_after_seconds},
+        )
+
+
+class RateLimited(AppError):  # noqa: N818
+    """A per-route limit on the auth surface (sign-up, forgot, resend, login per IP)."""
+
+    code, http_status = "RATE_LIMITED", 429
+    message = "Too many requests. Slow down a moment."
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        m = _minutes(retry_after_seconds)
+        unit = "minute" if m == 1 else "minutes"
+        super().__init__(
+            message=f"Too many requests. Try again in {m} {unit}.",
+            extra={"retry_after_seconds": retry_after_seconds},
+        )
 
 
 class TokenInvalid(AppError):  # noqa: N818
@@ -77,6 +113,19 @@ class TokenInvalid(AppError):  # noqa: N818
 class MfaInvalidCode(AppError):  # noqa: N818
     code, http_status = "MFA_INVALID_CODE", 401
     message = "That code isn't right. Try again."
+
+
+class MfaTicketExpired(AppError):  # noqa: N818
+    """The sign-in step between password and code is gone: timed out, used up, or too many
+    wrong codes. The only way forward is to log in again."""
+
+    code, http_status = "MFA_TICKET_EXPIRED", 401
+    message = "Your sign-in timed out. Log in again."
+
+
+class CsrfRejected(AppError):  # noqa: N818
+    code, http_status = "CSRF_REJECTED", 403
+    message = "This request didn't come from the Cofoundaz app."
 
 
 class JournalNotConfigured(AppError):  # noqa: N818
@@ -248,9 +297,13 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
+        content = error_response(exc.code, exc.message, exc.field_errors)
+        content["error"].update(exc.extra)
+        retry_after = exc.extra.get("retry_after_seconds")
         return JSONResponse(
             status_code=exc.http_status,
-            content=error_response(exc.code, exc.message, exc.field_errors),
+            content=content,
+            headers={"Retry-After": str(retry_after)} if retry_after is not None else None,
         )
 
     @app.exception_handler(RequestValidationError)

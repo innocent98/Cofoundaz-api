@@ -4,8 +4,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import OnboardingAlreadyComplete
-from app.db.models.enums import MembershipRole, MembershipStatus
+from app.core.errors import AppError, OnboardingAlreadyComplete
+from app.db.models.enums import InvitationStatus, MembershipRole, MembershipStatus
 from app.db.models.invitation import Invitation
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
@@ -67,6 +67,7 @@ def serialize_member_state(startup: Startup) -> dict[str, Any]:
         "step": startup.profile.onboarding_step,
         "completed": True,
         "assessment_pending": False,
+        "pending_invite": False,
         "founder_profile": None,
         "startup": {"id": str(startup.id), "name": startup.name},
         "goals": [],
@@ -74,6 +75,65 @@ def serialize_member_state(startup: Startup) -> dict[str, Any]:
         "notes": None,
         "invites": [],
     }
+
+
+def has_pending_invite(db: Session, user: User) -> bool:
+    return (
+        db.query(Invitation.id)
+        .filter(
+            Invitation.email == user.email,
+            Invitation.status == InvitationStatus.pending,
+            Invitation.expires_at > datetime.now(UTC),
+        )
+        .first()
+        is not None
+    )
+
+
+def joined_any_workspace(db: Session, user: User) -> Startup | None:
+    """The earliest workspace `user` is an active member of without having created it."""
+    return (
+        db.query(Startup)
+        .join(Membership, Membership.startup_id == Startup.id)
+        .filter(
+            Membership.user_id == user.id,
+            Membership.status == MembershipStatus.active,
+            Startup.created_by != user.id,
+            Startup.deleted_at.is_(None),
+        )
+        .order_by(Membership.created_at, Membership.id)
+        .first()
+    )
+
+
+def not_a_founder_state(db: Session, user: User) -> dict[str, Any] | None:
+    """What `GET /onboarding/state` answers for someone the wizard is not for: a person who
+    joined a workspace, or who holds a pending invitation and has no workspace of their own.
+    None for everyone else.
+
+    Reading never creates a founder draft for these people (an invited mentor used to leave a
+    stray "Founder & CEO" startup behind on first load). A pending invitation only changes what
+    is DISPLAYED: it does not block writing, so a stranger who invites an address cannot stop
+    its owner from starting their own startup; `POST /invitations/decline` clears it."""
+    if _own_workspace(db, user) is not None:
+        return None
+    joined = joined_any_workspace(db, user)
+    if joined is not None:
+        return serialize_member_state(joined)
+    if has_pending_invite(db, user):
+        return {
+            "step": 1,
+            "completed": False,
+            "assessment_pending": False,
+            "pending_invite": True,
+            "founder_profile": None,
+            "startup": None,
+            "goals": [],
+            "ai_panel": None,
+            "notes": None,
+            "invites": [],
+        }
+    return None
 
 
 def resolve_or_create_workspace(db: Session, user: User) -> Startup:
@@ -85,6 +145,13 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
     )
     if existing is not None:
         return existing
+    if joined_any_workspace(db, user) is not None:
+        # A member (they accepted an invitation) is not a founder: no draft of their own.
+        raise AppError(
+            code="ONBOARDING_NOT_FOR_INVITED",
+            message="You joined a workspace as a team member, so there is no startup to set up.",
+            http_status=409,
+        )
 
     startup = Startup(name=None, created_by=user.id)
     startup.profile = StartupProfile()
@@ -99,6 +166,8 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
             joined_at=datetime.now(UTC),
         )
     )
+    if user.profile is not None and not user.profile.role_title:
+        user.profile.role_title = "Founder & CEO"  # the default title is for founders only
     db.flush()
     event_bus.publish(
         db, "workspace.created", {"startup_id": str(startup.id), "created_by": str(user.id)}
@@ -119,6 +188,7 @@ def serialize_state(db: Session, startup: Startup, user: User) -> dict[str, Any]
         "step": profile.onboarding_step,
         "completed": profile.onboarding_completed_at is not None,
         "assessment_pending": profile.assessment_pending,
+        "pending_invite": False,
         "founder_profile": {
             "full_name": founder_profile.full_name if founder_profile else None,
             "role_title": founder_profile.role_title if founder_profile else None,

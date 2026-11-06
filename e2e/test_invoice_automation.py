@@ -54,7 +54,7 @@ def _onboard(c, auth: dict, *, founder: str, startup: str) -> str:
         headers=auth,
         json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "validation"},
     )
-    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]})
     done = c.post("/api/v1/onboarding/complete", headers=auth)
     assert done.status_code == 200, done.text
     return c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]

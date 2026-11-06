@@ -744,7 +744,8 @@ def test_mfa_ticket_issued_before_suspension_gives_no_session(client, db):
         "/api/v1/auth/mfa/challenge",
         json={"mfa_ticket": ticket, "code": pyotp.TOTP(u.test_secret).now()},
     )
-    assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_INVALID_CODE"
+    # the sign-in step is void once the account is suspended: log in again (which is refused)
+    assert r.status_code == 401 and r.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
     assert db.query(AuthSession).filter_by(user_id=u.id, revoked_at=None).count() == 0
 
 

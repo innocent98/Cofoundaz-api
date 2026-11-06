@@ -58,7 +58,7 @@ def test_resend_stays_generic_when_email_provider_fails(client, db, monkeypatch)
     monkeypatch.setattr(registration_module, "get_email_sender", lambda: _FailingSender())
     r = client.post("/api/v1/auth/verify/resend", json={"email": "pending-fail@x.com"})
     assert r.status_code == 200, r.text
-    assert r.json()["data"] == {"sent": True}
+    assert r.json()["data"] == {"sent": True, "retry_after": 60}
 
 
 def test_signup_weak_password(client):
@@ -128,7 +128,8 @@ def test_resend_does_not_email_already_active_user(client, db, monkeypatch):
 
     r = client.post("/api/v1/auth/verify/resend", json={"email": "active@x.com"})
     assert r.status_code == 200
-    assert r.json()["data"] == {"sent": True}  # still the generic response — no enumeration
+    # still the generic response (same as a pending account would get): no enumeration
+    assert r.json()["data"] == {"sent": True, "retry_after": 60}
     assert sender.sent == []  # but nothing was actually sent
 
 
@@ -144,7 +145,11 @@ def test_resend_is_throttled_60s_per_email(client, db, monkeypatch):
 
     second = client.post("/api/v1/auth/verify/resend", json={"email": email})
     assert second.status_code == 200
-    assert second.json() == first.json()  # byte-identical generic response
+    # Gap 12: the throttled call says so (sent false) and how long to wait, so the FE can run
+    # its countdown instead of claiming a fresh link went out.
+    assert first.json()["data"] == {"sent": True, "retry_after": 60}
+    assert second.json()["data"]["sent"] is False
+    assert 0 < second.json()["data"]["retry_after"] <= 60
     assert len(sender.sent) == 1  # no second send — still throttled
 
     get_redis().delete(f"verify_resend_cooldown:{email}")

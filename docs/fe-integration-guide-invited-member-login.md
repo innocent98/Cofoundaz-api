@@ -1,5 +1,7 @@
 # FE integration guide: invited members and the onboarding state
 
+> **Update 2026-11-05:** `GET /onboarding/state` now has `pending_invite`, and a person with a pending invitation and no workspace gets a state with `startup: null` and 409 `ONBOARDING_NOT_FOR_INVITED` on writes instead of a draft startup; an account's `role_title` starts empty. See `fe-integration-guide-auth-onboarding.md` section 6.
+
 **What it is:** a mentor, consultant, team member (any invited role) who logs in now lands in the workspace they
 joined, not in founder onboarding. Before this fix `GET /onboarding/state` created a founder **draft workspace** for
 them and returned `completed: false`, so `lib/auth/post-login.ts` routed every invited member to `/onboarding`.

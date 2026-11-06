@@ -1,5 +1,7 @@
 # FE Integration Guide — "+ Invite" (`POST /team/invitations`)
 
+> **Update 2026-11-05:** the invite response also carries `results` (one `{email, status, reason, message}` per submitted row, in order). `created`, `skipped` and `undelivered` below are unchanged. See `fe-integration-guide-auth-onboarding.md` section 6.
+
 **Provenance.** Every body below is a live capture:
 - **e2e** `e2e/test_team_invitations.py` (real uvicorn) → `e2e/_captures/team_invitations/*.json`.
 - **Local docker stack**, 2026-10-17: the local test founder invited a mentor, and the mentor signed up and accepted →

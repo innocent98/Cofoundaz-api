@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/signup",
+    "headers": {
+      "X-Forwarded-For": "192.0.2.50"
+    },
+    "json": {
+      "email": "delivered+lim-95f3544fe0cb@resend.dev",
+      "password": "<test-password>",
+      "accepted_terms": true
+    }
+  },
+  "response": {
+    "status": 429,
+    "headers": {
+      "retry-after": "3597"
+    },
+    "body": {
+      "error": {
+        "code": "RATE_LIMITED",
+        "message": "Too many requests. Try again in 60 minutes.",
+        "field_errors": [],
+        "retry_after_seconds": 3597
+      }
+    }
+  }
+}
