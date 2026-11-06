@@ -1,7 +1,7 @@
 """Marketplace slice C: bookings, orders, ledger, webhook events, consents
 
 Revision ID: 0101_marketplace_booking
-Revises: 0099_funding_cap_table
+Revises: 0103_readiness_narrative
 Create Date: 2026-11-06
 
 Marketplace slice C (booking, checkout and ledger). Adds `marketplace_bookings`,
@@ -22,7 +22,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0101_marketplace_booking"
-down_revision = "0099_funding_cap_table"
+down_revision = "0103_readiness_narrative"
 branch_labels = None
 depends_on = None
 

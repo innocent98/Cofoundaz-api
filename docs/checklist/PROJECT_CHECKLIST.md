@@ -3999,7 +3999,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Founder `/marketplace/providers|listings|slots` for founder + team member: approved + active only, allow-list payloads, filters, sort, paging
   - [x] `content_reports` item types `listing` / `provider` / `review`; remove unlists a listing
   - [x] Unit + API tests, migration round trip, live e2e journey, live-captured FE guide
-- [x] **Slice C: booking and checkout** (`feature/marketplace-booking`, migration `0101_marketplace_booking` on `0099_funding_cap_table` (re-chained after #229 merged), SOP `docs/sop/2026-11-06-marketplace-booking.md`, FE guide `docs/fe-integration-guide-marketplace-booking.md`; PR open, not merged; **production charging stays off** until counsel and Paystack confirm in writing, D-MP-3/9)
+- [x] **Slice C: booking and checkout** (`feature/marketplace-booking`, migration `0101_marketplace_booking` on `0103_readiness_narrative` (re-chained after #236 merged), SOP `docs/sop/2026-11-06-marketplace-booking.md`, FE guide `docs/fe-integration-guide-marketplace-booking.md`; PR open, not merged; **production charging stays off** until counsel and Paystack confirm in writing, D-MP-3/9)
   - [x] `marketplace_bookings` (snapshots), `marketplace_orders` (CHECK-enforced split and refund bounds), append-only `marketplace_ledger_entries` (trigger), `marketplace_webhook_events`, `marketplace_consents`
   - [x] Booking with idempotency key, 15-minute slot hold, double-booking protection (expert row lock + slot check + unique index), ToS consent, own-booking guard, saved card
   - [x] Paystack `mp_` references; signed webhook dispatcher that re-verifies every payment with Paystack; idempotent apply; late-payment revive or auto-refund
