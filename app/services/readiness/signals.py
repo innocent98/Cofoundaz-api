@@ -39,7 +39,7 @@ from app.db.models.startup import Startup
 from app.db.models.validation import Assumption, Experiment, SmokeTestEvent, SurveyResponse
 from app.services.health_score.live_signals import SIGNALS_BY_KEY as HEALTH_SIGNALS
 from app.services.health_score.service import latest_completed_result
-from app.services.readiness import deck
+from app.services.readiness import deck, narrative
 from app.services.readiness.scoring import Reading, signal_score
 
 STAGES = tuple(StartupStage)
@@ -541,7 +541,20 @@ SIGNALS: tuple[Signal, ...] = (
         _health("money.transactions_30d"),
         lambda v, t: f"{_n(v)} of {_n(t)} transactions logged this month. Keep the books current.",
     ),
-    # Story (deck review, narrative check and mock Q&A signals arrive with their slices)
+    Signal(
+        "financials.use_of_funds",
+        "financials",
+        "Use of funds defined",
+        "step",
+        by_stage(1, 1, 1, 1, 1, 1),
+        "/investor-readiness/narrative",
+        lambda db, s: narrative.has_use_of_funds(db, s.id),
+        lambda v, t: (
+            "You have not said what the money is for. Add a use of funds breakdown to your "
+            "narrative or deck and run a narrative check."
+        ),
+    ),
+    # Story
     Signal(
         "story.pitch_deck",
         "story",
@@ -579,6 +592,21 @@ SIGNALS: tuple[Signal, ...] = (
             "You have not rehearsed an investor Q&A yet. Run a mock session."
             if v <= 0
             else f"Your last mock Q&A averaged {v:g} of 5 against {t:g}. Run another and fix your weakest answer."
+        ),
+        2.0,
+    ),
+    Signal(
+        "story.narrative",
+        "story",
+        "Narrative consistent with the numbers",
+        "step",
+        by_stage(2, 2, 2, 2, 2, 2),
+        "/investor-readiness/narrative",
+        lambda db, s: narrative.consistency_step(db, s.id),
+        lambda v, t: (
+            "You have not checked your narrative against your numbers yet. Run a narrative check."
+            if v <= 0
+            else "Your deck or narrative disagrees with your numbers. Fix the number or the story."
         ),
         2.0,
     ),

@@ -113,7 +113,9 @@ from app.db.models.platform_staff import PlatformStaff  # noqa: F401
 from app.db.models.readiness import (  # noqa: F401
     DeckReview,
     MockSession,
+    NarrativeCheck,
     ReadinessInput,
+    ReadinessNarrative,
     ReadinessScore,
     ReadinessScoreHistory,
 )
