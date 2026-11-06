@@ -12,6 +12,7 @@ from app.core.errors import AppError
 from app.db.models.cap_table import CapEntry
 from app.db.models.enums import FundingRoundStatus
 from app.db.models.funding import FundingRound, Investor
+from app.db.models.term_sheet import TermSheet
 from app.schemas.funding import RoundUpdate
 from app.services.funding.errors import _validation
 from app.services.funding.locks import lock_workspace
@@ -93,10 +94,10 @@ def _create(
 
 
 def _cap_table_has_money(db: Session, startup_id: uuid.UUID) -> bool:
-    """True once any cap table entry carries an amount or a share price (the currency is then
-    fixed). Lives here, reading the model directly, so rounds and the cap table service do not
-    import each other."""
-    n = (
+    """True once any cap table entry carries an amount or a share price, or any term sheet states
+    a valuation or investment (the currency is then fixed). Lives here, reading the models
+    directly, so rounds and the cap table / term sheet services do not import each other."""
+    entries = (
         db.query(func.count(CapEntry.id))
         .filter(
             CapEntry.startup_id == startup_id,
@@ -104,7 +105,16 @@ def _cap_table_has_money(db: Session, startup_id: uuid.UUID) -> bool:
         )
         .scalar()
     )
-    return bool(n)
+    sheets = (
+        db.query(func.count(TermSheet.id))
+        .filter(
+            TermSheet.startup_id == startup_id,
+            TermSheet.terms.has_key("pre_money_minor")
+            | TermSheet.terms.has_key("investment_minor"),
+        )
+        .scalar()
+    )
+    return bool(entries or sheets)
 
 
 def _assert_cap_currency_free(db: Session, startup_id: uuid.UUID, new_currency: str) -> None:
@@ -116,7 +126,7 @@ def _assert_cap_currency_free(db: Session, startup_id: uuid.UUID, new_currency: 
     if new_currency != current and _cap_table_has_money(db, startup_id):
         raise AppError(
             "CAP_TABLE_HAS_AMOUNTS",
-            f"Your cap table already has amounts in {current}. Clear them before changing the "
+            f"Your cap table or term sheets already have amounts in {current}. Clear them before changing the "
             "currency.",
             409,
         )

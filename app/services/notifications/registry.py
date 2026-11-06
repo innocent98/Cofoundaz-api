@@ -445,6 +445,13 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "See who viewed",
     ),
+    # D-FUND-5/6: a term sheet was confirmed. Founders only (minus the one who did it); the body
+    # carries the not-advice disclaimer.
+    "funding.term_sheet.added": NotifSpec(
+        _audience("funding.term_sheet.added"),
+        lambda _p: "Term sheet added, comparison updated",
+        lambda _p: "Negotiate with clarity. Not legal or financial advice.",
+    ),
     "readiness.qa.scored": NotifSpec(
         _founders,
         lambda _p: "Mock Q&A session summary ready",
