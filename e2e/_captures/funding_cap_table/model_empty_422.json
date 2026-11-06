@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "EMPTY_CAP_TABLE",
+    "message": "Add your founders' shares before modelling a round.",
+    "field_errors": []
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "data": {
+    "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
+    "name": "Seed at 40M (base)",
+    "created_at": "2026-11-06T20:50:43.795017+00:00",
+    "headline": {
+      "founders_after_bps": 5339,
+      "founders_before_bps": 8439
+    }
+  },
+  "meta": null
+}

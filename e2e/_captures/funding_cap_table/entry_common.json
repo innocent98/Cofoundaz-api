@@ -1,0 +1,21 @@
+{
+  "data": {
+    "id": "c8d35898-2287-4886-ae18-35678f62f9e3",
+    "holder_id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
+    "security": "common",
+    "shares": 8000000,
+    "price_minor": null,
+    "amount_minor": null,
+    "valuation_cap_minor": null,
+    "discount_bps": null,
+    "safe_kind": null,
+    "mfn": false,
+    "interest_bps": null,
+    "issued_on": "2025-01-15",
+    "vesting_cliff_months": null,
+    "vesting_months": null,
+    "vesting_start_on": null,
+    "notes": null
+  },
+  "meta": null
+}

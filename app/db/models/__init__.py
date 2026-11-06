@@ -36,6 +36,7 @@ from app.db.models.calendar import (  # noqa: F401
     CalendarMeeting,
     CalendarReminderRule,
 )
+from app.db.models.cap_table import CapAudit, CapEntry, CapHolder, CapScenario  # noqa: F401
 from app.db.models.comment import Comment  # noqa: F401
 from app.db.models.content_report import ContentReport  # noqa: F401
 from app.db.models.dashboard import DailyBriefing  # noqa: F401
