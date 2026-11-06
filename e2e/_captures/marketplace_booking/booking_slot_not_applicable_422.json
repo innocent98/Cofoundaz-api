@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SLOT_NOT_APPLICABLE",
+    "message": "Packages don't have a time slot.",
+    "field_errors": []
+  }
+}

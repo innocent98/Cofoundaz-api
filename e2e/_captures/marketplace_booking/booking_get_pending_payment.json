@@ -1,0 +1,44 @@
+{
+  "data": {
+    "id": "c410a7a5-6ca9-49f7-9356-5786c95893f0",
+    "status": "pending_payment",
+    "type": "consultation",
+    "listing_id": "7615c87e-a820-4f0d-9496-fe026065c7bf",
+    "title": "Contract review session",
+    "category": "Legal",
+    "deliverables": [],
+    "duration_min": 60,
+    "delivery_days": null,
+    "revisions_included": 2,
+    "price_minor": 1000000,
+    "currency": "NGN",
+    "brief": "We need a review of our seed investment agreement before we sign next week.",
+    "starts_at": "2026-11-08T07:00:00+00:00",
+    "ends_at": "2026-11-08T08:00:00+00:00",
+    "timezone": "Africa/Lagos",
+    "slot_hold_expires_at": "2026-11-06T19:23:38.601411+00:00",
+    "accept_by": null,
+    "due_at": null,
+    "meeting_url": null,
+    "closed_reason": null,
+    "provider": {
+      "id": "49ba5893-6f6f-44de-a1e0-9dfa85a2ac09",
+      "display_name": "Ngozi Eze",
+      "avatar_url": null
+    },
+    "order": {
+      "id": "e3574880-e206-4d54-90b8-e2a054c49780",
+      "status": "pending",
+      "amount_minor": 1000000,
+      "currency": "NGN",
+      "reference": "mp_032050275beb230f919f",
+      "checkout_url": "https://checkout.paystack.com/stub-mp_032050275beb230f919f",
+      "paid_at": null,
+      "receipt_number": null,
+      "refunded_minor": 0,
+      "refund_pending_minor": 0
+    },
+    "created_at": "2026-11-06T19:08:38.591279+00:00"
+  },
+  "meta": null
+}

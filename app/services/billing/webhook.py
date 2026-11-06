@@ -122,6 +122,12 @@ def process(db: Session, *, raw_body: bytes, signature: str | None) -> dict[str,
         return {"received": True, "outcome": "ignored_malformed"}
     event: str = body["event"]
     data = subs.as_dict(body.get("data"))
+    if marketplace_webhook.owns(event, data):
+        # The Marketplace dedupes by event and reference and decides itself which outcomes are
+        # final, so billing's byte-hash row must not turn a retry into a "duplicate" first.
+        outcome = marketplace_webhook.process(db, event, data)
+        log.info(f"marketplace webhook {event}: {outcome}")
+        return {"received": True, "outcome": outcome}
     key = f"{event}:{hashlib.sha256(raw_body).hexdigest()}"
     inserted = db.execute(
         insert(BillingWebhookEvent)
@@ -132,9 +138,7 @@ def process(db: Session, *, raw_body: bytes, signature: str | None) -> dict[str,
     if inserted is None:
         return {"received": True, "outcome": "duplicate"}
     row = db.query(BillingWebhookEvent).filter_by(event_key=key[:160]).one()
-    if marketplace_webhook.owns(event, data):
-        outcome = marketplace_webhook.process(db, event, data)
-    elif event == "charge.success":
+    if event == "charge.success":
         outcome = flows.finalize_charge(db, data)
     elif event == "subscription.create":
         outcome = _on_subscription_create(db, data)

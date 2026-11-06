@@ -18,6 +18,7 @@ from app.services.marketplace import orders
 
 PREFIX = "mp_"
 HANDLED = frozenset({"charge.success", "refund.processed", "refund.failed", "refund.pending"})
+NON_FINAL = frozenset({"unverified", "payment_not_successful", "payment_mismatch"})
 
 
 def _reference(event: str, data: dict[str, Any]) -> str | None:
@@ -67,11 +68,30 @@ def process(db: Session, event: str, data: dict[str, Any]) -> str:
         outcome = orders.apply_payment(db, reference, tx) if tx is not None else "unverified"
     elif event == "refund.failed":
         outcome = _refund_failed(db, reference, data)
-    else:  # refund.processed / refund.pending: the ledger entry was written when we asked
+    elif event == "refund.processed":
+        outcome = _refund_processed(db, reference, data)
+    else:  # refund.pending
         outcome = "refund_noted"
     row = db.query(MarketplaceWebhookEvent).filter_by(event_key=key).one()
-    row.outcome = outcome[:60]
+    if outcome in NON_FINAL:
+        # Not a verdict: forget it, so Paystack's retry (or a later one) is processed afresh.
+        db.delete(row)
+    else:
+        row.outcome = outcome[:60]
     return outcome
+
+
+def _refund_processed(db: Session, reference: str, data: dict[str, Any]) -> str:
+    order_id = (
+        db.query(MarketplaceOrder.id)
+        .filter(MarketplaceOrder.paystack_reference == reference)
+        .scalar()
+    )
+    amount = data.get("amount")
+    if order_id is None or not isinstance(amount, int):
+        return "refund_noted"
+    ref = str(data.get("refund_reference") or data.get("id") or amount)
+    return orders.settle_from_webhook(db, order_id, amount, ref)
 
 
 def _refund_failed(db: Session, reference: str, data: dict[str, Any]) -> str:

@@ -1,0 +1,48 @@
+{
+  "data": {
+    "replayed": false,
+    "id": "b800da41-e291-49a2-82bf-4180f69a63a2",
+    "status": "pending_payment",
+    "type": "package",
+    "listing_id": "4246806b-127f-4855-928f-d60780bceff7",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "price_minor": 25000000,
+    "currency": "NGN",
+    "brief": "We need a review of our seed investment agreement before we sign next week.",
+    "starts_at": null,
+    "ends_at": null,
+    "timezone": "Africa/Lagos",
+    "slot_hold_expires_at": "2026-11-06T19:23:39.368216+00:00",
+    "accept_by": null,
+    "due_at": null,
+    "meeting_url": null,
+    "closed_reason": null,
+    "provider": {
+      "id": "49ba5893-6f6f-44de-a1e0-9dfa85a2ac09",
+      "display_name": "Ngozi Eze",
+      "avatar_url": null
+    },
+    "order": {
+      "id": "892e820b-4771-44a1-9641-2bc4dbafb98a",
+      "status": "pending",
+      "amount_minor": 25000000,
+      "currency": "NGN",
+      "reference": "mp_f9c0e4ccf6986bbe7993",
+      "checkout_url": "https://checkout.paystack.com/stub-mp_f9c0e4ccf6986bbe7993",
+      "paid_at": null,
+      "receipt_number": null,
+      "refunded_minor": 0,
+      "refund_pending_minor": 0
+    },
+    "created_at": "2026-11-06T19:08:39.358365+00:00"
+  },
+  "meta": null
+}

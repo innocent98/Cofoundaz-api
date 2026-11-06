@@ -241,6 +241,7 @@ def _same_request(
 def find_replay(
     db: Session,
     user_id: uuid.UUID,
+    startup_id: uuid.UUID,
     key: str,
     listing_id: uuid.UUID,
     starts_at: datetime | None,
@@ -253,7 +254,7 @@ def find_replay(
     )
     if row is None:
         return None
-    if not _same_request(row, listing_id, starts_at, brief):
+    if row.startup_id != startup_id or not _same_request(row, listing_id, starts_at, brief):
         raise err(
             "IDEMPOTENCY_CONFLICT",
             "That Idempotency-Key was already used for a different booking.",
@@ -315,7 +316,7 @@ def create_booking(
     """Returns (booking, order, replayed). Raises before touching Paystack on every bad input."""
     if not settings.MARKETPLACE_PAYMENTS_ENABLED:
         raise err("PAYMENTS_DISABLED", "Booking isn't open yet. Payments are switched off.", 403)
-    replay = find_replay(db, user.id, idempotency_key, listing_id, starts_at, brief)
+    replay = find_replay(db, user.id, m.startup_id, idempotency_key, listing_id, starts_at, brief)
     if replay is not None:
         return replay, _order_for(db, replay.id), True
     listing, provider = get_listing(db, listing_id)  # 404 unless approved expert + active listing
@@ -383,7 +384,9 @@ def create_booking(
             db.flush()
     except IntegrityError:
         # a concurrent request with the same key won the insert: answer with its booking
-        replay = find_replay(db, user.id, idempotency_key, listing_id, starts_at, brief)
+        replay = find_replay(
+            db, user.id, m.startup_id, idempotency_key, listing_id, starts_at, brief
+        )
         if replay is None:
             raise err(
                 "SLOT_UNAVAILABLE", "That time isn't available any more. Pick another.", 409
@@ -439,7 +442,9 @@ def charge_saved_card(
             metadata={"booking_id": str(booking.id), "kind": "marketplace"},
         )
     except AppError:
-        return _fail_checkout(db, booking, order, "card_error")
+        # We don't know whether the card was charged (a timeout can follow a real charge). Leave
+        # the hold pending: the webhook confirms it, or the timer expires it.
+        return "card_error"
     if data.get("status") != "success":
         return _fail_checkout(db, booking, order, "card_declined")
     return verify_and_apply(db, order.paystack_reference)
@@ -448,13 +453,13 @@ def charge_saved_card(
 def _fail_checkout(
     db: Session, booking: MarketplaceBooking, order: MarketplaceOrder, reason: str
 ) -> str:
-    row = orders.lock_order(db, order.id)
     b = (
         db.query(MarketplaceBooking)
         .filter(MarketplaceBooking.id == booking.id)
         .with_for_update()
         .one()
     )
+    row = orders.lock_order(db, order.id)  # booking first, then order, as everywhere
     if row.status == OrderStatus.pending and b.status == BookingStatus.pending_payment:
         row.status = OrderStatus.failed
         b.status = BookingStatus.cancelled

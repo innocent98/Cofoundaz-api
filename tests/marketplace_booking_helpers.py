@@ -39,6 +39,9 @@ class FakePaystack:
         self.decline_charges = False
         self.amount_override: int | None = None
         self.verify_calls = 0
+        self.refund_ids: list[int] = []
+        self.timeout_after_accept = False  # Paystack takes the refund, our answer is lost
+        self.charge_unavailable = False  # a saved-card charge times out
 
     def _guard(self) -> None:
         if self.down:
@@ -92,6 +95,8 @@ class FakePaystack:
         metadata=None,
     ):
         self._guard()
+        if self.charge_unavailable:
+            raise paystack.PaystackUnavailable()
         self.charges.append(
             {"reference": reference, "amount": amount_minor, "auth": authorization_code}
         )
@@ -106,7 +111,18 @@ class FakePaystack:
         if self.reject_refunds:
             raise paystack.PaystackRejected()
         self.refunds.append({"transaction": transaction_reference, "amount": amount_minor})
-        return {"status": "pending"}
+        self.refund_ids.append(9000 + len(self.refunds))
+        if self.timeout_after_accept:
+            raise paystack.PaystackUnavailable()
+        return {"id": self.refund_ids[-1], "status": "pending"}
+
+    def list_refunds(self, transaction_reference: str):
+        self._guard()
+        return [
+            {"id": rid, "amount": r["amount"], "status": "processed"}
+            for r, rid in zip(self.refunds, self.refund_ids, strict=True)
+            if r["transaction"] == transaction_reference
+        ]
 
     def pay(self, reference: str) -> None:
         self.paid.add(reference)
@@ -118,7 +134,7 @@ def install_fake_paystack(monkeypatch) -> FakePaystack:
     monkeypatch.setattr(settings, "PAYSTACK_TEST_SECRET_KEY", None)
     monkeypatch.setattr(settings, "MARKETPLACE_PAYMENTS_ENABLED", True)
     monkeypatch.setattr(settings, "APP_BASE_URL", "https://app.example.test")
-    for name in ("initialize", "verify", "charge_authorization", "refund"):
+    for name in ("initialize", "verify", "charge_authorization", "refund", "list_refunds"):
         monkeypatch.setattr(paystack, name, getattr(fake, name))
     return fake
 

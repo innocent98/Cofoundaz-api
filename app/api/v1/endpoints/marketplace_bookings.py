@@ -92,7 +92,14 @@ def create_booking(
         outcome = bookings.charge_saved_card(db, user, m, booking, order)
         db.commit()
         outbox.flush(db)
-        if outcome in ("card_declined", "card_error", "no_saved_card"):
+        if outcome == "card_error":
+            raise AppError(
+                "PAYMENT_UNCONFIRMED",
+                "We couldn't confirm the charge. If your card was charged the booking will appear "
+                "shortly; if not, nothing was charged. Check your bookings before trying again.",
+                502,
+            )
+        if outcome in ("card_declined", "no_saved_card"):
             raise AppError(
                 "CARD_DECLINED",
                 "Your saved card was declined. Nothing was charged. Try another card.",

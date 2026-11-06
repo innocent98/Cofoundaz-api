@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "TERMS_REQUIRED",
+    "message": "Accept the Marketplace terms to book.",
+    "field_errors": [
+      {
+        "field": "accept_terms",
+        "message": "You need to accept the terms."
+      }
+    ]
+  }
+}

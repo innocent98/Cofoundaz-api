@@ -112,6 +112,19 @@ def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | Non
         return _json(
             200, {"status": True, "message": "Charge attempted", "data": _tx_data(ref, tx)}
         )
+    if path == "/refund" and request.method == "GET":
+        tx = request.url.params.get("transaction")
+        rows = [
+            {
+                "id": 500 + i,
+                "amount": r["amount"],
+                "status": "processed",
+                "transaction_reference": tx,
+            }
+            for i, r in enumerate(PS_REFUNDS)
+            if r["transaction"] == tx
+        ]
+        return _json(200, {"status": True, "message": "Refunds retrieved", "data": rows})
     if path == "/refund" and request.method == "POST":
         PS_REFUNDS.append({"transaction": body.get("transaction"), "amount": body.get("amount")})
         return _json(

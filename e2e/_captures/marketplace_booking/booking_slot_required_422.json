@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SLOT_REQUIRED",
+    "message": "Choose a time for this consultation.",
+    "field_errors": []
+  }
+}

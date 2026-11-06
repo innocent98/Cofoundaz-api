@@ -191,6 +191,13 @@ def refund(transaction_reference: str, amount_minor: int | None = None) -> dict[
     return _data(_request("POST", "/refund", json_body=payload))
 
 
+def list_refunds(transaction_reference: str) -> list[dict[str, Any]]:
+    """Refunds Paystack holds for a transaction (to reconcile a refund whose answer we never saw)."""
+    body = _request("GET", "/refund", params={"transaction": transaction_reference})
+    data = body.get("data")
+    return [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
+
+
 def list_subscriptions(customer_code: str) -> list[dict[str, Any]]:
     # This filter takes the numeric customer id; given a customer code Paystack returns an empty list.
     customer = _data(_request("GET", f"/customer/{quote(customer_code, safe='')}"))

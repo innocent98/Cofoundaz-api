@@ -1,0 +1,23 @@
+{
+  "data": {
+    "receipt_number": "MPR-2026-1001",
+    "paid_at": "2026-11-06T19:08:38+00:00",
+    "currency": "NGN",
+    "reference": "mp_032050275beb230f919f",
+    "total_minor": 1000000,
+    "refunded_minor": 0,
+    "lines": [
+      {
+        "label": "Contract review session (service by Ngozi Eze)",
+        "amount_minor": 850000
+      },
+      {
+        "label": "Cofoundaz platform fee",
+        "amount_minor": 150000
+      }
+    ],
+    "is_tax_invoice": false,
+    "note": "This receipt is not a tax invoice. VAT and withholding tax treatment is being reviewed and a tax invoice will follow."
+  },
+  "meta": null
+}

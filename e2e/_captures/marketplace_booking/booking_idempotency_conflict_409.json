@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "IDEMPOTENCY_CONFLICT",
+    "message": "That Idempotency-Key was already used for a different booking.",
+    "field_errors": []
+  }
+}

@@ -13,7 +13,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,7 @@ from app.db.models.marketplace import (
     MarketplaceBooking,
     MarketplaceLedgerEntry,
     MarketplaceOrder,
+    MarketplaceProvider,
     receipt_seq,
 )
 from app.platform.audit import write_audit
@@ -117,17 +118,26 @@ def _paid_at(tx: dict[str, Any]) -> datetime:
 
 
 def slot_still_free(db: Session, booking: MarketplaceBooking) -> bool:
-    """Used when a payment lands after the checkout hold lapsed: may the booking be revived?"""
+    """Used when a payment lands after the checkout hold lapsed: may the booking be revived? A
+    live booking OR another founder's unexpired hold on an overlapping time says no. The caller
+    holds the expert's row lock so two late payments can't both revive."""
     if booking.starts_at is None or booking.ends_at is None:
         return True
-    if booking.starts_at <= now():
+    t = now()
+    if booking.starts_at <= t:
         return False
     clash = (
         db.query(MarketplaceBooking.id)
         .filter(
             MarketplaceBooking.provider_id == booking.provider_id,
             MarketplaceBooking.id != booking.id,
-            MarketplaceBooking.status.in_(ACTIVE_BOOKING),
+            or_(
+                MarketplaceBooking.status.in_(ACTIVE_BOOKING),
+                and_(
+                    MarketplaceBooking.status == BookingStatus.pending_payment,
+                    MarketplaceBooking.slot_hold_expires_at > t,
+                ),
+            ),
             MarketplaceBooking.starts_at < booking.ends_at,
             MarketplaceBooking.ends_at > booking.starts_at,
         )
@@ -194,6 +204,12 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
     revivable = booking.status == BookingStatus.pending_payment or (
         booking.status == BookingStatus.expired and booking.closed_reason == "payment_not_completed"
     )
+    if revivable and booking.starts_at is not None:
+        # Booking -> order -> expert: the expert lock is last, and create_booking (expert first)
+        # never holds a booking lock, so the two can't deadlock.
+        db.query(MarketplaceProvider.id).filter(
+            MarketplaceProvider.id == booking.provider_id
+        ).with_for_update().one()
     if revivable and slot_still_free(db, booking):
         booking.status = BookingStatus.awaiting_provider
         booking.slot_hold_expires_at = None
@@ -263,11 +279,69 @@ def request_refund(
     return True
 
 
+def record_refund_sent(
+    db: Session, order: MarketplaceOrder, booking: MarketplaceBooking, amount: int, refund_ref: str
+) -> None:
+    """Paystack has taken (or confirmed) a refund of `amount`: write the ledger entry, keyed by
+    Paystack's refund id so the same refund can never be booked twice, and move the order. The
+    order must be locked. Raises if the ledger already holds this refund id (a bug, not a retry)."""
+    if not write_ledger(
+        db,
+        order,
+        booking.provider_id,
+        LedgerKind.refund,
+        -amount,
+        f"refund:{refund_ref}",
+        note=order.refund_reason,
+    ):
+        raise err("LEDGER_CONFLICT", f"Refund {refund_ref} is already on the ledger.", 500)
+    order.refunded_minor += amount
+    order.refund_due_minor = max(0, order.refund_due_minor - amount)
+    if order.refund_due_minor == 0:
+        order.refund_next_attempt_at = None
+    order.status = (
+        OrderStatus.refunded
+        if order.refunded_minor == order.amount_minor
+        else OrderStatus.partially_refunded
+    )
+    write_audit(
+        db,
+        "marketplace.order.refunded",
+        startup_id=order.startup_id,
+        entity_type="marketplace_order",
+        entity_id=order.id,
+        details={
+            "amount_minor": amount,
+            "refunded_total_minor": order.refunded_minor,
+            "reason": order.refund_reason,
+            "refund_ref": refund_ref,
+        },
+    )
+    event_bus.publish(db, "marketplace.order.refunded", {"order_id": str(order.id)})
+
+
+def _refund_id(data: dict[str, Any], fallback: str) -> str:
+    rid = data.get("id") or data.get("refund_reference")
+    return str(rid) if rid else fallback
+
+
+def _already_with_paystack(order: MarketplaceOrder) -> list[dict[str, Any]]:
+    """Refunds Paystack holds for this order that we haven't recorded. A refund whose answer was
+    lost (timeout, crash before commit) shows up here, so a retry never sends it twice."""
+    return [
+        r
+        for r in paystack.list_refunds(order.paystack_reference)
+        if str(r.get("status", "")).lower() not in ("failed", "reversed")
+    ]
+
+
 def process_refund(db: Session, order_id: uuid.UUID) -> str:
     """Send a due refund to Paystack. Row-locks the order for the whole call so a timer and a
-    request can't both refund it. On success: ledger `refund` entry (negative), `refunded_minor`
-    up, order `refunded` / `partially_refunded`. On a Paystack error: backoff and retry; after
-    MAX_REFUND_ATTEMPTS it is flagged (`refund_failed_at`) for staff and left in `refund_due`."""
+    request can't both refund it. Before RE-sending (any earlier attempt may have been accepted
+    without our seeing the answer) it asks Paystack what it already holds and only sends the
+    difference. On success: a ledger `refund` entry keyed by Paystack's refund id, `refunded_minor`
+    up. On a Paystack error: backoff and retry; after MAX_REFUND_ATTEMPTS it is flagged
+    (`refund_failed_at`) for staff and left in `refund_due`."""
     order = lock_order(db, order_id)
     due = order.refund_due_minor
     if due <= 0:
@@ -277,7 +351,23 @@ def process_refund(db: Session, order_id: uuid.UUID) -> str:
         return "ignored"
     t = now()
     try:
-        paystack.refund(order.paystack_reference, amount_minor=due)
+        if order.refund_attempts > 0:
+            held = _already_with_paystack(order)
+            recorded = {
+                e.external_ref.removeprefix("refund:")
+                for e in db.query(MarketplaceLedgerEntry).filter_by(
+                    order_id=order.id, kind=LedgerKind.refund
+                )
+            }
+            unseen = [r for r in held if _refund_id(r, "") not in recorded]
+            for r in unseen:
+                amount = r.get("amount")
+                if isinstance(amount, int) and 0 < amount <= order.refund_due_minor:
+                    record_refund_sent(db, order, booking, amount, _refund_id(r, f"p{amount}"))
+            due = order.refund_due_minor
+            if due <= 0:
+                return "refunded"
+        sent = paystack.refund(order.paystack_reference, amount_minor=due)
     except (paystack.PaystackUnavailable, paystack.PaystackRejected) as exc:
         order.refund_attempts += 1
         step = min(order.refund_attempts, len(REFUND_RETRY_BACKOFF_MIN)) - 1
@@ -296,32 +386,32 @@ def process_refund(db: Session, order_id: uuid.UUID) -> str:
             f"marketplace: refund of {order.paystack_reference} not accepted: {type(exc).__name__}"
         )
         return "retry_scheduled"
-    after = order.refunded_minor + due
-    write_ledger(
+    record_refund_sent(
         db,
         order,
-        booking.provider_id,
-        LedgerKind.refund,
-        -due,
-        f"refund:{after}",
-        note=order.refund_reason,
+        booking,
+        due,
+        _refund_id(sent, f"{order.refunded_minor + due}-{uuid.uuid4().hex[:8]}"),
     )
-    order.refunded_minor = after
-    order.refund_due_minor = 0
-    order.refund_next_attempt_at = None
-    order.status = (
-        OrderStatus.refunded if after == order.amount_minor else OrderStatus.partially_refunded
-    )
-    write_audit(
-        db,
-        "marketplace.order.refunded",
-        startup_id=order.startup_id,
-        entity_type="marketplace_order",
-        entity_id=order.id,
-        details={"amount_minor": due, "refunded_total_minor": after, "reason": order.refund_reason},
-    )
-    event_bus.publish(db, "marketplace.order.refunded", {"order_id": str(order.id)})
     return "refunded"
+
+
+def settle_from_webhook(db: Session, order_id: uuid.UUID, amount: int, refund_ref: str) -> str:
+    """Paystack says a refund was processed. If we still show it as due (we never saw the answer to
+    our request), book it now; otherwise it is already on the ledger."""
+    order = lock_order(db, order_id)
+    booking = db.get(MarketplaceBooking, order.booking_id)
+    already = (
+        db.query(MarketplaceLedgerEntry.id)
+        .filter_by(
+            order_id=order.id, kind=LedgerKind.refund, external_ref=f"refund:{refund_ref}"[:80]
+        )
+        .first()
+    )
+    if booking is None or already is not None or not 0 < amount <= order.refund_due_minor:
+        return "refund_noted"
+    record_refund_sent(db, order, booking, amount, refund_ref)
+    return "refund_settled"
 
 
 def reverse_failed_refund(db: Session, order_id: uuid.UUID, amount_minor: int, ref: str) -> str:
