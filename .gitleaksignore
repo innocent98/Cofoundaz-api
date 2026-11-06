@@ -73,3 +73,13 @@
 # supplied as a GitHub Actions secret referenced as ${{ secrets.* }}, never as
 # an inline literal - see docs/deployment/GITHUB_ACTIONS_SETUP.md.
 3ef75fef8eca7de5a0944525d30aa00a77eb87dc:.github/workflows/ci.yml:generic-api-key:81
+
+# Marketplace slice C e2e journey (commit 9cd09690, e2e/test_marketplace_booking.py): the literal
+# Idempotency-Key `journey-consult-0001` passed to book(key=...) matched `generic-api-key`. It is a
+# throwaway request-dedupe token used against a local test server, never a credential, so it is NOT
+# considered compromised and nothing was rotated. It is in published history of this PR's branch,
+# so it is baselined here; the file now builds the key from a helper so no later commit re-adds a
+# literal.
+9cd09690bf815cda3ab75bd86aba7d176efd85d3:e2e/test_marketplace_booking.py:generic-api-key:345
+9cd09690bf815cda3ab75bd86aba7d176efd85d3:e2e/test_marketplace_booking.py:generic-api-key:350
+9cd09690bf815cda3ab75bd86aba7d176efd85d3:e2e/test_marketplace_booking.py:generic-api-key:357

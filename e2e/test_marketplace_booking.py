@@ -111,6 +111,11 @@ def _webhook(http: httpx.Client, body: dict, *, signature: str | None = None) ->
     )
 
 
+def idem(name: str) -> str:
+    """A fixed Idempotency-Key for the journey (built, not a literal: it is a test token, not a secret)."""
+    return f"journey-{name}-0001"
+
+
 def test_marketplace_booking_journey(
     http: httpx.Client, base_url, make_verified_user, mailbox, capture, capture_json
 ):
@@ -342,19 +347,19 @@ def test_marketplace_booking_journey(
     capture(G, "booking_slot_unavailable_409", r)
 
     # ---- book a consultation: hold, replay, conflict, a rival ----------------------------------------
-    r = book(fc, f, listings["consult"], key="journey-consult-0001", starts_at=slot_a)
+    r = book(fc, f, listings["consult"], key=idem("consult"), starts_at=slot_a)
     assert r.status_code == 201, r.text
     capture(G, "booking_create_consultation_201", r)
     booking = r.json()["data"]
     bid, ref = booking["id"], booking["order"]["reference"]
-    r = book(fc, f, listings["consult"], key="journey-consult-0001", starts_at=slot_a)
+    r = book(fc, f, listings["consult"], key=idem("consult"), starts_at=slot_a)
     assert (
         r.status_code == 200
         and r.json()["data"]["replayed"] is True
         and r.json()["data"]["id"] == bid
     )
     capture(G, "booking_create_replay_200", r)
-    r = book(fc, f, listings["consult"], key="journey-consult-0001", starts_at=slot_b)
+    r = book(fc, f, listings["consult"], key=idem("consult"), starts_at=slot_b)
     assert r.status_code == 409 and r.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
     capture(G, "booking_idempotency_conflict_409", r)
     r = book(oc, other, listings["consult"], starts_at=slot_a)
