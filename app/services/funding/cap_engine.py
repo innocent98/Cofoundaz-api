@@ -25,15 +25,17 @@ SAFEs excluded). Each SAFE converts at the LOWEST of its cap price, its discount
 most shares for the holder; with neither a cap nor a discount it converts at P):
 
     post-money cap price = cap / (S0 + sigma)     "company capitalisation" excludes the new pool X
-    pre-money cap price  = cap / S0
+    pre-money cap price  = cap / (S0 + X)         includes the pool created in this financing, not sigma
     discount price       = P * (1 - discount)
 
-sigma depends on P and P on sigma, so it is solved by fixed-point iteration (it contracts because
-the SAFE holders own less than all of the company; a post-money SAFE set that owns 100% or more is
-refused).
+sigma depends on P and P on sigma, so it is solved by Newton's method on the convex, piecewise-linear
+conversion function (a few steps, exact to 1e-20). If the converting instruments would own the whole
+company there is no solution and the round is refused; a post-money SAFE set that owns 100% or more
+is refused up front.
 
-MFN: an MFN instrument adopts, from the non-MFN instruments issued on or after its own issue date
-(both dates must be known), the lowest cap of its own cap type and the highest discount.
+MFN: an MFN instrument converts on its own terms or on the whole term set of any one non-MFN
+instrument issued on or after its own issue date (both dates must be known), whichever gives the
+holder the most shares in this round. Terms are never mixed between instruments.
 """
 
 from dataclasses import dataclass, field
@@ -44,7 +46,7 @@ from typing import Any
 CTX = Context(prec=60, rounding=ROUND_HALF_EVEN)
 ZERO = Decimal(0)
 BPS = Decimal(10_000)
-MAX_ITERATIONS = 500
+MAX_ITERATIONS = 200
 CONVERGED = Decimal("1e-20")
 MAX_ROUNDS = 5
 
@@ -72,7 +74,7 @@ class Position:
 
 @dataclass(frozen=True)
 class Convertible:
-    key: str
+    key: str  # the entry id; reported as `ref` in conversions
     name: str
     security: str  # safe | note
     principal_minor: int
@@ -82,6 +84,8 @@ class Convertible:
     discount_bps: int | None = None
     safe_kind: str = "post_money"  # post_money | pre_money
     mfn: bool = False
+    holder_key: str = ""  # the holder the converted shares belong to (defaults to `key`)
+    holder_kind: str = "investor"
 
 
 @dataclass(frozen=True)
@@ -189,36 +193,23 @@ def converting_amount(c: Convertible, as_of: date) -> int:
     return c.principal_minor + int(interest.quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
 
 
-def resolve_mfn(convs: list[Convertible]) -> list[Convertible]:
-    out = []
-    for c in convs:
-        if not c.mfn:
-            out.append(c)
-            continue
-        donors = [
-            o
-            for o in convs
-            if not o.mfn
-            and o.issued_on is not None
-            and c.issued_on is not None
-            and o.issued_on >= c.issued_on
-        ]
-        caps = [o.cap_minor for o in donors if o.cap_minor and o.safe_kind == c.safe_kind]
-        if c.cap_minor:
-            caps.append(c.cap_minor)
-        discounts = [o.discount_bps for o in donors if o.discount_bps]
-        if c.discount_bps:
-            discounts.append(c.discount_bps)
-        out.append(
-            Convertible(
-                **{
-                    **c.__dict__,
-                    "cap_minor": min(caps) if caps else None,
-                    "discount_bps": max(discounts) if discounts else None,
-                }
-            )
-        )
-    return out
+Terms = tuple[int | None, int | None, str]  # (cap, discount_bps, safe_kind)
+
+
+def term_candidates(c: Convertible, convs: list[Convertible]) -> list[Terms]:
+    """The term sets this instrument may convert on. Normally just its own. An MFN instrument may
+    instead adopt, WHOLE, the terms of any one non-MFN instrument issued on or after its own issue
+    date (both dates required): it never mixes the cap of one with the discount of another. The
+    round then picks whichever set gives the holder the most shares."""
+    own: list[Terms] = [(c.cap_minor, c.discount_bps, c.safe_kind)]
+    if not c.mfn or c.issued_on is None:
+        return own
+    donors = [
+        (o.cap_minor, o.discount_bps, o.safe_kind)
+        for o in convs
+        if not o.mfn and o.issued_on is not None and o.issued_on >= c.issued_on
+    ]
+    return own + donors
 
 
 # ---------------------------------------------------------------- one round
@@ -245,6 +236,83 @@ def apply_round(
         return _apply_round(positions, convertibles, round_, as_of, index)
 
 
+def _solve(
+    convs: list[Convertible],
+    amounts: dict[str, Decimal],
+    s0d: Decimal,
+    u0: int,
+    v: Decimal,
+    m: Decimal,
+) -> tuple[Decimal, dict[str, tuple[Decimal, str]]]:
+    """Solve the SAFE conversion. Returns the exact pool top-up X and, per instrument, its
+    conversion price and the term that set it."""
+    cands = {c.key: term_candidates(c, convs) for c in convs}
+    # Guard: post-money caps that own the whole company can never convert. An MFN instrument is
+    # counted at the tightest post-money cap it could adopt.
+    k = ZERO
+    for c in convs:
+        caps = [cap for cap, _disc, kind in cands[c.key] if cap and kind == "post_money"]
+        if caps:
+            k += amounts[c.key] / d(min(caps))
+    if k >= 1:
+        raise EngineError(
+            "SAFE_CAPS_EXCEED",
+            "The post-money SAFE caps add up to 100% or more of the company.",
+        )
+
+    def terms(sigma: Decimal) -> tuple[Decimal, Decimal, dict[str, tuple[Decimal, str]]]:
+        # pool top-up X and pre-money capitalisation A for this guess of the SAFE shares
+        x = max(ZERO, (m * (s0d + sigma) - d(u0)) / (1 - m))
+        a = s0d + sigma + x
+        price = v / a
+        per: dict[str, tuple[Decimal, str]] = {}
+        for c in convs:
+            options: list[tuple[Decimal, str]] = [(price, "round")]
+            for cap, disc, kind in cands[c.key]:
+                if cap:
+                    # post-money: capitalisation = company + all converting shares, but not the
+                    # new pool. pre-money: the company + the pool created in this financing, but
+                    # not the converting shares.
+                    cc = s0d + sigma if kind == "post_money" else s0d + x
+                    options.append((d(cap) / cc, "cap"))
+                if disc:
+                    options.append((price * (BPS - d(disc)) / BPS, "discount"))
+            per[c.key] = min(options, key=lambda o: o[0])
+        return x, price, per
+
+    def shares_for(sigma: Decimal) -> Decimal:
+        _, _, per = terms(sigma)
+        return sum((amounts[c.key] / per[c.key][0] for c in convs), ZERO)
+
+    # sigma (all converting shares) solves sigma = f(sigma). f is increasing, convex and piecewise
+    # linear (each term is the best of several linear options), so Newton's method from 0 climbs
+    # monotonically to the smallest root and ends in a few steps. If the slope of f reaches 1
+    # there is no root: the converting instruments would own the whole company.
+    sigma = ZERO
+    for _ in range(MAX_ITERATIONS):
+        f0 = shares_for(sigma)
+        gap = f0 - sigma
+        if abs(gap) <= CONVERGED * max(Decimal(1), f0):
+            break
+        h = max(Decimal(1), sigma) * Decimal("1e-9")
+        slope = (shares_for(sigma + h) - f0) / h
+        if slope >= 1 - Decimal("1e-12"):
+            raise EngineError(
+                "CONVERSION_DID_NOT_SETTLE",
+                "At these terms the SAFEs and notes would own all of the company, so they cannot "
+                "convert. Check the caps, discounts and the pre-money valuation.",
+            )
+        sigma = sigma + gap / (1 - slope)
+    else:
+        raise EngineError(
+            "CONVERSION_DID_NOT_SETTLE", "The SAFE and note conversion did not settle."
+        )
+
+    x_exact, _, per = terms(sigma)
+    x_exact, _, per = terms(sigma)
+    return x_exact, per
+
+
 def _apply_round(
     positions: list[Position],
     convertibles: list[Convertible],
@@ -265,54 +333,9 @@ def _apply_round(
             "POOL_TARGET_TOO_HIGH",
             "That option pool is bigger than the existing holders' share of the post-money.",
         )
-    convs = resolve_mfn(convertibles)
+    convs = list(convertibles)
     amounts = {c.key: d(converting_amount(c, as_of)) for c in convs}
-    s0d = d(s0)
-    k = sum(
-        (
-            amounts[c.key] / d(c.cap_minor)
-            for c in convs
-            if c.cap_minor and c.safe_kind == "post_money"
-        ),
-        ZERO,
-    )
-    if k >= 1:
-        raise EngineError(
-            "SAFE_CAPS_EXCEED",
-            "The post-money SAFE caps add up to 100% or more of the company.",
-        )
-
-    def terms(sigma: Decimal) -> tuple[Decimal, Decimal, dict[str, tuple[Decimal, str]]]:
-        # pool top-up X and pre-money capitalisation A for this guess of the SAFE shares
-        x = max(ZERO, (m * (s0d + sigma) - d(u0)) / (1 - m))
-        a = s0d + sigma + x
-        price = v / a
-        per: dict[str, tuple[Decimal, str]] = {}
-        for c in convs:
-            options: list[tuple[Decimal, str]] = [(price, "round")]
-            if c.cap_minor:
-                cc = s0d + sigma if c.safe_kind == "post_money" else s0d
-                options.append((d(c.cap_minor) / cc, "cap"))
-            if c.discount_bps:
-                options.append((price * (BPS - d(c.discount_bps)) / BPS, "discount"))
-            per[c.key] = min(options, key=lambda o: o[0])
-        return x, price, per
-
-    sigma = ZERO
-    for _ in range(MAX_ITERATIONS):
-        _, _, per = terms(sigma)
-        nxt = sum((amounts[c.key] / per[c.key][0] for c in convs), ZERO)
-        if abs(nxt - sigma) <= CONVERGED * max(Decimal(1), nxt):
-            sigma = nxt
-            break
-        sigma = nxt
-    else:
-        raise EngineError(
-            "CONVERSION_DID_NOT_SETTLE",
-            "The SAFEs and notes add up to more than the pre-money valuation, so they cannot convert.",
-        )
-
-    x_exact, _, per = terms(sigma)
+    x_exact, per = _solve(convs, amounts, d(s0), u0, v, m)
     conversions = []
     new_positions = list(positions)
     safe_total = 0
@@ -331,7 +354,11 @@ def _apply_round(
                 "shares": shares,
             }
         )
-        new_positions.append(Position(c.key, c.name, "investor", "preferred", shares))
+        # Converted shares belong to the HOLDER (their row, their kind); the entry id stays in
+        # `ref` above, so one person with stock and a SAFE is one line in the table.
+        new_positions.append(
+            Position(c.holder_key or c.key, c.name, c.holder_kind, "preferred", shares)
+        )
     top_up = ceil_int(x_exact) if x_exact > 0 else 0
     if top_up:
         pool_key = next((p.key for p in positions if p.kind == "pool"), "pool")

@@ -14,6 +14,7 @@ from app.db.models.enums import FundingRoundStatus
 from app.db.models.funding import FundingRound, Investor
 from app.schemas.funding import RoundUpdate
 from app.services.funding.errors import _validation
+from app.services.funding.locks import lock_workspace
 
 DEFAULT_ROUND_NAME = "Funding round"
 
@@ -102,9 +103,26 @@ def _cap_table_has_money(db: Session, startup_id: uuid.UUID) -> bool:
     return bool(n)
 
 
+def _assert_cap_currency_free(db: Session, startup_id: uuid.UUID, new_currency: str) -> None:
+    """The cap table has no currency of its own: it reads the latest round's (NGN with none). So a
+    new round in another currency, like a currency change on the open one, would relabel every
+    SAFE amount and share price. Refused once any exist."""
+    prev = latest_round(db, startup_id)
+    current = prev.currency if prev else "NGN"
+    if new_currency != current and _cap_table_has_money(db, startup_id):
+        raise AppError(
+            "CAP_TABLE_HAS_AMOUNTS",
+            f"Your cap table already has amounts in {current}. Clear them before changing the "
+            "currency.",
+            409,
+        )
+
+
 def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound:
+    lock_workspace(db, startup_id)  # serialise with cap table writes
     row = active_round(db, startup_id)
     if row is None:
+        _assert_cap_currency_free(db, startup_id, data.currency.value if data.currency else "NGN")
         row = _create(db, startup_id, data)
         if row is not None:
             return row

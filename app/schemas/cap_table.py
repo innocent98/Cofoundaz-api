@@ -32,6 +32,12 @@ class HolderUpdate(_Strict):
     email: str | None = Field(default=None, max_length=320)
     notes: str | None = Field(default=None, max_length=5000)
 
+    @model_validator(mode="after")
+    def _name_cannot_be_cleared(self) -> "HolderUpdate":
+        if "name" in self.model_fields_set and self.name is None:
+            raise ValueError("A holder needs a name.")
+        return self
+
 
 class EntryFields(_Strict):
     """Everything an entry can carry. `EntryCreate` adds the cross-field rules."""
@@ -84,6 +90,8 @@ class EntryCreate(EntryFields):
                 raise ValueError("Vesting applies to stock and options only.")
             if self.interest_bps is not None and self.security != "note":
                 raise ValueError("Interest applies to notes only.")
+            if self.interest_bps and self.issued_on is None:
+                raise ValueError("A note with interest needs the date it was issued.")
         if (self.vesting_months is None) != (self.vesting_start_on is None):
             raise ValueError("Give both the vesting term and the start date, or neither.")
         if self.vesting_months is not None:

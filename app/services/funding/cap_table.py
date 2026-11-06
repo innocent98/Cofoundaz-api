@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
 from app.db.models.cap_table import CapAudit, CapEntry, CapHolder, CapScenario
-from app.db.models.startup import Startup
 from app.schemas.cap_table import (
     EntryCreate,
     EntryUpdate,
@@ -27,6 +26,7 @@ from app.schemas.cap_table import (
 from app.services.funding import cap_engine as eng
 from app.services.funding import rounds as rounds_svc
 from app.services.funding.errors import _validation
+from app.services.funding.locks import lock_workspace
 
 DISCLAIMER = (
     "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed "
@@ -39,11 +39,6 @@ MAX_SCENARIOS = 100
 
 def _today() -> date:
     return datetime.now(UTC).date()
-
-
-def lock_workspace(db: Session, startup_id: uuid.UUID) -> None:
-    """Serialise every write to one workspace's cap table."""
-    db.query(Startup.id).filter(Startup.id == startup_id).with_for_update().one()
 
 
 def currency(db: Session, startup_id: uuid.UUID) -> str:
@@ -210,7 +205,9 @@ def _check_entry_for_holder(holder: CapHolder, security: str) -> None:
 
 
 def _apply(row: CapEntry, data: EntryCreate) -> None:
-    safe_kind = data.safe_kind or ("post_money" if data.security in eng.CONVERTIBLES else None)
+    # Conventional note caps are pre-money, SAFE caps post-money; the founder can say otherwise.
+    default_kind = "pre_money" if data.security == "note" else "post_money"
+    safe_kind = data.safe_kind or (default_kind if data.security in eng.CONVERTIBLES else None)
     for name in (
         "security",
         "shares",
@@ -320,6 +317,8 @@ def engine_inputs(
                 eng.Convertible(
                     key=str(e.id),
                     name=h.name,
+                    holder_key=key,
+                    holder_kind=h.kind,
                     security=e.security,
                     principal_minor=e.amount_minor or 0,
                     interest_bps=e.interest_bps or 0,

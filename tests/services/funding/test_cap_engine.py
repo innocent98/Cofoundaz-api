@@ -16,7 +16,7 @@ from app.services.funding.cap_engine import (
     largest_remainder_bps,
     model_rounds,
     ownership_table,
-    resolve_mfn,
+    term_candidates,
     vested_shares,
 )
 
@@ -144,7 +144,7 @@ def test_note_interest_is_simple_actual_365_half_even():
     assert converting_amount(Convertible("s", "x", "safe", 7, interest_bps=800), AS_OF) == 7
 
 
-def test_mfn_adopts_the_best_later_terms():
+def test_mfn_candidates_are_whole_term_sets_of_later_non_mfn_instruments():
     mfn = Convertible("m", "MFN", "safe", 1_000_000, issued_on=date(2025, 1, 1), mfn=True)
     later = Convertible(
         "l",
@@ -173,11 +173,40 @@ def test_mfn_adopts_the_best_later_terms():
         cap_minor=2_000_000,
         safe_kind="pre_money",
     )
-    got = {c.key: c for c in resolve_mfn([mfn, later, earlier, other_kind])}
-    assert got["m"].cap_minor == 8_000_000 and got["m"].discount_bps == 2000
-    assert got["e"].cap_minor == 1_000_000  # others are untouched
+    other_mfn = Convertible("o", "O", "safe", 1, issued_on=date(2025, 8, 1), mfn=True, cap_minor=1)
+    convs = [mfn, later, earlier, other_kind, other_mfn]
+    got = term_candidates(mfn, convs)
+    assert got == [
+        (None, None, "post_money"),  # its own
+        (8_000_000, 2000, "post_money"),  # the later SAFE, cap AND discount together
+        (2_000_000, None, "pre_money"),  # the later pre-money SAFE, as it is
+    ]
+    assert term_candidates(later, convs) == [(8_000_000, 2000, "post_money")]  # non-MFN: own only
     undated = Convertible("u", "U", "safe", 1, mfn=True)
-    assert resolve_mfn([undated, later])[0].cap_minor is None  # needs both dates
+    assert term_candidates(undated, [undated, later]) == [
+        (None, None, "post_money")
+    ]  # needs a date
+
+
+def test_mfn_never_mixes_the_cap_of_one_instrument_with_the_discount_of_another():
+    """Donor A: 10M post-money cap, no discount. Donor B: no cap, 30% discount. The MFN SAFE
+    must convert exactly as A or exactly as B, whichever gives more shares, never on a blend."""
+    base = {"security": "safe", "principal_minor": 1_000_000}
+    a = Convertible("a", "A", issued_on=date(2025, 6, 1), cap_minor=10_000_000, **base)
+    b = Convertible("b", "B", issued_on=date(2025, 6, 1), discount_bps=3000, **base)
+    mfn = Convertible("m", "M", issued_on=date(2025, 1, 1), mfn=True, **base)
+    r = RoundInput("Seed", 10_000_000, 40_000_000)
+
+    def shares(convs):
+        return {
+            c["ref"]: c["shares"]
+            for c in apply_round(founders(), convs, r, as_of=AS_OF)[1].conversions
+        }
+
+    got = shares([a, b, mfn])
+    assert got["m"] == max(got["a"], got["b"])
+    # and it follows the better donor as the round changes: here the cap (A) wins, so M matches A
+    assert got["m"] == got["a"] and got["a"] > got["b"]
 
 
 def test_mfn_safe_converts_on_the_adopted_terms():
@@ -326,3 +355,72 @@ def test_vesting_cliff_then_linear_rounded_down():
     assert vested_shares(48_001, as_of=date(2027, 3, 15), **kw) == 24_000  # 24/48 of 48,001, down
     assert vested_shares(48_000, as_of=date(2031, 1, 1), **kw) == 48_000  # capped at the term
     assert vested_shares(100, start=None, cliff_months=0, months=0, as_of=AS_OF) == 100
+
+
+# ------------------------------------------------------------- review fixes
+def test_pre_money_safe_cap_price_includes_the_pool_created_in_the_round():
+    # 9M founder + 1M pool (S0 = 10M). Pre-money SAFE: 1,000,000 at a 10,000,000 cap. Round:
+    # V = 20M, N = 5M, pool target 20% (m = 0.2 * 25/20 = 0.25).
+    # X = (0.25 * (S0 + sigma) - 1M) / 0.75 = 2M + sigma/3.
+    # Pre-money capitalisation includes X, not sigma: cap price = 10M / (S0 + X) = 10M / (12M + sigma/3).
+    # sigma = 1M / cap price = 1.2M + sigma/30  ->  sigma = 1.2M * 30/29 = 1,241,379.3 -> 1,241,379.
+    pos = founders(shares=9_000_000, pool=1_000_000)
+    safe = Convertible("s", "Angel", "safe", 1_000_000, cap_minor=10_000_000, safe_kind="pre_money")
+    _, step = apply_round(pos, [safe], RoundInput("A", 5_000_000, 20_000_000, 2000), as_of=AS_OF)
+    c = step.conversions[0]
+    assert c["term"] == "cap" and c["shares"] == 1_241_379
+    assert c["conversion_price"] == "0.805556"  # 10M / 12,413,793.1
+
+
+def test_a_holder_with_stock_and_a_safe_is_one_row_and_one_headline():
+    # Founder holds 9M common and also a 1,000,000 SAFE at a 10,000,000 post-money cap:
+    # CC = 9M / 0.9 = 10M, so the SAFE converts to 1,000,000 shares. Round V = 20M, N = 1M:
+    # investors = 1/21 of the post-money, so total = 10M / (1 - 1/21) = 10.5M and the founder
+    # holds 10M / 10.5M = 95.24% (9524 bps), as ONE row.
+    pos = [Position("f", "Ada", "founder", "common", 9_000_000)]
+    safe = Convertible(
+        "s1", "Ada", "safe", 1_000_000, holder_key="f", holder_kind="founder", cap_minor=10_000_000
+    )
+    out, step = apply_round(pos, [safe], RoundInput("Seed", 1_000_000, 20_000_000), as_of=AS_OF)
+    assert step.conversions[0]["ref"] == "s1" and step.conversions[0]["shares"] == 1_000_000
+    rows = ownership_table(out)
+    assert [r["ref"] for r in rows if r["kind"] == "founder"] == ["f"]
+    assert len(rows) == 2  # the founder, and the new investors
+    assert step.founders_after_bps == 9524
+    assert next(r for r in rows if r["ref"] == "f")["shares"] == 10_000_000
+
+
+def test_slow_convergence_cases_are_solved_exactly():
+    # 10M shares, a 570,000 SAFE at a 50% discount, V = 1.2M, N = 1M:
+    # sigma = 570k * (10M + sigma) / (0.5 * 1.2M) = 0.95 * (10M + sigma)  ->  sigma = 190M exactly.
+    pos = [Position("f", "Ada", "founder", "common", 10_000_000)]
+    safe = Convertible("s", "A", "safe", 570_000, discount_bps=5000)
+    _, step = apply_round(pos, [safe], RoundInput("Seed", 1_000_000, 1_200_000), as_of=AS_OF)
+    assert step.conversions[0]["shares"] == 190_000_000
+
+
+def test_safes_that_would_own_the_whole_company_say_so():
+    # The same 50% discount with 700,000 invested: slope 700k / 600k > 1, there is no solution.
+    pos = [Position("f", "Ada", "founder", "common", 10_000_000)]
+    safe = Convertible("s", "A", "safe", 700_000, discount_bps=5000)
+    with pytest.raises(EngineError) as e:
+        apply_round(pos, [safe], RoundInput("Seed", 1_000_000, 1_200_000), as_of=AS_OF)
+    assert (
+        e.value.code == "CONVERSION_DID_NOT_SETTLE" and "own all of the company" in e.value.message
+    )
+
+
+def test_mfn_follows_whichever_donor_is_better_in_this_round():
+    base = {"security": "safe", "principal_minor": 1_000_000}
+    weak_cap = Convertible("a", "A", issued_on=date(2025, 6, 1), cap_minor=60_000_000, **base)
+    discount = Convertible("b", "B", issued_on=date(2025, 6, 1), discount_bps=3000, **base)
+    mfn = Convertible("m", "M", issued_on=date(2025, 1, 1), mfn=True, **base)
+    _, step = apply_round(
+        founders(),
+        [weak_cap, discount, mfn],
+        RoundInput("Seed", 10_000_000, 40_000_000),
+        as_of=AS_OF,
+    )
+    got = {c["ref"]: c for c in step.conversions}
+    assert got["m"]["shares"] == got["b"]["shares"] > got["a"]["shares"]
+    assert got["m"]["term"] == "discount"

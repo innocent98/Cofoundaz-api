@@ -224,7 +224,7 @@ def test_entry_shape_rules(client, founder, table, body):
     assert r.status_code == 422, r.text
 
 
-def test_safe_and_note_have_no_shares_and_default_to_post_money(client, founder, table):
+def test_safe_and_note_have_no_shares_and_kind_defaults(client, founder, table):
     angel = holder(client, founder, "Angel", "investor")
     s = entry(
         client,
@@ -577,3 +577,131 @@ def test_model_amounts_are_in_the_round_currency(client, founder, table):
     )
     assert d.json()["data"]["currency"] == "USD"
     assert date.fromisoformat(d.json()["data"]["as_of"])
+
+
+# ---------------------------------------------------------------- review fixes
+def test_notes_default_to_pre_money_and_safes_to_post_money(client, founder, table):
+    angel = holder(client, founder, "Angel", "investor")
+    safe = entry(client, founder, angel["id"], security="safe", shares=None, amount_minor=5)
+    note = entry(client, founder, angel["id"], security="note", shares=None, amount_minor=5)
+    assert safe["safe_kind"] == "post_money" and note["safe_kind"] == "pre_money"
+    said = entry(
+        client,
+        founder,
+        angel["id"],
+        security="note",
+        shares=None,
+        amount_minor=5,
+        safe_kind="post_money",
+    )
+    assert said["safe_kind"] == "post_money"
+
+
+def test_a_note_with_interest_needs_an_issue_date(client, founder, table):
+    angel = holder(client, founder, "Angel", "investor")
+    body = {"holder_id": angel["id"], "security": "note", "amount_minor": 5, "interest_bps": 800}
+    r = client.post(f"{CT}/entries", json=body, headers=founder)
+    assert r.status_code == 422
+    ok = client.post(f"{CT}/entries", json={**body, "issued_on": "2025-06-01"}, headers=founder)
+    assert ok.status_code == 201
+    zero = client.post(f"{CT}/entries", json={**body, "interest_bps": 0}, headers=founder)
+    assert zero.status_code == 201  # no interest, no date needed
+    # the update path enforces it too
+    plain = entry(client, founder, angel["id"], security="note", shares=None, amount_minor=5)
+    bad = client.patch(f"{CT}/entries/{plain['id']}", json={"interest_bps": 500}, headers=founder)
+    assert bad.status_code == 422
+
+
+def test_a_holder_name_cannot_be_cleared(client, founder, table):
+    r = client.patch(f"{CT}/holders/{table[0]['id']}", json={"name": None}, headers=founder)
+    assert r.status_code == 422
+    ok = client.patch(f"{CT}/holders/{table[0]['id']}", json={"email": None}, headers=founder)
+    assert ok.status_code == 200 and ok.json()["data"]["name"] == "Ada Obi"
+
+
+def test_currency_cannot_be_relabelled_by_creating_the_first_round(client, founder, table):
+    """With no round the cap table reads NGN. A first PUT /round in USD would relabel every
+    amount, so it is refused once amounts exist."""
+    angel = holder(client, founder, "Angel", "investor")
+    entry(client, founder, angel["id"], security="safe", shares=None, amount_minor=1_000_000)
+    assert client.get(CT, headers=founder).json()["data"]["currency"] == "NGN"
+    r = client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "CAP_TABLE_HAS_AMOUNTS"
+    assert client.get(f"{BASE}/round", headers=founder).json()["data"] is None  # nothing created
+    ok = client.put(f"{BASE}/round", json={"currency": "NGN"}, headers=founder)
+    assert ok.status_code == 200
+    assert client.get(CT, headers=founder).json()["data"]["currency"] == "NGN"
+
+
+def test_currency_cannot_change_by_closing_and_opening_the_next_round(client, founder, table):
+    client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)  # no money yet: allowed
+    angel = holder(client, founder, "Angel", "investor")
+    entry(client, founder, angel["id"], security="safe", shares=None, amount_minor=1_000_000)
+    client.put(f"{BASE}/round", json={"status": "closed"}, headers=founder)
+    r = client.put(f"{BASE}/round", json={"currency": "NGN", "name": "Series A"}, headers=founder)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "CAP_TABLE_HAS_AMOUNTS"
+    same = client.put(
+        f"{BASE}/round", json={"currency": "USD", "name": "Series A"}, headers=founder
+    )
+    assert same.status_code == 200
+    assert client.get(CT, headers=founder).json()["data"]["currency"] == "USD"
+
+
+def test_round_upserts_take_the_workspace_lock(client, founder, monkeypatch):
+    from app.services.funding import rounds as rounds_svc
+
+    calls = []
+    real = rounds_svc.lock_workspace
+    monkeypatch.setattr(
+        rounds_svc, "lock_workspace", lambda db, sid: (calls.append(sid), real(db, sid))[1]
+    )
+    client.put(f"{BASE}/round", json={"name": "Seed"}, headers=founder)
+    client.put(f"{BASE}/round", json={"target_minor": 5}, headers=founder)
+    assert len(calls) == 2
+
+
+def test_converted_safe_holder_is_one_row_in_the_dilution_table(client, founder, table):
+    """The founder also holds a SAFE: one row, and the founder headline counts both."""
+    entry(
+        client,
+        founder,
+        table[0]["id"],
+        security="safe",
+        shares=None,
+        amount_minor=1_000_000,
+        valuation_cap_minor=10_000_000,
+    )
+    body = {
+        "rounds": [{"name": "Seed", "new_money_minor": 1_000_000, "pre_money_minor": 20_000_000}]
+    }
+    d = client.post(f"{CT}/model", json=body, headers=founder).json()["data"]
+    rows = [r for r in d["dilution"] if r["name"] == "Ada Obi"]
+    assert len(rows) == 1 and rows[0]["kind"] == "founder"
+    assert d["steps"][0]["conversions"][0]["name"] == "Ada Obi"
+    assert d["headline"]["founders_after_bps"] == rows[0]["after_bps"]
+    assert sum(r["after_bps"] for r in d["dilution"]) == 10_000
+
+
+def test_slow_converging_safe_is_solved_and_overpowered_safe_is_explained(client, founder):
+    f = holder(client, founder)
+    entry(client, founder, f["id"], shares=10_000_000)
+    angel = holder(client, founder, "Angel", "investor")
+    safe = entry(
+        client,
+        founder,
+        angel["id"],
+        security="safe",
+        shares=None,
+        amount_minor=570_000,
+        discount_bps=5000,
+    )
+    body = {"rounds": [{"new_money_minor": 1_000_000, "pre_money_minor": 1_200_000}]}
+    ok = client.post(f"{CT}/model", json=body, headers=founder)
+    assert (
+        ok.status_code == 200
+        and ok.json()["data"]["steps"][0]["conversions"][0]["shares"] == 190_000_000
+    )
+    client.patch(f"{CT}/entries/{safe['id']}", json={"amount_minor": 700_000}, headers=founder)
+    bad = client.post(f"{CT}/model", json=body, headers=founder)
+    assert bad.status_code == 422 and bad.json()["error"]["code"] == "CONVERSION_DID_NOT_SETTLE"
+    assert "own all of the company" in bad.json()["error"]["message"]
