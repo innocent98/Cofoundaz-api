@@ -1,0 +1,21 @@
+{
+  "data": {
+    "id": "836039da-0c2a-4760-8ab9-0f509318c33c",
+    "holder_id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+    "security": "option",
+    "shares": 480000,
+    "price_minor": 10,
+    "amount_minor": null,
+    "valuation_cap_minor": null,
+    "discount_bps": null,
+    "safe_kind": null,
+    "mfn": false,
+    "interest_bps": null,
+    "issued_on": "2025-03-01",
+    "vesting_cliff_months": 12,
+    "vesting_months": 48,
+    "vesting_start_on": "2025-03-01",
+    "notes": null
+  },
+  "meta": null
+}

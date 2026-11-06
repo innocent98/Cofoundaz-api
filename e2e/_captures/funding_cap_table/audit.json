@@ -1,0 +1,96 @@
+{
+  "data": {
+    "total": 14,
+    "items": [
+      {
+        "id": "f892c74b-9a48-4049-9293-a89076e16830",
+        "at": "2026-11-06T11:58:08.470268+00:00",
+        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "entity_type": "entry",
+        "entity_id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "action": "update",
+        "before": {
+          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "mfn": false,
+          "notes": null,
+          "shares": null,
+          "security": "safe",
+          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "issued_on": "2025-09-01",
+          "safe_kind": "post_money",
+          "price_minor": null,
+          "amount_minor": 1000000,
+          "discount_bps": null,
+          "interest_bps": null,
+          "vesting_months": null,
+          "vesting_start_on": null,
+          "valuation_cap_minor": 10000000,
+          "vesting_cliff_months": null
+        },
+        "after": {
+          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "mfn": false,
+          "notes": null,
+          "shares": null,
+          "security": "safe",
+          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "issued_on": "2025-09-01",
+          "safe_kind": "post_money",
+          "price_minor": null,
+          "amount_minor": 1000000,
+          "discount_bps": null,
+          "interest_bps": null,
+          "vesting_months": null,
+          "vesting_start_on": null,
+          "valuation_cap_minor": 9000000,
+          "vesting_cliff_months": null
+        }
+      },
+      {
+        "id": "2b0f66be-03e5-40bc-bd0d-2c3337eb4ad6",
+        "at": "2026-11-06T11:58:08.455674+00:00",
+        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "entity_type": "scenario",
+        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "action": "update",
+        "before": {
+          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "name": "Seed at 40M",
+          "headline": {
+            "founders_after_bps": 5358,
+            "founders_before_bps": 8439
+          },
+          "created_at": "2026-11-06T11:58:08.425059+00:00"
+        },
+        "after": {
+          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "name": "Seed at 40M (base)",
+          "headline": {
+            "founders_after_bps": 5358,
+            "founders_before_bps": 8439
+          },
+          "created_at": "2026-11-06T11:58:08.425059+00:00"
+        }
+      },
+      {
+        "id": "b215d79c-b68d-46aa-bd8e-b8df408d5ac7",
+        "at": "2026-11-06T11:58:08.427634+00:00",
+        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "entity_type": "scenario",
+        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "action": "create",
+        "before": null,
+        "after": {
+          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "name": "Seed at 40M",
+          "headline": {
+            "founders_after_bps": 5358,
+            "founders_before_bps": 8439
+          },
+          "created_at": "2026-11-06T11:58:08.425059+00:00"
+        }
+      }
+    ]
+  },
+  "meta": null
+}

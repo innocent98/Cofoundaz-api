@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "A SAFE or note has no shares or share price until it converts in a round.",
+    "field_errors": [
+      {
+        "field": "security",
+        "message": "A SAFE or note has no shares or share price until it converts in a round."
+      }
+    ]
+  }
+}

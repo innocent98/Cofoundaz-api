@@ -1,0 +1,150 @@
+{
+  "data": {
+    "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+    "name": "Seed at 40M (base)",
+    "created_at": "2026-11-06T11:58:08.425059+00:00",
+    "headline": {
+      "founders_after_bps": 5358,
+      "founders_before_bps": 8439
+    },
+    "inputs": {
+      "as_of": "2026-06-01",
+      "rounds": [
+        {
+          "name": "Seed",
+          "new_money_minor": 10000000,
+          "pool_target_bps": 1000,
+          "pre_money_minor": 40000000
+        }
+      ]
+    },
+    "result": {
+      "as_of": "2026-06-01",
+      "steps": [
+        {
+          "name": "Seed",
+          "conversions": [
+            {
+              "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+              "name": "Angel One",
+              "term": "cap",
+              "shares": 1145170,
+              "security": "safe",
+              "amount_minor": 1000000,
+              "conversion_price": "0.873232"
+            },
+            {
+              "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+              "name": "Angel One",
+              "term": "discount",
+              "shares": 186637,
+              "security": "safe",
+              "amount_minor": 500000,
+              "conversion_price": "2.678988"
+            },
+            {
+              "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+              "name": "Lagos Bank",
+              "term": "cap",
+              "shares": 639900,
+              "security": "note",
+              "amount_minor": 810000,
+              "conversion_price": "1.265823"
+            }
+          ],
+          "new_money_minor": 10000000,
+          "pre_money_minor": 40000000,
+          "price_per_share": "3.348735",
+          "post_money_minor": 50000000,
+          "pre_round_shares": 9480000,
+          "post_round_shares": 14931011,
+          "founders_after_bps": 5358,
+          "pool_top_up_shares": 493102,
+          "founders_before_bps": 8439,
+          "new_investor_shares": 2986202
+        }
+      ],
+      "currency": "NGN",
+      "dilution": [
+        {
+          "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+          "kind": "founder",
+          "name": "Ada Obi",
+          "after_bps": 5358,
+          "before_bps": 8439,
+          "change_bps": -3081,
+          "after_shares": 8000000,
+          "before_shares": 8000000
+        },
+        {
+          "ref": "round-1",
+          "kind": "investor",
+          "name": "Seed investors",
+          "after_bps": 2000,
+          "before_bps": 0,
+          "change_bps": 2000,
+          "after_shares": 2986202,
+          "before_shares": 0
+        },
+        {
+          "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+          "kind": "pool",
+          "name": "Option pool",
+          "after_bps": 1000,
+          "before_bps": 1055,
+          "change_bps": -55,
+          "after_shares": 1493102,
+          "before_shares": 1000000
+        },
+        {
+          "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "kind": "investor",
+          "name": "Angel One",
+          "after_bps": 767,
+          "before_bps": 0,
+          "change_bps": 767,
+          "after_shares": 1145170,
+          "before_shares": 0
+        },
+        {
+          "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+          "kind": "investor",
+          "name": "Lagos Bank",
+          "after_bps": 429,
+          "before_bps": 0,
+          "change_bps": 429,
+          "after_shares": 639900,
+          "before_shares": 0
+        },
+        {
+          "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+          "kind": "employee",
+          "name": "Eve Placeholder",
+          "after_bps": 321,
+          "before_bps": 506,
+          "change_bps": -185,
+          "after_shares": 480000,
+          "before_shares": 480000
+        },
+        {
+          "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+          "kind": "investor",
+          "name": "Angel One",
+          "after_bps": 125,
+          "before_bps": 0,
+          "change_bps": 125,
+          "after_shares": 186637,
+          "before_shares": 0
+        }
+      ],
+      "headline": {
+        "founders_after_bps": 5358,
+        "founders_before_bps": 8439
+      },
+      "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers.",
+      "total_shares_after": 14931011,
+      "total_shares_before": 9480000
+    }
+  },
+  "meta": null
+}

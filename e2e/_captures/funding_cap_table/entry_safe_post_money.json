@@ -1,0 +1,21 @@
+{
+  "data": {
+    "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+    "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+    "security": "safe",
+    "shares": null,
+    "price_minor": null,
+    "amount_minor": 1000000,
+    "valuation_cap_minor": 10000000,
+    "discount_bps": null,
+    "safe_kind": "post_money",
+    "mfn": false,
+    "interest_bps": null,
+    "issued_on": "2025-09-01",
+    "vesting_cliff_months": null,
+    "vesting_months": null,
+    "vesting_start_on": null,
+    "notes": null
+  },
+  "meta": null
+}

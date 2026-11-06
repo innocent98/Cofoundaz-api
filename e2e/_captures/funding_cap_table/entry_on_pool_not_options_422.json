@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The option pool holds options only.",
+    "field_errors": [
+      {
+        "field": "security",
+        "message": "The option pool holds options only."
+      }
+    ]
+  }
+}
