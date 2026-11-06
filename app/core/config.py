@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     # Marketplace checkout (D-MP-3, D-MP-9): false refuses every new booking. Staging runs it on
     # Paystack TEST keys; production stays false until counsel and Paystack confirm in writing.
     MARKETPLACE_PAYMENTS_ENABLED: bool = False
+    # Second, independent gate (D-MP-3, D-MP-9): in production, or with a live Paystack key, booking
+    # is refused unless this is ALSO true. Set it only after counsel and Paystack have confirmed in
+    # writing that Cofoundaz may hold customer funds.
+    MARKETPLACE_LIVE_CHARGING_CONFIRMED: bool = False
     # Public base URL of this API, used to build per-connection webhook URLs.
     API_PUBLIC_URL: str = ""
     # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.

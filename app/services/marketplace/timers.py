@@ -20,23 +20,46 @@ from app.db.models.marketplace import MarketplaceBooking, MarketplaceOrder, Mark
 from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
+from app.services.billing import paystack
 from app.services.marketplace import emails, orders, outbox
 from app.services.marketplace.constants import MAX_REFUND_ATTEMPTS, TIMER_BATCH
 
 
 def expire_unpaid(db: Session, t: datetime) -> int:
-    rows = (
-        db.query(MarketplaceBooking)
+    """Expire lapsed checkout holds, but never before asking Paystack: a charge that actually
+    went through (the founder closed the tab, the webhook was lost) is applied, not failed. If
+    Paystack can't be asked, the hold is left for the next minute."""
+    candidates = [
+        (bid, ref)
+        for bid, ref in db.query(MarketplaceBooking.id, MarketplaceOrder.paystack_reference)
+        .join(MarketplaceOrder, MarketplaceOrder.booking_id == MarketplaceBooking.id)
         .filter(
             MarketplaceBooking.status == BookingStatus.pending_payment,
             MarketplaceBooking.slot_hold_expires_at < t,
         )
         .order_by(MarketplaceBooking.slot_hold_expires_at)
         .limit(TIMER_BATCH)
-        .with_for_update(skip_locked=True)
         .all()
-    )
-    for b in rows:
+    ]
+    expired = 0
+    for booking_id, reference in candidates:
+        try:
+            tx = paystack.verify(reference)
+        except paystack.PaystackNotFound:
+            tx = None  # Paystack never saw this payment: it really is unpaid
+        except (paystack.PaystackUnavailable, paystack.PaystackRejected):
+            continue  # can't tell: leave the hold, try again next minute
+        if tx is not None and tx.get("status") == "success":
+            orders.apply_payment(db, reference, tx)  # money arrived: revive or refund, never lose
+            continue
+        b = (
+            db.query(MarketplaceBooking)
+            .filter(MarketplaceBooking.id == booking_id)
+            .with_for_update(skip_locked=True)
+            .first()
+        )
+        if b is None or b.status != BookingStatus.pending_payment:
+            continue
         order = orders.lock_order(
             db, db.query(MarketplaceOrder.id).filter_by(booking_id=b.id).scalar()
         )
@@ -52,7 +75,8 @@ def expire_unpaid(db: Session, t: datetime) -> int:
             entity_id=b.id,
             details={"why": "payment_not_completed"},
         )
-    return len(rows)
+        expired += 1
+    return expired
 
 
 def expire_unanswered(db: Session, t: datetime) -> list[uuid.UUID]:

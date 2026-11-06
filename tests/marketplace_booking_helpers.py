@@ -42,6 +42,8 @@ class FakePaystack:
         self.refund_ids: list[int] = []
         self.timeout_after_accept = False  # Paystack takes the refund, our answer is lost
         self.ignore_refund_filter = False  # a list endpoint that returns every refund
+        self.verify_rejects = False
+        self.charge_status = "success"  # what an accepted charge answers: success / pending / ...
         self.charge_unavailable = False  # a saved-card charge times out
 
     def _guard(self) -> None:
@@ -69,8 +71,10 @@ class FakePaystack:
         self._guard()
         self.verify_calls += 1
         tx = self.tx.get(reference)
+        if self.verify_rejects:
+            raise paystack.PaystackRejected()  # a 4xx that isn't "not found"
         if tx is None:
-            raise paystack.PaystackRejected()
+            raise paystack.PaystackNotFound()
         if reference not in self.paid:
             return {
                 "status": "abandoned",
@@ -104,8 +108,9 @@ class FakePaystack:
         if self.decline_charges:
             return {"status": "failed", "reference": reference, "amount": amount_minor}
         self.tx[reference] = {"amount": amount_minor, "email": email, "metadata": metadata}
-        self.paid.add(reference)
-        return {"status": "success", "reference": reference, "amount": amount_minor}
+        if self.charge_status == "success":
+            self.paid.add(reference)
+        return {"status": self.charge_status, "reference": reference, "amount": amount_minor}
 
     def refund(self, transaction_reference: str, amount_minor: int | None = None):
         self._guard()

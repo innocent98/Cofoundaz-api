@@ -12,13 +12,15 @@ from typing import Any
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.db.models.marketplace import MarketplaceOrder, MarketplaceWebhookEvent
 from app.services.billing import paystack
 from app.services.marketplace import orders
 
 PREFIX = "mp_"
 HANDLED = frozenset({"charge.success", "refund.processed", "refund.failed", "refund.pending"})
-NON_FINAL = frozenset({"unverified", "payment_not_successful", "payment_mismatch"})
+NON_FINAL = frozenset({"unverified"})
+RETRYABLE = frozenset({"payment_not_successful"})
 
 
 def _reference(event: str, data: dict[str, Any]) -> str | None:
@@ -36,12 +38,20 @@ def owns(event: str, data: dict[str, Any]) -> bool:
     return event in HANDLED and ref is not None and ref.startswith(PREFIX)
 
 
+class RetryLater(AppError):  # noqa: N818
+    """Answer non-2xx so Paystack redelivers: we couldn't settle this event yet."""
+
+    code, http_status = "RETRY_LATER", 409
+    message = "Not confirmed yet. Please retry."
+
+
 def _verified(reference: str) -> dict[str, Any] | None:
-    """Paystack's own answer for the reference. A rejection (unknown reference) is a normal
-    outcome; an outage propagates so Paystack retries the webhook."""
+    """Paystack's own answer for the reference. Only a definitive 404 ("no such transaction") is a
+    normal outcome (`None`). An outage, a 429 or any other refusal propagates as an error, so the
+    webhook answers non-2xx and Paystack retries instead of the payment being orphaned."""
     try:
         return paystack.verify(reference)
-    except paystack.PaystackRejected:
+    except paystack.PaystackNotFound:
         return None
 
 
@@ -69,27 +79,34 @@ def process(db: Session, event: str, data: dict[str, Any]) -> str:
     elif event == "refund.failed":
         outcome = _refund_failed(db, reference, data)
     elif event == "refund.processed":
-        outcome = _refund_processed(db, reference)
+        outcome = _refund_processed(db, reference, data)
     else:  # refund.pending
         outcome = "refund_noted"
     row = db.query(MarketplaceWebhookEvent).filter_by(event_key=key).one()
-    if outcome in NON_FINAL:
-        # Not a verdict: forget it, so Paystack's retry (or a later one) is processed afresh.
+    if outcome in RETRYABLE:
+        # A signed charge.success that Paystack itself doesn't (yet) confirm: ask for a redelivery.
+        # Forget the event so the redelivery is processed afresh (the error also rolls back).
         db.delete(row)
+        db.flush()
+        raise RetryLater()
+    if outcome in NON_FINAL:
+        db.delete(row)  # not a verdict (e.g. an unknown reference): nothing to remember
     else:
         row.outcome = outcome[:60]
     return outcome
 
 
-def _refund_processed(db: Session, reference: str) -> str:
+def _refund_processed(db: Session, reference: str, data: dict[str, Any]) -> str:
     order_id = (
         db.query(MarketplaceOrder.id)
         .filter(MarketplaceOrder.paystack_reference == reference)
         .scalar()
     )
-    if order_id is None:
+    amount = data.get("amount")
+    ref = data.get("refund_reference") or data.get("id")
+    if order_id is None or not isinstance(amount, int) or not ref:
         return "refund_noted"
-    return orders.settle_from_webhook(db, order_id)
+    return orders.settle_from_webhook(db, order_id, amount, str(ref))
 
 
 def _refund_failed(db: Session, reference: str, data: dict[str, Any]) -> str:

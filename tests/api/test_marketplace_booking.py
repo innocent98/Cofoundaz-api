@@ -465,7 +465,9 @@ def test_the_webhook_body_is_never_trusted_for_the_amount(client, db, w, ps):
 def test_an_unpaid_reference_is_not_applied(client, db, w, ps):
     d = w.book().json()["data"]  # never paid at Paystack
     r = post_webhook(client, charge_success(d["order"]["reference"]))
-    assert r.json()["data"]["outcome"] == "payment_not_successful"
+    assert (
+        r.status_code == 409 and r.json()["error"]["code"] == "RETRY_LATER"
+    )  # Paystack redelivers
     assert order_of(db, d["id"]).status == OrderStatus.pending
 
 
@@ -649,7 +651,7 @@ def test_cancelling_a_paid_booking_before_acceptance_refunds_in_full(client, db,
     kinds = sorted((e.kind.value, e.amount_minor) for e in ledger(db, o))
     assert kinds == [("charge", 1_000_000), ("refund", -1_000_000)]
     assert orders.ledger_balance(db, o.id) == o.amount_minor - o.refunded_minor == 0
-    assert "refunded in full" in mail.sent[0].html
+    assert "requested a full refund" in mail.sent[0].html
     again = client.post(f"{M}/bookings/{bid}/cancel", headers=w.h())
     assert again.status_code == 409 and again.json()["error"]["code"] == "CANCEL_NOT_ALLOWED"
 
@@ -658,3 +660,251 @@ def test_cancelling_someone_elses_booking_is_a_404(client, db, w, ps):
     d = w.book().json()["data"]
     r = client.post(f"{M}/bookings/{d['id']}/cancel", headers=w.h(w.other, w.other_ws))
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------- final review: money must never be lost
+
+
+def test_a_payment_for_the_wrong_amount_is_flagged_for_staff_and_not_lost(
+    client, db, w, ps, moderator
+):
+    from app.db.models.audit import AuditLog
+
+    d = w.book().json()["data"]
+    ref = d["order"]["reference"]
+    ps.pay(ref)
+    ps.amount_override = 1_020_000  # Paystack took N10,200: fees were passed on to the customer
+    r = post_webhook(client, charge_success(ref))
+    assert r.status_code == 200 and r.json()["data"]["outcome"] == "payment_mismatch"
+    o = order_of(db, d["id"])
+    assert o.status == OrderStatus.pending  # never booked against the wrong amount...
+    assert (o.attention_reason, o.attention_amount_minor) == (
+        "payment_mismatch",
+        1_020_000,
+    )  # ...but flagged
+    assert o.attention_at is not None
+    audit = (
+        db.query(AuditLog)
+        .filter_by(action="marketplace.order.payment_mismatch", entity_id=o.id)
+        .one()
+    )
+    assert (
+        audit.details["expected_minor"] == 1_000_000
+        and audit.details["paystack_minor"] == 1_020_000
+    )
+    again = post_webhook(client, charge_success(ref, extra="redelivery"))
+    assert again.json()["data"]["outcome"] in ("payment_mismatch", "duplicate")
+    assert (
+        db.query(AuditLog)
+        .filter_by(action="marketplace.order.payment_mismatch", entity_id=o.id)
+        .count()
+        == 1
+    )
+    queue = client.get("/api/v1/admin/marketplace/orders/attention", headers=hdr(moderator))
+    assert queue.status_code == 200
+    row = next(x for x in queue.json()["data"]["orders"] if x["id"] == str(o.id))
+    assert (
+        row["attention_reason"] == "payment_mismatch"
+        and row["paystack_reported_minor"] == 1_020_000
+    )
+    assert row["reference"] == ref and "brief" not in str(row)
+
+
+def test_the_attention_queue_is_staff_only_and_lists_stuck_refunds(client, db, w, ps, moderator):
+    from app.db.models.enums import StaffRole
+    from tests.api.test_staff_users import mk_staff
+
+    bid, _ = paid_booking(w, ps)
+    o = order_of(db, bid)
+    o.refund_failed_at = datetime.now(UTC)
+    db.flush()
+    url = "/api/v1/admin/marketplace/orders/attention"
+    assert client.get(url).status_code == 404
+    assert client.get(url, headers=hdr(w.founder)).status_code == 404
+    support = mk_staff(db, StaffRole.admin, ("support",))
+    assert client.get(url, headers=hdr(support)).status_code == 403
+    ids = [x["id"] for x in client.get(url, headers=hdr(moderator)).json()["data"]["orders"]]
+    assert str(o.id) in ids
+
+
+def test_a_webhook_is_retried_when_paystack_refuses_to_verify(client, db, w, ps):
+    d = w.book().json()["data"]
+    ref = d["order"]["reference"]
+    ps.pay(ref)
+    ps.verify_rejects = True  # e.g. a 429 or any 4xx that isn't "no such transaction"
+    r = post_webhook(client, charge_success(ref))
+    assert r.status_code == 502  # non-2xx: Paystack will deliver it again
+    assert order_of(db, d["id"]).status == OrderStatus.pending
+    ps.verify_rejects = False
+    assert post_webhook(client, charge_success(ref)).json()["data"]["outcome"] == "paid"
+
+
+def test_a_signed_event_for_a_transaction_paystack_has_never_seen_is_answered_200(
+    client, db, w, ps
+):
+    d = w.book().json()["data"]
+    ref = d["order"]["reference"]
+    del ps.tx[ref]  # Paystack answers 404: it has no such transaction
+    r = post_webhook(client, charge_success(ref))
+    assert r.status_code == 200 and r.json()["data"]["outcome"] == "unverified"
+    assert order_of(db, d["id"]).status == OrderStatus.pending
+
+
+def test_an_unpaid_hold_that_was_in_fact_paid_is_applied_not_failed(client, db, w, ps):
+    from app.services.marketplace import timers
+
+    d = w.book().json()["data"]
+    ps.pay(d["order"]["reference"])  # charged, but the webhook never arrived and the tab was closed
+    res = timers.tick(db, datetime.now(UTC) + timedelta(minutes=16))
+    assert res["expired_unpaid"] == 0
+    b = db.get(MarketplaceBooking, uuid.UUID(d["id"]))
+    assert b.status == BookingStatus.awaiting_provider
+    o = order_of(db, d["id"])
+    assert o.status == OrderStatus.paid and len(ledger(db, o)) == 1
+
+
+def test_an_unpaid_hold_is_left_alone_when_paystack_cannot_be_asked(client, db, w, ps):
+    from app.services.marketplace import timers
+
+    d = w.book().json()["data"]
+    ps.down = True
+    assert timers.tick(db, datetime.now(UTC) + timedelta(minutes=16))["expired_unpaid"] == 0
+    assert db.get(MarketplaceBooking, uuid.UUID(d["id"])).status == BookingStatus.pending_payment
+    ps.down = False
+    assert timers.tick(db, datetime.now(UTC) + timedelta(minutes=16))["expired_unpaid"] == 1
+    assert db.get(MarketplaceBooking, uuid.UUID(d["id"])).status == BookingStatus.expired
+
+
+def test_a_saved_card_charge_that_is_not_over_is_neither_confirmed_nor_cancelled(client, db, w, ps):
+    _card(db, w.ws)
+    ps.charge_status = "send_otp"  # the bank wants an OTP: the charge is still open
+    r = w.book(pay_with="saved_card")
+    assert r.status_code == 502 and r.json()["error"]["code"] == "PAYMENT_UNCONFIRMED"
+    b = db.query(MarketplaceBooking).one()
+    assert b.status == BookingStatus.pending_payment  # the hold stays; it was NOT cancelled
+    o = db.query(MarketplaceOrder).one()
+    ps.pay(o.paystack_reference)  # the OTP is entered and the charge succeeds
+    assert (
+        post_webhook(client, charge_success(o.paystack_reference)).json()["data"]["outcome"]
+        == "paid"
+    )
+    assert db.get(MarketplaceBooking, b.id).status == BookingStatus.awaiting_provider
+
+
+# ---------------------------------------------------------------- the second gate on real charging
+
+
+def test_production_needs_the_second_flag_before_any_booking(client, db, w, ps, monkeypatch):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    refused = w.book()
+    assert (
+        refused.status_code == 403
+        and refused.json()["error"]["code"] == "LIVE_CHARGING_NOT_CONFIRMED"
+    )
+    assert db.query(MarketplaceBooking).count() == 0 and ps.tx == {}  # Paystack was never called
+    assert client.get(f"{M}/checkout", headers=w.h()).json()["data"]["payments_enabled"] is False
+    monkeypatch.setattr(settings, "MARKETPLACE_LIVE_CHARGING_CONFIRMED", True)
+    assert w.book().status_code == 201
+    assert client.get(f"{M}/checkout", headers=w.h()).json()["data"]["payments_enabled"] is True
+
+
+def test_a_live_key_outside_production_is_refused_too(client, db, w, ps, monkeypatch):
+    monkeypatch.setattr(settings, "PAYSTACK_SECRET_KEY", "sk_live_not_a_real_key")
+    r = w.book()
+    assert r.status_code == 403 and r.json()["error"]["code"] == "LIVE_CHARGING_NOT_CONFIRMED"
+    monkeypatch.setattr(settings, "MARKETPLACE_PAYMENTS_ENABLED", False)
+    assert (
+        w.book().json()["error"]["code"] == "PAYMENTS_DISABLED"
+    )  # the first gate still comes first
+
+
+# ---------------------------------------------------------------- a double submit is a replay
+
+
+def test_a_double_submit_that_races_the_first_replay_check_is_still_a_replay(
+    client, db, w, monkeypatch
+):
+    from app.services.marketplace import bookings as bookings_svc
+
+    slot = w.slots()[0]
+    first = w.book(slot=slot, key="double-submit-001")
+    assert first.status_code == 201
+    real = bookings_svc.find_replay
+    calls = {"n": 0}
+
+    def blind_the_first_look(*a, **kw):  # the winner had not committed when the first check ran
+        calls["n"] += 1
+        return None if calls["n"] == 1 else real(*a, **kw)
+
+    monkeypatch.setattr(bookings_svc, "find_replay", blind_the_first_look)
+    second = w.book(slot=slot, key="double-submit-001")
+    assert second.status_code == 200 and second.json()["data"]["replayed"] is True
+    assert second.json()["data"]["id"] == first.json()["data"]["id"]  # not a 409 "slot taken"
+    assert calls["n"] >= 2 and db.query(MarketplaceBooking).count() == 1
+
+
+# ---------------------------------------------------------------- email copy and the audit trail
+
+
+def test_a_late_payment_for_a_slot_that_was_taken_tells_the_founder(client, db, w, ps, mail):
+    slot = w.slots()[0]
+    late = w.book(slot=slot).json()["data"]
+    db.get(MarketplaceBooking, uuid.UUID(late["id"])).slot_hold_expires_at = datetime.now(
+        UTC
+    ) - timedelta(minutes=1)
+    db.flush()
+    paid_booking(w, ps, slot=slot, who=w.other, ws=w.other_ws)
+    mail.sent.clear()
+    ps.pay(late["order"]["reference"])
+    assert (
+        post_webhook(client, charge_success(late["order"]["reference"])).json()["data"]["outcome"]
+        == "paid_then_refund_requested"
+    )
+    assert [m.to for m in mail.sent] == [w.founder.email]
+    html = mail.sent[0].html
+    assert "requested a full refund" in html and "taken" in html and "never charged" not in html
+
+
+def test_closing_emails_never_claim_a_refund_that_has_only_been_requested(client, db, w, ps, mail):
+    from app.services.marketplace.emails import booking_closed_email
+
+    for reason in (
+        "founder_cancelled",
+        "provider_declined",
+        "provider_no_response",
+        "slot_passed",
+        "slot_no_longer_available",
+    ):
+        html = booking_closed_email(
+            "a@example.com", provider="Ngozi", title="Review", reason=reason
+        ).html
+        assert "requested a full refund" in html, reason
+        assert "You were refunded" not in html and "never charged" not in html, reason
+
+
+def test_failed_checkouts_accepts_and_declines_leave_audit_rows_with_the_workspace(
+    client, db, w, ps
+):
+    from app.db.models.audit import AuditLog
+
+    _card(db, w.ws)
+    ps.decline_charges = True
+    w.book(pay_with="saved_card", slot=w.slots()[0])
+    cancelled = db.query(AuditLog).filter_by(action="marketplace.booking.cancelled").one()
+    assert cancelled.startup_id == w.ws.id and cancelled.details == {"why": "card_declined"}
+    ps.decline_charges = False
+    a, _ = paid_booking(w, ps, slot=w.slots()[1])
+    b, _ = paid_booking(w, ps, listing=w.package)
+    client.post(f"{P}/bookings/{a}/accept", headers=hdr(w.expert))
+    client.post(f"{P}/bookings/{b}/decline", headers=hdr(w.expert))
+    for action in ("marketplace.booking.accepted", "marketplace.booking.declined"):
+        row = db.query(AuditLog).filter_by(action=action).one()
+        assert row.startup_id == w.ws.id, action
+
+
+@pytest.fixture
+def moderator(db):
+    from app.db.models.enums import StaffRole
+    from tests.api.test_staff_users import mk_staff
+
+    return mk_staff(db, StaffRole.admin, ("moderation",))

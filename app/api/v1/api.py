@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin,
     admin_marketplace,
     admin_marketplace_listings,
+    admin_marketplace_orders,
     ai,
     assessments,
     billing,
@@ -112,6 +113,12 @@ api_router.include_router(
 )
 api_router.include_router(
     admin_marketplace_listings.router,
+    prefix="/admin/marketplace",
+    tags=["admin-marketplace"],
+    include_in_schema=False,
+)
+api_router.include_router(
+    admin_marketplace_orders.router,
     prefix="/admin/marketplace",
     tags=["admin-marketplace"],
     include_in_schema=False,

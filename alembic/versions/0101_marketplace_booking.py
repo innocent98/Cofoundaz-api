@@ -148,6 +148,9 @@ def upgrade() -> None:
         sa.Column("refund_attempts", sa.Integer(), server_default=sa.text("0"), nullable=False),
         _ts("refund_next_attempt_at"),
         _ts("refund_inflight_since"),
+        sa.Column("attention_reason", sa.String(40), nullable=True),
+        _ts("attention_at"),
+        sa.Column("attention_amount_minor", sa.BigInteger(), nullable=True),
         _ts("refund_failed_at"),
         *_stamps(),
         sa.CheckConstraint("amount_minor > 0", name="ck_marketplace_order_amount_positive"),
@@ -163,6 +166,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index("ix_marketplace_orders_startup_id", "marketplace_orders", ["startup_id"])
+    op.create_index("ix_marketplace_orders_attention", "marketplace_orders", ["attention_at"])
     op.create_index(
         "ix_marketplace_orders_refund_due",
         "marketplace_orders",

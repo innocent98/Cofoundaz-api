@@ -27,10 +27,11 @@ from app.db.models.marketplace import (
     MarketplaceProvider,
     receipt_seq,
 )
+from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.billing import paystack
-from app.services.marketplace import outbox
+from app.services.marketplace import emails, outbox
 from app.services.marketplace.constants import (
     ACCEPT_WINDOW,
     MAX_REFUND_ATTEMPTS,
@@ -147,6 +148,38 @@ def slot_still_free(db: Session, booking: MarketplaceBooking) -> bool:
     return clash is None
 
 
+def flag_attention(
+    db: Session,
+    order: MarketplaceOrder,
+    booking: MarketplaceBooking,
+    reason: str,
+    amount: object,
+) -> None:
+    """Put an order in front of staff (idempotent: one flag and one audit row per reason)."""
+    if order.attention_reason == reason:
+        return
+    order.attention_reason = reason
+    order.attention_at = now()
+    order.attention_amount_minor = amount if isinstance(amount, int) else None
+    write_audit(
+        db,
+        f"marketplace.order.{reason}",
+        startup_id=order.startup_id,
+        entity_type="marketplace_order",
+        entity_id=order.id,
+        details={
+            "expected_minor": order.amount_minor,
+            "paystack_minor": order.attention_amount_minor,
+            "booking_id": str(booking.id),
+            "reference": order.paystack_reference,
+        },
+    )
+    log.error(
+        f"marketplace: {reason} on {order.paystack_reference}: expected {order.amount_minor}, "
+        f"Paystack reports {order.attention_amount_minor}. Needs staff."
+    )
+
+
 def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
     """Apply a payment Paystack has CONFIRMED for `reference` (`tx` is the answer of Paystack's
     verify call, never the webhook body). Idempotent: a second call finds the order paid and does
@@ -178,7 +211,10 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
         or not isinstance(tx.get("amount"), int)
         or tx["amount"] != order.amount_minor
     ):
-        log.warning(f"marketplace: payment for {reference} doesn't match its order; not applied")
+        # Paystack took real money that doesn't match what we asked for (fees passed on, a
+        # different currency, a tampered request). We can't book it against this order, and we
+        # must not lose it: flag the order for staff with what Paystack says it took.
+        flag_attention(db, order, booking, "payment_mismatch", tx.get("amount"))
         return "payment_mismatch"
     t = now()
     order.status = OrderStatus.paid
@@ -241,6 +277,14 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
         booking.status = BookingStatus.expired
     booking.closed_reason = booking.closed_reason or reason
     request_refund(db, order, order.amount_minor, reason)
+    booker = db.get(User, booking.booked_by)
+    if booker is not None:
+        outbox.queue(
+            db,
+            emails.booking_closed_email(
+                booker.email, provider=None, title=booking.title_snap, reason=reason
+            ),
+        )
     return "paid_then_refund_requested"
 
 
@@ -428,6 +472,8 @@ def _refund_retry(
     order.refund_next_attempt_at = t + timedelta(minutes=REFUND_RETRY_BACKOFF_MIN[step])
     if order.refund_attempts >= MAX_REFUND_ATTEMPTS and order.refund_failed_at is None:
         order.refund_failed_at = t
+        order.attention_reason = order.attention_reason or "refund_failed"
+        order.attention_at = order.attention_at or t
         write_audit(
             db,
             "marketplace.order.refund_failed",
@@ -441,14 +487,32 @@ def _refund_retry(
     return outcome
 
 
-def settle_from_webhook(db: Session, order_id: uuid.UUID) -> str:
-    """Paystack says a refund was processed. If our books still show money as due that Paystack
-    has in fact refunded, book it (by totals, not by identifier); otherwise it is already known."""
+def settle_from_webhook(db: Session, order_id: uuid.UUID, amount: int, refund_ref: str) -> str:
+    """Paystack's signed `refund.processed` says it refunded `amount` on this transaction. The
+    only case that needs it is a send we never saw answered (the in-flight marker is set): then it
+    books exactly that amount, keyed by Paystack's `refund_reference` (idempotent), up to what is
+    due. With no unanswered send the refund is already on our books and it is only noted, so a
+    late webhook for an earlier refund can never be booked as a later one."""
     order = lock_order(db, order_id)
     booking = db.get(MarketplaceBooking, order.booking_id)
-    if booking is None or order.refund_due_minor <= 0:
+    if (
+        booking is None
+        or order.refund_inflight_since is None
+        or not 0 < amount <= order.refund_due_minor
+    ):
         return "refund_noted"
-    return "refund_settled" if reconcile_with_paystack(db, order, booking) else "refund_noted"
+    key = f"refund:{refund_ref}"[:80]
+    if (
+        db.query(MarketplaceLedgerEntry.id)
+        .filter_by(order_id=order.id, kind=LedgerKind.refund, external_ref=key)
+        .first()
+        is not None
+    ):
+        return "refund_noted"
+    record_refund_sent(db, order, booking, amount, refund_ref)
+    if order.refund_due_minor == 0:
+        order.refund_inflight_since = None
+    return "refund_settled"
 
 
 def reverse_failed_refund(db: Session, order_id: uuid.UUID, amount_minor: int, ref: str) -> str:

@@ -220,7 +220,7 @@ def test_declining_refunds_in_full_and_tells_the_founder(client, db, w, ps, mail
     got = client.get(f"{M}/bookings/{bid}", headers=w.h()).json()["data"]
     assert got["status"] == "declined" and got["order"]["status"] == "refunded"
     assert [m.to for m in mail.sent] == [w.founder.email]
-    assert "refunded in full" in mail.sent[0].html
+    assert "requested a full refund" in mail.sent[0].html
     again = client.post(f"{P}/bookings/{bid}/decline", headers=hdr(w.expert))
     assert again.status_code == 409
     assert len(ps.refunds) == 1  # never refunded twice
@@ -395,9 +395,9 @@ def test_an_unanswered_booking_expires_after_48_hours_and_is_refunded(client, db
         {"transaction": ref, "amount": 5_000_000}
     ]
     assert entries(db, o) == [("charge", 5_000_000), ("refund", -5_000_000)]
-    assert [m.to for m in mail.sent] == [w.founder.email] and "refunded in full" in mail.sent[
-        0
-    ].html
+    assert [m.to for m in mail.sent] == [
+        w.founder.email
+    ] and "requested a full refund" in mail.sent[0].html
     again = timers.tick(db, datetime.now(UTC) + timedelta(hours=50))
     assert again["expired_unanswered"] == 0 and len(ps.refunds) == 1
     late = client.post(f"{P}/bookings/{bid}/accept", headers=hdr(w.expert))
@@ -656,23 +656,37 @@ def test_refund_processed_settles_a_refund_we_never_saw_answered(client, db, w, 
     assert post_webhook(client, body).json()["data"]["outcome"] == "duplicate"
 
 
-def test_refund_processed_with_nothing_due_at_paystack_changes_nothing(client, db, w, ps):
+def test_a_refund_webhook_books_nothing_when_no_send_is_unanswered(client, db, w, ps):
     bid, ref = paid(w, ps)
-    ps.down = True
-    client.post(
-        f"{P}/bookings/{bid}/decline", headers=hdr(w.expert)
-    )  # Paystack never took a refund
-    ps.down = False
     o = order_of(db, bid)
+    orders.request_refund(db, o, 1_000_000, "owed")  # owed, but no send attempted yet: no marker
     body = {
         "event": "refund.processed",
-        "data": {"transaction_reference": ref, "refund_reference": "rf_bogus", "amount": 1_000_000},
+        "data": {"transaction_reference": ref, "refund_reference": "rf_early", "amount": 1_000_000},
     }
     assert post_webhook(client, body).json()["data"]["outcome"] == "refund_noted"
     db.refresh(o)
-    assert (
-        o.refunded_minor == 0 and o.refund_due_minor == 1_000_000
-    )  # a webhook alone books no money
+    assert o.refunded_minor == 0 and o.refund_due_minor == 1_000_000  # still owed, still to be sent
+
+
+def test_a_refund_webhook_for_the_wrong_amount_or_unknown_order_is_only_noted(client, db, w, ps):
+    bid, ref = paid(w, ps)
+    ps.timeout_after_accept = True
+    client.post(f"{P}/bookings/{bid}/decline", headers=hdr(w.expert))  # an unanswered send
+    ps.timeout_after_accept = False
+    o = order_of(db, bid)
+    too_much = {
+        "event": "refund.processed",
+        "data": {"transaction_reference": ref, "refund_reference": "r1", "amount": 9_999_999},
+    }
+    assert post_webhook(client, too_much).json()["data"]["outcome"] == "refund_noted"
+    no_ref = {
+        "event": "refund.processed",
+        "data": {"transaction_reference": ref, "amount": 1_000_000},
+    }
+    assert post_webhook(client, no_ref).json()["data"]["outcome"] == "refund_noted"
+    db.refresh(o)
+    assert o.refunded_minor == 0 and o.refund_due_minor == 1_000_000
 
 
 def test_a_reversed_refund_can_be_refunded_again_and_the_ledger_agrees(client, db, w, ps):
@@ -748,7 +762,7 @@ def test_a_webhook_that_isnt_a_verdict_does_not_block_paystacks_retry(client, db
     ref = d["order"]["reference"]
     body = charge_success(ref)
     first = post_webhook(client, body)  # not paid at Paystack yet
-    assert first.json()["data"]["outcome"] == "payment_not_successful"
+    assert first.status_code == 409 and first.json()["error"]["code"] == "RETRY_LATER"
     assert db.query(MarketplaceWebhookEvent).count() == 0  # nothing recorded for a non-verdict
     ps.pay(ref)
     retry = post_webhook(client, body)  # the very same bytes

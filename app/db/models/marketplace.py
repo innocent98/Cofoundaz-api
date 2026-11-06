@@ -417,6 +417,11 @@ class MarketplaceOrder(UUIDMixin, TimestampMixin, Base):
     refund_inflight_since: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Money we can't settle by ourselves (a payment whose amount didn't match, a refund Paystack
+    # keeps refusing): staff look at these. `attention_amount_minor` is what Paystack says it took.
+    attention_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    attention_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attention_amount_minor: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     refund_failed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -434,6 +439,7 @@ class MarketplaceOrder(UUIDMixin, TimestampMixin, Base):
             name="ck_marketplace_order_refund_bounds",
         ),
         Index("ix_marketplace_orders_refund_due", "refund_due_minor", "refund_next_attempt_at"),
+        Index("ix_marketplace_orders_attention", "attention_at"),
     )
 
 

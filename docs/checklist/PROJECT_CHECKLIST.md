@@ -3992,6 +3992,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] JSON receipts (not a tax invoice), orders list, `MARKETPLACE_PAYMENTS_ENABLED` switch
   - [x] Two Opus reviews of the money path, all findings fixed; unit + API + migration + live e2e; live-captured FE guide
   - [x] Slice B lows: getattr-in-assert hoisted, stale `review` flag dropped
+  - [x] Final Opus review (1 high, 2 medium, 4 low) fixed 2026-11-06: payment mismatch flagged + staff attention queue, retryable webhook (409 / non-2xx), verify-before-expire, signed refund settle, saved-card status handling, second live-charging gate, replay re-check after locks, audit `startup_id`, honest refund email copy; awaiting Lead 24's check of the fix diff and the 0099 re-chain
 - [ ] Slice D: fulfilment and messaging (threads, briefs and Documents grants, deliveries, Calendar event + ICS, auto-release timers, notifications)
 - [ ] Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task
 - [ ] Slice F: reviews, matches, tools and purchases

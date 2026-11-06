@@ -1,9 +1,9 @@
 {
   "data": {
-    "id": "50038c5a-80a2-4d73-b090-46ef40435f98",
+    "id": "da1e156d-cfb8-482e-8d23-4fd870307cbb",
     "status": "pending_payment",
     "type": "consultation",
-    "listing_id": "2a2730fb-b9c5-404b-b971-8081c7067c6a",
+    "listing_id": "d92df2ba-22c1-4960-8473-4af4b33fd2f2",
     "title": "Contract review session",
     "category": "Legal",
     "deliverables": [],
@@ -16,29 +16,29 @@
     "starts_at": "2026-11-08T07:00:00+00:00",
     "ends_at": "2026-11-08T08:00:00+00:00",
     "timezone": "Africa/Lagos",
-    "slot_hold_expires_at": "2026-11-06T20:01:26.619330+00:00",
+    "slot_hold_expires_at": "2026-11-06T21:44:11.065735+00:00",
     "accept_by": null,
     "due_at": null,
     "meeting_url": null,
     "closed_reason": null,
     "provider": {
-      "id": "b5db3153-0e32-465a-a26f-a75c664b5ca5",
+      "id": "e2501910-33e3-4964-9454-9d1032ead0c1",
       "display_name": "Ngozi Eze",
       "avatar_url": null
     },
     "order": {
-      "id": "a6885688-deec-477c-be5c-5614c1e104f5",
+      "id": "7fc543cd-a258-42a8-9411-7ba2e80c207f",
       "status": "pending",
       "amount_minor": 1000000,
       "currency": "NGN",
-      "reference": "mp_b3a7b28cbd8042d8974c",
-      "checkout_url": "https://checkout.paystack.com/stub-mp_b3a7b28cbd8042d8974c",
+      "reference": "mp_73a2d9dce9a635530038",
+      "checkout_url": "https://checkout.paystack.com/stub-mp_73a2d9dce9a635530038",
       "paid_at": null,
       "receipt_number": null,
       "refunded_minor": 0,
       "refund_pending_minor": 0
     },
-    "created_at": "2026-11-06T19:46:26.611376+00:00"
+    "created_at": "2026-11-06T21:29:11.051649+00:00"
   },
   "meta": null
 }

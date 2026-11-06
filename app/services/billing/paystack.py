@@ -36,6 +36,10 @@ class PaystackRejected(AppError):  # noqa: N818
     message = "Our payment provider couldn't complete that. Nothing was charged."
 
 
+class PaystackNotFound(PaystackRejected):  # noqa: N818
+    """Paystack answered 404: it has no such transaction (a definitive answer, unlike an outage)."""
+
+
 # The exact shape flows.reference_for() mints (and the Marketplace's `mp_` references). Anything else never reaches Paystack: the reference
 # arrives from the checkout callback's query string and is interpolated into a URL path.
 REFERENCE_RE = re.compile(r"^(cfz_(checkout|card|addon|upgrade)|mp)_[0-9a-f]{20}$")
@@ -95,7 +99,7 @@ def _request(
         raise PaystackUnavailable() from None
     finally:
         client.close()
-    if resp.status_code >= 500:
+    if resp.status_code >= 500 or resp.status_code in (408, 429):  # outage or "slow down": retry
         raise PaystackUnavailable()
     try:
         body = resp.json()
@@ -104,6 +108,8 @@ def _request(
     if resp.status_code >= 400 or not isinstance(body, dict) or body.get("status") is not True:
         reason = body.get("message") if isinstance(body, dict) else None
         log.warning(f"billing: Paystack refused {method} {path} ({resp.status_code}): {reason}")
+        if resp.status_code == 404:
+            raise PaystackNotFound()
         raise PaystackRejected()
     return body
 

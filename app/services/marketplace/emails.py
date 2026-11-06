@@ -201,17 +201,25 @@ def booking_request_email(
 
 
 def booking_closed_email(to: str, *, provider: str | None, title: str, reason: str) -> EmailMessage:
-    """To the founder: the expert couldn't take it on (declined or didn't answer), or the founder
-    cancelled. PRD copy: "{Provider} could not take this on. You were refunded in full." """
+    """To the founder when a PAID booking closes. The refund is requested, not yet in their hands,
+    and says so: it goes back to the card they paid with and can take a few working days."""
     who = escape(provider or "The expert")
+    name = escape(title)
+    tail = (
+        " We've requested a full refund to the card you paid with. It can take a few working "
+        "days to reach you."
+    )
     if reason == "founder_cancelled":
-        intro = f"You cancelled <strong>{escape(title)}</strong>. You will be refunded in full."
+        intro = f"You cancelled <strong>{name}</strong>.{tail}"
         subject = "Your booking was cancelled"
-    else:
+    elif reason in ("slot_no_longer_available", "booking_closed"):
         intro = (
-            f"{who} could not take on <strong>{escape(title)}</strong>. "
-            "You were refunded in full. Refunds can take a few working days to reach your card."
+            f"Your payment for <strong>{name}</strong> reached us after that time was taken or "
+            f"the booking had closed, so it can't go ahead.{tail}"
         )
+        subject = "Your booking could not go ahead"
+    else:
+        intro = f"{who} could not take on <strong>{name}</strong>.{tail}"
         subject = "Your booking could not go ahead"
     return EmailMessage(
         to=to,
@@ -221,6 +229,6 @@ def booking_closed_email(to: str, *, provider: str | None, title: str, reason: s
             intro=intro,
             cta_label="Browse experts",
             action_url=f"{_base_url()}/marketplace",
-            expiry_note="Your card is never charged for a booking that doesn't go ahead.",
+            expiry_note="You'll see the refund on the booking as soon as it is confirmed.",
         ),
     )

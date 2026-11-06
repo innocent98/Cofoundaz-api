@@ -206,10 +206,21 @@ def saved_card(db: Session, startup_id: uuid.UUID) -> BillingPaymentMethod | Non
     )
 
 
+def charging_allowed() -> bool:
+    """Two independent gates (D-MP-3, D-MP-9). `MARKETPLACE_PAYMENTS_ENABLED` must be on, and in
+    production, or with a live Paystack key, `MARKETPLACE_LIVE_CHARGING_CONFIRMED` must be on too:
+    set only once counsel and Paystack have confirmed in writing that Cofoundaz may hold funds."""
+    if not settings.MARKETPLACE_PAYMENTS_ENABLED:
+        return False
+    key = settings.PAYSTACK_SECRET_KEY or settings.PAYSTACK_TEST_SECRET_KEY or ""
+    live = settings.ENVIRONMENT == "production" or key.startswith("sk_live_")
+    return not live or bool(settings.MARKETPLACE_LIVE_CHARGING_CONFIRMED)
+
+
 def checkout_status(db: Session, user: User, m: Membership) -> dict[str, Any]:
     card = saved_card(db, m.startup_id)
     return {
-        "payments_enabled": bool(settings.MARKETPLACE_PAYMENTS_ENABLED),
+        "payments_enabled": charging_allowed(),
         "terms_version": MARKETPLACE_TERMS_VERSION,
         "terms_accepted": terms_accepted(db, user.id),
         "can_book": m.role.value == "founder",
@@ -301,6 +312,17 @@ def _resolve_slot(
     return match.starts_at, match.ends_at
 
 
+def _ensure_open() -> None:
+    if not settings.MARKETPLACE_PAYMENTS_ENABLED:
+        raise err("PAYMENTS_DISABLED", "Booking isn't open yet. Payments are switched off.", 403)
+    if not charging_allowed():
+        raise err(
+            "LIVE_CHARGING_NOT_CONFIRMED",
+            "Booking isn't open yet. Real card charging hasn't been approved.",
+            403,
+        )
+
+
 def create_booking(
     db: Session,
     user: User,
@@ -314,8 +336,7 @@ def create_booking(
     pay_with: str,
 ) -> tuple[MarketplaceBooking, MarketplaceOrder, bool]:
     """Returns (booking, order, replayed). Raises before touching Paystack on every bad input."""
-    if not settings.MARKETPLACE_PAYMENTS_ENABLED:
-        raise err("PAYMENTS_DISABLED", "Booking isn't open yet. Payments are switched off.", 403)
+    _ensure_open()
     replay = find_replay(db, user.id, m.startup_id, idempotency_key, listing_id, starts_at, brief)
     if replay is not None:
         return replay, _order_for(db, replay.id), True
@@ -344,6 +365,11 @@ def create_booking(
         .with_for_update()
         .one()
     )
+    # A double-submit raced past the first replay check while the other request held the lock and
+    # committed: look again now that we own the lock, so it is a replay, not a "slot taken".
+    again = find_replay(db, user.id, m.startup_id, idempotency_key, listing_id, starts_at, brief)
+    if again is not None:
+        return again, _order_for(db, again.id), True
     if (
         locked_provider.status != ProviderStatus.approved
         or locked_listing.status != ListingStatus.active
@@ -445,9 +471,14 @@ def charge_saved_card(
         # We don't know whether the card was charged (a timeout can follow a real charge). Leave
         # the hold pending: the webhook confirms it, or the timer expires it.
         return "card_error"
-    if data.get("status") != "success":
+    status = data.get("status")
+    if status == "success":
+        return verify_and_apply(db, order.paystack_reference)
+    if status == "failed":
         return _fail_checkout(db, booking, order, "card_declined")
-    return verify_and_apply(db, order.paystack_reference)
+    # pending, send_otp, send_pin, ...: the charge is not over. Neither confirm nor cancel: keep
+    # the hold, tell the founder it is unconfirmed, and let the webhook or the timer decide.
+    return "card_error"
 
 
 def _fail_checkout(
@@ -464,6 +495,16 @@ def _fail_checkout(
         row.status = OrderStatus.failed
         b.status = BookingStatus.cancelled
         b.closed_reason = reason
+        b.slot_hold_expires_at = None
+        write_audit(
+            db,
+            "marketplace.booking.cancelled",
+            actor_user_id=b.booked_by,
+            startup_id=b.startup_id,
+            entity_type="marketplace_booking",
+            entity_id=b.id,
+            details={"why": reason},
+        )
     return reason
 
 
@@ -473,7 +514,7 @@ def verify_and_apply(db: Session, reference: str) -> str:
     the amount is always checked against what Paystack says it took."""
     try:
         tx = paystack.verify(reference)
-    except paystack.PaystackRejected:
+    except paystack.PaystackNotFound:
         return "not_found_at_paystack"
     return orders.apply_payment(db, reference, tx)
 
@@ -660,6 +701,7 @@ def accept(db: Session, ctx: ProviderContext, booking_id: uuid.UUID) -> Marketpl
         db,
         "marketplace.booking.accepted",
         actor_user_id=ctx.user.id,
+        startup_id=b.startup_id,
         entity_type="marketplace_booking",
         entity_id=b.id,
         details={"provider_id": str(b.provider_id)},
@@ -688,6 +730,7 @@ def decline(
         db,
         "marketplace.booking.declined",
         actor_user_id=ctx.user.id,
+        startup_id=b.startup_id,
         entity_type="marketplace_booking",
         entity_id=b.id,
         details={"provider_id": str(b.provider_id)},
