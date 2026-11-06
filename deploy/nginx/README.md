@@ -28,6 +28,10 @@ restore. These files are the source of truth; the host gets copies. Notably,
 | `sites-available/staging-api.cofoundaz.com.conf` | `/etc/nginx/sites-available/` | staging vhost → `127.0.0.1:8001` |
 | `bootstrap/acme-bootstrap.conf` | `/etc/nginx/sites-available/` | **first run only** — HTTP-only vhost used to obtain the first certificates |
 | `test/verify-local.sh` | — | local validation; runs nginx in a container against the real backends |
+| `web/standalone/*.template` | rendered by `render.sh` (default) | **self-contained** web site for stock nginx 1.24, which is what the VPS runs today |
+| `web/*.template`, `web/render.sh` | rendered per environment (see runbook) | **web frontend** vhost, upstream, first-cert bootstrap; hostnames/ports filled at render time. Runbook: [`docs/deployment/WEB_FRONTEND_EDGE.md`](../../docs/deployment/WEB_FRONTEND_EDGE.md) |
+| `web/web-rate-limits.conf`, `web/snippets/web-security-headers.conf` | `conf.d/31-…`, `snippets/cofoundaz/` | web-only limit zones and HTML-app headers |
+| `test/verify-web-local.sh` | — | 28 assertions against a real web container: standalone on nginx 1.24 (default) or `EDGE_LAYOUT=full` on 1.27 |
 
 The `snippets/cofoundaz/` namespace matters: Debian and Ubuntu ship their own
 `/etc/nginx/snippets/`, and dropping files straight into it invites a collision with a

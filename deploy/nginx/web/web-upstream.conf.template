@@ -1,0 +1,15 @@
+# Web frontend upstream (Next.js standalone container) - __WEB_ENV__
+#   rendered by deploy/nginx/web/render.sh -> /etc/nginx/conf.d/21-web-__WEB_ENV__-upstream.conf
+#
+# The container publishes on 127.0.0.1:__WEB_PORT__ ONLY (cofoundaz repo,
+# deploy/docker-compose.web.yml). This port and that environment's GitHub
+# variable WEB_PORT must agree.
+upstream cofoundaz_web___WEB_ENV__ {
+    server 127.0.0.1:__WEB_PORT__ max_fails=3 fail_timeout=10s;
+    keepalive 32;
+    # Below Node's default server keepAliveTimeout (5s), for the same reason as
+    # the API upstreams (conf.d/20-upstreams.conf): nginx must drop a pooled
+    # connection before the upstream does, or it writes into a closed socket.
+    keepalive_timeout 4s;
+    keepalive_requests 1000;
+}
