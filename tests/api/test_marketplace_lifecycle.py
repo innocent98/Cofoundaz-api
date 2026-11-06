@@ -600,6 +600,27 @@ def test_a_definitive_rejection_clears_the_marker_so_the_next_try_is_immediate(c
     assert orders.process_refund(db, o.id) == "refunded"
 
 
+def test_a_rejection_after_an_unverdicted_send_keeps_the_marker(client, db, w, ps):
+    bid, ref = paid(w, ps)
+    o = order_of(db, bid)
+    orders.request_refund(db, o, 300_000, "goodwill")
+    ps.down = True
+    assert orders.process_refund(db, o.id) == "retry_scheduled"  # no verdict: the marker is set
+    ps.down = False
+    o.refund_inflight_since = datetime.now(UTC) - timedelta(
+        hours=3
+    )  # past the wait: a re-send is allowed
+    db.flush()
+    ps.reject_refunds = True  # ... and Paystack says no (perhaps "already refunded")
+    assert orders.process_refund(db, o.id) == "retry_scheduled"
+    db.refresh(o)
+    assert o.refund_inflight_since is not None  # not cleared: the earlier send may have landed
+    ps.reject_refunds = False
+    ps.refund(ref, 300_000)  # in fact it had landed at Paystack
+    assert orders.process_refund(db, o.id) == "refunded"  # reconciled, not sent a third time
+    assert len(ps.refunds) == 1 and o.refunded_minor == 300_000
+
+
 def test_a_lost_partial_refund_is_not_refunded_twice(client, db, w, ps):
     bid, ref = paid(w, ps)
     o = order_of(db, bid)

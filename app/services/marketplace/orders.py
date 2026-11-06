@@ -383,7 +383,9 @@ def process_refund(db: Session, order_id: uuid.UUID, *, at: datetime | None = No
     if booking is None:  # unreachable: the FK is RESTRICT
         return "ignored"
     t = at or now()  # `at` lets the timer (and its tests) say what time it is
-    if order.refund_inflight_since is not None:
+    inflight = order.refund_inflight_since
+    fresh = inflight is None  # no earlier send left without a verdict
+    if inflight is not None:
         try:
             reconcile_with_paystack(db, order, booking)
         except (paystack.PaystackUnavailable, paystack.PaystackRejected):
@@ -392,7 +394,7 @@ def process_refund(db: Session, order_id: uuid.UUID, *, at: datetime | None = No
             order.refund_inflight_since = None
             db.flush()
             return "refunded"
-        if t - order.refund_inflight_since < REFUND_INFLIGHT_WAIT:
+        if t - inflight < REFUND_INFLIGHT_WAIT:
             return _refund_retry(db, order, t, outcome="awaiting_reconcile")
     order.refund_inflight_since = t
     db.commit()  # the marker is durable before Paystack hears about the refund
@@ -405,7 +407,10 @@ def process_refund(db: Session, order_id: uuid.UUID, *, at: datetime | None = No
     try:
         sent = paystack.refund(order.paystack_reference, amount_minor=due)
     except paystack.PaystackRejected:
-        order.refund_inflight_since = None  # a definitive no: nothing was accepted
+        if fresh:
+            order.refund_inflight_since = None  # a definitive no: nothing was accepted
+        # else an earlier send had no verdict and may have been accepted: the "no" may well mean
+        # "already refunded", so the marker stays and the next attempt reconciles first
         return _refund_retry(db, order, t)
     except paystack.PaystackUnavailable:
         return _refund_retry(db, order, t)  # no verdict: the marker stays
