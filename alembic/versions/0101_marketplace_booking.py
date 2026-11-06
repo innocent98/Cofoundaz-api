@@ -1,7 +1,7 @@
 """Marketplace slice C: bookings, orders, ledger, webhook events, consents
 
 Revision ID: 0101_marketplace_booking
-Revises: 0096_auth_onboarding_gaps
+Revises: 0100_ai_slice3
 Create Date: 2026-11-06
 
 Marketplace slice C (booking, checkout and ledger). Adds `marketplace_bookings`,
@@ -12,8 +12,8 @@ commission + net equal to its amount and its refunds within it. A partial unique
 backstop that two live bookings never start at the same instant for one expert. Downgrade drops
 all of it.
 
-CHAIN NOTE: chained on develop's head (0096, Auth). 0099 (Funding) and 0100 (AI slice 3) are reserved;
-the lead re-chains 0101 at merge time.
+CHAIN NOTE: chained on develop's head (0100, AI slice 3). 0099 (Funding) is still pending; if it
+merges first the lead re-chains 0101 onto it.
 """
 
 import sqlalchemy as sa
@@ -22,7 +22,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0101_marketplace_booking"
-down_revision = "0096_auth_onboarding_gaps"
+down_revision = "0100_ai_slice3"
 branch_labels = None
 depends_on = None
 
