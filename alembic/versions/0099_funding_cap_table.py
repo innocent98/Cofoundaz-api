@@ -1,15 +1,15 @@
 """Funding Hub slice C: the cap table
 
 Revision ID: 0099_funding_cap_table
-Revises: 0095_funding_data_room
+Revises: 0098_ai_orchestrator
 Create Date: 2026-11-06
 
 Adds `cap_holders`, `cap_entries` (stock, options, SAFEs, notes; the CHECKs keep the shape of each
 security honest), `cap_scenarios` (saved round models) and `cap_audit` (before/after of every
 change). Downgrade drops all four.
 
-CHAIN NOTE: chained on 0095 for now; 0094, 0096, 0097 and 0098 are in flight and the lead
-re-chains this one when told.
+CHAIN NOTE: chained on develop's head, 0098 (AI orchestrator). Auth (0096 or its successor) is
+also in flight; whichever merges second gets a one-line re-chain.
 """
 
 import sqlalchemy as sa
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0099_funding_cap_table"
-down_revision = "0095_funding_data_room"
+down_revision = "0098_ai_orchestrator"
 branch_labels = None
 depends_on = None
 

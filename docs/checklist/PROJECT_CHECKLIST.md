@@ -3928,7 +3928,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] `funding.dataroom.viewed` event and notification (one per share per day, F + TM); heartbeat durations
   - [x] 71 API tests + migration tests; live e2e journey; live-captured FE guide
   - [ ] Pitch-deck pinned item and `readiness` share scope (needs Investor Readiness; spec section 9) · investor accounts B2 (not needed under D-FUND-3 a)
-- [x] **Slice C: cap table** (`feature/funding-cap-table`, migration `0099_funding_cap_table`, chained on 0095 for now; SOP `docs/sop/2026-11-06-funding-cap-table.md`, FE guide `docs/fe-integration-guide-funding-cap-table.md`) — money path, founder only, PR open 2026-11-06
+- [x] **Slice C: cap table** (`feature/funding-cap-table`, migration `0099_funding_cap_table`, chained on 0098; SOP `docs/sop/2026-11-06-funding-cap-table.md`, FE guide `docs/fe-integration-guide-funding-cap-table.md`) — money path, founder only, PR open 2026-11-06
   - [x] `cap_holders`, `cap_entries` (stock, options, SAFEs, notes with shape CHECKs), `cap_scenarios`, `cap_audit`
   - [x] Founder only (D-FUND-5): team members and every other role 403 on every route; Scale module gate
   - [x] Ledger: fully-diluted toggle, vesting, accrued note interest, basis points by largest remainder
