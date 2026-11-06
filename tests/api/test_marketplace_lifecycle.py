@@ -560,7 +560,9 @@ def test_a_refund_whose_answer_was_lost_is_not_sent_twice(client, db, w, ps):
     ref_entry = (
         db.query(MarketplaceLedgerEntry).filter_by(order_id=o.id, kind=LedgerKind.refund).one()
     )
-    assert ref_entry.external_ref == f"refund:{ps.refund_ids[0]}"  # keyed by Paystack's refund id
+    assert (
+        ref_entry.external_ref == "refund:reconcile:1000000"
+    )  # booked by reconciling with Paystack's total
 
 
 def test_a_lost_partial_refund_is_not_refunded_twice(client, db, w, ps):
@@ -578,25 +580,43 @@ def test_a_lost_partial_refund_is_not_refunded_twice(client, db, w, ps):
 
 def test_refund_processed_settles_a_refund_we_never_saw_answered(client, db, w, ps):
     bid, ref = paid(w, ps)
-    ps.down = True
+    ps.timeout_after_accept = True  # Paystack takes the refund, our answer is lost
     client.post(f"{P}/bookings/{bid}/decline", headers=hdr(w.expert))
+    ps.timeout_after_accept = False
     o = order_of(db, bid)
     db.refresh(o)
-    assert o.refund_due_minor == 1_000_000 and o.refunded_minor == 0
+    assert o.refund_due_minor == 1_000_000 and o.refunded_minor == 0 and len(ps.refunds) == 1
     body = {
         "event": "refund.processed",
         "data": {"transaction_reference": ref, "refund_reference": "rf_77", "amount": 1_000_000},
     }
     r = post_webhook(client, body)
-    assert r.json()["data"]["outcome"] == "refund_settled"
+    assert r.json()["data"]["outcome"] == "refund_settled"  # booked from what Paystack holds
     db.refresh(o)
     assert (o.status, o.refunded_minor, o.refund_due_minor) == (OrderStatus.refunded, 1_000_000, 0)
     assert entries(db, o) == [("charge", 1_000_000), ("refund", -1_000_000)]
-    ps.down = False
     assert timers.tick(db, datetime.now(UTC) + timedelta(hours=1))["refunded"] == 0
-    assert ps.refunds == []  # nothing left to send
-    again = post_webhook(client, body)
-    assert again.json()["data"]["outcome"] == "duplicate"
+    assert len(ps.refunds) == 1  # nothing was sent again
+    assert post_webhook(client, body).json()["data"]["outcome"] == "duplicate"
+
+
+def test_refund_processed_with_nothing_due_at_paystack_changes_nothing(client, db, w, ps):
+    bid, ref = paid(w, ps)
+    ps.down = True
+    client.post(
+        f"{P}/bookings/{bid}/decline", headers=hdr(w.expert)
+    )  # Paystack never took a refund
+    ps.down = False
+    o = order_of(db, bid)
+    body = {
+        "event": "refund.processed",
+        "data": {"transaction_reference": ref, "refund_reference": "rf_bogus", "amount": 1_000_000},
+    }
+    assert post_webhook(client, body).json()["data"]["outcome"] == "refund_noted"
+    db.refresh(o)
+    assert (
+        o.refunded_minor == 0 and o.refund_due_minor == 1_000_000
+    )  # a webhook alone books no money
 
 
 def test_a_reversed_refund_can_be_refunded_again_and_the_ledger_agrees(client, db, w, ps):
@@ -656,6 +676,7 @@ def test_an_unconfirmed_saved_card_charge_keeps_the_hold_for_the_webhook(client,
     r = w.book(pay_with="saved_card")
     assert r.status_code == 502 and r.json()["error"]["code"] == "PAYMENT_UNCONFIRMED"
     b = db.query(MarketplaceBooking).one()
+    assert r.json()["error"]["field_errors"] == [{"field": "booking_id", "message": str(b.id)}]
     assert b.status == BookingStatus.pending_payment  # NOT cancelled
     o = db.query(MarketplaceOrder).one()
     assert o.status == OrderStatus.pending
@@ -686,3 +707,63 @@ def test_a_booking_cannot_be_replayed_from_another_workspace(client, db, w):
     r = w.book(key="cross-ws-key-001", slot=w.slots()[0], who=w.founder, ws=w.other_ws)
     assert r.status_code == 409 and r.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
     assert "brief" not in r.text
+
+
+def test_a_refund_accepted_by_paystack_but_never_recorded_is_booked_not_resent(client, db, w, ps):
+    """A crash after Paystack accepted the refund but before we committed leaves refund_attempts
+    at 0; the next attempt must still find it at Paystack instead of sending a second one."""
+    bid, ref = paid(w, ps)
+    o = order_of(db, bid)
+    assert orders.request_refund(db, o, 300_000, "goodwill") is True
+    ps.refund(ref, 300_000)  # Paystack took it; our process died before recording anything
+    assert o.refund_attempts == 0 and o.refunded_minor == 0
+    assert orders.process_refund(db, o.id) == "refunded"
+    db.refresh(o)
+    assert len(ps.refunds) == 1  # nothing was sent a second time
+    assert o.refunded_minor == 300_000 and o.refund_due_minor == 0
+    assert orders.ledger_balance(db, o.id) == 700_000
+
+
+def test_an_earlier_refund_is_never_booked_as_a_later_one(client, db, w, ps):
+    bid, ref = paid(w, ps)
+    o = order_of(db, bid)
+    assert orders.request_refund(db, o, 200_000, "first") is True
+    assert orders.process_refund(db, o.id) == "refunded"  # Paystack holds 200k, booked
+    assert orders.request_refund(db, o, 200_000, "second") is True  # a second 200k is now due
+    # the late webhook for the FIRST refund carries a different identifier than the one we booked
+    late = {
+        "event": "refund.processed",
+        "data": {"transaction_reference": ref, "refund_reference": "RR-first", "amount": 200_000},
+    }
+    assert post_webhook(client, late).json()["data"]["outcome"] == "refund_noted"
+    db.refresh(o)
+    assert o.refunded_minor == 200_000 and o.refund_due_minor == 200_000  # the second is still owed
+    assert orders.process_refund(db, o.id) == "refunded"
+    db.refresh(o)
+    assert [r["amount"] for r in ps.refunds] == [200_000, 200_000]  # and it really was sent
+    assert o.refunded_minor == 400_000 and orders.ledger_balance(db, o.id) == 600_000
+
+
+def test_refunds_belonging_to_another_order_are_never_booked_here(client, db, w, ps):
+    a, ref_a = paid(w, ps, slot=w.slots()[0])
+    b, ref_b = paid(w, ps, slot=w.slots()[1], who=w.other, ws=w.other_ws)
+    oa, ob = order_of(db, a), order_of(db, b)
+    assert orders.request_refund(db, oa, 1_000_000, "a") is True
+    assert orders.process_refund(db, oa.id) == "refunded"  # Paystack now holds A's refund
+    ps.ignore_refund_filter = True  # a list endpoint that returns every refund, whatever we ask
+    assert orders.request_refund(db, ob, 1_000_000, "b") is True
+    assert orders.process_refund(db, ob.id) == "refunded"
+    db.refresh(ob)
+    assert [r["transaction"] for r in ps.refunds] == [ref_a, ref_b]  # B's own refund was sent
+    assert ob.refunded_minor == 1_000_000
+    assert entries(db, ob) == [("charge", 1_000_000), ("refund", -1_000_000)]
+
+
+def test_a_checkout_hold_can_be_listed_when_asked_for(client, db, w):
+    d = w.book().json()["data"]
+    default = client.get(f"{M}/bookings", headers=w.h()).json()["data"]["bookings"]
+    assert default == []
+    holds = client.get(f"{M}/bookings?status=pending_payment", headers=w.h()).json()["data"][
+        "bookings"
+    ]
+    assert [b["id"] for b in holds] == [d["id"]]

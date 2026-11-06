@@ -513,11 +513,9 @@ def list_for_founder(
     limit: int,
     offset: int,
 ) -> tuple[list[MarketplaceBooking], int]:
-    q = db.query(MarketplaceBooking).filter(
-        MarketplaceBooking.startup_id == m.startup_id,
-        MarketplaceBooking.status
-        != BookingStatus.pending_payment,  # a checkout hold isn't a booking yet
-    )
+    q = db.query(MarketplaceBooking).filter(MarketplaceBooking.startup_id == m.startup_id)
+    if status != BookingStatus.pending_payment:  # a checkout hold isn't listed unless asked for
+        q = q.filter(MarketplaceBooking.status != BookingStatus.pending_payment)
     if tab:
         q = q.filter(MarketplaceBooking.status.in_(TABS[tab]))
     if status:

@@ -1,0 +1,51 @@
+# Marketplace slice C: booking, checkout and ledger
+
+**What shipped:** founders book an expert's listing and pay through Cofoundaz's own Paystack account; experts accept or decline within 48 hours; unpaid holds, unanswered bookings and declines are handled by timers and refunds; every movement is written to an append-only ledger; receipts and a Paystack webhook dispatcher. API only. Money moves **only on Paystack test keys**: production card charging stays off (`MARKETPLACE_PAYMENTS_ENABLED=false`) until counsel and Paystack confirm in writing (D-MP-3, D-MP-9). FE guide `docs/fe-integration-guide-marketplace-booking.md`. Branch `feature/marketplace-booking`, PR: see the branch. Migration **`0101_marketplace_booking`**, chained on `0096_auth_onboarding_gaps` (develop's head when last merged); 0099 (Funding) and 0100 (AI slice 3) are reserved, so **the lead re-chains 0101 at merge time** (one `down_revision`; the migration tests downgrade relative to their own revision).
+
+**Why:** slices A and B gave the supply side and the directory. Slice C is where money first moves, so it is built on four rules: the server never trusts a webhook body for an amount, every state change is under a row lock in one fixed order, the ledger can only be appended to, and every Paystack call can be retried without moving money twice. Design and accepted calls D-MP-3/4/5/9: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md` §1.4, §5, §6, §9.
+
+**How**
+
+| Topic | Decision |
+|---|---|
+| Tables | `marketplace_bookings` (snapshots title, price, commission bps, deliverables, meeting link at purchase), `marketplace_orders` (one per booking; `amount = commission + provider_net` by CHECK; `refunded + refund_due <= amount` by CHECK), `marketplace_ledger_entries`, `marketplace_webhook_events`, `marketplace_consents`, sequence `marketplace_receipt_seq`. FKs to workspaces and users are RESTRICT so money records outlive nothing by accident. |
+| Ledger | Append-only: a trigger refuses UPDATE and DELETE (proved on a migrated database in `tests/test_marketplace_booking_migration.py`; the model-built unit DB has no trigger). Signed kobo (`charge` +, `refund` -, `adjustment` for a reversed refund), unique per (order, kind, external_ref) so a replay can't write a movement twice, non-zero by CHECK. `ledger_balance` = money still held = `amount - refunded` (asserted in tests). |
+| Booking | `create_booking`: idempotency replay (scoped to user AND workspace) → listing visible → not your own (D-MP-L16) → terms consent → lock expert row then listing row → the start must be one of the slots the generator offers right now (schedule, exceptions, notice, buffer, every other live booking and unexpired hold; `availability.busy_intervals` is now real) → insert booking + order → Paystack initialise → commit. Initialise failing rolls everything back. A partial unique index on `(provider_id, starts_at)` for live statuses is the backstop for the lock. |
+| Checkout hold | 15 minutes (`slot_hold_expires_at`). A lapsed hold frees its slot at once (the slot generator ignores it); the timer only tidies the row. |
+| Paying | The Paystack `charge.success` webhook (HMAC-SHA512 over the raw body, verified in the billing webhook route, fail closed) routes `mp_` references to `marketplace/webhook.py`; everything else stays with Billing. The body is **never** trusted for money: `paystack.verify(reference)` is asked and `orders.apply_payment` checks status, amount, currency and reference against the order. The founder's `verify-payment` and the saved-card path use the same `verify_and_apply`. Apply is idempotent per order status; events are recorded in `marketplace_webhook_events` (a non-verdict outcome is not recorded, so Paystack's retry is processed afresh). |
+| Lock order | **Booking first, then order** (then the expert row only when reviving a lapsed hold) in every path: apply payment, decline, cancel, timers, saved-card failure. `create_booking` locks expert → listing and never holds a booking lock. |
+| Late money | Payment for a lapsed hold revives the booking only if the slot is still free (a live booking or another founder's unexpired hold counts); otherwise, or for a cancelled booking, the order is paid and a full refund is requested automatically. |
+| Refunds | Intent first (`refund_due_minor`), Paystack second (`process_refund`), ledger third, keyed by **Paystack's refund id**. Before any re-send the order asks Paystack for its refunds and books the ones whose answer we never saw, so a timeout after acceptance can't refund twice. `refund.processed` settles a refund still shown as due; `refund.failed` writes an `adjustment` and flags `refund_failed_at`. Retry with backoff (1, 5, 30, 120, 720 minutes), flagged for staff after 12 attempts. |
+| Timers | One job a minute (`marketplace.timers`, `scheduled` through the existing scheduler): expire unpaid holds (no charge), expire paid bookings the expert hasn't answered in 48 h or whose slot started (full refund), retry due refunds. `SKIP LOCKED`, batches of 200. |
+| Roles (D-MP-L1) | Founder books, verifies and cancels; founder + team member read; mentors and the rest 403. The expert sees the brief, the client's name only, their earnings and, once accepted, the meeting link; never the workspace. Founder payloads never carry commission or net. |
+| Accept / decline | Accept: consultation → `confirmed`, package → `in_progress` with `due_at`; refused after the 48-hour window or once the slot started. Decline → `declined` + full refund. |
+| Cancel | Before acceptance only: unpaid → no charge; paid → full refund. After acceptance 409 (disputes and the 24-hour rule are slice E). |
+| Terms | `marketplace_consents` (kind, version `draft-2026-11`): required once before the first booking, again on a new version; `GET /marketplace/checkout` tells the FE. Counsel's text replaces the draft (design §1.3.9). |
+| Receipts | JSON: service line (what the expert keeps, "service by <expert>") and the platform-fee line, summing to what was paid; `is_tax_invoice: false` with a note (design §1.3.5). Numbers `MPR-<year>-<seq>`. |
+| Paystack changes | `REFERENCE_RE` also accepts `mp_` + 20 hex; `refund(reference, amount_minor=None)` takes an amount and returns Paystack's data; `list_refunds`; the stub transport records refunds. |
+| Flag | `MARKETPLACE_PAYMENTS_ENABLED` (default false): refuses every new booking with 403; existing orders can still be verified, refunded and settled. |
+
+Slice B lows fixed here: the dynamic `getattr(client, method)` calls inside asserts are hoisted, and a parked pre-screen `review` flag whose flagged value the expert later removed is dropped (a different flagged value queues again).
+
+**What's involved**
+
+| Area | Paths |
+|---|---|
+| Models, migration | `MarketplaceBooking`, `MarketplaceOrder`, `MarketplaceLedgerEntry`, `MarketplaceWebhookEvent`, `MarketplaceConsent`, `receipt_seq` in `app/db/models/marketplace.py`; enums `BookingStatus`, `OrderStatus`, `LedgerKind`, `MARKETPLACE_WRITE_ROLES`; `alembic/versions/0101_marketplace_booking.py` |
+| Services | `app/services/marketplace/{bookings,orders,webhook,timers,outbox,takedown}.py`; `availability.busy_intervals`; emails in `emails.py` |
+| API | `app/api/v1/endpoints/{marketplace_bookings,provider_bookings}.py`, `BookingCreate` in `app/schemas/marketplace.py`, wired in `app/api/v1/api.py` |
+| Webhook hook | `app/services/billing/webhook.py` (`process`), `app/api/v1/endpoints/billing.py` (queued mail flushed after commit) |
+| Worker | `app/worker/handlers/marketplace.py`, `_due_marketplace_timers` in `app/worker/scheduler.py`, import in `app/worker/__main__.py` |
+| Config | `MARKETPLACE_PAYMENTS_ENABLED` in `app/core/config.py` |
+
+**Verification:** `tests/api/test_marketplace_booking.py` (45) and `tests/api/test_marketplace_lifecycle.py` (41): switch and roles, every validation, idempotency, hold and double booking (incl. overlap, buffer, DB index), terms, own-booking, snapshots, commission rounding, signed / forged / replayed webhooks, amount never trusted, outage retry, late-payment revive and auto-refund, saved card, cancel, accept / decline, timers with a controlled clock, refund retry / flag / lost-answer reconcile / partial refunds / `refund.failed` / `refund.processed`, receipts, scoping, ledger duplicate and zero-movement, order CHECK constraints. `tests/test_marketplace_booking_migration.py` (round trip, `alembic check`, trigger and sequence on the migrated schema). Live journey `e2e/test_marketplace_booking.py` against a real server with the Paystack stub and a webhook signed with the run's test key (45 captured bodies). Two Opus reviews of the money path (row locks, webhook authenticity and idempotency, ledger and refunds, double booking, authorization): first round found one HIGH (a refund whose answer was lost could be sent twice), several MEDIUM (late revival ignoring live holds, lock-order inversion on the saved-card failure path, refund ledger keying) and LOW findings, all fixed with tests; a second round verified the fixes.
+
+**Operate / roll back:** set `MARKETPLACE_PAYMENTS_ENABLED=true` only where Paystack **test** keys are configured (staging); production keeps it false until counsel and Paystack confirm in writing. The worker must run (`python -m app.worker`) for timers and refund retries. To revert: stop the flag, downgrade `0101` (drops the five tables, the function and the sequence, so bookings, orders and the ledger are lost: do this only before any real payment) and revert the PR. Refunds Paystack has already accepted are not undone by a downgrade.
+
+**Follow-ups**
+
+- A reconciliation job comparing the ledger to Paystack's transactions and refunds (design §1.4, slice E) and a staff view of orders with `refund_failed_at`.
+- Slot-hold wording and the 24-hour consultation cancellation rule (D-MP-4), disputes, delivery, release and payouts: slices D and E.
+- PDF receipts and the purchases page (slice F); founder in-app notifications for booking events (slice D).
+- `paystack.initialize` runs while the expert and listing rows are locked; a slow Paystack briefly serialises bookings for that expert. Move it after the commit if that matters.
+- The webhook route reads and verifies synchronously; at volume, move marketplace events to the worker.

@@ -41,6 +41,7 @@ class FakePaystack:
         self.verify_calls = 0
         self.refund_ids: list[int] = []
         self.timeout_after_accept = False  # Paystack takes the refund, our answer is lost
+        self.ignore_refund_filter = False  # a list endpoint that returns every refund
         self.charge_unavailable = False  # a saved-card charge times out
 
     def _guard(self) -> None:
@@ -119,9 +120,14 @@ class FakePaystack:
     def list_refunds(self, transaction_reference: str):
         self._guard()
         return [
-            {"id": rid, "amount": r["amount"], "status": "processed"}
+            {
+                "id": rid,
+                "amount": r["amount"],
+                "status": "processed",
+                "transaction_reference": r["transaction"],
+            }
             for r, rid in zip(self.refunds, self.refund_ids, strict=True)
-            if r["transaction"] == transaction_reference
+            if self.ignore_refund_filter or r["transaction"] == transaction_reference
         ]
 
     def pay(self, reference: str) -> None:

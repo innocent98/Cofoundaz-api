@@ -113,7 +113,7 @@ def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | Non
             200, {"status": True, "message": "Charge attempted", "data": _tx_data(ref, tx)}
         )
     if path == "/refund" and request.method == "GET":
-        tx = request.url.params.get("transaction")
+        tx = request.url.params.get("reference")
         rows = [
             {
                 "id": 500 + i,

@@ -192,8 +192,9 @@ def refund(transaction_reference: str, amount_minor: int | None = None) -> dict[
 
 
 def list_refunds(transaction_reference: str) -> list[dict[str, Any]]:
-    """Refunds Paystack holds for a transaction (to reconcile a refund whose answer we never saw)."""
-    body = _request("GET", "/refund", params={"transaction": transaction_reference})
+    """Refunds Paystack holds for a transaction reference (to reconcile a refund whose answer we
+    never saw). Callers must still check each row's own transaction reference."""
+    body = _request("GET", "/refund", params={"reference": transaction_reference})
     data = body.get("data")
     return [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
 

@@ -320,19 +320,47 @@ def record_refund_sent(
     event_bus.publish(db, "marketplace.order.refunded", {"order_id": str(order.id)})
 
 
-def _refund_id(data: dict[str, Any], fallback: str) -> str:
+def refund_key(data: dict[str, Any]) -> str | None:
+    """Paystack's identifier for a refund it just answered: its numeric `id`, else its
+    `refund_reference`. Used only to key the ledger entry of a refund WE sent; reconciliation does
+    not match rows by identifier (two views of one refund may carry different ones) but by totals.
+    """
     rid = data.get("id") or data.get("refund_reference")
-    return str(rid) if rid else fallback
+    return str(rid) if rid else None
 
 
-def _already_with_paystack(order: MarketplaceOrder) -> list[dict[str, Any]]:
-    """Refunds Paystack holds for this order that we haven't recorded. A refund whose answer was
-    lost (timeout, crash before commit) shows up here, so a retry never sends it twice."""
-    return [
-        r
-        for r in paystack.list_refunds(order.paystack_reference)
-        if str(r.get("status", "")).lower() not in ("failed", "reversed")
-    ]
+def _held_by_paystack(order: MarketplaceOrder) -> int:
+    """Kobo Paystack holds as accepted (not failed or reversed) refunds of THIS transaction. Rows
+    that don't name this transaction are ignored whatever the query returned."""
+    total = 0
+    for r in paystack.list_refunds(order.paystack_reference):
+        ref = r.get("transaction_reference")
+        if ref is None and isinstance(r.get("transaction"), dict):
+            ref = r["transaction"].get("reference")
+        if ref != order.paystack_reference:
+            continue
+        if str(r.get("status", "")).lower() in ("failed", "reversed"):
+            continue
+        amount = r.get("amount")
+        if isinstance(amount, int) and amount > 0:
+            total += amount
+    return total
+
+
+def reconcile_with_paystack(
+    db: Session, order: MarketplaceOrder, booking: MarketplaceBooking
+) -> bool:
+    """Book money Paystack has already refunded that our books don't show: an earlier attempt that
+    was accepted but whose answer we lost (timeout, crash before commit), or a `refund.processed`
+    we are told about. Count-based on purpose: Paystack's accepted total for this transaction
+    minus what the order already records. Only up to what is currently due, so a refund Paystack
+    made earlier can never be booked as a later one. The order must be locked."""
+    gap = _held_by_paystack(order) - order.refunded_minor
+    if gap <= 0 or order.refund_due_minor <= 0:
+        return False
+    amount = min(gap, order.refund_due_minor)
+    record_refund_sent(db, order, booking, amount, f"reconcile:{order.refunded_minor + amount}")
+    return True
 
 
 def process_refund(db: Session, order_id: uuid.UUID) -> str:
@@ -351,22 +379,12 @@ def process_refund(db: Session, order_id: uuid.UUID) -> str:
         return "ignored"
     t = now()
     try:
-        if order.refund_attempts > 0:
-            held = _already_with_paystack(order)
-            recorded = {
-                e.external_ref.removeprefix("refund:")
-                for e in db.query(MarketplaceLedgerEntry).filter_by(
-                    order_id=order.id, kind=LedgerKind.refund
-                )
-            }
-            unseen = [r for r in held if _refund_id(r, "") not in recorded]
-            for r in unseen:
-                amount = r.get("amount")
-                if isinstance(amount, int) and 0 < amount <= order.refund_due_minor:
-                    record_refund_sent(db, order, booking, amount, _refund_id(r, f"p{amount}"))
-            due = order.refund_due_minor
-            if due <= 0:
-                return "refunded"
+        # Always reconcile first: an earlier attempt, even one that crashed before committing, may
+        # have been accepted by Paystack.
+        reconcile_with_paystack(db, order, booking)
+        due = order.refund_due_minor
+        if due <= 0:
+            return "refunded"
         sent = paystack.refund(order.paystack_reference, amount_minor=due)
     except (paystack.PaystackUnavailable, paystack.PaystackRejected) as exc:
         order.refund_attempts += 1
@@ -391,27 +409,19 @@ def process_refund(db: Session, order_id: uuid.UUID) -> str:
         order,
         booking,
         due,
-        _refund_id(sent, f"{order.refunded_minor + due}-{uuid.uuid4().hex[:8]}"),
+        refund_key(sent) or f"sent-{uuid.uuid4().hex[:12]}",
     )
     return "refunded"
 
 
-def settle_from_webhook(db: Session, order_id: uuid.UUID, amount: int, refund_ref: str) -> str:
-    """Paystack says a refund was processed. If we still show it as due (we never saw the answer to
-    our request), book it now; otherwise it is already on the ledger."""
+def settle_from_webhook(db: Session, order_id: uuid.UUID) -> str:
+    """Paystack says a refund was processed. If our books still show money as due that Paystack
+    has in fact refunded, book it (by totals, not by identifier); otherwise it is already known."""
     order = lock_order(db, order_id)
     booking = db.get(MarketplaceBooking, order.booking_id)
-    already = (
-        db.query(MarketplaceLedgerEntry.id)
-        .filter_by(
-            order_id=order.id, kind=LedgerKind.refund, external_ref=f"refund:{refund_ref}"[:80]
-        )
-        .first()
-    )
-    if booking is None or already is not None or not 0 < amount <= order.refund_due_minor:
+    if booking is None or order.refund_due_minor <= 0:
         return "refund_noted"
-    record_refund_sent(db, order, booking, amount, refund_ref)
-    return "refund_settled"
+    return "refund_settled" if reconcile_with_paystack(db, order, booking) else "refund_noted"
 
 
 def reverse_failed_refund(db: Session, order_id: uuid.UUID, amount_minor: int, ref: str) -> str:

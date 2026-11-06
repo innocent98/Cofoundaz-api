@@ -3982,7 +3982,14 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Founder `/marketplace/providers|listings|slots` for founder + team member: approved + active only, allow-list payloads, filters, sort, paging
   - [x] `content_reports` item types `listing` / `provider` / `review`; remove unlists a listing
   - [x] Unit + API tests, migration round trip, live e2e journey, live-captured FE guide
-- [ ] Slice C: booking and checkout (bookings, orders, append-only ledger, Paystack `mp_` references, webhook dispatcher, slot holds, timers, receipts, `MARKETPLACE_PAYMENTS_ENABLED`, ToS consent) — Opus review per task
+- [x] **Slice C: booking and checkout** (`feature/marketplace-booking`, migration `0101_marketplace_booking` on `0096`, lead re-chains at merge (0099 Funding, 0100 AI reserved), SOP `docs/sop/2026-11-06-marketplace-booking.md`, FE guide `docs/fe-integration-guide-marketplace-booking.md`; PR open, not merged; **production charging stays off** until counsel and Paystack confirm in writing, D-MP-3/9)
+  - [x] `marketplace_bookings` (snapshots), `marketplace_orders` (CHECK-enforced split and refund bounds), append-only `marketplace_ledger_entries` (trigger), `marketplace_webhook_events`, `marketplace_consents`
+  - [x] Booking with idempotency key, 15-minute slot hold, double-booking protection (expert row lock + slot check + unique index), ToS consent, own-booking guard, saved card
+  - [x] Paystack `mp_` references; signed webhook dispatcher that re-verifies every payment with Paystack; idempotent apply; late-payment revive or auto-refund
+  - [x] Expert accept / decline (48 h), timers (hold, unanswered, refund retry), refunds keyed by Paystack id with lost-answer reconcile, `refund.failed` / `refund.processed`
+  - [x] JSON receipts (not a tax invoice), orders list, `MARKETPLACE_PAYMENTS_ENABLED` switch
+  - [x] Two Opus reviews of the money path, all findings fixed; unit + API + migration + live e2e; live-captured FE guide
+  - [x] Slice B lows: getattr-in-assert hoisted, stale `review` flag dropped
 - [ ] Slice D: fulfilment and messaging (threads, briefs and Documents grants, deliveries, Calendar event + ICS, auto-release timers, notifications)
 - [ ] Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task
 - [ ] Slice F: reviews, matches, tools and purchases

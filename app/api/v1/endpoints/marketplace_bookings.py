@@ -95,9 +95,10 @@ def create_booking(
         if outcome == "card_error":
             raise AppError(
                 "PAYMENT_UNCONFIRMED",
-                "We couldn't confirm the charge. If your card was charged the booking will appear "
-                "shortly; if not, nothing was charged. Check your bookings before trying again.",
+                "We couldn't confirm the charge. If your card was charged the booking will confirm "
+                "shortly; if not, nothing was charged. Check this booking before trying again.",
                 502,
+                field_errors=[{"field": "booking_id", "message": str(booking.id)}],
             )
         if outcome in ("card_declined", "no_saved_card"):
             raise AppError(

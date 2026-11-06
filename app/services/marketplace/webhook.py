@@ -69,7 +69,7 @@ def process(db: Session, event: str, data: dict[str, Any]) -> str:
     elif event == "refund.failed":
         outcome = _refund_failed(db, reference, data)
     elif event == "refund.processed":
-        outcome = _refund_processed(db, reference, data)
+        outcome = _refund_processed(db, reference)
     else:  # refund.pending
         outcome = "refund_noted"
     row = db.query(MarketplaceWebhookEvent).filter_by(event_key=key).one()
@@ -81,17 +81,15 @@ def process(db: Session, event: str, data: dict[str, Any]) -> str:
     return outcome
 
 
-def _refund_processed(db: Session, reference: str, data: dict[str, Any]) -> str:
+def _refund_processed(db: Session, reference: str) -> str:
     order_id = (
         db.query(MarketplaceOrder.id)
         .filter(MarketplaceOrder.paystack_reference == reference)
         .scalar()
     )
-    amount = data.get("amount")
-    if order_id is None or not isinstance(amount, int):
+    if order_id is None:
         return "refund_noted"
-    ref = str(data.get("refund_reference") or data.get("id") or amount)
-    return orders.settle_from_webhook(db, order_id, amount, ref)
+    return orders.settle_from_webhook(db, order_id)
 
 
 def _refund_failed(db: Session, reference: str, data: dict[str, Any]) -> str:
