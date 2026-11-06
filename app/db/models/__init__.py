@@ -92,10 +92,15 @@ from app.db.models.marketing import (  # noqa: F401
 from app.db.models.marketplace import (  # noqa: E402, F401
     MarketplaceAvailabilityException,
     MarketplaceAvailabilityRule,
+    MarketplaceBooking,
+    MarketplaceConsent,
     MarketplaceFile,
+    MarketplaceLedgerEntry,
     MarketplaceListing,
+    MarketplaceOrder,
     MarketplaceProvider,
     MarketplaceProviderPortfolio,
+    MarketplaceWebhookEvent,
 )
 from app.db.models.membership import Membership  # noqa: F401
 from app.db.models.mission import Mission, MissionSettings, MissionTask  # noqa: F401

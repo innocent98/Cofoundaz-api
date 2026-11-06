@@ -21,6 +21,7 @@ from app.db.models.billing import BillingSubscription, BillingWebhookEvent
 from app.platform.events import event_bus
 from app.services.billing import flows, paystack
 from app.services.billing import subscription as subs
+from app.services.marketplace import webhook as marketplace_webhook
 
 MAX_BODY_BYTES = 256 * 1024
 
@@ -131,7 +132,9 @@ def process(db: Session, *, raw_body: bytes, signature: str | None) -> dict[str,
     if inserted is None:
         return {"received": True, "outcome": "duplicate"}
     row = db.query(BillingWebhookEvent).filter_by(event_key=key[:160]).one()
-    if event == "charge.success":
+    if marketplace_webhook.owns(event, data):
+        outcome = marketplace_webhook.process(db, event, data)
+    elif event == "charge.success":
         outcome = flows.finalize_charge(db, data)
     elif event == "subscription.create":
         outcome = _on_subscription_create(db, data)

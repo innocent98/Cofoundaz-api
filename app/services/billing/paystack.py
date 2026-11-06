@@ -36,9 +36,9 @@ class PaystackRejected(AppError):  # noqa: N818
     message = "Our payment provider couldn't complete that. Nothing was charged."
 
 
-# The exact shape flows.reference_for() mints. Anything else never reaches Paystack: the reference
+# The exact shape flows.reference_for() mints (and the Marketplace's `mp_` references). Anything else never reaches Paystack: the reference
 # arrives from the checkout callback's query string and is interpolated into a URL path.
-REFERENCE_RE = re.compile(r"^cfz_(checkout|card|addon|upgrade)_[0-9a-f]{20}$")
+REFERENCE_RE = re.compile(r"^(cfz_(checkout|card|addon|upgrade)|mp)_[0-9a-f]{20}$")
 
 
 class InvalidReference(AppError):  # noqa: N818
@@ -183,8 +183,12 @@ def charge_authorization(
     )
 
 
-def refund(transaction_reference: str) -> None:
-    _request("POST", "/refund", json_body={"transaction": transaction_reference})
+def refund(transaction_reference: str, amount_minor: int | None = None) -> dict[str, Any]:
+    """Refund a transaction in full, or `amount_minor` kobo of it (Marketplace split refunds)."""
+    payload: dict[str, Any] = {"transaction": transaction_reference}
+    if amount_minor is not None:
+        payload["amount"] = amount_minor
+    return _data(_request("POST", "/refund", json_body=payload))
 
 
 def list_subscriptions(customer_code: str) -> list[dict[str, Any]]:

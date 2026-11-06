@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Marketplace (D-MP-1 hybrid): false = experts join by staff invite only; true also opens
     # POST /provider/apply. Production card charging has its own switch in a later slice.
     MARKETPLACE_OPEN_APPLICATIONS: bool = False
+    # Marketplace checkout (D-MP-3, D-MP-9): false refuses every new booking. Staging runs it on
+    # Paystack TEST keys; production stays false until counsel and Paystack confirm in writing.
+    MARKETPLACE_PAYMENTS_ENABLED: bool = False
     # Public base URL of this API, used to build per-connection webhook URLs.
     API_PUBLIC_URL: str = ""
     # Dev/e2e only: swap the real Paystack/Flutterwave HTTP calls for an in-process stub.

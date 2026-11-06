@@ -206,7 +206,8 @@ PROVIDER_ROUTES = [
 
 def test_listing_routes_need_sign_in_a_provider_and_approval(client, db):
     for method, path in PROVIDER_ROUTES:
-        assert getattr(client, method)(f"{P}{path}").status_code == 401, path
+        resp = getattr(client, method)(f"{P}{path}")
+        assert resp.status_code == 401, path
     plain = mk_user(db)
     for method, path in PROVIDER_ROUTES:
         r = getattr(client, method)(f"{P}{path}", headers=hdr(plain))
@@ -681,9 +682,12 @@ def test_admin_listing_routes_hide_from_non_staff_and_refuse_wrong_scope(client,
     f, ws = founder(db)
     support = mk_staff(db, StaffRole.admin, ("support",))
     for method, path in ADMIN_ROUTES:
-        assert getattr(client, method)(f"{A}{path}").status_code == 404, path
-        assert getattr(client, method)(f"{A}{path}", headers=hdr(f)).status_code == 404, path
-        assert getattr(client, method)(f"{A}{path}", headers=hdr(support)).status_code == 403, path
+        anon = getattr(client, method)(f"{A}{path}")
+        assert anon.status_code == 404, path
+        as_founder = getattr(client, method)(f"{A}{path}", headers=hdr(f))
+        assert as_founder.status_code == 404, path
+        as_support = getattr(client, method)(f"{A}{path}", headers=hdr(support))
+        assert as_support.status_code == 403, path
     sa = mk_staff(db, StaffRole.super_admin)
     assert client.get(f"{A}/listings", headers=hdr(sa)).status_code == 200
 
@@ -1007,3 +1011,21 @@ def test_a_live_listing_cannot_lose_the_fields_its_type_needs(client, db, modera
     d = new_listing(client, user, title="Draft being reworked")
     resp_1 = client.patch(f"{P}/listings/{d['id']}", json={"meeting_url": None}, headers=h)
     assert resp_1.status_code == 200
+
+
+def test_a_flag_whose_value_was_removed_leaves_the_queue(client, db, moderator, mail):
+    user, _ = approved(client, db, moderator, mail)
+    lid = live_listing(client, db, moderator, user)
+    h, mh = hdr(user), hdr(moderator)
+    flagged = client.patch(f"{P}/listings/{lid}", json={"tags": ["whatsapp me"]}, headers=h)
+    assert flagged.status_code == 200
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
+    removed = client.patch(f"{P}/listings/{lid}", json={"tags": ["contracts"]}, headers=h)
+    assert removed.status_code == 200
+    assert client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"] == []
+    assert client.get(f"{A}/listings/counts", headers=mh).json()["data"]["flagged_edits"] == 0
+    # a different flagged value after that is queued again, and only that one
+    again = client.patch(f"{P}/listings/{lid}", json={"tags": ["telegram me"]}, headers=h)
+    assert again.status_code == 200
+    q = client.get(f"{A}/listings?queue=true", headers=mh).json()["data"]["listings"]
+    assert [x["id"] for x in q] == [lid]

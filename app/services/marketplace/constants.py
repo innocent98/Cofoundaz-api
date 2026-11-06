@@ -51,3 +51,14 @@ MAX_SLOT_RANGE_DAYS: Final = 14
 MAX_RULES: Final = 28
 MAX_EXCEPTIONS: Final = 90
 DIRECTORY_PAGE_SIZE: Final = 12
+
+# ---- slice C: booking, checkout and ledger
+ACCEPT_WINDOW = timedelta(hours=48)  # D-MP-L7: the expert must accept within 48 h or it expires
+SLOT_HOLD = timedelta(minutes=15)  # D-MP-L6: a slot (or a package order) is held 15 min at checkout
+BRIEF_MIN = 10
+BRIEF_MAX = 4000
+MARKETPLACE_TERMS_VERSION: Final = "draft-2026-11"  # counsel's founder terms replace this (§1.3.9)
+CONSENT_KIND_TERMS: Final = "marketplace_terms"
+TIMER_BATCH = 200
+REFUND_RETRY_BACKOFF_MIN: Final = (1, 5, 30, 120, 720)  # minutes, by attempt number
+MAX_REFUND_ATTEMPTS: Final = 12

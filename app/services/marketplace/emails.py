@@ -177,3 +177,50 @@ def listing_feedback_email(
             expiry_note="Your live listing, if any, is unchanged.",
         ),
     )
+
+
+def booking_request_email(
+    to: str, *, name: str | None, title: str, when: str | None, accept_by: str
+) -> EmailMessage:
+    slot = f" for {escape(when)}" if when else ""
+    return EmailMessage(
+        to=to,
+        subject=f"New booking request: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="You have a new booking request",
+            intro=(
+                f"{_greet(name)} a founder booked <strong>{escape(title)}</strong>{slot} and has "
+                f"paid. Please accept or decline by {escape(accept_by)}, or the booking expires "
+                "and they are refunded in full."
+            ),
+            cta_label="Open your bookings",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="You have 48 hours to respond.",
+        ),
+    )
+
+
+def booking_closed_email(to: str, *, provider: str | None, title: str, reason: str) -> EmailMessage:
+    """To the founder: the expert couldn't take it on (declined or didn't answer), or the founder
+    cancelled. PRD copy: "{Provider} could not take this on. You were refunded in full." """
+    who = escape(provider or "The expert")
+    if reason == "founder_cancelled":
+        intro = f"You cancelled <strong>{escape(title)}</strong>. You will be refunded in full."
+        subject = "Your booking was cancelled"
+    else:
+        intro = (
+            f"{who} could not take on <strong>{escape(title)}</strong>. "
+            "You were refunded in full. Refunds can take a few working days to reach your card."
+        )
+        subject = "Your booking could not go ahead"
+    return EmailMessage(
+        to=to,
+        subject=subject,
+        html=_render(
+            title=subject,
+            intro=intro,
+            cta_label="Browse experts",
+            action_url=f"{_base_url()}/marketplace",
+            expiry_note="Your card is never charged for a booking that doesn't go ahead.",
+        ),
+    )

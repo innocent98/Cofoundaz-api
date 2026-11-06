@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -12,10 +13,13 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    Sequence,
     SmallInteger,
     String,
     Text,
     Time,
+    UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, CITEXT, JSONB
@@ -26,9 +30,12 @@ from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
 from app.db.models.enums import (
     AvailabilityKind,
+    BookingStatus,
+    LedgerKind,
     ListingStatus,
     ListingType,
     MarketplaceFilePurpose,
+    OrderStatus,
     ProviderStatus,
     ScanStatus,
 )
@@ -264,3 +271,233 @@ class MarketplaceAvailabilityException(UUIDMixin, TimestampMixin, Base):
     )
     start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+
+
+ACTIVE_BOOKING = (
+    BookingStatus.awaiting_provider,
+    BookingStatus.confirmed,
+    BookingStatus.in_progress,
+    BookingStatus.delivered,
+    BookingStatus.disputed,
+)
+
+
+# Receipt numbers (`MPR-<year>-<n>`). Declared on the metadata so test databases get it too.
+receipt_seq = Sequence("marketplace_receipt_seq", start=1001, metadata=Base.metadata)
+
+
+class MarketplaceBooking(UUIDMixin, TimestampMixin, Base):
+    """A founder's booking of one listing. Title, price, commission and deliverables are copied at
+    purchase (design D-MP-L8) so later listing edits never change what was bought. `starts_at` /
+    `ends_at` exist only for consultations. `slot_hold_expires_at` is the 15-minute checkout hold
+    while `pending_payment`."""
+
+    __tablename__ = "marketplace_bookings"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="RESTRICT"), nullable=False
+    )
+    listing_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_listings.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    booked_by: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[BookingStatus] = mapped_column(
+        Enum(BookingStatus, native_enum=False, length=24),
+        default=BookingStatus.pending_payment,
+        nullable=False,
+    )
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title_snap: Mapped[str] = mapped_column(String(160), nullable=False)
+    category_snap: Mapped[str] = mapped_column(String(20), nullable=False)
+    price_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="NGN", nullable=False)
+    commission_bps_snap: Mapped[int] = mapped_column(Integer, nullable=False)
+    deliverables_snap: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    duration_min_snap: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    delivery_days_snap: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    revisions_included_snap: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    meeting_url_snap: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    brief: Mapped[str] = mapped_column(Text, nullable=False)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    slot_hold_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    accept_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    auto_release_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revisions_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    calendar_event_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    closed_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("booked_by", "idempotency_key", name="uq_marketplace_booking_idem"),
+        Index("ix_marketplace_bookings_startup_status", "startup_id", "status"),
+        Index("ix_marketplace_bookings_hold", "status", "slot_hold_expires_at"),
+        Index("ix_marketplace_bookings_accept", "status", "accept_by"),
+        # Backstop for the per-expert row lock: two live bookings can never start at the same
+        # instant. Checkout holds (`pending_payment`) are guarded by the lock and a slot check, so
+        # a lapsed hold never blocks a new booking.
+        Index(
+            "uq_marketplace_booking_slot",
+            "provider_id",
+            "starts_at",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('awaiting_provider','confirmed','in_progress','delivered','disputed')"
+                " AND starts_at IS NOT NULL"
+            ),
+        ),
+    )
+
+
+class MarketplaceOrder(UUIDMixin, TimestampMixin, Base):
+    """The money side of a booking: one order per booking, paid through Cofoundaz's own Paystack
+    account (D-MP-3 a). `amount_minor` is exactly the listed price; the commission comes out of
+    the expert's side (D-MP-5) and `commission_minor + provider_net_minor == amount_minor`.
+    Refunds are requested in `refund_due_minor` and settled by `orders.process_refund`, which writes
+    the ledger entry only once Paystack accepts the refund."""
+
+    __tablename__ = "marketplace_orders"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_bookings.id", ondelete="RESTRICT"),
+        unique=True,
+        nullable=False,
+    )
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    commission_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    provider_net_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="NGN", nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(
+        Enum(OrderStatus, native_enum=False, length=24), default=OrderStatus.pending, nullable=False
+    )
+    settlement_mode: Mapped[str] = mapped_column(String(12), default="platform", nullable=False)
+    paystack_reference: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    checkout_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    receipt_number: Mapped[str | None] = mapped_column(String(24), unique=True, nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    refunded_minor: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default=text("0"), nullable=False
+    )
+    refund_due_minor: Mapped[int] = mapped_column(
+        BigInteger, default=0, server_default=text("0"), nullable=False
+    )
+    refund_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0"), nullable=False
+    )
+    refund_next_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_failed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("amount_minor > 0", name="ck_marketplace_order_amount_positive"),
+        CheckConstraint(
+            "commission_minor >= 0 AND provider_net_minor >= 0 "
+            "AND commission_minor + provider_net_minor = amount_minor",
+            name="ck_marketplace_order_split",
+        ),
+        CheckConstraint(
+            "refunded_minor >= 0 AND refund_due_minor >= 0 "
+            "AND refunded_minor + refund_due_minor <= amount_minor",
+            name="ck_marketplace_order_refund_bounds",
+        ),
+        Index("ix_marketplace_orders_refund_due", "refund_due_minor", "refund_next_attempt_at"),
+    )
+
+
+class MarketplaceLedgerEntry(UUIDMixin, Base):
+    """Append-only (a database trigger refuses UPDATE and DELETE, like `audit_log`). Amounts are
+    signed kobo: a `charge` is positive (money in, held), a `refund` negative. Statuses elsewhere
+    are derived from, and reconciled against, these rows. (order_id, kind, external_ref) is unique
+    so a replayed webhook or retry can never write the same movement twice."""
+
+    __tablename__ = "marketplace_ledger_entries"
+
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_orders.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[LedgerKind] = mapped_column(
+        Enum(LedgerKind, native_enum=False, length=20), nullable=False
+    )
+    amount_minor: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="NGN", nullable=False)
+    external_ref: Mapped[str] = mapped_column(String(80), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("order_id", "kind", "external_ref", name="uq_marketplace_ledger_once"),
+        CheckConstraint("amount_minor <> 0", name="ck_marketplace_ledger_nonzero"),
+    )
+
+
+class MarketplaceWebhookEvent(UUIDMixin, Base):
+    """One row per Paystack event the Marketplace handled, keyed so a replay (or the same event
+    delivered twice with different bytes) is answered 200 and applied once."""
+
+    __tablename__ = "marketplace_webhook_events"
+
+    event_key: Mapped[str] = mapped_column(String(160), unique=True, nullable=False)
+    type: Mapped[str] = mapped_column(String(60), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    outcome: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
+
+class MarketplaceConsent(UUIDMixin, Base):
+    """A user's acceptance of a Marketplace terms version (design §1.3.9): asked once, before the
+    first booking, and again whenever the version changes."""
+
+    __tablename__ = "marketplace_consents"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    version: Mapped[str] = mapped_column(String(40), nullable=False)
+    accepted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "kind", "version", name="uq_marketplace_consent"),
+    )

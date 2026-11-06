@@ -145,6 +145,20 @@ def _due_qa_retention(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
     ]
 
 
+def _due_marketplace_timers(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
+    """Booking holds, the 48-hour acceptance window and refund retries: one pass a minute."""
+    return [
+        Due(
+            "marketplace.timers",
+            "all",
+            now.strftime("%Y-%m-%dT%H:%M"),
+            "marketplace.timers",
+            None,
+            {},
+        )
+    ]
+
+
 def _due_notification_digests(db: Session, now: datetime) -> list[Due]:
     """Digest emails (PRD 20.3): once per recipient and workspace per local day at their delivery
     time (weekly: on their chosen weekday). The job re-reads preferences before sending."""
@@ -660,6 +674,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
         *_due_qa_retention(db, now),
+        *_due_marketplace_timers(db, now),
         *_due_notification_digests(db, now),
         *_due_journal_nudges(db, now),
         *_due_calendar_syncs(db, now),
