@@ -47,24 +47,26 @@ def test_create_conversation_with_message(client, db):
     assert db.query(Job).filter_by(type="ai.cofounder.reply").count() == 1
 
 
-def test_create_empty_then_post_message(client, db):
+def test_create_requires_a_message(client, db):
     u, s, h = _founder(db)
     db.commit()
+    for body in ({}, {"message": ""}, {"message": "   \n "}, {"message": None}):
+        r = client.post("/api/v1/ai/conversations", headers=h, json=body)
+        assert r.status_code == 422, (body, r.text)
+    assert client.get("/api/v1/ai/conversations", headers=h).json()["data"] == []
+    assert db.query(Job).filter_by(type="ai.cofounder.reply").count() == 0
 
-    conv = client.post("/api/v1/ai/conversations", headers=h, json={}).json()["data"]
-    assert conv["messages"] == []
-    assert conv["title"] is None
+
+def test_post_message_then_poll(client, db):
+    u, s, h = _founder(db)
+    db.commit()
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={"message": "Hi"}).json()["data"]
 
     r = client.post(
         f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": "Hi there"}
     )
-    assert r.status_code == 202, r.text
-    assert r.json()["data"]["role"] == "assistant"
-    assert r.json()["data"]["status"] == "generating"
-
-    got = client.get(f"/api/v1/ai/conversations/{conv['id']}", headers=h).json()["data"]
-    assert [m["role"] for m in got["messages"]] == ["user", "assistant"]
-    assert got["title"] == "Hi there"
+    # the first turn is still generating, so a second send is refused (409), not queued
+    assert r.status_code == 409, r.text
 
 
 def test_list_conversations(client, db):
@@ -82,12 +84,14 @@ def test_list_conversations(client, db):
 def test_post_message_empty_content_422(client, db):
     u, s, h = _founder(db)
     db.commit()
-    conv = client.post("/api/v1/ai/conversations", headers=h, json={}).json()["data"]
+    conv = client.post("/api/v1/ai/conversations", headers=h, json={"message": "x"}).json()["data"]
 
-    r = client.post(
-        f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": ""}
-    )
-    assert r.status_code == 422
+    for content in ("", "   ", "\n\t "):
+        r = client.post(
+            f"/api/v1/ai/conversations/{conv['id']}/messages", headers=h, json={"content": content}
+        )
+        assert r.status_code == 422, (content, r.text)
+    assert db.query(Job).filter_by(type="ai.cofounder.reply").count() == 1
 
 
 def test_cross_tenant_conversation_404(client, db):

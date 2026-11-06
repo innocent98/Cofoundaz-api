@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CONVERSATION_ARCHIVED",
+    "message": "This conversation is archived. Unarchive it to continue.",
+    "field_errors": []
+  }
+}

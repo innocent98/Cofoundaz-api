@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,11 +18,18 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.db.session import get_db
-from app.db.tenancy import require_role, require_workspace
+from app.db.tenancy import require_role
 from app.platform.llm_budget import is_ai_enrichment_job, over_budget, today_utc
-from app.schemas.ai_chat import CreateConversationRequest, PostMessageRequest
+from app.schemas.ai_chat import (
+    ConversationIdsRequest,
+    CreateConversationRequest,
+    PostMessageRequest,
+)
 from app.services.ai_cofounder.service import (
+    MAX_QUERY,
+    MIN_QUERY,
     create_conversation,
+    delete_conversation,
     fail_stale_generating,
     get_conversation,
     list_conversations,
@@ -30,7 +37,9 @@ from app.services.ai_cofounder.service import (
     post_message,
     serialize_conversation,
     serialize_message,
+    set_archived,
 )
+from app.services.ai_cofounder.topics import TOPICS
 from app.services.ai_preferences import AiPrefs, get_prefs, update_prefs
 
 router = APIRouter()
@@ -89,8 +98,7 @@ def patch_ai_settings(
 
 @router.get("/status")
 def ai_status(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
-    user: User = Depends(get_verified_user),  # noqa: B008
+    membership: Membership = Depends(_chat_access),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup_id = membership.startup_id
@@ -153,14 +161,55 @@ def create_conversation_endpoint(
 
 @router.get("/conversations")
 def list_conversations_endpoint(
+    query: str | None = Query(default=None),  # noqa: B008
+    topic: str | None = Query(default=None),  # noqa: B008
+    archived: bool = Query(default=False),  # noqa: B008
     membership: Membership = Depends(_chat_access),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    if topic is not None and topic not in TOPICS:
+        raise AppError("VALIDATION_ERROR", f"topic must be one of: {', '.join(TOPICS)}.", 422)
+    query = (query or "").strip() or None  # blank means no search
+    if query is not None and not MIN_QUERY <= len(query) <= MAX_QUERY:
+        raise AppError(
+            "VALIDATION_ERROR", f"query must be {MIN_QUERY} to {MAX_QUERY} characters.", 422
+        )
+    if archived and query:
+        raise AppError("VALIDATION_ERROR", "Archived conversations can't be searched.", 422)
     startup = _startup(db, membership)
-    return success_response(
-        [serialize_conversation(c) for c in list_conversations(db, startup, user)]
-    )
+    rows = list_conversations(db, startup, user, query=query, topic=topic, archived=archived)
+    out = []
+    for conv, snippet in rows:
+        item = serialize_conversation(conv)
+        if query:
+            item["match_snippet"] = snippet
+        out.append(item)
+    return success_response(out)
+
+
+@router.post("/conversations/archive")
+def archive_conversations_endpoint(
+    payload: ConversationIdsRequest,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    changed = set_archived(db, _startup(db, membership), user, payload.ids, archived=True)
+    db.commit()
+    return success_response({"archived": changed})
+
+
+@router.post("/conversations/unarchive")
+def unarchive_conversations_endpoint(
+    payload: ConversationIdsRequest,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    changed = set_archived(db, _startup(db, membership), user, payload.ids, archived=False)
+    db.commit()
+    return success_response({"unarchived": changed})
 
 
 @router.get("/conversations/{conversation_id}")
@@ -190,3 +239,17 @@ def post_message_endpoint(
     assistant = post_message(db, conv, payload.content)
     db.commit()
     return success_response(serialize_message(assistant))
+
+
+@router.delete("/conversations/{conversation_id}")
+def delete_conversation_endpoint(
+    conversation_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """ "Delete forever": removes the conversation and every message in it."""
+    conv = get_conversation(db, _startup(db, membership), user, conversation_id)
+    delete_conversation(db, conv)
+    db.commit()
+    return success_response({"deleted": True})

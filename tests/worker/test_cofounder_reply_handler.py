@@ -303,3 +303,61 @@ def test_a_reply_removed_by_moderation_is_not_fed_back_to_the_model(db, monkeypa
     monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _Spy("fine"))
     handle_cofounder_reply(db, _job(pending.id, s.id))
     assert seen and "REMOVED-REPLY-TEXT" not in seen[0]
+
+
+def _usage(db, startup_id):
+    return (
+        db.query(LlmUsageDaily.tokens_used)
+        .filter_by(startup_id=startup_id, usage_date=today_utc())
+        .scalar()
+        or 0
+    )
+
+
+def test_deleting_the_conversation_during_the_model_call_still_bills_the_tokens(db, monkeypatch):
+    """The scripted POST+DELETE loop: a delete that lands while the model runs must not make
+    the call free (the worker used to write to the gone row, raise, and roll the debit back)."""
+    from app.db.models.ai_chat import AiConversation
+    from app.platform.events import event_bus
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    s, assistant = _conv_with_pending(db)
+    conv_id = assistant.conversation_id
+
+    class _DeletesMidCall(_FakeLLM):
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            db.delete(db.get(AiConversation, conv_id))  # the founder's DELETE landed
+            db.flush()
+            return super().complete(messages, max_tokens=max_tokens, temperature=temperature)
+
+    fake = _DeletesMidCall("a reply nobody will read")
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: fake)
+    seen = len(event_bus.published)
+
+    handle_cofounder_reply(db, _job(assistant.id, s.id))  # must not raise
+
+    assert _usage(db, s.id) == 7  # the call was billed
+    assert db.query(AiMessage).filter_by(conversation_id=conv_id).count() == 0
+    assert "ai.cofounder.reply.failed" not in [e for e, _p in event_bus.published[seen:]]
+
+
+def test_deleting_during_a_failing_call_does_not_raise_or_publish_a_failure(db, monkeypatch):
+    from app.db.models.ai_chat import AiConversation
+    from app.platform.events import event_bus
+    from app.platform.llm import EmptyCompletionError
+
+    monkeypatch.setattr(settings, "LLM_DAILY_TOKEN_BUDGET", 10_000)
+    monkeypatch.setattr(llm_budget, "_debit_independent", lambda sid, n: None)
+    s, assistant = _conv_with_pending(db)
+    conv_id = assistant.conversation_id
+
+    class _FailsAfterDelete(_FakeLLM):
+        def complete(self, messages, *, max_tokens, temperature=0.7):
+            db.delete(db.get(AiConversation, conv_id))
+            db.flush()
+            raise EmptyCompletionError("empty")
+
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: _FailsAfterDelete("x"))
+    seen = len(event_bus.published)
+    handle_cofounder_reply(db, _job(assistant.id, s.id))
+    assert "ai.cofounder.reply.failed" not in [e for e, _p in event_bus.published[seen:]]
