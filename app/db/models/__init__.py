@@ -1,5 +1,11 @@
 from app.db.models.activity import ActivityLog  # noqa: F401
-from app.db.models.ai_chat import AiAgentRoute, AiConversation, AiMessage  # noqa: F401
+from app.db.models.ai_chat import (
+    AiAction,
+    AiAgentRoute,
+    AiConversation,
+    AiMessage,
+    AiSuggestion,
+)  # noqa: F401
 from app.db.models.ai_preference import AiPreference  # noqa: F401
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
