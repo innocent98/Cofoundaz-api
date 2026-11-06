@@ -178,10 +178,10 @@ _REASON = {
 }
 
 
-def _end_failed(db: Session, msg: AiMessage, text: str) -> None:
-    """Fail the turn (unless it was deleted or already ended) and commit."""
+def _end_failed(db: Session, msg: AiMessage, text: str, generation: int) -> None:
+    """Fail the turn (unless it was deleted, already ended or regenerated) and commit."""
     if _turn_still_exists(db, msg):
-        fail_message(db, msg, text)
+        fail_message(db, msg, text, generation=generation)
     db.commit()
 
 
@@ -193,6 +193,7 @@ def _store_reply(
     used: list[dict[str, str]],
     conversation: AiConversation,
     keys: dict[str, uuid.UUID],
+    gen: int,
 ) -> None:
     """From the lock to the commit nothing can fail: the model call is already paid for."""
     agent = AGENTS[route.agent_key]
@@ -204,7 +205,11 @@ def _store_reply(
         CursorResult,
         db.execute(
             update(AiMessage)
-            .where(AiMessage.id == msg.id, AiMessage.status == ChatMessageStatus.generating)
+            .where(
+                AiMessage.id == msg.id,
+                AiMessage.status == ChatMessageStatus.generating,
+                AiMessage.generation == gen,
+            )
             .values(
                 content=text.strip(),
                 status=ChatMessageStatus.ready,
@@ -265,7 +270,8 @@ def run_reply(db: Session, job: Job) -> None:
         or msg.status != ChatMessageStatus.generating  # done, failed, or cancelled: nothing to do
     ):
         return
-    if int(job.payload.get("generation", 0)) != msg.generation:
+    gen = int(job.payload.get("generation", 0))
+    if gen != msg.generation:
         return  # queued before a regenerate: the newer job owns this turn
     conversation = db.get(AiConversation, msg.conversation_id)
     startup = db.get(Startup, conversation.startup_id) if conversation else None
@@ -298,7 +304,7 @@ def run_reply(db: Session, job: Job) -> None:
     # overshooting the cap by one big turn. Nothing is called or spent.
     left = headroom(db, startup.id)
     if left is not None and left < _input_tokens_estimate(messages) + settings.LLM_CHAT_MAX_TOKENS:
-        _end_failed(db, msg, BUDGET_FAILED_TEXT)
+        _end_failed(db, msg, BUDGET_FAILED_TEXT, gen)
         return
     try:
         text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
@@ -311,12 +317,12 @@ def run_reply(db: Session, job: Job) -> None:
         ):
             raise  # the runner rolls back and retries with backoff; the route is already stored
         log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
-        _end_failed(db, msg, REPLY_FAILED_TEXT)
+        _end_failed(db, msg, REPLY_FAILED_TEXT, gen)
         return
     if text is None:  # over budget: no templated fallback for a chat turn
-        _end_failed(db, msg, BUDGET_FAILED_TEXT)
+        _end_failed(db, msg, BUDGET_FAILED_TEXT, gen)
         return
     if not _turn_still_exists(db, msg):
         db.commit()  # deleted while the model ran: the call is paid for, so bill it
         return
-    _store_reply(db, msg, route, text, used, conversation, keys)
+    _store_reply(db, msg, route, text, used, conversation, keys, gen)

@@ -1,0 +1,58 @@
+{
+  "data": {
+    "id": "d6d26c90-b0f7-427e-8ba3-f7f4727a8930",
+    "title": "hello there",
+    "topic": "mentoring",
+    "pinned_agent_key": "mentor",
+    "archived_at": null,
+    "created_at": "2026-11-06T17:00:14.670780+00:00",
+    "updated_at": "2026-11-06T17:00:14.696510+00:00",
+    "messages": [
+      {
+        "id": "8507e3fa-7607-40cd-ab18-9edbf7dc17b3",
+        "role": "user",
+        "status": "ready",
+        "content": "hello there",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T17:00:14.676362+00:00"
+      },
+      {
+        "id": "b124ac96-817c-4d1f-a7b6-292c20ea0afa",
+        "role": "assistant",
+        "status": "ready",
+        "content": "Pinned answer.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "mentor",
+          "name": "Mentor"
+        },
+        "reasoning_summary": "Answered by the Mentor because you asked for this specialist. I used: Your startup profile, Today's mission, Your roadmap.",
+        "disclaimer": null,
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          },
+          {
+            "key": "mission",
+            "label": "Today's mission"
+          },
+          {
+            "key": "roadmap",
+            "label": "Your roadmap"
+          }
+        ],
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T17:00:14.677362+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

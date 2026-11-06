@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "fe20f296-beea-4a82-9617-82d5007ad899",
+    "kind": "add_task",
+    "label": "Add as task: Write the pitch",
+    "status": "dismissed",
+    "undoable": false,
+    "params": {
+      "title": "Write the pitch",
+      "effort": "medium",
+      "milestone_key": "M1"
+    },
+    "href": null,
+    "result_label": null
+  },
+  "meta": null
+}

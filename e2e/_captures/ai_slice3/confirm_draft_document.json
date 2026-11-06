@@ -1,0 +1,22 @@
+{
+  "data": {
+    "id": "805805ea-760f-4715-b0fe-e0e68b3da5f3",
+    "kind": "draft_document",
+    "label": "Draft the document: Contractor NDA",
+    "status": "executed",
+    "undoable": true,
+    "params": {
+      "title": "Contractor NDA",
+      "doc_kind": "nda",
+      "sections": [
+        {
+          "body": "NovaPay and the contractor.",
+          "heading": "Parties"
+        }
+      ]
+    },
+    "href": "/documents/3dde6fb3-7a29-488e-8b05-c564f9454402",
+    "result_label": "Draft created: Contractor NDA"
+  },
+  "meta": null
+}

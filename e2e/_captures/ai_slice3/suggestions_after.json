@@ -1,0 +1,17 @@
+{
+  "data": {
+    "enabled": true,
+    "items": [
+      {
+        "id": "0ffed5ba-ee65-458a-b0b2-8c76f84f33ea",
+        "source": "health",
+        "title": "Get your key agreements signed",
+        "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+        "href": "/health",
+        "status": "new",
+        "created_at": "2026-11-06T17:00:15.187453+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

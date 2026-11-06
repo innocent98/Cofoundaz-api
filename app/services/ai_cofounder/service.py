@@ -156,7 +156,14 @@ def messages_for(db: Session, conversation: AiConversation) -> list[AiMessage]:
     )
 
 
-def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content: str) -> bool:
+def _end_turn(
+    db: Session,
+    msg: AiMessage,
+    *,
+    status: ChatMessageStatus,
+    content: str,
+    generation: int | None = None,
+) -> bool:
     """Move a `generating` assistant turn to a terminal status with one conditional UPDATE. A turn
     that is no longer `generating` (the founder pressed Cancel, or another path ended it) matches
     no row and is left exactly as it is, so a late worker or reaper can never overwrite a
@@ -165,7 +172,12 @@ def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content
         CursorResult,
         db.execute(
             update(AiMessage)
-            .where(AiMessage.id == msg.id, AiMessage.status == ChatMessageStatus.generating)
+            .where(
+                AiMessage.id == msg.id,
+                AiMessage.status == ChatMessageStatus.generating,
+                # a job from before a Cancel -> Regenerate must not end the newer turn
+                *([AiMessage.generation == generation] if generation is not None else []),
+            )
             .values(status=status, content=content)
         ),
     ).rowcount
@@ -173,9 +185,9 @@ def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content
     return bool(changed)
 
 
-def fail_message(db: Session, msg: AiMessage, text: str) -> None:
+def fail_message(db: Session, msg: AiMessage, text: str, *, generation: int | None = None) -> None:
     """End an assistant turn as `failed` with a founder-visible message (the FE polls it)."""
-    if not _end_turn(db, msg, status=ChatMessageStatus.failed, content=text):
+    if not _end_turn(db, msg, status=ChatMessageStatus.failed, content=text, generation=generation):
         return
     event_bus.publish(
         db,

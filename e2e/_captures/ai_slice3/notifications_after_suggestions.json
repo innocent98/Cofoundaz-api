@@ -1,0 +1,26 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "302f415c-8406-432f-b3e6-afd2222fe9fd",
+        "type": "ai.suggestion.created",
+        "title": "Your AI Co-Founder has a suggestion for you",
+        "body": "See suggested actions",
+        "data": {
+          "notify": true,
+          "source": "health",
+          "user_id": "4f978135-6c85-4fb8-a4d9-58c0560324b8",
+          "startup_id": "db732e79-2820-4034-a9ff-d9f9464acc4e",
+          "suggestion_id": "2fddfaa3-eaa3-4872-8ede-64531cfce984"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "ai",
+        "created_at": "2026-11-06T17:00:15.187453+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

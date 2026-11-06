@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "3275aa47-c548-4bab-99a9-83d469345b09",
+    "kind": "add_task",
+    "label": "Add as task: Call five customers",
+    "status": "executed",
+    "undoable": true,
+    "params": {
+      "title": "Call five customers",
+      "effort": "small",
+      "milestone_key": "M1"
+    },
+    "href": "/roadmap",
+    "result_label": "Task added to Ship the MVP"
+  },
+  "meta": null
+}
