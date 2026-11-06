@@ -185,10 +185,19 @@ Title match:
   "meta": null
 }
 ```
-Topic filter with no tagged conversations:
+Topic filter (`topic=finance`; the runway question was routed to the Finance Advisor):
 ```json
 {
-  "data": [],
+  "data": [
+    {
+      "id": "7f95c900-e49e-4425-aa35-42edc0e25722",
+      "title": "How long is my runway?",
+      "topic": "finance",
+      "archived_at": null,
+      "created_at": "2026-11-06T12:25:54.900944+00:00",
+      "updated_at": "2026-11-06T12:25:54.925748+00:00"
+    }
+  ],
   "meta": null
 }
 ```
