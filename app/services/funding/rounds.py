@@ -178,7 +178,7 @@ def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> Fundi
         if _cap_table_has_money(db, startup_id):
             raise AppError(
                 "CAP_TABLE_HAS_AMOUNTS",
-                "Your cap table already has amounts in "
+                "Your cap table or term sheets already have amounts in "
                 f"{row.currency}. Clear them before changing the currency.",
                 409,
             )

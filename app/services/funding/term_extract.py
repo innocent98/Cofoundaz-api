@@ -241,9 +241,20 @@ def build_wording_messages(flags: list[dict[str, Any]]) -> list[LLMMessage]:
     ]
 
 
+def _keeps_the_figures(fixed: str, reworded: str) -> bool:
+    """The reworded text states the headline figure (the first number of the fixed text) and no
+    number that the fixed text does not contain."""
+    want = _NUMBER.findall(fixed)
+    got = _NUMBER.findall(reworded)
+    if not set(got) <= set(want):
+        return False
+    return not want or want[0] in got
+
+
 def clean_wording(raw: dict[str, Any], flags: list[dict[str, Any]]) -> dict[str, str]:
-    """Rule id -> reworded text, for known rules only. A rewording that drops or changes any
-    number in the fixed text is discarded, so the model cannot move a figure."""
+    """Rule id -> reworded text, for known rules only. A rewording that drops the headline figure
+    or introduces a number the fixed text does not have is discarded, so the model cannot move a
+    figure."""
     fixed = {f["rule"]: f["text"] for f in flags}
     out: dict[str, str] = {}
     for item in raw.get("flags") or []:
@@ -253,7 +264,7 @@ def clean_wording(raw: dict[str, Any], flags: list[dict[str, Any]]) -> dict[str,
         if rule not in fixed or not text:
             continue
         text = text[:MAX_TEXT]
-        if not set(_NUMBER.findall(fixed[rule])) <= set(_NUMBER.findall(text)):
+        if not _keeps_the_figures(fixed[rule], text):
             continue
         out[rule] = text
     return out
