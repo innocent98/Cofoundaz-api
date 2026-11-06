@@ -33,7 +33,8 @@ is off); both are covered by `tests/api/test_funding_cap_table_api.py`.*
 
 - **Money** is an integer in **minor units** (kobo/cents) of the round currency (`currency` in every
   response: `NGN` or `USD`, one per round). Never floats. The round currency cannot change once the cap
-  table has an amount or share price (409 `CAP_TABLE_HAS_AMOUNTS`).
+  table has an amount or share price (409 `CAP_TABLE_HAS_AMOUNTS`); that includes creating the first round,
+  or the next one after closing, in another currency than the cap table currently shows.
 - **Shares** are whole numbers. **Percentages are basis points** (`pct_bps`, 100 = 1%) shared out so a
   column always sums to exactly 10 000. Show `bps / 100` with two decimals.
 - **A SAFE or note has no shares** until a round converts it. The ledger lists it as an amount with its cap
@@ -94,7 +95,7 @@ capture `ledger_fully_diluted`
     },
     "holders": [
       {
-        "id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+        "id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
         "name": "Ada Obi",
         "kind": "founder",
         "email": null,
@@ -103,8 +104,8 @@ capture `ledger_fully_diluted`
         "pct_bps": 8439,
         "entries": [
           {
-            "id": "3c0ea2a5-8d76-4941-8462-4abef0214b63",
-            "holder_id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+            "id": "c8d35898-2287-4886-ae18-35678f62f9e3",
+            "holder_id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
             "security": "common",
             "shares": 8000000,
             "price_minor": null,
@@ -124,7 +125,7 @@ capture `ledger_fully_diluted`
         ]
       },
       {
-        "id": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+        "id": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
         "name": "Option pool",
         "kind": "pool",
         "email": null,
@@ -133,8 +134,8 @@ capture `ledger_fully_diluted`
         "pct_bps": 1055,
         "entries": [
           {
-            "id": "17fc2baf-6cd2-4143-b0fc-b2d3165640c0",
-            "holder_id": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+            "id": "5a52d8c4-9591-4a1b-931f-4b9f77dfac39",
+            "holder_id": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
             "security": "option",
             "shares": 1000000,
             "price_minor": null,
@@ -154,7 +155,7 @@ capture `ledger_fully_diluted`
         ]
       },
       {
-        "id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+        "id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
         "name": "Eve Placeholder",
         "kind": "employee",
         "email": "eve@example.com",
@@ -163,8 +164,8 @@ capture `ledger_fully_diluted`
         "pct_bps": 506,
         "entries": [
           {
-            "id": "836039da-0c2a-4760-8ab9-0f509318c33c",
-            "holder_id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+            "id": "d6a95418-3ebc-4a2e-ba4c-00f4482ab972",
+            "holder_id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
             "security": "option",
             "shares": 480000,
             "price_minor": 10,
@@ -216,7 +217,7 @@ capture `ledger_basic`
     },
     "holders": [
       {
-        "id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+        "id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
         "name": "Ada Obi",
         "kind": "founder",
         "email": null,
@@ -225,8 +226,8 @@ capture `ledger_basic`
         "pct_bps": 10000,
         "entries": [
           {
-            "id": "3c0ea2a5-8d76-4941-8462-4abef0214b63",
-            "holder_id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+            "id": "c8d35898-2287-4886-ae18-35678f62f9e3",
+            "holder_id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
             "security": "common",
             "shares": 8000000,
             "price_minor": null,
@@ -246,7 +247,7 @@ capture `ledger_basic`
         ]
       },
       {
-        "id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+        "id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
         "name": "Angel One",
         "kind": "investor",
         "email": null,
@@ -255,8 +256,8 @@ capture `ledger_basic`
         "pct_bps": null,
         "entries": [
           {
-            "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
-            "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+            "id": "937bba08-87a6-4a54-ade9-6526df522593",
+            "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
             "security": "safe",
             "shares": null,
             "price_minor": null,
@@ -274,8 +275,8 @@ capture `ledger_basic`
             "converting_amount_minor": 1000000
           },
           {
-            "id": "61551201-04b8-4973-b586-f0570fca70a3",
-            "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+            "id": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
+            "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
             "security": "safe",
             "shares": null,
             "price_minor": null,
@@ -295,7 +296,7 @@ capture `ledger_basic`
         ]
       },
       {
-        "id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+        "id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
         "name": "Eve Placeholder",
         "kind": "employee",
         "email": "eve@example.com",
@@ -304,8 +305,8 @@ capture `ledger_basic`
         "pct_bps": null,
         "entries": [
           {
-            "id": "836039da-0c2a-4760-8ab9-0f509318c33c",
-            "holder_id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+            "id": "d6a95418-3ebc-4a2e-ba4c-00f4482ab972",
+            "holder_id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
             "security": "option",
             "shares": 480000,
             "price_minor": 10,
@@ -343,14 +344,14 @@ capture `ledger_basic`
 
 `POST /holders` `{name, kind, email?, notes?}`, `kind` is `founder`, `employee`, `advisor`, `investor` or
 `pool` (the unallocated option pool; **one per workspace**, 409 `POOL_EXISTS`, and it can hold options only).
-`PATCH /holders/{id}` takes `name`, `email`, `notes`. `DELETE /holders/{id}` removes the holder **and their
+`PATCH /holders/{id}` takes `name`, `email`, `notes` (a holder's `name` cannot be cleared: explicit null is 422, capture `holder_name_cleared_422`). `DELETE /holders/{id}` removes the holder **and their
 entries** (confirm in the UI); everything removed is in the change history.
 
 capture `holder_created`
 ```json
 {
   "data": {
-    "id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+    "id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
     "name": "Ada Obi",
     "kind": "founder",
     "email": null,
@@ -377,14 +378,14 @@ capture `holder_second_pool_409`
 | security | required | allowed | never |
 |---|---|---|---|
 | `common`, `preferred`, `option` | `shares` | `price_minor` (per share), `issued_on`, vesting (`vesting_start_on` + `vesting_months`, optional `vesting_cliff_months`, default 0), `notes` | amount, cap, discount, `safe_kind`, interest, `mfn` |
-| `safe`, `note` | `amount_minor` | `valuation_cap_minor`, `discount_bps` (1 to 9999), `safe_kind` (`post_money` default, or `pre_money`), `mfn`, `issued_on`, `notes`; `interest_bps` (**notes only**) | `shares`, `price_minor`, vesting |
+| `safe`, `note` | `amount_minor` | `valuation_cap_minor`, `discount_bps` (1 to 9999), `safe_kind` (default `post_money` for a SAFE and **`pre_money` for a note**, as note caps are conventionally pre-money; send it to override), `mfn`, `issued_on`, `notes`; `interest_bps` (**notes only; a note with interest needs `issued_on`**, else 422) | `shares`, `price_minor`, vesting |
 
 capture `entry_common`
 ```json
 {
   "data": {
-    "id": "3c0ea2a5-8d76-4941-8462-4abef0214b63",
-    "holder_id": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+    "id": "c8d35898-2287-4886-ae18-35678f62f9e3",
+    "holder_id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
     "security": "common",
     "shares": 8000000,
     "price_minor": null,
@@ -408,8 +409,8 @@ capture `entry_option_vesting`
 ```json
 {
   "data": {
-    "id": "836039da-0c2a-4760-8ab9-0f509318c33c",
-    "holder_id": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+    "id": "d6a95418-3ebc-4a2e-ba4c-00f4482ab972",
+    "holder_id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
     "security": "option",
     "shares": 480000,
     "price_minor": 10,
@@ -433,8 +434,8 @@ capture `entry_safe_post_money`
 ```json
 {
   "data": {
-    "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
-    "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+    "id": "937bba08-87a6-4a54-ade9-6526df522593",
+    "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
     "security": "safe",
     "shares": null,
     "price_minor": null,
@@ -458,8 +459,8 @@ capture `entry_note`
 ```json
 {
   "data": {
-    "id": "ff576dbc-f5ca-4b99-8774-2903a747998d",
-    "holder_id": "ad81a427-06e7-4022-8fbb-0e322c3aaa29",
+    "id": "21c51831-027a-4466-a431-d1b2c099e291",
+    "holder_id": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
     "security": "note",
     "shares": null,
     "price_minor": null,
@@ -494,6 +495,36 @@ capture `entry_safe_with_shares_422`
   }
 }
 ```
+capture `entry_note_interest_needs_date_422`
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "Value error, A note with interest needs the date it was issued."
+      }
+    ]
+  }
+}
+```
+capture `holder_name_cleared_422`
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "Value error, A holder needs a name."
+      }
+    ]
+  }
+}
+```
 
 capture `entry_on_pool_not_options_422`
 ```json
@@ -519,8 +550,8 @@ capture `entry_updated`
 ```json
 {
   "data": {
-    "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
-    "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+    "id": "937bba08-87a6-4a54-ade9-6526df522593",
+    "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
     "security": "safe",
     "shares": null,
     "price_minor": null,
@@ -566,8 +597,10 @@ convention), so both dilute the existing holders, not the new investors.
 
 How the SAFEs and notes convert, to explain on the page: each converts at the **lowest** of its cap price,
 its discount price and the round price. A **post-money** cap means the holder owns `amount / cap` of the
-company before the round (SAFEs included); a **pre-money** cap prices on the company without SAFEs. `mfn`
-instruments adopt the best later terms of the same cap type. Notes convert with simple interest to `as_of`.
+company before the round (SAFEs included); a **pre-money** cap prices on the company plus the option pool created in this round, without the converting
+SAFEs. An `mfn` instrument converts on its own terms or on the terms of any one non-MFN
+instrument issued on or after its own date (both dates needed), whichever gives the holder the most shares
+in this round. Notes convert with simple interest to `as_of`.
 Each conversion reports which term won (`term`: `cap`, `discount` or `round`).
 
 capture `model_seed`
@@ -578,7 +611,7 @@ capture `model_seed`
     "as_of": "2026-06-01",
     "headline": {
       "founders_before_bps": 8439,
-      "founders_after_bps": 5358
+      "founders_after_bps": 5339
     },
     "steps": [
       {
@@ -586,54 +619,54 @@ capture `model_seed`
         "pre_money_minor": 40000000,
         "new_money_minor": 10000000,
         "post_money_minor": 50000000,
-        "price_per_share": "3.348735",
+        "price_per_share": "3.336557",
         "pre_round_shares": 9480000,
-        "pool_top_up_shares": 493102,
-        "new_investor_shares": 2986202,
-        "post_round_shares": 14931011,
+        "pool_top_up_shares": 498551,
+        "new_investor_shares": 2997101,
+        "post_round_shares": 14985507,
         "conversions": [
           {
-            "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+            "ref": "937bba08-87a6-4a54-ade9-6526df522593",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 1000000,
             "term": "cap",
-            "conversion_price": "0.873232",
-            "shares": 1145170
+            "conversion_price": "0.870333",
+            "shares": 1148985
           },
           {
-            "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+            "ref": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 500000,
             "term": "discount",
-            "conversion_price": "2.678988",
-            "shares": 186637
+            "conversion_price": "2.669245",
+            "shares": 187318
           },
           {
-            "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+            "ref": "21c51831-027a-4466-a431-d1b2c099e291",
             "name": "Lagos Bank",
             "security": "note",
             "amount_minor": 810000,
             "term": "cap",
-            "conversion_price": "1.265823",
-            "shares": 639900
+            "conversion_price": "1.202579",
+            "shares": 673552
           }
         ],
         "founders_before_bps": 8439,
-        "founders_after_bps": 5358
+        "founders_after_bps": 5339
       }
     ],
     "dilution": [
       {
-        "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+        "ref": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
         "name": "Ada Obi",
         "kind": "founder",
         "before_shares": 8000000,
         "before_bps": 8439,
         "after_shares": 8000000,
-        "after_bps": 5358,
-        "change_bps": -3081
+        "after_bps": 5339,
+        "change_bps": -3100
       },
       {
         "ref": "round-1",
@@ -641,63 +674,53 @@ capture `model_seed`
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 2986202,
+        "after_shares": 2997101,
         "after_bps": 2000,
         "change_bps": 2000
       },
       {
-        "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+        "ref": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
         "name": "Option pool",
         "kind": "pool",
         "before_shares": 1000000,
         "before_bps": 1055,
-        "after_shares": 1493102,
+        "after_shares": 1498551,
         "after_bps": 1000,
         "change_bps": -55
       },
       {
-        "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "ref": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
         "name": "Angel One",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 1145170,
-        "after_bps": 767,
-        "change_bps": 767
+        "after_shares": 1336303,
+        "after_bps": 892,
+        "change_bps": 892
       },
       {
-        "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+        "ref": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
         "name": "Lagos Bank",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 639900,
-        "after_bps": 429,
-        "change_bps": 429
+        "after_shares": 673552,
+        "after_bps": 449,
+        "change_bps": 449
       },
       {
-        "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+        "ref": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
         "name": "Eve Placeholder",
         "kind": "employee",
         "before_shares": 480000,
         "before_bps": 506,
         "after_shares": 480000,
-        "after_bps": 321,
-        "change_bps": -185
-      },
-      {
-        "ref": "61551201-04b8-4973-b586-f0570fca70a3",
-        "name": "Angel One",
-        "kind": "investor",
-        "before_shares": 0,
-        "before_bps": 0,
-        "after_shares": 186637,
-        "after_bps": 125,
-        "change_bps": 125
+        "after_bps": 320,
+        "change_bps": -186
       }
     ],
     "total_shares_before": 9480000,
-    "total_shares_after": 14931011,
+    "total_shares_after": 14985507,
     "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers."
   },
   "meta": null
@@ -711,10 +734,11 @@ How to read it:
 - `steps[]`: one per round. `pre_round_shares` is the fully-diluted share count going in;
   `pool_top_up_shares`, `new_investor_shares` and the SAFE `conversions[]` are what the round adds;
   `price_per_share` is the round price.
-- `dilution[]`: the before/after table, one row per holder (and per converting SAFE/note and per round's new
-  investors). **Trap:** two SAFEs held by one person appear as two rows (`ref` is the entry id for a
-  conversion, the holder id otherwise); merge by `name` if you want one line. `before_*` is 0 for rows that
-  only exist after the round. `after_bps` sums to 10 000.
+- `dilution[]`: the before/after table, **one row per holder** (converted SAFEs and notes land on the holder's
+  own row, so a founder with stock and a SAFE is one line) plus one row per round's new investors. `ref` is
+  the holder id (`round-N` for new investors); the entry id of a converted SAFE is `ref` in
+  `steps[].conversions[]`. `before_*` is 0 for rows that only exist after the round. `after_bps` sums to
+  10 000.
 - Later rounds dilute everyone, including earlier investors; SAFEs convert in the first round only.
 
 capture `model_seed_and_series_a`
@@ -725,7 +749,7 @@ capture `model_seed_and_series_a`
     "as_of": "2026-06-01",
     "headline": {
       "founders_before_bps": 8439,
-      "founders_after_bps": 4019
+      "founders_after_bps": 4004
     },
     "steps": [
       {
@@ -733,68 +757,68 @@ capture `model_seed_and_series_a`
         "pre_money_minor": 40000000,
         "new_money_minor": 10000000,
         "post_money_minor": 50000000,
-        "price_per_share": "3.348735",
+        "price_per_share": "3.336557",
         "pre_round_shares": 9480000,
-        "pool_top_up_shares": 493102,
-        "new_investor_shares": 2986202,
-        "post_round_shares": 14931011,
+        "pool_top_up_shares": 498551,
+        "new_investor_shares": 2997101,
+        "post_round_shares": 14985507,
         "conversions": [
           {
-            "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+            "ref": "937bba08-87a6-4a54-ade9-6526df522593",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 1000000,
             "term": "cap",
-            "conversion_price": "0.873232",
-            "shares": 1145170
+            "conversion_price": "0.870333",
+            "shares": 1148985
           },
           {
-            "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+            "ref": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 500000,
             "term": "discount",
-            "conversion_price": "2.678988",
-            "shares": 186637
+            "conversion_price": "2.669245",
+            "shares": 187318
           },
           {
-            "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+            "ref": "21c51831-027a-4466-a431-d1b2c099e291",
             "name": "Lagos Bank",
             "security": "note",
             "amount_minor": 810000,
             "term": "cap",
-            "conversion_price": "1.265823",
-            "shares": 639900
+            "conversion_price": "1.202579",
+            "shares": 673552
           }
         ],
         "founders_before_bps": 8439,
-        "founders_after_bps": 5358
+        "founders_after_bps": 5339
       },
       {
         "name": "Series A",
         "pre_money_minor": 150000000,
         "new_money_minor": 50000000,
         "post_money_minor": 200000000,
-        "price_per_share": "10.046205",
-        "pre_round_shares": 14931011,
+        "price_per_share": "10.009671",
+        "pre_round_shares": 14985507,
         "pool_top_up_shares": 0,
-        "new_investor_shares": 4977003,
-        "post_round_shares": 19908014,
+        "new_investor_shares": 4995169,
+        "post_round_shares": 19980676,
         "conversions": [],
-        "founders_before_bps": 5358,
-        "founders_after_bps": 4019
+        "founders_before_bps": 5339,
+        "founders_after_bps": 4004
       }
     ],
     "dilution": [
       {
-        "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+        "ref": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
         "name": "Ada Obi",
         "kind": "founder",
         "before_shares": 8000000,
         "before_bps": 8439,
         "after_shares": 8000000,
-        "after_bps": 4019,
-        "change_bps": -4420
+        "after_bps": 4004,
+        "change_bps": -4435
       },
       {
         "ref": "round-2",
@@ -802,7 +826,7 @@ capture `model_seed_and_series_a`
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 4977003,
+        "after_shares": 4995169,
         "after_bps": 2500,
         "change_bps": 2500
       },
@@ -812,63 +836,53 @@ capture `model_seed_and_series_a`
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 2986202,
+        "after_shares": 2997101,
         "after_bps": 1500,
         "change_bps": 1500
       },
       {
-        "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+        "ref": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
         "name": "Option pool",
         "kind": "pool",
         "before_shares": 1000000,
         "before_bps": 1055,
-        "after_shares": 1493102,
+        "after_shares": 1498551,
         "after_bps": 750,
         "change_bps": -305
       },
       {
-        "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "ref": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
         "name": "Angel One",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 1145170,
-        "after_bps": 575,
-        "change_bps": 575
+        "after_shares": 1336303,
+        "after_bps": 669,
+        "change_bps": 669
       },
       {
-        "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+        "ref": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
         "name": "Lagos Bank",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 639900,
-        "after_bps": 321,
-        "change_bps": 321
+        "after_shares": 673552,
+        "after_bps": 337,
+        "change_bps": 337
       },
       {
-        "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+        "ref": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
         "name": "Eve Placeholder",
         "kind": "employee",
         "before_shares": 480000,
         "before_bps": 506,
         "after_shares": 480000,
-        "after_bps": 241,
-        "change_bps": -265
-      },
-      {
-        "ref": "61551201-04b8-4973-b586-f0570fca70a3",
-        "name": "Angel One",
-        "kind": "investor",
-        "before_shares": 0,
-        "before_bps": 0,
-        "after_shares": 186637,
-        "after_bps": 94,
-        "change_bps": 94
+        "after_bps": 240,
+        "change_bps": -266
       }
     ],
     "total_shares_before": 9480000,
-    "total_shares_after": 19908014,
+    "total_shares_after": 19980676,
     "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers."
   },
   "meta": null
@@ -877,8 +891,8 @@ capture `model_seed_and_series_a`
 
 Refusals are 422 with a code the page can word: `EMPTY_CAP_TABLE` (add founder shares first),
 `INVALID_ROUND`, `POOL_TARGET_TOO_HIGH` (the pool cannot exceed the existing holders' room),
-`SAFE_CAPS_EXCEED` (post-money SAFEs own 100% or more), `CONVERSION_DID_NOT_SETTLE` (SAFEs and notes exceed
-the pre-money). Only `EMPTY_CAP_TABLE` and `POOL_TARGET_TOO_HIGH` are captured live; the others are
+`SAFE_CAPS_EXCEED` (post-money SAFEs own 100% or more), `CONVERSION_DID_NOT_SETTLE` (at these terms the SAFEs and
+notes would own all of the company, for example a deep discount on an amount close to the pre-money). Only `EMPTY_CAP_TABLE` and `POOL_TARGET_TOO_HIGH` are captured live; the others are
 unit-tested.
 
 capture `model_empty_422`
@@ -914,11 +928,11 @@ capture `scenario_created`
 ```json
 {
   "data": {
-    "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+    "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
     "name": "Seed at 40M",
-    "created_at": "2026-11-06T11:58:08.425059+00:00",
+    "created_at": "2026-11-06T20:50:43.795017+00:00",
     "headline": {
-      "founders_after_bps": 5358,
+      "founders_after_bps": 5339,
       "founders_before_bps": 8439
     },
     "inputs": {
@@ -939,54 +953,54 @@ capture `scenario_created`
           "name": "Seed",
           "conversions": [
             {
-              "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+              "ref": "937bba08-87a6-4a54-ade9-6526df522593",
               "name": "Angel One",
               "term": "cap",
-              "shares": 1145170,
+              "shares": 1148985,
               "security": "safe",
               "amount_minor": 1000000,
-              "conversion_price": "0.873232"
+              "conversion_price": "0.870333"
             },
             {
-              "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+              "ref": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
               "name": "Angel One",
               "term": "discount",
-              "shares": 186637,
+              "shares": 187318,
               "security": "safe",
               "amount_minor": 500000,
-              "conversion_price": "2.678988"
+              "conversion_price": "2.669245"
             },
             {
-              "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+              "ref": "21c51831-027a-4466-a431-d1b2c099e291",
               "name": "Lagos Bank",
               "term": "cap",
-              "shares": 639900,
+              "shares": 673552,
               "security": "note",
               "amount_minor": 810000,
-              "conversion_price": "1.265823"
+              "conversion_price": "1.202579"
             }
           ],
           "new_money_minor": 10000000,
           "pre_money_minor": 40000000,
-          "price_per_share": "3.348735",
+          "price_per_share": "3.336557",
           "post_money_minor": 50000000,
           "pre_round_shares": 9480000,
-          "post_round_shares": 14931011,
-          "founders_after_bps": 5358,
-          "pool_top_up_shares": 493102,
+          "post_round_shares": 14985507,
+          "founders_after_bps": 5339,
+          "pool_top_up_shares": 498551,
           "founders_before_bps": 8439,
-          "new_investor_shares": 2986202
+          "new_investor_shares": 2997101
         }
       ],
       "currency": "NGN",
       "dilution": [
         {
-          "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+          "ref": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
           "kind": "founder",
           "name": "Ada Obi",
-          "after_bps": 5358,
+          "after_bps": 5339,
           "before_bps": 8439,
-          "change_bps": -3081,
+          "change_bps": -3100,
           "after_shares": 8000000,
           "before_shares": 8000000
         },
@@ -997,66 +1011,56 @@ capture `scenario_created`
           "after_bps": 2000,
           "before_bps": 0,
           "change_bps": 2000,
-          "after_shares": 2986202,
+          "after_shares": 2997101,
           "before_shares": 0
         },
         {
-          "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+          "ref": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
           "kind": "pool",
           "name": "Option pool",
           "after_bps": 1000,
           "before_bps": 1055,
           "change_bps": -55,
-          "after_shares": 1493102,
+          "after_shares": 1498551,
           "before_shares": 1000000
         },
         {
-          "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "ref": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "kind": "investor",
           "name": "Angel One",
-          "after_bps": 767,
+          "after_bps": 892,
           "before_bps": 0,
-          "change_bps": 767,
-          "after_shares": 1145170,
+          "change_bps": 892,
+          "after_shares": 1336303,
           "before_shares": 0
         },
         {
-          "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+          "ref": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
           "kind": "investor",
           "name": "Lagos Bank",
-          "after_bps": 429,
+          "after_bps": 449,
           "before_bps": 0,
-          "change_bps": 429,
-          "after_shares": 639900,
+          "change_bps": 449,
+          "after_shares": 673552,
           "before_shares": 0
         },
         {
-          "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+          "ref": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
           "kind": "employee",
           "name": "Eve Placeholder",
-          "after_bps": 321,
+          "after_bps": 320,
           "before_bps": 506,
-          "change_bps": -185,
+          "change_bps": -186,
           "after_shares": 480000,
           "before_shares": 480000
-        },
-        {
-          "ref": "61551201-04b8-4973-b586-f0570fca70a3",
-          "kind": "investor",
-          "name": "Angel One",
-          "after_bps": 125,
-          "before_bps": 0,
-          "change_bps": 125,
-          "after_shares": 186637,
-          "before_shares": 0
         }
       ],
       "headline": {
-        "founders_after_bps": 5358,
+        "founders_after_bps": 5339,
         "founders_before_bps": 8439
       },
       "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers.",
-      "total_shares_after": 14931011,
+      "total_shares_after": 14985507,
       "total_shares_before": 9480000
     }
   },
@@ -1070,11 +1074,11 @@ capture `scenarios_list`
   "data": {
     "items": [
       {
-        "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "name": "Seed at 40M",
-        "created_at": "2026-11-06T11:58:08.425059+00:00",
+        "created_at": "2026-11-06T20:50:43.795017+00:00",
         "headline": {
-          "founders_after_bps": 5358,
+          "founders_after_bps": 5339,
           "founders_before_bps": 8439
         }
       }
@@ -1088,11 +1092,11 @@ capture `scenario_renamed`
 ```json
 {
   "data": {
-    "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+    "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
     "name": "Seed at 40M (base)",
-    "created_at": "2026-11-06T11:58:08.425059+00:00",
+    "created_at": "2026-11-06T20:50:43.795017+00:00",
     "headline": {
-      "founders_after_bps": 5358,
+      "founders_after_bps": 5339,
       "founders_before_bps": 8439
     }
   },
@@ -1106,11 +1110,11 @@ capture `scenario_open`
 ```json
 {
   "data": {
-    "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+    "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
     "name": "Seed at 40M (base)",
-    "created_at": "2026-11-06T11:58:08.425059+00:00",
+    "created_at": "2026-11-06T20:50:43.795017+00:00",
     "headline": {
-      "founders_after_bps": 5358,
+      "founders_after_bps": 5339,
       "founders_before_bps": 8439
     },
     "inputs": {
@@ -1131,54 +1135,54 @@ capture `scenario_open`
           "name": "Seed",
           "conversions": [
             {
-              "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+              "ref": "937bba08-87a6-4a54-ade9-6526df522593",
               "name": "Angel One",
               "term": "cap",
-              "shares": 1145170,
+              "shares": 1148985,
               "security": "safe",
               "amount_minor": 1000000,
-              "conversion_price": "0.873232"
+              "conversion_price": "0.870333"
             },
             {
-              "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+              "ref": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
               "name": "Angel One",
               "term": "discount",
-              "shares": 186637,
+              "shares": 187318,
               "security": "safe",
               "amount_minor": 500000,
-              "conversion_price": "2.678988"
+              "conversion_price": "2.669245"
             },
             {
-              "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+              "ref": "21c51831-027a-4466-a431-d1b2c099e291",
               "name": "Lagos Bank",
               "term": "cap",
-              "shares": 639900,
+              "shares": 673552,
               "security": "note",
               "amount_minor": 810000,
-              "conversion_price": "1.265823"
+              "conversion_price": "1.202579"
             }
           ],
           "new_money_minor": 10000000,
           "pre_money_minor": 40000000,
-          "price_per_share": "3.348735",
+          "price_per_share": "3.336557",
           "post_money_minor": 50000000,
           "pre_round_shares": 9480000,
-          "post_round_shares": 14931011,
-          "founders_after_bps": 5358,
-          "pool_top_up_shares": 493102,
+          "post_round_shares": 14985507,
+          "founders_after_bps": 5339,
+          "pool_top_up_shares": 498551,
           "founders_before_bps": 8439,
-          "new_investor_shares": 2986202
+          "new_investor_shares": 2997101
         }
       ],
       "currency": "NGN",
       "dilution": [
         {
-          "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+          "ref": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
           "kind": "founder",
           "name": "Ada Obi",
-          "after_bps": 5358,
+          "after_bps": 5339,
           "before_bps": 8439,
-          "change_bps": -3081,
+          "change_bps": -3100,
           "after_shares": 8000000,
           "before_shares": 8000000
         },
@@ -1189,66 +1193,56 @@ capture `scenario_open`
           "after_bps": 2000,
           "before_bps": 0,
           "change_bps": 2000,
-          "after_shares": 2986202,
+          "after_shares": 2997101,
           "before_shares": 0
         },
         {
-          "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+          "ref": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
           "kind": "pool",
           "name": "Option pool",
           "after_bps": 1000,
           "before_bps": 1055,
           "change_bps": -55,
-          "after_shares": 1493102,
+          "after_shares": 1498551,
           "before_shares": 1000000
         },
         {
-          "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "ref": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "kind": "investor",
           "name": "Angel One",
-          "after_bps": 767,
+          "after_bps": 892,
           "before_bps": 0,
-          "change_bps": 767,
-          "after_shares": 1145170,
+          "change_bps": 892,
+          "after_shares": 1336303,
           "before_shares": 0
         },
         {
-          "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+          "ref": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
           "kind": "investor",
           "name": "Lagos Bank",
-          "after_bps": 429,
+          "after_bps": 449,
           "before_bps": 0,
-          "change_bps": 429,
-          "after_shares": 639900,
+          "change_bps": 449,
+          "after_shares": 673552,
           "before_shares": 0
         },
         {
-          "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+          "ref": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
           "kind": "employee",
           "name": "Eve Placeholder",
-          "after_bps": 321,
+          "after_bps": 320,
           "before_bps": 506,
-          "change_bps": -185,
+          "change_bps": -186,
           "after_shares": 480000,
           "before_shares": 480000
-        },
-        {
-          "ref": "61551201-04b8-4973-b586-f0570fca70a3",
-          "kind": "investor",
-          "name": "Angel One",
-          "after_bps": 125,
-          "before_bps": 0,
-          "change_bps": 125,
-          "after_shares": 186637,
-          "before_shares": 0
         }
       ],
       "headline": {
-        "founders_after_bps": 5358,
+        "founders_after_bps": 5339,
         "founders_before_bps": 8439
       },
       "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers.",
-      "total_shares_after": 14931011,
+      "total_shares_after": 14985507,
       "total_shares_before": 9480000
     }
   },
@@ -1271,19 +1265,19 @@ capture `audit`
     "total": 14,
     "items": [
       {
-        "id": "f892c74b-9a48-4049-9293-a89076e16830",
-        "at": "2026-11-06T11:58:08.470268+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "37df3a12-0f23-4f28-8913-d7b017d71da7",
+        "at": "2026-11-06T20:50:43.841886+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "entry",
-        "entity_id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "entity_id": "937bba08-87a6-4a54-ade9-6526df522593",
         "action": "update",
         "before": {
-          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "id": "937bba08-87a6-4a54-ade9-6526df522593",
           "mfn": false,
           "notes": null,
           "shares": null,
           "security": "safe",
-          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "issued_on": "2025-09-01",
           "safe_kind": "post_money",
           "price_minor": null,
@@ -1296,12 +1290,12 @@ capture `audit`
           "vesting_cliff_months": null
         },
         "after": {
-          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "id": "937bba08-87a6-4a54-ade9-6526df522593",
           "mfn": false,
           "notes": null,
           "shares": null,
           "security": "safe",
-          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "issued_on": "2025-09-01",
           "safe_kind": "post_money",
           "price_minor": null,
@@ -1315,47 +1309,47 @@ capture `audit`
         }
       },
       {
-        "id": "2b0f66be-03e5-40bc-bd0d-2c3337eb4ad6",
-        "at": "2026-11-06T11:58:08.455674+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "5c0a8d7b-bba3-47fa-a687-2bf020ff9f01",
+        "at": "2026-11-06T20:50:43.824388+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "scenario",
-        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "entity_id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "action": "update",
         "before": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         },
         "after": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M (base)",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         }
       },
       {
-        "id": "b215d79c-b68d-46aa-bd8e-b8df408d5ac7",
-        "at": "2026-11-06T11:58:08.427634+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "5c5c79d7-ca47-4625-a2c1-63eb99cd3fd1",
+        "at": "2026-11-06T20:50:43.799121+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "scenario",
-        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "entity_id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "action": "create",
         "before": null,
         "after": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         }
       }
     ]
@@ -1410,6 +1404,7 @@ capture `entry_deleted`
 | Audit trail | live |
 | Round currency locked once amounts exist | live |
 | Founder-only (403 for team member and every other role), 402 gate, cross-workspace 404 | unit tests only |
+| Currency lock on first/next round, workspace lock on round upserts, MFN donors, pre-money SAFE with pool, one row per holder, slow-converging and overpowered SAFEs | unit tests (`test_cap_engine.py`, `test_funding_cap_table_api.py`) |
 | Maths worked examples (hand-derived), rounding rules, MFN, interest, vesting, largest-remainder | unit tests (`tests/services/funding/test_cap_engine.py`) |
 | Concurrent edits (workspace row lock) | unit tests (lock taken on every write; stale-row merge); not a two-connection race test |
 | Data room snapshot of the cap table | not built (needs a decision, see the SOP) |

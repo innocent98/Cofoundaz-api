@@ -136,6 +136,17 @@ def test_funding_cap_table_journey(base_url, make_verified_user, capture):
         assert r.status_code == 422
         capture(G, "entry_on_pool_not_options_422", r)
 
+        r = c.post(
+            f"{CT}/entries",
+            headers=wh,
+            json={"holder_id": bank, "security": "note", "amount_minor": 5, "interest_bps": 800},
+        )
+        assert r.status_code == 422
+        capture(G, "entry_note_interest_needs_date_422", r)
+        r = c.patch(f"{CT}/holders/{ada}", headers=wh, json={"name": None})
+        assert r.status_code == 422
+        capture(G, "holder_name_cleared_422", r)
+
         # 3. The ledger, fully diluted and basic.
         r = c.get(f"{CT}?fully_diluted=true&as_of=2026-06-01", headers=wh)
         assert r.json()["data"]["totals"]["fully_diluted_shares"] == 9_480_000

@@ -2,11 +2,11 @@
   "data": {
     "items": [
       {
-        "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "name": "Seed at 40M",
-        "created_at": "2026-11-06T11:58:08.425059+00:00",
+        "created_at": "2026-11-06T20:50:43.795017+00:00",
         "headline": {
-          "founders_after_bps": 5358,
+          "founders_after_bps": 5339,
           "founders_before_bps": 8439
         }
       }

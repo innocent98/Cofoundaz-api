@@ -3959,9 +3959,9 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] `cap_holders`, `cap_entries` (stock, options, SAFEs, notes with shape CHECKs), `cap_scenarios`, `cap_audit`
   - [x] Founder only (D-FUND-5): team members and every other role 403 on every route; Scale module gate
   - [x] Ledger: fully-diluted toggle, vesting, accrued note interest, basis points by largest remainder
-  - [x] Deterministic round engine: post/pre-money SAFE caps, discounts, MFN, notes, pool top-up in the pre-money, up to 5 rounds; explicit rounding; 26 hand-derived worked examples
+  - [x] Deterministic round engine: post/pre-money SAFE caps, discounts, MFN, notes, pool top-up in the pre-money, up to 5 rounds; explicit rounding; 34 hand-derived worked examples
   - [x] Scenarios (snapshots), audit trail with before/after, workspace row lock on every write, round currency locked once amounts exist
-  - [x] 139 API tests, live e2e journey, live-captured FE guide
+  - [x] 147 API tests, live e2e journey, live-captured FE guide
   - [ ] Data room snapshot of the cap table (needs a decision: Documents is open to team members) · "apply this round" to the ledger · SAFE row from a Committed investor (L3 second half)
 - [ ] Slice D: term sheets (deterministic flags, AI extraction + confirm)
 - [ ] Slice E: grants (curated catalogue, match job, applications)

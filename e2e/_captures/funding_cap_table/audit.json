@@ -3,19 +3,19 @@
     "total": 14,
     "items": [
       {
-        "id": "f892c74b-9a48-4049-9293-a89076e16830",
-        "at": "2026-11-06T11:58:08.470268+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "37df3a12-0f23-4f28-8913-d7b017d71da7",
+        "at": "2026-11-06T20:50:43.841886+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "entry",
-        "entity_id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "entity_id": "937bba08-87a6-4a54-ade9-6526df522593",
         "action": "update",
         "before": {
-          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "id": "937bba08-87a6-4a54-ade9-6526df522593",
           "mfn": false,
           "notes": null,
           "shares": null,
           "security": "safe",
-          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "issued_on": "2025-09-01",
           "safe_kind": "post_money",
           "price_minor": null,
@@ -28,12 +28,12 @@
           "vesting_cliff_months": null
         },
         "after": {
-          "id": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+          "id": "937bba08-87a6-4a54-ade9-6526df522593",
           "mfn": false,
           "notes": null,
           "shares": null,
           "security": "safe",
-          "holder_id": "9ba0e312-8f32-434c-b457-9b9421ef2cbf",
+          "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
           "issued_on": "2025-09-01",
           "safe_kind": "post_money",
           "price_minor": null,
@@ -47,47 +47,47 @@
         }
       },
       {
-        "id": "2b0f66be-03e5-40bc-bd0d-2c3337eb4ad6",
-        "at": "2026-11-06T11:58:08.455674+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "5c0a8d7b-bba3-47fa-a687-2bf020ff9f01",
+        "at": "2026-11-06T20:50:43.824388+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "scenario",
-        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "entity_id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "action": "update",
         "before": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         },
         "after": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M (base)",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         }
       },
       {
-        "id": "b215d79c-b68d-46aa-bd8e-b8df408d5ac7",
-        "at": "2026-11-06T11:58:08.427634+00:00",
-        "actor_id": "e1b8c33e-2e91-4826-a849-eb81b3d01c59",
+        "id": "5c5c79d7-ca47-4625-a2c1-63eb99cd3fd1",
+        "at": "2026-11-06T20:50:43.799121+00:00",
+        "actor_id": "b7e7a238-815d-4ae7-94d9-829801b8afc7",
         "entity_type": "scenario",
-        "entity_id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+        "entity_id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
         "action": "create",
         "before": null,
         "after": {
-          "id": "8f25c8b0-dac3-4f79-b374-0149dc327bd7",
+          "id": "ad8b087e-2f78-4cce-811d-7aa2d8a353d8",
           "name": "Seed at 40M",
           "headline": {
-            "founders_after_bps": 5358,
+            "founders_after_bps": 5339,
             "founders_before_bps": 8439
           },
-          "created_at": "2026-11-06T11:58:08.425059+00:00"
+          "created_at": "2026-11-06T20:50:43.795017+00:00"
         }
       }
     ]

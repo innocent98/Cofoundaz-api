@@ -33,11 +33,12 @@ conversion function (a few steps, exact to 1e-20). If the converting instruments
 company there is no solution and the round is refused; a post-money SAFE set that owns 100% or more
 is refused up front.
 
-MFN: an MFN instrument converts on its own terms or on the whole term set of any one non-MFN
-instrument issued on or after its own issue date (both dates must be known), whichever gives the
-holder the most shares in this round. Terms are never mixed between instruments.
+MFN: an MFN instrument converts on its own terms or on the terms of any one non-MFN instrument
+issued on or after its own issue date (both dates must be known), whichever gives the holder the
+most shares. See `best_terms` for why this is the tightest cap and widest discount among them.
 """
 
+from bisect import bisect_left
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, Context, Decimal, localcontext
@@ -193,23 +194,63 @@ def converting_amount(c: Convertible, as_of: date) -> int:
     return c.principal_minor + int(interest.quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
 
 
-Terms = tuple[int | None, int | None, str]  # (cap, discount_bps, safe_kind)
+@dataclass(frozen=True)
+class BestTerms:
+    """What an instrument can convert on: its tightest cap per cap type and its biggest discount."""
+
+    post_cap: int | None = None
+    pre_cap: int | None = None
+    discount_bps: int | None = None
 
 
-def term_candidates(c: Convertible, convs: list[Convertible]) -> list[Terms]:
-    """The term sets this instrument may convert on. Normally just its own. An MFN instrument may
-    instead adopt, WHOLE, the terms of any one non-MFN instrument issued on or after its own issue
-    date (both dates required): it never mixes the cap of one with the discount of another. The
-    round then picks whichever set gives the holder the most shares."""
-    own: list[Terms] = [(c.cap_minor, c.discount_bps, c.safe_kind)]
-    if not c.mfn or c.issued_on is None:
-        return own
-    donors = [
-        (o.cap_minor, o.discount_bps, o.safe_kind)
-        for o in convs
-        if not o.mfn and o.issued_on is not None and o.issued_on >= c.issued_on
-    ]
-    return own + donors
+def _tighter(a: int | None, b: int | None) -> int | None:
+    return b if a is None else a if b is None else min(a, b)
+
+
+def _wider(a: int | None, b: int | None) -> int | None:
+    return b if a is None else a if b is None else max(a, b)
+
+
+def _own_terms(c: Convertible) -> BestTerms:
+    return BestTerms(
+        post_cap=c.cap_minor if c.safe_kind == "post_money" else None,
+        pre_cap=c.cap_minor if c.safe_kind == "pre_money" else None,
+        discount_bps=c.discount_bps,
+    )
+
+
+def best_terms(convs: list[Convertible]) -> dict[str, BestTerms]:
+    """The terms each instrument converts on. Its own, except an MFN instrument, which may instead
+    adopt the terms of any one non-MFN instrument issued on or after its own issue date (both dates
+    required). The conversion price is the LOWEST of the cap prices and the discount price, so
+    taking the best single instrument's whole term set and taking the tightest cap and widest
+    discount across the eligible instruments give the same price: the holder never gets more than
+    one instrument's terms could give. That equivalence lets this be O(n log n) (sort the donors by
+    date, keep suffix aggregates), not O(MFN x donors) work repeated in every solver step."""
+    donors = sorted(
+        (o for o in convs if not o.mfn and o.issued_on is not None), key=lambda o: o.issued_on  # type: ignore[arg-type,return-value]
+    )
+    dates = [o.issued_on for o in donors]
+    suffix: list[BestTerms] = [BestTerms()] * (len(donors) + 1)
+    for i in range(len(donors) - 1, -1, -1):
+        t, nxt = _own_terms(donors[i]), suffix[i + 1]
+        suffix[i] = BestTerms(
+            _tighter(t.post_cap, nxt.post_cap),
+            _tighter(t.pre_cap, nxt.pre_cap),
+            _wider(t.discount_bps, nxt.discount_bps),
+        )
+    out: dict[str, BestTerms] = {}
+    for c in convs:
+        own = _own_terms(c)
+        if c.mfn and c.issued_on is not None:
+            later = suffix[bisect_left(dates, c.issued_on)]  # type: ignore[type-var]
+            own = BestTerms(
+                _tighter(own.post_cap, later.post_cap),
+                _tighter(own.pre_cap, later.pre_cap),
+                _wider(own.discount_bps, later.discount_bps),
+            )
+        out[c.key] = own
+    return out
 
 
 # ---------------------------------------------------------------- one round
@@ -246,14 +287,14 @@ def _solve(
 ) -> tuple[Decimal, dict[str, tuple[Decimal, str]]]:
     """Solve the SAFE conversion. Returns the exact pool top-up X and, per instrument, its
     conversion price and the term that set it."""
-    cands = {c.key: term_candidates(c, convs) for c in convs}
+    best = best_terms(convs)
     # Guard: post-money caps that own the whole company can never convert. An MFN instrument is
     # counted at the tightest post-money cap it could adopt.
     k = ZERO
     for c in convs:
-        caps = [cap for cap, _disc, kind in cands[c.key] if cap and kind == "post_money"]
-        if caps:
-            k += amounts[c.key] / d(min(caps))
+        post_cap = best[c.key].post_cap
+        if post_cap:
+            k += amounts[c.key] / d(post_cap)
     if k >= 1:
         raise EngineError(
             "SAFE_CAPS_EXCEED",
@@ -268,15 +309,16 @@ def _solve(
         per: dict[str, tuple[Decimal, str]] = {}
         for c in convs:
             options: list[tuple[Decimal, str]] = [(price, "round")]
-            for cap, disc, kind in cands[c.key]:
-                if cap:
-                    # post-money: capitalisation = company + all converting shares, but not the
-                    # new pool. pre-money: the company + the pool created in this financing, but
-                    # not the converting shares.
-                    cc = s0d + sigma if kind == "post_money" else s0d + x
-                    options.append((d(cap) / cc, "cap"))
-                if disc:
-                    options.append((price * (BPS - d(disc)) / BPS, "discount"))
+            t = best[c.key]
+            # post-money: capitalisation = company + all converting shares, but not the new pool.
+            # pre-money: the company + the pool created in this financing, not the converting
+            # shares.
+            if t.post_cap:
+                options.append((d(t.post_cap) / (s0d + sigma), "cap"))
+            if t.pre_cap:
+                options.append((d(t.pre_cap) / (s0d + x), "cap"))
+            if t.discount_bps:
+                options.append((price * (BPS - d(t.discount_bps)) / BPS, "discount"))
             per[c.key] = min(options, key=lambda o: o[0])
         return x, price, per
 

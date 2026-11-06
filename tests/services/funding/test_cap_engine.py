@@ -6,17 +6,18 @@ from datetime import date
 import pytest
 
 from app.services.funding.cap_engine import (
+    BestTerms,
     Convertible,
     EngineError,
     Position,
     RoundInput,
     apply_round,
+    best_terms,
     converting_amount,
     holder_shares,
     largest_remainder_bps,
     model_rounds,
     ownership_table,
-    term_candidates,
     vested_shares,
 )
 
@@ -144,7 +145,7 @@ def test_note_interest_is_simple_actual_365_half_even():
     assert converting_amount(Convertible("s", "x", "safe", 7, interest_bps=800), AS_OF) == 7
 
 
-def test_mfn_candidates_are_whole_term_sets_of_later_non_mfn_instruments():
+def test_best_terms_for_an_mfn_instrument_come_from_later_non_mfn_instruments_only():
     mfn = Convertible("m", "MFN", "safe", 1_000_000, issued_on=date(2025, 1, 1), mfn=True)
     later = Convertible(
         "l",
@@ -174,18 +175,34 @@ def test_mfn_candidates_are_whole_term_sets_of_later_non_mfn_instruments():
         safe_kind="pre_money",
     )
     other_mfn = Convertible("o", "O", "safe", 1, issued_on=date(2025, 8, 1), mfn=True, cap_minor=1)
-    convs = [mfn, later, earlier, other_kind, other_mfn]
-    got = term_candidates(mfn, convs)
-    assert got == [
-        (None, None, "post_money"),  # its own
-        (8_000_000, 2000, "post_money"),  # the later SAFE, cap AND discount together
-        (2_000_000, None, "pre_money"),  # the later pre-money SAFE, as it is
-    ]
-    assert term_candidates(later, convs) == [(8_000_000, 2000, "post_money")]  # non-MFN: own only
+    got = best_terms([mfn, later, earlier, other_kind, other_mfn])
+    assert got["m"] == BestTerms(post_cap=8_000_000, pre_cap=2_000_000, discount_bps=2000)
+    assert got["l"] == BestTerms(post_cap=8_000_000, discount_bps=2000)  # non-MFN: its own
+    assert got["e"] == BestTerms(post_cap=1_000_000, discount_bps=5000)  # earlier is no donor
     undated = Convertible("u", "U", "safe", 1, mfn=True)
-    assert term_candidates(undated, [undated, later]) == [
-        (None, None, "post_money")
-    ]  # needs a date
+    assert best_terms([undated, later])["u"] == BestTerms()  # needs a date
+
+
+def test_best_terms_is_fast_with_the_maximum_number_of_instruments():
+    """2,000 entries all MFN-eligible: setup is sort + suffix aggregates, not donors x MFN."""
+    import time
+
+    convs = [
+        Convertible(
+            f"c{i}",
+            "x",
+            "safe",
+            1000,
+            issued_on=date(2025, 1, 1 + i % 28),
+            mfn=i % 2 == 0,
+            cap_minor=1_000_000 + i,
+            discount_bps=100 + i % 50,
+        )
+        for i in range(2000)
+    ]
+    t0 = time.perf_counter()
+    out = best_terms(convs)
+    assert len(out) == 2000 and time.perf_counter() - t0 < 0.5
 
 
 def test_mfn_never_mixes_the_cap_of_one_instrument_with_the_discount_of_another():
@@ -424,3 +441,27 @@ def test_mfn_follows_whichever_donor_is_better_in_this_round():
     got = {c["ref"]: c for c in step.conversions}
     assert got["m"]["shares"] == got["b"]["shares"] > got["a"]["shares"]
     assert got["m"]["term"] == "discount"
+
+
+def test_a_full_round_with_the_maximum_number_of_mfn_instruments_stays_cheap():
+    """The work per round is bounded: 2,000 instruments, half MFN, solve in well under a second."""
+    import time
+
+    convs = [
+        Convertible(
+            f"c{i}",
+            f"h{i}",
+            "safe",
+            10,
+            issued_on=date(2025, 1, 1 + i % 28),
+            mfn=i % 2 == 0,
+            cap_minor=1_000_000 + i,
+            discount_bps=100 + i % 50,
+        )
+        for i in range(2000)
+    ]
+    t0 = time.perf_counter()
+    _, step = apply_round(
+        founders(), convs, RoundInput("Seed", 10_000_000, 40_000_000), as_of=AS_OF
+    )
+    assert len(step.conversions) == 2000 and time.perf_counter() - t0 < 5

@@ -4,7 +4,7 @@
     "as_of": "2026-06-01",
     "headline": {
       "founders_before_bps": 8439,
-      "founders_after_bps": 4019
+      "founders_after_bps": 4004
     },
     "steps": [
       {
@@ -12,68 +12,68 @@
         "pre_money_minor": 40000000,
         "new_money_minor": 10000000,
         "post_money_minor": 50000000,
-        "price_per_share": "3.348735",
+        "price_per_share": "3.336557",
         "pre_round_shares": 9480000,
-        "pool_top_up_shares": 493102,
-        "new_investor_shares": 2986202,
-        "post_round_shares": 14931011,
+        "pool_top_up_shares": 498551,
+        "new_investor_shares": 2997101,
+        "post_round_shares": 14985507,
         "conversions": [
           {
-            "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+            "ref": "937bba08-87a6-4a54-ade9-6526df522593",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 1000000,
             "term": "cap",
-            "conversion_price": "0.873232",
-            "shares": 1145170
+            "conversion_price": "0.870333",
+            "shares": 1148985
           },
           {
-            "ref": "61551201-04b8-4973-b586-f0570fca70a3",
+            "ref": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
             "name": "Angel One",
             "security": "safe",
             "amount_minor": 500000,
             "term": "discount",
-            "conversion_price": "2.678988",
-            "shares": 186637
+            "conversion_price": "2.669245",
+            "shares": 187318
           },
           {
-            "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+            "ref": "21c51831-027a-4466-a431-d1b2c099e291",
             "name": "Lagos Bank",
             "security": "note",
             "amount_minor": 810000,
             "term": "cap",
-            "conversion_price": "1.265823",
-            "shares": 639900
+            "conversion_price": "1.202579",
+            "shares": 673552
           }
         ],
         "founders_before_bps": 8439,
-        "founders_after_bps": 5358
+        "founders_after_bps": 5339
       },
       {
         "name": "Series A",
         "pre_money_minor": 150000000,
         "new_money_minor": 50000000,
         "post_money_minor": 200000000,
-        "price_per_share": "10.046205",
-        "pre_round_shares": 14931011,
+        "price_per_share": "10.009671",
+        "pre_round_shares": 14985507,
         "pool_top_up_shares": 0,
-        "new_investor_shares": 4977003,
-        "post_round_shares": 19908014,
+        "new_investor_shares": 4995169,
+        "post_round_shares": 19980676,
         "conversions": [],
-        "founders_before_bps": 5358,
-        "founders_after_bps": 4019
+        "founders_before_bps": 5339,
+        "founders_after_bps": 4004
       }
     ],
     "dilution": [
       {
-        "ref": "1b03ba97-72a6-47a7-8aba-13c3b7f64eeb",
+        "ref": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
         "name": "Ada Obi",
         "kind": "founder",
         "before_shares": 8000000,
         "before_bps": 8439,
         "after_shares": 8000000,
-        "after_bps": 4019,
-        "change_bps": -4420
+        "after_bps": 4004,
+        "change_bps": -4435
       },
       {
         "ref": "round-2",
@@ -81,7 +81,7 @@
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 4977003,
+        "after_shares": 4995169,
         "after_bps": 2500,
         "change_bps": 2500
       },
@@ -91,63 +91,53 @@
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 2986202,
+        "after_shares": 2997101,
         "after_bps": 1500,
         "change_bps": 1500
       },
       {
-        "ref": "771f2875-fe93-4962-ba4c-8e6e19854d37",
+        "ref": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
         "name": "Option pool",
         "kind": "pool",
         "before_shares": 1000000,
         "before_bps": 1055,
-        "after_shares": 1493102,
+        "after_shares": 1498551,
         "after_bps": 750,
         "change_bps": -305
       },
       {
-        "ref": "1acd1238-ec18-4cfa-ac8a-db4303c2f902",
+        "ref": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
         "name": "Angel One",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 1145170,
-        "after_bps": 575,
-        "change_bps": 575
+        "after_shares": 1336303,
+        "after_bps": 669,
+        "change_bps": 669
       },
       {
-        "ref": "ff576dbc-f5ca-4b99-8774-2903a747998d",
+        "ref": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
         "name": "Lagos Bank",
         "kind": "investor",
         "before_shares": 0,
         "before_bps": 0,
-        "after_shares": 639900,
-        "after_bps": 321,
-        "change_bps": 321
+        "after_shares": 673552,
+        "after_bps": 337,
+        "change_bps": 337
       },
       {
-        "ref": "a1dccab4-095b-4b26-b4e8-9f847a1a6f61",
+        "ref": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
         "name": "Eve Placeholder",
         "kind": "employee",
         "before_shares": 480000,
         "before_bps": 506,
         "after_shares": 480000,
-        "after_bps": 241,
-        "change_bps": -265
-      },
-      {
-        "ref": "61551201-04b8-4973-b586-f0570fca70a3",
-        "name": "Angel One",
-        "kind": "investor",
-        "before_shares": 0,
-        "before_bps": 0,
-        "after_shares": 186637,
-        "after_bps": 94,
-        "change_bps": 94
+        "after_bps": 240,
+        "change_bps": -266
       }
     ],
     "total_shares_before": 9480000,
-    "total_shares_after": 19908014,
+    "total_shares_after": 19980676,
     "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers."
   },
   "meta": null
