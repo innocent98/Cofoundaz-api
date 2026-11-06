@@ -77,9 +77,22 @@ CLAIMS = {
         {"metric": "valuation", "value": 1, "source": "draft", "quote": "2m"},
     ],
     "use_of_funds": [
-        {"label": "Engineering hires", "amount": None, "percent": 60, "source": "draft"},
-        {"label": "Open Ghana", "amount": None, "percent": 40, "source": "draft"},
-        {"label": "From nowhere", "percent": 10, "source": "email"},
+        {
+            "label": "Engineering hires",
+            "amount": None,
+            "percent": 60,
+            "source": "draft",
+            "quote": "60% for engineering hires",
+        },
+        {
+            "label": "Open Ghana",
+            "amount": None,
+            "percent": 40,
+            "source": "draft",
+            "quote": "40% to open Ghana",
+        },
+        {"label": "From nowhere", "percent": 10, "source": "email", "quote": "x"},
+        {"label": "Invented", "percent": 10, "source": "draft", "quote": "10% on a yacht"},
     ],
 }
 

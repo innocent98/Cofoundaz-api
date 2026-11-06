@@ -106,7 +106,8 @@ def test_full_flow(client, db, team):
 
     reused = client.post(f"{BASE}/check", headers=fh)
     assert reused.status_code == 200 and reused.json()["data"]["outcome"] == "reused"
-    assert reused.json()["data"]["check"]["tokens_used"] == 0 and len(llm.calls) == 1
+    assert reused.json()["data"]["check"]["id"] == c["id"]  # nothing changed: the same check
+    assert len(llm.calls) == 1
 
     client.put(BASE, headers=fh, json={"body": DRAFT + " Edited."})
     stale = client.get(f"{BASE}/checks/latest", headers=fh).json()["data"]["check"]

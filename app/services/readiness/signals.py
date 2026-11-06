@@ -606,7 +606,8 @@ SIGNALS: tuple[Signal, ...] = (
         lambda v, t: (
             "You have not checked your narrative against your numbers yet. Run a narrative check."
             if v <= 0
-            else "Your deck or narrative disagrees with your numbers. Fix the number or the story."
+            else "Your deck or narrative disagrees with your numbers, or states none that "
+            "Cofoundaz can check. Fix the number or the story."
         ),
         2.0,
     ),
