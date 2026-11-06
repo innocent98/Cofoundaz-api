@@ -1,10 +1,12 @@
 import re
+from enum import StrEnum
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core import PydanticCustomError
 
 from app.db.models.enums import BusinessModel, MembershipRole, StartupStage
+from app.schemas.team import InvitableRole
 
 # The eight goal chips of the onboarding wizard (PRD §01.6 step 4, D-AUTH-7). Stored as these
 # exact labels; anything else is rejected, so a goal can never carry markup or free text.
@@ -172,12 +174,26 @@ class OnboardingStatePatch(BaseModel):
         return v
 
 
+class OnboardingInviteRole(StrEnum):
+    """An explicit allowlist, not "every MembershipRole": a role added to the enum later is not
+    invitable from here until it is listed. The six invite-modal roles, plus `investor`, which
+    the wizard hides (D-AUTH-4) but this endpoint has always accepted."""
+
+    founder = InvitableRole.founder.value
+    team_member = InvitableRole.team_member.value
+    mentor = InvitableRole.mentor.value
+    accountant = InvitableRole.accountant.value
+    legal_advisor = InvitableRole.legal_advisor.value
+    business_consultant = InvitableRole.business_consultant.value
+    investor = MembershipRole.investor.value
+
+
 class InviteItem(BaseModel):
     # A plain string on purpose: a bad address is reported on its own row of the result
     # (`status: "invalid"`) instead of failing the whole request, so the FE can show which
     # rows to fix. Validated per row in `create_invitations`.
     email: str = Field(max_length=320)
-    role: MembershipRole
+    role: OnboardingInviteRole
 
 
 class InvitesRequest(BaseModel):
