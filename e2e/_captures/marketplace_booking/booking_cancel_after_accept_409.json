@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CANCEL_NOT_ALLOWED",
+    "message": "This booking can't be cancelled now. Use 'Report a problem' once it's under way.",
+    "field_errors": []
+  }
+}

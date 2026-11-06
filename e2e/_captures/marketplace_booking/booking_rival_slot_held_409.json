@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SLOT_UNAVAILABLE",
+    "message": "That time isn't available any more. Pick another.",
+    "field_errors": []
+  }
+}

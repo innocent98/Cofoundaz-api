@@ -31,6 +31,7 @@ from app.db.tenancy import require_workspace
 from app.platform.audit import write_audit
 from app.services.billing import flows, receipt, subscription, usage, webhook
 from app.services.billing.catalog import ADDONS, TOKENS_PER_CREDIT
+from app.services.marketplace import outbox as marketplace_outbox
 
 router = APIRouter()
 webhook_router = APIRouter()
@@ -417,6 +418,7 @@ async def paystack_webhook(
     def handle() -> dict[str, Any]:
         out = webhook.process(db, raw_body=raw, signature=signature)
         db.commit()
+        marketplace_outbox.flush(db)  # mail raised by a Marketplace payment, after the commit
         return out
 
     return success_response(await run_in_threadpool(handle))
