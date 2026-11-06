@@ -3,7 +3,7 @@
 # Writes files only; installs nothing. See docs/deployment/WEB_FRONTEND_EDGE.md.
 #
 #   WEB_ENV=staging WEB_SERVER_NAMES="web-staging.example.test" \
-#   WEB_CERT_NAME=web-staging.example.test WEB_PORT=3001 \
+#   WEB_CERT_NAME=web-staging.example.test WEB_PORT=3101 \
 #   OUT_DIR=/tmp/web-edge ./deploy/nginx/web/render.sh
 #
 # WEB_SERVER_NAMES are served by the app; WEB_REDIRECT_NAMES (optional) only

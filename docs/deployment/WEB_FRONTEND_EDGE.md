@@ -35,10 +35,19 @@ Pairs with the `cofoundaz` repo: `deploy/docker-compose.web.yml`, `deploy/web-de
 
 ## Apply: standalone (production first)
 
+**Hard stop: the web ports must be free.** On 2026-11-06 `127.0.0.1:3000` turned out to be taken by another Express app on this VPS (it answers `/healthz` with `x-powered-by: Express` and `{"error":"Not found"}`). That is why production uses **3100** and staging **3101**. If either line below says `STOP`, do not continue: pick another free port and use it everywhere `WEB_PORT` appears (render step, GitHub var).
+```bash
+for p in 3100 3101; do if sudo ss -ltnH "( sport = :$p )" | grep -q .; then echo "STOP: port $p is already in use:"; sudo ss -ltnp "( sport = :$p )"; else echo "ok: port $p free"; fi; done
+```
+To see which nginx site already proxies to a port, use `grep -R`, not `-r`. The files in `sites-enabled` are symlinks, and `grep -r` silently skips them:
+```bash
+sudo grep -Rn 'proxy_pass\|server 127.0.0.1' /etc/nginx/sites-enabled/
+```
+
 The exact copy-paste sequence for production (render, bootstrap, `certbot certonly --webroot`, swap to the real site, checks) is in the `cofoundaz` repo at `docs/sop/2026-11-06-fe-vps-deploy.md`, step 2. In short, for one environment:
 
 ```bash
-WEB_ENV=production WEB_SERVER_NAMES="www.cofoundaz.com" WEB_REDIRECT_NAMES="cofoundaz.com" WEB_CERT_NAME="www.cofoundaz.com" WEB_PORT=3000 OUT_DIR=/tmp/web-edge-production ./deploy/nginx/web/render.sh
+WEB_ENV=production WEB_SERVER_NAMES="www.cofoundaz.com" WEB_REDIRECT_NAMES="cofoundaz.com" WEB_CERT_NAME="www.cofoundaz.com" WEB_PORT=3100 OUT_DIR=/tmp/web-edge-production ./deploy/nginx/web/render.sh
 ```
 
 1. `sudo mkdir -p /var/www/certbot`. Install and enable `web-production-bootstrap.conf`, then `nginx -t` and reload.
@@ -46,7 +55,7 @@ WEB_ENV=production WEB_SERVER_NAMES="www.cofoundaz.com" WEB_REDIRECT_NAMES="cofo
 3. Remove the bootstrap symlink. Install and enable `web-production.conf`, then `nginx -t` and reload.
 4. `curl https://www.cofoundaz.com/healthz` → 502 until the first web deploy, then 200. The CD check calls the same URL from the VPS via `--resolve` through `location /`.
 
-Staging: the same with `WEB_ENV=staging WEB_SERVER_NAMES="stage.cofoundaz.com" WEB_CERT_NAME="stage.cofoundaz.com" WEB_PORT=3001`, once `stage` has an A record. The two standalone sites use different upstream, rate-limit zone and session-cache names, so they load side by side (proven in the verifier).
+Staging: the same with `WEB_ENV=staging WEB_SERVER_NAMES="stage.cofoundaz.com" WEB_CERT_NAME="stage.cofoundaz.com" WEB_PORT=3101`, once `stage` has an A record. The two standalone sites use different upstream, rate-limit zone and session-cache names, so they load side by side (proven in the verifier).
 
 ## Apply: full layout (later, optional)
 Install nginx.org ≥ 1.25.1 and the full `deploy/nginx/` layout first (NGINX_TLS.md §5). Then render with `EDGE_LAYOUT=full`, install the rendered `conf.d/*.conf` and `snippets/cofoundaz/*.conf` along with the site, and remove the standalone `web-<env>.conf` it replaces.
