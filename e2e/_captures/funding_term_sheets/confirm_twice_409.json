@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_AWAITING_CONFIRMATION",
+    "message": "This term sheet is not waiting for confirmation.",
+    "field_errors": []
+  }
+}

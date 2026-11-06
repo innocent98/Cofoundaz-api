@@ -1,0 +1,22 @@
+{
+  "data": {
+    "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+    "label": "gamma-term-sheet.pdf",
+    "status": "extracting",
+    "error": null,
+    "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+    "investor_name": "Tolu Bello",
+    "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+    "source_filename": "gamma-term-sheet.pdf",
+    "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+    "extracted_by_ai": true,
+    "terms": {},
+    "flags": [],
+    "flag_count": 0,
+    "confirmed_at": null,
+    "created_at": "2026-11-06T21:44:46.230662+00:00",
+    "proposed": null,
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TERM_SHEET_NOT_CONFIRMED",
+    "message": "Confirm the values of every term sheet before comparing it.",
+    "field_errors": []
+  }
+}
