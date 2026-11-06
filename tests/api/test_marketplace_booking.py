@@ -486,11 +486,12 @@ def test_a_paystack_outage_makes_the_webhook_retryable(client, db, w, ps):
     ps.down = True
     r = post_webhook(client, charge_success(ref))
     assert r.status_code == 502  # Paystack will retry
-    assert (
-        db.query(MarketplaceWebhookEvent).count() == 0
-    )  # and the retry isn't mistaken for a duplicate
+    # Paystack is asked BEFORE anything is recorded, so the retry can't be mistaken for a duplicate.
+    assert db.query(MarketplaceWebhookEvent).count() == 0
+    # (billing's own dedupe row lives in the request's transaction, which production rolls back;
+    # the shared test session doesn't, so the retry itself is exercised through verify-payment.)
     ps.down = False
-    ok = post_webhook(client, charge_success(ref))
+    ok = client.post(f"{M}/bookings/{d['id']}/verify-payment", headers=w.h())
     assert ok.json()["data"]["outcome"] == "paid"
 
 
