@@ -191,12 +191,24 @@ def refund(transaction_reference: str, amount_minor: int | None = None) -> dict[
     return _data(_request("POST", "/refund", json_body=payload))
 
 
-def list_refunds(transaction_reference: str) -> list[dict[str, Any]]:
+def list_refunds(transaction_reference: str, *, max_pages: int = 5) -> list[dict[str, Any]]:
     """Refunds Paystack holds for a transaction reference (to reconcile a refund whose answer we
-    never saw). Callers must still check each row's own transaction reference."""
-    body = _request("GET", "/refund", params={"reference": transaction_reference})
-    data = body.get("data")
-    return [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
+    never saw), following pagination. Callers must still check each row's own transaction
+    reference. A result that may be truncated (more pages than we read) fails closed."""
+    rows: list[dict[str, Any]] = []
+    for page in range(1, max_pages + 1):
+        body = _request(
+            "GET",
+            "/refund",
+            params={"reference": transaction_reference, "perPage": 100, "page": page},
+        )
+        data = body.get("data")
+        rows += [d for d in data if isinstance(d, dict)] if isinstance(data, list) else []
+        meta = body.get("meta")
+        pages = meta.get("pageCount") if isinstance(meta, dict) else None
+        if not isinstance(pages, int) or page >= pages:
+            return rows
+    raise PaystackUnavailable()
 
 
 def list_subscriptions(customer_code: str) -> list[dict[str, Any]]:

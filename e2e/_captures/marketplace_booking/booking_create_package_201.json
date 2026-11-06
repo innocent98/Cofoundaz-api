@@ -1,10 +1,10 @@
 {
   "data": {
     "replayed": false,
-    "id": "b800da41-e291-49a2-82bf-4180f69a63a2",
+    "id": "c0a6437d-97f4-4522-ae7c-be351fb54184",
     "status": "pending_payment",
     "type": "package",
-    "listing_id": "4246806b-127f-4855-928f-d60780bceff7",
+    "listing_id": "20eb9cf0-170c-4090-b73e-84602064873b",
     "title": "Shareholder agreement drafting",
     "category": "Legal",
     "deliverables": [
@@ -20,29 +20,29 @@
     "starts_at": null,
     "ends_at": null,
     "timezone": "Africa/Lagos",
-    "slot_hold_expires_at": "2026-11-06T19:23:39.368216+00:00",
+    "slot_hold_expires_at": "2026-11-06T20:01:27.389971+00:00",
     "accept_by": null,
     "due_at": null,
     "meeting_url": null,
     "closed_reason": null,
     "provider": {
-      "id": "49ba5893-6f6f-44de-a1e0-9dfa85a2ac09",
+      "id": "b5db3153-0e32-465a-a26f-a75c664b5ca5",
       "display_name": "Ngozi Eze",
       "avatar_url": null
     },
     "order": {
-      "id": "892e820b-4771-44a1-9641-2bc4dbafb98a",
+      "id": "06dba8db-5390-4867-b971-0ffe25b220b9",
       "status": "pending",
       "amount_minor": 25000000,
       "currency": "NGN",
-      "reference": "mp_f9c0e4ccf6986bbe7993",
-      "checkout_url": "https://checkout.paystack.com/stub-mp_f9c0e4ccf6986bbe7993",
+      "reference": "mp_193e3063d9bb15cdf3a5",
+      "checkout_url": "https://checkout.paystack.com/stub-mp_193e3063d9bb15cdf3a5",
       "paid_at": null,
       "receipt_number": null,
       "refunded_minor": 0,
       "refund_pending_minor": 0
     },
-    "created_at": "2026-11-06T19:08:39.358365+00:00"
+    "created_at": "2026-11-06T19:46:27.378137+00:00"
   },
   "meta": null
 }

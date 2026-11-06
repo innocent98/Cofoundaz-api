@@ -147,6 +147,7 @@ def upgrade() -> None:
         sa.Column("refund_reason", sa.String(60), nullable=True),
         sa.Column("refund_attempts", sa.Integer(), server_default=sa.text("0"), nullable=False),
         _ts("refund_next_attempt_at"),
+        _ts("refund_inflight_since"),
         _ts("refund_failed_at"),
         *_stamps(),
         sa.CheckConstraint("amount_minor > 0", name="ck_marketplace_order_amount_positive"),

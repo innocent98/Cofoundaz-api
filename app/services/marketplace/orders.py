@@ -34,6 +34,7 @@ from app.services.marketplace import outbox
 from app.services.marketplace.constants import (
     ACCEPT_WINDOW,
     MAX_REFUND_ATTEMPTS,
+    REFUND_INFLIGHT_WAIT,
     REFUND_RETRY_BACKOFF_MIN,
 )
 from app.services.marketplace.listings import err
@@ -363,55 +364,76 @@ def reconcile_with_paystack(
     return True
 
 
-def process_refund(db: Session, order_id: uuid.UUID) -> str:
-    """Send a due refund to Paystack. Row-locks the order for the whole call so a timer and a
-    request can't both refund it. Before RE-sending (any earlier attempt may have been accepted
-    without our seeing the answer) it asks Paystack what it already holds and only sends the
-    difference. On success: a ledger `refund` entry keyed by Paystack's refund id, `refunded_minor`
-    up. On a Paystack error: backoff and retry; after MAX_REFUND_ATTEMPTS it is flagged
+def process_refund(db: Session, order_id: uuid.UUID, *, at: datetime | None = None) -> str:
+    """Send a due refund to Paystack, safely retryable.
+
+    The order is row-locked, and BEFORE the call a `refund_inflight_since` marker is committed. If
+    anything then goes wrong without a verdict (timeout, 5xx, a crash after Paystack accepted), the
+    marker stays, and the next attempt first reconciles with Paystack's own list (books what it
+    already refunded, by totals) and only re-sends once REFUND_INFLIGHT_WAIT has passed with
+    nothing found there. A definitive rejection clears the marker (nothing was accepted). A first
+    send never depends on the list API. On success: a ledger `refund` entry keyed by Paystack's
+    refund id and the order moves; retries back off and, after MAX_REFUND_ATTEMPTS, are flagged
     (`refund_failed_at`) for staff and left in `refund_due`."""
     order = lock_order(db, order_id)
-    due = order.refund_due_minor
-    if due <= 0:
+    if order.refund_due_minor <= 0:
+        order.refund_inflight_since = None
         return "nothing_due"
     booking = db.get(MarketplaceBooking, order.booking_id)
     if booking is None:  # unreachable: the FK is RESTRICT
         return "ignored"
-    t = now()
-    try:
-        # Always reconcile first: an earlier attempt, even one that crashed before committing, may
-        # have been accepted by Paystack.
-        reconcile_with_paystack(db, order, booking)
-        due = order.refund_due_minor
-        if due <= 0:
+    t = at or now()  # `at` lets the timer (and its tests) say what time it is
+    if order.refund_inflight_since is not None:
+        try:
+            reconcile_with_paystack(db, order, booking)
+        except (paystack.PaystackUnavailable, paystack.PaystackRejected):
+            return _refund_retry(db, order, t)
+        if order.refund_due_minor <= 0:
+            order.refund_inflight_since = None
+            db.flush()
             return "refunded"
+        if t - order.refund_inflight_since < REFUND_INFLIGHT_WAIT:
+            return _refund_retry(db, order, t, outcome="awaiting_reconcile")
+    order.refund_inflight_since = t
+    db.commit()  # the marker is durable before Paystack hears about the refund
+    order = lock_order(db, order_id)
+    due = order.refund_due_minor
+    if due <= 0:  # settled by a webhook while we committed
+        order.refund_inflight_since = None
+        db.flush()
+        return "refunded"
+    try:
         sent = paystack.refund(order.paystack_reference, amount_minor=due)
-    except (paystack.PaystackUnavailable, paystack.PaystackRejected) as exc:
-        order.refund_attempts += 1
-        step = min(order.refund_attempts, len(REFUND_RETRY_BACKOFF_MIN)) - 1
-        order.refund_next_attempt_at = t + timedelta(minutes=REFUND_RETRY_BACKOFF_MIN[step])
-        if order.refund_attempts >= MAX_REFUND_ATTEMPTS and order.refund_failed_at is None:
-            order.refund_failed_at = t
-            write_audit(
-                db,
-                "marketplace.order.refund_failed",
-                startup_id=order.startup_id,
-                entity_type="marketplace_order",
-                entity_id=order.id,
-                details={"attempts": order.refund_attempts, "due_minor": due},
-            )
-        log.warning(
-            f"marketplace: refund of {order.paystack_reference} not accepted: {type(exc).__name__}"
-        )
-        return "retry_scheduled"
-    record_refund_sent(
-        db,
-        order,
-        booking,
-        due,
-        refund_key(sent) or f"sent-{uuid.uuid4().hex[:12]}",
-    )
+    except paystack.PaystackRejected:
+        order.refund_inflight_since = None  # a definitive no: nothing was accepted
+        return _refund_retry(db, order, t)
+    except paystack.PaystackUnavailable:
+        return _refund_retry(db, order, t)  # no verdict: the marker stays
+    record_refund_sent(db, order, booking, due, refund_key(sent) or f"sent-{uuid.uuid4().hex[:12]}")
+    order.refund_inflight_since = None
+    db.flush()
     return "refunded"
+
+
+def _refund_retry(
+    db: Session, order: MarketplaceOrder, t: datetime, *, outcome: str = "retry_scheduled"
+) -> str:
+    order.refund_attempts += 1
+    step = min(order.refund_attempts, len(REFUND_RETRY_BACKOFF_MIN)) - 1
+    order.refund_next_attempt_at = t + timedelta(minutes=REFUND_RETRY_BACKOFF_MIN[step])
+    if order.refund_attempts >= MAX_REFUND_ATTEMPTS and order.refund_failed_at is None:
+        order.refund_failed_at = t
+        write_audit(
+            db,
+            "marketplace.order.refund_failed",
+            startup_id=order.startup_id,
+            entity_type="marketplace_order",
+            entity_id=order.id,
+            details={"attempts": order.refund_attempts, "due_minor": order.refund_due_minor},
+        )
+    log.warning(f"marketplace: refund of {order.paystack_reference} pending ({outcome})")
+    db.flush()
+    return outcome
 
 
 def settle_from_webhook(db: Session, order_id: uuid.UUID) -> str:

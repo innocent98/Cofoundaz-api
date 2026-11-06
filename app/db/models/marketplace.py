@@ -411,6 +411,12 @@ class MarketplaceOrder(UUIDMixin, TimestampMixin, Base):
     refund_next_attempt_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Set and COMMITTED before a refund is sent to Paystack; cleared once the outcome is known. A
+    # crash or timeout after Paystack accepted leaves it set, so the next attempt reconciles
+    # instead of sending a second refund.
+    refund_inflight_since: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     refund_failed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

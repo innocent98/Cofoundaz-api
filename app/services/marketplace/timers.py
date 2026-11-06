@@ -142,7 +142,7 @@ def tick(db: Session, t: datetime) -> dict[str, int]:
     refunded = 0
     for order_id in due_refund_ids(db, t):
         try:
-            outcome = orders.process_refund(db, order_id)
+            outcome = orders.process_refund(db, order_id, at=t)
             db.commit()
             refunded += outcome == "refunded"
         except Exception as exc:  # noqa: BLE001 - one bad refund must not stop the rest

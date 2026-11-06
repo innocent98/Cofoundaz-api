@@ -1,9 +1,9 @@
 {
   "data": {
     "receipt_number": "MPR-2026-1001",
-    "paid_at": "2026-11-06T19:08:38+00:00",
+    "paid_at": "2026-11-06T19:46:26+00:00",
     "currency": "NGN",
-    "reference": "mp_032050275beb230f919f",
+    "reference": "mp_b3a7b28cbd8042d8974c",
     "total_minor": 1000000,
     "refunded_minor": 0,
     "lines": [

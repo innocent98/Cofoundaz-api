@@ -250,9 +250,13 @@ def test_a_refund_waits_for_paystack_and_is_retried_by_the_timer(client, db, w, 
     # not due yet: the timer leaves it alone
     assert timers.tick(db, datetime.now(UTC))["refunded"] == 0
     ps.down = False
-    assert timers.tick(db, datetime.now(UTC) + timedelta(hours=1))["refunded"] == 1
+    # Paystack is back, but the first attempt had no verdict: within 2 hours we only reconcile
+    assert timers.tick(db, datetime.now(UTC) + timedelta(hours=1))["refunded"] == 0
+    assert ps.refunds == []
+    assert timers.tick(db, datetime.now(UTC) + timedelta(hours=3))["refunded"] == 1
     db.refresh(o)
     assert (o.status, o.refunded_minor, o.refund_due_minor) == (OrderStatus.refunded, 1_000_000, 0)
+    assert o.refund_inflight_since is None
     assert entries(db, o) == [("charge", 1_000_000), ("refund", -1_000_000)]
 
 
@@ -552,7 +556,7 @@ def test_a_refund_whose_answer_was_lost_is_not_sent_twice(client, db, w, ps):
     db.refresh(o)
     assert len(ps.refunds) == 1 and o.refund_due_minor == 1_000_000 and o.refunded_minor == 0
     ps.timeout_after_accept = False
-    assert timers.tick(db, datetime.now(UTC) + timedelta(hours=1))["refunded"] == 1
+    assert timers.tick(db, datetime.now(UTC) + timedelta(minutes=10))["refunded"] == 1
     db.refresh(o)
     assert len(ps.refunds) == 1  # reconciled with Paystack's own list, not resent
     assert (o.status, o.refunded_minor, o.refund_due_minor) == (OrderStatus.refunded, 1_000_000, 0)
@@ -563,6 +567,37 @@ def test_a_refund_whose_answer_was_lost_is_not_sent_twice(client, db, w, ps):
     assert (
         ref_entry.external_ref == "refund:reconcile:1000000"
     )  # booked by reconciling with Paystack's total
+
+
+def test_an_unconfirmed_refund_is_not_resent_inside_the_wait_and_is_after_it(client, db, w, ps):
+    bid, ref = paid(w, ps)
+    o = order_of(db, bid)
+    assert orders.request_refund(db, o, 300_000, "goodwill") is True
+    ps.down = True
+    assert orders.process_refund(db, o.id) == "retry_scheduled"  # no verdict: marker stays
+    db.refresh(o)
+    assert o.refund_inflight_since is not None
+    ps.down = False
+    assert orders.process_refund(db, o.id) == "awaiting_reconcile"  # nothing at Paystack, too soon
+    assert ps.refunds == []
+    o.refund_inflight_since = datetime.now(UTC) - timedelta(hours=3)
+    db.flush()
+    assert orders.process_refund(db, o.id) == "refunded"  # nothing was accepted: now it is sent
+    assert ps.refunds == [{"transaction": ref, "amount": 300_000}]
+    db.refresh(o)
+    assert o.refund_inflight_since is None and o.refunded_minor == 300_000
+
+
+def test_a_definitive_rejection_clears_the_marker_so_the_next_try_is_immediate(client, db, w, ps):
+    bid, _ = paid(w, ps)
+    o = order_of(db, bid)
+    orders.request_refund(db, o, 300_000, "goodwill")
+    ps.reject_refunds = True
+    assert orders.process_refund(db, o.id) == "retry_scheduled"
+    db.refresh(o)
+    assert o.refund_inflight_since is None  # a 4xx means nothing was accepted
+    ps.reject_refunds = False
+    assert orders.process_refund(db, o.id) == "refunded"
 
 
 def test_a_lost_partial_refund_is_not_refunded_twice(client, db, w, ps):
@@ -716,7 +751,9 @@ def test_a_refund_accepted_by_paystack_but_never_recorded_is_booked_not_resent(c
     o = order_of(db, bid)
     assert orders.request_refund(db, o, 300_000, "goodwill") is True
     ps.refund(ref, 300_000)  # Paystack took it; our process died before recording anything
-    assert o.refund_attempts == 0 and o.refunded_minor == 0
+    o.refund_inflight_since = datetime.now(UTC)  # the committed marker a crash leaves behind
+    db.flush()
+    assert o.refunded_minor == 0
     assert orders.process_refund(db, o.id) == "refunded"
     db.refresh(o)
     assert len(ps.refunds) == 1  # nothing was sent a second time

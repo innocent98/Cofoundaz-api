@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "b800da41-e291-49a2-82bf-4180f69a63a2",
+    "id": "c0a6437d-97f4-4522-ae7c-be351fb54184",
     "status": "declined",
     "type": "package",
     "title": "Shareholder agreement drafting",
@@ -16,7 +16,7 @@
     "client_name": "Ada Obi",
     "starts_at": null,
     "ends_at": null,
-    "accept_by": "2026-11-08T19:08:39.391066+00:00",
+    "accept_by": "2026-11-08T19:46:27.410671+00:00",
     "due_at": null,
     "meeting_url": null,
     "closed_reason": "provider_declined",
@@ -28,7 +28,7 @@
       "currency": "NGN",
       "paid": false
     },
-    "created_at": "2026-11-06T19:08:39.358365+00:00"
+    "created_at": "2026-11-06T19:46:27.378137+00:00"
   },
   "meta": null
 }

@@ -1,6 +1,6 @@
 {
-  "to": "delivered+e2e-959c19ddc88c@resend.dev",
+  "to": "delivered+e2e-a1e5abb9790b@resend.dev",
   "subject": "Your booking could not go ahead",
   "html": "<div style=\"font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a\"><h2 style=\"margin:0 0 12px;font-size:20px;color:#051736\">Your booking could not go ahead</h2><p style=\"margin:0 0 20px;line-height:1.5;color:#333\">Ngozi Eze could not take on <strong>Shareholder agreement drafting</strong>. You were refunded in full. Refunds can take a few working days to reach your card.</p><p style=\"margin:0 0 20px\"><a href=\"http://localhost:3000/marketplace\" style=\"display:inline-block;padding:12px 22px;background:#0F6AFC;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600\">Browse experts</a></p><p style=\"margin:0 0 6px;font-size:13px;color:#555\">Or paste this link into your browser:</p><p style=\"margin:0 0 20px;font-size:13px;word-break:break-all\"><a href=\"http://localhost:3000/marketplace\" style=\"color:#0F6AFC\">http://localhost:3000/marketplace</a></p><p style=\"margin:0 0 4px;font-size:12px;color:#888\">Your card is never charged for a booking that doesn't go ahead.</p><p style=\"margin:0;font-size:12px;color:#888\">If you didn't request this, you can safely ignore this email.</p></div>",
-  "sent_at": "2026-11-06T19:08:39.417598+00:00"
+  "sent_at": "2026-11-06T19:46:27.451311+00:00"
 }

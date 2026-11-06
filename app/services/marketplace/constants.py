@@ -62,3 +62,4 @@ CONSENT_KIND_TERMS: Final = "marketplace_terms"
 TIMER_BATCH = 200
 REFUND_RETRY_BACKOFF_MIN: Final = (1, 5, 30, 120, 720)  # minutes, by attempt number
 MAX_REFUND_ATTEMPTS: Final = 12
+REFUND_INFLIGHT_WAIT = timedelta(hours=2)  # an unconfirmed refund isn't re-sent before this

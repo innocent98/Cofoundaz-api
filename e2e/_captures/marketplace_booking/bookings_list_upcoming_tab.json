@@ -2,10 +2,10 @@
   "data": {
     "bookings": [
       {
-        "id": "c410a7a5-6ca9-49f7-9356-5786c95893f0",
+        "id": "50038c5a-80a2-4d73-b090-46ef40435f98",
         "status": "confirmed",
         "type": "consultation",
-        "listing_id": "7615c87e-a820-4f0d-9496-fe026065c7bf",
+        "listing_id": "2a2730fb-b9c5-404b-b971-8081c7067c6a",
         "title": "Contract review session",
         "category": "Legal",
         "deliverables": [],
@@ -19,28 +19,28 @@
         "ends_at": "2026-11-08T08:00:00+00:00",
         "timezone": "Africa/Lagos",
         "slot_hold_expires_at": null,
-        "accept_by": "2026-11-08T19:08:38.748000+00:00",
+        "accept_by": "2026-11-08T19:46:26.775681+00:00",
         "due_at": null,
         "meeting_url": "https://meet.example.com/ngozi-eze",
         "closed_reason": null,
         "provider": {
-          "id": "49ba5893-6f6f-44de-a1e0-9dfa85a2ac09",
+          "id": "b5db3153-0e32-465a-a26f-a75c664b5ca5",
           "display_name": "Ngozi Eze",
           "avatar_url": null
         },
         "order": {
-          "id": "e3574880-e206-4d54-90b8-e2a054c49780",
+          "id": "a6885688-deec-477c-be5c-5614c1e104f5",
           "status": "paid",
           "amount_minor": 1000000,
           "currency": "NGN",
-          "reference": "mp_032050275beb230f919f",
+          "reference": "mp_b3a7b28cbd8042d8974c",
           "checkout_url": null,
-          "paid_at": "2026-11-06T19:08:38+00:00",
+          "paid_at": "2026-11-06T19:46:26+00:00",
           "receipt_number": "MPR-2026-1001",
           "refunded_minor": 0,
           "refund_pending_minor": 0
         },
-        "created_at": "2026-11-06T19:08:38.591279+00:00"
+        "created_at": "2026-11-06T19:46:26.611376+00:00"
       }
     ],
     "pagination": {
