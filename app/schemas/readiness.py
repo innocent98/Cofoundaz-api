@@ -45,3 +45,11 @@ class QaMessageIn(BaseModel):
     # How many answers the client believes are already recorded (the session's `turns`). A stale
     # value means this is a retry of an answer that was already received: 409 TURN_MISMATCH.
     expected_turn: int = Field(..., ge=0, le=10)
+
+
+class NarrativeIn(BaseModel):
+    """The whole draft (autosave sends the full text each time). Empty clears it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    body: str = Field(..., max_length=20_000)
