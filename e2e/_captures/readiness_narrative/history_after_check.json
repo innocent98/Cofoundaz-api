@@ -1,0 +1,80 @@
+{
+  "data": {
+    "range": 30,
+    "points": [
+      {
+        "at": "2026-11-06T22:12:56.482935+00:00",
+        "score": 3,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 17,
+          "story": 0,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      },
+      {
+        "at": "2026-11-06T22:12:57.666628+00:00",
+        "score": 11,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 52,
+          "story": 33,
+          "market": 0,
+          "product": 0,
+          "traction": 0,
+          "financials": 0
+        }
+      },
+      {
+        "at": "2026-11-06T22:12:58.697678+00:00",
+        "score": 33,
+        "band": "not_yet",
+        "capped": false,
+        "dimensions": {
+          "team": 52,
+          "story": 44,
+          "market": 0,
+          "product": 0,
+          "traction": 40,
+          "financials": 52
+        }
+      }
+    ],
+    "markers": [
+      {
+        "at": "2026-11-06T22:12:58.203740+00:00",
+        "label": "Deck reviewed (v1)"
+      },
+      {
+        "at": "2026-11-06T22:12:58.741475+00:00",
+        "label": "Narrative checked"
+      }
+    ],
+    "log": [
+      {
+        "type": "narrative_check",
+        "at": "2026-11-06T22:12:58.741475+00:00",
+        "id": "0f516d0b-ff18-4a27-982e-ccd298e2e6a8",
+        "counts": {
+          "high": 1,
+          "medium": 1,
+          "info": 2,
+          "ok": 2
+        }
+      },
+      {
+        "type": "deck_review",
+        "at": "2026-11-06T22:12:58.203740+00:00",
+        "id": "e56fb0cb-4280-4a0a-a259-9ae5f881310c",
+        "version": 1,
+        "overall": 7.3
+      }
+    ]
+  },
+  "meta": null
+}

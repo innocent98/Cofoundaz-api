@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+    "type": "ai.readiness.narrative_check",
+    "status": "queued",
+    "result": null,
+    "error": null
+  },
+  "meta": null
+}

@@ -1,0 +1,13 @@
+{
+  "data": {
+    "body": "",
+    "chars": 0,
+    "max_chars": 20000,
+    "draft_sha256": null,
+    "updated_at": null,
+    "updated_by_id": null,
+    "has_reviewed_deck": false,
+    "can_check": false
+  },
+  "meta": null
+}

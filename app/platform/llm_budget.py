@@ -84,8 +84,15 @@ def metered_complete(
 
 
 def metered_complete_json(
-    db: Session, startup_id: uuid.UUID, messages: list[LLMMessage], *, schema: dict, max_tokens: int
+    db: Session,
+    startup_id: uuid.UUID,
+    messages: list[LLMMessage],
+    *,
+    schema: dict,
+    max_tokens: int,
+    usage: list[int] | None = None,
 ) -> dict | None:
+    """`usage`, when given, receives the tokens this call cost (for callers that store it)."""
     if over_budget(db, startup_id):
         return None
     client = get_llm_client()
@@ -96,7 +103,10 @@ def metered_complete_json(
         # savepoint rolls this session's writes back, so a retry would otherwise be free.
         _debit_independent(startup_id, getattr(client, "last_usage_tokens", 0))
         raise
-    debit(db, startup_id, getattr(client, "last_usage_tokens", 0))
+    spent = getattr(client, "last_usage_tokens", 0)
+    debit(db, startup_id, spent)
+    if usage is not None:
+        usage.append(spent)
     return result
 
 
