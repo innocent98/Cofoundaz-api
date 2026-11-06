@@ -454,6 +454,12 @@ SPECS: dict[str, NotifSpec] = {
         _audience("assessment.completed"), "A startup assessment was completed"
     ),
     "workspace.member.joined": _s(_existing_members, "A new member joined your workspace"),
+    # Only the first suggestion of a batch notifies (payload `notify`); the digest batches the rest.
+    "ai.suggestion.created": NotifSpec(
+        lambda _db, p: [uuid.UUID(p["user_id"])] if p.get("notify") else [],
+        lambda _p: "Your AI Co-Founder has a suggestion for you",
+        lambda _p: "See suggested actions",
+    ),
     # PRD Module 01 notifications: the founder who just finished onboarding (payload `user_id`).
     # The event was already published by onboarding completion; nothing listened to it, so the
     # in-app "workspace is ready" notice never appeared.

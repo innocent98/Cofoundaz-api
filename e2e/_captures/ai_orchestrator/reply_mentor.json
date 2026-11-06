@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "d09d3349-6f02-4c47-abae-6164c9d5c42a",
+    "id": "e4a5c840-8868-42ec-8828-bc165c4bd97d",
     "title": "I feel overwhelmed and stuck this week",
     "topic": "mentoring",
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:34:45.036436+00:00",
-    "updated_at": "2026-11-05T21:34:46.889336+00:00",
+    "created_at": "2026-11-06T19:06:22.856858+00:00",
+    "updated_at": "2026-11-06T19:06:24.659797+00:00",
     "messages": [
       {
-        "id": "8ff773d6-7036-4474-b937-075bd80bee9c",
+        "id": "41941148-a3f7-4d5e-b3bc-211cc99de798",
         "role": "user",
         "status": "ready",
         "content": "I feel overwhelmed and stuck this week",
@@ -17,10 +18,12 @@
         "reasoning_summary": null,
         "disclaimer": null,
         "sources": null,
-        "created_at": "2026-11-05T21:34:45.044116+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.863755+00:00"
       },
       {
-        "id": "0cbf9d2e-d21e-4a63-be82-35c5230e727e",
+        "id": "0036781b-51f3-4d66-8837-23bbe571102e",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
@@ -45,7 +48,9 @@
             "label": "Your roadmap"
           }
         ],
-        "created_at": "2026-11-05T21:34:45.045116+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.864755+00:00"
       }
     ]
   },

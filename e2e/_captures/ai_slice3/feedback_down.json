@@ -1,0 +1,48 @@
+{
+  "data": {
+    "id": "0a7ab72b-44b0-44a6-ba56-f6702ce9d58d",
+    "role": "assistant",
+    "status": "ready",
+    "content": "Another idea.",
+    "removed_by_moderation": false,
+    "agent": {
+      "key": "strategist",
+      "name": "Strategist"
+    },
+    "reasoning_summary": "Answered by the Strategist because your message is about strategy. I used: Your startup profile, Your roadmap, Today's mission.",
+    "disclaimer": null,
+    "sources": [
+      {
+        "key": "profile",
+        "label": "Your startup profile"
+      },
+      {
+        "key": "roadmap",
+        "label": "Your roadmap"
+      },
+      {
+        "key": "mission",
+        "label": "Today's mission"
+      }
+    ],
+    "actions": [
+      {
+        "id": "1566350e-3930-4c6c-8c19-dadc5c0817be",
+        "kind": "add_task",
+        "label": "Add as task: Write the pitch",
+        "status": "dismissed",
+        "undoable": false,
+        "params": {
+          "title": "Write the pitch",
+          "effort": "medium",
+          "milestone_key": "M1"
+        },
+        "href": null,
+        "result_label": null
+      }
+    ],
+    "feedback": "down",
+    "created_at": "2026-11-06T19:06:28.299290+00:00"
+  },
+  "meta": null
+}

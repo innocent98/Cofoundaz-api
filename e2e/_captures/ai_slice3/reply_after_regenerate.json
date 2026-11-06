@@ -1,0 +1,58 @@
+{
+  "data": {
+    "id": "e693dffb-8cd1-4ba6-b204-498b7ac3fcf2",
+    "title": "What should I focus on next?",
+    "topic": "strategy",
+    "pinned_agent_key": null,
+    "archived_at": null,
+    "created_at": "2026-11-06T19:06:28.293086+00:00",
+    "updated_at": "2026-11-06T19:06:28.417959+00:00",
+    "messages": [
+      {
+        "id": "bd8fa3a8-e6df-4f73-a023-5845bb2e0f72",
+        "role": "user",
+        "status": "ready",
+        "content": "What should I focus on next?",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:28.298290+00:00"
+      },
+      {
+        "id": "0a7ab72b-44b0-44a6-ba56-f6702ce9d58d",
+        "role": "assistant",
+        "status": "ready",
+        "content": "A second answer.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "strategist",
+          "name": "Strategist"
+        },
+        "reasoning_summary": "Answered by the Strategist because your message is about strategy. I used: Your startup profile, Your roadmap, Today's mission.",
+        "disclaimer": null,
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          },
+          {
+            "key": "roadmap",
+            "label": "Your roadmap"
+          },
+          {
+            "key": "mission",
+            "label": "Today's mission"
+          }
+        ],
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:28.417957+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

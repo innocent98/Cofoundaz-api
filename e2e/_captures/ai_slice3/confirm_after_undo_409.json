@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ACTION_NOT_PROPOSED",
+    "message": "This action is already undone.",
+    "field_errors": []
+  }
+}

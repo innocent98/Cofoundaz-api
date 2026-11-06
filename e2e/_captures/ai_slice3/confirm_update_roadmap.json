@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "f893f26c-491f-4cf9-b628-d0f60aa60954",
+    "kind": "update_roadmap",
+    "label": "Update roadmap (M2): status in_progress, due 2027-03-01",
+    "status": "executed",
+    "undoable": true,
+    "params": {
+      "due_on": "2027-03-01",
+      "status": "in_progress",
+      "milestone_key": "M2"
+    },
+    "href": "/roadmap",
+    "result_label": "Updated Sketch the solution"
+  },
+  "meta": null
+}

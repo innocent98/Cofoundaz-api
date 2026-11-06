@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "c933a044-cd50-466c-aac7-4b92f558c7e1",
+    "id": "47746a8d-349a-4c2c-a664-7bbcb563b527",
     "title": "hello there",
     "topic": "finance",
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:34:45.077873+00:00",
-    "updated_at": "2026-11-05T21:34:46.963409+00:00",
+    "created_at": "2026-11-06T19:06:22.897725+00:00",
+    "updated_at": "2026-11-06T19:06:24.742390+00:00",
     "messages": [
       {
-        "id": "89e90c91-b6f4-44c0-9f59-a4818e300648",
+        "id": "c3a4a9c4-9626-4035-8fdd-6b95dbc99970",
         "role": "user",
         "status": "ready",
         "content": "hello there",
@@ -17,10 +18,12 @@
         "reasoning_summary": null,
         "disclaimer": null,
         "sources": null,
-        "created_at": "2026-11-05T21:34:45.086357+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.903598+00:00"
       },
       {
-        "id": "8823f6f2-eecb-4c61-9c1c-69e1343eed70",
+        "id": "c904c41c-f8b1-4255-8edf-776aa83b4984",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
@@ -41,7 +44,9 @@
             "label": "Your finance snapshot"
           }
         ],
-        "created_at": "2026-11-05T21:34:45.087357+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.904598+00:00"
       }
     ]
   },

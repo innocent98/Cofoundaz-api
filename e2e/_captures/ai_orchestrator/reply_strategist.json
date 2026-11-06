@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "4c75fcce-b352-45fa-be6d-da358f6398b6",
+    "id": "ffc9800d-21c2-4992-a1ab-179e2f92d50c",
     "title": "What should I focus on this week?",
     "topic": "strategy",
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:34:45.058153+00:00",
-    "updated_at": "2026-11-05T21:34:46.924702+00:00",
+    "created_at": "2026-11-06T19:06:22.877638+00:00",
+    "updated_at": "2026-11-06T19:06:24.697485+00:00",
     "messages": [
       {
-        "id": "b212a983-e2f5-4046-a13f-5cb9ab2176cf",
+        "id": "812a8d9e-15a9-4a76-9bc2-7406616196c6",
         "role": "user",
         "status": "ready",
         "content": "What should I focus on this week?",
@@ -17,10 +18,12 @@
         "reasoning_summary": null,
         "disclaimer": null,
         "sources": null,
-        "created_at": "2026-11-05T21:34:45.065646+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.884805+00:00"
       },
       {
-        "id": "44501724-60de-4a33-bff2-a9c03a551919",
+        "id": "b189e2da-374b-4630-8ce2-a8f972d0e318",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
@@ -45,7 +48,9 @@
             "label": "Today's mission"
           }
         ],
-        "created_at": "2026-11-05T21:34:45.066646+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.885805+00:00"
       }
     ]
   },

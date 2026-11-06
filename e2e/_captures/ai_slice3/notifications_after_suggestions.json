@@ -1,0 +1,41 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "c0380fe7-11f2-47cd-9e26-c84a069dba56",
+        "type": "ai.suggestion.created",
+        "title": "Your AI Co-Founder has a suggestion for you",
+        "body": "See suggested actions",
+        "data": {
+          "notify": true,
+          "source": "health",
+          "user_id": "ef68e558-a4e9-4ceb-9be2-407fc0f5818f",
+          "startup_id": "3d5c5a58-2dee-4e8a-9168-edccf1d40f82",
+          "suggestion_id": "625ccd7e-bdcd-403c-b842-efc4e973102b"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "ai",
+        "created_at": "2026-11-06T19:06:29.074604+00:00"
+      },
+      {
+        "id": "8f5006e5-82c0-4e2b-a107-b2a8535e643a",
+        "type": "notification.onboarding_complete",
+        "title": "Your workspace is ready",
+        "body": "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+        "data": {
+          "user_id": "ef68e558-a4e9-4ceb-9be2-407fc0f5818f",
+          "startup_id": "3d5c5a58-2dee-4e8a-9168-edccf1d40f82"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-06T19:06:27.787904+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

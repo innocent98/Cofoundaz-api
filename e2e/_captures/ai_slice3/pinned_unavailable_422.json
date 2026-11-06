@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That specialist isn't available yet.",
+    "field_errors": []
+  }
+}

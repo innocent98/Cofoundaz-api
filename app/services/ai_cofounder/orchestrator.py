@@ -20,15 +20,16 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logger import log
-from app.db.models.ai_chat import AiAgentRoute, AiConversation, AiMessage
+from app.db.models.ai_chat import AiAction, AiAgentRoute, AiConversation, AiMessage
 from app.db.models.enums import ChatMessageRole, ChatMessageStatus
 from app.db.models.job import Job
 from app.db.models.startup import Startup
 from app.platform.events import event_bus
 from app.platform.llm import EmptyCompletionError
 from app.platform.llm_budget import headroom, metered_complete
+from app.services.ai_cofounder.actions import Proposal, extract_actions
 from app.services.ai_cofounder.agents import AGENTS
-from app.services.ai_cofounder.context import build_context
+from app.services.ai_cofounder.context import build_context, milestone_keys
 from app.services.ai_cofounder.prompts import build_agent_messages
 from app.services.ai_cofounder.router import RouteDecision, route_message
 from app.services.ai_cofounder.service import BUDGET_FAILED_TEXT, REPLY_FAILED_TEXT, fail_message
@@ -112,8 +113,13 @@ def _decide_and_store(
     )
     # plain ids up front: after the commit below an expired row that was deleted cannot be read
     conv_id, startup_id, msg_id = conversation.id, conversation.startup_id, msg.id
-    d: RouteDecision = route_message(
-        db, startup_id, asked.content if asked else "", previous_agent=previous_agent
+    pinned = conversation.pinned_agent_key
+    d: RouteDecision = (
+        RouteDecision(pinned, "pinned", 1.0, "you asked for this specialist")
+        if pinned in AGENTS
+        else route_message(
+            db, startup_id, asked.content if asked else "", previous_agent=previous_agent
+        )
     )
     # Make the router's debit durable before anything else is written or locked: a Cancel or a
     # DELETE landing now can no longer take the router tokens with it (review of #228).
@@ -168,13 +174,14 @@ _REASON = {
     "carryover": "this continues your last topic",
     "llm": "the orchestrator classified your message as {topic}",
     "fallback": "there was no clear match, so the Strategist took it",
+    "pinned": "you asked for this specialist",
 }
 
 
-def _end_failed(db: Session, msg: AiMessage, text: str) -> None:
-    """Fail the turn (unless it was deleted or already ended) and commit."""
+def _end_failed(db: Session, msg: AiMessage, text: str, generation: int) -> None:
+    """Fail the turn (unless it was deleted, already ended or regenerated) and commit."""
     if _turn_still_exists(db, msg):
-        fail_message(db, msg, text)
+        fail_message(db, msg, text, generation=generation)
     db.commit()
 
 
@@ -185,15 +192,24 @@ def _store_reply(
     text: str,
     used: list[dict[str, str]],
     conversation: AiConversation,
+    keys: dict[str, uuid.UUID],
+    gen: int,
 ) -> None:
     """From the lock to the commit nothing can fail: the model call is already paid for."""
     agent = AGENTS[route.agent_key]
+    text, proposals = extract_actions(text, agent.actions, keys)  # never raises
+    if not text:
+        text = "I've put a suggestion below for you to confirm."
     reason = _REASON.get(route.method, "").format(topic=agent.topic)
     changed = cast(
         CursorResult,
         db.execute(
             update(AiMessage)
-            .where(AiMessage.id == msg.id, AiMessage.status == ChatMessageStatus.generating)
+            .where(
+                AiMessage.id == msg.id,
+                AiMessage.status == ChatMessageStatus.generating,
+                AiMessage.generation == gen,
+            )
             .values(
                 content=text.strip(),
                 status=ChatMessageStatus.ready,
@@ -205,6 +221,7 @@ def _store_reply(
         ),
     ).rowcount
     if changed:
+        _save_proposals(db, msg, conversation.startup_id, proposals)
         event_bus.publish(
             db,
             "ai.cofounder.reply.completed",
@@ -219,6 +236,29 @@ def _store_reply(
     db.commit()  # the reply (or the discard after a Cancel) and the debit land together
 
 
+def _save_proposals(
+    db: Session, msg: AiMessage, startup_id: uuid.UUID, proposals: list[Proposal]
+) -> None:
+    """Best effort in a savepoint: the reply is already paid for, so a bad proposal row must
+    cost the chips, never the reply or its debit."""
+    for i, p in enumerate(proposals):
+        try:
+            with db.begin_nested():
+                db.add(
+                    AiAction(
+                        message_id=msg.id,
+                        startup_id=startup_id,
+                        kind=p.kind,
+                        position=i,
+                        payload=p.payload,
+                        status="proposed",
+                    )
+                )
+                db.flush()
+        except Exception as exc:  # noqa: BLE001
+            log.warning(f"[ai] could not save a proposed action for {msg.id}: {exc}")
+
+
 def run_reply(db: Session, job: Job) -> None:
     try:
         msg = db.get(AiMessage, uuid.UUID(str(job.payload.get("message_id"))))
@@ -230,6 +270,9 @@ def run_reply(db: Session, job: Job) -> None:
         or msg.status != ChatMessageStatus.generating  # done, failed, or cancelled: nothing to do
     ):
         return
+    gen = int(job.payload.get("generation", 0))
+    if gen != msg.generation:
+        return  # queued before a regenerate: the newer job owns this turn
     conversation = db.get(AiConversation, msg.conversation_id)
     startup = db.get(Startup, conversation.startup_id) if conversation else None
     if conversation is None or startup is None:
@@ -249,17 +292,19 @@ def run_reply(db: Session, job: Job) -> None:
         if conversation.created_by
         else None
     )
+    keys = milestone_keys(db, startup) if agent.actions else {}
     messages = build_agent_messages(
         agent=agent,
         context=context,
         history=[(m.role.value, m.content) for m in prior if m.content],
         tone=tone,
+        propose_actions=bool(agent.actions),
     )
     # Pre-flight: refuse when what is left of today's allowance cannot cover this call, instead of
     # overshooting the cap by one big turn. Nothing is called or spent.
     left = headroom(db, startup.id)
     if left is not None and left < _input_tokens_estimate(messages) + settings.LLM_CHAT_MAX_TOKENS:
-        _end_failed(db, msg, BUDGET_FAILED_TEXT)
+        _end_failed(db, msg, BUDGET_FAILED_TEXT, gen)
         return
     try:
         text = metered_complete(db, startup.id, messages, max_tokens=settings.LLM_CHAT_MAX_TOKENS)
@@ -272,12 +317,12 @@ def run_reply(db: Session, job: Job) -> None:
         ):
             raise  # the runner rolls back and retries with backoff; the route is already stored
         log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
-        _end_failed(db, msg, REPLY_FAILED_TEXT)
+        _end_failed(db, msg, REPLY_FAILED_TEXT, gen)
         return
     if text is None:  # over budget: no templated fallback for a chat turn
-        _end_failed(db, msg, BUDGET_FAILED_TEXT)
+        _end_failed(db, msg, BUDGET_FAILED_TEXT, gen)
         return
     if not _turn_still_exists(db, msg):
         db.commit()  # deleted while the model ran: the call is paid for, so bill it
         return
-    _store_reply(db, msg, route, text, used, conversation)
+    _store_reply(db, msg, route, text, used, conversation, keys, gen)
