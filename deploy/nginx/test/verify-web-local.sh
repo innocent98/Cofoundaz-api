@@ -10,11 +10,22 @@
 #
 # USAGE
 #   WEB_IMAGE=cofoundaz-web:local ./deploy/nginx/test/verify-web-local.sh
+#   EDGE_LAYOUT=full ...   # the full deploy/nginx layout on nginx 1.27
+#
+# Default EDGE_LAYOUT=standalone runs on nginx 1.24 (Ubuntu's stock version on
+# the VPS) with ONLY the two rendered site files - no conf.d, no snippets - to
+# prove the standalone files really stand alone.
 #
 # Placeholder hosts only (*.example.test); real names come from the runbook.
 set -euo pipefail
 
-NGINX_IMAGE="${NGINX_IMAGE:-nginx:1.27-alpine}"
+EDGE_LAYOUT="${EDGE_LAYOUT:-standalone}"
+if [ "${EDGE_LAYOUT}" = standalone ]; then
+    NGINX_IMAGE="${NGINX_IMAGE:-nginx:1.24-alpine}"
+else
+    NGINX_IMAGE="${NGINX_IMAGE:-nginx:1.27-alpine}"
+fi
+export EDGE_LAYOUT
 WEB_IMAGE="${WEB_IMAGE:-cofoundaz-web:local}"
 WEB_PORT="${WEB_PORT:-3911}"
 HTTP_PORT="${HTTP_PORT:-18180}"
@@ -51,16 +62,18 @@ WEB_ENV=staging WEB_SERVER_NAMES="${STG}" WEB_CERT_NAME="${STG}" WEB_PORT="${WEB
 # Production as recommended: www serves, apex only redirects to it.
 WEB_ENV=production WEB_SERVER_NAMES="${PROD_ALT}" WEB_REDIRECT_NAMES="${PROD}" WEB_CERT_NAME="${PROD}" WEB_PORT="${WEB_PORT}" \
     OUT_DIR="${WORK}/r-prod" "${SRC}/web/render.sh" >/dev/null
-cp "${SRC}"/conf.d/*.conf "${WORK}/etc/conf.d/"
-cp "${SRC}"/snippets/*.conf "${WORK}/etc/snippets/cofoundaz/"
-for r in r-stg r-prod; do
-    cp "${WORK}/${r}"/conf.d/*.conf "${WORK}/etc/conf.d/"
-    cp "${WORK}/${r}"/snippets/cofoundaz/*.conf "${WORK}/etc/snippets/cofoundaz/"
-done
+if [ "${EDGE_LAYOUT}" = full ]; then
+    cp "${SRC}"/conf.d/*.conf "${WORK}/etc/conf.d/"
+    cp "${SRC}"/snippets/*.conf "${WORK}/etc/snippets/cofoundaz/"
+    for r in r-stg r-prod; do
+        cp "${WORK}/${r}"/conf.d/*.conf "${WORK}/etc/conf.d/"
+        cp "${WORK}/${r}"/snippets/cofoundaz/*.conf "${WORK}/etc/snippets/cofoundaz/"
+    done
+fi
 cp "${WORK}/r-stg/sites-available/web-staging.conf"     "${WORK}/etc/conf.d/60-web-staging.conf"
 cp "${WORK}/r-prod/sites-available/web-production.conf" "${WORK}/etc/conf.d/61-web-production.conf"
 # Mutation: the upstream is the host, not the nginx container's own loopback.
-sed -i.bak "s#server 127.0.0.1:${WEB_PORT}#server host.docker.internal:${WEB_PORT}#" "${WORK}"/etc/conf.d/21-web-*-upstream.conf
+sed -i.bak "s#server 127.0.0.1:${WEB_PORT}#server host.docker.internal:${WEB_PORT}#" "${WORK}"/etc/conf.d/*.conf
 rm -f "${WORK}"/etc/conf.d/*.bak
 for h in "${STG}" "${PROD}"; do
     mkdir -p "${WORK}/letsencrypt/live/${h}"
@@ -88,7 +101,7 @@ ARGS=(--add-host "host.docker.internal:host-gateway"
       -v "${WORK}/etc/snippets:/etc/nginx/snippets:ro" -v "${WORK}/letsencrypt:/etc/letsencrypt:ro"
       -v "${WORK}/certbot:/var/www/certbot:ro" -v "${WORK}/log:/var/log/nginx")
 
-echo "==> [2/4] nginx -t (API + web vhosts together)"
+echo "==> [2/4] nginx -t (${EDGE_LAYOUT} layout on ${NGINX_IMAGE})"
 docker run --rm "${ARGS[@]}" "${NGINX_IMAGE}" nginx -t > "${WORK}/t.log" 2>&1 || true; grep -E "warn|emerg" "${WORK}/t.log" || true
 if grep -q "test is successful" "${WORK}/t.log"; then ok "configuration parses"; else bad "configuration does not parse"; exit 1; fi
 # ssl_stapling warnings are expected: self-signed certs carry no OCSP URL.
@@ -96,7 +109,7 @@ lacks "no nginx warnings (besides self-signed OCSP)" "[warn]" "$(grep -v 'ssl_st
 
 # Bootstrap (first-cert) sites must load with NO certificates present.
 mkdir -p "${WORK}/boot/conf.d"
-cp "${SRC}"/conf.d/10-hardening.conf "${WORK}/boot/conf.d/"
+[ "${EDGE_LAYOUT}" = full ] && cp "${SRC}"/conf.d/10-hardening.conf "${WORK}/boot/conf.d/"
 cp "${WORK}/r-stg/sites-available/web-staging-bootstrap.conf" "${WORK}/r-prod/sites-available/web-production-bootstrap.conf" "${WORK}/boot/conf.d/"
 if docker run --rm -v "${WORK}/etc/nginx.conf:/etc/nginx/nginx.conf:ro" -v "${WORK}/boot/conf.d:/etc/nginx/conf.d:ro" \
      -v "${WORK}/etc/snippets:/etc/nginx/snippets:ro" "${NGINX_IMAGE}" nginx -t >/dev/null 2>&1; then
