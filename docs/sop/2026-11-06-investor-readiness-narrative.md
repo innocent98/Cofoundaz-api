@@ -31,7 +31,7 @@
 
 **Verification**
 
-- `tests/services/readiness/test_narrative.py` (54): quote numbers, claim cleaning (invented, misread, unknown, overflow, dashes, targets, formats, funds quotes), comparator bands and copy, facts (books vs model vs funding vs team), draft, create/run/reuse/cooldown, budget gates, failures (provider retry, over budget at run, processing after the paid call keeps the debit), deck file gone, draft cleared, reconcile, stale, score signals, history, strict schema.
+- `tests/services/readiness/test_narrative.py` (53): quote numbers, claim cleaning (invented, misread, unknown, overflow, dashes, targets, formats, funds quotes), comparator bands and copy, facts (books vs model vs funding vs team), draft, create/run/reuse/cooldown, budget gates, failures (provider retry, over budget at run, processing after the paid call keeps the debit), deck file gone, draft cleared, reconcile, stale, score signals, history, strict schema.
 - `tests/api/test_readiness_narrative_api.py`: all 7 roles on all 4 routes, full flow, validation, tenancy, 429.
 - `tests/test_readiness_migration.py`: 0103 in the chain; downgrade drops both tables, upgrade restores, `alembic check` clean.
 - Live journey `e2e/test_readiness_narrative.py` on a scratch stack: scripted captures `e2e/_captures/readiness_narrative/`, and a **real-model** run of the extraction (`NARRATIVE_E2E_REAL_LLM=1`) in `e2e/_captures/readiness_narrative_real/`: 6 claims kept, 1 dropped, the planted ₦2M vs ₦1.6M disagreement found, **1,329 tokens** per check (spec estimate 8k).
