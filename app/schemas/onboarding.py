@@ -4,8 +4,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from app.db.models.enums import BusinessModel, StartupStage
-from app.schemas.team import InvitableRole
+from app.db.models.enums import BusinessModel, MembershipRole, StartupStage
 
 # The eight goal chips of the onboarding wizard (PRD §01.6 step 4, D-AUTH-7). Stored as these
 # exact labels; anything else is rejected, so a goal can never carry markup or free text.
@@ -178,7 +177,7 @@ class InviteItem(BaseModel):
     # (`status: "invalid"`) instead of failing the whole request, so the FE can show which
     # rows to fix. Validated per row in `create_invitations`.
     email: str = Field(max_length=320)
-    role: InvitableRole
+    role: MembershipRole
 
 
 class InvitesRequest(BaseModel):

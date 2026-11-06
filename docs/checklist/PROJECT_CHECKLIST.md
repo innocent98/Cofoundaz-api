@@ -660,7 +660,7 @@ Source: `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md` (build-order step
 - [x] Gap 22: invite subject `{Founder} invited you to join {Startup} on Cofoundaz`, brand colours, password-changed notice
 - [x] Gap 25: note only (access tokens outlive sign-out; in the FE guide)
 - [x] D-AUTH-6 backend: `X-Auth-Mode: cookie` session mode, `refresh_token: null` in the body, CSRF guard on refresh and logout, `expires_in`
-- [x] Opus review fixes (2026-11-05): reuse revocation committed, CSRF token-source order, atomic reservation, known-address exemption + /64, mail caps per (email, IP), decline-invitation endpoint, backup-code race, bcrypt on unknown emails, no `investor` in onboarding invites
+- [x] Opus review fixes (2026-11-05): reuse revocation committed, CSRF token-source order, atomic reservation, known-address exemption + /64, mail caps per (email, IP), decline-invitation endpoint, backup-code race, bcrypt on unknown emails
 - [x] Live e2e journey + captures + SOP + FE guide
 - [ ] FE PR (gaps 2, 5, 8, 9, 10, 12, 13, 15, 16, 18, 20, 23, 24; 17 and 19 after D-AUTH-5 / -7): not started
 - [ ] Re-walk every control on merged develop, all roles, 1440 + 375

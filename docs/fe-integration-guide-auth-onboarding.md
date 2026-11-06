@@ -264,7 +264,7 @@ POST /api/v1/onboarding/invites
     {"email": "<founder's own email>", "status": "skipped", "reason": "self_invite", "message": "That's your own email address."}]}, "meta": null}
 ```
 `results` has one entry per submitted row, in order. `status` is `created`, `skipped` or `invalid`; `message` is the line to show beside the row.
-Other reasons, unit-tested only: `already_invited`, `already_member`. The `investor` role is no longer accepted here (422); use the six roles of the invite modal. An invalid address is never stored or emailed. `created`/`skipped`/
+Other reasons, unit-tested only: `already_invited`, `already_member`. The `investor` role is still accepted by this endpoint (unchanged; the wizard hides it per D-AUTH-4). An invalid address is never stored or emailed. `created`/`skipped`/
 `undelivered` stay for older callers (invalid rows appear only in `results`). `POST /team/invitations` returns the same `results`.
 **FE:** the request no longer fails as a whole for one bad address: render the failed rows and let the user fix them before Continue.
 

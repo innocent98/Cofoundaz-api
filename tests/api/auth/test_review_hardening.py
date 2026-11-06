@@ -257,10 +257,11 @@ def test_every_failed_login_runs_one_password_check(client, db, monkeypatch):
     assert len(calls) == 3 and all(c.startswith("$2") for c in calls)
 
 
-# 9. onboarding invites cannot offer the investor role
+# 9. the onboarding invite roles are unchanged: `investor` stays accepted by the API (the wizard
+# hides it per D-AUTH-4; e2e journeys still invite one this way)
 
 
-def test_the_investor_role_cannot_be_invited_from_onboarding(client, db):
+def test_the_investor_role_is_still_accepted_by_onboarding_invites(client, db):
     from tests.auth_helpers import bearer
 
     user = active_user(db, "inviter@x.com")
@@ -271,7 +272,7 @@ def test_the_investor_role_cannot_be_invited_from_onboarding(client, db):
         headers=bearer(user),
         json={"invites": [{"email": "inv@x.com", "role": "investor"}]},
     )
-    assert r.status_code == 422
+    assert r.status_code == 200, r.text
 
 
 # fix-check follow-ups
