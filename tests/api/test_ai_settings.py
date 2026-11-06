@@ -11,7 +11,8 @@ from app.db.models.enums import AssessmentStatus, BriefingStatus, MembershipRole
 from app.db.models.job import Job
 from app.db.models.notification import Notification
 from app.platform.events import DispatchingEventBus
-from app.services.ai_cofounder.prompts import build_cofounder_messages
+from app.services.ai_cofounder.agents import AGENTS
+from app.services.ai_cofounder.prompts import build_agent_messages
 from app.services.ai_preferences import (
     DEFAULT_TONE,
     TONES,
@@ -233,19 +234,12 @@ def test_tone_is_a_fixed_sentence_never_free_text(db):
 
 
 def test_tone_reaches_the_chat_and_briefing_prompts():
-    chat = build_cofounder_messages(
-        name="A",
-        industry=None,
-        stage=None,
-        description=None,
-        goals=[],
-        history=[("user", "hi")],
-        tone="straight_shooter",
+    agent = AGENTS["strategist"]
+    chat = build_agent_messages(
+        agent=agent, context="", history=[("user", "hi")], tone="straight_shooter"
     )
     assert tone_instruction("straight_shooter") in chat[0].content
-    default = build_cofounder_messages(
-        name="A", industry=None, stage=None, description=None, goals=[], history=[("user", "hi")]
-    )
+    default = build_agent_messages(agent=agent, context="", history=[("user", "hi")])
     assert tone_instruction(DEFAULT_TONE) in default[0].content
     brief = build_dashboard_briefing_messages(
         name="A",

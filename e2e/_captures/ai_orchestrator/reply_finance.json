@@ -1,0 +1,49 @@
+{
+  "data": {
+    "id": "40bb03ff-c944-485b-8e36-1795b1bda8f5",
+    "title": "How long is my runway?",
+    "topic": "finance",
+    "archived_at": null,
+    "created_at": "2026-11-05T21:34:44.978630+00:00",
+    "updated_at": "2026-11-05T21:34:46.807616+00:00",
+    "messages": [
+      {
+        "id": "dd65be0d-ea5c-4920-babe-87062fc3378c",
+        "role": "user",
+        "status": "ready",
+        "content": "How long is my runway?",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "created_at": "2026-11-05T21:34:44.992424+00:00"
+      },
+      {
+        "id": "e7209239-b0bd-446c-b3c0-12f6c8a720f5",
+        "role": "assistant",
+        "status": "ready",
+        "content": "[stub-llm] AI-generated assessment narrative.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "finance",
+          "name": "Finance Advisor"
+        },
+        "reasoning_summary": "Answered by the Finance Advisor because your message is about finance. I used: Your startup profile, Your finance snapshot.",
+        "disclaimer": "This is general guidance based on the figures in your workspace, not financial, tax or investment advice. Check important decisions with a qualified accountant or adviser.",
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          },
+          {
+            "key": "finance",
+            "label": "Your finance snapshot"
+          }
+        ],
+        "created_at": "2026-11-05T21:34:44.993424+00:00"
+      }
+    ]
+  },
+  "meta": null
+}
