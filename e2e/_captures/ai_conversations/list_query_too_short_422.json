@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "query must be 2 to 100 characters.",
+    "field_errors": []
+  }
+}

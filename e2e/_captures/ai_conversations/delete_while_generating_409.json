@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REPLY_IN_PROGRESS",
+    "message": "A reply is still being generated. Wait for it to finish, then delete.",
+    "field_errors": []
+  }
+}

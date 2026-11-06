@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "topic must be one of: strategy, finance, legal, mentoring.",
+    "field_errors": []
+  }
+}

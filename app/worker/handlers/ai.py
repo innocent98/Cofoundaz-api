@@ -526,6 +526,14 @@ def handle_journal_prompt(db: Session, job: Job) -> None:
 register_handler("ai.journal.prompt", handle_journal_prompt)
 
 
+def _turn_still_exists(db: Session, msg: AiMessage) -> bool:
+    """Re-read the assistant row under a row lock after the model call: a concurrent DELETE of
+    the conversation then waits for us, or has already removed the row."""
+    return (
+        db.query(AiMessage.id).filter(AiMessage.id == msg.id).with_for_update().first() is not None
+    )
+
+
 def handle_cofounder_reply(db: Session, job: Job) -> None:
     """Fill the assistant turn of an AI Co-Founder chat via the LLM (prose). No commit.
 
@@ -590,11 +598,18 @@ def handle_cofounder_reply(db: Session, job: Job) -> None:
         ):
             raise  # let the runner retry with backoff
         log.error(f"[ai] cofounder reply {msg.id} failed on attempt {job.attempts}: {exc}")
-        fail_message(db, msg, REPLY_FAILED_TEXT)
+        if _turn_still_exists(db, msg):
+            fail_message(db, msg, REPLY_FAILED_TEXT)
         return
     if text is None:
         # over budget — no templated fallback for a chat turn
-        fail_message(db, msg, BUDGET_FAILED_TEXT)
+        if _turn_still_exists(db, msg):
+            fail_message(db, msg, BUDGET_FAILED_TEXT)
+        return
+    if not _turn_still_exists(db, msg):
+        # Deleted while the model ran. The call is paid for and its debit is in this session:
+        # return normally so it commits with the job (writing to the gone row would raise,
+        # roll the savepoint back with the debit, and make the spend free).
         return
     msg.content = text.strip()
     msg.status = ChatMessageStatus.ready

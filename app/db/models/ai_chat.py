@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,6 +29,10 @@ class AiConversation(UUIDMixin, TimestampMixin, Base):
     )
     # Auto-derived from the first user message; nullable until one exists.
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # One of ai_cofounder.topics.TOPICS; null until the first reply is routed (slice 2).
+    topic: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+    # Archived conversations leave the default list and are not searchable (D-AI-4).
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AiMessage(UUIDMixin, TimestampMixin, Base):
