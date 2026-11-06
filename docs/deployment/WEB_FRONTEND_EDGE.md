@@ -13,13 +13,15 @@ Pairs with the `cofoundaz` repo: `deploy/docker-compose.web.yml`, `deploy/web-de
 | `deploy/nginx/web/snippets/web-security-headers.conf` | `/etc/nginx/snippets/cofoundaz/` | HTML-app headers. Not the API's base snippet: its COOP `same-origin` breaks the Google, Paystack and Mono popups |
 | `deploy/nginx/web/web-site.conf.template` | `/etc/nginx/sites-available/web-<env>.conf` | :80 ACME + 301, :443 h2 → upstream; `/healthz`, `/_next/static/`, `/`; staging sends `X-Robots-Tag: noindex` |
 | `deploy/nginx/web/web-bootstrap.conf.template` | `/etc/nginx/sites-available/web-<env>-bootstrap.conf` | first cert only: :80 ACME, 404 otherwise; removed once the full site is on |
-| `deploy/nginx/web/render.sh` | (run anywhere) | fills the templates for one environment into `OUT_DIR`; installs nothing |
+| `deploy/nginx/web/render.sh` | (run anywhere) | fills the templates for one environment into `OUT_DIR`; installs nothing. Optional `WEB_REDIRECT_NAMES` adds a :443 block that 301s those names to the first server name |
 | `deploy/nginx/test/verify-web-local.sh` | — | local proof: renders both environments, `nginx -t` alongside the API vhosts, 28 assertions against a real web container |
 
 ## Prerequisites (Adebayo)
 1. Hostnames decided. Production may serve two names (apex + www) on one cert.
 2. DNS A record(s) → VPS IP, propagated (`dig +short <host>`). AAAA only if IPv6 really works; CAA must allow `letsencrypt.org` ([NGINX_TLS.md §3](./NGINX_TLS.md)).
-3. **During the Vercel cutover:** HTTP-01 needs the name to resolve to the VPS, so the **production** cert can only be issued once `www`/apex point here. Do staging first. For production, either flip DNS then issue right away (a short window where HTTPS fails; keep TTL at 300), or issue via DNS-01 beforehand (manual TXT record, `certbot certonly --manual --preferred-challenges dns`) so the cert exists before the flip. **Recommended: DNS-01 for the first production cert**, then switch it to webroot renewal (below).
+3. **State on 2026-11-06:** `cofoundaz.com` and `www.cofoundaz.com` **already resolve to this VPS** (DNS at Cloudoon) but have no site or cert, so the public site is down until production is applied. Do **production first**; HTTP-01 webroot works right away. `stage.cofoundaz.com` has no record yet: add an `A` record before its step.
+4. Recommended production shape: `WEB_SERVER_NAMES="www.cofoundaz.com"`, `WEB_REDIRECT_NAMES="cofoundaz.com"` (the apex 301s to www, so the browser sees one origin), one cert `--cert-name www.cofoundaz.com -d www.cofoundaz.com -d cofoundaz.com`. The exact copy-paste sequence for production is in the `cofoundaz` repo: `docs/sop/2026-11-06-fe-vps-deploy.md`, "Go-live runbook".
+5. **Memory:** 7.8 GiB RAM, no swap, and container limits already above physical RAM. Add a 2 GiB swapfile first (step 1 of that runbook).
 
 ## Apply (one environment at a time, staging first)
 
@@ -65,20 +67,20 @@ Then check through nginx before any web container exists (expect 502, which prov
 curl -sS -o /dev/null -w '%{http_code}\n' https://<STAGING_WEB_HOST>/healthz
 ```
 
-Production is the same with `WEB_ENV=production`, `WEB_SERVER_NAMES="<PROD_WEB_HOST> <PROD_WEB_ALT_HOST>"`, `WEB_CERT_NAME=<PROD_WEB_HOST>`, `-d <PROD_WEB_HOST> -d <PROD_WEB_ALT_HOST>`.
+Production is the same with `WEB_ENV=production WEB_SERVER_NAMES="www.cofoundaz.com" WEB_REDIRECT_NAMES="cofoundaz.com" WEB_CERT_NAME=www.cofoundaz.com WEB_PORT=3000`, `certbot ... --cert-name www.cofoundaz.com -d www.cofoundaz.com -d cofoundaz.com`.
 
 ## Renewal
-Webroot renewal works unchanged: the :80 block serves `/.well-known/acme-challenge/` from `/var/www/certbot`. Verify with `sudo certbot renew --dry-run --cert-name <host>` (NGINX_TLS.md §6). A cert first issued with `--manual` DNS-01 will **not** renew by itself: re-issue it once with `--webroot` after DNS points here.
+Webroot renewal works unchanged: the :80 block serves `/.well-known/acme-challenge/` from `/var/www/certbot`. Verify with `sudo certbot renew --dry-run --cert-name <host>` (NGINX_TLS.md §6). 
 
 ## Roll back
 - Edge only: `sudo rm /etc/nginx/sites-enabled/web-<env>.conf && sudo nginx -t && sudo systemctl reload nginx`. The API vhosts are untouched by these files.
-- Cutover: point DNS back at Vercel (keep the Vercel project for at least a week).
+- There is no Vercel DNS fallback (DNS already points here); roll back the app with the FE workflow's `image_tag` input.
 
 ## Before the first user hits the new host (not edge, but blocking)
 API `.env.<env>`: add the web origin(s) to `BACKEND_CORS_ORIGINS`, set `APP_BASE_URL`, re-encrypt, redeploy the API. Also update provider callbacks naming the web host (Google OAuth, Paystack, Flutterwave, Mono, LinkedIn). `security-headers-base.conf`'s CORP `same-site` stays right as long as the web host is under the same registrable domain as the API.
 
 ## Not verified
-A real Let's Encrypt cert, a real handshake, the DNS-01 path, renewal, and nginx on the VPS version. `verify-web-local.sh` proves parsing and behaviour with self-signed certs only.
+A real Let's Encrypt cert, a real handshake, renewal, and nginx on the VPS version. `verify-web-local.sh` proves parsing and behaviour with self-signed certs only.
 
 ## Follow-ups
 - Content-Security-Policy for the HTML app (needs nonces in Next first).

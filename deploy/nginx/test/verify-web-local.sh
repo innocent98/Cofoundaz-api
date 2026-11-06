@@ -48,7 +48,8 @@ echo "==> [1/4] Rendering both web environments + assembling /etc/nginx"
 mkdir -p "${WORK}/etc/conf.d" "${WORK}/etc/snippets/cofoundaz" "${WORK}/certbot/.well-known/acme-challenge" "${WORK}/log"
 WEB_ENV=staging WEB_SERVER_NAMES="${STG}" WEB_CERT_NAME="${STG}" WEB_PORT="${WEB_PORT}" \
     OUT_DIR="${WORK}/r-stg" "${SRC}/web/render.sh" >/dev/null
-WEB_ENV=production WEB_SERVER_NAMES="${PROD} ${PROD_ALT}" WEB_CERT_NAME="${PROD}" WEB_PORT="${WEB_PORT}" \
+# Production as recommended: www serves, apex only redirects to it.
+WEB_ENV=production WEB_SERVER_NAMES="${PROD_ALT}" WEB_REDIRECT_NAMES="${PROD}" WEB_CERT_NAME="${PROD}" WEB_PORT="${WEB_PORT}" \
     OUT_DIR="${WORK}/r-prod" "${SRC}/web/render.sh" >/dev/null
 cp "${SRC}"/conf.d/*.conf "${WORK}/etc/conf.d/"
 cp "${SRC}"/snippets/*.conf "${WORK}/etc/snippets/cofoundaz/"
@@ -93,6 +94,17 @@ if grep -q "test is successful" "${WORK}/t.log"; then ok "configuration parses";
 # ssl_stapling warnings are expected: self-signed certs carry no OCSP URL.
 lacks "no nginx warnings (besides self-signed OCSP)" "[warn]" "$(grep -v 'ssl_stapling' "${WORK}/t.log" || true)"
 
+# Bootstrap (first-cert) sites must load with NO certificates present.
+mkdir -p "${WORK}/boot/conf.d"
+cp "${SRC}"/conf.d/10-hardening.conf "${WORK}/boot/conf.d/"
+cp "${WORK}/r-stg/sites-available/web-staging-bootstrap.conf" "${WORK}/r-prod/sites-available/web-production-bootstrap.conf" "${WORK}/boot/conf.d/"
+if docker run --rm -v "${WORK}/etc/nginx.conf:/etc/nginx/nginx.conf:ro" -v "${WORK}/boot/conf.d:/etc/nginx/conf.d:ro" \
+     -v "${WORK}/etc/snippets:/etc/nginx/snippets:ro" "${NGINX_IMAGE}" nginx -t >/dev/null 2>&1; then
+    ok "bootstrap sites parse without any certificate"
+else
+    bad "bootstrap sites do not parse"
+fi
+
 echo "==> [3/4] Starting web (${WEB_IMAGE}) on 127.0.0.1:${WEB_PORT} and nginx"
 docker run -d --name "${WEB_CT}" -p "127.0.0.1:${WEB_PORT}:3000" --read-only \
     --tmpfs /tmp --tmpfs /app/.next/cache:uid=1000,gid=1000 "${WEB_IMAGE}" >/dev/null
@@ -102,7 +114,14 @@ for _ in $(seq 1 30); do curl -fs "http://127.0.0.1:${WEB_PORT}/healthz" >/dev/n
 S() { curl -sk --resolve "$1:${HTTPS_PORT}:127.0.0.1" "${@:2}"; }
 
 echo "==> [4/4] Assertions"
-for h in "${STG}" "${PROD}" "${PROD_ALT}"; do
+expect "apex https -> 301 to www" "301 https://${PROD_ALT}/x?y=1" \
+    "$(S "${PROD}" -o /dev/null -w '%{http_code} %{redirect_url}' "https://${PROD}:${HTTPS_PORT}/x?y=1" | sed "s#:${HTTPS_PORT}##")"
+for h in "${PROD}" ""; do [ -n "${h}" ] || continue  # apex: redirect-only, still answers ACME on :80
+    expect "${h}: http -> 301" 301 "$(curl -s --resolve "${h}:${HTTP_PORT}:127.0.0.1" -o /dev/null -w '%{http_code}' "http://${h}:${HTTP_PORT}/x")"
+    expect "${h}: ACME challenge served over http" "acme-token-body" \
+        "$(curl -s --resolve "${h}:${HTTP_PORT}:127.0.0.1" "http://${h}:${HTTP_PORT}/.well-known/acme-challenge/verify-token")"
+done
+for h in "${STG}" "${PROD_ALT}"; do
     expect "${h}: /healthz via nginx+TLS -> 200" 200 "$(S "${h}" -o /dev/null -w '%{http_code}' "https://${h}:${HTTPS_PORT}/healthz")"
     expect "${h}: / -> 200" 200 "$(S "${h}" -o /dev/null -w '%{http_code}' "https://${h}:${HTTPS_PORT}/")"
     expect "${h}: http -> 301" 301 "$(curl -s --resolve "${h}:${HTTP_PORT}:127.0.0.1" -o /dev/null -w '%{http_code}' "http://${h}:${HTTP_PORT}/x")"
@@ -110,7 +129,7 @@ for h in "${STG}" "${PROD}" "${PROD_ALT}"; do
         "$(curl -s --resolve "${h}:${HTTP_PORT}:127.0.0.1" "http://${h}:${HTTP_PORT}/.well-known/acme-challenge/verify-token")"
 done
 HS="$(lower "$(S "${STG}" -D - -o /dev/null "https://${STG}:${HTTPS_PORT}/")")"
-HP="$(lower "$(S "${PROD}" -D - -o /dev/null "https://${PROD}:${HTTPS_PORT}/")")"
+HP="$(lower "$(S "${PROD_ALT}" -D - -o /dev/null "https://${PROD_ALT}:${HTTPS_PORT}/")")"
 contains "h2 negotiated" "http/2 200" "${HP}"
 contains "nosniff" "x-content-type-options: nosniff" "${HP}"
 contains "frame sameorigin" "x-frame-options: sameorigin" "${HP}"
@@ -120,18 +139,18 @@ lacks "no COOP (would break OAuth/payment popups)" "cross-origin-opener-policy" 
 contains "staging is noindex" "x-robots-tag: noindex" "${HS}"
 lacks "production has no x-robots-tag" "x-robots-tag" "${HP}"
 lacks "server version hidden" "server: nginx/" "${HP}"
-ASSET="$(S "${PROD}" "https://${PROD}:${HTTPS_PORT}/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
+ASSET="$(S "${PROD_ALT}" "https://${PROD_ALT}:${HTTPS_PORT}/" | grep -oE '/_next/static/[^"]+\.js' | head -1)"
 if [ -n "${ASSET}" ]; then
-    HA="$(lower "$(S "${PROD}" -D - -o /dev/null -H 'Accept-Encoding: gzip' "https://${PROD}:${HTTPS_PORT}${ASSET}")")"
+    HA="$(lower "$(S "${PROD_ALT}" -D - -o /dev/null -H 'Accept-Encoding: gzip' "https://${PROD_ALT}:${HTTPS_PORT}${ASSET}")")"
     contains "static asset 200" "http/2 200" "${HA}"
     contains "static asset immutable" "immutable" "${HA}"
     contains "static asset gzipped" "content-encoding: gzip" "${HA}"
 else
     bad "no /_next/static asset found in the home page"
 fi
-expect "TRACE -> 405" 405 "$(S "${PROD}" -o /dev/null -w '%{http_code}' -X TRACE "https://${PROD}:${HTTPS_PORT}/")"
+expect "TRACE -> 405" 405 "$(S "${PROD_ALT}" -o /dev/null -w '%{http_code}' -X TRACE "https://${PROD_ALT}:${HTTPS_PORT}/")"
 docker stop "${WEB_CT}" >/dev/null
-expect "backend down -> 502" 502 "$(S "${PROD}" -o /dev/null -w '%{http_code}' "https://${PROD}:${HTTPS_PORT}/healthz")"
+expect "backend down -> 502" 502 "$(S "${PROD_ALT}" -o /dev/null -w '%{http_code}' "https://${PROD_ALT}:${HTTPS_PORT}/healthz")"
 
 echo
 echo "passed ${PASS}, failed ${FAIL}"

@@ -6,8 +6,10 @@
 #   WEB_CERT_NAME=web-staging.example.test WEB_PORT=3001 \
 #   OUT_DIR=/tmp/web-edge ./deploy/nginx/web/render.sh
 #
-# WEB_SERVER_NAMES may hold several names (e.g. apex + www); WEB_CERT_NAME is the
-# certbot --cert-name covering all of them. WEB_ROBOTS defaults to noindex for
+# WEB_SERVER_NAMES are served by the app; WEB_REDIRECT_NAMES (optional) only
+# 301 to the FIRST server name, e.g. apex -> www, so the browser only ever sees
+# one origin (one CORS entry, one cookie host, one OAuth callback).
+# WEB_CERT_NAME is the certbot --cert-name covering ALL of them. WEB_ROBOTS defaults to noindex for
 # staging and empty for production.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -19,15 +21,43 @@ case "${WEB_ENV}" in
 esac
 printf '%s' "${WEB_PORT}" | grep -qE '^[0-9]{2,5}$' || { echo "WEB_PORT must be a number" >&2; exit 1; }
 printf '%s' "${WEB_SERVER_NAMES}" | grep -qE '^[A-Za-z0-9. -]+$' || { echo "WEB_SERVER_NAMES: host names only" >&2; exit 1; }
+WEB_REDIRECT_NAMES="${WEB_REDIRECT_NAMES:-}"
+[ -z "${WEB_REDIRECT_NAMES}" ] || printf '%s' "${WEB_REDIRECT_NAMES}" | grep -qE '^[A-Za-z0-9. -]+$' || { echo "WEB_REDIRECT_NAMES: host names only" >&2; exit 1; }
+PRIMARY="${WEB_SERVER_NAMES%% *}"
 printf '%s' "${WEB_CERT_NAME}" | grep -qE '^[A-Za-z0-9.-]+$' || { echo "WEB_CERT_NAME: one name" >&2; exit 1; }
+
+redirect_block() {
+  [ -n "${WEB_REDIRECT_NAMES}" ] || { echo "# (no redirect-only names)"; return; }
+  cat <<BLOCK
+# Redirect-only names -> https://${PRIMARY} (one browser origin).
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${WEB_REDIRECT_NAMES};
+    ssl_certificate         /etc/letsencrypt/live/${WEB_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key     /etc/letsencrypt/live/${WEB_CERT_NAME}/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/${WEB_CERT_NAME}/chain.pem;
+    include snippets/cofoundaz/web-security-headers.conf;
+    location / {
+        return 301 https://${PRIMARY}\$request_uri;
+    }
+}
+BLOCK
+}
 
 render() {
   sed -e "s|__WEB_ENV__|${WEB_ENV}|g" \
       -e "s|__WEB_SERVER_NAMES__|${WEB_SERVER_NAMES}|g" \
       -e "s|__WEB_CERT_NAME__|${WEB_CERT_NAME}|g" \
       -e "s|__WEB_PORT__|${WEB_PORT}|g" \
-      -e "s|__WEB_ROBOTS__|${WEB_ROBOTS}|g" "$1"
+      -e "s|__WEB_REDIRECT_NAMES__|${WEB_REDIRECT_NAMES}|g" \
+      -e "s|__WEB_ROBOTS__|${WEB_ROBOTS}|g" "$1" \
+    | sed -e "/^# __WEB_REDIRECT_BLOCK__\$/{r ${BLOCK_FILE}" -e "d;}"
+
 }
+BLOCK_FILE="$(mktemp)"; trap 'rm -f "${BLOCK_FILE}"' EXIT
+redirect_block > "${BLOCK_FILE}"
 mkdir -p "${OUT_DIR}/conf.d" "${OUT_DIR}/sites-available" "${OUT_DIR}/snippets/cofoundaz"
 render "${HERE}/web-upstream.conf.template" > "${OUT_DIR}/conf.d/21-web-${WEB_ENV}-upstream.conf"
 render "${HERE}/web-site.conf.template"     > "${OUT_DIR}/sites-available/web-${WEB_ENV}.conf"

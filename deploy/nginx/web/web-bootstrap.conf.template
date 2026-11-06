@@ -8,7 +8,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name __WEB_SERVER_NAMES__;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
     include snippets/cofoundaz/acme-challenge.conf;
     location / {
         return 404;

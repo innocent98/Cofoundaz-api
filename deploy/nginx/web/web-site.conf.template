@@ -9,7 +9,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name __WEB_SERVER_NAMES__;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
 
     include snippets/cofoundaz/acme-challenge.conf;
 
@@ -64,3 +64,5 @@ server {
         proxy_pass http://cofoundaz_web___WEB_ENV__;
     }
 }
+
+# __WEB_REDIRECT_BLOCK__
