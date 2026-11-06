@@ -351,7 +351,6 @@ def _solve(
         )
 
     x_exact, _, per = terms(sigma)
-    x_exact, _, per = terms(sigma)
     return x_exact, per
 
 

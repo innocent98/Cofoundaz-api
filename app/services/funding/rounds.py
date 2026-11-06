@@ -64,9 +64,13 @@ def _lost_race(db: Session, startup_id: uuid.UUID) -> FundingRound:
     return row
 
 
-def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound | None:
+def _create(
+    db: Session, startup_id: uuid.UUID, data: RoundUpdate, default_currency: str = "NGN"
+) -> FundingRound | None:
     """Insert in a savepoint. None means the one-unfinished-round index fired (a concurrent
-    create won); the caller re-reads instead of surfacing a 500."""
+    create won); the caller re-reads instead of surfacing a 500. A round created without a
+    currency carries the previous round's over (`default_currency`), so the next round never
+    silently changes what the cap table and term sheets are denominated in."""
     given = data.model_fields_set
     status = data.status.value if data.status else FundingRoundStatus.planning.value
     if status == FundingRoundStatus.closed.value:
@@ -75,7 +79,7 @@ def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRou
         startup_id=startup_id,
         name=data.name or DEFAULT_ROUND_NAME,
         status=status,
-        currency=data.currency.value if data.currency else "NGN",
+        currency=data.currency.value if data.currency else default_currency,
         target_minor=data.target_minor if "target_minor" in given else None,
         pre_money_minor=data.pre_money_minor if "pre_money_minor" in given else None,
         opened_at=datetime.now(UTC) if status == FundingRoundStatus.open.value else None,
@@ -122,8 +126,11 @@ def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> Fundi
     lock_workspace(db, startup_id)  # serialise with cap table writes
     row = active_round(db, startup_id)
     if row is None:
-        _assert_cap_currency_free(db, startup_id, data.currency.value if data.currency else "NGN")
-        row = _create(db, startup_id, data)
+        prev = latest_round(db, startup_id)
+        default_currency = prev.currency if prev else "NGN"
+        new_currency = data.currency.value if data.currency else default_currency
+        _assert_cap_currency_free(db, startup_id, new_currency)
+        row = _create(db, startup_id, data, default_currency)
         if row is not None:
             return row
         row = _lost_race(db, startup_id)  # then apply this request on top of the winner
