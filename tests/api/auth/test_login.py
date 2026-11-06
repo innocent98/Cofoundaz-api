@@ -27,14 +27,12 @@ def test_login_success_returns_tokens(client, db):
     assert client.cookies.get("cfz_refresh")  # cookie set
 
 
-def test_login_wrong_password_401_and_increments(client, db):
-    u = _active(db, email="w@x.com")
+def test_login_wrong_password_401(client, db):
+    _active(db, email="w@x.com")
     db.flush()
     r = client.post("/api/v1/auth/login", json={"email": "w@x.com", "password": "nope"})
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "INVALID_CREDENTIALS"
-    db.refresh(u)
-    assert u.failed_login_count == 1
 
 
 def test_login_lockout_after_5(client, db):

@@ -45,6 +45,17 @@ export E2E_MAIL_DIR="${MAIL_DIR}"
 # same way a local dev server over http:// would be configured.
 export REFRESH_COOKIE_SECURE="False"
 
+# Auth-surface limits (Module 01 gap 4): every journey signs up and logs in from 127.0.0.1, so
+# keep the per-route counters out of the way, like RATE_LIMIT_PER_MINUTE above. The journeys
+# sign up in bulk without the Terms checkbox, so consent is not enforced on this server either
+# (it is enforced, with the real defaults, by the unit tests and by e2e/test_auth_onboarding_gaps.py
+# when run as described in docs/sop/auth-onboarding-gaps.md).
+export AUTH_LOGIN_PER_IP_15MIN="100000" AUTH_SIGNUP_PER_IP_HOURLY="100000"
+export AUTH_FORGOT_PER_IP_HOURLY="100000" AUTH_FORGOT_PER_EMAIL_HOURLY="100000"
+export AUTH_RESEND_PER_IP_HOURLY="100000" AUTH_RESEND_PER_EMAIL_HOURLY="100000"
+export AUTH_FORGOT_PER_EMAIL_IP_HOURLY="100000" AUTH_RESEND_PER_EMAIL_IP_HOURLY="100000"
+export SIGNUP_REQUIRE_TERMS="false"
+
 # Self-contained MFA: generate an ephemeral Fernet key so the run never depends on
 # a populated .env. (Note: a real deployment MUST set a persistent MFA_ENCRYPTION_KEY.)
 export MFA_ENCRYPTION_KEY="${MFA_ENCRYPTION_KEY:-$(poetry run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')}"

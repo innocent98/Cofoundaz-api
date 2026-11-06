@@ -1,11 +1,12 @@
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import EmailDeliveryFailed, EmailTaken
+from app.core.errors import AppError, EmailDeliveryFailed, EmailTaken
 from app.core.logger import log
 from app.core.redis import get_redis
 from app.core.security import get_password_hash
@@ -18,6 +19,7 @@ from app.platform.events import event_bus
 from app.schemas.auth import EmailRequest, SignupRequest, TokenRequest
 from app.services.auth.emails import verification_email
 from app.services.auth.password import validate_password_strength
+from app.services.auth.ratelimit import enforce, ip_bucket, mail_blocked_for
 from app.services.auth.tokens import (
     consume_auth_token,
     invalidate_unconsumed_tokens,
@@ -39,6 +41,28 @@ def _send_verification(db: Session, user: User) -> None:
 def signup(
     payload: SignupRequest, request: Request, db: Session = Depends(get_db)  # noqa: B008
 ) -> dict[str, Any]:
+    ip = request.client.host if request.client else None
+    if ip:
+        # D-AUTH-1 keeps the explicit "email already has an account" answer, so volume per
+        # address is what stops address harvesting.
+        enforce(
+            "signup_ip",
+            ip_bucket(ip) or ip,
+            limit=settings.AUTH_SIGNUP_PER_IP_HOURLY,
+            window_seconds=3600,
+        )
+    if settings.SIGNUP_REQUIRE_TERMS and not payload.accepted_terms:
+        raise AppError(
+            code="TERMS_NOT_ACCEPTED",
+            message="Accept the Terms and Privacy Policy to create your account.",
+            http_status=422,
+            field_errors=[
+                {
+                    "field": "accepted_terms",
+                    "message": "Accept the Terms and Privacy Policy to continue.",
+                }
+            ],
+        )
     validate_password_strength(payload.password)
     if db.query(User).filter(User.email == payload.email).first():
         raise EmailTaken()
@@ -46,6 +70,8 @@ def signup(
         email=payload.email,
         password_hash=get_password_hash(payload.password),
         status=UserStatus.pending_verification,
+        terms_accepted_at=datetime.now(UTC) if payload.accepted_terms else None,
+        terms_version=settings.TERMS_VERSION if payload.accepted_terms else None,
     )
     user.profile = UserProfile()
     db.add(user)
@@ -55,7 +81,8 @@ def signup(
         db,
         "auth.user.registered",
         actor_user_id=user.id,
-        ip=request.client.host if request.client else None,
+        ip=ip,
+        details={"terms_version": settings.TERMS_VERSION} if payload.accepted_terms else None,
     )
     event_bus.publish(db, "auth.user.registered", {"user_id": str(user.id)})
     db.commit()
@@ -78,12 +105,31 @@ def verify(payload: TokenRequest, db: Session = Depends(get_db)) -> dict[str, An
 
 
 @router.post("/verify/resend")
-def resend(payload: EmailRequest, db: Session = Depends(get_db)) -> dict[str, Any]:  # noqa: B008
+def resend(
+    payload: EmailRequest, request: Request, db: Session = Depends(get_db)  # noqa: B008
+) -> dict[str, Any]:
+    ip = request.client.host if request.client else None
+    if ip:
+        enforce(
+            "resend_ip",
+            ip_bucket(ip) or ip,
+            limit=settings.AUTH_RESEND_PER_IP_HOURLY,
+            window_seconds=3600,
+        )
+    redis = get_redis()
     cooldown_key = f"verify_resend_cooldown:{payload.email}"
-    # setex(..., nx=True): only the first caller within the 60s window actually claims the
-    # key and proceeds to issue+send; every other caller (or a throttled retry) is a no-op
-    # but still gets the identical generic response below -- no enumeration signal either way.
-    if get_redis().set(cooldown_key, "1", ex=_RESEND_COOLDOWN_SECONDS, nx=True):
+    # The cooldown and the hourly cap are keyed on the typed address, never on whether it has an
+    # account, so `sent` / `retry_after` are the same for every address: no enumeration signal.
+    capped = mail_blocked_for(
+        "resend",
+        payload.email,
+        ip,
+        pair_limit=settings.AUTH_RESEND_PER_EMAIL_IP_HOURLY,
+        email_limit=settings.AUTH_RESEND_PER_EMAIL_HOURLY,
+    )
+    # set(..., nx=True): only the first caller within the 60s window claims the key and
+    # proceeds to issue+send; every other caller gets a no-op with the time left to wait.
+    if capped is None and redis.set(cooldown_key, "1", ex=_RESEND_COOLDOWN_SECONDS, nx=True):
         user = (
             db.query(User)
             .filter(User.email == payload.email, User.status == UserStatus.pending_verification)
@@ -99,6 +145,10 @@ def resend(payload: EmailRequest, db: Session = Depends(get_db)) -> dict[str, An
                 # would reveal that the email is registered. The cooldown still applies.
                 log.warning("verification resend failed: email provider refused the send")
             db.commit()
-    # Generic response regardless of whether the email exists or was throttled — avoids
-    # account enumeration.
-    return success_response({"sent": True})
+        return success_response({"sent": True, "retry_after": _RESEND_COOLDOWN_SECONDS})
+    if capped is not None:
+        return success_response({"sent": False, "retry_after": capped})
+    wait = int(cast(Any, redis.ttl(cooldown_key)))
+    return success_response(
+        {"sent": False, "retry_after": wait if wait > 0 else _RESEND_COOLDOWN_SECONDS}
+    )

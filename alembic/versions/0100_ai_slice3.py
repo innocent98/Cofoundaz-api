@@ -1,7 +1,7 @@
 """AI Co-Founder slice 3: actions, feedback, regenerate, suggestions, pinned agent
 
 Revision ID: 0100_ai_slice3
-Revises: 0098_ai_orchestrator
+Revises: 0096_auth_onboarding_gaps
 Create Date: 2026-11-06
 
 Adds `ai_actions` (confirm-first proposals and their undo data), `ai_suggestions` (per-member
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0100_ai_slice3"
-down_revision = "0098_ai_orchestrator"
+down_revision = "0096_auth_onboarding_gaps"
 branch_labels = None
 depends_on = None
 

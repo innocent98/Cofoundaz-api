@@ -674,3 +674,64 @@ def test_a_conversation_can_be_pinned_to_an_agent(client, db, llm):
     assert bad.status_code == 422
     assert db.query(AiConversation).filter_by(pinned_agent_key="marketing").count() == 0
     assert ChatMessageRole.assistant and ChatMessageStatus.ready
+
+
+def test_undo_refuses_after_any_edit_to_the_created_task(client, db, llm):
+    _o, s, h, _ms = _world(db)
+    _c, reply, acts = _propose(
+        client, db, h, llm, {"kind": "add_task", "title": "Edit me", "milestone": "M1"}
+    )
+    client.post(_url(reply, acts[0], "confirm"), headers=h)
+    task = db.query(RoadmapTask).filter_by(title="Edit me").one()
+    task.description = "I wrote details here"
+    db.commit()
+    r = client.post(_url(reply, acts[0], "undo"), headers=h)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "ACTION_CHANGED"
+    db.expire_all()
+    assert db.query(RoadmapTask).filter_by(title="Edit me").count() == 1
+
+
+def test_a_done_status_is_not_a_valid_roadmap_proposal(client, db, llm):
+    _o, s, h, _ms = _world(db)
+    _c, reply, acts = _propose(
+        client,
+        db,
+        h,
+        llm,
+        {"kind": "update_roadmap", "milestone": "M1", "status": "done"},
+        {"kind": "update_roadmap", "milestone": "M1", "status": "in_progress"},
+    )
+    assert [a["params"].get("status") for a in acts] == ["in_progress"]
+
+
+def test_actions_on_a_moderation_removed_message_cannot_be_run(client, db, llm):
+    _o, s, h, _ms = _world(db)
+    conv, reply, acts = _propose(
+        client, db, h, llm, {"kind": "add_task", "title": "Hidden", "milestone": "M1"}
+    )
+    msg = db.get(AiMessage, uuid.UUID(reply["id"]))
+    msg.removed_by_moderation_at = datetime.now(UTC)
+    db.commit()
+    r = client.post(_url(reply, acts[0], "confirm"), headers=h)
+    assert r.status_code == 404
+    regen = client.post(f"{C}/{conv['id']}/messages/{reply['id']}/regenerate", headers=h)
+    assert regen.status_code == 404
+    assert db.query(RoadmapTask).filter_by(title="Hidden").count() == 0
+
+
+def test_regenerate_only_drops_proposals_and_still_sees_an_executed_one(client, db, llm):
+    _o, s, h, _ms = _world(db)
+    conv, reply, acts = _propose(
+        client,
+        db,
+        h,
+        llm,
+        {"kind": "add_task", "title": "First", "milestone": "M1"},
+        {"kind": "add_task", "title": "Second", "milestone": "M1"},
+    )
+    client.post(_url(reply, acts[0], "confirm"), headers=h)
+    r = client.post(f"{C}/{conv['id']}/messages/{reply['id']}/regenerate", headers=h)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "ACTION_EXECUTED"
+    db.expire_all()
+    # the refused request changed nothing: both action rows are still there
+    assert db.query(AiAction).filter_by(message_id=uuid.UUID(reply["id"])).count() == 2

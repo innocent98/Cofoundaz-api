@@ -80,7 +80,9 @@ def test_finance_d9_d10_journey(base_url, make_verified_user, capture, monkeypat
             headers=auth,
             json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "validation"},
         )
-        c.patch(f"{API}/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+        c.patch(
+            f"{API}/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
         resp = c.post(f"{API}/onboarding/complete", headers=auth)
         assert resp.status_code == 200
         ws = c.get(f"{API}/auth/me", headers=auth).json()["data"]["active_workspace_id"]

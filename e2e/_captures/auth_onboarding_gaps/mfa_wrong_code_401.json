@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/mfa/challenge",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.88"
+    },
+    "json": {
+      "mfa_ticket": "<mfa-ticket>",
+      "code": "000000"
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "MFA_INVALID_CODE",
+        "message": "That code isn't right. Try again.",
+        "field_errors": [],
+        "attempts_remaining": 4
+      }
+    }
+  }
+}

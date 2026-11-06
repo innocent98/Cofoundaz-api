@@ -9,7 +9,11 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.platform.activity import write_activity
 from app.schemas.onboarding import AcceptRequest
-from app.services.onboarding.invites import accept_invitation, preview_invitation
+from app.services.onboarding.invites import (
+    accept_invitation,
+    decline_invitation,
+    preview_invitation,
+)
 
 router = APIRouter()
 
@@ -36,6 +40,17 @@ def accept(
     )
     db.commit()
     return success_response({"startup_id": str(m.startup_id), "role": m.role.value})
+
+
+@router.post("/decline")
+def decline(
+    payload: AcceptRequest,
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    decline_invitation(db, user, payload.token)
+    db.commit()
+    return success_response({"declined": True})
 
 
 @router.get("/{token}")

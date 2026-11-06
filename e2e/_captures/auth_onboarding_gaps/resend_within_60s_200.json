@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/verify/resend",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.67"
+    },
+    "json": {
+      "email": "delivered+resend-c9e3fe5cb23b@resend.dev"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "sent": false,
+        "retry_after": 60
+      },
+      "meta": null
+    }
+  }
+}

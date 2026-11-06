@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/onboarding/state",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.5"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "step": 1,
+        "completed": false,
+        "assessment_pending": true,
+        "pending_invite": false,
+        "founder_profile": {
+          "full_name": null,
+          "role_title": "Founder & CEO",
+          "country": null,
+          "phone": null,
+          "how_heard": null
+        },
+        "startup": {
+          "id": "97a11092-52cf-4121-a928-00db0dd5f1e9",
+          "name": null,
+          "description": null,
+          "website": null,
+          "logo_url": null,
+          "industry": null,
+          "business_model": null,
+          "stage": null
+        },
+        "goals": [],
+        "ai_panel": null,
+        "notes": null,
+        "invites": []
+      },
+      "meta": null
+    }
+  }
+}

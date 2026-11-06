@@ -28,7 +28,9 @@ def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email
             headers=auth,
             json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"},
         )
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow"]})
+        c.patch(
+            "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
         assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
         ws = c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]
         wh = {**auth, "X-Workspace-Id": ws}
@@ -45,11 +47,17 @@ def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email
             },
         )
         assert r.status_code == 200, r.text
-        assert r.json()["data"] == {
+        data = r.json()["data"]
+        assert {k: data[k] for k in ("created", "skipped", "undelivered")} == {
             "created": [mentor_email],
             "skipped": [u["email"]],
             "undelivered": [],
         }
+        # one result per submitted row, with the reason a row was skipped
+        assert [(x["email"], x["status"], x["reason"]) for x in data["results"]] == [
+            (mentor_email, "created", None),
+            (u["email"], "skipped", "self_invite"),
+        ]
         capture("team_invitations", "invite_created_and_skipped", r)
 
         bad = c.post(

@@ -30,7 +30,9 @@ def _onboard(c: httpx.Client, auth: dict) -> dict:
         headers=auth,
         json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"},
     )
-    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get customers"]})
+    c.patch(
+        "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get first customers"]}
+    )
     assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
     wsid = c.get("/api/v1/auth/me", headers=auth).json()["data"]["active_workspace_id"]
     return {**auth, "X-Workspace-Id": wsid}
@@ -186,7 +188,7 @@ def test_settings_journey(base_url, make_verified_user, capture, capture_json):
         ok = fresh.post("/api/v1/auth/login", json={"email": u["email"], "password": NEW_PW})
         assert ok.status_code == 200
     # this device's refresh cookie is still valid after the change
-    assert c.post("/api/v1/auth/refresh").status_code == 200
+    assert c.post("/api/v1/auth/refresh", headers={"X-Auth-Mode": "cookie"}).status_code == 200
 
     # ---- workspace -----------------------------------------------------------------------
     r = c.get("/api/v1/workspace", headers=wh)

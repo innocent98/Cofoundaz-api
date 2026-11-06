@@ -1,5 +1,7 @@
 # FE integration guide: Sign in / sign up with Google
 
+> **Update 2026-11-05:** the exchange response now also carries `expires_in`, and `"refresh_token": null` when the request sends `X-Auth-Mode: cookie`. See `fe-integration-guide-auth-onboarding.md` section 1. (Covered by a unit test, not captured live.)
+
 Every body below is copied from `e2e/_captures/google_sign_in/` (a live run against the real server; the file is named per section). Base path `/api/v1`. Emails and ids in captures are e2e placeholders. **Tokens, tickets and the OAuth `state` / `nonce` / `code_challenge` are replaced by `<…-placeholder>` in the captures** (they are bearer secrets); their shape is a plain string. The e2e server runs over `http`, so its cookie has no `Secure` flag; staging and production set it.
 
 **Not exercised live:** Google's real consent screen and a real Google account. In the e2e, Google is faked at the transport layer (the server signs real RS256 id_tokens, so signature, `iss`, `aud`, `exp`, `nonce` and PKCE run for real). Check the first real round trip on staging.

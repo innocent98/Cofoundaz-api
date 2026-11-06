@@ -48,11 +48,18 @@ def test_founder_invites_after_onboarding_and_email_links_to_invite_page(client,
         headers=h,
     )
     assert r.status_code == 200, r.text
-    assert r.json()["data"] == {"created": ["mate@example.com"], "skipped": [], "undelivered": []}
+    assert r.json()["data"] == {
+        "created": ["mate@example.com"],
+        "skipped": [],
+        "undelivered": [],
+        "results": [
+            {"email": "mate@example.com", "status": "created", "reason": None, "message": None}
+        ],
+    }
     inv = db.query(Invitation).filter_by(startup_id=s.id).one()
     assert (inv.role, inv.status) == (MembershipRole.team_member, InvitationStatus.pending)
     (msg,) = sent
-    assert msg.subject == "You're invited to join NovaPay on Cofoundaz"
+    assert msg.subject.endswith("invited you to join NovaPay on Cofoundaz")
     assert "/invite/" in msg.html and "Accept invitation" in msg.html
     assert "as Team Member" in msg.html
 
@@ -80,17 +87,18 @@ def test_existing_member_and_pending_invite_are_skipped(client, db, sent):
         ]
     }
     r = client.post(URL, json=body, headers=h)
-    assert r.json()["data"] == {
-        "created": ["new@example.com"],
-        "skipped": ["already@example.com", "new@example.com"],
-        "undelivered": [],
-    }
+    data = r.json()["data"]
+    assert data["created"] == ["new@example.com"]
+    assert data["skipped"] == ["already@example.com", "new@example.com"]
+    assert [(x["email"], x["status"], x["reason"]) for x in data["results"]] == [
+        ("already@example.com", "skipped", "already_member"),
+        ("new@example.com", "created", None),
+        ("new@example.com", "skipped", "duplicate_in_request"),
+    ]
     again = client.post(URL, json={"invites": [body["invites"][1]]}, headers=h)
-    assert again.json()["data"] == {
-        "created": [],
-        "skipped": ["new@example.com"],
-        "undelivered": [],
-    }
+    again_data = again.json()["data"]
+    assert again_data["created"] == [] and again_data["skipped"] == ["new@example.com"]
+    assert again_data["results"][0]["reason"] == "already_invited"
     assert len(sent) == 1
 
 

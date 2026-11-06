@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/v1/onboarding/state",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.5"
+    },
+    "json": {
+      "step": 1,
+      "full_name": "   "
+    }
+  },
+  "response": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Please check the highlighted fields.",
+        "field_errors": [
+          {
+            "field": "full_name",
+            "message": "This field can't be blank."
+          }
+        ]
+      }
+    }
+  }
+}

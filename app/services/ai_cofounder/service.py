@@ -508,17 +508,19 @@ def regenerate_message(
         raise AppError("NOT_LATEST_REPLY", "Only the latest reply can be regenerated.", 409)
     if msg.status == ChatMessageStatus.generating:
         raise AppError("REPLY_IN_PROGRESS", "This reply is still being generated.", 409)
-    if (
-        db.query(AiAction.id)
-        .filter(AiAction.message_id == msg.id, AiAction.status == "executed")
-        .first()
-    ):
+    if msg.removed_by_moderation_at is not None:
+        raise NotFound()
+    # Lock every action row first: a confirm in flight holds its row, so we wait for it and then
+    # see it as executed (and refuse) instead of deleting the record of a change that was made.
+    rows = db.query(AiAction).filter(AiAction.message_id == msg.id).with_for_update().all()
+    if any(r.status == "executed" for r in rows):
         raise AppError(
             "ACTION_EXECUTED",
             "This reply already made a change. Ask a new question instead.",
             409,
         )
-    db.query(AiAction).filter(AiAction.message_id == msg.id).delete(synchronize_session=False)
+    for r in rows:
+        db.delete(r)
     msg.generation = msg.generation + 1
     msg.status = ChatMessageStatus.generating
     msg.content = ""

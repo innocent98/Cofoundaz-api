@@ -32,6 +32,13 @@ class User(UUIDMixin, TimestampMixin, SoftDeleteMixin, Base):
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Consent recorded at sign-up (Module 01 gap 14): when, and which version of the Terms and
+    # Privacy Policy the person agreed to. NULL for accounts created before consent was stored
+    # and for Google-created accounts (no checkbox on that path).
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    terms_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     profile: Mapped["UserProfile"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
@@ -45,7 +52,9 @@ class UserProfile(TimestampMixin, Base):
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     full_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    role_title: Mapped[str] = mapped_column(String, default="Founder & CEO", nullable=False)
+    # Empty until the person starts a startup: only a founder gets "Founder & CEO" (set when the
+    # founder's draft workspace is created), so an invited mentor is not labelled a CEO.
+    role_title: Mapped[str] = mapped_column(String, default="", nullable=False)
     country: Mapped[str | None] = mapped_column(String(2), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     how_heard: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -112,7 +112,8 @@ def _update_roadmap(raw: dict, keys: dict[str, uuid.UUID]) -> Proposal | None:
         except ValueError:
             return None
     if raw.get("status") is not None:
-        if raw["status"] not in {s.value for s in RoadmapStatus}:
+        # `done` is left to the Roadmap page: completing a milestone also completes its tasks
+        if raw["status"] not in {RoadmapStatus.todo.value, RoadmapStatus.in_progress.value}:
             return None
         payload["status"] = raw["status"]
     if "due_on" not in payload and "status" not in payload:
@@ -215,6 +216,7 @@ def _load(
         .join(AiConversation, AiConversation.id == AiMessage.conversation_id)
         .filter(
             AiMessage.id == message_id,
+            AiMessage.removed_by_moderation_at.is_(None),
             AiConversation.startup_id == startup.id,
             AiConversation.created_by == user_id,
         )
@@ -253,6 +255,19 @@ def _milestone(db: Session, startup: Startup, milestone_id: str) -> RoadmapMiles
     return m
 
 
+def _task_snapshot(t: RoadmapTask) -> dict[str, Any]:
+    """Everything undo must find unchanged before it may delete the task."""
+    return {
+        "title": t.title,
+        "description": t.description,
+        "effort": t.effort.value,
+        "status": t.status.value,
+        "due_on": t.due_on.isoformat() if t.due_on else None,
+        "assignee_id": str(t.assignee_id) if t.assignee_id else None,
+        "milestone_id": str(t.milestone_id),
+    }
+
+
 def _do_add_task(db: Session, startup: Startup, p: dict[str, Any]) -> dict[str, Any]:
     m = _milestone(db, startup, p["milestone_id"])
     order = db.query(RoadmapTask).filter_by(milestone_id=m.id).count()
@@ -269,6 +284,7 @@ def _do_add_task(db: Session, startup: Startup, p: dict[str, Any]) -> dict[str, 
     return {
         "task_id": str(t.id),
         "milestone_id": str(m.id),
+        "snapshot": _task_snapshot(t),
         "href": "/roadmap",
         "label": f"Task added to {m.title}",
     }
@@ -409,8 +425,8 @@ def undo_action(
             t = db.get(RoadmapTask, uuid.UUID(r["task_id"]))
             if t is not None:
                 m = _milestone(db, startup, r["milestone_id"])
-                if t.status != RoadmapStatus.todo or t.assignee_id is not None:
-                    raise changed
+                if _task_snapshot(t) != r.get("snapshot"):
+                    raise changed  # edited, moved or assigned since: never wipe the founder's edits
                 db.delete(t)
                 db.flush()
                 recompute_milestone_progress(db, m)
