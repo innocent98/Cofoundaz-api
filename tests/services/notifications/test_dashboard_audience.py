@@ -73,6 +73,7 @@ DIRECT = {
     "journal.prompt.daily",
     "team.comment.mentioned",
     "sales.deal.stalled",
+    "ai.suggestion.created",  # the member the card is for; see tests/api/test_ai_slice3.py
     "learning.course.completed",  # the learner, covered in test_learning_notifications.py
     "learning.course.recommended",
     # Documents (D-DOC-1): the owner or sender, never the workspace; see test_document_notifications.py
