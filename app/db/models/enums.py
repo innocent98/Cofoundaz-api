@@ -117,6 +117,7 @@ class InvitationStatus(enum.StrEnum):
     accepted = "accepted"
     expired = "expired"
     revoked = "revoked"
+    declined = "declined"
 
 
 class AssessmentType(enum.StrEnum):

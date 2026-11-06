@@ -1,0 +1,68 @@
+# Web frontend vhost - __WEB_ENV__ : __WEB_SERVER_NAMES__ -> 127.0.0.1:__WEB_PORT__
+#   rendered by deploy/nginx/web/render.sh -> /etc/nginx/sites-available/web-__WEB_ENV__.conf
+#   symlinked into /etc/nginx/sites-enabled/
+#
+# Runbook: docs/deployment/WEB_FRONTEND_EDGE.md. Needs conf.d/10-hardening.conf
+# (log format, $cfz_hsts, $cfz_bad_method), 31-web-rate-limits.conf and the
+# rendered 21-web-__WEB_ENV__-upstream.conf.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
+
+    include snippets/cofoundaz/acme-challenge.conf;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name __WEB_SERVER_NAMES__;
+
+    ssl_certificate         /etc/letsencrypt/live/__WEB_CERT_NAME__/fullchain.pem;
+    ssl_certificate_key     /etc/letsencrypt/live/__WEB_CERT_NAME__/privkey.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/__WEB_CERT_NAME__/chain.pem;
+
+    access_log /var/log/nginx/cofoundaz-web-__WEB_ENV__.access.log cofoundaz;
+    error_log  /var/log/nginx/cofoundaz-web-__WEB_ENV__.error.log warn;
+
+    include snippets/cofoundaz/web-security-headers.conf;
+    # Empty for production (nginx then sends no header); noindex for staging.
+    add_header X-Robots-Tag "__WEB_ROBOTS__" always;
+
+    # text/html is always compressed; add the asset types 10-hardening.conf leaves out.
+    gzip_types application/javascript text/css application/json image/svg+xml text/plain;
+
+    limit_conn cfz_conn 60;
+    if ($cfz_bad_method) {
+        return 405;
+    }
+
+    location = /healthz {
+        access_log off;
+        include snippets/cofoundaz/proxy-backend.conf;
+        proxy_pass http://cofoundaz_web___WEB_ENV__;
+    }
+
+    # Content-hashed build assets: Next already sends
+    # `Cache-Control: public, max-age=31536000, immutable`.
+    location ^~ /_next/static/ {
+        access_log off;
+        limit_req zone=cfz_web___WEB_ENV__ burst=400 nodelay;
+        include snippets/cofoundaz/proxy-backend.conf;
+        proxy_pass http://cofoundaz_web___WEB_ENV__;
+    }
+
+    location / {
+        limit_req zone=cfz_web___WEB_ENV__ burst=200 nodelay;
+        include snippets/cofoundaz/proxy-backend.conf;
+        proxy_pass http://cofoundaz_web___WEB_ENV__;
+    }
+}
+
+# __WEB_REDIRECT_BLOCK__

@@ -53,10 +53,12 @@ def test_refresh_cookie_only_no_body(client, db):
     # independent of that httpx jar quirk.
     refresh = _login(client, db, email="s4@x.com")
     client.cookies.set(settings.REFRESH_COOKIE_NAME, refresh, path="/api/v1/auth")
-    r = client.post("/api/v1/auth/refresh")
+    r = client.post("/api/v1/auth/refresh", headers={"X-Auth-Mode": "cookie"})
     assert r.status_code == 200, r.text
     data = r.json()["data"]
-    assert data["access_token"] and data["refresh_token"] != refresh
+    # a cookie-mode client keeps the refresh token only in the HttpOnly cookie
+    assert data["access_token"] and data["refresh_token"] is None
+    assert data["expires_in"] == settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     assert "cfz_refresh" in r.cookies
 
 

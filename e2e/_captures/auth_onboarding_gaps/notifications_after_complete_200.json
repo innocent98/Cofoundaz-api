@@ -1,0 +1,51 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.5"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "notifications": [
+          {
+            "id": "e21030ef-fa19-4f7c-96ac-507ef4576c94",
+            "type": "notification.onboarding_complete",
+            "title": "Your workspace is ready",
+            "body": "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+            "data": {
+              "user_id": "1f4f174e-d054-4306-aa5f-8bdca531dc70",
+              "startup_id": "97a11092-52cf-4121-a928-00db0dd5f1e9"
+            },
+            "read": false,
+            "archived": false,
+            "priority": "normal",
+            "module": "other",
+            "created_at": "2026-11-05T22:00:40.278857+00:00"
+          },
+          {
+            "id": "dfb6b1e1-6be8-40c5-8c19-67dca3090d79",
+            "type": "workspace.member.joined",
+            "title": "A new member joined your workspace",
+            "body": "",
+            "data": {
+              "role": "mentor",
+              "user_id": "2bd902ea-9996-4348-b93a-635859125708",
+              "startup_id": "97a11092-52cf-4121-a928-00db0dd5f1e9"
+            },
+            "read": false,
+            "archived": false,
+            "priority": "normal",
+            "module": "team",
+            "created_at": "2026-11-05T22:00:38.906879+00:00"
+          }
+        ],
+        "next_cursor": null
+      },
+      "meta": null
+    }
+  }
+}

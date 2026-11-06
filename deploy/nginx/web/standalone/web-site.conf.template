@@ -1,0 +1,89 @@
+# STANDALONE web vhost - __WEB_ENV__ : __WEB_SERVER_NAMES__ -> 127.0.0.1:__WEB_PORT__
+#   rendered by deploy/nginx/web/render.sh (EDGE_LAYOUT=standalone, the default)
+#   -> /etc/nginx/sites-available/web-__WEB_ENV__.conf, symlinked into sites-enabled/
+#
+# For the VPS as it actually runs today: Ubuntu's stock nginx 1.24 with its
+# stock nginx.conf. Depends on NOTHING else in deploy/nginx/ (no conf.d files,
+# no snippets/cofoundaz/), so it can be installed on its own. Hence
+# `listen 443 ssl http2;` (1.24 rejects the standalone `http2 on;` that the
+# full layout uses). Runbook: docs/deployment/WEB_FRONTEND_EDGE.md.
+
+limit_req_zone $binary_remote_addr zone=cfz_web___WEB_ENV___sa:5m rate=50r/s;
+
+upstream cofoundaz_web___WEB_ENV__ {
+    server 127.0.0.1:__WEB_PORT__ max_fails=3 fail_timeout=10s;
+    keepalive 32;
+    # Below Node's 5s keepAliveTimeout: nginx drops pooled sockets first.
+    keepalive_timeout 4s;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        access_log off;
+        try_files $uri =404;
+    }
+    location / {
+        return 301 https://__WEB_PRIMARY__$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name __WEB_SERVER_NAMES__;
+
+    ssl_certificate     /etc/letsencrypt/live/__WEB_CERT_NAME__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__WEB_CERT_NAME__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:cfz_web___WEB_ENV___ssl:5m;
+    ssl_session_timeout 1d;
+    server_tokens off;
+
+    access_log /var/log/nginx/cofoundaz-web-__WEB_ENV__.access.log;
+    error_log  /var/log/nginx/cofoundaz-web-__WEB_ENV__.error.log warn;
+
+    # HTML-app headers. No COOP (breaks the Google / Paystack / Mono popups),
+    # no CSP yet (needs nonces in Next first). Server level only: a location
+    # with its own add_header would drop all of these.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Empty for production (nginx then sends no header); noindex for staging.
+    add_header X-Robots-Tag "__WEB_ROBOTS__" always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_min_length 1024;
+    gzip_types application/javascript text/css application/json image/svg+xml text/plain;
+
+    if ($request_method ~ ^(TRACE|TRACK)$) {
+        return 405;
+    }
+
+    # Everything, /healthz included (the CD health check goes through here
+    # with `curl --resolve <host>:443:127.0.0.1 https://<host>/healthz`).
+    location / {
+        limit_req zone=cfz_web___WEB_ENV___sa burst=400 nodelay;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 65s;
+        proxy_next_upstream off;
+        proxy_pass http://cofoundaz_web___WEB_ENV__;
+    }
+}
+
+# __WEB_REDIRECT_BLOCK__

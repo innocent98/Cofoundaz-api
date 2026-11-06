@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "headers": {
+      "X-Auth-Mode": "cookie",
+      "X-Forwarded-For": "198.51.100.39"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "set-cookie": "cfz_refresh=<refresh-token>; expires=Thu, 05 Nov 2026 22:00:35 GMT; Max-Age=0; Path=/api/v1/auth; SameSite=lax"
+    },
+    "body": {
+      "data": {
+        "logged_out": true
+      },
+      "meta": null
+    }
+  }
+}

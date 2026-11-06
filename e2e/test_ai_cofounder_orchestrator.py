@@ -40,7 +40,7 @@ def _onboard(c: httpx.Client, auth: dict) -> dict:
         headers=auth,
         json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "build"},
     )
-    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get customers"]})
+    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get first customers"]})
     assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
     me = c.get("/api/v1/auth/me", headers=auth)
     return {**auth, "X-Workspace-Id": me.json()["data"]["active_workspace_id"]}

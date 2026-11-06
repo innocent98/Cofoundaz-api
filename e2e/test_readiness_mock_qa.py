@@ -30,9 +30,7 @@ def _onboard(c: httpx.Client, auth: dict) -> None:
         headers=auth,
         json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "launch"},
     )
-    c.patch(
-        "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Raise a seed round"]}
-    )
+    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Raise funding"]})
     c.post("/api/v1/onboarding/complete", headers=auth)
 
 

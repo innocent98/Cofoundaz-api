@@ -11,6 +11,9 @@ import httpx
 import pyotp
 import pytest
 
+# A request whose only credential is the refresh cookie must say so (CSRF guard).
+COOKIE_MODE = {"X-Auth-Mode": "cookie"}
+
 
 def _pw() -> str:
     # Generated per-use (policy: >=8 chars, one digit); never a hardcoded literal.
@@ -53,7 +56,7 @@ def test_mfa_enable_then_challenge_login(http: httpx.Client, make_verified_user)
     assert verify.status_code == 200, verify.text
     assert len(verify.json()["data"]["backup_codes"]) == 10
 
-    assert http.post("/api/v1/auth/logout").status_code == 200
+    assert http.post("/api/v1/auth/logout", headers=COOKIE_MODE).status_code == 200
 
     # Re-login now demands MFA: ticket, no tokens.
     relogin = http.post("/api/v1/auth/login", json=u)
@@ -90,7 +93,7 @@ def test_cookie_only_refresh(http: httpx.Client, make_verified_user):
     login = http.post("/api/v1/auth/login", json=u)
     assert login.status_code == 200
     # No body at all — relies purely on the httpOnly cookie set by login.
-    r = http.post("/api/v1/auth/refresh")
+    r = http.post("/api/v1/auth/refresh", headers=COOKIE_MODE)
     assert r.status_code == 200, r.text
     assert r.json()["data"]["access_token"]
 
