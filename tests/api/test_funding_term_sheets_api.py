@@ -204,7 +204,8 @@ def test_term_validation(client, founder, terms):
 
 
 def test_label_and_investor_rules(client, founder):
-    assert client.post(TS, json={"label": "", "terms": {}}, headers=founder).status_code == 422
+    _resp1 = client.post(TS, json={"label": "", "terms": {}}, headers=founder)
+    assert _resp1.status_code == 422
     bad = client.post(
         TS,
         json={"label": "X", "terms": {}, "investor_id": "00000000-0000-4000-8000-000000000000"},
@@ -246,8 +247,10 @@ def test_edit_recomputes_flags_and_audits(client, db, team, founder):
     assert (
         r.json()["data"]["label"] == "Renamed" and r.json()["data"]["terms"]["liq_pref_x100"] == 100
     )
-    assert client.patch(f"{TS}/{d['id']}", json={"label": None}, headers=founder).status_code == 422
-    assert client.patch(f"{TS}/{d['id']}", json={"terms": None}, headers=founder).status_code == 422
+    _resp2 = client.patch(f"{TS}/{d['id']}", json={"label": None}, headers=founder)
+    assert _resp2.status_code == 422
+    _resp3 = client.patch(f"{TS}/{d['id']}", json={"terms": None}, headers=founder)
+    assert _resp3.status_code == 422
     log = client.get(f"{TS}/audit", headers=founder).json()["data"]
     assert [x["action"] for x in reversed(log["items"])] == ["create", "update", "update"]
     first_update = log["items"][-2]
@@ -260,7 +263,8 @@ def test_edit_recomputes_flags_and_audits(client, db, team, founder):
 
 def test_delete_audits_the_before_image(client, founder):
     d = typed(client, founder, liq_pref_x100=200)
-    assert client.delete(f"{TS}/{d['id']}", headers=founder).status_code == 200
+    deleted = client.delete(f"{TS}/{d['id']}", headers=founder)
+    assert deleted.status_code == 200
     assert client.get(f"{TS}/{d['id']}", headers=founder).status_code == 404
     last = client.get(f"{TS}/audit?limit=1", headers=founder).json()["data"]["items"][0]
     assert (
@@ -398,7 +402,6 @@ def test_the_same_pdf_is_not_extracted_twice(client, db, team, founder, llm):
 
 
 def test_extraction_input_checks(client, db, team, founder):
-    s, _h, users = team
     f = uploaded(db, team)
     other = client.post(
         f"{TS}/extract", json={"file_id": "00000000-0000-4000-8000-000000000000"}, headers=founder
@@ -580,7 +583,8 @@ def test_comparing_the_same_sheet_twice_is_not_a_comparison(client, founder):
 
 # ---------------------------------------------------------------- currency
 def test_the_round_currency_is_fixed_once_a_sheet_states_money(client, founder):
-    assert client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder).status_code == 200
+    _resp4 = client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    assert _resp4.status_code == 200
     typed(client, founder, pre_money_minor=100)
     r = client.put(f"{BASE}/round", json={"currency": "NGN"}, headers=founder)
     assert r.status_code == 409 and r.json()["error"]["code"] == "CAP_TABLE_HAS_AMOUNTS"
@@ -590,4 +594,5 @@ def test_the_round_currency_is_fixed_once_a_sheet_states_money(client, founder):
 
 def test_a_sheet_with_no_money_does_not_lock_the_currency(client, founder):
     typed(client, founder, liq_pref_x100=200)
-    assert client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder).status_code == 200
+    _resp5 = client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    assert _resp5.status_code == 200

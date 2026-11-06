@@ -3,11 +3,20 @@
 import json
 
 SHEET_TEXT = [
-    "SERIES SEED TERM SHEET\nPre-money valuation of NGN 400,000,000 and an investment of NGN 100,000,000.\n"
-    "The option pool will be 12.5 percent of the pre-money fully diluted capitalisation.\n"
-    "Liquidation preference 2x, participating, capped at 3x in total.",
-    "Board: the investor appoints two directors and the founders appoint two.\n"
-    "Exclusivity: sixty days. Pro rata: super pro rata rights. Anti-dilution: full ratchet.",
+    "\n".join(
+        [
+            "SERIES SEED TERM SHEET",
+            "Pre-money valuation of NGN 400,000,000 and an investment of NGN 100,000,000.",
+            "The option pool will be 12.5 percent of the pre-money fully diluted capitalisation.",
+            "Liquidation preference 2x, participating, capped at 3x in total.",
+        ]
+    ),
+    "\n".join(
+        [
+            "Board: the investor appoints two directors and the founders appoint two.",
+            "Exclusivity: sixty days. Pro rata: super pro rata rights. Anti-dilution: full ratchet.",
+        ]
+    ),
 ]
 
 

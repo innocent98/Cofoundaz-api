@@ -1,14 +1,14 @@
 """Funding Hub slice D: term sheets
 
 Revision ID: 0102_funding_term_sheets
-Revises: 0099_funding_cap_table
+Revises: 0103_readiness_narrative
 Create Date: 2026-11-07
 
 Adds `term_sheets` (typed or extracted from a PDF; extracted values are only proposals until the
 founder confirms them) and `term_sheet_audit` (before and after of every change). Downgrade drops
 both.
 
-CHAIN NOTE: chained on 0099; 0101 is reserved for Marketplace C, so the lead re-chains this one if
+CHAIN NOTE: chained on 0103 (Readiness narrative); 0101 is reserved for Marketplace C, so the lead re-chains this one if
 that lands first.
 """
 
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0102_funding_term_sheets"
-down_revision = "0099_funding_cap_table"
+down_revision = "0103_readiness_narrative"
 branch_labels = None
 depends_on = None
 

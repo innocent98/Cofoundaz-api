@@ -3973,7 +3973,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] Scenarios (snapshots), audit trail with before/after, workspace row lock on every write, round currency locked once amounts exist
   - [x] 147 API tests, live e2e journey, live-captured FE guide
   - [ ] Data room snapshot of the cap table (needs a decision: Documents is open to team members) · "apply this round" to the ledger · SAFE row from a Committed investor (L3 second half)
-- [x] **Slice D: term sheets** (`feature/funding-term-sheets`, migration `0102_funding_term_sheets`, chained on 0099; SOP `docs/sop/2026-11-07-funding-term-sheets.md`, FE guide `docs/fe-integration-guide-funding-term-sheets.md`) — founder only, PR open 2026-11-07
+- [x] **Slice D: term sheets** (`feature/funding-term-sheets`, migration `0102_funding_term_sheets`, chained on 0103; SOP `docs/sop/2026-11-07-funding-term-sheets.md`, FE guide `docs/fe-integration-guide-funding-term-sheets.md`) — founder only, PR open 2026-11-07
   - [x] `term_sheets` (typed or extracted; proposals are not the sheet until confirmed), `term_sheet_audit`
   - [x] Founder only (D-FUND-5): every other role 403; Scale module gate
   - [x] Deterministic rules table (D-FUND-6): 7 rules, strict thresholds, unstated terms never flag, fixed wording is never a verdict
