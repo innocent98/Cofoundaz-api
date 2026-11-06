@@ -1,0 +1,37 @@
+{
+  "data": {
+    "id": "e50df6e6-ed2e-42f8-bde2-71052514ec60",
+    "title": "Can you review the terms of our contract?",
+    "topic": null,
+    "archived_at": null,
+    "created_at": "2026-11-05T21:34:47.158035+00:00",
+    "updated_at": "2026-11-05T21:34:47.165741+00:00",
+    "messages": [
+      {
+        "id": "dd5e6fe1-8f1c-46f8-a2ee-f18b2acbc32e",
+        "role": "user",
+        "status": "ready",
+        "content": "Can you review the terms of our contract?",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "created_at": "2026-11-05T21:34:47.164741+00:00"
+      },
+      {
+        "id": "8cb02003-96df-42da-9483-c6f97233393d",
+        "role": "assistant",
+        "status": "cancelled",
+        "content": "",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "created_at": "2026-11-05T21:34:47.165741+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

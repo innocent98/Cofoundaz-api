@@ -105,8 +105,10 @@ def test_conversation_management(base_url, make_verified_user, capture):
         assert bad_topic.status_code == 422
         capture("ai_conversations", "list_bad_topic_422", bad_topic)
         by_topic = c.get(C, headers=h, params={"topic": "finance"})
-        assert by_topic.status_code == 200 and by_topic.json()["data"] == []
-        capture("ai_conversations", "list_topic_filter_empty", by_topic)
+        # the orchestrator tagged the runway question as finance when the worker answered it
+        assert by_topic.status_code == 200
+        assert [x["id"] for x in by_topic.json()["data"]] == [b_id]
+        capture("ai_conversations", "list_topic_filter", by_topic)
 
         # --- archive
         arch = c.post(f"{C}/archive", headers=h, json={"ids": [a_id]})

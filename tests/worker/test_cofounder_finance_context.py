@@ -16,12 +16,13 @@ from app.db.models.enums import (
 from app.db.models.finance import Transaction
 from app.db.models.invoice import Invoice
 from app.platform import llm_budget
+from app.services.ai_cofounder.agents import AGENTS
 from app.services.ai_cofounder.finance_context import (
     can_read_finance,
     finance_context_for,
     finance_summary,
 )
-from app.services.ai_cofounder.prompts import build_cofounder_messages
+from app.services.ai_cofounder.prompts import build_agent_messages
 from app.services.ai_cofounder.service import create_conversation
 from app.worker.handlers.ai import handle_cofounder_reply
 from tests.factories import create_membership, create_startup, create_user
@@ -128,19 +129,14 @@ def test_no_burn_reads_as_no_runway_figure(db):
     assert text is not None and "no runway figure" in text and "NGN 0" in text
 
 
-def test_prompt_includes_the_paragraph_only_when_given():
-    kw = {
-        "name": "A",
-        "industry": None,
-        "stage": None,
-        "description": None,
-        "goals": [],
-        "history": [],
-    }
-    with_ctx = build_cofounder_messages(**kw, finance_context="Finance snapshot: X.")  # type: ignore[arg-type]
-    without = build_cofounder_messages(**kw)  # type: ignore[arg-type]
-    assert "Finance snapshot: X." in with_ctx[0].content
+def test_prompt_fences_the_context_as_untrusted_and_omits_it_when_empty():
+    agent = AGENTS["finance"]
+    with_ctx = build_agent_messages(agent=agent, context="Finance snapshot: X.", history=[])
+    without = build_agent_messages(agent=agent, context="", history=[])
+    assert "<workspace_data>\nFinance snapshot: X.\n</workspace_data>" in with_ctx[0].content
+    assert "untrusted" in with_ctx[0].content
     assert "Finance snapshot" not in without[0].content
+    assert "No workspace data is available yet." in without[0].content
 
 
 class _Capture(_FakeLLM):

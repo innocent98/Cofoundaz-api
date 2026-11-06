@@ -1,7 +1,7 @@
 """Auth & Onboarding gaps: sign-up consent record
 
 Revision ID: 0096_auth_onboarding_gaps
-Revises: 0097_ai_conversation_archive
+Revises: 0098_ai_orchestrator
 Create Date: 2026-11-05
 
 Adds `users.terms_accepted_at` and `users.terms_version` (gap 14: the Terms/Privacy checkbox is
@@ -10,7 +10,7 @@ Google-created accounts have no recorded consent. The other fixes in this slice 
 (email, IP), per-route rate limits, MFA ticket attempts) live in Redis and need no schema.
 Downgrade drops both columns.
 
-CHAIN NOTE: chained on develop's head, 0097_ai_conversation_archive (after 0093 to 0095 merged).
+CHAIN NOTE: chained on develop's head, 0098_ai_orchestrator (after 0093 to 0095 merged).
 """
 
 import sqlalchemy as sa
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0096_auth_onboarding_gaps"
-down_revision = "0097_ai_conversation_archive"
+down_revision = "0098_ai_orchestrator"
 branch_labels = None
 depends_on = None
 

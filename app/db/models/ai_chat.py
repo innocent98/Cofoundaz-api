@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -59,3 +60,43 @@ class AiMessage(UUIDMixin, TimestampMixin, Base):
     removed_by_moderation_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Orchestrator output (assistant turns only; null on user turns and on turns from before routing).
+    agent_key: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # "Why I said this": built in code from the route and the context sections actually used.
+    reasoning_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Fixed legal/financial disclaimer appended by code, never written by the model (PRD 5.4.5).
+    disclaimer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sources: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+
+class AiAgentRoute(UUIDMixin, TimestampMixin, Base):
+    """The orchestrator's routing decision for one assistant turn (PRD `ai_agent_routes`).
+
+    One row per assistant message (unique), written and committed before the agent call, so a
+    worker retry reuses the decision instead of paying for the router again."""
+
+    __tablename__ = "ai_agent_routes"
+
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ai_messages.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ai_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    agent_key: Mapped[str] = mapped_column(String(24), nullable=False)
+    # rules | llm | fallback
+    method: Mapped[str] = mapped_column(String(12), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(40), nullable=False)
