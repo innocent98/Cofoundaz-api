@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
+from app.db.models.cap_table import CapEntry
 from app.db.models.enums import FundingRoundStatus
 from app.db.models.funding import FundingRound, Investor
 from app.schemas.funding import RoundUpdate
@@ -86,6 +87,21 @@ def _create(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRou
     return row
 
 
+def _cap_table_has_money(db: Session, startup_id: uuid.UUID) -> bool:
+    """True once any cap table entry carries an amount or a share price (the currency is then
+    fixed). Lives here, reading the model directly, so rounds and the cap table service do not
+    import each other."""
+    n = (
+        db.query(func.count(CapEntry.id))
+        .filter(
+            CapEntry.startup_id == startup_id,
+            (CapEntry.amount_minor.isnot(None)) | (CapEntry.price_minor.isnot(None)),
+        )
+        .scalar()
+    )
+    return bool(n)
+
+
 def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> FundingRound:
     row = active_round(db, startup_id)
     if row is None:
@@ -124,9 +140,7 @@ def upsert_round(db: Session, startup_id: uuid.UUID, data: RoundUpdate) -> Fundi
                 "This round already has amounts in "
                 f"{row.currency}. Clear them before changing the currency.",
             )
-        from app.services.funding import cap_table as cap_svc  # noqa: PLC0415 - avoids a cycle
-
-        if cap_svc.has_money(db, startup_id):
+        if _cap_table_has_money(db, startup_id):
             raise AppError(
                 "CAP_TABLE_HAS_AMOUNTS",
                 "Your cap table already has amounts in "

@@ -412,7 +412,8 @@ def test_model_on_an_empty_table_and_bad_inputs(client, founder):
         {"rounds": [{"new_money_minor": 1, "pre_money_minor": 40}] * 6},
         {"rounds": [{"new_money_minor": 1, "pre_money_minor": 40, "pool_target_bps": 10000}]},
     ):
-        assert client.post(f"{CT}/model", json=bad, headers=founder).status_code == 422
+        refused = client.post(f"{CT}/model", json=bad, headers=founder)
+        assert refused.status_code == 422
 
 
 def test_two_rounds_dilute_across_rounds(client, founder, table):
@@ -452,14 +453,12 @@ def test_scenarios_save_list_open_rename_delete(client, founder, table):
     entry(client, founder, table[0]["id"], shares=1_000_000)
     got = client.get(f"{CT}/scenarios/{s['id']}", headers=founder).json()["data"]
     assert got["result"] == s["result"]
-    assert (
-        client.patch(f"{CT}/scenarios/{s['id']}", json={"name": "Renamed"}, headers=founder).json()[
-            "data"
-        ]["name"]
-        == "Renamed"
-    )
-    assert client.delete(f"{CT}/scenarios/{s['id']}", headers=founder).status_code == 200
-    assert client.get(f"{CT}/scenarios/{s['id']}", headers=founder).status_code == 404
+    renamed = client.patch(f"{CT}/scenarios/{s['id']}", json={"name": "Renamed"}, headers=founder)
+    assert renamed.json()["data"]["name"] == "Renamed"
+    deleted = client.delete(f"{CT}/scenarios/{s['id']}", headers=founder)
+    assert deleted.status_code == 200
+    gone = client.get(f"{CT}/scenarios/{s['id']}", headers=founder)
+    assert gone.status_code == 404
 
 
 def test_a_scenario_that_cannot_work_is_not_saved(client, founder, table):
@@ -475,7 +474,8 @@ def test_a_scenario_that_cannot_work_is_not_saved(client, founder, table):
             ]
         },
     }
-    assert client.post(f"{CT}/scenarios", json=body, headers=founder).status_code == 422
+    refused = client.post(f"{CT}/scenarios", json=body, headers=founder)
+    assert refused.status_code == 422
     assert client.get(f"{CT}/scenarios", headers=founder).json()["data"]["items"] == []
 
 

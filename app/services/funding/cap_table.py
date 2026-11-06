@@ -10,7 +10,6 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
@@ -50,19 +49,6 @@ def lock_workspace(db: Session, startup_id: uuid.UUID) -> None:
 def currency(db: Session, startup_id: uuid.UUID) -> str:
     rnd = rounds_svc.latest_round(db, startup_id)
     return rnd.currency if rnd else "NGN"
-
-
-def has_money(db: Session, startup_id: uuid.UUID) -> bool:
-    """True once any entry carries an amount or a share price (the round currency is then fixed)."""
-    n = (
-        db.query(func.count(CapEntry.id))
-        .filter(
-            CapEntry.startup_id == startup_id,
-            (CapEntry.amount_minor.isnot(None)) | (CapEntry.price_minor.isnot(None)),
-        )
-        .scalar()
-    )
-    return bool(n)
 
 
 # ---------------------------------------------------------------- serialisation + audit
@@ -427,8 +413,8 @@ def run_model(db: Session, startup_id: uuid.UUID, req: ModelRequest) -> dict[str
         after, steps = eng.model_rounds(positions, convertibles, rounds, as_of=as_of)
     except eng.EngineError as exc:
         raise AppError(exc.code, exc.message, 422) from None
-    before_rows = {r["key"]: r for r in eng.ownership_table(positions)}
-    after_rows = {r["key"]: r for r in eng.ownership_table(after)}
+    before_rows = {r["ref"]: r for r in eng.ownership_table(positions)}
+    after_rows = {r["ref"]: r for r in eng.ownership_table(after)}
     names = _names(after, convertibles)
     dilution = []
     for key in sorted(after_rows, key=lambda k: (-after_rows[k]["shares"], names.get(k, k))):
@@ -436,7 +422,7 @@ def run_model(db: Session, startup_id: uuid.UUID, req: ModelRequest) -> dict[str
         b = before_rows.get(key)
         dilution.append(
             {
-                "key": key,
+                "ref": key,
                 "name": a["name"],
                 "kind": a["kind"],
                 "before_shares": b["shares"] if b else 0,

@@ -322,7 +322,7 @@ def _apply_round(
         safe_total += shares
         conversions.append(
             {
-                "key": c.key,
+                "ref": c.key,
                 "name": c.name,
                 "security": c.security,
                 "amount_minor": int(amounts[c.key]),
@@ -396,7 +396,7 @@ def ownership_table(positions: list[Position]) -> list[dict[str, Any]]:
     for p in positions:
         names.setdefault(p.key, (p.name, p.kind))
     rows = [
-        {"key": k, "name": names[k][0], "kind": names[k][1], "shares": shares[k], "bps": bps[k]}
+        {"ref": k, "name": names[k][0], "kind": names[k][1], "shares": shares[k], "bps": bps[k]}
         for k in shares
     ]
-    return sorted(rows, key=lambda r: (-r["shares"], r["name"], r["key"]))
+    return sorted(rows, key=lambda r: (-r["shares"], r["name"], r["ref"]))

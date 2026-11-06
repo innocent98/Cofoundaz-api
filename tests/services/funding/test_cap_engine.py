@@ -44,7 +44,7 @@ def test_plain_round_issues_new_money_over_post_money():
     pos, step = apply_round(founders(), [], RoundInput("Seed", 10_000_000, 40_000_000), as_of=AS_OF)
     assert step.price_per_share == "4.444444"
     assert step.new_investor_shares == 2_250_000 and step.post_round_shares == 11_250_000
-    rows = {r["key"]: r for r in ownership_table(pos)}
+    rows = {r["ref"]: r for r in ownership_table(pos)}
     assert rows["round-1"]["bps"] == 2000
     assert rows["f1"]["bps"] == 7111 and rows["pool"]["bps"] == 889  # 8/11.25 and 1/11.25
     assert sum(r["bps"] for r in rows.values()) == 10_000
@@ -65,7 +65,7 @@ def test_post_money_safe_at_cap_owns_amount_over_cap():
     assert step.price_per_share == "4.000000"
     assert step.new_investor_shares == 2_500_000  # 10M / 4.0
     assert step.post_round_shares == 12_500_000
-    rows = {r["key"]: r["bps"] for r in ownership_table(pos)}
+    rows = {r["ref"]: r["bps"] for r in ownership_table(pos)}
     # founders 8M/12.5M = 64%, SAFE 8%, pool 8%, investors 20% (= N / (V + N))
     assert rows == {"f1": 6400, "s1": 800, "pool": 800, "round-1": 2000}
 
@@ -188,7 +188,7 @@ def test_mfn_safe_converts_on_the_adopted_terms():
     _, step = apply_round(
         founders(), [mfn, later], RoundInput("Seed", 10_000_000, 40_000_000), as_of=AS_OF
     )
-    shares = {c["key"]: c["shares"] for c in step.conversions}
+    shares = {c["ref"]: c["shares"] for c in step.conversions}
     assert shares["m"] == shares["l"]  # identical economics
 
 
@@ -196,7 +196,6 @@ def test_mfn_safe_converts_on_the_adopted_terms():
 def test_pool_top_up_sits_in_the_pre_money_and_hits_the_target():
     # No SAFE, existing pool 0, target 10% of post. m = 0.1 * 50/40 = 0.125;
     # X = 0.125 * 9,000,000 / 0.875 = 1,285,714.29 -> rounded UP to 1,285,715.
-    pos = founders(pool=0)
     pos = [Position("f1", "Ada", "founder", "common", 9_000_000)]
     out, step = apply_round(pos, [], RoundInput("Seed", 10_000_000, 40_000_000, 1000), as_of=AS_OF)
     assert step.pool_top_up_shares == 1_285_715
@@ -246,7 +245,7 @@ def test_a_second_round_dilutes_everyone_including_the_first_investors():
         as_of=AS_OF,
     )
     assert len(steps) == 2
-    rows = {r["key"]: r["bps"] for r in ownership_table(pos)}
+    rows = {r["ref"]: r["bps"] for r in ownership_table(pos)}
     assert rows["round-2"] == 2500  # 50M / 200M
     # everyone else is diluted by the same factor (1 - 25%): seed investors 20% -> 15%
     assert rows["round-1"] == 1500 and rows["f1"] == 4800  # 64% * 0.75
