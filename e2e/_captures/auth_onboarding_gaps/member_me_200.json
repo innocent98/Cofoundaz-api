@@ -1,0 +1,37 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.5"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "user": {
+          "id": "2bd902ea-9996-4348-b93a-635859125708",
+          "email": "delivered+mate-d70da397724f@resend.dev",
+          "status": "active"
+        },
+        "profile": {
+          "full_name": null,
+          "role_title": "",
+          "country": null,
+          "avatar_url": null,
+          "phone": null
+        },
+        "memberships": [
+          {
+            "startup_id": "97a11092-52cf-4121-a928-00db0dd5f1e9",
+            "name": "WalkCo",
+            "role": "mentor"
+          }
+        ],
+        "active_workspace_id": "97a11092-52cf-4121-a928-00db0dd5f1e9"
+      },
+      "meta": null
+    }
+  }
+}

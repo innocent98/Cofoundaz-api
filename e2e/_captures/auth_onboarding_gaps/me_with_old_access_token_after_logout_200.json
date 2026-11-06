@@ -1,0 +1,31 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.118"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "user": {
+          "id": "a7c6bea8-37d7-406e-b0bc-281c5d6db0a1",
+          "email": "delivered+e2e-a407c3bc4af3@resend.dev",
+          "status": "active"
+        },
+        "profile": {
+          "full_name": null,
+          "role_title": "",
+          "country": null,
+          "avatar_url": null,
+          "phone": null
+        },
+        "memberships": [],
+        "active_workspace_id": null
+      },
+      "meta": null
+    }
+  }
+}

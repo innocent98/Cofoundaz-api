@@ -19,23 +19,40 @@ def _base_url() -> str:
     return (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
 
 
-def _render(*, title: str, intro: str, cta_label: str, action_url: str, expiry_note: str) -> str:
+_BRAND_BLUE = "#0F6AFC"
+_BRAND_NAVY = "#051736"
+
+
+def _one_line(value: str) -> str:
+    """A value that goes into a mail header (the subject): no line breaks, so a name typed by a
+    founder cannot add headers."""
+    return " ".join(value.split())
+
+
+def _render(
+    *,
+    title: str,
+    intro: str,
+    cta_label: str,
+    action_url: str,
+    expiry_note: str,
+    footer: str = "If you didn't request this, you can safely ignore this email.",
+) -> str:
     return (
         '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;'
         'max-width:520px;margin:0 auto;padding:8px;color:#1a1a1a">'
-        f'<h2 style="margin:0 0 12px;font-size:20px">{title}</h2>'
+        f'<h2 style="margin:0 0 12px;font-size:20px;color:{_BRAND_NAVY}">{title}</h2>'
         f'<p style="margin:0 0 20px;line-height:1.5;color:#333">{intro}</p>'
         '<p style="margin:0 0 20px">'
         f'<a href="{action_url}" style="display:inline-block;padding:12px 22px;'
-        "background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;"
+        f"background:{_BRAND_BLUE};color:#ffffff;border-radius:8px;text-decoration:none;"
         f'font-weight:600">{cta_label}</a></p>'
         '<p style="margin:0 0 6px;font-size:13px;color:#555">'
         "Or paste this link into your browser:</p>"
         '<p style="margin:0 0 20px;font-size:13px;word-break:break-all">'
-        f'<a href="{action_url}" style="color:#4f46e5">{action_url}</a></p>'
+        f'<a href="{action_url}" style="color:{_BRAND_BLUE}">{action_url}</a></p>'
         f'<p style="margin:0 0 4px;font-size:12px;color:#888">{expiry_note}</p>'
-        '<p style="margin:0;font-size:12px;color:#888">'
-        "If you didn't request this, you can safely ignore this email.</p>"
+        f'<p style="margin:0;font-size:12px;color:#888">{footer}</p>'
         "</div>"
     )
 
@@ -95,7 +112,10 @@ def invitation_email(
     action_url = f"{_base_url()}/invite/{raw}"
     return EmailMessage(
         to=to,
-        subject=f"You're invited to join {startup_name or 'a startup'} on Cofoundaz",
+        subject=_one_line(
+            f"{inviter_name or 'A founder'} invited you to join "
+            f"{startup_name or 'a startup'} on Cofoundaz"
+        ),
         html=_render(
             title=f"Join {workspace} on Cofoundaz",
             intro=(
@@ -105,5 +125,47 @@ def invitation_email(
             cta_label="Accept invitation",
             action_url=action_url,
             expiry_note="This invitation expires in 14 days.",
+        ),
+    )
+
+
+def welcome_email(to: str, *, startup_name: str, full_name: str | None) -> EmailMessage:
+    """Sent once, when a founder finishes onboarding (PRD Module 01 notifications)."""
+    workspace = escape(startup_name)
+    first = escape(full_name.split()[0]) if full_name and full_name.split() else None
+    return EmailMessage(
+        to=to,
+        subject=_one_line(f"Welcome to Cofoundaz: let's build {startup_name}"),
+        html=_render(
+            title=f"Let's build {workspace}",
+            intro=(
+                f"{'Hi ' + first + ', your' if first else 'Your'} workspace is ready. "
+                "Your roadmap and Health Score are being set up now. Take the Kickoff "
+                "Assessment to sharpen them."
+            ),
+            cta_label="Open your dashboard",
+            action_url=f"{_base_url()}/dashboard",
+            expiry_note="Need a hand? Reply to this email.",
+            footer="You're getting this because you created a Cofoundaz workspace.",
+        ),
+    )
+
+
+def password_changed_email(to: str) -> EmailMessage:
+    """Security notice after a password reset or change: the one signal that someone who is not
+    the owner changed it (the link starts a reset)."""
+    return EmailMessage(
+        to=to,
+        subject="Your Cofoundaz password was changed",
+        html=_render(
+            title="Your password was changed",
+            intro=(
+                "The password on your Cofoundaz account was just changed and you were signed "
+                "out of your other devices. If this was you, there is nothing to do."
+            ),
+            cta_label="This wasn't me: reset my password",
+            action_url=f"{_base_url()}/forgot-password",
+            expiry_note="If it wasn't you, reset your password now.",
+            footer="This is a security notice, so you get it even if you muted other emails.",
         ),
     )

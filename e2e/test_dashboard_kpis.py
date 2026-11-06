@@ -77,7 +77,9 @@ def test_dashboard_kpis_journey(base_url, make_verified_user, mailbox, unique_em
             headers=auth,
             json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"},
         )
-        c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Revenue"]})
+        c.patch(
+            "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
+        )
 
         investor_email = unique_email("investor")
         accountant_email = unique_email("accountant")

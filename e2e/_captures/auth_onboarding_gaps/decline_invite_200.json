@@ -1,0 +1,21 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/invitations/decline",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.5"
+    },
+    "json": {
+      "token": "<token>"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "data": {
+        "declined": true
+      },
+      "meta": null
+    }
+  }
+}

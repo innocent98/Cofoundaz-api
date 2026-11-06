@@ -1,5 +1,7 @@
 # FE Integration Guide — Auth Email Links (verify & password reset)
 
+> **Update 2026-11-05:** the invitation subject is now `{Founder} invited you to join {Startup} on Cofoundaz`, the auth and invite emails use the brand blue `#0F6AFC` and navy `#051736` instead of indigo, and two emails were added (welcome after onboarding, password changed). See `fe-integration-guide-auth-onboarding.md` section 7. The bodies captured below predate this.
+
 > **For:** the frontend team. **Backend:** `cofoundaz-api`. **Status:** live on staging (2026-09-17).
 > The verification and password-reset emails now contain a **clickable link to a front-end page**
 > (previously they only showed a raw token). This guide is what the FE needs to handle those links.

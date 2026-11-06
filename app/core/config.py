@@ -25,6 +25,30 @@ class Settings(BaseSettings):
     REFRESH_COOKIE_SAMESITE: str = "lax"
     LOGIN_MAX_FAILS: int = 5
     LOGIN_LOCKOUT_MINUTES: int = 15
+    # Ceiling on failures for one email summed over every IP (a distributed guess at one account).
+    # The per-(email, IP) counter above is what normally trips first.
+    LOGIN_EMAIL_MAX_FAILS: int = 30
+    # Per-route limits on the unauthenticated auth surface (Redis counters, shared across workers).
+    # The e2e runner raises them so journeys from one address are not throttled.
+    AUTH_LOGIN_PER_IP_15MIN: int = 60
+    AUTH_SIGNUP_PER_IP_HOURLY: int = 10
+    AUTH_FORGOT_PER_IP_HOURLY: int = 20
+    # Mail an address can be sent per hour: per (address, caller IP) first, then the address overall.
+    # The overall cap is deliberately higher so one stranger cannot use it to silence the owner.
+    AUTH_FORGOT_PER_EMAIL_IP_HOURLY: int = 5
+    AUTH_FORGOT_PER_EMAIL_HOURLY: int = 20
+    AUTH_RESEND_PER_IP_HOURLY: int = 20
+    AUTH_RESEND_PER_EMAIL_IP_HOURLY: int = 5
+    AUTH_RESEND_PER_EMAIL_HOURLY: int = 20
+    # MFA sign-in ticket: wrong codes allowed before the ticket burns.
+    MFA_TICKET_MAX_ATTEMPTS: int = 5
+    # Wrong MFA codes per account, across tickets, before the challenge locks for the lockout time.
+    MFA_USER_MAX_FAILS: int = 10
+    # Version of the Terms of Service + Privacy Policy stored with a sign-up's consent.
+    TERMS_VERSION: str = "2026-11-05"
+    # Escape hatch for deploy ordering: the sign-up form must send `accepted_terms` before the
+    # API can insist on it. Leave True; turn off only while an older FE is still live.
+    SIGNUP_REQUIRE_TERMS: bool = True
     MFA_ENCRYPTION_KEY: str | None = None  # 32-byte urlsafe base64 (Fernet)
     # Master key the per-workspace journal keys are derived from (HKDF). Optional like
     # MFA_ENCRYPTION_KEY so the app still boots without it; the journal service raises

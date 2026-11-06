@@ -4,6 +4,9 @@ from pydantic import BaseModel, EmailStr
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str
+    # The Terms + Privacy checkbox. Defaults to False so a missing field gets the product's own
+    # TERMS_NOT_ACCEPTED answer (422) rather than a generic "field required".
+    accepted_terms: bool = False
 
 
 class TokenRequest(BaseModel):

@@ -1,0 +1,27 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/auth/signup",
+    "headers": {
+      "X-Forwarded-For": "198.51.100.3"
+    },
+    "json": {
+      "email": "delivered+consent-1e018f45f9ff@resend.dev",
+      "password": "<test-password>",
+      "accepted_terms": true
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "data": {
+        "user": {
+          "id": "d20c9bd4-582b-42b3-9a70-b71e57131d0e",
+          "email": "delivered+consent-1e018f45f9ff@resend.dev"
+        },
+        "verification_sent": true
+      },
+      "meta": null
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 import pyotp
 from cryptography.fernet import Fernet
@@ -16,6 +16,7 @@ from app.services.auth.sessions import hash_token
 
 _MFA_TICKET_TTL = 300  # 5 minutes
 _MFA_TICKET_PREFIX = "mfa_ticket:"
+_MFA_ATTEMPTS_PREFIX = "mfa_ticket_attempts:"
 
 
 class MfaNotConfigured(AppError):  # noqa: N818
@@ -61,20 +62,19 @@ def generate_backup_codes(db: Session, user: User) -> list[str]:
 
 
 def consume_backup_code(db: Session, user: User, code: str) -> bool:
-    row = (
+    """Spend a backup code. One conditional UPDATE: of two concurrent challenges that present
+    the same code, exactly one sees a row to update and wins."""
+    spent = (
         db.query(MfaBackupCode)
         .filter(
             MfaBackupCode.user_id == user.id,
             MfaBackupCode.code_hash == hash_token(code),
             MfaBackupCode.consumed_at.is_(None),
         )
-        .first()
+        .update({MfaBackupCode.consumed_at: datetime.now(UTC)}, synchronize_session=False)
     )
-    if row is None:
-        return False
-    row.consumed_at = datetime.now(UTC)
     db.flush()
-    return True
+    return int(spent) == 1
 
 
 def issue_mfa_ticket(user_id: uuid.UUID) -> str:
@@ -83,10 +83,30 @@ def issue_mfa_ticket(user_id: uuid.UUID) -> str:
     return ticket
 
 
-def resolve_mfa_ticket(ticket: str) -> uuid.UUID | None:
-    key = f"{_MFA_TICKET_PREFIX}{ticket}"
-    val = cast(str | None, get_redis().get(key))
-    if val is None:
-        return None
-    get_redis().delete(key)
-    return uuid.UUID(val)
+def peek_mfa_ticket(ticket: str) -> uuid.UUID | None:
+    """Who the ticket is for, without using it up: a wrong code must leave it usable (up to
+    `MFA_TICKET_MAX_ATTEMPTS` tries), so a typo does not strand the person on the code screen."""
+    val = cast(str | None, get_redis().get(f"{_MFA_TICKET_PREFIX}{ticket}"))
+    return uuid.UUID(val) if val is not None else None
+
+
+def count_mfa_attempt(ticket: str) -> int:
+    """Count one code attempt against the ticket; returns the attempts used so far (atomic)."""
+    pipe = get_redis().pipeline(transaction=True)
+    pipe.incr(f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+    pipe.expire(f"{_MFA_ATTEMPTS_PREFIX}{ticket}", _MFA_TICKET_TTL, nx=True)
+    used, _ = cast(list[Any], pipe.execute())
+    return int(used)
+
+
+def burn_mfa_ticket(ticket: str) -> None:
+    get_redis().delete(f"{_MFA_TICKET_PREFIX}{ticket}", f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+
+
+def claim_mfa_ticket(ticket: str) -> bool:
+    """Use the ticket up atomically (DEL reports whether this caller removed it). Two concurrent
+    correct submissions race for it and exactly one wins, so one ticket mints one session."""
+    redis = get_redis()
+    claimed = int(cast(Any, redis.delete(f"{_MFA_TICKET_PREFIX}{ticket}"))) == 1
+    redis.delete(f"{_MFA_ATTEMPTS_PREFIX}{ticket}")
+    return claimed

@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.envelope import success_response
-from app.core.errors import AppError, MfaInvalidCode
+from app.core.errors import AppError, MfaInvalidCode, MfaTicketExpired
 from app.core.security import verify_password
 from app.db.models.auth import MfaBackupCode
 from app.db.models.enums import MfaType, UserStatus
@@ -20,7 +21,14 @@ from app.schemas.auth import (
     TotpVerifyRequest,
 )
 from app.services.auth import mfa
-from app.services.auth.sessions import issue_token_pair, set_refresh_cookie
+from app.services.auth.ratelimit import (
+    clear_login_pair,
+    clear_mfa_failures,
+    record_mfa_failure,
+    record_successful_sign_in,
+    reserve_mfa_attempt,
+)
+from app.services.auth.sessions import issue_token_pair, set_refresh_cookie, token_body
 from app.services.auth.throttle import assert_not_locked, clear, record_failure
 
 router = APIRouter(prefix="/mfa")
@@ -147,9 +155,10 @@ def challenge(
     response: Response,
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    user_id = mfa.resolve_mfa_ticket(payload.mfa_ticket)
+    ticket = payload.mfa_ticket
+    user_id = mfa.peek_mfa_ticket(ticket)
     if user_id is None:
-        raise MfaInvalidCode()
+        raise MfaTicketExpired()
     user = db.query(User).filter(User.id == user_id).first()
     # A ticket issued before a suspension (or deletion) must not turn into a session.
     if (
@@ -158,15 +167,34 @@ def challenge(
         or user.status == UserStatus.disabled
         or not user.mfa_secret
     ):
-        raise MfaInvalidCode()
+        mfa.burn_mfa_ticket(ticket)
+        raise MfaTicketExpired()
     ip = request.client.host if request.client else None
+    reserve_mfa_attempt(user.id)  # per-account cap across tickets, reserved atomically
+    # The attempt is counted before the code is checked (atomic INCR) and an attempt past the
+    # cap is refused without looking at the code, so concurrent guesses cannot slip past it.
+    # A typo leaves the ticket alive; the 5th wrong code burns it.
+    used = mfa.count_mfa_attempt(ticket)
+    if used > settings.MFA_TICKET_MAX_ATTEMPTS:
+        mfa.burn_mfa_ticket(ticket)
+        raise MfaTicketExpired()
     ok = mfa.verify_totp(
         mfa.decrypt_secret(user.mfa_secret), payload.code
     ) or mfa.consume_backup_code(db, user, payload.code)
     if not ok:
+        record_mfa_failure(user.id)
         write_audit(db, "auth.mfa.challenge.failed", actor_user_id=user.id, ip=ip)
         db.commit()
-        raise MfaInvalidCode()
+        left = settings.MFA_TICKET_MAX_ATTEMPTS - used
+        if left <= 0:
+            mfa.burn_mfa_ticket(ticket)
+            raise MfaTicketExpired()
+        raise MfaInvalidCode(extra={"attempts_remaining": left})
+    if not mfa.claim_mfa_ticket(ticket):  # single use: only one concurrent winner gets a session
+        raise MfaTicketExpired()
+    clear_mfa_failures(user.id)
+    clear_login_pair(user.email, ip)
+    record_successful_sign_in(user.email, ip)
     user.last_login_at = datetime.now(UTC)
     access, refresh = issue_token_pair(
         db, user, ip=ip, user_agent=request.headers.get("user-agent")
@@ -174,4 +202,4 @@ def challenge(
     write_audit(db, "auth.mfa.challenge.success", actor_user_id=user.id, ip=ip)
     db.commit()
     set_refresh_cookie(response, refresh)
-    return success_response({"access_token": access, "refresh_token": refresh})
+    return success_response(token_body(request, access, refresh))
