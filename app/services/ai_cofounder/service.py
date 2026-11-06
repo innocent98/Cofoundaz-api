@@ -9,12 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AppError, NotFound
-from app.db.models.ai_chat import AiConversation, AiMessage
+from app.db.models.ai_chat import AiAction, AiConversation, AiMessage
 from app.db.models.enums import ChatMessageRole, ChatMessageStatus
 from app.db.models.startup import Startup
 from app.db.models.user import User
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
+from app.services.ai_cofounder.actions import serialize_action
 from app.services.ai_cofounder.agents import AGENTS
 from app.services.reports.core import REMOVED_PLACEHOLDER
 
@@ -34,12 +35,20 @@ def _title_from(text: str) -> str:
 
 
 def create_conversation(
-    db: Session, startup: Startup, user: User, first_message: str
+    db: Session,
+    startup: Startup,
+    user: User,
+    first_message: str,
+    *,
+    agent_key: str | None = None,
 ) -> AiConversation:
+    if agent_key is not None and agent_key not in AGENTS:
+        raise AppError("VALIDATION_ERROR", "That specialist isn't available yet.", 422)
     conv = AiConversation(
         startup_id=startup.id,
         created_by=user.id,
         title=_title_from(first_message),
+        pinned_agent_key=agent_key,
     )
     db.add(conv)
     db.flush()
@@ -147,7 +156,14 @@ def messages_for(db: Session, conversation: AiConversation) -> list[AiMessage]:
     )
 
 
-def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content: str) -> bool:
+def _end_turn(
+    db: Session,
+    msg: AiMessage,
+    *,
+    status: ChatMessageStatus,
+    content: str,
+    generation: int | None = None,
+) -> bool:
     """Move a `generating` assistant turn to a terminal status with one conditional UPDATE. A turn
     that is no longer `generating` (the founder pressed Cancel, or another path ended it) matches
     no row and is left exactly as it is, so a late worker or reaper can never overwrite a
@@ -156,7 +172,12 @@ def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content
         CursorResult,
         db.execute(
             update(AiMessage)
-            .where(AiMessage.id == msg.id, AiMessage.status == ChatMessageStatus.generating)
+            .where(
+                AiMessage.id == msg.id,
+                AiMessage.status == ChatMessageStatus.generating,
+                # a job from before a Cancel -> Regenerate must not end the newer turn
+                *([AiMessage.generation == generation] if generation is not None else []),
+            )
             .values(status=status, content=content)
         ),
     ).rowcount
@@ -164,9 +185,9 @@ def _end_turn(db: Session, msg: AiMessage, *, status: ChatMessageStatus, content
     return bool(changed)
 
 
-def fail_message(db: Session, msg: AiMessage, text: str) -> None:
+def fail_message(db: Session, msg: AiMessage, text: str, *, generation: int | None = None) -> None:
     """End an assistant turn as `failed` with a founder-visible message (the FE polls it)."""
-    if not _end_turn(db, msg, status=ChatMessageStatus.failed, content=text):
+    if not _end_turn(db, msg, status=ChatMessageStatus.failed, content=text, generation=generation):
         return
     event_bus.publish(
         db,
@@ -274,7 +295,11 @@ def post_message(db: Session, conversation: AiConversation, content: str) -> AiM
     job_dispatcher.enqueue(
         db,
         "ai.cofounder.reply",
-        {"message_id": str(assistant.id), "startup_id": str(conversation.startup_id)},
+        {
+            "message_id": str(assistant.id),
+            "startup_id": str(conversation.startup_id),
+            "generation": assistant.generation,
+        },
         conversation.startup_id,
     )
     return assistant
@@ -337,7 +362,24 @@ def delete_conversation(db: Session, conversation: AiConversation) -> None:
     db.flush()
 
 
-def serialize_message(m: AiMessage) -> dict[str, Any]:
+def _actions_for(
+    db: Session, message_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[dict[str, Any]]]:
+    if not message_ids:
+        return {}
+    rows = (
+        db.query(AiAction)
+        .filter(AiAction.message_id.in_(message_ids))
+        .order_by(AiAction.position.asc(), AiAction.created_at.asc())
+        .all()
+    )
+    out: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    for r in rows:
+        out.setdefault(r.message_id, []).append(serialize_action(r))
+    return out
+
+
+def serialize_message(m: AiMessage, actions: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     removed = m.removed_by_moderation_at is not None
     agent = AGENTS.get(m.agent_key) if m.agent_key and not removed else None
     return {
@@ -350,21 +392,151 @@ def serialize_message(m: AiMessage) -> dict[str, Any]:
         "reasoning_summary": None if removed else m.reasoning_summary,
         "disclaimer": None if removed else m.disclaimer,
         "sources": None if removed else m.sources,
+        "actions": [] if removed else (actions or []),
+        "feedback": m.feedback,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
 
 
+def serialize_message_full(db: Session, m: AiMessage) -> dict[str, Any]:
+    return serialize_message(m, _actions_for(db, [m.id]).get(m.id))
+
+
 def serialize_conversation(
-    conv: AiConversation, messages: list[AiMessage] | None = None
+    conv: AiConversation,
+    messages: list[AiMessage] | None = None,
+    actions: dict[uuid.UUID, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     out: dict[str, Any] = {
         "id": str(conv.id),
         "title": conv.title,
         "topic": conv.topic,
+        "pinned_agent_key": conv.pinned_agent_key,
         "archived_at": conv.archived_at.isoformat() if conv.archived_at else None,
         "created_at": conv.created_at.isoformat() if conv.created_at else None,
         "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
     }
     if messages is not None:
-        out["messages"] = [serialize_message(m) for m in messages]
+        out["messages"] = [serialize_message(m, (actions or {}).get(m.id)) for m in messages]
     return out
+
+
+def serialize_thread(db: Session, conv: AiConversation) -> dict[str, Any]:
+    msgs = messages_for(db, conv)
+    return serialize_conversation(conv, msgs, _actions_for(db, [m.id for m in msgs]))
+
+
+# ---------------------------------------------------------------- feedback, regenerate
+
+
+def _own_message(
+    db: Session, startup: Startup, user: User, message_id: uuid.UUID
+) -> tuple[AiConversation, AiMessage]:
+    row = (
+        db.query(AiConversation, AiMessage)
+        .join(AiMessage, AiMessage.conversation_id == AiConversation.id)
+        .filter(
+            AiMessage.id == message_id,
+            AiMessage.role == ChatMessageRole.assistant,
+            AiConversation.startup_id == startup.id,
+            AiConversation.created_by == user.id,
+        )
+        .first()
+    )
+    if row is None:
+        raise NotFound()
+    return row[0], row[1]
+
+
+def set_feedback(
+    db: Session,
+    startup: Startup,
+    user: User,
+    message_id: uuid.UUID,
+    *,
+    rating: str | None,
+    note: str | None,
+) -> AiMessage:
+    """Thumbs up / down (null clears it) on the caller's own reply, with an optional note."""
+    _conv, msg = _own_message(db, startup, user, message_id)
+    if msg.status != ChatMessageStatus.ready:
+        raise AppError("FEEDBACK_NOT_ALLOWED", "Only a finished reply can be rated.", 409)
+    msg.feedback = rating
+    msg.feedback_note = (note or "").strip()[:500] or None if rating else None
+    db.flush()
+    event_bus.publish(
+        db,
+        "ai.cofounder.feedback",
+        {
+            "message_id": str(msg.id),
+            "startup_id": str(startup.id),
+            "agent_key": msg.agent_key,
+            "rating": rating,
+        },
+    )
+    return msg
+
+
+def regenerate_message(
+    db: Session, startup: Startup, user: User, conversation_id: uuid.UUID, message_id: uuid.UUID
+) -> AiMessage:
+    """Answer the latest reply again (also the retry of a failed or cancelled one). The same turn
+    is reused: reset to `generating`, a bumped `generation` so any job queued earlier does nothing,
+    the same specialist (the stored route stays, so routing is not paid for again). The new reply
+    goes through the normal metered, budget-checked job."""
+    conv = get_conversation(db, startup, user, conversation_id)
+    msg = (
+        db.query(AiMessage)
+        .filter(
+            AiMessage.id == message_id,
+            AiMessage.conversation_id == conv.id,
+            AiMessage.role == ChatMessageRole.assistant,
+        )
+        .with_for_update()
+        .first()
+    )
+    if msg is None:
+        raise NotFound()
+    if conv.archived_at is not None:
+        raise AppError(
+            "CONVERSATION_ARCHIVED", "This conversation is archived. Unarchive it first.", 409
+        )
+    fail_stale_generating(db, conv)
+    db.refresh(msg)
+    latest = messages_for(db, conv)[-1]
+    if latest.id != msg.id:
+        raise AppError("NOT_LATEST_REPLY", "Only the latest reply can be regenerated.", 409)
+    if msg.status == ChatMessageStatus.generating:
+        raise AppError("REPLY_IN_PROGRESS", "This reply is still being generated.", 409)
+    if msg.removed_by_moderation_at is not None:
+        raise NotFound()
+    # Lock every action row first: a confirm in flight holds its row, so we wait for it and then
+    # see it as executed (and refuse) instead of deleting the record of a change that was made.
+    rows = db.query(AiAction).filter(AiAction.message_id == msg.id).with_for_update().all()
+    if any(r.status == "executed" for r in rows):
+        raise AppError(
+            "ACTION_EXECUTED",
+            "This reply already made a change. Ask a new question instead.",
+            409,
+        )
+    for r in rows:
+        db.delete(r)
+    msg.generation = msg.generation + 1
+    msg.status = ChatMessageStatus.generating
+    msg.content = ""
+    msg.agent_key = msg.reasoning_summary = msg.disclaimer = msg.sources = None
+    msg.feedback = msg.feedback_note = None
+    msg.created_at = datetime.now(UTC)  # the stale-turn clock restarts
+    conv.updated_at = datetime.now(UTC)
+    db.flush()
+    job_dispatcher.enqueue(
+        db,
+        "ai.cofounder.reply",
+        {
+            "message_id": str(msg.id),
+            "startup_id": str(conv.startup_id),
+            "generation": msg.generation,
+        },
+        conv.startup_id,
+    )
+    return msg

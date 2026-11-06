@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "842a9cb4-0701-45e8-b730-3dd09fe466c0",
+    "id": "7b02d505-f9d2-4f1d-976c-b7fbddcebfff",
     "title": "Draft an NDA for a contractor",
     "topic": "legal",
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:34:45.015401+00:00",
-    "updated_at": "2026-11-05T21:34:46.868944+00:00",
+    "created_at": "2026-11-06T19:06:22.836947+00:00",
+    "updated_at": "2026-11-06T19:06:24.635671+00:00",
     "messages": [
       {
-        "id": "a899c4e4-4c80-4067-bd7f-f71304f19c1d",
+        "id": "906df0b9-8127-4ad3-aa97-d90b26421c5b",
         "role": "user",
         "status": "ready",
         "content": "Draft an NDA for a contractor",
@@ -17,10 +18,12 @@
         "reasoning_summary": null,
         "disclaimer": null,
         "sources": null,
-        "created_at": "2026-11-05T21:34:45.023823+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.843245+00:00"
       },
       {
-        "id": "bedf9570-7236-43bd-b12c-f8dd3857d631",
+        "id": "943ae5de-465d-4bb8-9770-7992961297e8",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
@@ -37,7 +40,9 @@
             "label": "Your startup profile"
           }
         ],
-        "created_at": "2026-11-05T21:34:45.024823+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:22.844245+00:00"
       }
     ]
   },

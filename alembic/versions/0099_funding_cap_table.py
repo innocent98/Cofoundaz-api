@@ -1,14 +1,14 @@
 """Funding Hub slice C: the cap table
 
 Revision ID: 0099_funding_cap_table
-Revises: 0096_auth_onboarding_gaps
+Revises: 0100_ai_slice3
 Create Date: 2026-11-06
 
 Adds `cap_holders`, `cap_entries` (stock, options, SAFEs, notes; the CHECKs keep the shape of each
 security honest), `cap_scenarios` (saved round models) and `cap_audit` (before/after of every
 change). Downgrade drops all four.
 
-CHAIN NOTE: chained on develop's head, 0096 (Auth onboarding gaps, itself on 0098). Anything that
+CHAIN NOTE: chained on develop's head, 0100 (AI slice 3). Anything that
 lands first gets a one-line re-chain.
 """
 
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0099_funding_cap_table"
-down_revision = "0096_auth_onboarding_gaps"
+down_revision = "0100_ai_slice3"
 branch_labels = None
 depends_on = None
 

@@ -1,27 +1,40 @@
 {
   "data": {
-    "id": "e7d5ad26-011d-46c7-a6ef-be5e55fb19e5",
+    "id": "64e62cf8-6757-4a2b-b529-5dbb32a8a6c6",
     "title": "Draft an NDA for a contractor",
     "topic": null,
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:42:49.501598+00:00",
-    "updated_at": "2026-11-05T21:42:49.518764+00:00",
+    "created_at": "2026-11-06T19:06:29.904660+00:00",
+    "updated_at": "2026-11-06T19:06:29.911650+00:00",
     "messages": [
       {
-        "id": "fee51d6c-6485-44e2-8fe6-e5751e49b4f1",
+        "id": "10a9ba25-3c8e-4680-b36f-e6f0bac883d6",
         "role": "user",
         "status": "ready",
         "content": "Draft an NDA for a contractor",
         "removed_by_moderation": false,
-        "created_at": "2026-11-05T21:42:49.517764+00:00"
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:29.910650+00:00"
       },
       {
-        "id": "05650802-f384-40de-8ad9-ada98f21df3d",
+        "id": "bd625ba0-a431-461d-b975-71845452fece",
         "role": "assistant",
         "status": "generating",
         "content": "",
         "removed_by_moderation": false,
-        "created_at": "2026-11-05T21:42:49.518764+00:00"
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:29.911650+00:00"
       }
     ]
   },

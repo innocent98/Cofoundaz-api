@@ -1,0 +1,17 @@
+{
+  "data": {
+    "id": "0a7ab72b-44b0-44a6-ba56-f6702ce9d58d",
+    "role": "assistant",
+    "status": "generating",
+    "content": "",
+    "removed_by_moderation": false,
+    "agent": null,
+    "reasoning_summary": null,
+    "disclaimer": null,
+    "sources": null,
+    "actions": [],
+    "feedback": null,
+    "created_at": "2026-11-06T19:06:28.417957+00:00"
+  },
+  "meta": null
+}

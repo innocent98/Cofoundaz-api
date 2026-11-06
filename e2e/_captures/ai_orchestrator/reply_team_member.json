@@ -1,14 +1,15 @@
 {
   "data": {
-    "id": "41e9ef7b-a5b3-4ebb-8006-26ad7622a1a3",
+    "id": "3635d8d1-fd42-4ffa-be14-7cae27925bcd",
     "title": "How long is my runway?",
     "topic": "finance",
+    "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-05T21:34:49.242094+00:00",
-    "updated_at": "2026-11-05T21:34:49.306938+00:00",
+    "created_at": "2026-11-06T19:06:27.069656+00:00",
+    "updated_at": "2026-11-06T19:06:27.139072+00:00",
     "messages": [
       {
-        "id": "258880ff-be20-4de7-a617-79ef34c73883",
+        "id": "f09b3be1-c02c-4b8c-a4d6-331fe85d8e85",
         "role": "user",
         "status": "ready",
         "content": "How long is my runway?",
@@ -17,10 +18,12 @@
         "reasoning_summary": null,
         "disclaimer": null,
         "sources": null,
-        "created_at": "2026-11-05T21:34:49.249205+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:27.077241+00:00"
       },
       {
-        "id": "c40a16c9-83df-49d0-b62c-e5f36c6cd068",
+        "id": "11b145b1-4568-4b49-828b-f605800c95a5",
         "role": "assistant",
         "status": "ready",
         "content": "[stub-llm] AI-generated assessment narrative.",
@@ -41,7 +44,9 @@
             "label": "Your finance snapshot"
           }
         ],
-        "created_at": "2026-11-05T21:34:49.250205+00:00"
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:27.078241+00:00"
       }
     ]
   },

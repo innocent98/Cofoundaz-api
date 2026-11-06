@@ -1,0 +1,104 @@
+{
+  "data": [
+    {
+      "key": "strategist",
+      "name": "Strategist",
+      "category": "Business Builder",
+      "description": "Sharpens your model, plan, and positioning.",
+      "topic": "strategy",
+      "available": true,
+      "status": "available"
+    },
+    {
+      "key": "finance",
+      "name": "Finance Advisor",
+      "category": "Finance Hub",
+      "description": "Runway, forecasts, and the hard money calls.",
+      "topic": "finance",
+      "available": true,
+      "status": "available"
+    },
+    {
+      "key": "legal",
+      "name": "Legal Assistant",
+      "category": "Legal & Compliance",
+      "description": "Contracts, formation, and staying covered.",
+      "topic": "legal",
+      "available": true,
+      "status": "available"
+    },
+    {
+      "key": "mentor",
+      "name": "Mentor",
+      "category": "Across everything",
+      "description": "A steady voice for the founder behind the company.",
+      "topic": "mentoring",
+      "available": true,
+      "status": "available"
+    },
+    {
+      "key": "marketing",
+      "name": "Marketing Advisor",
+      "category": "Marketing Hub",
+      "description": "Campaigns, copy, and channel strategy.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "sales",
+      "name": "Sales Coach",
+      "category": "Sales Hub",
+      "description": "Pipeline, objections, and closing with confidence.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "fundraising",
+      "name": "Fundraising Copilot",
+      "category": "Funding Hub",
+      "description": "Investors, the data room, and running the raise.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "readiness",
+      "name": "Readiness Coach",
+      "category": "Investor Readiness",
+      "description": "Your deck, your story, and the tough questions.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "validation",
+      "name": "Validation Scientist",
+      "category": "Validation Hub",
+      "description": "Experiments that prove it before you build.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "product",
+      "name": "Product Manager",
+      "category": "Roadmap",
+      "description": "Turns feedback into the right next build.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    },
+    {
+      "key": "insight",
+      "name": "Insight Synthesizer",
+      "category": "Validation Hub",
+      "description": "Finds the patterns hiding in your feedback.",
+      "topic": null,
+      "available": false,
+      "status": "coming_soon"
+    }
+  ],
+  "meta": null
+}
