@@ -8,6 +8,8 @@ sources, disclaimers, status handling and access, not answer quality. Bodies are
 e2e/_captures/ai_orchestrator/ (the source for docs/fe-integration-guide-ai-cofounder.md).
 """
 
+import uuid
+
 import httpx
 
 C = "/api/v1/ai/conversations"
@@ -38,10 +40,13 @@ def _onboard(c: httpx.Client, auth: dict) -> dict:
     c.patch(
         "/api/v1/onboarding/state",
         headers=auth,
-        json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "build"},
+        json={"step": 3, "industry": "Fintech", "business_model": "b2b", "stage": "idea"},
     )
-    c.patch("/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get first customers"]})
-    assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+    c.patch(
+        "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Get first customers"]}
+    )
+    done = c.post("/api/v1/onboarding/complete", headers=auth)
+    assert done.status_code == 200, done.text
     me = c.get("/api/v1/auth/me", headers=auth)
     return {**auth, "X-Workspace-Id": me.json()["data"]["active_workspace_id"]}
 
@@ -53,8 +58,13 @@ def _join(c, wh, ws, role, unique_email, mailbox):
     )
     assert r.status_code == 200, r.text
     token = mailbox.latest_token_for(email, subject_contains="invited")
-    pw = "Member-" + email.split("@")[0][-8:] + "-9"
-    c.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    pw = (
+        "Zq7-Sturdy-Passw0rd-" + uuid.uuid4().hex[:6]
+    )  # placeholder; policy rejects email-derived ones
+    su = c.post(
+        "/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True}
+    )
+    assert su.status_code == 201, su.text
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},

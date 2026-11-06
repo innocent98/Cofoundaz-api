@@ -1,0 +1,106 @@
+{
+  "data": {
+    "id": "1d24419b-d063-41e1-a3ea-140b7c7d4bfc",
+    "title": "What should I focus on this week?",
+    "topic": "strategy",
+    "pinned_agent_key": null,
+    "archived_at": null,
+    "created_at": "2026-11-06T19:06:27.886865+00:00",
+    "updated_at": "2026-11-06T19:06:27.949240+00:00",
+    "messages": [
+      {
+        "id": "b55bedd9-fecd-4217-90af-528ac1ba0db0",
+        "role": "user",
+        "status": "ready",
+        "content": "What should I focus on this week?",
+        "removed_by_moderation": false,
+        "agent": null,
+        "reasoning_summary": null,
+        "disclaimer": null,
+        "sources": null,
+        "actions": [],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:27.894596+00:00"
+      },
+      {
+        "id": "89360176-2515-4f64-a535-d54810b90585",
+        "role": "assistant",
+        "status": "ready",
+        "content": "Here is my take.",
+        "removed_by_moderation": false,
+        "agent": {
+          "key": "strategist",
+          "name": "Strategist"
+        },
+        "reasoning_summary": "Answered by the Strategist because your message is about strategy. I used: Your startup profile, Your roadmap, Today's mission.",
+        "disclaimer": null,
+        "sources": [
+          {
+            "key": "profile",
+            "label": "Your startup profile"
+          },
+          {
+            "key": "roadmap",
+            "label": "Your roadmap"
+          },
+          {
+            "key": "mission",
+            "label": "Today's mission"
+          }
+        ],
+        "actions": [
+          {
+            "id": "21bb6cbd-2a06-480f-b34f-ad9ce21015b5",
+            "kind": "add_task",
+            "label": "Add as task: Call five customers",
+            "status": "proposed",
+            "undoable": false,
+            "params": {
+              "title": "Call five customers",
+              "effort": "small",
+              "milestone_key": "M1"
+            },
+            "href": null,
+            "result_label": null
+          },
+          {
+            "id": "f893f26c-491f-4cf9-b628-d0f60aa60954",
+            "kind": "update_roadmap",
+            "label": "Update roadmap (M2): status in_progress, due 2027-03-01",
+            "status": "proposed",
+            "undoable": false,
+            "params": {
+              "due_on": "2027-03-01",
+              "status": "in_progress",
+              "milestone_key": "M2"
+            },
+            "href": null,
+            "result_label": null
+          },
+          {
+            "id": "49290d94-3564-4bd7-bff5-6be713a70d8d",
+            "kind": "draft_document",
+            "label": "Draft the document: Contractor NDA",
+            "status": "proposed",
+            "undoable": false,
+            "params": {
+              "title": "Contractor NDA",
+              "doc_kind": "nda",
+              "sections": [
+                {
+                  "body": "NovaPay and the contractor.",
+                  "heading": "Parties"
+                }
+              ]
+            },
+            "href": null,
+            "result_label": null
+          }
+        ],
+        "feedback": null,
+        "created_at": "2026-11-06T19:06:27.895596+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

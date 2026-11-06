@@ -71,16 +71,11 @@ def _profile(db: Session, s: Startup) -> str | None:
     )
 
 
-def _roadmap(db: Session, s: Startup) -> str | None:
+def _open_milestones(db: Session, s: Startup) -> tuple[Roadmap, int, list[RoadmapMilestone]] | None:
+    """(roadmap, total milestones, the next open ones in due-date order), or None."""
     road = db.query(Roadmap).filter_by(startup_id=s.id).first()
     if road is None:
         return None
-    phases = (
-        db.query(RoadmapPhase)
-        .filter_by(roadmap_id=road.id)
-        .order_by(RoadmapPhase.order.asc())
-        .all()
-    )
     rows = (
         db.query(RoadmapMilestone)
         .join(RoadmapPhase, RoadmapPhase.id == RoadmapMilestone.phase_id)
@@ -89,19 +84,48 @@ def _roadmap(db: Session, s: Startup) -> str | None:
     )
     if not rows:
         return None
-    done = sum(1 for m in rows if m.status == RoadmapStatus.done)
     open_ms = sorted(
         (m for m in rows if m.status != RoadmapStatus.done),
         key=lambda m: (m.due_on or dt.date.max, m.order),
     )[:_MAX_ITEMS]
+    return road, len(rows), open_ms
+
+
+def milestone_keys(db: Session, s: Startup) -> dict[str, uuid.UUID]:
+    """The short keys (`M1`...) the roadmap section shows the model, mapped to real ids. The model
+    never sees or returns a database id; an action that names a key not in this map is dropped."""
+    found = _open_milestones(db, s)
+    if found is None:
+        return {}
+    return {f"M{i}": m.id for i, m in enumerate(found[2], start=1)}
+
+
+def _roadmap(db: Session, s: Startup) -> str | None:
+    found = _open_milestones(db, s)
+    if found is None:
+        return None
+    road, total, open_ms = found
+    phases = (
+        db.query(RoadmapPhase)
+        .filter_by(roadmap_id=road.id)
+        .order_by(RoadmapPhase.order.asc())
+        .all()
+    )
+    done = (
+        total
+        - db.query(RoadmapMilestone)
+        .join(RoadmapPhase, RoadmapPhase.id == RoadmapMilestone.phase_id)
+        .filter(RoadmapPhase.roadmap_id == road.id, RoadmapMilestone.status != RoadmapStatus.done)
+        .count()
+    )
     lines = [
-        f"Roadmap ({road.stage.value} stage): {done} of {len(rows)} milestones done; phases: "
+        f"Roadmap ({road.stage.value} stage): {done} of {total} milestones done; phases: "
         + ", ".join(_clip(p.name, 60) for p in phases)
         + "."
     ]
-    for m in open_ms:
+    for i, m in enumerate(open_ms, start=1):
         due = f", due {m.due_on.isoformat()}" if m.due_on else ""
-        lines.append(f"- Open milestone: {_clip(m.title)} ({m.status.value}, {m.progress}%{due})")
+        lines.append(f"- M{i}: {_clip(m.title)} ({m.status.value}, {m.progress}%{due})")
     return "\n".join(lines)
 
 

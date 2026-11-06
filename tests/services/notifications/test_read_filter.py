@@ -31,6 +31,7 @@ NARROWER_THAN_AUDIENCE = {
     "sales.deal.stalled",
     "learning.course.completed",  # only the learner named in the payload
     "learning.course.recommended",
+    "ai.suggestion.created",  # only the member the card is for, with `notify` set
     "document.shared",  # the document owner (D-DOC-1), see test_document_notifications.py
     "document.signature.requested",  # nobody in-app: the signers get the email
     "document.signature.signed",

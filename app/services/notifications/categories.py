@@ -68,6 +68,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "roadmap.milestone.due_soon": "roadmap_missions",
     "assessment.quarterly.due": "health_assessment",
     "calendar.meeting.reminder": "calendar",
+    "ai.suggestion.created": "ai_insights",
 }
 
 # Types not listed above are classified by their prefix, so a new module's events (Billing, ...)
@@ -128,6 +129,7 @@ FILTER_TYPES: dict[str, frozenset[str]] = {
             "validation.insight.detected",
             "learning.course.recommended",
             "roadmap.replanned",
+            "ai.suggestion.created",
         }
     ),
     "deadlines": frozenset(
@@ -163,6 +165,7 @@ _MODULE_BY_PREFIX: dict[str, str] = {
     "learning": "academy",
     "billing": "billing",
     "journal": "journal",
+    "ai": "ai",
 }
 
 

@@ -23,8 +23,13 @@ from app.platform.llm_budget import is_ai_enrichment_job, over_budget, today_utc
 from app.schemas.ai_chat import (
     ConversationIdsRequest,
     CreateConversationRequest,
+    FeedbackRequest,
     PostMessageRequest,
+    SnoozeRequest,
 )
+from app.services.ai_cofounder import actions as ai_actions
+from app.services.ai_cofounder import suggestions as ai_suggestions
+from app.services.ai_cofounder.bench import list_agents
 from app.services.ai_cofounder.service import (
     MAX_QUERY,
     MIN_QUERY,
@@ -34,11 +39,14 @@ from app.services.ai_cofounder.service import (
     fail_stale_generating,
     get_conversation,
     list_conversations,
-    messages_for,
     post_message,
+    regenerate_message,
     serialize_conversation,
     serialize_message,
+    serialize_message_full,
+    serialize_thread,
     set_archived,
+    set_feedback,
 )
 from app.services.ai_cofounder.topics import TOPICS
 from app.services.ai_preferences import AiPrefs, get_prefs, update_prefs
@@ -155,9 +163,9 @@ def create_conversation_endpoint(
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     startup = _startup(db, membership)
-    conv = create_conversation(db, startup, user, payload.message)
+    conv = create_conversation(db, startup, user, payload.message, agent_key=payload.agent_key)
     db.commit()
-    return success_response(serialize_conversation(conv, messages_for(db, conv)))
+    return success_response(serialize_thread(db, conv))
 
 
 @router.get("/conversations")
@@ -224,7 +232,7 @@ def get_conversation_endpoint(
     conv = get_conversation(db, startup, user, conversation_id)
     if fail_stale_generating(db, conv):
         db.commit()
-    return success_response(serialize_conversation(conv, messages_for(db, conv)))
+    return success_response(serialize_thread(db, conv))
 
 
 @router.post("/conversations/{conversation_id}/messages", status_code=202)
@@ -255,7 +263,7 @@ def cancel_message_endpoint(
     conv = get_conversation(db, _startup(db, membership), user, conversation_id)
     msg = cancel_message(db, conv, message_id)
     db.commit()
-    return success_response(serialize_message(msg))
+    return success_response(serialize_message_full(db, msg))
 
 
 @router.delete("/conversations/{conversation_id}")
@@ -270,3 +278,157 @@ def delete_conversation_endpoint(
     delete_conversation(db, conv)
     db.commit()
     return success_response({"deleted": True})
+
+
+@router.post("/conversations/{conversation_id}/messages/{message_id}/regenerate", status_code=202)
+def regenerate_endpoint(
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Answer the latest reply again; also the Retry of a failed or cancelled one. Poll the
+    conversation as for any reply. Metered like a new message."""
+    msg = regenerate_message(db, _startup(db, membership), user, conversation_id, message_id)
+    db.commit()
+    return success_response(serialize_message_full(db, msg))
+
+
+@router.post("/messages/{message_id}/feedback")
+def feedback_endpoint(
+    message_id: uuid.UUID,
+    payload: FeedbackRequest,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    msg = set_feedback(
+        db, _startup(db, membership), user, message_id, rating=payload.rating, note=payload.note
+    )
+    db.commit()
+    return success_response(serialize_message_full(db, msg))
+
+
+def _action_response(db: Session, a: Any) -> dict[str, Any]:
+    return success_response(ai_actions.serialize_action(a))
+
+
+@router.post("/messages/{message_id}/actions/{action_id}/confirm")
+def confirm_action_endpoint(
+    message_id: uuid.UUID,
+    action_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Make the proposed change. Nothing is written before this call."""
+    a = ai_actions.confirm_action(
+        db,
+        _startup(db, membership),
+        user_id=user.id,
+        role=membership.role,
+        message_id=message_id,
+        action_id=action_id,
+    )
+    db.commit()
+    return _action_response(db, a)
+
+
+@router.post("/messages/{message_id}/actions/{action_id}/dismiss")
+def dismiss_action_endpoint(
+    message_id: uuid.UUID,
+    action_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    a = ai_actions.dismiss_action(
+        db, _startup(db, membership), user_id=user.id, message_id=message_id, action_id=action_id
+    )
+    db.commit()
+    return _action_response(db, a)
+
+
+@router.post("/messages/{message_id}/actions/{action_id}/undo")
+def undo_action_endpoint(
+    message_id: uuid.UUID,
+    action_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    a = ai_actions.undo_action(
+        db,
+        _startup(db, membership),
+        user_id=user.id,
+        role=membership.role,
+        message_id=message_id,
+        action_id=action_id,
+    )
+    db.commit()
+    return _action_response(db, a)
+
+
+@router.get("/suggestions")
+def list_suggestions_endpoint(
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    out = ai_suggestions.list_suggestions(db, _startup(db, membership), user.id)
+    db.commit()  # new cards (and their events) created by this read
+    return success_response(out)
+
+
+def _suggestion_op(
+    db: Session,
+    membership: Membership,
+    user: User,
+    suggestion_id: uuid.UUID,
+    op: str,
+    days: int = 7,
+) -> dict[str, Any]:
+    r = ai_suggestions.act(db, _startup(db, membership), user.id, suggestion_id, op, days=days)
+    db.commit()
+    return success_response(ai_suggestions.serialize(r))
+
+
+@router.post("/suggestions/{suggestion_id}/accept")
+def accept_suggestion_endpoint(
+    suggestion_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """ "Do it": marks the card accepted; the FE then opens its `href`."""
+    return _suggestion_op(db, membership, user, suggestion_id, "accept")
+
+
+@router.post("/suggestions/{suggestion_id}/dismiss")
+def dismiss_suggestion_endpoint(
+    suggestion_id: uuid.UUID,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return _suggestion_op(db, membership, user, suggestion_id, "dismiss")
+
+
+@router.post("/suggestions/{suggestion_id}/snooze")
+def snooze_suggestion_endpoint(
+    suggestion_id: uuid.UUID,
+    payload: SnoozeRequest | None = None,
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    days = payload.days if payload else 7
+    return _suggestion_op(db, membership, user, suggestion_id, "snooze", days)
+
+
+@router.get("/agents")
+def list_agents_endpoint(
+    membership: Membership = Depends(_chat_access),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(list_agents())

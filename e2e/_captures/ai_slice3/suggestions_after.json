@@ -1,0 +1,17 @@
+{
+  "data": {
+    "enabled": true,
+    "items": [
+      {
+        "id": "5ce5ffa6-589f-44e4-8476-ea498afdb7b0",
+        "source": "health",
+        "title": "Close out your next roadmap tasks",
+        "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+        "href": "/health",
+        "status": "new",
+        "created_at": "2026-11-06T19:06:29.074604+00:00"
+      }
+    ]
+  },
+  "meta": null
+}
