@@ -1,7 +1,6 @@
 """Funding Hub slice D: term sheets. Founder-only on every route, typed and extracted sheets, the
 confirm step, deterministic flags, optional AI wording, comparison, audit, currency guard."""
 
-import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -18,61 +17,10 @@ from app.services.funding import term_sheets as svc
 from tests.billing_helpers import seed_plans
 from tests.deck_helpers import store_deck
 from tests.factories import create_membership, create_startup, create_user
+from tests.term_helpers import SHEET_TEXT, TermLLM
 
 BASE = "/api/v1/funding"
 TS = f"{BASE}/term-sheets"
-
-SHEET_TEXT = [
-    "SERIES SEED TERM SHEET\nPre-money valuation of NGN 400,000,000 and an investment of NGN 100,000,000.\n"
-    "The option pool will be 12.5 percent of the pre-money fully diluted capitalisation.\n"
-    "Liquidation preference 2x, participating, capped at 3x in total.",
-    "Board: the investor appoints two directors and the founders appoint two.\n"
-    "Exclusivity: sixty days. Pro rata: super pro rata rights. Anti-dilution: full ratchet.",
-]
-
-
-class TermLLM:
-    """Stands in for the model: an extraction payload, and wording that echoes the fixed text."""
-
-    last_usage_tokens = 3000
-
-    def __init__(self, extraction=None, boom=None, wording=None):
-        self.extraction = (
-            extraction
-            if extraction is not None
-            else {
-                "stage": "seed",
-                "pre_money": 400_000_000,
-                "investment": 100_000_000,
-                "option_pool_pre_percent": 12.5,
-                "liquidation_preference_multiple": 2,
-                "participating": True,
-                "participation_cap_multiple": 3,
-                "investor_board_seats": 2,
-                "founder_board_seats": 2,
-                "pro_rata": "super",
-                "exclusivity_days": 60,
-                "anti_dilution": "full_ratchet",
-                "quotes": {"pre_money": "Pre-money valuation of NGN 400,000,000"},
-            }
-        )
-        self.boom, self.wording, self.calls = boom, wording, []
-
-    def complete_json(self, messages, *, schema, max_tokens):
-        self.calls.append(schema)
-        if self.boom:
-            raise self.boom
-        if "quotes" in schema["properties"]:
-            return json.loads(json.dumps(self.extraction))
-        if self.wording is not None:
-            return self.wording
-        flags = []
-        for line in messages[1].content.splitlines():
-            if line.startswith("- rule "):
-                rule = line.split(":")[0].removeprefix("- rule ")
-                facts = line.split("Facts: ", 1)[1]
-                flags.append({"rule": rule, "text": f"In plain words: {facts}"})
-        return {"flags": flags}
 
 
 def _member(db, startup, role):

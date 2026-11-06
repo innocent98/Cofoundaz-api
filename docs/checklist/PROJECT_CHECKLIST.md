@@ -3932,7 +3932,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 
 ---
 
-## Module 14 — Funding Hub (design accepted 2026-11-05; slices A, B and C built)
+## Module 14 — Funding Hub (design accepted 2026-11-05; slices A, B, C and D built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gaps and D-FUND-1..8 (all accepted):
 `cofoundaz/docs/checklist/funding-prd-gaps.md`. Order: A, B, C, D, E, F, then FE pass, every-control re-walk, unhide with Investor Readiness.
@@ -3965,7 +3965,16 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] Scenarios (snapshots), audit trail with before/after, workspace row lock on every write, round currency locked once amounts exist
   - [x] 147 API tests, live e2e journey, live-captured FE guide
   - [ ] Data room snapshot of the cap table (needs a decision: Documents is open to team members) · "apply this round" to the ledger · SAFE row from a Committed investor (L3 second half)
-- [ ] Slice D: term sheets (deterministic flags, AI extraction + confirm)
+- [x] **Slice D: term sheets** (`feature/funding-term-sheets`, migration `0102_funding_term_sheets`, chained on 0099; SOP `docs/sop/2026-11-07-funding-term-sheets.md`, FE guide `docs/fe-integration-guide-funding-term-sheets.md`) — founder only, PR open 2026-11-07
+  - [x] `term_sheets` (typed or extracted; proposals are not the sheet until confirmed), `term_sheet_audit`
+  - [x] Founder only (D-FUND-5): every other role 403; Scale module gate
+  - [x] Deterministic rules table (D-FUND-6): 7 rules, strict thresholds, unstated terms never flag, fixed wording is never a verdict
+  - [x] PDF extraction job (proposes values + source quotes), confirm step, dedupe by file hash, dead-job reconcile, daily AI allowance
+  - [x] Optional AI wording job that cannot move a number; fixed text always present
+  - [x] Comparison of 2 to 6 confirmed sheets (best and worst per term, derived ownership), audit trail, `funding.term_sheet.added` (founders minus actor)
+  - [x] Round currency also locked by term sheet amounts; slice C lows folded in (carry the previous round's currency; duplicated solver line)
+  - [x] Unit + API tests, live e2e journey (canned model), live-captured FE guide
+  - [ ] "Ask a Legal Advisor to review" is a FE link to Documents e-review · a real model's extraction accuracy not yet exercised
 - [ ] Slice E: grants (curated catalogue, match job, applications)
 - [ ] Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
 - [ ] FE pass (six pages real, unhide the sidebar with Investor Readiness), lead re-walk of every control

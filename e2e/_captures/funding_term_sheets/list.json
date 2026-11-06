@@ -1,0 +1,198 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+        "label": "Gamma Partners",
+        "status": "confirmed",
+        "error": null,
+        "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+        "investor_name": "Tolu Bello",
+        "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+        "source_filename": "gamma-term-sheet.pdf",
+        "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+        "extracted_by_ai": true,
+        "terms": {
+          "stage": "seed",
+          "pro_rata": "super",
+          "anti_dilution": "full_ratchet",
+          "liq_pref_x100": 200,
+          "participating": true,
+          "pre_money_minor": 40000000000,
+          "exclusivity_days": 45,
+          "investment_minor": 10000000000,
+          "founder_board_seats": 2,
+          "option_pool_pre_bps": 1250,
+          "investor_board_seats": 1,
+          "participation_cap_x100": 300
+        },
+        "flags": [
+          {
+            "rule": "liq_pref_above_1x",
+            "term": "liq_pref_x100",
+            "text": "The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
+            "title": "Liquidation preference above 1x",
+            "value": 200,
+            "ai_text": null,
+            "threshold": "1x"
+          },
+          {
+            "rule": "participating_preferred",
+            "term": "participating",
+            "text": "The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
+            "title": "Participating preferred",
+            "value": true,
+            "ai_text": null,
+            "threshold": "non-participating"
+          },
+          {
+            "rule": "super_pro_rata",
+            "term": "pro_rata",
+            "text": "The investor can buy more than their share of future rounds, which can crowd out new investors.",
+            "title": "Super pro-rata",
+            "value": "super",
+            "ai_text": null,
+            "threshold": "standard pro-rata"
+          },
+          {
+            "rule": "full_ratchet",
+            "term": "anti_dilution",
+            "text": "If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
+            "title": "Full-ratchet anti-dilution",
+            "value": "full_ratchet",
+            "ai_text": null,
+            "threshold": "broad-based weighted average"
+          }
+        ],
+        "flag_count": 4,
+        "confirmed_at": "2026-11-06T21:44:46.590650+00:00",
+        "created_at": "2026-11-06T21:44:46.230662+00:00"
+      },
+      {
+        "id": "1fef9738-f943-4891-96f1-9b826ee2cd6c",
+        "label": "Beta Capital",
+        "status": "confirmed",
+        "error": null,
+        "investor_id": null,
+        "investor_name": null,
+        "source_file_id": null,
+        "source_filename": null,
+        "job_id": null,
+        "extracted_by_ai": false,
+        "terms": {
+          "stage": "seed",
+          "pro_rata": "super",
+          "anti_dilution": "full_ratchet",
+          "liq_pref_x100": 200,
+          "participating": true,
+          "pre_money_minor": 50000000000,
+          "exclusivity_days": 60,
+          "investment_minor": 10000000000,
+          "option_pool_pre_bps": 1800,
+          "investor_board_seats": 2,
+          "participation_cap_x100": 300
+        },
+        "flags": [
+          {
+            "rule": "liq_pref_above_1x",
+            "term": "liq_pref_x100",
+            "text": "The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
+            "title": "Liquidation preference above 1x",
+            "value": 200,
+            "ai_text": "In plain words: The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
+            "threshold": "1x"
+          },
+          {
+            "rule": "participating_preferred",
+            "term": "participating",
+            "text": "The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
+            "title": "Participating preferred",
+            "value": true,
+            "ai_text": "In plain words: The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
+            "threshold": "non-participating"
+          },
+          {
+            "rule": "option_pool_above_15pct",
+            "term": "option_pool_pre_bps",
+            "text": "The option pool is 18% of the pre-money. Because it sits in the pre-money, founders carry all of that dilution.",
+            "title": "Large option pool in the pre-money",
+            "value": 1800,
+            "ai_text": "In plain words: The option pool is 18% of the pre-money. Because it sits in the pre-money, founders carry all of that dilution.",
+            "threshold": "15% of pre-money"
+          },
+          {
+            "rule": "exclusivity_above_45_days",
+            "term": "exclusivity_days",
+            "text": "You agree not to talk to other investors for 60 days. Up to 45 days is common.",
+            "title": "Long exclusivity (no-shop)",
+            "value": 60,
+            "ai_text": "In plain words: You agree not to talk to other investors for 60 days. Up to 45 days is common.",
+            "threshold": "45 days"
+          },
+          {
+            "rule": "investor_board_seats_early",
+            "term": "investor_board_seats",
+            "text": "The investor gets 2 board seats on a seed round. At this stage one seat, or an observer, is more common.",
+            "title": "More than one investor board seat on an early round",
+            "value": 2,
+            "ai_text": "In plain words: The investor gets 2 board seats on a seed round. At this stage one seat, or an observer, is more common.",
+            "threshold": "1 investor seat"
+          },
+          {
+            "rule": "super_pro_rata",
+            "term": "pro_rata",
+            "text": "The investor can buy more than their share of future rounds, which can crowd out new investors.",
+            "title": "Super pro-rata",
+            "value": "super",
+            "ai_text": "In plain words: The investor can buy more than their share of future rounds, which can crowd out new investors.",
+            "threshold": "standard pro-rata"
+          },
+          {
+            "rule": "full_ratchet",
+            "term": "anti_dilution",
+            "text": "If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
+            "title": "Full-ratchet anti-dilution",
+            "value": "full_ratchet",
+            "ai_text": "In plain words: If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
+            "threshold": "broad-based weighted average"
+          }
+        ],
+        "flag_count": 7,
+        "confirmed_at": "2026-11-06T21:44:45.698312+00:00",
+        "created_at": "2026-11-06T21:44:45.686365+00:00"
+      },
+      {
+        "id": "8f028911-9a50-42d5-870d-84fc10f60ae3",
+        "label": "Alpha Ventures",
+        "status": "confirmed",
+        "error": null,
+        "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+        "investor_name": "Tolu Bello",
+        "source_file_id": null,
+        "source_filename": null,
+        "job_id": null,
+        "extracted_by_ai": false,
+        "terms": {
+          "stage": "seed",
+          "pro_rata": "standard",
+          "anti_dilution": "broad_based",
+          "liq_pref_x100": 100,
+          "participating": false,
+          "pre_money_minor": 40000000000,
+          "exclusivity_days": 30,
+          "investment_minor": 10000000000,
+          "founder_board_seats": 2,
+          "option_pool_pre_bps": 1000,
+          "investor_board_seats": 1
+        },
+        "flags": [],
+        "flag_count": 0,
+        "confirmed_at": "2026-11-06T21:44:45.674192+00:00",
+        "created_at": "2026-11-06T21:44:45.663409+00:00"
+      }
+    ],
+    "currency": "NGN",
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}

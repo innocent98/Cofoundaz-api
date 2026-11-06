@@ -1,0 +1,50 @@
+{
+  "data": {
+    "rules": [
+      {
+        "id": "liq_pref_above_1x",
+        "term": "liq_pref_x100",
+        "title": "Liquidation preference above 1x",
+        "threshold": "1x"
+      },
+      {
+        "id": "participating_preferred",
+        "term": "participating",
+        "title": "Participating preferred",
+        "threshold": "non-participating"
+      },
+      {
+        "id": "option_pool_above_15pct",
+        "term": "option_pool_pre_bps",
+        "title": "Large option pool in the pre-money",
+        "threshold": "15% of pre-money"
+      },
+      {
+        "id": "exclusivity_above_45_days",
+        "term": "exclusivity_days",
+        "title": "Long exclusivity (no-shop)",
+        "threshold": "45 days"
+      },
+      {
+        "id": "investor_board_seats_early",
+        "term": "investor_board_seats",
+        "title": "More than one investor board seat on an early round",
+        "threshold": "1 investor seat"
+      },
+      {
+        "id": "super_pro_rata",
+        "term": "pro_rata",
+        "title": "Super pro-rata",
+        "threshold": "standard pro-rata"
+      },
+      {
+        "id": "full_ratchet",
+        "term": "anti_dilution",
+        "title": "Full-ratchet anti-dilution",
+        "threshold": "broad-based weighted average"
+      }
+    ],
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}
