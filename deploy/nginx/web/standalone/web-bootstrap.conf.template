@@ -1,0 +1,17 @@
+# STANDALONE, FIRST CERT ONLY - __WEB_ENV__ : __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__
+#   -> /etc/nginx/sites-available/web-__WEB_ENV__-bootstrap.conf
+# HTTP-only: answers the ACME challenge for `certbot certonly --webroot`, 404
+# otherwise. Remove it before enabling the full site (same names on :80).
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+    location / {
+        return 404;
+    }
+}

@@ -1,0 +1,16 @@
+# FIRST CERT ONLY - __WEB_ENV__ : __WEB_SERVER_NAMES__
+#   rendered by deploy/nginx/web/render.sh -> /etc/nginx/sites-available/web-__WEB_ENV__-bootstrap.conf
+#
+# HTTP-only: answers the ACME challenge so `certbot certonly --webroot` can issue
+# the first certificate, 404 for everything else. The full site cannot load yet
+# because its ssl_certificate files do not exist. Remove this file once the full
+# site is enabled (they share server_name on :80 and nginx warns on the clash).
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __WEB_SERVER_NAMES__ __WEB_REDIRECT_NAMES__;
+    include snippets/cofoundaz/acme-challenge.conf;
+    location / {
+        return 404;
+    }
+}
