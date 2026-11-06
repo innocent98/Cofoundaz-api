@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "ef54c6ff-8107-49eb-8493-63e8df7bd187",
+    "id": "f893f26c-491f-4cf9-b628-d0f60aa60954",
     "kind": "update_roadmap",
     "label": "Update roadmap (M2): status in_progress, due 2027-03-01",
     "status": "executed",
@@ -11,7 +11,7 @@
       "milestone_key": "M2"
     },
     "href": "/roadmap",
-    "result_label": "Updated Run a closed beta"
+    "result_label": "Updated Sketch the solution"
   },
   "meta": null
 }

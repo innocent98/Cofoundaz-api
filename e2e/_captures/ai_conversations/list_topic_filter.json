@@ -1,12 +1,13 @@
 {
   "data": [
     {
-      "id": "7f95c900-e49e-4425-aa35-42edc0e25722",
+      "id": "1bb2d882-5088-4653-9e56-6a04834288d3",
       "title": "How long is my runway?",
       "topic": "finance",
+      "pinned_agent_key": null,
       "archived_at": null,
-      "created_at": "2026-11-06T12:25:54.900944+00:00",
-      "updated_at": "2026-11-06T12:25:54.925748+00:00"
+      "created_at": "2026-11-06T19:06:29.965568+00:00",
+      "updated_at": "2026-11-06T19:06:29.992949+00:00"
     }
   ],
   "meta": null

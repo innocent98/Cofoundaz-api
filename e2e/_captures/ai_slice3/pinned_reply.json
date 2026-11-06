@@ -1,15 +1,15 @@
 {
   "data": {
-    "id": "d6d26c90-b0f7-427e-8ba3-f7f4727a8930",
+    "id": "4f9d6eb4-1fa8-4d37-ac87-5c22c53c602c",
     "title": "hello there",
     "topic": "mentoring",
     "pinned_agent_key": "mentor",
     "archived_at": null,
-    "created_at": "2026-11-06T17:00:14.670780+00:00",
-    "updated_at": "2026-11-06T17:00:14.696510+00:00",
+    "created_at": "2026-11-06T19:06:28.493338+00:00",
+    "updated_at": "2026-11-06T19:06:28.514840+00:00",
     "messages": [
       {
-        "id": "8507e3fa-7607-40cd-ab18-9edbf7dc17b3",
+        "id": "d05ec609-5bc3-40c8-ad71-6debfb436875",
         "role": "user",
         "status": "ready",
         "content": "hello there",
@@ -20,10 +20,10 @@
         "sources": null,
         "actions": [],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:14.676362+00:00"
+        "created_at": "2026-11-06T19:06:28.498698+00:00"
       },
       {
-        "id": "b124ac96-817c-4d1f-a7b6-292c20ea0afa",
+        "id": "e3ea21ff-4279-4394-8d58-ef5ab9709449",
         "role": "assistant",
         "status": "ready",
         "content": "Pinned answer.",
@@ -50,7 +50,7 @@
         ],
         "actions": [],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:14.677362+00:00"
+        "created_at": "2026-11-06T19:06:28.499698+00:00"
       }
     ]
   },

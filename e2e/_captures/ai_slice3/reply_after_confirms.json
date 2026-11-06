@@ -1,15 +1,15 @@
 {
   "data": {
-    "id": "4df41207-de0e-4f7a-85bc-c3d0aa87502d",
+    "id": "1d24419b-d063-41e1-a3ea-140b7c7d4bfc",
     "title": "What should I focus on this week?",
     "topic": "strategy",
     "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-06T17:00:13.368963+00:00",
-    "updated_at": "2026-11-06T17:00:14.018367+00:00",
+    "created_at": "2026-11-06T19:06:27.886865+00:00",
+    "updated_at": "2026-11-06T19:06:27.949240+00:00",
     "messages": [
       {
-        "id": "0a9b59fe-2f68-41eb-a2d9-ee4fff9c275a",
+        "id": "b55bedd9-fecd-4217-90af-528ac1ba0db0",
         "role": "user",
         "status": "ready",
         "content": "What should I focus on this week?",
@@ -20,10 +20,10 @@
         "sources": null,
         "actions": [],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:13.378576+00:00"
+        "created_at": "2026-11-06T19:06:27.894596+00:00"
       },
       {
-        "id": "17c6aa00-bff3-46f9-b310-f88dc65fa996",
+        "id": "89360176-2515-4f64-a535-d54810b90585",
         "role": "assistant",
         "status": "ready",
         "content": "Here is my take.",
@@ -50,7 +50,7 @@
         ],
         "actions": [
           {
-            "id": "3275aa47-c548-4bab-99a9-83d469345b09",
+            "id": "21bb6cbd-2a06-480f-b34f-ad9ce21015b5",
             "kind": "add_task",
             "label": "Add as task: Call five customers",
             "status": "undone",
@@ -61,10 +61,10 @@
               "milestone_key": "M1"
             },
             "href": "/roadmap",
-            "result_label": "Task added to Ship the MVP"
+            "result_label": "Task added to Write your problem statement"
           },
           {
-            "id": "ef54c6ff-8107-49eb-8493-63e8df7bd187",
+            "id": "f893f26c-491f-4cf9-b628-d0f60aa60954",
             "kind": "update_roadmap",
             "label": "Update roadmap (M2): status in_progress, due 2027-03-01",
             "status": "executed",
@@ -75,10 +75,10 @@
               "milestone_key": "M2"
             },
             "href": "/roadmap",
-            "result_label": "Updated Run a closed beta"
+            "result_label": "Updated Sketch the solution"
           },
           {
-            "id": "805805ea-760f-4715-b0fe-e0e68b3da5f3",
+            "id": "49290d94-3564-4bd7-bff5-6be713a70d8d",
             "kind": "draft_document",
             "label": "Draft the document: Contractor NDA",
             "status": "executed",
@@ -93,12 +93,12 @@
                 }
               ]
             },
-            "href": "/documents/3dde6fb3-7a29-488e-8b05-c564f9454402",
+            "href": "/documents/11065948-f069-4c37-9e91-4a18dc632113",
             "result_label": "Draft created: Contractor NDA"
           }
         ],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:13.379576+00:00"
+        "created_at": "2026-11-06T19:06:27.895596+00:00"
       }
     ]
   },

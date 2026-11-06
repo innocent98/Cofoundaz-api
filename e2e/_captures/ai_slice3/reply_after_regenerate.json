@@ -1,15 +1,15 @@
 {
   "data": {
-    "id": "fb5d4399-1e85-4e0e-8ff4-e58069fdf3fe",
+    "id": "e693dffb-8cd1-4ba6-b204-498b7ac3fcf2",
     "title": "What should I focus on next?",
     "topic": "strategy",
     "pinned_agent_key": null,
     "archived_at": null,
-    "created_at": "2026-11-06T17:00:14.423292+00:00",
-    "updated_at": "2026-11-06T17:00:14.577256+00:00",
+    "created_at": "2026-11-06T19:06:28.293086+00:00",
+    "updated_at": "2026-11-06T19:06:28.417959+00:00",
     "messages": [
       {
-        "id": "96e259a7-5664-45b5-ad84-7eedc2bef1fb",
+        "id": "bd8fa3a8-e6df-4f73-a023-5845bb2e0f72",
         "role": "user",
         "status": "ready",
         "content": "What should I focus on next?",
@@ -20,10 +20,10 @@
         "sources": null,
         "actions": [],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:14.432704+00:00"
+        "created_at": "2026-11-06T19:06:28.298290+00:00"
       },
       {
-        "id": "b97f8bc2-86f6-4585-90b3-8a28fb73f91b",
+        "id": "0a7ab72b-44b0-44a6-ba56-f6702ce9d58d",
         "role": "assistant",
         "status": "ready",
         "content": "A second answer.",
@@ -50,7 +50,7 @@
         ],
         "actions": [],
         "feedback": null,
-        "created_at": "2026-11-06T17:00:14.577254+00:00"
+        "created_at": "2026-11-06T19:06:28.417957+00:00"
       }
     ]
   },

@@ -3,31 +3,31 @@
     "enabled": true,
     "items": [
       {
-        "id": "0ed65f0d-b1e1-410b-a348-20a9009019c8",
-        "source": "health",
-        "title": "Close out your next roadmap tasks",
-        "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
-        "href": "/health",
-        "status": "new",
-        "created_at": "2026-11-06T17:00:15.187453+00:00"
-      },
-      {
-        "id": "0ffed5ba-ee65-458a-b0b2-8c76f84f33ea",
+        "id": "49ac3dda-bf13-49ab-bf34-e76b64b1879c",
         "source": "health",
         "title": "Get your key agreements signed",
         "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
         "href": "/health",
         "status": "new",
-        "created_at": "2026-11-06T17:00:15.187453+00:00"
+        "created_at": "2026-11-06T19:06:29.074604+00:00"
       },
       {
-        "id": "2fddfaa3-eaa3-4872-8ede-64531cfce984",
+        "id": "5ce5ffa6-589f-44e4-8476-ea498afdb7b0",
+        "source": "health",
+        "title": "Close out your next roadmap tasks",
+        "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+        "href": "/health",
+        "status": "new",
+        "created_at": "2026-11-06T19:06:29.074604+00:00"
+      },
+      {
+        "id": "625ccd7e-bdcd-403c-b842-efc4e973102b",
         "source": "health",
         "title": "Track your money in and out",
         "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
         "href": "/health",
         "status": "new",
-        "created_at": "2026-11-06T17:00:15.187453+00:00"
+        "created_at": "2026-11-06T19:06:29.074604+00:00"
       }
     ]
   },

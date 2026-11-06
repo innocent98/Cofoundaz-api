@@ -122,7 +122,9 @@ def test_notifications_gaps_journey(base_url, make_verified_user, mailbox, captu
         assert [x["id"] for x in r.json()["data"]["notifications"]] == [target["id"]]
         capture(g, "archived_list", r)
         r = c.get(f"{n}/unread-count", headers=wh)
-        assert r.json()["data"]["unread"] == 6  # five of the six published, plus the onboarding notice
+        assert (
+            r.json()["data"]["unread"] == 6
+        )  # five of the six published, plus the onboarding notice
         capture(g, "unread_after_archive", r)
         r = c.post(f"{n}/{target['id']}/restore", headers=wh)
         assert r.json()["data"]["archived"] is False
