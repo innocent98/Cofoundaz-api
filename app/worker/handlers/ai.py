@@ -519,14 +519,6 @@ def handle_journal_prompt(db: Session, job: Job) -> None:
 register_handler("ai.journal.prompt", handle_journal_prompt)
 
 
-def _turn_still_exists(db: Session, msg: AiMessage) -> bool:
-    """Re-read the assistant row under a row lock after the model call: a concurrent DELETE of
-    the conversation then waits for us, or has already removed the row."""
-    return (
-        db.query(AiMessage.id).filter(AiMessage.id == msg.id).with_for_update().first() is not None
-    )
-
-
 def handle_cofounder_reply(db: Session, job: Job) -> None:
     """Route and answer one AI Co-Founder turn. Self-managed: it commits its own units of work
     (see `ai_cofounder.orchestrator`)."""
