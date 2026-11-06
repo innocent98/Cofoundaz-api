@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "AI_BUDGET_EXHAUSTED",
+    "message": "Today's AI allowance for this workspace is used up. Try again tomorrow.",
+    "field_errors": []
+  }
+}

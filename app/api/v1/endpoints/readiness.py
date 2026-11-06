@@ -20,8 +20,14 @@ from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
 from app.platform.signed_urls import InvalidSignedToken, verify_key
-from app.schemas.readiness import DeckReviewIn, QaMessageIn, QaStartIn, ReadinessInputsIn
-from app.services.readiness import deck, qa, service
+from app.schemas.readiness import (
+    DeckReviewIn,
+    NarrativeIn,
+    QaMessageIn,
+    QaStartIn,
+    ReadinessInputsIn,
+)
+from app.services.readiness import deck, narrative, qa, service
 
 router = APIRouter()
 _read = require_role(*READINESS_READ_ROLES)
@@ -229,3 +235,58 @@ def get_qa_session(
     s = qa.get_session(db, membership.startup_id, session_id)
     full = membership.role in READINESS_WRITE_ROLES
     return success_response(qa.detail(s) if full else qa.summary(s))
+
+
+# ---- Financial narrative (PRD 15.4) --------------------------------------------------------
+# Founder edits and runs the check; team member reads the draft and the latest check.
+
+
+@router.get("/narrative")
+def get_narrative(
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    return success_response(narrative.draft_view(db, membership.startup_id))
+
+
+@router.put("/narrative")
+def put_narrative(
+    body: NarrativeIn,
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    narrative.put_draft(db, _startup(db, membership), user.id, body.body)
+    db.commit()
+    return success_response(narrative.draft_view(db, membership.startup_id))
+
+
+@router.post("/narrative/check", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("10/minute")
+def check_narrative(
+    request: Request,  # noqa: ARG001 - required by the rate limiter
+    membership: Membership = Depends(_write),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Any:
+    """Check the draft and the latest reviewed deck against the numbers. 202 with a job to poll;
+    200 when the result is ready at once (`outcome: reused`: nothing changed since the last check,
+    so the claims were reused, the numbers re-read, and no tokens spent) or a check is already
+    running (`outcome: in_progress`, that check is returned)."""
+    check, outcome = narrative.create_check(db, _startup(db, membership), user.id)
+    db.commit()
+    resp = success_response({"check": narrative.view(db, check), "outcome": outcome})
+    if outcome == "queued":
+        return resp
+    return JSONResponse(status_code=200, content=resp)
+
+
+@router.get("/narrative/checks/latest")
+def latest_narrative_check(
+    membership: Membership = Depends(_read),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    c = narrative.get_latest(db, membership.startup_id)
+    return success_response({"check": narrative.view(db, c) if c else None})

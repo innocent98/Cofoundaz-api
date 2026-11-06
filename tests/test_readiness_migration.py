@@ -15,6 +15,8 @@ TABLES = {
     "readiness_inputs",
     "deck_reviews",
     "mock_sessions",
+    "readiness_narrative",
+    "narrative_checks",
 }
 
 
@@ -29,7 +31,7 @@ def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_migration_chain_includes_0089_0091_and_0093():
+def test_migration_chain_includes_0089_0091_0093_and_0103():
     heads = _alembic(str(settings.DATABASE_URL), "heads")
     assert heads.returncode == 0, heads.stderr
     assert heads.stdout.count("(head)") == 1, heads.stdout
@@ -37,6 +39,7 @@ def test_migration_chain_includes_0089_0091_and_0093():
     assert "0089_readiness_scores" in history.stdout
     assert "0091_readiness_deck_reviews" in history.stdout
     assert "0093_readiness_mock_qa" in history.stdout
+    assert "0103_readiness_narrative" in history.stdout
 
 
 def test_readiness_migrations_upgrade_downgrade_upgrade_on_a_scratch_database():
@@ -55,6 +58,13 @@ def test_readiness_migrations_upgrade_downgrade_upgrade_on_a_scratch_database():
         up = _alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr
         assert TABLES <= set(inspect(eng).get_table_names())
+        c = _alembic(scratch_url, "downgrade", "0099_funding_cap_table")
+        assert c.returncode == 0, c.stderr
+        after_c = set(inspect(eng).get_table_names())
+        assert not {"readiness_narrative", "narrative_checks"} & after_c
+        assert "mock_sessions" in after_c
+        c_up = _alembic(scratch_url, "upgrade", "head")
+        assert c_up.returncode == 0, c_up.stderr
         top = _alembic(scratch_url, "downgrade", "0092_marketplace_providers")
         assert top.returncode == 0, top.stderr
         mid = set(inspect(eng).get_table_names())

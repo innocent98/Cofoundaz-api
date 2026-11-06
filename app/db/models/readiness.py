@@ -154,3 +154,51 @@ class MockSession(UUIDMixin, TimestampMixin, Base):
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (Index("ix_mock_sessions_startup_started", "startup_id", "started_at"),)
+
+
+class ReadinessNarrative(UUIDMixin, TimestampMixin, Base):
+    """The founder's financial narrative draft (PRD 15.4): one editable text per workspace."""
+
+    __tablename__ = "readiness_narrative"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class NarrativeCheck(UUIDMixin, TimestampMixin, Base):
+    """One "check my narrative against my numbers" run (PRD 15.4, slice C). The model only extracts
+    `claims`; `facts` are read from Finance and Funding and `findings` are computed in code, so the
+    model never judges a number. `status` is queued | running | ready | failed (`error` says why).
+    """
+
+    __tablename__ = "narrative_checks"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"), nullable=False
+    )
+    deck_review_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("deck_reviews.id", ondelete="SET NULL"), nullable=True
+    )
+    draft_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="queued")
+    error: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    claims: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    use_of_funds: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    facts: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    findings: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_narrative_checks_startup_created", "startup_id", "created_at"),)

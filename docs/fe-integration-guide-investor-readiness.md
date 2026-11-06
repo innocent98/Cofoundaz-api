@@ -1,4 +1,4 @@
-# FE Integration Guide: Investor Readiness (Module 15, slices A and B: score, history, deck review)
+# FE Integration Guide: Investor Readiness (Module 15, slices A to D: score, history, deck review, mock Q&A, narrative check)
 
 Every request and response body below is pasted **verbatim** from live captures taken by
 `e2e/test_investor_readiness.py` against a real server (`e2e/_captures/investor_readiness/*.json`).
@@ -7,7 +7,7 @@ captures (`Placeholder Co`, `example.com`) are fake. **What is not covered live 
 verification table at the end and marked inline.**
 
 Scope: this guide covers the **Score & Gaps** page, the **History** page and (section 12) the **Deck Review** page.
-Section 13 covers **Mock Q&A**. Narrative Check has no API yet (slice C); keep it on the mock until its guide exists.
+Section 13 covers **Mock Q&A**. Section 14 covers **Narrative Check** (slice C).
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.md`. Product calls
 D-IR-1..7 were accepted 2026-11-05.
 
@@ -2040,3 +2040,484 @@ characters per answer, one open session per workspace.
 | 409 `AI_BUDGET_LOW` (start and mid-session), 429 mid-call, scoring failures (`over_budget`, `generation_failed`, `job_failed`, `transcript_gone`), re-queue of a failed scoring | unit-tested only |
 | Transcripts and scorecard text cleared after 90 days, forgotten sessions closed after a day (daily job) | unit-tested; the daily job was not run live |
 | Prompt-injection fence on founder answers | unit-tested (prompt shape), not tested against a real model |
+
+
+## 14. Narrative Check (slice C)
+
+Routes (`/api/v1/readiness`): `GET /narrative`, `PUT /narrative`, `POST /narrative/check`, `GET /narrative/checks/latest`.
+Captures: `e2e/_captures/readiness_narrative_real/*.json` (this section) and `e2e/_captures/readiness_narrative/*.json`
+(same journey with a scripted model), both from `e2e/test_readiness_narrative.py` against a live server.
+
+**What was live.** The claim extraction ran on the **real model** (`NARRATIVE_E2E_REAL_LLM=1`, the worker's own client),
+so every claim, quote and slide number below is what the model actually returned. The deck review that the check reads was
+drained with the canned reviewer from slice B (its scores are the script's; the deck PDF and its text are real). The job was
+drained in the test process, as the worker would. Measured cost: **1,329 tokens** for an 8-slide deck plus a 124-character
+draft, and 1,355 for the second run (the spec estimated about 8k; a long deck and draft will cost more).
+
+### 14.1 What the page does, in FE terms
+
+The founder writes their financial story (one draft per workspace, autosaved). "Check my narrative" compares the numbers in
+the **latest reviewed pitch deck** and the **draft** against what Cofoundaz already knows: the books (Finance transactions),
+the financial model, the team, and the Funding round target. The model only **reads the numbers out of the text**; every
+right/wrong verdict is computed in code with a 10% tolerance, so the model cannot invent a discrepancy. A number whose quote
+is not in the text, or whose value is not written in that quote, is thrown away (`dropped_claims` on the job).
+
+### 14.2 Who can call what
+
+| Role | `GET /narrative`, `GET /narrative/checks/latest` | `PUT /narrative`, `POST /narrative/check` |
+|---|---|---|
+| founder | 200 | 200 / 202 |
+| team_member | 200 (draft and findings, read only) | **403** |
+| mentor, business_consultant, accountant, legal_advisor, investor | **403** | **403** |
+
+Hide the editor's save state, the textarea's editability and the "Check" button for a team member: show the draft read only.
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+### 14.3 `GET /narrative`: the draft
+
+Empty workspace (`draft_empty.json`):
+
+```json
+{
+  "data": {
+    "body": "",
+    "chars": 0,
+    "max_chars": 20000,
+    "draft_sha256": null,
+    "updated_at": null,
+    "updated_by_id": null,
+    "has_reviewed_deck": false,
+    "can_check": false
+  },
+  "meta": null
+}
+```
+
+`can_check` is true when the draft has text **or** a deck has been reviewed. When false, disable "Check" and say
+"Write your narrative or have your pitch deck reviewed first." (`has_reviewed_deck` tells you which half is missing.)
+
+### 14.4 `PUT /narrative` `{"body": "..."}`: save (autosave)
+
+Send the **whole** text every time (last write wins; there is no merge). Empty string clears it. Max 20,000 characters;
+debounce autosave (about 1 s after typing stops). Response is the same shape as `GET` (`draft_put_200.json`):
+
+```json
+{
+  "data": {
+    "body": "We make 2m NGN MRR today and burn 500k NGN a month. We are raising 90m NGN: 60% for engineering hires and 40% to open Ghana.",
+    "chars": 124,
+    "max_chars": 20000,
+    "draft_sha256": "a28f354cd266a373f591e16a4409961358e39950e8b4a9053df625ae07fa0447",
+    "updated_at": "2026-11-06T22:14:16.886553+00:00",
+    "updated_by_id": "1ae75c62-c853-4900-b12e-5599d4c1f5b8",
+    "has_reviewed_deck": true,
+    "can_check": true
+  },
+  "meta": null
+}
+```
+
+Over the limit (`draft_put_too_long_422.json`). **Trap:** `field` is an empty string, not `"body"`; show the message under
+the textarea yourself and enforce `max_chars` client side with a counter.
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "",
+        "message": "String should have at most 20000 characters"
+      }
+    ]
+  }
+}
+```
+
+### 14.5 `POST /narrative/check`: three outcomes
+
+No body. Read `data.outcome`:
+
+| HTTP | `outcome` | Meaning | FE does |
+|---|---|---|---|
+| **202** | `queued` | a model call was queued | poll (14.6) |
+| 200 | `in_progress` | a check is already running; that one is returned | poll it; do not show an error |
+| 200 | `reused` | neither the draft nor the reviewed deck changed since the last finished check: the old claims were reused against **today's** numbers, `tokens_used: 0`, already `ready` | render it at once |
+
+`reused` is what makes "I fixed my books, check again" free. Tell the founder in small print: "No AI used: your text
+had not changed." Pressing again within a minute with nothing at all changed returns the same check (same `id`).
+
+Queued (`check_202.json`):
+
+```json
+{
+  "data": {
+    "check": {
+      "id": "6e97ee9c-2cba-4a45-8adf-bf3ea1663110",
+      "status": "queued",
+      "error": null,
+      "job_id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+      "deck_review_id": "a64bd40d-d2ce-40a4-ba8a-37db6eb23151",
+      "draft_sha256": "a28f354cd266a373f591e16a4409961358e39950e8b4a9053df625ae07fa0447",
+      "tokens_used": 0,
+      "counts": {
+        "high": 0,
+        "medium": 0,
+        "info": 0,
+        "ok": 0
+      },
+      "findings": [],
+      "claims": [],
+      "use_of_funds": [],
+      "facts": {},
+      "stale": false,
+      "created_at": "2026-11-06T22:14:16.957778+00:00",
+      "checked_at": null
+    },
+    "outcome": "queued"
+  },
+  "meta": null
+}
+```
+
+`check_in_progress_200.json` is the identical `check` with `"outcome": "in_progress"`.
+
+Reused (`check_reused_200.json`, trimmed): `"job_id": null`, `"tokens_used": 0`, `"status": "ready"`, `"outcome": "reused"`,
+with findings computed against the books as they are now.
+
+### 14.6 Polling
+
+Poll `GET /api/v1/jobs/{job_id}` every 2 s, stop after about 60 s, then read `GET /narrative/checks/latest`.
+(Or poll `checks/latest` directly until `status` is `ready` or `failed`.) With the real model it took about 7 s.
+
+`job_queued.json`:
+
+```json
+{
+  "data": {
+    "id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+    "type": "ai.readiness.narrative_check",
+    "status": "queued",
+    "result": null,
+    "error": null
+  },
+  "meta": null
+}
+```
+
+`job_succeeded.json` (`dropped_claims`: numbers the model returned that failed the quote check, for support only):
+
+```json
+{
+  "data": {
+    "id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+    "type": "ai.readiness.narrative_check",
+    "status": "succeeded",
+    "result": {
+      "claims": 6,
+      "status": "ready",
+      "check_id": "6e97ee9c-2cba-4a45-8adf-bf3ea1663110",
+      "dropped_claims": 1
+    },
+    "error": null
+  },
+  "meta": null
+}
+```
+
+A job can also end `succeeded` with a **failed check** (the check says why); always read the check's `status`.
+
+### 14.7 `GET /narrative/checks/latest`: the result
+
+Nothing yet: `{"data": {"check": null}, "meta": null}` (`latest_none.json`). Otherwise the newest check, any status.
+
+`latest_ready.json`, top-level fields:
+
+```json
+{
+  "id": "6e97ee9c-2cba-4a45-8adf-bf3ea1663110",
+  "status": "ready",
+  "error": null,
+  "job_id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+  "tokens_used": 1329,
+  "counts": {
+    "high": 1,
+    "medium": 1,
+    "info": 2,
+    "ok": 3
+  },
+  "stale": false,
+  "created_at": "2026-11-06T22:14:16.957778+00:00",
+  "checked_at": "2026-11-06T22:14:23.661043+00:00"
+}
+```
+
+(plus `deck_review_id`, `draft_sha256`, `findings`, `claims`, `use_of_funds`, `facts`; shown below).
+
+**`findings`** are sorted worst first: `high`, `medium`, `info`, `ok`. Show `message` as the line text (it is final copy, the
+PRD wording); colour by `severity`. The first two from the live run:
+
+```json
+[
+  {
+    "fact": null,
+    "kind": "inconsistent",
+    "claim": {
+      "unit": "minor",
+      "quote": "We make 2m NGN MRR today",
+      "slide": null,
+      "value": 200000000,
+      "metric": "mrr",
+      "source": "draft",
+      "currency": "NGN"
+    },
+    "metric": "mrr",
+    "message": "Deck (slide 5) says ₦1.6M MRR; your narrative says ₦2M. Pick one number.",
+    "severity": "high",
+    "other_claim": {
+      "unit": "minor",
+      "quote": "MRR 1.6m NGN",
+      "slide": 5,
+      "value": 160000000,
+      "metric": "mrr",
+      "source": "deck",
+      "currency": "NGN"
+    }
+  },
+  {
+    "fact": {
+      "says": "your books show",
+      "unit": "minor",
+      "value": 160000000,
+      "source": "books",
+      "currency": "NGN"
+    },
+    "kind": "mismatch",
+    "claim": {
+      "unit": "minor",
+      "quote": "We make 2m NGN MRR today",
+      "slide": null,
+      "value": 200000000,
+      "metric": "mrr",
+      "source": "draft",
+      "currency": "NGN"
+    },
+    "metric": "mrr",
+    "message": "Your narrative says ₦2M MRR; your books show ₦1.6M. Fix the number or the story.",
+    "severity": "medium"
+  }
+]
+```
+
+The other five findings of that run, `message` only (verbatim):
+
+- info: `Your narrative says ₦500k monthly burn; your books show no net burn (income covers costs), so a gross burn figure cannot be checked.`
+- info: `Deck (slide 5) says 12% monthly growth, but Cofoundaz has no figure to check it against yet.`
+- ok: `Deck (slide 5) says ₦1.6M MRR; your books show ₦1.6M. Consistent.`
+- ok: `Deck (slide 8) says ₦90M raise; your Funding round targets ₦90M. Consistent.`
+- ok: `Your narrative says ₦90M raise; your Funding round targets ₦90M. Consistent.`
+
+| `kind` | `severity` | Meaning | `fact` | `other_claim` |
+|---|---|---|---|---|
+| `inconsistent` | high | deck and narrative give different numbers for the same metric | **null** | present (the deck's claim) |
+| `mismatch` | high (> 25% off) or medium (10-25%) | a claim disagrees with the app's figure | present | absent |
+| `match` | ok | within 10% | present | absent |
+| `unverified` | info | no figure to compare, a different currency, a team bigger than the workspace's members, or burn against zero net burn | present or **null** | absent |
+
+**Field-nesting traps:**
+- `other_claim` exists **only** on `inconsistent`. On that kind, `claim` is the narrative's and `other_claim` the deck's.
+- `fact` is `null` on `inconsistent` and on `unverified` with no figure; it is an object on everything else.
+- `claim.slide` is `null` for draft claims and may be `null` for a deck claim whose quote could not be placed on a slide.
+- Money is always **minor units** (`unit: "minor"`, kobo for NGN); `growth_pct` is `unit: "percent"` (12 = 12%),
+  `runway_months` is `"months"`, `headcount` is `"people"`. `value` can be a float for percent/months.
+- `facts` is keyed by metric and only has the metrics Cofoundaz could read; a missing key is not zero.
+
+**`claims`**: every number extracted, with its verbatim `quote` (highlight it in the draft or link to the deck slide).
+Metrics: `mrr`, `arr`, `burn`, `runway_months`, `cash`, `headcount`, `ask`, `growth_pct`. Targets and projections ("we will
+reach", "by 2027") are not claims and never appear.
+
+**`use_of_funds`** (live run, first entry; the run found four, two from the deck, two from the draft):
+
+```json
+{
+  "label": "Hire engineers",
+  "quote": "hire 3 engineers",
+  "source": "deck",
+  "percent": null,
+  "amount_minor": null
+}
+```
+
+**`facts`** (live run, excerpt): where each comparison number came from. `source` is `books` (recorded transactions,
+3-month average), `model` (financial model month 1), `team` (active founder and team members) or `funding` (open round target).
+
+```json
+{
+  "mrr": {
+    "says": "your books show",
+    "unit": "minor",
+    "value": 160000000,
+    "source": "books",
+    "currency": "NGN"
+  },
+  "burn": {
+    "says": "your books show",
+    "unit": "minor",
+    "value": 0,
+    "source": "books",
+    "currency": "NGN"
+  },
+  "headcount": {
+    "says": "your workspace has",
+    "unit": "people",
+    "value": 2,
+    "source": "team",
+    "currency": null
+  }
+}
+```
+
+### 14.8 Stale and failed checks
+
+- `stale: true` (`latest_stale.json`): the draft was edited, or a newer deck was reviewed, after this check ran. Keep the
+  findings visible but show a banner "Your narrative changed since this check. Check again." The next check is a real model call.
+- `status: "failed"` with `error`:
+
+| `error` | Show |
+|---|---|
+| `over_budget` | "Today's AI allowance ran out before the check ran. Try again tomorrow." |
+| `generation_failed` | "The check could not run. Try again." |
+| `processing_failed` | same as above (the call was billed) |
+| `nothing_to_check` | "Your narrative was cleared before the check ran." |
+| `job_failed` | "The check stopped. Try again." |
+
+- `status: "ready"` with `error: "deck_unavailable"`: the reviewed deck's file was deleted; only the draft was checked. Say so.
+
+`over_budget`, `generation_failed`, `processing_failed`, `job_failed` and `deck_unavailable` were **not** exercised live (unit-tested only).
+
+### 14.9 Errors on `POST /narrative/check`
+
+| HTTP | `code` | When | Captured |
+|---|---|---|---|
+| 422 | `NOTHING_TO_CHECK` | no draft text and no reviewed deck | `check_nothing_422.json` |
+| 409 | `AI_BUDGET_LOW` | less than about 10,000 tokens left today | `check_budget_low_409.json` |
+| 429 | `AI_BUDGET_EXHAUSTED` | today's allowance used up | `check_budget_exhausted_429.json` |
+| 429 | rate limit | more than 10 presses a minute | not captured (limiter relaxed on the e2e server) |
+| 403 | `FORBIDDEN` | not the founder | `check_team_member_403.json` |
+
+```json
+{
+  "error": {
+    "code": "NOTHING_TO_CHECK",
+    "message": "Write your narrative or have your pitch deck reviewed first, then check it.",
+    "field_errors": []
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "AI_BUDGET_LOW",
+    "message": "Not enough of today's AI allowance is left for a narrative check (it needs about 10,000 tokens). Try again tomorrow.",
+    "field_errors": []
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "AI_BUDGET_EXHAUSTED",
+    "message": "Today's AI allowance for this workspace is used up. Try again tomorrow.",
+    "field_errors": []
+  }
+}
+```
+
+### 14.10 Score and history
+
+Two signals now read the latest finished check (`score_after_check.json`, verbatim):
+
+```json
+{
+  "key": "financials.use_of_funds",
+  "href": "/investor-readiness/narrative",
+  "note": null,
+  "unit": "step",
+  "label": "Use of funds defined",
+  "score": 100.0,
+  "value": 1.0,
+  "target": 1
+}
+```
+
+```json
+{
+  "key": "story.narrative",
+  "href": "/investor-readiness/narrative",
+  "note": "Your deck or narrative disagrees with your numbers, or states none that Cofoundaz can check. Fix the number or the story.",
+  "unit": "step",
+  "label": "Narrative consistent with the numbers",
+  "score": 50.0,
+  "value": 1.0,
+  "target": 2
+}
+```
+
+`story.narrative` is 0 (never checked), 50 (a high finding, or no number that could be compared), or 100 (at least one number
+compared and no high finding). A finished check refreshes the score at once (no 15-minute wait).
+
+History (`history_after_check.json`): a log entry and a marker per finished check.
+
+```json
+[
+  {
+    "type": "narrative_check",
+    "at": "2026-11-06T22:14:23.661043+00:00",
+    "id": "6e97ee9c-2cba-4a45-8adf-bf3ea1663110",
+    "counts": {
+      "high": 1,
+      "medium": 1,
+      "info": 2,
+      "ok": 3
+    }
+  }
+]
+```
+
+Marker: `{"at": "2026-11-06T22:14:23.661043+00:00", "label": "Narrative checked"}`.
+
+### 14.11 UX consequences to surface
+
+- **The verdicts can change without a new check.** A `reused` check re-reads the books: fixing a transaction can turn a red
+  line green, or a green line red (in the live run, after the books moved to ₦2M, the deck's ₦1.6M became a medium mismatch).
+  Show `checked_at` next to the results.
+- **"Unverified" is not "wrong".** Render info lines neutrally, not as warnings.
+- **A check costs AI allowance only when the text changed.** Say "Uses AI" on the button only when the last check is
+  `stale` or absent.
+- **Headcount and burn are lenient on purpose**: a bigger claimed team, or a burn when the books show none, is never flagged.
+
+### 14.12 Narrative verification
+
+| Behaviour | Verified |
+|---|---|
+| Draft get/put, 20,000-char 422, empty state, `can_check` | live |
+| Check 202, `in_progress` 200, job queued then succeeded, findings, claims, facts, use of funds | **live on the real model** (deck review itself canned) |
+| Quote check drops invented or misread numbers; targets dropped; dash rewrite survives | real model run dropped 1 claim; each rule unit-tested |
+| `reused` after fixing the books (0 tokens), `stale` after an edit, second real call after the edit | live |
+| 409 `AI_BUDGET_LOW`, 429 `AI_BUDGET_EXHAUSTED`, 422 `NOTHING_TO_CHECK` | live |
+| Team member reads, cannot put or check (403); mentor 403 | live; all 7 roles on every route unit-tested |
+| Score signals and history log/marker | live |
+| Failed checks (`over_budget`, `generation_failed`, `processing_failed`, `job_failed`), `deck_unavailable`, rate limit 429 | unit-tested only |
+| Token cost on a long deck (30 slides, 20k-char draft) | **not measured**; 1,329 tokens measured on 8 slides |

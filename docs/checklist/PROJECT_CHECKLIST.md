@@ -3901,7 +3901,7 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 
 ---
 
-## Module 15 — Investor Readiness (design accepted 2026-11-05; slice A built)
+## Module 15 — Investor Readiness (design accepted 2026-11-05; slices A, B, C, D built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.md`; gaps and D-IR-1..7 (all accepted):
 `cofoundaz/docs/checklist/investor-readiness-prd-gaps.md`. Order: A, then B and D in parallel, then C, then FE, re-walk, unhide.
@@ -3926,7 +3926,15 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
   - [x] `story.mock_qa` signal, History log + markers, "Mock Q&A session summary ready" notification (founders)
   - [x] `expected_turn` double-submit guard, continue-time budget gate, failed scoring re-queueable; 90-day purge (transcript, context and scorecard text; daily job) tested; migration round trip; live e2e (stub investor, scripted scorer)
   - [ ] _Not verified:_ a real model run (questions, ratings, token cost); the purge job on a live worker
-- [ ] Slice C: Narrative check (draft, claim extraction, facts builder, comparator)
+- [x] **Slice C: narrative check** (`feature/readiness-narrative`, migration `0103_readiness_narrative`, SOP `docs/sop/2026-11-06-investor-readiness-narrative.md`, FE guide section 14) — PR open 2026-11-06
+  - [x] `readiness_narrative` (one draft per workspace), `narrative_checks` (claims, use of funds, facts, findings, tokens)
+  - [x] `GET/PUT /readiness/narrative`, `POST /readiness/narrative/check` (202 queued / 200 in progress or reused), `GET /readiness/narrative/checks/latest`
+  - [x] Job `ai.readiness.narrative_check` under the AI budget; one extraction call; quote and value verified in code; targets dropped; 10,000-token pre-flight
+  - [x] Facts builder (books, model, team, Funding round) and comparator (10% / 25% bands, deck vs draft, unverified); claims reused for free when the text is unchanged
+  - [x] `story.narrative` and `financials.use_of_funds` signals; `readiness.narrative.checked` forces a refresh; History log and marker
+  - [x] Roles per D-IR-4 (all 7 roles tested); Opus review, 10 findings fixed; migration round trip
+  - [x] Live e2e journey, extraction **on the real model** (1,329 tokens per check), live-captured FE guide
+  - [ ] _Follow-up:_ slice B and D JSON schemas are not OpenAI strict-mode valid (found by this slice's real run)
 - [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk
 - [ ] _Deferred:_ Academy "Learn how" link per gap · revenue growth and non-NGN revenue signals · founder agreement linked to a signature
 

@@ -1,0 +1,15 @@
+{
+  "data": {
+    "id": "4e04dff4-e41f-4047-afa1-c89a164fe46d",
+    "type": "ai.readiness.narrative_check",
+    "status": "succeeded",
+    "result": {
+      "claims": 6,
+      "status": "ready",
+      "check_id": "6e97ee9c-2cba-4a45-8adf-bf3ea1663110",
+      "dropped_claims": 1
+    },
+    "error": null
+  },
+  "meta": null
+}

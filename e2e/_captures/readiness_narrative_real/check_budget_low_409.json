@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "AI_BUDGET_LOW",
+    "message": "Not enough of today's AI allowance is left for a narrative check (it needs about 10,000 tokens). Try again tomorrow.",
+    "field_errors": []
+  }
+}

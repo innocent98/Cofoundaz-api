@@ -16,6 +16,7 @@ from app.core.errors import AppError
 from app.db.models.readiness import (
     DeckReview,
     MockSession,
+    NarrativeCheck,
     ReadinessInput,
     ReadinessScore,
     ReadinessScoreHistory,
@@ -31,6 +32,7 @@ from app.services.readiness.config import (
     READINESS_CONFIG_VERSION,
     READY_AT,
 )
+from app.services.readiness.narrative import counts as narrative_counts
 from app.services.readiness.qa import RATING_LABELS
 from app.services.readiness.qa import duration_minutes as qa_minutes
 from app.services.readiness.scoring import (
@@ -44,6 +46,7 @@ from app.services.readiness.scoring import (
 from app.services.readiness.signals import must_haves, read_signals
 
 HISTORY_RANGES = (30, 90, 365)
+HISTORY_LOG_LIMIT = 100  # narrative checks are cheap to repeat, so the log keeps the newest
 
 
 def _dimension_payload(readings: list[Reading]) -> dict[str, Any]:
@@ -351,7 +354,28 @@ def history(db: Session, startup: Startup, days: int) -> dict[str, Any]:
         for m in sessions
     ]
     markers += [{"at": e["at"], "label": f"Mock Q&A scored ({e['rating_label']})"} for e in qa_rows]
-    log_rows = sorted(log_rows + qa_rows, key=lambda e: str(e["at"]), reverse=True)
+    checks = (
+        db.query(NarrativeCheck)
+        .filter(
+            NarrativeCheck.startup_id == startup.id,
+            NarrativeCheck.status == "ready",
+            NarrativeCheck.checked_at >= since,
+        )
+        .order_by(NarrativeCheck.checked_at.desc())
+        .limit(HISTORY_LOG_LIMIT)
+        .all()
+    )
+    check_rows: list[dict[str, Any]] = [
+        {
+            "type": "narrative_check",
+            "at": c.checked_at.isoformat() if c.checked_at else c.created_at.isoformat(),
+            "id": str(c.id),
+            "counts": narrative_counts(c.findings),
+        }
+        for c in checks
+    ]
+    markers += [{"at": e["at"], "label": "Narrative checked"} for e in check_rows]
+    log_rows = sorted(log_rows + qa_rows + check_rows, key=lambda e: str(e["at"]), reverse=True)
     markers.sort(key=lambda m: m["at"])
     return {"range": days, "points": points, "markers": markers, "log": log_rows}
 
