@@ -1,0 +1,189 @@
+{
+  "data": {
+    "currency": "NGN",
+    "fully_diluted": true,
+    "as_of": "2026-06-01",
+    "empty": false,
+    "totals": {
+      "issued_shares": 8000000,
+      "granted_option_shares": 480000,
+      "unallocated_pool_shares": 1000000,
+      "fully_diluted_shares": 9480000,
+      "denominator_shares": 9480000,
+      "convertible_amount_minor": 2310000
+    },
+    "holders": [
+      {
+        "id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
+        "name": "Ada Obi",
+        "kind": "founder",
+        "email": null,
+        "notes": null,
+        "shares": 8000000,
+        "pct_bps": 8439,
+        "entries": [
+          {
+            "id": "c8d35898-2287-4886-ae18-35678f62f9e3",
+            "holder_id": "cc9fa021-46ab-4f8b-ac8b-f39e412f6d50",
+            "security": "common",
+            "shares": 8000000,
+            "price_minor": null,
+            "amount_minor": null,
+            "valuation_cap_minor": null,
+            "discount_bps": null,
+            "safe_kind": null,
+            "mfn": false,
+            "interest_bps": null,
+            "issued_on": "2025-01-15",
+            "vesting_cliff_months": null,
+            "vesting_months": null,
+            "vesting_start_on": null,
+            "notes": null,
+            "vested_shares": 8000000
+          }
+        ]
+      },
+      {
+        "id": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
+        "name": "Option pool",
+        "kind": "pool",
+        "email": null,
+        "notes": null,
+        "shares": 1000000,
+        "pct_bps": 1055,
+        "entries": [
+          {
+            "id": "5a52d8c4-9591-4a1b-931f-4b9f77dfac39",
+            "holder_id": "bde5e177-9c7b-4e38-a328-f4a4fc8f0f69",
+            "security": "option",
+            "shares": 1000000,
+            "price_minor": null,
+            "amount_minor": null,
+            "valuation_cap_minor": null,
+            "discount_bps": null,
+            "safe_kind": null,
+            "mfn": false,
+            "interest_bps": null,
+            "issued_on": null,
+            "vesting_cliff_months": null,
+            "vesting_months": null,
+            "vesting_start_on": null,
+            "notes": null,
+            "vested_shares": 1000000
+          }
+        ]
+      },
+      {
+        "id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
+        "name": "Eve Placeholder",
+        "kind": "employee",
+        "email": "eve@example.com",
+        "notes": null,
+        "shares": 480000,
+        "pct_bps": 506,
+        "entries": [
+          {
+            "id": "d6a95418-3ebc-4a2e-ba4c-00f4482ab972",
+            "holder_id": "54f82d59-7a3f-40d6-bd12-7e6a9fecaae7",
+            "security": "option",
+            "shares": 480000,
+            "price_minor": 10,
+            "amount_minor": null,
+            "valuation_cap_minor": null,
+            "discount_bps": null,
+            "safe_kind": null,
+            "mfn": false,
+            "interest_bps": null,
+            "issued_on": "2025-03-01",
+            "vesting_cliff_months": 12,
+            "vesting_months": 48,
+            "vesting_start_on": "2025-03-01",
+            "notes": null,
+            "vested_shares": 150000
+          }
+        ]
+      },
+      {
+        "id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
+        "name": "Angel One",
+        "kind": "investor",
+        "email": null,
+        "notes": null,
+        "shares": 0,
+        "pct_bps": null,
+        "entries": [
+          {
+            "id": "937bba08-87a6-4a54-ade9-6526df522593",
+            "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
+            "security": "safe",
+            "shares": null,
+            "price_minor": null,
+            "amount_minor": 1000000,
+            "valuation_cap_minor": 10000000,
+            "discount_bps": null,
+            "safe_kind": "post_money",
+            "mfn": false,
+            "interest_bps": null,
+            "issued_on": "2025-09-01",
+            "vesting_cliff_months": null,
+            "vesting_months": null,
+            "vesting_start_on": null,
+            "notes": null,
+            "converting_amount_minor": 1000000
+          },
+          {
+            "id": "e7f89504-cdbf-4361-8afa-3155c9b605e2",
+            "holder_id": "0d8df274-3438-4c3f-a5f4-14671b4448c7",
+            "security": "safe",
+            "shares": null,
+            "price_minor": null,
+            "amount_minor": 500000,
+            "valuation_cap_minor": null,
+            "discount_bps": 2000,
+            "safe_kind": "post_money",
+            "mfn": false,
+            "interest_bps": null,
+            "issued_on": "2025-10-01",
+            "vesting_cliff_months": null,
+            "vesting_months": null,
+            "vesting_start_on": null,
+            "notes": null,
+            "converting_amount_minor": 500000
+          }
+        ]
+      },
+      {
+        "id": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
+        "name": "Lagos Bank",
+        "kind": "investor",
+        "email": null,
+        "notes": null,
+        "shares": 0,
+        "pct_bps": null,
+        "entries": [
+          {
+            "id": "21c51831-027a-4466-a431-d1b2c099e291",
+            "holder_id": "b629b650-af2e-44bd-a9fa-ff22c1d7fb4e",
+            "security": "note",
+            "shares": null,
+            "price_minor": null,
+            "amount_minor": 750000,
+            "valuation_cap_minor": 12000000,
+            "discount_bps": null,
+            "safe_kind": "pre_money",
+            "mfn": false,
+            "interest_bps": 800,
+            "issued_on": "2025-06-01",
+            "vesting_cliff_months": null,
+            "vesting_months": null,
+            "vesting_start_on": null,
+            "notes": null,
+            "converting_amount_minor": 810000
+          }
+        ]
+      }
+    ],
+    "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers."
+  },
+  "meta": null
+}

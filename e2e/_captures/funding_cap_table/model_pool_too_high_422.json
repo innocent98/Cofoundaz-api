@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "POOL_TARGET_TOO_HIGH",
+    "message": "That option pool is bigger than the existing holders' share of the post-money.",
+    "field_errors": []
+  }
+}

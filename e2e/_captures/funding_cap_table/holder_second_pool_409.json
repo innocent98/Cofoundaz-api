@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "POOL_EXISTS",
+    "message": "The option pool already exists. Add options to it.",
+    "field_errors": []
+  }
+}

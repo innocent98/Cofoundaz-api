@@ -1,0 +1,19 @@
+{
+  "data": {
+    "currency": "NGN",
+    "fully_diluted": true,
+    "as_of": "2026-11-06",
+    "empty": true,
+    "totals": {
+      "issued_shares": 0,
+      "granted_option_shares": 0,
+      "unallocated_pool_shares": 0,
+      "fully_diluted_shares": 0,
+      "denominator_shares": 0,
+      "convertible_amount_minor": 0
+    },
+    "holders": [],
+    "disclaimer": "Estimates for planning, not legal or tax advice. Real conversion terms are set by your signed documents. Check them with a lawyer before you rely on these numbers."
+  },
+  "meta": null
+}
