@@ -20,8 +20,22 @@ DUE_SOON_DAYS = 14
 
 # Same allowance as the Finance expense receipt (app/services/finance/expenses.py), which this
 # copies: a proof of filing is a scan or a PDF, nothing else.
-PROOF_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "application/pdf": ".pdf"}
+#
+# Classified by its leading bytes, never by the client's Content-Type or filename: an HTML file
+# labelled image/png must not be stored, or later served, as an image. Each module owns its own
+# table - Finance, Documents, Marketing and Marketplace each have one - so legal's lists exactly
+# what legal accepts.
+_PROOF_TYPES: tuple[tuple[bytes, str, str], ...] = (
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"%PDF-", "application/pdf", ".pdf"),
+)
+_EXT_TO_TYPE = {ext: ctype for _magic, ctype, ext in _PROOF_TYPES}
 MAX_PROOF_BYTES = 10 * 1024 * 1024
+
+# The row carries a ROUTE, not a storage address. The file is private and is only ever served
+# through an authenticated endpoint, mirroring Finance's RECEIPT_ROUTE.
+PROOF_ROUTE = "/api/v1/legal/compliance-items/{item_id}/proof"
 
 DONE = "done"
 OVERDUE = "overdue"
@@ -54,7 +68,9 @@ def serialize_item(row: ComplianceItem, *, today: date) -> dict[str, Any]:
         "status": row.status.value,
         "derived_status": derived_compliance_status(row.status, row.due_on, today),
         "done_at": row.done_at.isoformat() if row.done_at else None,
-        "proof_url": row.proof_url,
+        # Computed, never stored: a private file is reachable only through the authenticated
+        # route, so the stored column stays NULL (mirrors Finance's receipt_url).
+        "proof_url": PROOF_ROUTE.format(item_id=row.id) if row.proof_key else None,
         "recurrence": row.recurrence.value,
         "previous_item_id": str(row.previous_item_id) if row.previous_item_id else None,
         "created_by": str(row.created_by) if row.created_by else None,
@@ -177,9 +193,22 @@ def delete_item(db: Session, *, startup_id: uuid.UUID, item_id: uuid.UUID) -> No
     # The stored asset goes with its row rather than being orphaned in storage, mirroring
     # `delete_expense`. Note a migration downgrade does NOT do this - see the SOP.
     if row.proof_key:
-        get_storage().delete(row.proof_key)
+        get_storage().delete_private(row.proof_key)
     db.delete(row)
     db.flush()
+
+
+def sniff_proof(content: bytes) -> tuple[str, str] | None:
+    """(content_type, extension) for a PNG, JPEG or PDF by magic bytes, else None."""
+    for magic, ctype, ext in _PROOF_TYPES:
+        if content.startswith(magic):
+            return ctype, ext
+    return None
+
+
+def proof_content_type(key: str) -> str:
+    """Content type for a stored proof key (the extension was chosen from the sniffed bytes)."""
+    return _EXT_TO_TYPE.get("." + key.rsplit(".", 1)[-1], "application/octet-stream")
 
 
 def attach_proof(
@@ -193,20 +222,23 @@ def attach_proof(
 ) -> ComplianceItem:
     """Attach or replace the proof of filing. Copies `attach_receipt` from Finance.
 
-    Proof is OPTIONAL per the PRD: marking an item done never requires one.
+    `content_type` is client-supplied and deliberately ignored: the type comes from the file's
+    own leading bytes. Proof is OPTIONAL per the PRD: marking an item done never requires one.
     """
     row = get_item(db, startup_id=startup_id, item_id=item_id)
-    ext = PROOF_EXT.get(content_type or "")
-    if ext is None:
-        raise _validation("proof", "Proof must be a PNG, JPEG, or PDF.")
     if size_bytes > MAX_PROOF_BYTES:
         raise _validation("proof", "Proof exceeds the 10 MB limit.")
+    sniffed = sniff_proof(content)
+    if sniffed is None:
+        raise _validation("proof", "Proof must be a PNG, JPEG, or PDF.")
+    ctype, ext = sniffed
     old_key = row.proof_key
     key = f"legal-proofs/{startup_id}/{uuid.uuid4().hex}{ext}"
     # Save the new asset before dropping the old one, so a failed upload never orphans the row.
-    url = get_storage().save(key, content, content_type or "")
-    row.proof_url, row.proof_key = url, key
+    get_storage().save_private(key, content, ctype)
+    row.proof_key = key
+    row.proof_url = None
     if old_key:
-        get_storage().delete(old_key)
+        get_storage().delete_private(old_key)
     db.flush()
     return row
