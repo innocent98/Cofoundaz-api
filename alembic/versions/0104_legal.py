@@ -1,7 +1,7 @@
 """legal
 
-Revision ID: 0067_legal
-Revises: 0066_finance_invoice_automation
+Revision ID: 0104_legal
+Revises: 0103_readiness_narrative
 Create Date: 2026-10-22
 
 Module 13 (Legal & Compliance) Slice 1 schema. Three brand-new tables, so this migration takes
@@ -38,8 +38,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0067_legal"
-down_revision = "0066_finance_invoice_automation"
+revision = "0104_legal"
+down_revision = "0103_readiness_narrative"
 branch_labels = None
 depends_on = None
 
