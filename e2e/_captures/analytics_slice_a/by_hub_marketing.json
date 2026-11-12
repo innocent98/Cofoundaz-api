@@ -1,0 +1,109 @@
+{
+  "data": {
+    "period": {
+      "from": "2026-10-14",
+      "to": "2026-11-12"
+    },
+    "compare_period": {
+      "from": "2026-09-14",
+      "to": "2026-10-13"
+    },
+    "hubs": [
+      {
+        "hub": "marketing",
+        "label": "Marketing",
+        "path": "/marketing",
+        "tiles": [
+          {
+            "key": "marketing.impressions",
+            "label": "Impressions",
+            "unit": "count",
+            "hub": "marketing",
+            "kind": "flow",
+            "good": "up",
+            "source_note": "Marketing metrics",
+            "definition": "Recorded impressions across channels.",
+            "currency": null,
+            "status": "ok",
+            "value": 2000,
+            "period": {
+              "from": "2026-10-14",
+              "to": "2026-11-12"
+            },
+            "as_of": "2026-11-12T19:11:42.655268+00:00",
+            "hub_path": "/marketing",
+            "compare": {
+              "period": {
+                "from": "2026-09-14",
+                "to": "2026-10-13"
+              },
+              "value": null,
+              "delta": null,
+              "delta_pct": null
+            },
+            "series": []
+          },
+          {
+            "key": "marketing.ctr",
+            "label": "Click-through rate",
+            "unit": "percent",
+            "hub": "marketing",
+            "kind": "flow",
+            "good": "up",
+            "source_note": "Marketing metrics",
+            "definition": "Clicks divided by impressions.",
+            "currency": null,
+            "status": "ok",
+            "value": 2.5,
+            "period": {
+              "from": "2026-10-14",
+              "to": "2026-11-12"
+            },
+            "as_of": "2026-11-12T19:11:42.657769+00:00",
+            "hub_path": "/marketing",
+            "compare": {
+              "period": {
+                "from": "2026-09-14",
+                "to": "2026-10-13"
+              },
+              "value": null,
+              "delta": null,
+              "delta_pct": null
+            },
+            "series": []
+          },
+          {
+            "key": "marketing.conversions",
+            "label": "Conversions",
+            "unit": "count",
+            "hub": "marketing",
+            "kind": "flow",
+            "good": "up",
+            "source_note": "Marketing metrics",
+            "definition": "Recorded conversions across channels.",
+            "currency": null,
+            "status": "no_data",
+            "value": null,
+            "period": {
+              "from": "2026-10-14",
+              "to": "2026-11-12"
+            },
+            "as_of": "2026-11-12T19:11:42.660361+00:00",
+            "hub_path": "/marketing",
+            "compare": {
+              "period": {
+                "from": "2026-09-14",
+                "to": "2026-10-13"
+              },
+              "value": null,
+              "delta": null,
+              "delta_pct": null
+            },
+            "series": []
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

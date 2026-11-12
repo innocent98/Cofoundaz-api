@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": "69e4fe6a-a4ff-485f-8212-78d23a70e1f3",
+    "key": "custom.active_users",
+    "label": "Active users",
+    "unit": "count",
+    "currency": null,
+    "points": []
+  },
+  "meta": null
+}
