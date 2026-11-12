@@ -11,13 +11,13 @@ founder wrote, or a booking is paid) but cannot open one, so an expert can't col
 whole directory. A thread with no message yet and no booking is invisible to the expert.
 
 Messages are plain text. They are never put in an email (the expert gets "you have a new message",
-once per thread per 10 minutes) and a founder's in-app notification quotes a short preview that the
-client renders as text. Locking: posting locks the THREAD row only (to serialise the digest stamp);
+once per thread per 10 minutes) and a founder's in-app notification names the expert but quotes no
+text, since a notification can be emailed. The thread list's last-message preview is API only. Locking: posting locks the THREAD row only (to serialise the digest stamp);
 it reads the booking without a lock, so it can never deadlock with `apply_payment`, which locks
 booking -> order -> expert -> thread."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, or_, update
@@ -38,7 +38,11 @@ from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.marketplace import emails, files, identity, outbox
-from app.services.marketplace.constants import MAX_MESSAGE_FILES, MESSAGE_COLLAPSE
+from app.services.marketplace.constants import (
+    MAX_MESSAGE_FILES,
+    MAX_NEW_THREADS_PER_DAY,
+    MESSAGE_COLLAPSE,
+)
 from app.services.marketplace.listings import err
 
 FOUNDER, PROVIDER = "founder", "provider"
@@ -87,6 +91,23 @@ def open_thread(
     existing = _pair_thread(db, m.startup_id, provider.id)
     if existing is not None:
         return existing, False
+    since = now() - timedelta(days=1)
+    fresh = (
+        db.query(func.count(MarketplaceThread.id))
+        .filter(
+            MarketplaceThread.startup_id == m.startup_id,
+            MarketplaceThread.booking_id.is_(None),
+            MarketplaceThread.created_at >= since,
+        )
+        .scalar()
+    )
+    if (fresh or 0) >= MAX_NEW_THREADS_PER_DAY:
+        raise err(
+            "THREAD_LIMIT_REACHED",
+            "You've started a lot of conversations today. Try again tomorrow, or reply in one "
+            "you already have.",
+            429,
+        )
     thread = MarketplaceThread(startup_id=m.startup_id, provider_id=provider.id)
     try:
         with db.begin_nested():
@@ -103,7 +124,9 @@ def open_thread(
 def attach_booking(db: Session, b: MarketplaceBooking) -> MarketplaceThread:
     """The booking was just paid (caller holds the booking lock, and the expert's where needed):
     attach it to the pair's pre-booking thread if there is one, else open a thread for it. Safe to
-    call twice."""
+    call twice. Refuses (404) a booking that was never paid."""
+    if not identity.was_paid(db, b):
+        raise NotFound()
     existing = db.query(MarketplaceThread).filter(MarketplaceThread.booking_id == b.id).first()
     if existing is not None:
         return existing
@@ -170,9 +193,7 @@ def _provider_thread(db: Session, ctx: ProviderContext, thread_id: uuid.UUID) ->
     return row
 
 
-def booking_thread_founder(db: Session, m: Membership, booking_id: uuid.UUID) -> MarketplaceThread:
-    """The thread of one of this workspace's bookings, created on first use for a booking paid
-    before threads existed. A booking still waiting for payment has none."""
+def _founder_booking(db: Session, m: Membership, booking_id: uuid.UUID) -> MarketplaceBooking:
     b = (
         db.query(MarketplaceBooking)
         .filter(MarketplaceBooking.id == booking_id, MarketplaceBooking.startup_id == m.startup_id)
@@ -180,30 +201,53 @@ def booking_thread_founder(db: Session, m: Membership, booking_id: uuid.UUID) ->
     )
     if b is None:
         raise NotFound()
-    return _ensure_for_booking(db, b)
+    return b
+
+
+def booking_thread_founder_read(
+    db: Session, m: Membership, booking_id: uuid.UUID
+) -> MarketplaceThread | None:
+    """READ path: the booking's thread if it has one, else None. Never creates or locks."""
+    b = _founder_booking(db, m, booking_id)
+    return db.query(MarketplaceThread).filter(MarketplaceThread.booking_id == b.id).first()
+
+
+def booking_thread_founder_post(
+    db: Session, m: Membership, booking_id: uuid.UUID
+) -> MarketplaceThread:
+    """POST path (a founder): the booking's thread, created on first use for a booking paid
+    before threads existed. A checkout still waiting for payment has none yet (409); a booking
+    that never went live (a lapsed hold, a payment under review, a refunded late payment) never
+    gets one (404), so the pair's live pre-booking thread is never attached to it."""
+    b = _founder_booking(db, m, booking_id)
+    if b.status == BookingStatus.pending_payment:
+        raise err("THREAD_NOT_AVAILABLE", "Messaging opens once the booking is paid.", 409)
+    if not identity.was_paid(db, b):
+        raise NotFound()
+    return attach_booking(db, b)
 
 
 def booking_thread_provider(
     db: Session, ctx: ProviderContext, booking_id: uuid.UUID
 ) -> MarketplaceThread:
+    """The expert never creates a thread: it exists (payment made one) or this is a 404."""
     b = (
         db.query(MarketplaceBooking)
         .filter(
             MarketplaceBooking.id == booking_id,
             MarketplaceBooking.provider_id == ctx.provider.id,
-            MarketplaceBooking.status != BookingStatus.pending_payment,
+            identity.paid_clause(),
         )
         .first()
     )
-    if b is None:
+    thread = (
+        db.query(MarketplaceThread).filter(MarketplaceThread.booking_id == b.id).first()
+        if b is not None
+        else None
+    )
+    if thread is None:
         raise NotFound()
-    return _ensure_for_booking(db, b)
-
-
-def _ensure_for_booking(db: Session, b: MarketplaceBooking) -> MarketplaceThread:
-    if b.status == BookingStatus.pending_payment:
-        raise err("THREAD_NOT_AVAILABLE", "Messaging opens once the booking is paid.", 409)
-    return attach_booking(db, b)
+    return thread
 
 
 # ------------------------------------------------------------------ views
@@ -541,7 +585,6 @@ def post_provider(
             "provider_id": str(t.provider_id),
             "provider_name": ctx.provider.display_name,
             "service": booking.title_snap if booking else None,
-            "preview": body[:PREVIEW_CHARS],
         },
     )
     write_audit(

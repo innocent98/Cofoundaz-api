@@ -681,7 +681,8 @@ SPECS: dict[str, NotifSpec] = {
     ),
     "marketplace.message.new": NotifSpec(
         _message_once_per_window,
-        lambda p: f"{p.get('provider_name') or 'Your expert'}: {p.get('preview', '')}".rstrip(": "),
+        # No message text: a notification can be emailed, and message text never goes in email.
+        lambda p: f"{p.get('provider_name') or 'Your expert'} sent you a message",
         lambda _p: "Open conversation",
     ),
     "sales.deal.stalled": NotifSpec(

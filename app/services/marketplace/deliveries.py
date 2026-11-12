@@ -29,7 +29,7 @@ from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.email import EmailMessage
 from app.platform.events import event_bus
-from app.services.marketplace import closing, emails, files, outbox
+from app.services.marketplace import closing, emails, files, identity, outbox
 from app.services.marketplace.constants import (
     AUTO_RELEASE_CONSULTATION,
     AUTO_RELEASE_PACKAGE,
@@ -122,7 +122,7 @@ def _lock(db: Session, booking_id: uuid.UUID, **where: Any) -> MarketplaceBookin
     for col, value in where.items():
         q = q.filter(getattr(MarketplaceBooking, col) == value)
     row = q.with_for_update().first()
-    if row is None or row.status == BookingStatus.pending_payment:
+    if row is None or not identity.was_paid(db, row):
         raise NotFound()
     return row
 
@@ -217,7 +217,7 @@ def mark_consultation_delivered(
         t=t,
         message="",
         file_rows=[],
-        auto_release_at=b.ends_at + AUTO_RELEASE_CONSULTATION,
+        auto_release_at=max(b.ends_at, t) + AUTO_RELEASE_CONSULTATION,
         actor=actor,
     )
 
@@ -298,8 +298,8 @@ def accept(
     b = _lock(db, booking_id, startup_id=m.startup_id)
     if b.status == BookingStatus.completed:
         last = _last_delivery(db, b.id)
-        if last is not None and last.decision == "accepted":
-            return b, True
+        if last is not None and last.decision in ("accepted", "auto_released"):
+            return b, True  # already completed (by you, or on its own): nothing left to do
     if b.status != BookingStatus.delivered:
         raise err("INVALID_STATE", f"Can't accept a booking that is '{b.status.value}'.")
     d = _open_delivery(db, b.id)

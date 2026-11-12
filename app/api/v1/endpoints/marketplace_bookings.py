@@ -267,7 +267,9 @@ def booking_messages(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     before: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    thread = threads.booking_thread_founder(db, m, booking_id)
+    thread = threads.booking_thread_founder_read(db, m, booking_id)
+    if thread is None:  # a read never creates a thread
+        return success_response({"thread_id": None, "messages": [], "has_more": False})
     items, more = threads.read_founder(db, m, thread.id, limit=limit, before=before)
     db.commit()
     return success_response({"thread_id": str(thread.id), "messages": items, "has_more": more})
@@ -284,7 +286,7 @@ def post_booking_message(
     db: _Db,
 ) -> dict[str, Any]:
     """Alias of `POST /marketplace/threads/{id}/messages` for the booking's own thread."""
-    thread = threads.booking_thread_founder(db, m, booking_id)
+    thread = threads.booking_thread_founder_post(db, m, booking_id)
     msg = threads.post_founder(db, user, m, thread.id, body=payload.body, file_ids=payload.file_ids)
     db.commit()
     outbox.flush(db)

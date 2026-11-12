@@ -145,6 +145,7 @@ class MarketplaceFile(UUIDMixin, TimestampMixin, Base):
         PGUUID(as_uuid=True),
         ForeignKey("marketplace_threads.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -358,6 +359,17 @@ class MarketplaceBooking(UUIDMixin, TimestampMixin, Base):
         Index("ix_marketplace_bookings_startup_status", "startup_id", "status"),
         Index("ix_marketplace_bookings_hold", "status", "slot_hold_expires_at"),
         Index("ix_marketplace_bookings_accept", "status", "accept_by"),
+        # The fulfilment timers scan only the rows they could act on.
+        Index(
+            "ix_marketplace_bookings_auto_release",
+            "auto_release_at",
+            postgresql_where=text("status = 'delivered'"),
+        ),
+        Index(
+            "ix_marketplace_bookings_overdue",
+            "due_at",
+            postgresql_where=text("status = 'in_progress' AND overdue_notified_at IS NULL"),
+        ),
         # Backstop for the per-expert row lock: two live bookings can never start at the same
         # instant. Checkout holds (`pending_payment`) are guarded by the lock and a slot check, so
         # a lapsed hold never blocks a new booking.

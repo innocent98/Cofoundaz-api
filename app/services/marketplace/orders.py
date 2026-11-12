@@ -217,8 +217,23 @@ def auto_resolve_attention(db: Session, order: MarketplaceOrder, *, why: str) ->
     return True
 
 
+MONEY_REASONS = ("payment_mismatch", "refund_failed")
+
+
+def needs_step_up(order: MarketplaceOrder) -> bool:
+    """A flag about money we hold or owe (a wrong amount, a refund Paystack keeps refusing) needs
+    the staff member's fresh authenticator code to dismiss; an unverified close does not."""
+    return order.attention_reason in MONEY_REASONS or order.refund_failed_at is not None
+
+
 def resolve_attention(
-    db: Session, order_id: uuid.UUID, *, staff_user_id: uuid.UUID, reason: str
+    db: Session,
+    order_id: uuid.UUID,
+    *,
+    staff_user_id: uuid.UUID,
+    reason: str,
+    ip: str | None = None,
+    user_agent: str | None = None,
 ) -> MarketplaceOrder:
     """Staff mark a flagged order as dealt with (they handled it outside the app). Audited with
     their reason; the queue stops listing it until a new problem is flagged."""
@@ -236,6 +251,8 @@ def resolve_attention(
         entity_type="marketplace_order",
         entity_id=order.id,
         reason=reason,
+        ip=ip,
+        user_agent=user_agent,
         details={"attention_reason": order.attention_reason},
     )
     return order

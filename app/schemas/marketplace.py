@@ -111,6 +111,11 @@ class StepUpReasonRequest(_Strict):
     totp_code: TotpCode
 
 
+class ResolveAttentionRequest(_Strict):
+    reason: Reason
+    totp_code: TotpCode | None = None  # required when the flag is about money
+
+
 class RequestChangesRequest(_Strict):
     message: Message
 

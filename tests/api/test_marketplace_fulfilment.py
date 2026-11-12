@@ -381,7 +381,7 @@ def test_a_consultation_is_marked_complete_only_after_the_session(client, db, w,
     assert r.status_code == 200, r.text
     assert r.json()["data"]["status"] == "delivered"
     db.refresh(b)
-    assert b.auto_release_at == b.ends_at + timedelta(hours=48)
+    assert b.auto_release_at == max(b.ends_at, b.delivered_at) + timedelta(hours=48)
     again = client.post(f"{P}/bookings/{bid}/complete", headers=hdr(w.expert))
     assert again.status_code == 409 and again.json()["error"]["code"] == "INVALID_STATE"
     assert db.query(MarketplaceDelivery).filter_by(booking_id=b.id).count() == 1
@@ -419,9 +419,8 @@ def test_a_session_nobody_marked_becomes_delivered_then_auto_released(client, db
     res = timers.tick(db, t)
     assert res["consultations_delivered"] == 1 and res["auto_released"] == 0
     db.refresh(b)
-    assert b.status == BookingStatus.delivered and b.auto_release_at == b.ends_at + timedelta(
-        hours=48
-    )
+    assert b.status == BookingStatus.delivered
+    assert b.auto_release_at == t + timedelta(hours=48)
     assert timers.tick(db, t)["consultations_delivered"] == 0  # replay: nothing changes
     assert db.query(MarketplaceDelivery).filter_by(booking_id=b.id).count() == 1
     assert len(notes(db, w.founder, "marketplace.delivery.submitted")) == 1
@@ -453,9 +452,11 @@ def test_a_delivered_package_is_auto_released_after_seven_days_and_not_before(cl
     assert (
         db.query(MarketplaceDelivery).filter_by(booking_id=b.id).one().decision == "auto_released"
     )
-    # the founder accepting afterwards is refused: it already completed on its own
+    # the founder accepting afterwards is a replay of a completed booking, not an error
     r = client.post(f"{M}/bookings/{bid}/accept-delivery", headers=w.h())
-    assert r.status_code == 409 and r.json()["error"]["code"] == "INVALID_STATE"
+    assert r.status_code == 200 and r.json()["data"]["replayed"] is True
+    assert r.json()["data"]["status"] == "completed"
+    assert len(events("marketplace.delivery.accepted", bid)) == 1  # nothing emitted twice
 
 
 def test_the_timer_after_an_acceptance_changes_nothing(client, db, w, ps, mail):
@@ -1094,6 +1095,16 @@ def test_a_mismatch_flag_is_never_cleared_automatically(client, db, w, ps, moder
     assert str(o.id) in queue(client, moderator)
 
 
+def code(staff) -> str:
+    import pyotp
+
+    from app.core.redis import get_redis
+
+    for k in get_redis().scan_iter("staff_stepup_used:*"):
+        get_redis().delete(k)
+    return pyotp.TOTP(staff.test_secret).now()
+
+
 def test_staff_can_resolve_a_flagged_order_with_a_reason_and_it_is_audited(
     client, db, w, ps, moderator
 ):
@@ -1118,6 +1129,15 @@ def test_staff_can_resolve_a_flagged_order_with_a_reason_and_it_is_audited(
         == 403
     )
     assert client.post(url, json={"reason": "too short"}, headers=hdr(moderator)).status_code == 422
+    no_code = client.post(url, json={"reason": "Refunded N10,200 by hand."}, headers=hdr(moderator))
+    assert no_code.status_code == 422  # a money flag needs the authenticator code
+    assert no_code.json()["error"]["field_errors"][0]["field"] == "totp_code"
+    bad = client.post(
+        url,
+        json={"reason": "Refunded N10,200 by hand.", "totp_code": "000000"},
+        headers=hdr(moderator),
+    )
+    assert bad.status_code in (401, 403, 422) and o.attention_resolved_at is None
     assert client.post(url, json={}, headers=hdr(moderator)).status_code == 422
     assert (
         client.post(
@@ -1127,7 +1147,11 @@ def test_staff_can_resolve_a_flagged_order_with_a_reason_and_it_is_audited(
         ).status_code
         == 404
     )
-    ok = client.post(url, json={"reason": "Refunded N10,200 by hand."}, headers=hdr(moderator))
+    ok = client.post(
+        url,
+        json={"reason": "Refunded N10,200 by hand.", "totp_code": code(moderator)},
+        headers=hdr(moderator),
+    )
     assert ok.status_code == 200, ok.text
     assert (
         ok.json()["data"]["resolved_at"]
@@ -1141,8 +1165,17 @@ def test_staff_can_resolve_a_flagged_order_with_a_reason_and_it_is_audited(
         .one()
     )
     assert audit.actor_user_id == moderator.id and audit.reason == "Refunded N10,200 by hand."
+    assert audit.ip is not None and audit.user_agent is not None
+    done = client.get(f"{ADMIN}/orders/attention?resolved=true", headers=hdr(moderator)).json()[
+        "data"
+    ]
+    assert [x["id"] for x in done["orders"]] == [str(o.id)] and done["orders"][0]["resolved_at"]
     assert str(o.id) not in queue(client, moderator)
-    again = client.post(url, json={"reason": "Refunded N10,200 by hand."}, headers=hdr(moderator))
+    again = client.post(
+        url,
+        json={"reason": "Refunded N10,200 by hand.", "totp_code": code(moderator)},
+        headers=hdr(moderator),
+    )
     assert again.status_code == 409 and again.json()["error"]["code"] == "NOT_FLAGGED"
 
 
@@ -1221,3 +1254,79 @@ def test_a_payment_landing_on_a_closed_hold_emails_the_founder_once_even_when_re
         == 2
     )
     assert booking(db, d["id"]).closed_reason == "payment_review"
+
+
+# ================================================================ review fixes
+
+
+def lapse(w, ps, db, **kw):
+    """A checkout whose hold ran out unpaid: expired / payment_not_completed, never paid."""
+    d = w.book(**kw).json()["data"]
+    timers.tick(db, booking(db, d["id"]).slot_hold_expires_at + timedelta(minutes=1))
+    b = booking(db, d["id"])
+    assert (b.status, b.closed_reason) == (BookingStatus.expired, "payment_not_completed")
+    return d["id"]
+
+
+def test_an_expert_sees_nothing_of_a_booking_that_was_never_paid(client, db, w, ps):
+    fid = founder_file(w, "brief")
+    doc = mk_doc(db, w.ws, w.founder)
+    d = w.book(file_ids=[fid], listing=w.package).json()["data"]
+    timers.tick(db, booking(db, d["id"]).slot_hold_expires_at + timedelta(minutes=1))
+    bid, h = d["id"], hdr(w.expert)
+    assert booking(db, bid).closed_reason == "payment_not_completed"
+    assert client.get(f"{P}/bookings/{bid}", headers=h).status_code == 404
+    assert client.get(f"{P}/bookings", headers=h).json()["data"]["bookings"] == []
+    assert client.get(f"{P}/files/{fid}/content", headers=h).status_code == 404
+    assert client.get(f"{P}/bookings/{bid}/messages", headers=h).status_code == 404
+    assert client.get(f"{P}/bookings/{bid}/documents", headers=h).status_code == 404
+    assert (
+        client.post(f"{P}/bookings/{bid}/deliver", json={"message": "x"}, headers=h).status_code
+        == 404
+    )
+    assert doc is not None
+    # a booking that WAS paid and then cancelled stays visible to its expert
+    gone = paid(w, ps, listing=w.package, who=w.other, ws=w.other_ws)
+    client.post(f"{M}/bookings/{gone}/cancel", headers=w.h(w.other, w.other_ws))
+    assert booking(db, gone).status == BookingStatus.cancelled
+    assert client.get(f"{P}/bookings/{gone}", headers=h).status_code == 200
+    # a late payment refunded straight back never went live either
+    ids = [x["id"] for x in client.get(f"{P}/bookings", headers=h).json()["data"]["bookings"]]
+    assert ids == [gone]
+
+
+def test_a_suspended_expert_cannot_download_a_clients_file_but_keeps_their_own(client, db, w, ps):
+    from app.db.models.enums import ProviderStatus
+
+    fid = founder_file(w, "brief")
+    w.book(file_ids=[fid])
+    bid = paid(w, ps, file_ids=[founder_file(w, "brief")], slot=w.slots()[1])
+    mine = provider_file(w, "delivery")
+    assert client.get(f"{P}/bookings/{bid}", headers=hdr(w.expert)).status_code == 200
+    shared = booking(db, bid)
+    shared_file = db.query(MarketplaceFile).filter_by(booking_id=shared.id).one()
+    url = f"{P}/files/{shared_file.id}/content"
+    assert client.get(url, headers=hdr(w.expert)).status_code == 200
+    w.provider.status = ProviderStatus.suspended
+    db.flush()
+    assert client.get(url, headers=hdr(w.expert)).status_code == 404
+    assert client.get(f"{P}/files/{mine}/content", headers=hdr(w.expert)).status_code == 200
+
+
+def test_a_late_consultation_hand_over_still_gives_the_client_two_days(client, db, w, ps):
+    bid = accepted(w, ps)
+    b = end_session(db, bid, ago=timedelta(days=10))  # the worker was down
+    t = datetime.now(UTC)
+    res = timers.tick(db, t)
+    assert res["consultations_delivered"] == 1 and res["auto_released"] == 0  # not in the same pass
+    db.refresh(b)
+    assert b.status == BookingStatus.delivered
+    assert b.auto_release_at == t + timedelta(hours=48)
+    assert timers.tick(db, t + timedelta(hours=47))["auto_released"] == 0
+    assert timers.tick(db, t + timedelta(hours=49))["auto_released"] == 1
+    # the expert marking it complete late gets the same two days
+    other = accepted(w, ps, slot=w.slots()[1], who=w.other, ws=w.other_ws)
+    end_session(db, other, ago=timedelta(days=9))
+    client.post(f"{P}/bookings/{other}/complete", headers=hdr(w.expert))
+    got = booking(db, other)
+    assert got.auto_release_at - datetime.now(UTC) > timedelta(hours=47)

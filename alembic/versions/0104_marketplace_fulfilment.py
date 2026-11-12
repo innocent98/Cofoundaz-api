@@ -60,6 +60,19 @@ def upgrade() -> None:
         "marketplace_orders", _fk("attention_resolved_by", "users", "SET NULL", nullable=True)
     )
 
+    op.create_index(
+        "ix_marketplace_bookings_auto_release",
+        "marketplace_bookings",
+        ["auto_release_at"],
+        postgresql_where=sa.text("status = 'delivered'"),
+    )
+    op.create_index(
+        "ix_marketplace_bookings_overdue",
+        "marketplace_bookings",
+        ["due_at"],
+        postgresql_where=sa.text("status = 'in_progress' AND overdue_notified_at IS NULL"),
+    )
+
     op.create_table(
         "marketplace_deliveries",
         _id(),
@@ -129,6 +142,8 @@ def upgrade() -> None:
         "marketplace_files", _fk("thread_id", "marketplace_threads", "SET NULL", nullable=True)
     )
 
+    op.create_index("ix_marketplace_files_thread_id", "marketplace_files", ["thread_id"])
+
     op.create_table(
         "marketplace_booking_documents",
         _id(),
@@ -150,10 +165,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("marketplace_booking_documents")
+    op.drop_index("ix_marketplace_files_thread_id", table_name="marketplace_files")
     op.drop_column("marketplace_files", "thread_id")
     op.drop_table("marketplace_messages")
     op.drop_table("marketplace_threads")
     op.drop_table("marketplace_deliveries")
     op.drop_column("marketplace_orders", "attention_resolved_by")
     op.drop_column("marketplace_orders", "attention_resolved_at")
+    op.drop_index("ix_marketplace_bookings_overdue", table_name="marketplace_bookings")
+    op.drop_index("ix_marketplace_bookings_auto_release", table_name="marketplace_bookings")
     op.drop_column("marketplace_bookings", "overdue_notified_at")

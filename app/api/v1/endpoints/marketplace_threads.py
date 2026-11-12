@@ -57,8 +57,14 @@ def list_threads(
 
 
 @router.post("/threads")
+@limiter.limit("20/minute")
 def open_thread(
-    payload: ThreadOpen, response: Response, m: _Founder, user: _User, db: _Db
+    request: Request,  # noqa: ARG001 - required by the rate limiter
+    payload: ThreadOpen,
+    response: Response,
+    m: _Founder,
+    user: _User,
+    db: _Db,
 ) -> dict[str, Any]:
     """The Message button: get the conversation with an expert, creating it the first time."""
     thread, created = threads.open_thread(db, user, m, payload.provider_id)

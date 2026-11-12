@@ -83,3 +83,4 @@ MAX_BRIEF_FILE_BYTES: Final = 10 * 1024 * 1024  # D-MP-L10: briefs and messages,
 BOOKING_DOCUMENT_TTL = timedelta(days=30)
 MAX_BOOKING_DOCUMENTS: Final = 10
 OVERDUE_BATCH: Final = 200
+MAX_NEW_THREADS_PER_DAY: Final = 20  # new pre-booking conversations a workspace may open a day

@@ -74,6 +74,16 @@ def test_0104_upgrade_downgrade_upgrade_and_no_drift():
         assert TABLES <= set(inspect(eng).get_table_names())
         for table, cols in ADDED.items():
             assert cols <= _columns(eng, table)
+        idx = {
+            i["name"]
+            for t in ("marketplace_bookings", "marketplace_files")
+            for i in inspect(eng).get_indexes(t)
+        }
+        assert {
+            "ix_marketplace_bookings_auto_release",
+            "ix_marketplace_bookings_overdue",
+            "ix_marketplace_files_thread_id",
+        } <= idx
         down = _alembic(url, "downgrade", "0101_marketplace_booking")
         assert down.returncode == 0, down.stderr
         assert not TABLES & set(inspect(eng).get_table_names())

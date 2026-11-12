@@ -741,7 +741,7 @@ def get_for_provider(
         .filter(
             MarketplaceBooking.id == booking_id,
             MarketplaceBooking.provider_id == ctx.provider.id,
-            MarketplaceBooking.status != BookingStatus.pending_payment,
+            identity.paid_clause(),
         )
         .first()
     )
@@ -761,7 +761,7 @@ def list_for_provider(
 ) -> tuple[list[MarketplaceBooking], int]:
     q = db.query(MarketplaceBooking).filter(
         MarketplaceBooking.provider_id == ctx.provider.id,
-        MarketplaceBooking.status != BookingStatus.pending_payment,
+        identity.paid_clause(),
     )
     if tab:
         q = q.filter(MarketplaceBooking.status.in_(TABS[tab]))
@@ -788,7 +788,7 @@ def _lock_for_provider(
         .with_for_update()
         .first()
     )
-    if row is None or row.status == BookingStatus.pending_payment:
+    if row is None or not identity.was_paid(db, row):
         raise NotFound()
     return row
 

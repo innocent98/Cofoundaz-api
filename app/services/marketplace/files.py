@@ -12,7 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, NotFound
-from app.db.models.enums import BookingStatus, MarketplaceFilePurpose, ScanStatus
+from app.db.models.enums import MarketplaceFilePurpose, ScanStatus
 from app.db.models.marketplace import (
     MarketplaceBooking,
     MarketplaceFile,
@@ -35,6 +35,7 @@ from app.services.documents.sniff import (
     declared_type,
     sniff_content_type,
 )
+from app.services.marketplace import identity
 from app.services.marketplace.constants import (
     MAX_AVATAR_BYTES,
     MAX_BRIEF_FILE_BYTES,
@@ -308,7 +309,7 @@ def _scope(db: Session, row: MarketplaceFile) -> tuple[uuid.UUID, uuid.UUID, boo
         b = db.get(MarketplaceBooking, row.booking_id)
         if b is None:
             return None
-        return b.startup_id, b.provider_id, b.status != BookingStatus.pending_payment
+        return b.startup_id, b.provider_id, identity.was_paid(db, b)
     if row.thread_id is not None:
         t = db.get(MarketplaceThread, row.thread_id)
         return (t.startup_id, t.provider_id, True) if t is not None else None
@@ -341,12 +342,20 @@ def readable_by_founder_side(
 
 
 def readable_by_provider(
-    db: Session, user_id: uuid.UUID, provider_id: uuid.UUID, file_id: uuid.UUID
+    db: Session,
+    user_id: uuid.UUID,
+    provider_id: uuid.UUID,
+    file_id: uuid.UUID,
+    *,
+    approved: bool,
 ) -> MarketplaceFile:
-    """The owner, or the expert of the booking / thread the file was sent in."""
+    """The owner (always), or, for an APPROVED expert only, the expert of the booking / thread the
+    file was sent in. A suspended expert keeps their own files but reads no client's."""
     row = _live(db, file_id)
     if row.owner_user_id == user_id:
         return row
+    if not approved:
+        raise NotFound()
     scope = _scope(db, row) if row.purpose in SHARED_PURPOSES else None
     if scope is None or scope[1] != provider_id or not scope[2]:
         raise NotFound()

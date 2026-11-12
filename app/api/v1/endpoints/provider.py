@@ -154,7 +154,13 @@ async def upload(
 
 @router.get("/files/{file_id}/content")
 def download(file_id: uuid.UUID, ctx: _Provider, db: _Db) -> Response:
-    row = files.readable_by_provider(db, ctx.user.id, ctx.provider.id, file_id)
+    row = files.readable_by_provider(
+        db,
+        ctx.user.id,
+        ctx.provider.id,
+        file_id,
+        approved=ctx.provider.status == ProviderStatus.approved,
+    )
     if row.scan_status != ScanStatus.clean:
         raise FileNotClean()
     return Response(

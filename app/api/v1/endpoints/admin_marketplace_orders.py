@@ -7,16 +7,18 @@ brief or the workspace."""
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext, require_staff
 from app.core.envelope import success_response
+from app.core.errors import AppError, NotFound
 from app.db.models.marketplace import MarketplaceOrder
 from app.db.session import get_db
-from app.schemas.marketplace import ReasonRequest
+from app.schemas.marketplace import ResolveAttentionRequest
 from app.services.marketplace import orders
+from app.services.staff.stepup import verify_step_up
 
 router = APIRouter()
 
@@ -48,12 +50,18 @@ def orders_needing_attention(
     ctx: _Moderation,
     db: _Db,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    resolved: bool = False,
 ) -> dict[str, Any]:
+    """Orders waiting for a person; `resolved=true` lists the ones staff already dealt with."""
     rows = (
         db.query(MarketplaceOrder)
         .filter(
             and_(
-                MarketplaceOrder.attention_resolved_at.is_(None),
+                (
+                    MarketplaceOrder.attention_resolved_at.isnot(None)
+                    if resolved
+                    else MarketplaceOrder.attention_resolved_at.is_(None)
+                ),
                 or_(
                     MarketplaceOrder.attention_reason.isnot(None),
                     MarketplaceOrder.refund_failed_at.isnot(None),
@@ -69,10 +77,36 @@ def orders_needing_attention(
 
 @router.post("/orders/{order_id}/attention/resolve")
 def resolve_attention(
-    order_id: uuid.UUID, payload: ReasonRequest, ctx: _Moderation, db: _Db
+    order_id: uuid.UUID,
+    payload: ResolveAttentionRequest,
+    request: Request,
+    ctx: _Moderation,
+    db: _Db,
 ) -> dict[str, Any]:
     """Staff say a flagged order has been dealt with. Needs a reason (10+ characters), which is
-    audited; the order leaves the queue until something new is flagged on it."""
-    order = orders.resolve_attention(db, order_id, staff_user_id=ctx.user.id, reason=payload.reason)
+    audited with the caller's address. A flag about money (`payment_mismatch`, `refund_failed`)
+    also needs the staff member's fresh authenticator code (`totp_code`); an `unverified_close`
+    does not. The order leaves the queue until something new is flagged on it."""
+    order = db.get(MarketplaceOrder, order_id)
+    if order is None:
+        raise NotFound()
+    if orders.needs_step_up(order):
+        if payload.totp_code is None:
+            raise AppError(
+                "VALIDATION_ERROR",
+                "Enter your authenticator code to resolve a money flag.",
+                422,
+                field_errors=[{"field": "totp_code", "message": "Required for this flag."}],
+            )
+        verify_step_up(ctx.user, payload.totp_code)
+    ip = request.client.host if request.client else None
+    orders.resolve_attention(
+        db,
+        order_id,
+        staff_user_id=ctx.user.id,
+        reason=payload.reason,
+        ip=ip,
+        user_agent=request.headers.get("user-agent"),
+    )
     db.commit()
     return success_response(_row(order))

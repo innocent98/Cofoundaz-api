@@ -461,15 +461,18 @@ def test_new_expert_messages_notify_the_founder_once_per_ten_minutes(client, db,
     for i in range(3):
         reply(w, t, f"reply {i}")
     n = notes(db, w.founder, KIND)
-    assert len(n) == 1 and n[0].title == "Ngozi Eze: reply 0" and n[0].data["thread_id"] == t
+    assert (
+        len(n) == 1 and n[0].title == "Ngozi Eze sent you a message" and n[0].data["thread_id"] == t
+    )
+    assert "reply" not in str(n[0].data) and "reply" not in n[0].body  # no text: it can be emailed
     for nobody in (w.mate, mentor, w.other, w.expert):
         assert notes(db, nobody, KIND) == []
     n[0].created_at = datetime.now(UTC) - timedelta(minutes=11)
     db.flush()
     reply(w, t, "reply 3")
     assert [x.title for x in sorted(notes(db, w.founder, KIND), key=lambda x: x.created_at)] == [
-        "Ngozi Eze: reply 0",
-        "Ngozi Eze: reply 3",
+        "Ngozi Eze sent you a message",
+        "Ngozi Eze sent you a message",
     ]
     # another conversation is its own window
     t2 = open_thread(w, w.other, w.other_ws).json()["data"]["id"]
@@ -534,3 +537,92 @@ def test_a_message_is_audited_without_its_text(client, db, w):
     rows = db.query(AuditLog).filter_by(action="marketplace.message.sent").all()
     assert len(rows) == 1 and "private words" not in str(rows[0].details)
     assert db.query(Notification).filter(Notification.data["thread_id"].astext == t).count() == 0
+
+
+# ================================================================ review fixes
+
+
+def test_a_booking_that_never_went_live_never_gets_the_pairs_thread(client, db, w, ps):
+    from app.services.marketplace import timers
+
+    t = tid(w)
+    say(w, t)
+    d = w.book().json()["data"]
+    timers.tick(db, booking(db, d["id"]).slot_hold_expires_at + timedelta(minutes=1))
+    assert booking(db, d["id"]).closed_reason == "payment_not_completed"
+    r = client.post(f"{M}/bookings/{d['id']}/messages", json={"body": "hello"}, headers=w.h())
+    assert r.status_code == 404
+    assert (
+        db.get(MarketplaceThread, uuid.UUID(t)).booking_id is None
+    )  # still the live pre-booking thread
+    assert db.query(MarketplaceThread).filter_by(booking_id=uuid.UUID(d["id"])).count() == 0
+    # a payment under review is the same
+    bad = w.book(slot=w.slots()[1]).json()["data"]
+    ps.pay(bad["order"]["reference"])
+    ps.amount_override = 1_020_000
+    from tests.marketplace_booking_helpers import charge_success, post_webhook
+
+    post_webhook(client, charge_success(bad["order"]["reference"]))
+    assert booking(db, bad["id"]).closed_reason == "payment_review"
+    r2 = client.post(f"{M}/bookings/{bad['id']}/messages", json={"body": "hi"}, headers=w.h())
+    assert r2.status_code == 404
+    assert db.get(MarketplaceThread, uuid.UUID(t)).booking_id is None
+
+
+def test_reading_a_bookings_messages_never_creates_a_thread(client, db, w, ps):
+    bid = paid(w, ps)
+    db.delete(booking_thread(db, bid))
+    db.flush()
+    r = client.get(f"{M}/bookings/{bid}/messages", headers=w.h())
+    assert r.status_code == 200 and r.json()["data"] == {
+        "thread_id": None,
+        "messages": [],
+        "has_more": False,
+    }
+    assert db.query(MarketplaceThread).filter_by(booking_id=uuid.UUID(bid)).count() == 0
+    assert client.get(f"{M}/bookings/{bid}/messages", headers=w.h(w.mate)).status_code == 200
+    assert client.get(f"{P}/bookings/{bid}/messages", headers=hdr(w.expert)).status_code == 404
+    assert (
+        client.post(
+            f"{P}/bookings/{bid}/messages", json={"body": "x"}, headers=hdr(w.expert)
+        ).status_code
+        == 404
+    )
+    assert db.query(MarketplaceThread).filter_by(booking_id=uuid.UUID(bid)).count() == 0
+    # only the founder's POST brings it back
+    assert (
+        client.post(f"{M}/bookings/{bid}/messages", json={"body": "hi"}, headers=w.h()).status_code
+        == 201
+    )
+    assert db.query(MarketplaceThread).filter_by(booking_id=uuid.UUID(bid)).count() == 1
+
+
+def test_opening_conversations_is_rate_limited_and_capped_per_workspace_per_day(
+    client, db, w, monkeypatch
+):
+    from app.main import app
+    from app.services.marketplace import threads
+
+    monkeypatch.setattr(threads, "MAX_NEW_THREADS_PER_DAY", 2)
+    experts = [mk_provider(db, name=f"Expert {i}")[1] for i in range(3)]
+    assert open_thread(w, provider=experts[0]).status_code == 201
+    assert open_thread(w, provider=experts[1]).status_code == 201
+    assert open_thread(w, provider=experts[0]).status_code == 200  # an existing one is free
+    capped = open_thread(w, provider=experts[2])
+    assert capped.status_code == 429 and capped.json()["error"]["code"] == "THREAD_LIMIT_REACHED"
+    assert (
+        open_thread(w, w.other, w.other_ws, provider=experts[2]).status_code == 201
+    )  # per workspace
+    old = db.query(MarketplaceThread).filter_by(startup_id=w.ws.id).first()
+    old.created_at = datetime.now(UTC) - timedelta(days=2)
+    db.flush()
+    assert open_thread(w, provider=experts[2]).status_code == 201  # the window moved on
+    db.commit()
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        codes = [open_thread(w, provider=experts[0]).status_code for _ in range(21)]
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
+    assert codes[:20] == [200] * 20 and codes[20] == 429

@@ -418,6 +418,8 @@ def test_an_accepted_booking_never_expires(client, db, w, ps):
     assert soon["expired_unanswered"] == 0 and row(db, bid).status == BookingStatus.confirmed
     # long after the session, slice D moves it on (delivered, then auto-released): never expired
     assert timers.tick(db, datetime.now(UTC) + timedelta(days=30))["expired_unanswered"] == 0
+    assert row(db, bid).status == BookingStatus.delivered  # the client then gets 48 hours
+    assert timers.tick(db, datetime.now(UTC) + timedelta(days=33))["expired_unanswered"] == 0
     assert row(db, bid).status == BookingStatus.completed and ps.refunds == []
 
 
