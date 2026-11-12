@@ -66,6 +66,9 @@ class TermSheetConfirm(_Strict):
 
     terms: Terms
     label: str | None = Field(default=None, min_length=1, max_length=160)
+    # Required (true) to confirm amounts when the document states a currency other than the
+    # round's: the founder says they have converted them, or that they are already in it.
+    acknowledge_currency_mismatch: bool = False
 
 
 class TermSheetUpdate(_Strict):

@@ -1,12 +1,12 @@
 {
   "data": {
-    "total": 5,
+    "total": 9,
     "items": [
       {
-        "id": "723980bd-ec32-4063-ac48-90fde3b61ebb",
-        "at": "2026-11-06T21:44:46.692100+00:00",
-        "actor_id": "abe61c6d-bbe5-4c2f-ab10-a41081bb975f",
-        "term_sheet_id": "1fef9738-f943-4891-96f1-9b826ee2cd6c",
+        "id": "d44f7897-d9ea-4a01-abc2-5c3637e52c1c",
+        "at": "2026-11-12T12:00:35.906861+00:00",
+        "actor_id": "5d23b15c-e5e3-41e3-a557-3e8feb5639e0",
+        "term_sheet_id": "231715be-e4fd-4e0d-9905-7c960b52fb41",
         "action": "update",
         "before": {
           "flags": [
@@ -63,96 +63,58 @@
         }
       },
       {
-        "id": "9a8af7c7-4541-4e90-b5f6-8f960c95907f",
-        "at": "2026-11-06T21:44:46.592578+00:00",
-        "actor_id": "abe61c6d-bbe5-4c2f-ab10-a41081bb975f",
-        "term_sheet_id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
-        "action": "confirm",
+        "id": "fbb69e36-49be-472c-a8e3-f83e394eee4b",
+        "at": "2026-11-12T12:00:35.841354+00:00",
+        "actor_id": "5d23b15c-e5e3-41e3-a557-3e8feb5639e0",
+        "term_sheet_id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
+        "action": "delete",
         "before": {
           "flags": [],
-          "label": "gamma-term-sheet.pdf",
+          "label": "delta-term-sheet.pdf",
           "terms": {},
           "status": "needs_confirmation",
-          "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+          "investor_id": null,
+          "extracted_by_ai": true
+        },
+        "after": null
+      },
+      {
+        "id": "a7e5188a-9a5c-4704-b2d3-4da86d26d42f",
+        "at": "2026-11-12T12:00:35.774963+00:00",
+        "actor_id": null,
+        "term_sheet_id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
+        "action": "update",
+        "before": {
+          "flags": [],
+          "label": "delta-term-sheet.pdf",
+          "terms": {},
+          "status": "extracting",
+          "investor_id": null,
           "extracted_by_ai": true
         },
         "after": {
-          "flags": [
-            "liq_pref_above_1x",
-            "participating_preferred",
-            "super_pro_rata",
-            "full_ratchet"
-          ],
-          "label": "Gamma Partners",
-          "terms": {
-            "stage": "seed",
-            "pro_rata": "super",
-            "anti_dilution": "full_ratchet",
-            "liq_pref_x100": 200,
-            "participating": true,
-            "pre_money_minor": 40000000000,
-            "exclusivity_days": 45,
-            "investment_minor": 10000000000,
-            "founder_board_seats": 2,
-            "option_pool_pre_bps": 1250,
-            "investor_board_seats": 1,
-            "participation_cap_x100": 300
-          },
-          "status": "confirmed",
-          "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+          "flags": [],
+          "label": "delta-term-sheet.pdf",
+          "terms": {},
+          "status": "needs_confirmation",
+          "investor_id": null,
           "extracted_by_ai": true
         }
       },
       {
-        "id": "f9c0ea8c-4063-45ee-9ff8-874dad3c82ce",
-        "at": "2026-11-06T21:44:46.248409+00:00",
-        "actor_id": "abe61c6d-bbe5-4c2f-ab10-a41081bb975f",
-        "term_sheet_id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+        "id": "a90fcee1-7a03-4c79-9e4f-1266cd523f24",
+        "at": "2026-11-12T12:00:35.742420+00:00",
+        "actor_id": "5d23b15c-e5e3-41e3-a557-3e8feb5639e0",
+        "term_sheet_id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
         "action": "create",
         "before": null,
         "after": {
           "flags": [],
-          "label": "gamma-term-sheet.pdf",
+          "label": "delta-term-sheet.pdf",
           "terms": {},
           "status": "extracting",
-          "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
-          "extracted_by_ai": true
-        }
-      },
-      {
-        "id": "554efd03-2b49-4ee4-b61e-40e10d931a65",
-        "at": "2026-11-06T21:44:45.699400+00:00",
-        "actor_id": "abe61c6d-bbe5-4c2f-ab10-a41081bb975f",
-        "term_sheet_id": "1fef9738-f943-4891-96f1-9b826ee2cd6c",
-        "action": "create",
-        "before": null,
-        "after": {
-          "flags": [
-            "liq_pref_above_1x",
-            "participating_preferred",
-            "option_pool_above_15pct",
-            "exclusivity_above_45_days",
-            "investor_board_seats_early",
-            "super_pro_rata",
-            "full_ratchet"
-          ],
-          "label": "Beta Capital",
-          "terms": {
-            "stage": "seed",
-            "pro_rata": "super",
-            "anti_dilution": "full_ratchet",
-            "liq_pref_x100": 200,
-            "participating": true,
-            "pre_money_minor": 50000000000,
-            "exclusivity_days": 60,
-            "investment_minor": 10000000000,
-            "option_pool_pre_bps": 1800,
-            "investor_board_seats": 2,
-            "participation_cap_x100": 300
-          },
-          "status": "confirmed",
           "investor_id": null,
-          "extracted_by_ai": false
+          "extracted_by_ai": true
         }
       }
     ]

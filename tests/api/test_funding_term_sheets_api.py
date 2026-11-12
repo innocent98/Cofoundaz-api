@@ -364,7 +364,11 @@ def test_confirm_takes_the_founders_values_not_the_proposal(client, db, team, fo
     again = client.post(f"{TS}/{sheet['id']}/confirm", json={"terms": corrected}, headers=founder)
     assert again.status_code == 409  # a double click confirms once
     log = client.get(f"{TS}/audit", headers=founder).json()["data"]["items"]
-    assert [x["action"] for x in reversed(log)] == ["create", "confirm"]
+    assert [x["action"] for x in reversed(log)] == [
+        "create",
+        "update",
+        "confirm",
+    ]  # update = the job
 
 
 def test_confirming_announces_once_and_flags_what_the_founder_confirmed(client, db, team, founder):
@@ -596,3 +600,206 @@ def test_a_sheet_with_no_money_does_not_lock_the_currency(client, founder):
     typed(client, founder, liq_pref_x100=200)
     _resp5 = client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
     assert _resp5.status_code == 200
+
+
+# ---------------------------------------------------------------- review fixes
+def _extract(client, db, team, founder, **kw):
+    f = uploaded(db, team, **kw)
+    sheet = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).json()[
+        "data"
+    ]["term_sheet"]
+    _drain(db)
+    return sheet["id"]
+
+
+def _with_currency(monkeypatch, code):
+    payload = TermLLM().extraction
+    if code is None:
+        payload.pop("currency")
+    else:
+        payload["currency"] = code
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: TermLLM(extraction=payload))
+
+
+def test_a_document_in_another_currency_is_flagged_and_needs_an_acknowledgement(
+    client, db, team, founder, monkeypatch
+):
+    _with_currency(monkeypatch, "USD")
+    sid = _extract(client, db, team, founder)
+    d = client.get(f"{TS}/{sid}", headers=founder).json()["data"]
+    assert d["proposed"]["currency"] == "USD"
+    assert (
+        d["currency_mismatch"] is True
+        and d["document_currency"] == "USD"
+        and d["round_currency"] == "NGN"
+    )
+    terms = d["proposed"]["terms"]
+    refused = client.post(f"{TS}/{sid}/confirm", json={"terms": terms}, headers=founder)
+    assert refused.status_code == 409 and refused.json()["error"]["code"] == "CURRENCY_MISMATCH"
+    assert (
+        "USD" in refused.json()["error"]["message"] and "NGN" in refused.json()["error"]["message"]
+    )
+    assert (
+        client.get(f"{TS}/{sid}", headers=founder).json()["data"]["status"] == "needs_confirmation"
+    )
+    ok = client.post(
+        f"{TS}/{sid}/confirm",
+        json={"terms": terms, "acknowledge_currency_mismatch": True},
+        headers=founder,
+    )
+    assert ok.status_code == 200 and ok.json()["data"]["status"] == "confirmed"
+    assert ok.json()["data"]["currency_mismatch"] is False  # no longer a proposal
+
+
+def test_a_mismatch_does_not_block_a_sheet_with_no_money(client, db, team, founder, monkeypatch):
+    _with_currency(monkeypatch, "USD")
+    sid = _extract(client, db, team, founder)
+    r = client.post(
+        f"{TS}/{sid}/confirm",
+        json={"terms": {"stage": "seed", "liq_pref_x100": 100}},
+        headers=founder,
+    )
+    assert r.status_code == 200
+
+
+def test_the_same_or_an_unstated_currency_is_no_mismatch(client, db, team, founder, monkeypatch):
+    _with_currency(monkeypatch, "NGN")
+    same = client.get(f"{TS}/{_extract(client, db, team, founder)}", headers=founder).json()["data"]
+    assert same["currency_mismatch"] is False and same["document_currency"] is None
+    _with_currency(monkeypatch, None)
+    other = _extract(
+        client, db, team, founder, text=["Another term sheet. " * 20, "Pre-money 5m. " * 20]
+    )
+    d = client.get(f"{TS}/{other}", headers=founder).json()["data"]
+    assert d["proposed"]["currency"] is None and d["currency_mismatch"] is False
+
+
+def test_the_mismatch_follows_the_round_currency(client, db, team, founder, monkeypatch):
+    client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    _with_currency(monkeypatch, "USD")
+    d = client.get(f"{TS}/{_extract(client, db, team, founder)}", headers=founder).json()["data"]
+    assert d["currency_mismatch"] is False
+
+
+def test_the_wording_write_takes_the_row_lock_after_the_model_returns(
+    client, db, founder, monkeypatch
+):
+    from sqlalchemy import event
+
+    seen: list[str] = []
+
+    def spy(conn, cursor, statement, params, context, many):
+        if "term_sheets" in statement and statement.lstrip().upper().startswith("SELECT"):
+            seen.append("LOCK" if "FOR UPDATE" in statement.upper() else "READ")
+
+    llm = TermLLM(on_wording=lambda: seen.append("MODEL"))
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: llm)
+    d = typed(client, founder, liq_pref_x100=200)
+    event.listen(db.get_bind(), "before_cursor_execute", spy)
+    try:
+        _drain(db)
+    finally:
+        event.remove(db.get_bind(), "before_cursor_execute", spy)
+    after_model = seen[seen.index("MODEL") + 1 :]
+    assert "LOCK" in after_model, seen  # the refresh that precedes the comparison and the write
+    got = client.get(f"{TS}/{d['id']}", headers=founder).json()["data"]
+    assert got["flags"][0]["ai_text"]
+
+
+def test_an_edit_that_lands_while_the_model_runs_is_not_overwritten(
+    client, db, founder, monkeypatch
+):
+    d = typed(client, founder, liq_pref_x100=200)
+
+    def racing_edit():
+        r = client.patch(
+            f"{TS}/{d['id']}",
+            json={"terms": {"stage": "seed", "liq_pref_x100": 300}},
+            headers=founder,
+        )
+        assert r.status_code == 200
+
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: TermLLM(on_wording=racing_edit))
+    _drain(db)
+    got = client.get(f"{TS}/{d['id']}", headers=founder).json()["data"]
+    assert got["terms"]["liq_pref_x100"] == 300 and got["flags"][0]["value"] == 300
+    # the v1 wording ("2x") was dropped; only wording made for the v2 terms may be present
+    assert all("2x" not in (f["ai_text"] or "") for f in got["flags"])
+
+
+def test_extraction_reads_the_file_before_it_takes_the_workspace_lock(
+    client, db, team, founder, monkeypatch
+):
+    f = uploaded(db, team)
+    order: list[str] = []
+    real_lock, real_storage = svc.lock_workspace, svc.get_storage
+
+    class Spy:
+        def __init__(self, inner):
+            self.inner = inner
+
+        def read_private(self, key):
+            order.append("read")
+            return self.inner.read_private(key)
+
+    monkeypatch.setattr(
+        svc, "lock_workspace", lambda db_, sid: (order.append("lock"), real_lock(db_, sid))[1]
+    )
+    monkeypatch.setattr(svc, "get_storage", lambda: Spy(real_storage()))
+    r = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    assert r.status_code == 202
+    assert order.index("read") < order.index("lock")
+
+
+def test_two_extractions_of_one_file_still_make_one_sheet(client, db, team, founder):
+    f = uploaded(db, team)
+    a = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    b = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    assert (a.status_code, b.status_code) == (202, 200)
+    assert db.query(TermSheet).count() == 1
+
+
+def test_the_system_changes_to_an_extraction_are_audited_without_an_actor(
+    client, db, team, founder
+):
+    sid = _extract(client, db, team, founder)
+    log = client.get(f"{TS}/audit", headers=founder).json()["data"]["items"]
+    system = [x for x in log if x["actor_id"] is None]
+    assert len(system) == 1 and system[0]["action"] == "update"
+    assert (
+        system[0]["before"]["status"] == "extracting"
+        and system[0]["after"]["status"] == "needs_confirmation"
+    )
+    assert system[0]["term_sheet_id"] == sid
+
+
+def test_a_failed_extraction_is_audited_too(client, db, team, founder):
+    _extract(client, db, team, founder, text=["x"], name="scan.pdf")
+    log = client.get(f"{TS}/audit", headers=founder).json()["data"]["items"]
+    system = [x for x in log if x["actor_id"] is None]
+    assert system and system[0]["after"]["status"] == "failed"
+
+
+def test_a_patch_that_changes_nothing_leaves_no_audit_row(client, founder):
+    d = typed(client, founder, liq_pref_x100=200)
+    before = client.get(f"{TS}/audit", headers=founder).json()["data"]["total"]
+    same = client.patch(
+        f"{TS}/{d['id']}", json={"label": d["label"], "terms": d["terms"]}, headers=founder
+    )
+    assert same.status_code == 200
+    empty = client.patch(f"{TS}/{d['id']}", json={}, headers=founder)
+    assert empty.status_code == 200
+    assert client.get(f"{TS}/audit", headers=founder).json()["data"]["total"] == before
+    client.patch(f"{TS}/{d['id']}", json={"label": "Renamed"}, headers=founder)
+    assert client.get(f"{TS}/audit", headers=founder).json()["data"]["total"] == before + 1
+
+
+def test_failed_sheets_do_not_count_toward_the_cap(client, db, team, founder, monkeypatch):
+    monkeypatch.setattr(svc, "MAX_SHEETS", 2)
+    typed(client, founder, "One")
+    _extract(client, db, team, founder, text=["x"], name="scan.pdf")  # fails: no text
+    assert db.query(TermSheet).filter_by(status="failed").count() == 1
+    typed(client, founder, "Two")  # live count is 1 -> allowed
+    full = client.post(TS, json={"label": "Three", "terms": {}}, headers=founder)
+    assert full.status_code == 422  # two live sheets: now full
+    assert db.query(TermSheet).count() == 3

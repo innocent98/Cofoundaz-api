@@ -52,6 +52,20 @@ def currency(db: Session, startup_id: uuid.UUID) -> str:
     return rnd.currency if rnd else "NGN"
 
 
+def has_money(terms: Terms) -> bool:
+    return terms.pre_money_minor is not None or terms.investment_minor is not None
+
+
+def proposed_currency_mismatch(db: Session, sheet: TermSheet) -> dict[str, str] | None:
+    """The currency the document states, when it differs from the round's. None when it states
+    none, or the same one (an unstated currency is not a mismatch we can know about)."""
+    doc = (sheet.proposed or {}).get("currency")
+    round_currency = currency(db, sheet.startup_id)
+    if doc and doc != round_currency:
+        return {"document": doc, "round": round_currency}
+    return None
+
+
 def terms_dict(terms: Terms) -> dict[str, Any]:
     """What is stored: only the stated terms (null and absent both mean "not stated")."""
     return terms.model_dump(mode="json", exclude_none=True)
@@ -95,11 +109,17 @@ def serialize(db: Session, rows: list[TermSheet], *, detail: bool = True) -> lis
         }
         if detail:
             item["proposed"] = r.proposed if r.status == "needs_confirmation" else None
+            mismatch = (
+                proposed_currency_mismatch(db, r) if r.status == "needs_confirmation" else None
+            )
+            item["currency_mismatch"] = mismatch is not None
+            item["document_currency"] = mismatch["document"] if mismatch else None
+            item["round_currency"] = currency(db, r.startup_id) if mismatch else None
         out.append(item)
     return out
 
 
-def _snapshot(r: TermSheet) -> dict[str, Any]:
+def snapshot(r: TermSheet) -> dict[str, Any]:
     return {
         "label": r.label,
         "status": r.status,
@@ -110,10 +130,17 @@ def _snapshot(r: TermSheet) -> dict[str, Any]:
     }
 
 
+def audit_system(db: Session, sheet: TermSheet, before: dict[str, Any]) -> None:
+    """Record a state change the worker made (extraction finished or failed): no actor."""
+    after = snapshot(sheet)
+    if after != before:
+        _audit(db, sheet.startup_id, None, sheet.id, "update", before, after)
+
+
 def _audit(
     db: Session,
     startup_id: uuid.UUID,
-    actor_id: uuid.UUID,
+    actor_id: uuid.UUID | None,
     sheet_id: uuid.UUID,
     action: str,
     before: dict[str, Any] | None,
@@ -244,7 +271,10 @@ def _check_investor(db: Session, startup_id: uuid.UUID, investor_id: uuid.UUID |
 
 
 def _check_limit(db: Session, startup_id: uuid.UUID) -> None:
-    if db.query(TermSheet).filter_by(startup_id=startup_id).count() >= MAX_SHEETS:
+    live = db.query(TermSheet).filter(
+        TermSheet.startup_id == startup_id, TermSheet.status != "failed"
+    )
+    if live.count() >= MAX_SHEETS:
         raise _validation("label", f"You can keep at most {MAX_SHEETS} term sheets.")
 
 
@@ -295,7 +325,7 @@ def create_typed(
     _finish_confirmed(db, sheet, data.terms, actor_id)
     db.add(sheet)
     db.flush()
-    _audit(db, startup_id, actor_id, sheet.id, "create", None, _snapshot(sheet))
+    _audit(db, startup_id, actor_id, sheet.id, "create", None, snapshot(sheet))
     _announce(db, sheet, actor_id)
     _queue_wording(db, sheet)
     return sheet
@@ -306,8 +336,8 @@ def create_extraction(
 ) -> tuple[TermSheet, bool]:
     """Queue extraction from a Documents PDF. Returns `(sheet, created)`; the same bytes already
     extracted (or being extracted) return that sheet untouched and spend nothing."""
-    lock_workspace(db, startup_id)
-    _check_investor(db, startup_id, data.investor_id)
+    # Read and hash the PDF BEFORE taking the workspace lock: storage I/O (up to 15 MB) must not
+    # hold every other write of this workspace. Duplicates are re-checked under the lock.
     file = (
         db.query(DocumentFile)
         .filter_by(id=data.file_id, startup_id=startup_id)
@@ -326,6 +356,8 @@ def create_extraction(
     if content is None:
         raise NotFound()
     sha = hashlib.sha256(content).hexdigest()
+    lock_workspace(db, startup_id)
+    _check_investor(db, startup_id, data.investor_id)
     same = (
         db.query(TermSheet)
         .filter(
@@ -356,7 +388,7 @@ def create_extraction(
     db.flush()
     job = job_dispatcher.enqueue(db, EXTRACT_JOB, {"term_sheet_id": str(sheet.id)}, startup_id)
     sheet.job_id = job.id
-    _audit(db, startup_id, actor_id, sheet.id, "create", None, _snapshot(sheet))
+    _audit(db, startup_id, actor_id, sheet.id, "create", None, snapshot(sheet))
     db.flush()
     return sheet, True
 
@@ -378,12 +410,21 @@ def confirm(
             "This term sheet is not waiting for confirmation.",
             409,
         )
-    before = _snapshot(sheet)
+    mismatch = proposed_currency_mismatch(db, sheet)
+    if mismatch and has_money(data.terms) and not data.acknowledge_currency_mismatch:
+        raise AppError(
+            "CURRENCY_MISMATCH",
+            f"This document states amounts in {mismatch['document']}, but your round is in "
+            f"{mismatch['round']}. Convert the amounts, or confirm that they are already in "
+            f"{mismatch['round']}.",
+            409,
+        )
+    before = snapshot(sheet)
     if data.label:
         sheet.label = data.label
     _finish_confirmed(db, sheet, data.terms, actor_id)
     db.flush()
-    _audit(db, startup_id, actor_id, sheet.id, "confirm", before, _snapshot(sheet))
+    _audit(db, startup_id, actor_id, sheet.id, "confirm", before, snapshot(sheet))
     _announce(db, sheet, actor_id)
     _queue_wording(db, sheet)
     return sheet
@@ -403,7 +444,7 @@ def update_sheet(
             "NOT_CONFIRMED", "Confirm the extracted values first; then you can edit them.", 409
         )
     given = data.model_fields_set
-    before = _snapshot(sheet)
+    before = snapshot(sheet)
     if "investor_id" in given:
         _check_investor(db, startup_id, data.investor_id)
         sheet.investor_id = data.investor_id
@@ -415,7 +456,9 @@ def update_sheet(
         sheet.flags = term_rules.evaluate(sheet.terms)
         terms_changed = True
     db.flush()
-    _audit(db, startup_id, actor_id, sheet.id, "update", before, _snapshot(sheet))
+    after = snapshot(sheet)
+    if after != before:  # a PATCH that changes nothing leaves no history
+        _audit(db, startup_id, actor_id, sheet.id, "update", before, after)
     if terms_changed:
         _queue_wording(db, sheet)
     return sheet
@@ -426,6 +469,6 @@ def delete_sheet(
 ) -> None:
     lock_workspace(db, startup_id)
     sheet = get(db, startup_id, sheet_id, lock=True)
-    _audit(db, startup_id, actor_id, sheet.id, "delete", _snapshot(sheet), None)
+    _audit(db, startup_id, actor_id, sheet.id, "delete", snapshot(sheet), None)
     db.delete(sheet)
     db.flush()

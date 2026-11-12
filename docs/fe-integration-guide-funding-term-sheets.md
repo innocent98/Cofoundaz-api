@@ -79,7 +79,7 @@ the workspace lacks it (off today). *Not captured live (enforcement is off in th
 | status | what the page shows | what the FE does |
 |---|---|---|
 | `extracting` | "Reading your term sheet..." | poll `GET /term-sheets/{id}` every 3 to 5 seconds (it normally takes seconds) |
-| `needs_confirmation` | the proposed values beside the source quotes, every field editable | `POST /{id}/confirm` with the final values |
+| `needs_confirmation` | the proposed values beside the source quotes, every field editable; **warn first when `currency_mismatch` is true** | `POST /{id}/confirm` with the final values |
 | `confirmed` | the sheet, its flags, in the comparison | edit with `PATCH` |
 | `failed` | `error`: `no_text` (scanned or image-only PDF), `unreadable`, `file_missing`, `generation_failed`, `over_budget`, `job_failed` | offer "Enter the terms by hand" or "Try again" (a new extract of the same file is allowed after a failure) |
 
@@ -274,11 +274,11 @@ capture `create_typed_clean`
 ```json
 {
   "data": {
-    "id": "8f028911-9a50-42d5-870d-84fc10f60ae3",
+    "id": "36aafb75-d143-4a40-ae95-44f56669e374",
     "label": "Alpha Ventures",
     "status": "confirmed",
     "error": null,
-    "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+    "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
     "investor_name": "Tolu Bello",
     "source_file_id": null,
     "source_filename": null,
@@ -299,9 +299,12 @@ capture `create_typed_clean`
     },
     "flags": [],
     "flag_count": 0,
-    "confirmed_at": "2026-11-06T21:44:45.674192+00:00",
-    "created_at": "2026-11-06T21:44:45.663409+00:00",
-    "proposed": null
+    "confirmed_at": "2026-11-12T12:00:34.433941+00:00",
+    "created_at": "2026-11-12T12:00:34.421312+00:00",
+    "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null
   },
   "meta": null
 }
@@ -543,22 +546,25 @@ capture `extract_queued`
   "data": {
     "deduplicated": false,
     "term_sheet": {
-      "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+      "id": "52618e87-d4c9-481f-a35b-8698674d4962",
       "label": "gamma-term-sheet.pdf",
       "status": "extracting",
       "error": null,
-      "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+      "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
       "investor_name": "Tolu Bello",
-      "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+      "source_file_id": "21dabddc-0890-4c33-b770-67662a5f0ec6",
       "source_filename": "gamma-term-sheet.pdf",
-      "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+      "job_id": "05f4a8cb-4f3c-4dbe-a914-a2fb6bd95a1d",
       "extracted_by_ai": true,
       "terms": {},
       "flags": [],
       "flag_count": 0,
       "confirmed_at": null,
-      "created_at": "2026-11-06T21:44:46.230662+00:00",
-      "proposed": null
+      "created_at": "2026-11-12T12:00:35.193349+00:00",
+      "proposed": null,
+      "currency_mismatch": false,
+      "document_currency": null,
+      "round_currency": null
     }
   },
   "meta": null
@@ -574,22 +580,25 @@ capture `extract_deduplicated`
   "data": {
     "deduplicated": true,
     "term_sheet": {
-      "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+      "id": "52618e87-d4c9-481f-a35b-8698674d4962",
       "label": "gamma-term-sheet.pdf",
       "status": "extracting",
       "error": null,
-      "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+      "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
       "investor_name": "Tolu Bello",
-      "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+      "source_file_id": "21dabddc-0890-4c33-b770-67662a5f0ec6",
       "source_filename": "gamma-term-sheet.pdf",
-      "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+      "job_id": "05f4a8cb-4f3c-4dbe-a914-a2fb6bd95a1d",
       "extracted_by_ai": true,
       "terms": {},
       "flags": [],
       "flag_count": 0,
       "confirmed_at": null,
-      "created_at": "2026-11-06T21:44:46.230662+00:00",
-      "proposed": null
+      "created_at": "2026-11-12T12:00:35.193349+00:00",
+      "proposed": null,
+      "currency_mismatch": false,
+      "document_currency": null,
+      "round_currency": null
     }
   },
   "meta": null
@@ -602,22 +611,25 @@ capture `detail_extracting`
 ```json
 {
   "data": {
-    "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+    "id": "52618e87-d4c9-481f-a35b-8698674d4962",
     "label": "gamma-term-sheet.pdf",
     "status": "extracting",
     "error": null,
-    "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+    "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
     "investor_name": "Tolu Bello",
-    "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+    "source_file_id": "21dabddc-0890-4c33-b770-67662a5f0ec6",
     "source_filename": "gamma-term-sheet.pdf",
-    "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+    "job_id": "05f4a8cb-4f3c-4dbe-a914-a2fb6bd95a1d",
     "extracted_by_ai": true,
     "terms": {},
     "flags": [],
     "flag_count": 0,
     "confirmed_at": null,
-    "created_at": "2026-11-06T21:44:46.230662+00:00",
+    "created_at": "2026-11-12T12:00:35.193349+00:00",
     "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null,
     "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
   },
   "meta": null
@@ -646,21 +658,21 @@ capture `detail_needs_confirmation`
 ```json
 {
   "data": {
-    "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+    "id": "52618e87-d4c9-481f-a35b-8698674d4962",
     "label": "gamma-term-sheet.pdf",
     "status": "needs_confirmation",
     "error": null,
-    "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+    "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
     "investor_name": "Tolu Bello",
-    "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+    "source_file_id": "21dabddc-0890-4c33-b770-67662a5f0ec6",
     "source_filename": "gamma-term-sheet.pdf",
-    "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+    "job_id": "05f4a8cb-4f3c-4dbe-a914-a2fb6bd95a1d",
     "extracted_by_ai": true,
     "terms": {},
     "flags": [],
     "flag_count": 0,
     "confirmed_at": null,
-    "created_at": "2026-11-06T21:44:46.230662+00:00",
+    "created_at": "2026-11-12T12:00:35.193349+00:00",
     "proposed": {
       "terms": {
         "stage": "seed",
@@ -678,8 +690,12 @@ capture `detail_needs_confirmation`
       },
       "quotes": {
         "pre_money_minor": "Pre-money valuation of NGN 400,000,000"
-      }
+      },
+      "currency": "NGN"
     },
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null,
     "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
   },
   "meta": null
@@ -699,7 +715,7 @@ capture `compare_unconfirmed_409`
 }
 ```
 
-`POST /{id}/confirm` `{terms, label?}` takes **the founder's final values** (prefill the form from
+`POST /{id}/confirm` `{terms, label?, acknowledge_currency_mismatch?}` takes **the founder's final values** (prefill the form from
 `proposed.terms`; they may correct anything). The sheet becomes `confirmed`, flags are computed from what the
 founder confirmed, and `funding.term_sheet.added` is announced (below):
 
@@ -707,15 +723,15 @@ capture `confirm`
 ```json
 {
   "data": {
-    "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+    "id": "52618e87-d4c9-481f-a35b-8698674d4962",
     "label": "Gamma Partners",
     "status": "confirmed",
     "error": null,
-    "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+    "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
     "investor_name": "Tolu Bello",
-    "source_file_id": "261f7916-7106-4858-8bdc-6f10045b3e8b",
+    "source_file_id": "21dabddc-0890-4c33-b770-67662a5f0ec6",
     "source_filename": "gamma-term-sheet.pdf",
-    "job_id": "1f057efd-df5f-4c18-8fc1-b313c5258da5",
+    "job_id": "05f4a8cb-4f3c-4dbe-a914-a2fb6bd95a1d",
     "extracted_by_ai": true,
     "terms": {
       "stage": "seed",
@@ -770,9 +786,12 @@ capture `confirm`
       }
     ],
     "flag_count": 4,
-    "confirmed_at": "2026-11-06T21:44:46.590650+00:00",
-    "created_at": "2026-11-06T21:44:46.230662+00:00",
-    "proposed": null
+    "confirmed_at": "2026-11-12T12:00:35.651044+00:00",
+    "created_at": "2026-11-12T12:00:35.193349+00:00",
+    "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null
   },
   "meta": null
 }
@@ -791,28 +810,107 @@ capture `confirm_twice_409`
 }
 ```
 
+### The document's currency (check it before confirming)
+
+The extraction also reads the **currency the document states** (`proposed.currency`, an ISO code such as
+`NGN`, `USD`, `GBP`, or `null` when none is stated). Amounts are always stored in the **round's** currency, so
+if the two differ the detail of a `needs_confirmation` sheet carries `currency_mismatch: true`,
+`document_currency` and `round_currency`. **Show a clear warning before the form**: "This document states
+amounts in USD; your round is in NGN. Convert the amounts below, or confirm they are already in NGN." The
+proposed values are the document's own numbers, **not converted**. (`currency_mismatch` is `false` on every
+other status, and when the document states no currency.)
+
+capture `detail_currency_mismatch`
+```json
+{
+  "data": {
+    "id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
+    "label": "delta-term-sheet.pdf",
+    "status": "needs_confirmation",
+    "error": null,
+    "investor_id": null,
+    "investor_name": null,
+    "source_file_id": "b08ee9ac-b83d-448b-85a3-d1a729c84b6a",
+    "source_filename": "delta-term-sheet.pdf",
+    "job_id": "337a3d70-eb2f-4a17-ae67-24b2371b8580",
+    "extracted_by_ai": true,
+    "terms": {},
+    "flags": [],
+    "flag_count": 0,
+    "confirmed_at": null,
+    "created_at": "2026-11-12T12:00:35.731362+00:00",
+    "proposed": {
+      "terms": {
+        "stage": "seed",
+        "pro_rata": "super",
+        "anti_dilution": "full_ratchet",
+        "liq_pref_x100": 200,
+        "participating": true,
+        "pre_money_minor": 40000000000,
+        "exclusivity_days": 60,
+        "investment_minor": 10000000000,
+        "founder_board_seats": 2,
+        "option_pool_pre_bps": 1250,
+        "investor_board_seats": 2,
+        "participation_cap_x100": 300
+      },
+      "quotes": {
+        "pre_money_minor": "Pre-money valuation of NGN 400,000,000"
+      },
+      "currency": "USD"
+    },
+    "currency_mismatch": true,
+    "document_currency": "USD",
+    "round_currency": "NGN",
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}
+```
+
+Confirming amounts (`pre_money_minor` or `investment_minor`) on such a sheet without saying so is refused:
+
+capture `confirm_currency_mismatch_409`
+```json
+{
+  "error": {
+    "code": "CURRENCY_MISMATCH",
+    "message": "This document states amounts in USD, but your round is in NGN. Convert the amounts, or confirm that they are already in NGN.",
+    "field_errors": []
+  }
+}
+```
+
+Send `"acknowledge_currency_mismatch": true` in the confirm body once the founder has converted the amounts
+or confirmed they are already in the round currency. A confirm with no money terms needs no acknowledgement.
+The flag is a safeguard, not a conversion: we never convert currencies.
+
+
 Failure example, a scanned PDF with no text layer (nothing was sent to the model):
 
 capture `detail_failed_no_text`
 ```json
 {
   "data": {
-    "id": "eb59ef26-e407-44ec-b0f1-82d9c1200e0c",
+    "id": "82ae6789-d877-4e27-9a19-f083da58a66e",
     "label": "scan.pdf",
     "status": "failed",
     "error": "no_text",
     "investor_id": null,
     "investor_name": null,
-    "source_file_id": "88321d26-4891-44ab-aaa5-40f219ac16c8",
+    "source_file_id": "d8c5b694-c10e-4139-b070-4135da056109",
     "source_filename": "scan.pdf",
-    "job_id": "43a3732e-39f8-4dca-bbb6-922a01e257a8",
+    "job_id": "a8f204b8-16ea-455c-a67f-eaff4be3cef0",
     "extracted_by_ai": true,
     "terms": {},
     "flags": [],
     "flag_count": 0,
     "confirmed_at": null,
-    "created_at": "2026-11-06T21:44:46.736888+00:00",
+    "created_at": "2026-11-12T12:00:35.947844+00:00",
     "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null,
     "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
   },
   "meta": null
@@ -1127,7 +1225,7 @@ capture `compare_one_sheet_422`
 
 ## 8. List, filter, edit, delete, history
 
-`GET /term-sheets?investor_id=` lists newest first (lean items; no `proposed`).
+`GET /term-sheets?investor_id=` lists newest first (lean items; no `proposed`). A workspace can hold 200 sheets; `failed` ones do not count toward that.
 
 capture `list_for_investor`
 ```json
@@ -1308,7 +1406,7 @@ capture `delete`
 ```
 
 `GET /term-sheets/audit?limit=&offset=`: every create, confirm, update and delete with `before` and `after` (the
-snapshot holds the terms and the rule ids that flagged, not the wording). Trimmed to 4 rows:
+snapshot holds the terms and the rule ids that flagged, not the wording). **Changes made by the worker** (an extraction finishing or failing) are rows with `actor_id: null`. A PATCH that changes nothing writes no row. Trimmed to 4 rows:
 
 capture `audit`
 ```json
@@ -1520,4 +1618,7 @@ capture `round_currency_locked_409`
 | Team member 403 | live (real invitation); other roles 403 and the 402 gate: unit tests |
 | Notification to other founders | unit tests only (one founder in the live run) |
 | Rules thresholds, comparison ordering and ties, unit conversion, number-preserving wording, stale wording dropped, dead job reconcile, daily allowance | unit tests |
-| A real model's extraction accuracy | **not exercised** |
+| Currency mismatch flag and the 409 `CURRENCY_MISMATCH` without an acknowledgement | live (canned model reports USD) |
+| Acknowledged confirm, no-money confirm, same or unstated currency, round currency follow | unit tests |
+| Wording cannot overwrite newer flags (row lock before compare and write), swapped figures discarded, system audit rows with no actor, no-op PATCH writes no row, failed sheets outside the cap | unit tests |
+| A real model's extraction accuracy (including reading the currency) | **not exercised** |

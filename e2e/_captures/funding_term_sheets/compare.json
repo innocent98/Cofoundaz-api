@@ -2,15 +2,15 @@
   "data": {
     "columns": [
       {
-        "id": "8f028911-9a50-42d5-870d-84fc10f60ae3",
+        "id": "36aafb75-d143-4a40-ae95-44f56669e374",
         "label": "Alpha Ventures",
-        "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+        "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
         "investor_name": "Tolu Bello",
         "stage": "seed",
         "flag_count": 0
       },
       {
-        "id": "1fef9738-f943-4891-96f1-9b826ee2cd6c",
+        "id": "231715be-e4fd-4e0d-9905-7c960b52fb41",
         "label": "Beta Capital",
         "investor_id": null,
         "investor_name": null,
@@ -18,9 +18,9 @@
         "flag_count": 7
       },
       {
-        "id": "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
+        "id": "52618e87-d4c9-481f-a35b-8698674d4962",
         "label": "Gamma Partners",
-        "investor_id": "7c6f13be-06f0-4f8e-bb2c-6f4ab195dbf8",
+        "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
         "investor_name": "Tolu Bello",
         "stage": "seed",
         "flag_count": 4
@@ -33,16 +33,16 @@
         "unit": "money",
         "better": "higher",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 40000000000,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 50000000000,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 40000000000
+          "36aafb75-d143-4a40-ae95-44f56669e374": 40000000000,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 50000000000,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 40000000000
         },
         "best": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41"
         ],
         "worst": [
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       },
       {
@@ -51,9 +51,9 @@
         "unit": "money",
         "better": null,
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 10000000000,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 10000000000,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 10000000000
+          "36aafb75-d143-4a40-ae95-44f56669e374": 10000000000,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 10000000000,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 10000000000
         },
         "best": [],
         "worst": []
@@ -64,9 +64,9 @@
         "unit": "money",
         "better": null,
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 50000000000,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 60000000000,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 50000000000
+          "36aafb75-d143-4a40-ae95-44f56669e374": 50000000000,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 60000000000,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 50000000000
         },
         "best": [],
         "worst": []
@@ -77,16 +77,16 @@
         "unit": "bps",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 2000,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 1667,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 2000
+          "36aafb75-d143-4a40-ae95-44f56669e374": 2000,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 1667,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 2000
         },
         "best": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41"
         ],
         "worst": [
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       },
       {
@@ -95,15 +95,15 @@
         "unit": "bps",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 1000,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 1800,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 1250
+          "36aafb75-d143-4a40-ae95-44f56669e374": 1000,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 1800,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 1250
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41"
         ]
       },
       {
@@ -112,16 +112,16 @@
         "unit": "multiple_x100",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 100,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 200,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 200
+          "36aafb75-d143-4a40-ae95-44f56669e374": 100,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 200,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 200
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       },
       {
@@ -130,16 +130,16 @@
         "unit": "bool",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": false,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": true,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": true
+          "36aafb75-d143-4a40-ae95-44f56669e374": false,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": true,
+          "52618e87-d4c9-481f-a35b-8698674d4962": true
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       },
       {
@@ -148,9 +148,9 @@
         "unit": "multiple_x100",
         "better": null,
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": null,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 300,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 300
+          "36aafb75-d143-4a40-ae95-44f56669e374": null,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 300,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 300
         },
         "best": [],
         "worst": []
@@ -161,16 +161,16 @@
         "unit": "count",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 1,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 2,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 1
+          "36aafb75-d143-4a40-ae95-44f56669e374": 1,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 2,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 1
         },
         "best": [
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9",
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41"
         ]
       },
       {
@@ -179,9 +179,9 @@
         "unit": "count",
         "better": "higher",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 2,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": null,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 2
+          "36aafb75-d143-4a40-ae95-44f56669e374": 2,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": null,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 2
         },
         "best": [],
         "worst": []
@@ -192,16 +192,16 @@
         "unit": "enum",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": "standard",
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": "super",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": "super"
+          "36aafb75-d143-4a40-ae95-44f56669e374": "standard",
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": "super",
+          "52618e87-d4c9-481f-a35b-8698674d4962": "super"
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       },
       {
@@ -210,15 +210,15 @@
         "unit": "days",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": 30,
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": 60,
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": 45
+          "36aafb75-d143-4a40-ae95-44f56669e374": 30,
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": 60,
+          "52618e87-d4c9-481f-a35b-8698674d4962": 45
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41"
         ]
       },
       {
@@ -227,22 +227,22 @@
         "unit": "enum",
         "better": "lower",
         "values": {
-          "8f028911-9a50-42d5-870d-84fc10f60ae3": "broad_based",
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c": "full_ratchet",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": "full_ratchet"
+          "36aafb75-d143-4a40-ae95-44f56669e374": "broad_based",
+          "231715be-e4fd-4e0d-9905-7c960b52fb41": "full_ratchet",
+          "52618e87-d4c9-481f-a35b-8698674d4962": "full_ratchet"
         },
         "best": [
-          "8f028911-9a50-42d5-870d-84fc10f60ae3"
+          "36aafb75-d143-4a40-ae95-44f56669e374"
         ],
         "worst": [
-          "1fef9738-f943-4891-96f1-9b826ee2cd6c",
-          "76b8924d-ca2a-4c69-9b25-139c5ebb89f9"
+          "231715be-e4fd-4e0d-9905-7c960b52fb41",
+          "52618e87-d4c9-481f-a35b-8698674d4962"
         ]
       }
     ],
     "flags": {
-      "8f028911-9a50-42d5-870d-84fc10f60ae3": [],
-      "1fef9738-f943-4891-96f1-9b826ee2cd6c": [
+      "36aafb75-d143-4a40-ae95-44f56669e374": [],
+      "231715be-e4fd-4e0d-9905-7c960b52fb41": [
         {
           "rule": "liq_pref_above_1x",
           "term": "liq_pref_x100",
@@ -307,14 +307,14 @@
           "threshold": "broad-based weighted average"
         }
       ],
-      "76b8924d-ca2a-4c69-9b25-139c5ebb89f9": [
+      "52618e87-d4c9-481f-a35b-8698674d4962": [
         {
           "rule": "liq_pref_above_1x",
           "term": "liq_pref_x100",
           "text": "The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
           "title": "Liquidation preference above 1x",
           "value": 200,
-          "ai_text": null,
+          "ai_text": "In plain words: The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
           "threshold": "1x"
         },
         {
@@ -323,7 +323,7 @@
           "text": "The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
           "title": "Participating preferred",
           "value": true,
-          "ai_text": null,
+          "ai_text": "In plain words: The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
           "threshold": "non-participating"
         },
         {
@@ -332,7 +332,7 @@
           "text": "The investor can buy more than their share of future rounds, which can crowd out new investors.",
           "title": "Super pro-rata",
           "value": "super",
-          "ai_text": null,
+          "ai_text": "In plain words: The investor can buy more than their share of future rounds, which can crowd out new investors.",
           "threshold": "standard pro-rata"
         },
         {
@@ -341,7 +341,7 @@
           "text": "If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
           "title": "Full-ratchet anti-dilution",
           "value": "full_ratchet",
-          "ai_text": null,
+          "ai_text": "In plain words: If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
           "threshold": "broad-based weighted average"
         }
       ]

@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "1fef9738-f943-4891-96f1-9b826ee2cd6c",
+    "id": "231715be-e4fd-4e0d-9905-7c960b52fb41",
     "label": "Beta Capital",
     "status": "confirmed",
     "error": null,
@@ -89,9 +89,12 @@
       }
     ],
     "flag_count": 7,
-    "confirmed_at": "2026-11-06T21:44:45.698312+00:00",
-    "created_at": "2026-11-06T21:44:45.686365+00:00",
+    "confirmed_at": "2026-11-12T12:00:34.461563+00:00",
+    "created_at": "2026-11-12T12:00:34.455113+00:00",
     "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null,
     "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
   },
   "meta": null

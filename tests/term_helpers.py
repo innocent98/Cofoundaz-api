@@ -25,11 +25,12 @@ class TermLLM:
 
     last_usage_tokens = 3000
 
-    def __init__(self, extraction=None, boom=None, wording=None):
+    def __init__(self, extraction=None, boom=None, wording=None, on_wording=None):
         self.extraction = (
             extraction
             if extraction is not None
             else {
+                "currency": "NGN",
                 "stage": "seed",
                 "pre_money": 400_000_000,
                 "investment": 100_000_000,
@@ -46,6 +47,7 @@ class TermLLM:
             }
         )
         self.boom, self.wording, self.calls = boom, wording, []
+        self.on_wording = on_wording  # runs while the wording call is in flight (a racing edit)
 
     def complete_json(self, messages, *, schema, max_tokens):
         self.calls.append(schema)
@@ -53,6 +55,8 @@ class TermLLM:
             raise self.boom
         if "quotes" in schema["properties"]:
             return json.loads(json.dumps(self.extraction))
+        if self.on_wording is not None:
+            self.on_wording()
         if self.wording is not None:
             return self.wording
         flags = []

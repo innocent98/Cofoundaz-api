@@ -215,6 +215,30 @@ def test_funding_term_sheets_journey(
         assert r.status_code == 409
         capture(G, "confirm_twice_409", r)
 
+        # 3b. A document in another currency than the round: flagged, and confirming needs an
+        # explicit acknowledgement. (The canned model reports USD for this one.)
+        usd_text = [
+            t.replace("NGN", "USD") + "\nAddendum for the dollar offer." for t in SHEET_TEXT
+        ]
+        fid_usd = _upload(c, wh, "delta-term-sheet.pdf", deck_pdf(usd_text))
+        r = c.post(f"{TS}/extract", headers=wh, json={"file_id": fid_usd})
+        assert r.status_code == 202
+        delta = r.json()["data"]["term_sheet"]
+        canned_llm.extraction = {**canned_llm.extraction, "currency": "USD"}
+        _drain(canned_llm)
+        canned_llm.extraction = {**canned_llm.extraction, "currency": "NGN"}
+        r = c.get(f"{TS}/{delta['id']}", headers=wh)
+        d = r.json()["data"]
+        assert d["currency_mismatch"] is True and d["document_currency"] == "USD"
+        capture(G, "detail_currency_mismatch", r)
+        r = c.post(
+            f"{TS}/{delta['id']}/confirm", headers=wh, json={"terms": d["proposed"]["terms"]}
+        )
+        assert r.status_code == 409 and r.json()["error"]["code"] == "CURRENCY_MISMATCH"
+        capture(G, "confirm_currency_mismatch_409", r)
+        r = c.delete(f"{TS}/{delta['id']}", headers=wh)
+        assert r.status_code == 200
+
         # 4. Compare three offers side by side.
         ids = ",".join([alpha["id"], beta["id"], gamma["id"]])
         r = c.get(f"{TS}/compare?ids={ids}", headers=wh)
