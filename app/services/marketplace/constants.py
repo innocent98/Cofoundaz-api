@@ -67,3 +67,19 @@ UNVERIFIED_HOLD_GRACE = timedelta(hours=1)
 REFUND_RETRY_BACKOFF_MIN: Final = (1, 5, 30, 120, 720)  # minutes, by attempt number
 MAX_REFUND_ATTEMPTS: Final = 12
 REFUND_INFLIGHT_WAIT = timedelta(hours=2)  # an unconfirmed refund isn't re-sent before this
+
+# ---- slice D: fulfilment and messaging
+AUTO_RELEASE_PACKAGE = timedelta(
+    days=7
+)  # a delivered package is accepted for the founder after this
+AUTO_RELEASE_CONSULTATION = timedelta(hours=48)  # ... and a finished consultation after this
+MAX_MESSAGE_CHARS: Final = 4000
+MESSAGE_COLLAPSE = timedelta(minutes=10)  # one notification / email per thread per window
+MAX_BRIEF_FILES: Final = 5
+MAX_MESSAGE_FILES: Final = 5
+MAX_DELIVERY_FILES: Final = 10
+MAX_UNATTACHED_FILES: Final = 20  # per user and purpose: uploads not yet sent anywhere
+MAX_BRIEF_FILE_BYTES: Final = 10 * 1024 * 1024  # D-MP-L10: briefs and messages, 10 MB each
+BOOKING_DOCUMENT_TTL = timedelta(days=30)
+MAX_BOOKING_DOCUMENTS: Final = 10
+OVERDUE_BATCH: Final = 200

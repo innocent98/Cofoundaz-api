@@ -138,7 +138,14 @@ class MarketplaceFile(UUIDMixin, TimestampMixin, Base):
     purpose: Mapped[MarketplaceFilePurpose] = mapped_column(
         Enum(MarketplaceFilePurpose, native_enum=False, length=20), nullable=False
     )
+    # Set when a brief / delivery / message file is attached: to the booking, or (a message in a
+    # pre-booking conversation) to the thread. Unattached files are readable by their owner only.
     booking_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    thread_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_threads.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime: Mapped[str] = mapped_column(String(120), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -340,6 +347,9 @@ class MarketplaceBooking(UUIDMixin, TimestampMixin, Base):
     auto_release_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revisions_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     calendar_event_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     closed_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
 
@@ -424,6 +434,14 @@ class MarketplaceOrder(UUIDMixin, TimestampMixin, Base):
     attention_amount_minor: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     refund_failed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # Set when the flag stops needing a person: automatically (the order was later paid-and-revived
+    # or fully refunded) or by a staff action. The flag itself is kept as the record.
+    attention_resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    attention_resolved_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     __table_args__ = (
@@ -512,4 +530,140 @@ class MarketplaceConsent(UUIDMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "kind", "version", name="uq_marketplace_consent"),
+    )
+
+
+# ---------------------------------------------------------------- slice D: fulfilment, messaging
+
+
+class MarketplaceDelivery(UUIDMixin, TimestampMixin, Base):
+    """One hand-over of work for a booking. A package gets one per round (the first delivery plus
+    one per requested change); a consultation gets a single, message-less one when it is marked
+    complete. `decision` stays NULL until the founder (or the auto-release timer) answers."""
+
+    __tablename__ = "marketplace_deliveries"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_bookings.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    round: Mapped[int] = mapped_column(Integer, nullable=False)
+    message: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    file_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("booking_id", "round", name="uq_marketplace_delivery_round"),
+        CheckConstraint(
+            "decision IS NULL OR decision IN ('accepted','changes_requested','auto_released')",
+            name="ck_marketplace_delivery_decision",
+        ),
+    )
+
+
+class MarketplaceThread(UUIDMixin, TimestampMixin, Base):
+    """A conversation between one workspace and one expert: before any booking (`booking_id`
+    NULL, at most one per pair) and then attached to a booking (at most one per booking).
+    `provider_emailed_at` collapses the expert's new-message emails to one per 10 minutes."""
+
+    __tablename__ = "marketplace_threads"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_providers.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    booking_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_bookings.id", ondelete="RESTRICT"),
+        unique=True,
+        nullable=True,
+    )
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider_emailed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_marketplace_thread_pair",
+            "startup_id",
+            "provider_id",
+            unique=True,
+            postgresql_where=text("booking_id IS NULL"),
+        ),
+    )
+
+
+class MarketplaceMessage(UUIDMixin, TimestampMixin, Base):
+    """Plain text (never rendered as HTML). Each side has its own read stamp, so a team member
+    opening the thread reads it for the whole founder side."""
+
+    __tablename__ = "marketplace_messages"
+
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_threads.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sender_user_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    sender_side: Mapped[str] = mapped_column(String(10), nullable=False)  # founder | provider
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    file_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    read_at_founder_side: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    read_at_provider_side: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("sender_side IN ('founder','provider')", name="ck_marketplace_msg_side"),
+        CheckConstraint("char_length(body) BETWEEN 1 AND 4000", name="ck_marketplace_msg_len"),
+        Index("ix_marketplace_messages_thread_created", "thread_id", "created_at"),
+    )
+
+
+class MarketplaceBookingDocument(UUIDMixin, TimestampMixin, Base):
+    """ "Attach from Documents": a booking-scoped, expiring, revocable read link to ONE document of
+    the founder's workspace. A table of its own (not `document_grants`) on purpose: those grants
+    never expire, put the expert into the founder's Shared-with-me list and name the workspace to
+    them. Here the expert reads the document through the booking and nothing else of the workspace.
+    """
+
+    __tablename__ = "marketplace_booking_documents"
+
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("marketplace_bookings.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="RESTRICT"), nullable=False
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    granted_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("booking_id", "document_id", name="uq_marketplace_booking_document"),
     )
