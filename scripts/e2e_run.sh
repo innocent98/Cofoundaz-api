@@ -76,7 +76,7 @@ export API_PUBLIC_URL="${E2E_BASE_URL}"
 # Cofoundaz Billing (Paystack subscriptions): a throwaway test-mode key generated per run, exported to
 # BOTH the server and the pytest process (the journey signs its webhook with it). It always wins over a
 # developer's real key in .env, and the stubbed HTTP above answers api.paystack.co, so no run reaches Paystack.
-export PAYSTACK_SECRET_KEY="sk_test_e2e_$(poetry run python -c 'import secrets; print(secrets.token_hex(12))')"
+export PAYSTACK_SECRET_KEY="sk_test_e2e_$(poetry run python -c 'import secrets; print(secrets.token_hex(12).replace("b", "c"))')"  # the Paystack stub rejects any key containing "bad"
 export PAYSTACK_TEST_SECRET_KEY=""
 # Marketplace checkout is off by default (D-MP-3, D-MP-9). The journey exercises it against the stubbed
 # Paystack above, with the throwaway test key above signing its webhooks.
