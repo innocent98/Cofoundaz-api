@@ -1,0 +1,101 @@
+{
+  "data": {
+    "id": "231715be-e4fd-4e0d-9905-7c960b52fb41",
+    "label": "Beta Capital",
+    "status": "confirmed",
+    "error": null,
+    "investor_id": null,
+    "investor_name": null,
+    "source_file_id": null,
+    "source_filename": null,
+    "job_id": null,
+    "extracted_by_ai": false,
+    "terms": {
+      "stage": "seed",
+      "pro_rata": "super",
+      "anti_dilution": "full_ratchet",
+      "liq_pref_x100": 200,
+      "participating": true,
+      "pre_money_minor": 50000000000,
+      "exclusivity_days": 60,
+      "investment_minor": 10000000000,
+      "option_pool_pre_bps": 1800,
+      "investor_board_seats": 2,
+      "participation_cap_x100": 300
+    },
+    "flags": [
+      {
+        "rule": "liq_pref_above_1x",
+        "term": "liq_pref_x100",
+        "text": "The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
+        "title": "Liquidation preference above 1x",
+        "value": 200,
+        "ai_text": "In plain words: The investor gets 2x their money back before anyone else shares in a sale. 1x is the usual ask at this stage.",
+        "threshold": "1x"
+      },
+      {
+        "rule": "participating_preferred",
+        "term": "participating",
+        "text": "The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
+        "title": "Participating preferred",
+        "value": true,
+        "ai_text": "In plain words: The investor takes their money back first and then also shares in what is left (double dip), up to 3x in total.",
+        "threshold": "non-participating"
+      },
+      {
+        "rule": "option_pool_above_15pct",
+        "term": "option_pool_pre_bps",
+        "text": "The option pool is 18% of the pre-money. Because it sits in the pre-money, founders carry all of that dilution.",
+        "title": "Large option pool in the pre-money",
+        "value": 1800,
+        "ai_text": "In plain words: The option pool is 18% of the pre-money. Because it sits in the pre-money, founders carry all of that dilution.",
+        "threshold": "15% of pre-money"
+      },
+      {
+        "rule": "exclusivity_above_45_days",
+        "term": "exclusivity_days",
+        "text": "You agree not to talk to other investors for 60 days. Up to 45 days is common.",
+        "title": "Long exclusivity (no-shop)",
+        "value": 60,
+        "ai_text": "In plain words: You agree not to talk to other investors for 60 days. Up to 45 days is common.",
+        "threshold": "45 days"
+      },
+      {
+        "rule": "investor_board_seats_early",
+        "term": "investor_board_seats",
+        "text": "The investor gets 2 board seats on a seed round. At this stage one seat, or an observer, is more common.",
+        "title": "More than one investor board seat on an early round",
+        "value": 2,
+        "ai_text": "In plain words: The investor gets 2 board seats on a seed round. At this stage one seat, or an observer, is more common.",
+        "threshold": "1 investor seat"
+      },
+      {
+        "rule": "super_pro_rata",
+        "term": "pro_rata",
+        "text": "The investor can buy more than their share of future rounds, which can crowd out new investors.",
+        "title": "Super pro-rata",
+        "value": "super",
+        "ai_text": "In plain words: The investor can buy more than their share of future rounds, which can crowd out new investors.",
+        "threshold": "standard pro-rata"
+      },
+      {
+        "rule": "full_ratchet",
+        "term": "anti_dilution",
+        "text": "If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
+        "title": "Full-ratchet anti-dilution",
+        "value": "full_ratchet",
+        "ai_text": "In plain words: If you later raise at a lower price, the investor's price resets all the way down to it. Broad-based weighted average is the usual protection.",
+        "threshold": "broad-based weighted average"
+      }
+    ],
+    "flag_count": 7,
+    "confirmed_at": "2026-11-12T12:00:34.461563+00:00",
+    "created_at": "2026-11-12T12:00:34.455113+00:00",
+    "proposed": null,
+    "currency_mismatch": false,
+    "document_currency": null,
+    "round_currency": null,
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}

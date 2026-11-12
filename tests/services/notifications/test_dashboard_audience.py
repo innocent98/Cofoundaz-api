@@ -51,6 +51,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "readiness.qa.scored": FOUNDER,
     "funding.round.committed_changed": CORE,
     "funding.dataroom.viewed": CORE,
+    "funding.term_sheet.added": FOUNDER,  # D-FUND-5: offers are founder only
     "kpi.threshold.crossed": CORE,  # the test payload's audience is marketing
     "business.suggestion.created": FOUNDER,
     # Pages every member can open (Health, Roadmap, Business Builder, Team)

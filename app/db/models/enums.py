@@ -70,6 +70,7 @@ FUNDING_ROLES: frozenset[MembershipRole] = frozenset(
 # D-FUND-5: equity is the most sensitive data in the product, so the cap table (and term sheets) are
 # founder only. Team members get 403, as does every other role.
 CAP_TABLE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
+TERM_SHEET_ROLES: frozenset[MembershipRole] = CAP_TABLE_ROLES  # D-FUND-5: offers are founder only
 SALES_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
