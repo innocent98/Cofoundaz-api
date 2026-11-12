@@ -264,3 +264,101 @@ def booking_closed_email(to: str, *, provider: str | None, title: str, reason: s
             expiry_note="You'll see the refund on the booking as soon as it is confirmed.",
         ),
     )
+
+
+# ------------------------------------------------------------------ slice D: fulfilment emails
+# To the expert only: founders hear about these in the app. Anything a founder typed (a reason, a
+# name) is escaped; message text is never put in an email.
+
+
+def delivery_changes_email(
+    to: str, *, name: str | None, title: str, reason: str, round_no: int
+) -> EmailMessage:
+    return EmailMessage(
+        to=to,
+        subject=f"Changes requested: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="The client asked for changes",
+            intro=(
+                f"{_greet(name)} the client reviewed <strong>{escape(title)}</strong> "
+                f"(round {round_no}) and asked for changes: <br><br><em>{escape(reason)}</em>"
+            ),
+            cta_label="Open the booking",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="Submit the updated work from the booking when it is ready.",
+        ),
+    )
+
+
+def delivery_accepted_email(
+    to: str, *, name: str | None, title: str, auto_released: bool
+) -> EmailMessage:
+    how = (
+        "The review period ended, so the delivery was accepted automatically."
+        if auto_released
+        else "The client accepted your delivery."
+    )
+    return EmailMessage(
+        to=to,
+        subject=f"Delivery accepted: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="Delivery accepted",
+            intro=f"{_greet(name)} {how} <strong>{escape(title)}</strong> is complete.",
+            cta_label="Open the booking",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="Your payout is handled separately once settlement opens.",
+        ),
+    )
+
+
+def new_message_email(to: str, *, name: str | None, sender: str | None) -> EmailMessage:
+    who = escape(sender) if sender else "a client"
+    return EmailMessage(
+        to=to,
+        subject="You have a new message on Cofoundaz",
+        html=_render(
+            title="New message",
+            intro=(
+                f"{_greet(name)} you have a new message from {who}. "
+                "We send one email per conversation every few minutes, however many messages "
+                "arrive."
+            ),
+            cta_label="Open your messages",
+            action_url=f"{_portal()}/messages",
+            expiry_note="Reply from the portal. Keep the conversation on Cofoundaz.",
+        ),
+    )
+
+
+def booking_cancelled_provider_email(to: str, *, name: str | None, title: str) -> EmailMessage:
+    return EmailMessage(
+        to=to,
+        subject=f"Booking cancelled: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="Booking cancelled",
+            intro=(
+                f"{_greet(name)} the client cancelled <strong>{escape(title)}</strong> before it "
+                "started. Nothing more is needed from you."
+            ),
+            cta_label="Open your bookings",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="The time on your calendar is open again.",
+        ),
+    )
+
+
+def delivery_overdue_email(to: str, *, name: str | None, title: str) -> EmailMessage:
+    return EmailMessage(
+        to=to,
+        subject=f"Overdue: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="This delivery is overdue",
+            intro=(
+                f"{_greet(name)} <strong>{escape(title)}</strong> has passed its due date. "
+                "Please submit your work, or message the client if you need more time."
+            ),
+            cta_label="Open the booking",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="The client can report a problem if a delivery is very late.",
+        ),
+    )

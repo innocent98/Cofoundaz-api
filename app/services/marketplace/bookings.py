@@ -26,16 +26,18 @@ from app.db.models.enums import (
     BookingStatus,
     ListingStatus,
     ListingType,
-    MembershipStatus,
+    MarketplaceFilePurpose,
     OrderStatus,
     ProviderStatus,
 )
 from app.db.models.marketplace import (
     MarketplaceBooking,
     MarketplaceConsent,
+    MarketplaceFile,
     MarketplaceListing,
     MarketplaceOrder,
     MarketplaceProvider,
+    MarketplaceThread,
 )
 from app.db.models.membership import Membership
 from app.db.models.user import User
@@ -43,10 +45,19 @@ from app.platform.audit import write_audit
 from app.platform.email import EmailMessage
 from app.platform.events import event_bus
 from app.services.billing import paystack
-from app.services.marketplace import availability, emails, orders
+from app.services.marketplace import (
+    availability,
+    calendar_link,
+    closing,
+    emails,
+    files,
+    identity,
+    orders,
+)
 from app.services.marketplace.constants import (
     CONSENT_KIND_TERMS,
     MARKETPLACE_TERMS_VERSION,
+    MAX_BRIEF_FILES,
     SLOT_HOLD,
 )
 from app.services.marketplace.directory import get_listing
@@ -102,6 +113,25 @@ def order_view(order: MarketplaceOrder, *, booking_status: BookingStatus) -> dic
     }
 
 
+def _brief_files(db: Session, b: MarketplaceBooking, *, base: str) -> list[dict[str, Any]]:
+    rows = (
+        db.query(MarketplaceFile.id)
+        .filter(
+            MarketplaceFile.booking_id == b.id,
+            MarketplaceFile.purpose == MarketplaceFilePurpose.brief,
+            MarketplaceFile.deleted_at.is_(None),
+        )
+        .order_by(MarketplaceFile.created_at, MarketplaceFile.id)
+        .all()
+    )
+    return files.serialize_many(db, [str(r[0]) for r in rows], base=base)
+
+
+def _thread_id(db: Session, b: MarketplaceBooking) -> str | None:
+    tid = db.query(MarketplaceThread.id).filter(MarketplaceThread.booking_id == b.id).scalar()
+    return str(tid) if tid else None
+
+
 def founder_view(db: Session, b: MarketplaceBooking) -> dict[str, Any]:
     provider = db.get(MarketplaceProvider, b.provider_id)
     order = _order_for(db, b.id)
@@ -139,6 +169,16 @@ def founder_view(db: Session, b: MarketplaceBooking) -> dict[str, Any]:
             ),
         },
         "order": order_view(order, booking_status=b.status),
+        "delivered_at": b.delivered_at.isoformat() if b.delivered_at else None,
+        "auto_release_at": b.auto_release_at.isoformat() if b.auto_release_at else None,
+        "revisions_used": b.revisions_used,
+        "revisions_left": max(0, b.revisions_included_snap - b.revisions_used),
+        "calendar_event_id": str(b.calendar_event_id) if b.calendar_event_id else None,
+        "calendar_ics_url": (
+            f"/api/v1/marketplace/bookings/{b.id}/calendar.ics" if b.calendar_event_id else None
+        ),
+        "thread_id": _thread_id(db, b),
+        "brief_files": _brief_files(db, b, base="/api/v1/marketplace/files"),
         "created_at": b.created_at.isoformat(),
     }
 
@@ -176,7 +216,29 @@ def provider_view(db: Session, b: MarketplaceBooking) -> dict[str, Any]:
             "paid": order.status
             in (OrderStatus.paid, OrderStatus.held, OrderStatus.partially_refunded),
         },
+        "delivered_at": b.delivered_at.isoformat() if b.delivered_at else None,
+        "auto_release_at": b.auto_release_at.isoformat() if b.auto_release_at else None,
+        "revisions_used": b.revisions_used,
+        "thread_id": _thread_id(db, b),
+        "brief_files": _brief_files(db, b, base="/api/v1/provider/files"),
         "created_at": b.created_at.isoformat(),
+    }
+
+
+def booking_event(db: Session, b: MarketplaceBooking) -> dict[str, Any]:
+    """Payload of the `marketplace.booking.*` events: ids plus what a founder notification quotes
+    (never the brief)."""
+    provider = db.get(MarketplaceProvider, b.provider_id)
+    tz = ZoneInfo(provider.timezone) if provider else UTC
+    return {
+        "booking_id": str(b.id),
+        "startup_id": str(b.startup_id),
+        "provider_id": str(b.provider_id),
+        "title": b.title_snap,
+        "provider_name": provider.display_name if provider else None,
+        "type": b.type,
+        "date": b.starts_at.astimezone(tz).strftime("%d %b %Y") if b.starts_at else None,
+        "starts_at": b.starts_at.isoformat() if b.starts_at else None,
     }
 
 
@@ -233,15 +295,8 @@ def checkout_status(db: Session, user: User, m: Membership) -> dict[str, Any]:
 
 
 def _own_listing(db: Session, provider: MarketplaceProvider, startup_id: uuid.UUID) -> bool:
-    """D-MP-L16: an expert can't book themselves: same user, or the same email as any member."""
-    rows = (
-        db.query(User.id, User.email)
-        .join(Membership, Membership.user_id == User.id)
-        .filter(Membership.startup_id == startup_id, Membership.status == MembershipStatus.active)
-        .all()
-    )
-    emails_ = {e.lower() for _, e in rows}
-    return (provider.user_id in {uid for uid, _ in rows}) or provider.email.lower() in emails_
+    """D-MP-L16: an expert can't book themselves."""
+    return identity.is_own_provider(db, provider, startup_id)
 
 
 def _same_request(
@@ -326,6 +381,21 @@ def _ensure_open() -> None:
         )
 
 
+def _attach_briefs(
+    db: Session, user: User, file_ids: list[uuid.UUID], *, booking_id: uuid.UUID | None
+) -> None:
+    """No `booking_id`: only check the files, so a bad one fails before anything is created."""
+    files.attach(
+        db,
+        owner_user_id=user.id,
+        file_ids=file_ids,
+        purposes=frozenset({MarketplaceFilePurpose.brief}),
+        limit=MAX_BRIEF_FILES,
+        booking_id=booking_id,
+        dry_run=booking_id is None,
+    )
+
+
 def create_booking(
     db: Session,
     user: User,
@@ -337,6 +407,7 @@ def create_booking(
     idempotency_key: str,
     accept_terms: bool,
     pay_with: str,
+    file_ids: list[uuid.UUID] | None = None,
 ) -> tuple[MarketplaceBooking, MarketplaceOrder, bool]:
     """Returns (booking, order, replayed). Raises before touching Paystack on every bad input."""
     _ensure_open()
@@ -353,6 +424,7 @@ def create_booking(
         raise err("SLOT_NOT_APPLICABLE", "Packages don't have a time slot.", 422)
     if pay_with == "saved_card" and saved_card(db, m.startup_id) is None:
         raise err("NO_SAVED_CARD", "There's no saved card on this workspace.", 422)
+    _attach_briefs(db, user, file_ids or [], booking_id=None)  # fail on a bad file up front
     _ensure_terms(db, user, accept_terms)
 
     # Serialise bookings per expert: lock the expert row, then the listing, and re-read both.
@@ -435,6 +507,10 @@ def create_booking(
     )
     db.add(order)
     db.flush()
+    # Brief files are linked only on a fresh booking (replays returned above), still under the
+    # expert's lock and before Paystack hears about the charge: a bad file id fails the whole
+    # request with nothing created and nothing charged.
+    _attach_briefs(db, user, file_ids or [], booking_id=booking.id)
     if pay_with == "card":
         base = (settings.APP_BASE_URL or settings.SERVER_HOST).rstrip("/")
         init = paystack.initialize(
@@ -629,6 +705,12 @@ def cancel_by_founder(
                 reason="founder_cancelled",
             )
         )
+        if provider is not None:
+            mail.append(
+                emails.booking_cancelled_provider_email(
+                    provider.email, name=provider.display_name, title=b.title_snap
+                )
+            )
     else:
         raise err(
             "CANCEL_NOT_ALLOWED",
@@ -643,7 +725,8 @@ def cancel_by_founder(
         entity_type="marketplace_booking",
         entity_id=b.id,
     )
-    event_bus.publish(db, "marketplace.booking.cancelled", {"booking_id": str(b.id)})
+    closing.on_closed(db, b, drop_calendar=True)
+    event_bus.publish(db, "marketplace.booking.cancelled", booking_event(db, b))
     return b, mail
 
 
@@ -732,7 +815,10 @@ def accept(db: Session, ctx: ProviderContext, booking_id: uuid.UUID) -> Marketpl
         entity_id=b.id,
         details={"provider_id": str(b.provider_id)},
     )
-    event_bus.publish(db, "marketplace.booking.confirmed", {"booking_id": str(b.id)})
+    if b.type == ListingType.consultation.value:
+        # The meeting link first reaches the expert here, in the invite, never before accepting.
+        calendar_link.create_for_booking(db, b, ctx.provider)
+    event_bus.publish(db, "marketplace.booking.confirmed", booking_event(db, b))
     return b
 
 
@@ -761,7 +847,8 @@ def decline(
         entity_id=b.id,
         details={"provider_id": str(b.provider_id)},
     )
-    event_bus.publish(db, "marketplace.booking.declined", {"booking_id": str(b.id)})
+    closing.on_closed(db, b, drop_calendar=True)
+    event_bus.publish(db, "marketplace.booking.declined", booking_event(db, b))
     booker = db.get(User, b.booked_by)
     mail = (
         [
