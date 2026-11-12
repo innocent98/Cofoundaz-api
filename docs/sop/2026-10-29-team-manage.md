@@ -41,3 +41,15 @@ No env vars, no migration: revert the code. Memberships marked removed stay remo
 
 Team Tasks with Roadmap sync and AI triage; Directory; grants matrix per module; "to what" in role-change audit rows; seat counting for Billing; a notification to
 the removed or re-roled member; revoking share links and signature requests a removed member created.
+
+
+## Update 2026-11-12: `GET /team/members` is founder + team member only
+
+Found by the every-control re-walk: mentor, business consultant, accountant, investor and legal advisor all got 200 with every member's name, e-mail and role.
+Decision (Adebayo): **Founder + TM only**; the other five get 403 `FORBIDDEN`. Change: `require_role(founder, team_member)` on the route in `app/api/v1/endpoints/team.py`.
+Tests: `tests/api/test_team_manage.py::test_members_list_is_founder_and_team_member_only` (all seven roles); the e2e journey asserts a mentor 403 and captures it
+(`e2e/_captures/team_manage/members_mentor_403.json`, run live on a scratch server). Guide section 0 and 1 updated.
+
+Audit of other e-mail exposure: invitations list, audit and CSV are founder-only already; sales analytics is founder/TM only; the comments, mentions and activity payloads
+carry names, not e-mails. **Open, not changed here:** `GET /calendar/meetings` and `/{id}` return every attendee's e-mail to an invited non-manager role (D-CAL-6 design);
+decide separately whether to redact for those roles.

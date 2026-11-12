@@ -30,6 +30,9 @@ from app.services.team import service as team_svc
 
 router = APIRouter()
 
+# The member list carries every e-mail address: founder and team member only.
+_directory = require_role(MembershipRole.founder, MembershipRole.team_member)
+
 
 @router.post("/invitations")
 @limiter.limit("10/minute")
@@ -61,11 +64,13 @@ def _ws(db: Session, membership: Membership) -> Startup:
 
 @router.get("/members")
 def get_members(
-    membership: Membership = Depends(require_workspace),  # noqa: B008
+    membership: Membership = Depends(_directory),  # noqa: B008
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    """Active workspace members (assignee/owner pickers, directory)."""
+    """Active workspace members (assignee/owner pickers, directory). Founder and team member
+    only (D-TEAM, Adebayo 2026-11-12): the list carries every member's e-mail address, so
+    mentor, business consultant, accountant, investor and legal advisor get 403."""
     return success_response(
         members_svc.list_members_detailed(
             db, _ws(db, membership), include_last_active=membership.role == MembershipRole.founder
