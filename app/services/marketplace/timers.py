@@ -54,6 +54,8 @@ def _expire_hold(db: Session, booking_id: uuid.UUID, *, unverified: bool) -> int
         details={"why": "payment_not_completed", "verified": not unverified},
     )
     if unverified:
+        # Money may be captured behind verify errors we never resolved: put it in front of staff.
+        orders.flag_attention(db, order, b, "unverified_close", None)
         log.warning(f"marketplace timers: closed hold {b.id} Paystack could not answer for")
         booker = db.get(User, b.booked_by)
         if booker is not None:
@@ -99,6 +101,11 @@ def expire_unpaid(db: Session, t: datetime) -> int:
                 tx = paystack.verify(reference)
             except paystack.PaystackNotFound:
                 tx = None  # Paystack never saw this payment: it really is unpaid
+            except paystack.BillingNotConfigured:
+                # A deployment problem, not a verdict on this hold: closing holds and emailing
+                # founders for it would be wrong. Stop the pass and shout.
+                log.error("marketplace timers: Paystack is not configured; holds left untouched")
+                return expired
             except AppError:
                 if hold_expired_at is None or t - hold_expired_at < UNVERIFIED_HOLD_GRACE:
                     continue  # can't tell yet: leave the hold, try again next minute

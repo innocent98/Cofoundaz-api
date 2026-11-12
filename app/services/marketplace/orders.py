@@ -181,7 +181,8 @@ def flag_attention(
 
 
 def close_for_payment_review(db: Session, booking: MarketplaceBooking) -> None:
-    """Booking must be locked. `expired` + `closed_reason: payment_review` (no new enum value)."""
+    """Booking must be locked. `expired` + `closed_reason: payment_review` (no new enum value).
+    Also used for a mismatching payment that lands on a hold already closed as unpaid."""
     booking.status = BookingStatus.expired
     booking.closed_reason = "payment_review"
     booking.slot_hold_expires_at = None
@@ -238,7 +239,10 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
         # different currency, a tampered request). We can't book it against this order, and we
         # must not lose it: flag the order for staff with what Paystack says it took.
         flag_attention(db, order, booking, "payment_mismatch", tx.get("amount"))
-        if booking.status == BookingStatus.pending_payment:
+        if booking.status == BookingStatus.pending_payment or (
+            booking.status == BookingStatus.expired
+            and booking.closed_reason == "payment_not_completed"
+        ):
             # Terminal for the checkout: release the slot, stop the timer re-verifying it every
             # minute, and tell the founder. The order stays pending and flagged for staff.
             close_for_payment_review(db, booking)

@@ -993,6 +993,10 @@ def test_a_hold_paystack_never_answers_for_is_closed_after_the_grace_and_can_sti
     assert order_of(db, d["id"]).status == OrderStatus.failed
     audit = db.query(AuditLog).filter_by(action="marketplace.booking.expired", entity_id=b.id).one()
     assert audit.details["verified"] is False
+    flagged = order_of(db, d["id"])
+    assert (
+        flagged.attention_reason == "unverified_close"
+    )  # money may be captured: staff must see it
     assert [m.to for m in mail.sent] == [w.founder.email] and "pay again" in mail.sent[0].html
     # the money, if it had moved, is never lost: a late payment still revives the booking
     ps.verify_rejects = False
@@ -1064,3 +1068,54 @@ def test_a_late_refund_webhook_for_a_refund_already_on_the_books_is_not_booked_t
     assert post_webhook(client, late).json()["data"]["outcome"] == "refund_noted"
     db.refresh(o)
     assert o.refunded_minor == 300_000 and o.refund_due_minor == 300_000
+
+
+def test_a_missing_paystack_configuration_never_closes_holds_or_emails_founders(
+    client, db, w, ps, mail, monkeypatch
+):
+    from app.services.billing import paystack
+    from app.services.marketplace import timers
+
+    d = w.book().json()["data"]
+    b = db.get(MarketplaceBooking, uuid.UUID(d["id"]))
+
+    def unconfigured(reference):
+        raise paystack.BillingNotConfigured()
+
+    monkeypatch.setattr(paystack, "verify", unconfigured)
+    mail.sent.clear()
+    assert timers.tick(db, b.slot_hold_expires_at + timedelta(hours=3))["expired_unpaid"] == 0
+    assert db.get(MarketplaceBooking, b.id).status == BookingStatus.pending_payment
+    assert mail.sent == []
+
+
+def test_a_mismatch_on_an_already_closed_hold_still_goes_to_review_and_tells_the_founder(
+    client, db, w, ps, mail
+):
+    from app.services.marketplace import timers
+
+    d = w.book().json()["data"]
+    ref = d["order"]["reference"]
+    b = db.get(MarketplaceBooking, uuid.UUID(d["id"]))
+    saved = dict(ps.tx)
+    ps.tx.pop(ref, None)  # Paystack has never heard of it: the hold simply lapses
+    timers.tick(db, b.slot_hold_expires_at + timedelta(minutes=1))
+    assert (b.status, b.closed_reason) == (BookingStatus.expired, "payment_not_completed")
+    ps.tx.update(saved)
+    ps.pay(ref)
+    ps.amount_override = 1_020_000
+    mail.sent.clear()
+    assert post_webhook(client, charge_success(ref)).json()["data"]["outcome"] == "payment_mismatch"
+    db.refresh(b)
+    assert b.closed_reason == "payment_review"
+    assert [m.to for m in mail.sent] == [w.founder.email] and "pay again" in mail.sent[0].html
+
+
+def test_a_saved_card_mismatch_answers_201_with_a_closed_booking(client, db, w, ps):
+    _card(db, w.ws)
+    ps.charge_status = "success"
+    ps.amount_override = 1_020_000
+    r = w.book(pay_with="saved_card")
+    assert r.status_code == 201, r.text  # NOT a booked confirmation: read status / closed_reason
+    data = r.json()["data"]
+    assert data["status"] == "expired" and data["closed_reason"] == "payment_review"
