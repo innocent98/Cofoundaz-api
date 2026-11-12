@@ -1,6 +1,6 @@
 # Grants catalogue: DRAFT for Adebayo's review (D-FUND-2)
 
-**Status: draft, not seeded.** Every row below was checked on the funder's own page on **2026-11-12** with a plain fetch of that page, and every amount, date and eligibility line is what that page said on that day. Where a page did not state something, the cell says `not stated` or the amount is empty; nothing was filled in from memory, blogs or aggregator lists. Rows marked `partial` have a verified source page but missing amounts or dates: decide whether to keep them.
+**Status: draft, not seeded.** Every row below was checked on the funder's own page on **2026-11-12** with a plain fetch of that page, and every amount, date and eligibility line is what that page said on that day. Where a page did not state something, the cell says `not stated` or the amount is empty; nothing was filled in from memory, blogs or aggregator lists. Rows marked `partial` (5 of 15: Cartier Women's Initiative, Orange Corners Nigeria, Hult Prize, MIT Solve, Grand Challenges Canada) have a verified source page but missing amounts or dates: decide whether to keep them.
 
 **Read this before approving:** this is **15 rows, not the 30 to 40 asked for.** The tooling available had no page reader, so each row was fetched directly with `curl` and read; many funders' pages were empty to a plain fetch (script-built sites), unreachable, or stale, and those were dropped (list at the bottom) rather than guessed. Four rows are credits (in-kind) and one is a matching-funds model, labelled as such. Nigeria-first coverage is thin: develoPPP Ventures (current call includes Nigeria), TEF, Orange Corners Nigeria (Lagos), and Africa-wide programmes.
 
@@ -9,18 +9,18 @@ Companion CSV for the later seed: `grants-catalogue-draft.csv` (same rows, array
 | # | Name | Funder | Kind | Amount | Deadline / window | Status on 2026-11-12 | Regions | Stages | Source | Verified |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 1 | TEF Entrepreneurship Programme | Tony Elumelu Foundation | cash grant (non-refundable seed capital) + training | 5,000 USD | annual: portal opens 1 January, closes 1 March at midnight (per the programme page) | closed until next 1 January | Africa (all 54 countries per the foundation's homepage) | business idea, or business no older than 5 years | [www.tonyelumelufoundation.org](https://www.tonyelumelufoundation.org/tef-entrepreneurship-programme) | verified |
-| 2 | develoPPP Ventures | German Federal Ministry for Economic Cooperation and Development (BMZ), delivered by GIZ and partners | matching-funds catalytic funding | up to 100,000 EUR | current call: 15 November to 31 December 2026 (Egypt, Kenya, Nigeria, Rwanda, South Africa, Tanzania) | opens 15 Nov 2026 | Nigeria, Egypt, Kenya, Rwanda, South Africa, Tanzania (current call) | early stage with initial revenues (proof of concept) | [www.developpp.de](https://www.developpp.de/en/application/ventures/) | verified |
-| 3 | Africa Business Heroes (ABH) Prize | Jack Ma Foundation and Alibaba Philanthropy | competition prize (grants) | up to 300,000 USD | annual: the 2026 application deadline was 7 May 2026 | closed until next cycle | Africa (all 54 countries) | established: registered business or 3+ years of proven operation | [africabusinessheroes.org](https://africabusinessheroes.org/en/the-prize/application-guidelines) | verified |
+| 2 | develoPPP Ventures | German Federal Ministry for Economic Cooperation and Development (BMZ); applications handled by GIZ | matching-funds catalytic funding | up to 100,000 EUR | current call: 15 November to 31 December 2026 (Egypt, Kenya, Nigeria, Rwanda, South Africa, Tanzania) | opens 15 Nov 2026 | Nigeria, Egypt, Kenya, Rwanda, South Africa, Tanzania (current call) | early stage with initial revenues (proof of concept) | [www.developpp.de](https://www.developpp.de/en/application/ventures/) | verified |
+| 3 | Africa Business Heroes (ABH) Prize | Jack Ma Foundation | competition prize (grants) | up to 300,000 USD | annual: the 2026 application deadline was 7 May 2026 | closed until next cycle | Africa (all 54 countries) | established: registered business or 3+ years of proven operation | [africabusinessheroes.org](https://africabusinessheroes.org/en/the-prize/application-guidelines) | verified |
 | 4 | Africa Prize for Engineering Innovation | Royal Academy of Engineering | competition prize + commercialisation programme | up to 50,000 GBP | annual: the 2027 prize call ran 13 July to 8 September 2026 (closed now) | closed until next call | sub-Saharan Africa | early commercialisation (eight-month commercialisation programme for the shortlisted) | [africaprize.raeng.org.uk](https://africaprize.raeng.org.uk/about-the-prize/how-to-apply) | verified |
 | 5 | UNICEF Venture Fund | UNICEF | equity-free funding (tranches) + mentoring | up to 100,000 USD | no deadline stated on the page; apply by Expression of Interest | rolling (as presented) | companies registered in a UNICEF programme country | early stage; growth stage for graduates | [www.unicefventurefund.org](https://www.unicefventurefund.org/funding-support) | verified |
 | 6 | Echoing Green Fellowship | Echoing Green | fellowship stipend (grant; recoverable grant for for-profits) | up to 100,000 USD | annual: applications for the 2026 Fellowship are closed | closed until next cycle | not stated on the pages fetched | early stage | [echoinggreen.org](https://echoinggreen.org/fellowship/apply/) | verified |
-| 7 | Cartier Women's Initiative | Cartier Philanthropy and partners | annual awards + coaching | not stated | annual; the 2026 fellows were announced on 26 March 2026 | not confirmed | any country | women-run and women-owned impact businesses | [www.cartierwomensinitiative.com](https://www.cartierwomensinitiative.com/) | partial |
+| 7 | Cartier Women's Initiative | Cartier Women's Initiative (operating organisation not read from the pages fetched) | annual awards + coaching | not stated | annual; the 2026 fellows were announced on 26 March 2026 | not confirmed | any country | women-run and women-owned impact businesses | [www.cartierwomensinitiative.com](https://www.cartierwomensinitiative.com/) | partial |
 | 8 | Google for Startups Accelerator: Africa | Google | equity-free accelerator (in-kind: mentoring, product credits) | not stated | annual: applications ran 4 February to 18 March 2026 (closed); register interest for the next one | closed until next cohort | Africa | growth stage | [startup.google.com](https://startup.google.com/programs/accelerator/africa/) | verified |
 | 9 | Google for Startups Cloud Program | Google Cloud | credits (in-kind) | up to 350,000 USD | rolling | open | not restricted on the page fetched | startups (see page) | [cloud.google.com](https://cloud.google.com/startup) | verified |
 | 10 | AWS Activate | Amazon Web Services | credits (in-kind) | up to 200,000 USD | rolling | open | not restricted on the page fetched | startups (see page) | [aws.amazon.com](https://aws.amazon.com/startups/) | verified |
 | 11 | Microsoft for Startups Founders Hub | Microsoft | credits (in-kind) | up to 150,000 USD | rolling | open | not restricted on the page fetched | startups (see page) | [www.microsoft.com](https://www.microsoft.com/en-us/startups) | verified |
 | 12 | Orange Corners Nigeria (incubation programme) | Embassy of the Kingdom of the Netherlands in Lagos, implemented by FATE Foundation | incubation programme | not stated | per cohort: the page shows an Apply Now button when a window is open | not confirmed | Lagos, Nigeria (core business operations in Lagos) | validated innovative business concept, not more than 2 years old | [www.orangecorners.com](https://www.orangecorners.com/country/nigeria/) | partial |
-| 13 | Hult Prize | Hult Prize Foundation | student competition prize | not stated | annual; not captured | not confirmed | 130+ participating countries (homepage) | university student teams | [www.hultprize.org](https://www.hultprize.org/) | partial |
+| 13 | Hult Prize | Hult Prize | student competition prize | not stated | annual; not captured | not confirmed | 130+ participating countries (homepage) | university student teams | [www.hultprize.org](https://www.hultprize.org/) | partial |
 | 14 | MIT Solve Global Challenges | MIT Solve | challenge funding | not stated | per challenge: see Open Challenges | not confirmed | global | by challenge | [solve.mit.edu](https://solve.mit.edu/challenges) | partial |
 | 15 | Grand Challenges Canada | Grand Challenges Canada | funding opportunities (health-focused) | not stated | per opportunity | not confirmed | varies | varies | [www.grandchallenges.ca](https://www.grandchallenges.ca/apply-for-funding/) | partial |
 
@@ -45,11 +45,11 @@ Companion CSV for the later seed: `grants-catalogue-draft.csv` (same rows, array
 - **Eligibility:** African entrepreneurs. The 2026 application required proof of legal registration or proof of operation for 3+ years (bank statements and similar). Read the current application guidelines each year.
 - **Sectors:** not stated
 - **Source:** https://africabusinessheroes.org/en/the-prize/application-guidelines (verified 2026-11-12, verified)
-- **Notes:** Funder names as shown on the prize site; confirm on the site's About page.
+- **Notes:** The prize site calls ABH the Jack Ma Foundation's flagship philanthropic programme in Africa.
 
 ### Africa Prize for Engineering Innovation
 - **Amount:** 2027 prize: GBP 85,000 in total: GBP 50,000 overall winner, GBP 10,000 to each of three finalists, GBP 5,000 One-to-Watch (official news page).
-- **Eligibility:** Engineers and innovators in sub-Saharan Africa. Two-stage application through the Academy's grants system. The how-to-apply page says applications are closed.
+- **Eligibility:** Engineers and innovators in sub-Saharan Africa. Two-stage application process. The how-to-apply page says applications are closed.
 - **Sectors:** engineering innovation
 - **Source:** https://africaprize.raeng.org.uk/about-the-prize/how-to-apply (verified 2026-11-12, verified)
 - **Notes:** Amounts from raeng.org.uk news item of 13 July 2026.
@@ -64,7 +64,7 @@ Companion CSV for the later seed: `grants-catalogue-draft.csv` (same rows, array
 ### Echoing Green Fellowship
 - **Amount:** Seed funding: a stipend over 18 months (100,000 USD). For-profit organizations receive it as recoverable grants (fellowship page).
 - **Eligibility:** Applicants 18+ (by 1 June in the 2026 round), proficient in English, early-stage organization or idea that needs financial and non-financial resources. A company valued over USD 5 million, or earning over USD 2 million revenue with net profit, is not eligible (2026 page).
-- **Sectors:** social impact (enterprises tackling a challenge)
+- **Sectors:** not stated
 - **Source:** https://echoinggreen.org/fellowship/apply/ (verified 2026-11-12, verified)
 - **Notes:** Country eligibility not read; confirm.
 
@@ -73,12 +73,12 @@ Companion CSV for the later seed: `grants-catalogue-draft.csv` (same rows, array
 - **Eligibility:** Open to women-run and women-owned businesses from any country and sector that aim for a strong and sustainable social and/or environmental impact (homepage).
 - **Sectors:** any sector with strong social and/or environmental impact
 - **Source:** https://www.cartierwomensinitiative.com/ (verified 2026-11-12, partial)
-- **Notes:** Application page returned an error; amounts and window not verified. Funder name as shown on the site footer was not read.
+- **Notes:** Application page returned an error; amounts and window not verified.
 
 ### Google for Startups Accelerator: Africa
 - **Amount:** No cash stated. Equity-free support for the duration of the three-month programme; Cloud credits can be applied for separately, subject to review.
 - **Eligibility:** Cohorts of 10 to 15 startups. Read the eligibility section on the program page.
-- **Sectors:** AI-focused technical challenges (page)
+- **Sectors:** not stated
 - **Source:** https://startup.google.com/programs/accelerator/africa/ (verified 2026-11-12, verified)
 - **Notes:** In-kind only.
 
