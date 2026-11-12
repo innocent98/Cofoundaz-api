@@ -40,7 +40,7 @@ def test_migration_chain_has_one_head_and_it_is_0104():
     assert heads.stdout.count("(head)") == 1
     assert "0104_marketplace_fulfilment" in heads.stdout
     history = _alembic(str(settings.DATABASE_URL), "history")
-    assert "0101_marketplace_booking -> 0104_marketplace_fulfilment" in history.stdout
+    assert "0105_analytics_custom_metrics -> 0104_marketplace_fulfilment" in history.stdout
 
 
 def _scratch():
@@ -84,7 +84,7 @@ def test_0104_upgrade_downgrade_upgrade_and_no_drift():
             "ix_marketplace_bookings_overdue",
             "ix_marketplace_files_thread_id",
         } <= idx
-        down = _alembic(url, "downgrade", "0101_marketplace_booking")
+        down = _alembic(url, "downgrade", "0105_analytics_custom_metrics")
         assert down.returncode == 0, down.stderr
         assert not TABLES & set(inspect(eng).get_table_names())
         for table, cols in ADDED.items():
