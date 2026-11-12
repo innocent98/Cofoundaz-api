@@ -6,6 +6,9 @@ Captures land in `e2e/_captures/team_manage/*.json` (verbatim source of
 `docs/fe-integration-guide-team.md`). Invitation emails are read through the file mail backend.
 """
 
+import uuid
+from datetime import UTC, datetime, timedelta
+
 import httpx
 
 
@@ -60,6 +63,29 @@ def test_team_manage_journey(base_url, make_verified_user, mailbox, unique_email
         assert members[b["email"]]["role"] == "mentor"
         capture(g, "members", r)
         b_id = members[b["email"]]["user_id"]
+
+        # Meeting attendee e-mails: the invited mentor sees names, never addresses.
+        guest = f"guest-{uuid.uuid4().hex[:6]}@example.com"
+        day = (datetime.now(UTC).date() + timedelta(days=3)).isoformat()
+        mt = c.post(
+            "/api/v1/calendar/meetings",
+            headers=fh,
+            json={
+                "title": "Advisor sync",
+                "event_date": day,
+                "start_time": "10:00",
+                "end_time": "11:00",
+                "timezone": "Africa/Lagos",
+                "attendees": [{"email": b["email"]}, {"email": guest, "name": "Guest Investor"}],
+            },
+        )
+        assert mt.status_code == 200, mt.text
+        assert {x["email"] for x in mt.json()["data"]["attendees"]} == {b["email"], guest}
+        seen = c.get(f"/api/v1/calendar/meetings/{mt.json()['data']['id']}", headers=bh)
+        assert seen.status_code == 200, seen.text
+        assert [x["email"] for x in seen.json()["data"]["attendees"]] == [None, None]
+        assert guest not in seen.text and b["email"] not in seen.text
+        capture(g, "meeting_attendees_mentor_redacted", seen)
 
         # Comments index: the founder mentions B on a milestone.
         tree = c.get("/api/v1/roadmap", headers=fh).json()["data"]

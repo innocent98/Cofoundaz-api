@@ -46,7 +46,7 @@ Every suggestion endpoint below returns this same shape. Field reference:
 | `current` | **the target's state, read LIVE at response time — not a snapshot frozen when the suggestion was created.** See the important caveat in §3: the same suggestion's `current` is different on its create-response vs. its approve-response, because the canvas/record moved in between. `null` for `record_create` (there is no prior state for a record that doesn't exist yet) and for `record_update`/`record_delete` whose target record has since been deleted. |
 | `note` | free-text rationale the suggester typed; `null` if omitted. |
 | `status` | `pending` → `approved` \| `rejected` (terminal). See §6 for the state machine. |
-| `author` | `{id, name, email}` of whoever created the suggestion. `name` is `null` if that user has no profile `full_name` set (true of every e2e test user, which only sets a workspace-level display name, not a profile name — see the live captures). |
+| `author` | `{id, name, email}` of whoever created the suggestion. **`email` is `null` unless the viewer is a founder or team member** (Adebayo, 2026-11-12; so the consultant's own create response has `"email": null`): never show or `mailto:` it for other roles, show the name. See the redacted capture at the end of §4. `name` is `null` if that user has no profile `full_name` set (true of every e2e test user, which only sets a workspace-level display name, not a profile name — see the live captures). |
 | `resolved_by` | `{id, name}` of whoever approved/rejected it, `null` while `pending`. |
 | `resolved_at` | ISO-8601 timestamp, `null` while `pending`. |
 | `created_at` | ISO-8601 timestamp. |
@@ -681,3 +681,18 @@ unit-tested in-process — and every response body is captured verbatim in the n
 Every row in this guide is ✅ — this journey was written specifically to exercise both 409s and
 the `current`-liveness behavior live, rather than leaving them as source-derived rows the way
 Slice 1/2's guide had to for its unexercised error paths.
+
+## Author e-mail by role (added 2026-11-12)
+
+A business consultant (and any other non-founder, non-team-member role) listing suggestions gets the author without the address. Verbatim from a live run
+(`e2e/_captures/business/suggestions_list_consultant_redacted.json`, `author` of the first row; `name` is `null` because the e2e users have no profile name):
+
+```json
+{
+  "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
+  "name": null,
+  "email": null
+}
+```
+
+The founder's and team member's lists, and their approve / reject responses, still carry `email`.
