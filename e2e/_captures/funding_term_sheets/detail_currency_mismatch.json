@@ -1,0 +1,44 @@
+{
+  "data": {
+    "id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
+    "label": "delta-term-sheet.pdf",
+    "status": "needs_confirmation",
+    "error": null,
+    "investor_id": null,
+    "investor_name": null,
+    "source_file_id": "b08ee9ac-b83d-448b-85a3-d1a729c84b6a",
+    "source_filename": "delta-term-sheet.pdf",
+    "job_id": "337a3d70-eb2f-4a17-ae67-24b2371b8580",
+    "extracted_by_ai": true,
+    "terms": {},
+    "flags": [],
+    "flag_count": 0,
+    "confirmed_at": null,
+    "created_at": "2026-11-12T12:00:35.731362+00:00",
+    "proposed": {
+      "terms": {
+        "stage": "seed",
+        "pro_rata": "super",
+        "anti_dilution": "full_ratchet",
+        "liq_pref_x100": 200,
+        "participating": true,
+        "pre_money_minor": 40000000000,
+        "exclusivity_days": 60,
+        "investment_minor": 10000000000,
+        "founder_board_seats": 2,
+        "option_pool_pre_bps": 1250,
+        "investor_board_seats": 2,
+        "participation_cap_x100": 300
+      },
+      "quotes": {
+        "pre_money_minor": "Pre-money valuation of NGN 400,000,000"
+      },
+      "currency": "USD"
+    },
+    "currency_mismatch": true,
+    "document_currency": "USD",
+    "round_currency": "NGN",
+    "disclaimer": "Negotiate with clarity. This is an automated reading of the terms you entered, not legal or financial advice. Ask a lawyer to review a real term sheet before you sign."
+  },
+  "meta": null
+}

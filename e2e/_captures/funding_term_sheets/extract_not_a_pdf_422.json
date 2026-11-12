@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Extraction needs a PDF. Enter the terms by hand otherwise.",
+    "field_errors": [
+      {
+        "field": "file_id",
+        "message": "Extraction needs a PDF. Enter the terms by hand otherwise."
+      }
+    ]
+  }
+}
