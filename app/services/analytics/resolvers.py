@@ -269,6 +269,7 @@ def resolve_value(
     db: Session, sid: uuid.UUID, metric: Metric, p: Period, custom: CustomMetric | None = None
 ) -> Number | None:
     if metric.custom:
-        assert custom is not None
+        if custom is None:  # a custom catalog entry always carries its row; never an assert
+            return None
         return custom_value(db, custom, p)
     return RESOLVERS[metric.key](db, sid, p)
