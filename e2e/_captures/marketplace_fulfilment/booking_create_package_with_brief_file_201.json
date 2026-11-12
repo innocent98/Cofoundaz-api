@@ -1,0 +1,67 @@
+{
+  "data": {
+    "replayed": false,
+    "id": "4aeef8f7-c785-4acb-ac70-027360090b72",
+    "status": "pending_payment",
+    "type": "package",
+    "listing_id": "e637810c-538c-4536-a9cd-1a4204bcf815",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "price_minor": 25000000,
+    "currency": "NGN",
+    "brief": "We need a shareholder agreement drafted before we close our seed round next month.",
+    "starts_at": null,
+    "ends_at": null,
+    "timezone": "Africa/Lagos",
+    "slot_hold_expires_at": "2026-11-12T19:50:32.279994+00:00",
+    "accept_by": null,
+    "due_at": null,
+    "meeting_url": null,
+    "closed_reason": null,
+    "provider": {
+      "id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+      "display_name": "Ngozi Eze",
+      "avatar_url": null
+    },
+    "order": {
+      "id": "27160c8b-933d-415b-8400-484694506347",
+      "status": "pending",
+      "amount_minor": 25000000,
+      "currency": "NGN",
+      "reference": "mp_60c0c369479d82153a34",
+      "checkout_url": "https://checkout.paystack.com/stub-mp_60c0c369479d82153a34",
+      "paid_at": null,
+      "receipt_number": null,
+      "refunded_minor": 0,
+      "refund_pending_minor": 0
+    },
+    "delivered_at": null,
+    "auto_release_at": null,
+    "revisions_used": 0,
+    "revisions_left": 2,
+    "calendar_event_id": null,
+    "calendar_ics_url": null,
+    "thread_id": null,
+    "brief_files": [
+      {
+        "id": "2e619859-1048-4fc6-a17f-9cf33b940874",
+        "purpose": "brief",
+        "filename": "seed-terms.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 38,
+        "scan_status": "clean",
+        "created_at": "2026-11-12T19:35:32.150697+00:00",
+        "url": "/api/v1/marketplace/files/2e619859-1048-4fc6-a17f-9cf33b940874/content"
+      }
+    ],
+    "created_at": "2026-11-12T19:35:32.261450+00:00"
+  },
+  "meta": null
+}

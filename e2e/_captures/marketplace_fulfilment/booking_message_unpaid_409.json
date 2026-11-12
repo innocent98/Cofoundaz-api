@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "THREAD_NOT_AVAILABLE",
+    "message": "Messaging opens once the booking is paid.",
+    "field_errors": []
+  }
+}

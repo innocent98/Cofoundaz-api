@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_FILE",
+    "message": "One of those files can't be attached. Upload it again.",
+    "field_errors": []
+  }
+}

@@ -1,5 +1,7 @@
 # Marketplace slice C: booking, checkout and ledger
 
+**Superseded in part by slice D** (`docs/sop/2026-11-07-marketplace-fulfilment.md`): an accepted booking no longer stays `confirmed` / `in_progress` for ever (it is delivered, then completed, by the expert, the founder or the timer); `timers.tick` returns three more counters (`consultations_delivered`, `auto_released`, `overdue_flagged`); experts see only bookings that were paid, so an unpaid checkout hold stays invisible and so does a never-paid closed booking; and `marketplace.booking.*` event payloads now carry `startup_id`, `title`, `provider_name`.
+
 **What shipped:** founders book an expert's listing and pay through Cofoundaz's own Paystack account; experts accept or decline within 48 hours; unpaid holds, unanswered bookings and declines are handled by timers and refunds; every movement is written to an append-only ledger; receipts and a Paystack webhook dispatcher. API only. Money moves **only on Paystack test keys**: production card charging stays off (`MARKETPLACE_PAYMENTS_ENABLED=false`) until counsel and Paystack confirm in writing (D-MP-3, D-MP-9). FE guide `docs/fe-integration-guide-marketplace-booking.md`. Branch `feature/marketplace-booking`, PR: see the branch. Migration **`0101_marketplace_booking`**, chained on `0102_funding_term_sheets` (develop head after #235); re-chained after Funding #235 merged (one `down_revision`; the migration tests downgrade relative to their own revision).
 
 **Why:** slices A and B gave the supply side and the directory. Slice C is where money first moves, so it is built on four rules: the server never trusts a webhook body for an amount, every state change is under a row lock in one fixed order, the ledger can only be appended to, and every Paystack call can be retried without moving money twice. Design and accepted calls D-MP-3/4/5/9: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md` §1.4, §5, §6, §9.
@@ -49,10 +51,10 @@ Slice B lows fixed here: the dynamic `getattr(client, method)` calls inside asse
 
 - **N2 not confirmed live:** whether Paystack answers verify for an unknown reference with 404 or 400 was not checked against TEST mode (no key use from here). The timer is safe either way; confirm on staging and, if 400, map it to `PaystackNotFound`.
 - **Check Paystack's `GET /refund` filter on staging test keys** (we query `reference=` and also ignore rows that don't name the transaction): until confirmed, partial refunds (slice E) could be re-sent if the list comes back empty; full refunds are safe because Paystack rejects a second full refund.
-- A reconciliation job comparing the ledger to Paystack's transactions and refunds (design §1.4, slice E); the attention list is a read-only first step, with no resolve action yet.
+- A reconciliation job comparing the ledger to Paystack's transactions and refunds (design §1.4, slice E). Slice D added a staff resolve action to the attention list (money flags need the authenticator code) and made `unverified_close` clear itself on revive or full refund.
 - Documented narrow risk of the signed refund settle: a late `refund.processed` for an *earlier* refund arriving during a same-amount unanswered send could settle the later one; the reconcile corrects it from Paystack's totals.
 - Real Paystack `refund.processed` payload and `GET /refund` row shape are unconfirmed against the live API (no test-key access from here).
 - Slot-hold wording and the 24-hour consultation cancellation rule (D-MP-4), disputes, delivery, release and payouts: slices D and E.
-- PDF receipts and the purchases page (slice F); founder in-app notifications for booking events (slice D).
+- PDF receipts and the purchases page (slice F). Founder in-app notifications for booking events shipped in slice D (`docs/sop/2026-11-07-marketplace-fulfilment.md`).
 - `paystack.initialize` runs while the expert and listing rows are locked; a slow Paystack briefly serialises bookings for that expert. Move it after the commit if that matters.
 - The webhook route reads and verifies synchronously; at volume, move marketplace events to the worker.

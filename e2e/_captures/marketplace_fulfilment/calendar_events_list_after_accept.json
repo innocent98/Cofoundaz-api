@@ -1,0 +1,25 @@
+{
+  "data": {
+    "events": [
+      {
+        "id": "0ac10f92-23bd-4aa3-a476-849b115f450d",
+        "title": "Contract review session with Ngozi Eze",
+        "type": "meeting",
+        "event_date": "2026-11-14",
+        "start_time": "08:00",
+        "end_time": "09:00",
+        "all_day": false,
+        "description": "Booked on the Cofoundaz Marketplace.",
+        "end_date": null,
+        "timezone": "Africa/Lagos",
+        "location": null,
+        "video_url": "https://meet.example.com/ngozi-eze",
+        "visibility": "team",
+        "created_by": "bebab862-19ae-4ccc-ad40-725f9769451e",
+        "created_at": "2026-11-12T19:35:33.450721Z",
+        "updated_at": "2026-11-12T19:35:33.450721Z"
+      }
+    ]
+  },
+  "meta": null
+}

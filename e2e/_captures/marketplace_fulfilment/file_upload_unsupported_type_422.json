@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNSUPPORTED_FILE_TYPE",
+    "message": "That file type isn't allowed here. Upload a PDF, Word, Excel, PNG or JPEG file.",
+    "field_errors": []
+  }
+}
