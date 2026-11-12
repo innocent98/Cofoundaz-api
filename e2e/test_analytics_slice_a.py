@@ -84,12 +84,11 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
         for role, email in roles.items():
             token = mailbox.latest_token_for(email, subject_contains="invited")
             ra = _signup_verify_login(c, mailbox, email, f"An-{role}-{email[:6]}-9")
-            assert (
-                c.post("/api/v1/invitations/accept", json={"token": token}, headers=ra).status_code
-                == 200
-            )
+            accepted = c.post("/api/v1/invitations/accept", json={"token": token}, headers=ra)
+            assert accepted.status_code == 200
             who[role] = ra
-        assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
+        completed = c.post("/api/v1/onboarding/complete", headers=auth)
+        assert completed.status_code == 200
         fo = _wh(c, auth)
         tm, ac, me, iv = (
             _wh(c, who[r]) for r in ("team_member", "accountant", "mentor", "investor")
@@ -126,19 +125,17 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
         _txn(c, fo, "in", 500_000, days_ago=3)
         _txn(c, fo, "out", 200_000, days_ago=4)
         today = datetime.now(UTC).date().isoformat()
-        assert (
-            c.post(
-                "/api/v1/marketing/metrics",
-                headers=fo,
-                json={
-                    "points": [
-                        {"ts": today, "metric": "impressions", "value": 2000},
-                        {"ts": today, "metric": "clicks", "value": 50},
-                    ]
-                },
-            ).status_code
-            == 200
+        ingested = c.post(
+            "/api/v1/marketing/metrics",
+            headers=fo,
+            json={
+                "points": [
+                    {"ts": today, "metric": "impressions", "value": 2000},
+                    {"ts": today, "metric": "clicks", "value": 50},
+                ]
+            },
         )
+        assert ingested.status_code == 200
         r = c.get(f"{B}/overview", headers=fo, params={"range": "30d", "compare": "previous"})
         capture("analytics_slice_a", "overview_founder", r)
         cards = {x["key"]: x for x in r.json()["data"]["cards"]}

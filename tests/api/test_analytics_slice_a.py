@@ -272,11 +272,13 @@ def test_batch_limit_and_unknown_metric(client, team):
     _s, hdr, _ = team
     h = hdr[MembershipRole.founder]
     too_many = {"metrics": [{"key": "finance.revenue"}] * 25}
-    assert client.post(f"{BASE}/metrics/resolve", headers=h, json=too_many).status_code == 422
+    r = client.post(f"{BASE}/metrics/resolve", headers=h, json=too_many)
+    assert r.status_code == 422
     got = client.post(f"{BASE}/metrics/resolve", headers=h, json={"metrics": [{"key": "x.y"}]})
     assert got.json()["data"]["metrics"][0]["status"] == "unknown"
     extra = {"metrics": [{"key": "finance.revenue", "evil": 1}]}
-    assert client.post(f"{BASE}/metrics/resolve", headers=h, json=extra).status_code == 422
+    r = client.post(f"{BASE}/metrics/resolve", headers=h, json=extra)
+    assert r.status_code == 422
 
 
 # ---- cache ----
@@ -335,7 +337,8 @@ def test_custom_metric_lifecycle_and_catalog(client, team):
     ).json()["data"]["metrics"][0]
     assert res["value"] == 200 and res["compare"]["value"] == 120
     assert res["source_note"] == "Entered by you"
-    assert client.delete(f"{BASE}/custom-metrics/{m['id']}", headers=h).status_code == 200
+    deleted = client.delete(f"{BASE}/custom-metrics/{m['id']}", headers=h)
+    assert deleted.status_code == 200
     gone = client.post(
         f"{BASE}/metrics/resolve", headers=h, json={"metrics": [{"key": "custom.active_users"}]}
     ).json()["data"]["metrics"][0]
@@ -358,19 +361,12 @@ def test_custom_metric_validation_and_isolation(client, db, team):
         {"points": [{"period": "2026-01", "value": 1}, {"period": "2026-01-15", "value": 2}]},
     ]
     for body in bad:
-        assert client.put(url, headers=h, json=body).status_code == 422, body
-    assert (
-        client.post(
-            f"{BASE}/custom-metrics", headers=h, json={"label": " ", "unit": "count"}
-        ).status_code
-        == 422
-    )
-    assert (
-        client.post(
-            f"{BASE}/custom-metrics", headers=h, json={"label": "x", "unit": "bogus"}
-        ).status_code
-        == 422
-    )
+        rejected = client.put(url, headers=h, json=body)
+        assert rejected.status_code == 422, body
+    blank = client.post(f"{BASE}/custom-metrics", headers=h, json={"label": " ", "unit": "count"})
+    bogus = client.post(f"{BASE}/custom-metrics", headers=h, json={"label": "x", "unit": "bogus"})
+    assert blank.status_code == 422
+    assert bogus.status_code == 422
     # another workspace cannot touch it: uniform 404
     owner2 = create_user(db, email_verified_at=datetime.now(UTC))
     s2 = create_startup(db, owner=owner2, name="Other")
@@ -378,20 +374,18 @@ def test_custom_metric_validation_and_isolation(client, db, team):
     _u2, h2 = _member(db, s2, MembershipRole.founder)
     db.commit()
     ok = {"points": [{"period": "2026-01", "value": 1}]}
-    assert client.put(url, headers=h2, json=ok).status_code == 404
-    assert client.delete(f"{BASE}/custom-metrics/{mk['id']}", headers=h2).status_code == 404
+    put_other = client.put(url, headers=h2, json=ok)
+    delete_other = client.delete(f"{BASE}/custom-metrics/{mk['id']}", headers=h2)
+    assert put_other.status_code == 404
+    assert delete_other.status_code == 404
     assert _get(client, h2, "/custom-metrics").json()["data"]["metrics"] == []
 
 
 def test_accountant_cannot_write_or_read_custom(client, team):
     _s, hdr, _ = team
     ac = hdr[MembershipRole.accountant]
-    assert (
-        client.post(
-            f"{BASE}/custom-metrics", headers=ac, json={"label": "u", "unit": "count"}
-        ).status_code
-        == 403
-    )
+    denied = client.post(f"{BASE}/custom-metrics", headers=ac, json={"label": "u", "unit": "count"})
+    assert denied.status_code == 403
     assert _get(client, ac, "/custom-metrics").status_code == 403
 
 
@@ -399,18 +393,14 @@ def test_custom_metric_cap(client, team):
     _s, hdr, _ = team
     h = hdr[MembershipRole.founder]
     for i in range(20):
-        assert (
-            client.post(
-                f"{BASE}/custom-metrics", headers=h, json={"label": f"m{i}", "unit": "count"}
-            ).status_code
-            == 201
+        made = client.post(
+            f"{BASE}/custom-metrics", headers=h, json={"label": f"m{i}", "unit": "count"}
         )
-    assert (
-        client.post(
-            f"{BASE}/custom-metrics", headers=h, json={"label": "one more", "unit": "count"}
-        ).status_code
-        == 422
+        assert made.status_code == 201
+    over = client.post(
+        f"{BASE}/custom-metrics", headers=h, json={"label": "one more", "unit": "count"}
     )
+    assert over.status_code == 422
 
 
 # ---- snapshots ----
@@ -531,7 +521,8 @@ def test_extreme_dates_are_422_not_500(client, team, params):
     assert _get(client, h, "/by-hub", **params).status_code == 422
     spec = {"key": "finance.revenue", "range": "custom", "from": params["from"], "to": params["to"]}
     body = {"metrics": [spec | {"compare": params.get("compare", "none"), "series": True}]}
-    assert client.post(f"{BASE}/metrics/resolve", headers=h, json=body).status_code == 422
+    r = client.post(f"{BASE}/metrics/resolve", headers=h, json=body)
+    assert r.status_code == 422
 
 
 def test_period_bounds_and_compare_stay_inside_range():
