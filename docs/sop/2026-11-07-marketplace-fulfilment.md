@@ -40,7 +40,7 @@ Endpoints (founder, `/api/v1/marketplace`): `POST /bookings/{id}/accept-delivery
 **Follow-ups**
 
 - Slice E: subscribe to `marketplace.delivery.accepted` (only that event) to release money; "Report a problem" (the `REVISION_LIMIT_REACHED` message points at it) and disputes; staff reading a thread only inside a dispute, audited (D-MP-L11).
-- **Question for Adebayo:** should the founder get an in-app notice when a package goes overdue? One is sent today (`marketplace.booking.overdue`); it is a one-line removal.
+- **Decided (Adebayo, 2026-11-12, via Lead 25):** (1) the founder keeps the in-app notice when a package goes overdue (`marketplace.booking.overdue`); (2) expert document sharing stays on the new expiring, revocable `marketplace_booking_documents` table, not `document_grants`; (3) `tests/api/test_documents_access.py` may skip the `/api/v1/marketplace/` and `/api/v1/provider/` routes, because `tests/api/test_marketplace_fulfilment.py` covers their access. Marketplace stays hidden; slice E is not started.
 - A consultation slot that runs past local midnight is clipped to 23:59 on the Calendar event (the Calendar module needs end >= start on one wall clock); real slots sit inside one working day.
 - Delivery files may be CSV or text with formulas; the FE must not open them in a spreadsheet automatically (in the guide).
 - The scanner is still the no-op placeholder: `FILE_NOT_CLEAN` is unit-tested only.
