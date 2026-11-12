@@ -52,6 +52,14 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "funding.round.committed_changed": CORE,
     "funding.dataroom.viewed": CORE,
     "funding.term_sheet.added": FOUNDER,  # D-FUND-5: offers are founder only
+    # Marketplace (design §7): the workspace's founders only
+    "marketplace.booking.confirmed": FOUNDER,
+    "marketplace.booking.declined": FOUNDER,
+    "marketplace.booking.expired": FOUNDER,
+    "marketplace.booking.overdue": FOUNDER,
+    "marketplace.delivery.submitted": FOUNDER,
+    "marketplace.delivery.auto_released": FOUNDER,
+    "marketplace.message.new": FOUNDER,
     "kpi.threshold.crossed": CORE,  # the test payload's audience is marketing
     "business.suggestion.created": FOUNDER,
     # Pages every member can open (Health, Roadmap, Business Builder, Team)

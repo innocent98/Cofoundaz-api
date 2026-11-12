@@ -787,7 +787,8 @@ def test_marketplace_fulfilment_journey(
         i=mism,
     )
     r = http.get(f"{A}/orders/attention", headers=mod)
-    assert {o["id"] for o in r.json()["data"]["orders"]} == {unv, mism}
+    # the staff queue is global: other journeys on a shared database leave flags of their own
+    assert {unv, mism} <= {o["id"] for o in r.json()["data"]["orders"]}
     capture(G, "admin_attention_queue", r)
     r = http.post(f"{A}/orders/{unv}/attention/resolve", json={"reason": "too short"}, headers=mod)
     assert r.status_code == 422
@@ -821,8 +822,9 @@ def test_marketplace_fulfilment_journey(
     assert r.status_code == 200, r.text
     capture(G, "admin_resolve_payment_mismatch_200", r)
     r = http.get(f"{A}/orders/attention", params={"resolved": "true"}, headers=mod)
-    assert {o["id"] for o in r.json()["data"]["orders"]} == {unv, mism}
+    assert {unv, mism} <= {o["id"] for o in r.json()["data"]["orders"]}
     capture(G, "admin_attention_queue_resolved", r)
-    assert http.get(f"{A}/orders/attention", headers=mod).json()["data"]["orders"] == []
+    still = http.get(f"{A}/orders/attention", headers=mod).json()["data"]["orders"]
+    assert not {unv, mism} & {o["id"] for o in still}
     r = fc.post(f"{A}/orders/{unv}/attention/resolve", json={"reason": "x" * 12}, headers=f)
     assert r.status_code == 404
