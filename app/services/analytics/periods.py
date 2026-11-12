@@ -13,6 +13,8 @@ PRESETS = ("7d", "30d", "90d", "12m", "this_month", "last_month", "custom")
 COMPARES = ("none", "previous", "year")
 MAX_DAYS = 24 * 31
 MAX_BUCKETS = 12
+MIN_DATE = date(2000, 1, 1)
+MAX_AHEAD_DAYS = 366  # `to` may be at most a year ahead
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,10 @@ def resolve(
         period = Period(first, _month_start(today) - timedelta(days=1))
     if period.start > period.end:
         raise validation("from", "The start date must be on or before the end date.")
+    if period.start < MIN_DATE:
+        raise validation("from", "Pick a start date from 2000-01-01 onwards.")
+    if period.end > today + timedelta(days=MAX_AHEAD_DAYS):
+        raise validation("to", "Pick an end date within a year from today.")
     if period.days > MAX_DAYS:
         raise validation("to", "Pick a range of at most 24 months.")
     return period
@@ -87,14 +93,17 @@ def comparison(period: Period, mode: str) -> Period | None:
     if mode == "none":
         return None
     if mode == "previous":
-        return Period(period.start - timedelta(days=period.days), period.start - timedelta(days=1))
-    try:
-        return Period(
-            period.start.replace(year=period.start.year - 1),
-            period.end.replace(year=period.end.year - 1),
-        )
-    except ValueError:  # 29 Feb
-        return Period(period.start - timedelta(days=365), period.end - timedelta(days=365))
+        cmp = Period(period.start - timedelta(days=period.days), period.start - timedelta(days=1))
+    else:
+        try:
+            cmp = Period(
+                period.start.replace(year=period.start.year - 1),
+                period.end.replace(year=period.end.year - 1),
+            )
+        except ValueError:  # 29 Feb
+            cmp = Period(period.start - timedelta(days=365), period.end - timedelta(days=365))
+    # A comparison that falls before the supported range has no data to compare: none, not an error.
+    return cmp if cmp.start >= MIN_DATE else None
 
 
 def buckets(period: Period) -> list[Period]:
@@ -109,9 +118,12 @@ def buckets(period: Period) -> list[Period]:
             out.append(Period(cur, min(cur + timedelta(days=6), period.end)))
             cur += timedelta(days=7)
         return out
+    # Calendar months, merged in steps of 2, 3... months so a long range still yields <= 12 buckets.
+    months = (period.end.year - period.start.year) * 12 + period.end.month - period.start.month + 1
+    step = -(-months // MAX_BUCKETS)
     out, cur = [], period.start
     while cur <= period.end:
-        nxt = _shift_months(_month_start(cur), 1)
+        nxt = _shift_months(_month_start(cur), step)
         out.append(Period(cur, min(nxt - timedelta(days=1), period.end)))
         cur = nxt
     return out

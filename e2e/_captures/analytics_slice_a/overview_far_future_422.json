@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick an end date within a year from today.",
+    "field_errors": [
+      {
+        "field": "to",
+        "message": "Pick an end date within a year from today."
+      }
+    ]
+  }
+}

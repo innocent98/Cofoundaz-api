@@ -69,6 +69,7 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
             "/api/v1/onboarding/state", headers=auth, json={"step": 4, "goals": ["Grow revenue"]}
         )
         roles = {
+            "team_member": unique_email("tm"),
             "accountant": unique_email("acct"),
             "mentor": unique_email("mentor"),
             "investor": unique_email("inv"),
@@ -90,7 +91,9 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
             who[role] = ra
         assert c.post("/api/v1/onboarding/complete", headers=auth).status_code == 200
         fo = _wh(c, auth)
-        ac, me, iv = (_wh(c, who[r]) for r in ("accountant", "mentor", "investor"))
+        tm, ac, me, iv = (
+            _wh(c, who[r]) for r in ("team_member", "accountant", "mentor", "investor")
+        )
 
         # 1. Catalog: founder sees every hub; the accountant sees finance open, the rest locked with no metrics.
         r = c.get(f"{B}/metrics-catalog", headers=fo)
@@ -101,8 +104,13 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
         hubs = {h["hub"]: h["locked"] for h in r.json()["data"]["hubs"]}
         assert hubs["finance"] is False and hubs["sales"] is True
 
+        # 1b. Team member sees the same hubs as the founder (live evidence for the guide).
+        r = c.get(f"{B}/metrics-catalog", headers=tm)
+        capture("analytics_slice_a", "catalog_team_member", r)
+        assert r.json()["data"] == c.get(f"{B}/metrics-catalog", headers=fo).json()["data"]
+
         # 2. Overview on an empty workspace: no_data, never a fabricated zero.
-        r = c.get(f"{B}/overview", headers=fo, params={"range": "30d"})
+        r = c.get(f"{B}/overview", headers=fo, params={"range": "7d"})
         assert r.status_code == 200, r.text
         capture("analytics_slice_a", "overview_empty", r)
         assert all(
@@ -136,6 +144,18 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
         cards = {x["key"]: x for x in r.json()["data"]["cards"]}
         assert cards["finance.revenue"]["value"] == 500_000  # funding is cash, not revenue
         assert cards["finance.revenue"]["compare"]["value"] == 100_000
+
+        r = c.get(f"{B}/overview", headers=tm, params={"range": "30d", "compare": "previous"})
+        capture("analytics_slice_a", "overview_team_member", r)
+        assert [x["key"] for x in r.json()["data"]["cards"]] == [
+            x["key"]
+            for x in c.get(
+                f"{B}/overview", headers=fo, params={"range": "30d", "compare": "previous"}
+            ).json()["data"]["cards"]
+        ]
+        r = c.post(f"{B}/custom-metrics", headers=tm, json={"label": "TM metric", "unit": "count"})
+        capture("analytics_slice_a", "custom_create_team_member", r)
+        assert r.status_code == 201
 
         # 4. Accountant: finance cards only, no sales number anywhere.
         r = c.get(f"{B}/overview", headers=ac)
@@ -217,6 +237,17 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
         capture("analytics_slice_a", "custom_list_accountant_403", r)
         assert r.status_code == 403
 
+        # 6b. A custom key is not an existence oracle for a role that cannot read custom metrics.
+        r = c.post(
+            f"{B}/metrics/resolve", headers=ac, json={"metrics": [{"key": "custom.active_users"}]}
+        )
+        capture("analytics_slice_a", "resolve_custom_accountant", r)
+        assert r.json()["data"]["metrics"][0] == {
+            "key": "custom.active_users",
+            "status": "unknown",
+            "message": "Metric no longer available.",
+        }
+
         # 7. Errors and role denials.
         r = c.get(f"{B}/overview", headers=fo, params={"range": "bogus"})
         capture("analytics_slice_a", "overview_bad_range_422", r)
@@ -227,6 +258,13 @@ def test_analytics_slice_a_journey(base_url, make_verified_user, mailbox, unique
             params={"range": "custom", "from": "2020-01-01", "to": "2026-01-01"},
         )
         capture("analytics_slice_a", "overview_too_long_422", r)
+        assert r.status_code == 422
+        r = c.get(
+            f"{B}/overview",
+            headers=fo,
+            params={"range": "custom", "from": "9998-01-01", "to": "9999-12-31", "compare": "year"},
+        )
+        capture("analytics_slice_a", "overview_far_future_422", r)
         assert r.status_code == 422
         for name, h in (("mentor", me), ("investor", iv)):
             r = c.get(f"{B}/overview", headers=h)

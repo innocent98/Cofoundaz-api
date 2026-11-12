@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": "3df51858-eb27-4195-95e1-99a60cd5a061",
+    "key": "custom.tm_metric",
+    "label": "TM metric",
+    "unit": "count",
+    "currency": null,
+    "points": []
+  },
+  "meta": null
+}

@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppError
 from app.core.redis import get_redis
 from app.db.models.analytics import CustomMetric
 from app.db.models.enums import MembershipRole
@@ -26,9 +27,27 @@ from app.services.finance.cashflow import cash_flow_summary
 
 log = logging.getLogger(__name__)
 CACHE_SECONDS = 300
+NO_DATA_CACHE_SECONDS = 30
+RATE_LIMIT_PER_MINUTE = 40  # heavy reads per workspace (D-ANA-L4)
 CURRENCY = "NGN"
 MAX_BATCH = 24
 MAX_POINTS = 12
+
+
+def check_rate(startup_id: uuid.UUID) -> None:
+    """Per-workspace limit on the heavy reads (Overview, By hub, batch resolve): one Overview can
+    run about 50 queries and one resolve up to 24 metrics x 13 queries. A fixed one-minute window
+    in Redis; fails open if Redis is down (the limit protects the database, not security)."""
+    try:
+        r = get_redis()
+        key = f"analytics:rl:{startup_id}:{int(datetime.now(UTC).timestamp() // 60)}"
+        used = int(r.incr(key))  # type: ignore[arg-type]
+        if used == 1:
+            r.expire(key, 90)
+    except Exception:  # noqa: BLE001
+        return
+    if used > RATE_LIMIT_PER_MINUTE:
+        raise AppError("RATE_LIMITED", "Too many report requests. Try again in a minute.", 429)
 
 
 def custom_metrics(db: Session, startup_id: uuid.UUID) -> list[CustomMetric]:
@@ -113,9 +132,9 @@ def _cache_get(k: str) -> dict[str, Any] | None:
         return None
 
 
-def _cache_set(k: str, v: dict[str, Any]) -> None:
+def _cache_set(k: str, v: dict[str, Any], ttl: int = CACHE_SECONDS) -> None:
     try:
-        get_redis().setex(k, CACHE_SECONDS, json.dumps(v))
+        get_redis().setex(k, ttl, json.dumps(v))
     except Exception:  # noqa: BLE001
         log.debug("analytics cache write skipped", exc_info=True)
 
@@ -271,6 +290,10 @@ def resolve(
         return {"key": key, "status": "unknown", "message": "Metric no longer available."}
     m, c = entry
     if not cat.can_see(role, m.hub):  # authorise BEFORE the cache or the source is touched
+        if m.custom:
+            # A custom key is the workspace's own naming: never confirm it exists (or leak its
+            # label) to a role that cannot read custom metrics. Same shape as a missing key.
+            return {"key": key, "status": "unknown", "message": "Metric no longer available."}
         return {
             "key": key,
             "label": m.label,
@@ -285,9 +308,9 @@ def resolve(
     if cached is not None:
         return cached
     out = _compute(db, startup, m, c, p, cmp, with_series)
-    # An empty answer is cheap to recompute and must not hide the first data a founder adds.
-    if out["status"] != "no_data":
-        _cache_set(ck, out)
+    # An empty answer is cached too (it still costs the queries), but only briefly so the first
+    # data a founder adds shows within half a minute.
+    _cache_set(ck, out, NO_DATA_CACHE_SECONDS if out["status"] == "no_data" else CACHE_SECONDS)
     return out
 
 

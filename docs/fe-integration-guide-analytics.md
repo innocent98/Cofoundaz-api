@@ -32,7 +32,7 @@ Authorisation is **per metric**: a locked metric's number is never computed or s
 | `GET/POST /custom-metrics`, `PUT /custom-metrics/{id}/points`, `DELETE /custom-metrics/{id}` | your own metrics |
 
 **Periods.** `range` = `7d | 30d | 90d | 12m | this_month | last_month | custom` (default `30d`); `custom` needs `from` and `to` (`YYYY-MM-DD`,
-max 24 months). Days are **UTC calendar days** (workspaces have no stored timezone yet). `compare` = `none | previous | year`
+max 24 months, `from` no earlier than 2000-01-01 and `to` no more than a year from today). Days are **UTC calendar days** (workspaces have no stored timezone yet). `compare` = `none | previous | year`
 (Overview and By hub default `previous`; resolve defaults `none`).
 
 ### 3.1 Metric object (Overview cards, tiles, resolve results) [`overview_founder`, `resolve_accountant`]
@@ -53,7 +53,7 @@ max 24 months). Days are **UTC calendar days** (workspaces have no stored timezo
 - `series` is at most 12 buckets (days, weeks or months), only when asked (`series: true` / on Overview cards); `[]` when there is no data.
   For a **point** metric the series comes from nightly snapshots, so it is `[]` until a snapshot exists.
 - `as_of` is when the number was computed. **Numbers are cached for 5 minutes**: show "as of {time}" and do not expect an edit in Finance
-  to appear instantly. A `no_data` answer is never cached, so the first data a founder adds shows at once.
+  to appear instantly. A `no_data` answer is cached for only **30 seconds**, so the first data a founder adds shows within half a minute.
 
 ### 3.2 `status` values (render each differently)
 | status | Meaning | Show |
@@ -63,7 +63,7 @@ max 24 months). Days are **UTC calendar days** (workspaces have no stored timezo
 | `not_burning` | runway only: profitable or flat, nothing to count down [`overview_founder`] | "Not burning cash", no number |
 | `out_of_cash` | runway only: burning with no cash, `value: 0` | warning state |
 | `locked` | the viewer's role cannot open this hub: **no value, no label detail** [`resolve_accountant`] | lock icon + "{needs_label} access needed" |
-| `unknown` | a saved key that no longer exists (e.g. a deleted custom metric) | "Metric no longer available" |
+| `unknown` | a saved key that no longer exists (e.g. a deleted custom metric), **or a custom metric the viewer's role cannot read** (an accountant asking for `custom.active_users` gets this, with no label, so a key's existence is never revealed) [`resolve_custom_accountant`] | "Metric no longer available" |
 
 Locked and unknown shapes are small; do not read `value` from them:
 ```json
@@ -131,6 +131,7 @@ the latest monthly value on or before the period end [`resolve_custom`: `value: 
 - `value: null` with `status: "no_data"` is not zero. A flow metric on a workspace that has a ledger but nothing in a bucket returns **0** in `series`.
 - `locked` and `unknown` objects have no `unit`, `period` or `value`.
 - `series[].value` can be `null` for a bucket with no source data (marketing, deals).
+- `compare` is `null` (and `compare_period` null) when the comparison period would start before 2000-01-01.
 - `currency` is `"NGN"` for money metrics and `null` otherwise.
 
 ## 5. Errors [captures `*_403`, `*_422`]
@@ -140,6 +141,9 @@ the latest monthly value on or before the period end [`resolve_custom`: `value: 
 | Bad `range` | 422 | `{ "error": { "code": "VALIDATION_ERROR", "message": "Pick one of: 7d, 30d, 90d, 12m, this_month, last_month, custom.", "field_errors": [ { "field": "range", "message": "..." } ] } }` |
 | `custom` range over 24 months | 422 | message `Pick a range of at most 24 months.`, field `to` |
 | Bad month in custom points | 422 | message `Use a month like 2026-10.`, field `points.0.period` |
+| `to` more than a year ahead [`overview_far_future_422`] | 422 | message `Pick an end date within a year from today.`, field `to` |
+| `from` before 2000-01-01 | 422 | message `Pick a start date from 2000-01-01 onwards.`, field `from` (unit-tested; not captured) |
+| More than 40 heavy reads (Overview, By hub, resolve) per workspace per minute | 429 | `{ "error": { "code": "RATE_LIMITED", "message": "Too many report requests. Try again in a minute.", ... } }` (unit-tested; not captured). Back off and retry after a minute; do not poll |
 | Other workspace's metric id | 404 | `NOT_FOUND`, `Metric not found.` (unit-tested; not captured live) |
 
 Other 422 messages (verified by unit tests, not captured): `The start date must be on or before the end date.` (field `from`), `A custom range needs both from and to.`,
@@ -160,8 +164,9 @@ Other 422 messages (verified by unit tests, not captured): `The start date must 
 | Behaviour | Status |
 |---|---|
 | Catalog for founder and accountant; Overview empty, with data, accountant; By hub; resolve (ok, locked, unknown, series, compare); custom create/points/list; 403 and 422 shapes | **verified live** (`e2e/test_analytics_slice_a.py`, 1 journey, captures committed) |
-| Team member = founder hubs; mentor / investor / legal advisor / consultant 403 on all routes; accountant 403 on custom writes | unit-tested for every role (`tests/api/test_analytics_slice_a.py`); mentor and investor also live |
-| Cache behaviour (hit, invalidate, no_data never cached), locked-before-cache | unit-tested with real Redis; not separately captured |
+| Team member sees the same hubs and cards as the founder, and can create a custom metric | **verified live** (`catalog_team_member`, `overview_team_member`, `custom_create_team_member`) |
+| Mentor / investor 403 on all routes; accountant finance only and custom key not revealed | **verified live** (`overview_mentor_403`, `overview_investor_403`, `resolve_custom_accountant`); legal advisor / consultant 403 unit-tested for every role |
+| Cache (hit, invalidate, 30 s no_data TTL), locked-before-cache, 429 rate limit, extreme-date 422s | unit-tested with real Redis; `overview_far_future_422` live; 429 not captured |
 | `not_burning` / `out_of_cash` runway | `not_burning` live; `out_of_cash` unit-tested |
 | Nightly snapshot (point history, comparison for point metrics, point-metric `series`) | unit-tested; **not exercised live** (the job runs inside the worker at the nightly hour); point-metric `series` is `[]` live until a snapshot exists |
 | Sales, Health, Mission, Roadmap, Validation, Funding metric values | resolvers unit-covered for health and mission; sales/validation/funding values not seeded live (they read the same tables their hubs already serve) |

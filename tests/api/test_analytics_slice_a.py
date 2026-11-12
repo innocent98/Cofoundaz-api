@@ -475,20 +475,92 @@ def test_runway_states_are_honest(client, db, team):
     assert got["status"] == "out_of_cash" and got["value"] == 0  # burning, cash below zero
 
 
-def test_no_data_is_never_cached(client, db, team):
+def test_no_data_is_cached_briefly_and_expires(client, db, team):
+    from app.core.redis import get_redis
+
     s, hdr, _ = team
     h = hdr[MembershipRole.founder]
     body = {"metrics": [{"key": "finance.revenue"}]}
-    assert (
-        client.post(f"{BASE}/metrics/resolve", headers=h, json=body).json()["data"]["metrics"][0][
-            "status"
-        ]
-        == "no_data"
-    )
-    _seed_finance(db, s)  # first data must show immediately, not after the 5-minute cache
-    assert (
-        client.post(f"{BASE}/metrics/resolve", headers=h, json=body).json()["data"]["metrics"][0][
-            "value"
-        ]
-        == 500_000
-    )
+
+    def first():
+        return client.post(f"{BASE}/metrics/resolve", headers=h, json=body).json()["data"][
+            "metrics"
+        ][0]
+
+    assert first()["status"] == "no_data"
+    _seed_finance(db, s)
+    assert first()["status"] == "no_data"  # served from the short cache
+    keys = list(get_redis().scan_iter(match=f"analytics:v1:{s.id}:finance.revenue:*"))
+    assert keys and 0 < get_redis().ttl(keys[0]) <= svc.NO_DATA_CACHE_SECONDS
+    get_redis().delete(*keys)  # what 30 seconds of expiry does
+    assert first()["value"] == 500_000
+
+
+def test_custom_metric_key_is_not_an_existence_oracle(client, team):
+    _s, hdr, _ = team
+    fo, ac = hdr[MembershipRole.founder], hdr[MembershipRole.accountant]
+    client.post(f"{BASE}/custom-metrics", headers=fo, json={"label": "Secret ARR", "unit": "money"})
+    ask = {"metrics": [{"key": "custom.secret_arr"}, {"key": "custom.not_a_thing"}]}
+    got = client.post(f"{BASE}/metrics/resolve", headers=ac, json=ask).json()["data"]["metrics"]
+    assert got[0] == {
+        "key": "custom.secret_arr",
+        "status": "unknown",
+        "message": "Metric no longer available.",
+    }
+    assert got[1]["status"] == "unknown" and "label" not in got[1]
+    assert "Secret ARR" not in str(got)
+    # the founder still resolves it
+    ok = client.post(f"{BASE}/metrics/resolve", headers=fo, json=ask).json()["data"]["metrics"]
+    assert ok[0]["label"] == "Secret ARR"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"range": "custom", "from": "0001-01-01", "to": "0001-06-01", "compare": "previous"},
+        {"range": "custom", "from": "1999-12-31", "to": "2026-01-01"},
+        {"range": "custom", "from": "2026-01-01", "to": "9999-12-31"},
+        {"range": "custom", "from": "9998-01-01", "to": "9999-12-31", "compare": "year"},
+        {"range": "custom", "from": "2026-01-01", "to": "2028-01-01"},
+    ],
+)
+def test_extreme_dates_are_422_not_500(client, team, params):
+    _s, hdr, _ = team
+    h = hdr[MembershipRole.founder]
+    assert _get(client, h, "/overview", **params).status_code == 422
+    assert _get(client, h, "/by-hub", **params).status_code == 422
+    spec = {"key": "finance.revenue", "range": "custom", "from": params["from"], "to": params["to"]}
+    body = {"metrics": [spec | {"compare": params.get("compare", "none"), "series": True}]}
+    assert client.post(f"{BASE}/metrics/resolve", headers=h, json=body).status_code == 422
+
+
+def test_period_bounds_and_compare_stay_inside_range():
+    t = date(2026, 3, 31)
+    edge = per.resolve("custom", date(2000, 1, 1), date(2000, 1, 31), today=t)
+    assert per.comparison(edge, "previous") is None  # would start in 1999: nothing to compare
+    assert per.comparison(edge, "year") is None
+    ahead = per.resolve("custom", date(2026, 1, 1), t + timedelta(days=365), today=t)
+    assert len(per.buckets(ahead)) <= 12
+    longest = per.resolve("custom", date(2024, 4, 1), date(2026, 3, 31), today=t)  # 24 months
+    b = per.buckets(longest)
+    assert len(b) <= 12 and b[0].start == longest.start and b[-1].end == longest.end
+    with pytest.raises(Exception, match="Pick an end date"):
+        per.resolve("custom", date(2026, 1, 1), t + timedelta(days=367), today=t)
+
+
+def test_heavy_reads_are_rate_limited_per_workspace(client, db, team, monkeypatch):
+    s, hdr, _ = team
+    monkeypatch.setattr(svc, "RATE_LIMIT_PER_MINUTE", 3)
+    fo = hdr[MembershipRole.founder]
+    codes = [_get(client, fo, "/overview").status_code for _ in range(5)]
+    assert codes == [200, 200, 200, 429, 429]
+    body = _get(client, fo, "/by-hub").json()
+    assert body["error"]["code"] == "RATE_LIMITED"
+    # another workspace is unaffected, and the catalog (a cheap read) is never limited
+    owner2 = create_user(db, email_verified_at=datetime.now(UTC))
+    s2 = create_startup(db, owner=owner2, name="Other")
+    db.flush()
+    _u2, h2 = _member(db, s2, MembershipRole.founder)
+    db.commit()
+    assert _get(client, h2, "/overview").status_code == 200
+    assert _get(client, fo, "/metrics-catalog").status_code == 200

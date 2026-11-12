@@ -4036,7 +4036,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md
   - [x] Resolvers over Finance, Sales, Marketing, Validation, Health, Mission, Roadmap, Funding; periods, comparison, series; 5-minute cache (no_data never cached)
   - [x] `GET /analytics/overview|by-hub|metrics-catalog`, `POST /analytics/metrics/resolve`, custom metrics CRUD (D-ANA-2 b)
   - [x] Nightly point-metric snapshot into `kpi_snapshots`; rule-based Working/Watch notes
-  - [x] 22 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus review of the authorisation pending (security-critical)
+  - [x] 30 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus D-ANA-4 review 2026-11-12: no critical/high/medium, lows fixed (custom-key oracle, date bounds, rate limit, no_data cache, TM captures)
   - [ ] Plan gate exercised with `PLAN_ENFORCEMENT` on · nightly snapshot seen live · workspace timezone
 - [ ] Slice B: reports (definitions, templates, shares, runs, preview) · [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
 - [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

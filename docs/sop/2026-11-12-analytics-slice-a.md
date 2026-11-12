@@ -15,13 +15,15 @@ resolvers, history) that reports, exports, schedules, investor updates and decks
   same role set as the hub's own routes (`HUB_ROLES`), so Analytics cannot become a side door (D-ANA-4). The accountant sees finance only.
   Mentor, consultant, investor and legal advisor have no live access (slice B adds shared reports for mentor/consultant).
 - **Authorise first, then cache, then compute** (`service.resolve`): a locked metric returns only `{status: "locked", needs}`; the cache holds workspace-level numbers
-  (never keyed by role) and is only read after authorisation.
+  (never keyed by role) and is only read after authorisation. A custom metric the viewer cannot read returns the same `unknown` shape as a missing key, with no label (no existence oracle).
 - **Resolvers** (`resolvers.py`) reuse the hub services: Finance `_base_query` + `cash_flow_summary`, Sales `won_and_cycle`/`win_loss`/`pipeline_kpi`, Marketing metric
   rows, Mission/Roadmap/Validation/Health/Funding tables. They return a number or `None` (never a fake 0); revenue excludes Funding and payouts (D-FIN-11).
 - **Periods** (`periods.py`): presets + custom (max 24 months), comparison previous/year, at most 12 series buckets. UTC calendar days (no workspace timezone exists).
-- **Freshness (D-ANA-3 c):** live compute with a 5-minute Redis cache (`no_data` is never cached); nightly `capture` stores point metrics in the existing
+- **Freshness (D-ANA-3 c):** live compute with a 5-minute Redis cache (`no_data` cached for 30 s); nightly `capture` stores point metrics in the existing
   `kpi_snapshots` (hooked into `handle_kpi_snapshot`); flows are not stored because they recompute exactly. Report runs (slice B) will freeze numbers.
 - **Custom metrics (D-ANA-2 b):** `custom_metrics` + `custom_metric_points` (one value per month), max 20 metrics, validated numbers, founder + team member write.
+- **Bounds and cost (Opus review, 2026-11-12):** `from` >= 2000-01-01 and `to` <= today + 366 days (422 otherwise); a comparison period that would start before 2000 is `null`; series are capped at 12 buckets even for 24 months (months merge in steps). Overview, By hub and resolve share a per-workspace limit of 40 requests a minute (`RATE_LIMITED` 429, Redis fixed window, fails open).
+- **D-ANA-L13 (lead default):** custom metrics are written by founder and team member, consistent with the other hubs; "Entered by you" means entered by the workspace.
 - **Insights:** rule-based Working/Watch notes, no AI (AI wording is slice G, D-ANA-9).
 - Rejected: a metrics table (catalog in code is versionable and testable); storing flow metrics nightly; per-role caching (more keys, same safety).
 - Deviations from the spec: `group_by` is empty in slice A (grouped blocks arrive with the builder); `GET /insights` is folded into `/overview`.
@@ -31,9 +33,9 @@ resolvers, history) that reports, exports, schedules, investor updates and decks
 `app/api/v1/endpoints/analytics.py` (+ `app/api/v1/api.py`), `app/worker/handlers/scheduled.py` (snapshot hook). Plan gate: `assert_feature(..., "analytics")` (Growth), dark until `PLAN_ENFORCEMENT`.
 
 ## Verification
-- 22 API tests (`tests/api/test_analytics_slice_a.py`): role matrix for all 7 roles on 4 routes, per-metric authorisation, locked-before-cache, revenue/funding maths,
+- 30 API tests (47 with the existing KPI snapshot tests) (`tests/api/test_analytics_slice_a.py`): role matrix for all 7 roles on 4 routes, per-metric authorisation, locked-before-cache, revenue/funding maths,
   periods, cache hit/invalidate/no_data, custom lifecycle and validation, isolation, runway states, snapshot idempotency and comparison.
-- Live e2e journey `e2e/test_analytics_slice_a.py` (founder, accountant, mentor, investor), 19 captures in `e2e/_captures/analytics_slice_a/`; FE guide `docs/fe-integration-guide-analytics.md`.
+- Live e2e journey `e2e/test_analytics_slice_a.py` (founder, accountant, mentor, investor), 24 captures in `e2e/_captures/analytics_slice_a/`; FE guide `docs/fe-integration-guide-analytics.md`.
 - Local gates: black, isort, ruff, mypy (whole `app`), migration upgrade/downgrade/upgrade and `alembic check` on a scratch DB, one head. CI runs the rest.
 
 ## Operate / roll back
@@ -41,6 +43,7 @@ No env vars. Migration `0105` is chained on `0101_marketplace_booking`; if Marke
 (drops the two custom-metric tables) or revert; snapshot rows in `kpi_snapshots` under keys like `health.score` are harmless and expire with the workspace.
 
 ## Follow-ups
+- `catalog.can_see(role, hub)` is role-based; it must become membership-based if per-member hub grants ever land.
 - Slices B-G (reports, exports, schedules, investor updates, decks, benchmarks/AI wording/glue) per the spec.
 - Workspace timezone for periods (gap 72); `group_by`; cache invalidation when Finance/Sales write (today: up to 5 minutes stale, labelled with `as_of`).
 - Funding metric is only "active investors"; committed vs target and data room views join with the Funding analytics reads.

@@ -71,6 +71,7 @@ def overview(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    svc.check_rate(membership.startup_id)
     p = _period(range, from_, to)
     data = overview_svc.overview(db, _startup(db, membership), membership.role, p, compare)
     return success_response(data)
@@ -87,6 +88,7 @@ def by_hub(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    svc.check_rate(membership.startup_id)
     p = _period(range, from_, to)
     data = overview_svc.by_hub(db, _startup(db, membership), membership.role, p, compare, hub)
     return success_response(data)
@@ -114,6 +116,7 @@ def resolve_metrics(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
+    svc.check_rate(membership.startup_id)
     specs = [s.model_dump(by_alias=False) for s in payload.metrics]
     results = svc.resolve_many(db, _startup(db, membership), membership.role, specs)
     return success_response({"metrics": results})
