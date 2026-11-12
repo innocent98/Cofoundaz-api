@@ -92,7 +92,7 @@ def test_finance_d9_d10_journey(base_url, make_verified_user, capture, monkeypat
         ps = c.post(
             f"{F}/integrations/paystack/connect",
             headers=wh,
-            json={"secret_key": f"sk_test_{uuid.uuid4().hex}"},
+            json={"secret_key": f"sk_test_{uuid.uuid4().hex.replace('b', 'c')}"},
         )
         assert ps.status_code == 200, ps.text
         resp = c.post(f"{F}/integrations/paystack/sync", headers=wh)
