@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_A_PROVIDER",
+    "message": "This account isn't a Marketplace expert.",
+    "field_errors": []
+  }
+}

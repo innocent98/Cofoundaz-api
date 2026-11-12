@@ -5,13 +5,16 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.db.models.enums import AvailabilityKind, ListingType
+from app.db.models.enums import AvailabilityKind, BookingStatus, ListingType
 from app.db.models.marketplace import (
+    ACTIVE_BOOKING,
     MarketplaceAvailabilityException,
     MarketplaceAvailabilityRule,
+    MarketplaceBooking,
     MarketplaceListing,
     MarketplaceProvider,
 )
@@ -140,8 +143,27 @@ def put_availability(
 def busy_intervals(
     db: Session, provider_id: uuid.UUID, start: datetime, end: datetime
 ) -> list[tuple[datetime, datetime]]:
-    """UTC intervals already taken. Bookings arrive in slice C; until then nothing is taken."""
-    return []
+    """UTC intervals already taken: every live consultation booking, plus checkout holds that
+    haven't lapsed. A lapsed hold frees its slot at once (the timer only tidies the row)."""
+    current = datetime.now(UTC)
+    rows = (
+        db.query(MarketplaceBooking.starts_at, MarketplaceBooking.ends_at)
+        .filter(
+            MarketplaceBooking.provider_id == provider_id,
+            MarketplaceBooking.starts_at.isnot(None),
+            MarketplaceBooking.starts_at < end,
+            MarketplaceBooking.ends_at > start,
+            or_(
+                MarketplaceBooking.status.in_(ACTIVE_BOOKING),
+                and_(
+                    MarketplaceBooking.status == BookingStatus.pending_payment,
+                    MarketplaceBooking.slot_hold_expires_at > current,
+                ),
+            ),
+        )
+        .all()
+    )
+    return [(r[0], r[1]) for r in rows if r[0] is not None and r[1] is not None]
 
 
 def slots_for(

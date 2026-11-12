@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Send an Idempotency-Key header of 8 to 64 letters, digits or . _ : -",
+    "field_errors": [
+      {
+        "field": "Idempotency-Key",
+        "message": "Required, 8-64 characters."
+      }
+    ]
+  }
+}

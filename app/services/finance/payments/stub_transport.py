@@ -38,6 +38,7 @@ def _bearer(request: httpx.Request) -> str:
 # journeys reset or poke them directly.
 PS_TX: dict[str, dict[str, object]] = {}
 PS_ABANDONED: set[str] = set()
+PS_REFUNDS: list[dict[str, Any]] = []  # every refund asked of the stub, in order
 PS_SUBS: dict[str, list[dict[str, Any]]] = {}
 PS_CUSTOMER_IDS: dict[str, int] = {}  # customer code -> Paystack's numeric customer id
 
@@ -111,7 +112,21 @@ def _paystack_billing(request: httpx.Request, path: str) -> httpx.Response | Non
         return _json(
             200, {"status": True, "message": "Charge attempted", "data": _tx_data(ref, tx)}
         )
+    if path == "/refund" and request.method == "GET":
+        tx = request.url.params.get("reference")
+        rows = [
+            {
+                "id": 500 + i,
+                "amount": r["amount"],
+                "status": "processed",
+                "transaction_reference": tx,
+            }
+            for i, r in enumerate(PS_REFUNDS)
+            if r["transaction"] == tx
+        ]
+        return _json(200, {"status": True, "message": "Refunds retrieved", "data": rows})
     if path == "/refund" and request.method == "POST":
+        PS_REFUNDS.append({"transaction": body.get("transaction"), "amount": body.get("amount")})
         return _json(
             200,
             {

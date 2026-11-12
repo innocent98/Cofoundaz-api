@@ -46,16 +46,26 @@ def _column(name: str) -> str:
     return "deliverables_json" if name == "deliverables" else name
 
 
-def commission_for(provider: MarketplaceProvider, price_minor: int) -> dict[str, int]:
-    """What the expert would keep (D-MP-5): the commission comes off their side, rounded half up
-    to the kobo, and net + commission always equals the price."""
-    bps = provider.commission_bps if provider.commission_bps is not None else DEFAULT_COMMISSION_BPS
+def split_price(price_minor: int, bps: int) -> dict[str, int]:
+    """Commission (rounded half up to the kobo) comes off the expert's side; the founder pays
+    exactly `price_minor`. `commission_minor + net_minor` always equals the price."""
     commission = (price_minor * bps + 5000) // 10000
     return {
         "commission_bps": bps,
         "commission_minor": commission,
         "net_minor": price_minor - commission,
     }
+
+
+def commission_bps_for(provider: MarketplaceProvider) -> int:
+    return (
+        provider.commission_bps if provider.commission_bps is not None else DEFAULT_COMMISSION_BPS
+    )
+
+
+def commission_for(provider: MarketplaceProvider, price_minor: int) -> dict[str, int]:
+    """What the expert would keep (D-MP-5) at their current rate."""
+    return split_price(price_minor, commission_bps_for(provider))
 
 
 def check_category(provider: MarketplaceProvider, category: str) -> None:
@@ -104,20 +114,23 @@ IMMEDIATE_SCREENED = ("tags", "price_minor")
 def flag_live_edit(row: MarketplaceListing) -> None:
     """A live edit that applies at once (tags, price) can still trip the pre-screen. If it adds a
     flag staff haven't accepted, park it in `prescreen_json["review"]` so it reaches the queue; the
-    listing stays live meanwhile (same rule as an approved expert's flagged profile edit)."""
+    listing stays live meanwhile (same rule as an approved expert's flagged profile edit). A parked
+    flag whose value the expert has since removed or replaced is dropped, so the queue never holds
+    an item about content that is no longer there."""
     screen = row.prescreen_json or {}
     accepted = screen.get("accepted", [])
-    fresh = [
-        f for f in screen.get("flags", []) if f not in accepted and f["field"] in IMMEDIATE_SCREENED
-    ]
-    if not fresh:
-        return
+    current = screen.get("flags", [])
     prior = screen.get("review") or {}
-    merged = list(prior.get("flags", []))
-    merged += [f for f in fresh if f not in merged]
+    still = [f for f in prior.get("flags", []) if f in current]
+    fresh = [f for f in current if f not in accepted and f["field"] in IMMEDIATE_SCREENED]
+    merged = still + [f for f in fresh if f not in still]
+    rest = {k: v for k, v in screen.items() if k != "review"}
+    if not merged:
+        row.prescreen_json = rest
+        return
     now = datetime.now(UTC).isoformat()
     row.prescreen_json = {
-        **screen,
+        **rest,
         "review": {"at": prior.get("at", now), "updated_at": now, "flags": merged},
     }
 

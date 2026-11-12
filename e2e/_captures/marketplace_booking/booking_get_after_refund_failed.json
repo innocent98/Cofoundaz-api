@@ -1,0 +1,47 @@
+{
+  "data": {
+    "id": "f2668462-9152-4979-bbf9-152351e5d253",
+    "status": "declined",
+    "type": "package",
+    "listing_id": "0ec910d1-6c38-4318-b8a5-7c1496fbaf6d",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "price_minor": 25000000,
+    "currency": "NGN",
+    "brief": "We need a review of our seed investment agreement before we sign next week.",
+    "starts_at": null,
+    "ends_at": null,
+    "timezone": "Africa/Lagos",
+    "slot_hold_expires_at": null,
+    "accept_by": "2026-11-08T21:29:12.964828+00:00",
+    "due_at": null,
+    "meeting_url": null,
+    "closed_reason": "provider_declined",
+    "provider": {
+      "id": "e2501910-33e3-4964-9454-9d1032ead0c1",
+      "display_name": "Ngozi Eze",
+      "avatar_url": null
+    },
+    "order": {
+      "id": "213755ad-ada5-4bd7-8c58-da8c0f23897a",
+      "status": "paid",
+      "amount_minor": 25000000,
+      "currency": "NGN",
+      "reference": "mp_6e4eb7583f11ae1e639b",
+      "checkout_url": null,
+      "paid_at": "2026-11-06T21:29:12+00:00",
+      "receipt_number": "MPR-2026-1002",
+      "refunded_minor": 0,
+      "refund_pending_minor": 0
+    },
+    "created_at": "2026-11-06T21:29:12.671385+00:00"
+  },
+  "meta": null
+}

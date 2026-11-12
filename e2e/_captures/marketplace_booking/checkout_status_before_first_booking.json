@@ -1,0 +1,10 @@
+{
+  "data": {
+    "payments_enabled": true,
+    "terms_version": "draft-2026-11",
+    "terms_accepted": false,
+    "can_book": true,
+    "saved_card": null
+  },
+  "meta": null
+}

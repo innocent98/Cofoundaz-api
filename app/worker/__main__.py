@@ -24,6 +24,7 @@ def register() -> None:
     import app.worker.handlers.invoice_email  # noqa: F401
     import app.worker.handlers.learning  # noqa: F401
     import app.worker.handlers.marketing_ai  # noqa: F401
+    import app.worker.handlers.marketplace  # noqa: F401
     import app.worker.handlers.plan  # noqa: F401
     import app.worker.handlers.readiness  # noqa: F401
     import app.worker.handlers.sales_ai  # noqa: F401

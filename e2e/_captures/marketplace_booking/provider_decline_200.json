@@ -1,0 +1,34 @@
+{
+  "data": {
+    "id": "f2668462-9152-4979-bbf9-152351e5d253",
+    "status": "declined",
+    "type": "package",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "brief": "We need a review of our seed investment agreement before we sign next week.",
+    "client_name": "Ada Obi",
+    "starts_at": null,
+    "ends_at": null,
+    "accept_by": "2026-11-08T21:29:12.964828+00:00",
+    "due_at": null,
+    "meeting_url": null,
+    "closed_reason": "provider_declined",
+    "earnings": {
+      "price_minor": 25000000,
+      "commission_bps": 1500,
+      "commission_minor": 3750000,
+      "net_minor": 21250000,
+      "currency": "NGN",
+      "paid": false
+    },
+    "created_at": "2026-11-06T21:29:12.671385+00:00"
+  },
+  "meta": null
+}
