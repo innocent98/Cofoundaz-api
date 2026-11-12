@@ -78,7 +78,10 @@ WORDING_SCHEMA: dict[str, Any] = {
 
 
 def build_extract_messages(text: str) -> list[LLMMessage]:
-    body = re.sub(r"<\s*/\s*term_sheet\s*>", "", text[:TOTAL_CHARS], flags=re.IGNORECASE)
+    # Escape angle brackets instead of trying to delete a closing tag: removing one can re-form
+    # another ("</te</term_sheet>rm_sheet>"), whereas with no "<" left the document cannot write
+    # any tag, fence or otherwise.
+    body = text[:TOTAL_CHARS].replace("<", "&lt;").replace(">", "&gt;")
     system = (
         "You read a startup term sheet and report the terms it states. Report ONLY what the "
         "document says: leave a field out when it is not stated, never guess or infer a default. "
