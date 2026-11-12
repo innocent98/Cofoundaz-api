@@ -150,6 +150,9 @@ def handle_kpi_snapshot(db: Session, job: Job) -> None:
     if startup is None:
         return
     capture_snapshots(db, startup, tasks_done_this_week(db, startup))
+    from app.services.analytics.snapshots import capture as capture_analytics
+
+    capture_analytics(db, startup)
 
 
 def handle_health_nightly(db: Session, job: Job) -> None:

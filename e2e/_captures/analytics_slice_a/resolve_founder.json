@@ -1,0 +1,109 @@
+{
+  "data": {
+    "metrics": [
+      {
+        "key": "finance.revenue",
+        "label": "Revenue",
+        "unit": "money",
+        "hub": "finance",
+        "kind": "flow",
+        "good": "up",
+        "source_note": "Finance ledger",
+        "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+        "currency": "NGN",
+        "status": "ok",
+        "value": 500000,
+        "period": {
+          "from": "2026-10-14",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T18:41:46.212157+00:00",
+        "hub_path": "/finance",
+        "compare": {
+          "period": {
+            "from": "2025-10-14",
+            "to": "2025-11-12"
+          },
+          "value": 0,
+          "delta": 500000,
+          "delta_pct": null
+        },
+        "series": [
+          {
+            "from": "2026-10-14",
+            "to": "2026-10-20",
+            "value": 0
+          },
+          {
+            "from": "2026-10-21",
+            "to": "2026-10-27",
+            "value": 0
+          },
+          {
+            "from": "2026-10-28",
+            "to": "2026-11-03",
+            "value": 0
+          },
+          {
+            "from": "2026-11-04",
+            "to": "2026-11-10",
+            "value": 500000
+          },
+          {
+            "from": "2026-11-11",
+            "to": "2026-11-12",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "key": "sales.pipeline_value",
+        "label": "Open pipeline",
+        "unit": "money",
+        "hub": "sales",
+        "kind": "point",
+        "good": "up",
+        "source_note": "Sales pipeline",
+        "definition": "Value of deals still in an open stage.",
+        "currency": "NGN",
+        "status": "no_data",
+        "value": null,
+        "period": {
+          "from": "2026-10-14",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T18:41:46.233002+00:00",
+        "hub_path": "/sales",
+        "compare": null,
+        "series": []
+      },
+      {
+        "key": "marketing.ctr",
+        "label": "Click-through rate",
+        "unit": "percent",
+        "hub": "marketing",
+        "kind": "flow",
+        "good": "up",
+        "source_note": "Marketing metrics",
+        "definition": "Clicks divided by impressions.",
+        "currency": null,
+        "status": "ok",
+        "value": 2.5,
+        "period": {
+          "from": "2026-10-14",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T18:41:46.234467+00:00",
+        "hub_path": "/marketing",
+        "compare": null,
+        "series": []
+      },
+      {
+        "key": "custom.gone",
+        "status": "unknown",
+        "message": "Metric no longer available."
+      }
+    ]
+  },
+  "meta": null
+}
