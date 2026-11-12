@@ -386,7 +386,14 @@ def test_an_unanswered_booking_expires_after_48_hours_and_is_refunded(client, db
     mail.sent.clear()
     assert timers.tick(db, datetime.now(UTC) + timedelta(hours=47))["expired_unanswered"] == 0
     res = timers.tick(db, datetime.now(UTC) + timedelta(hours=49))
-    assert res == {"expired_unpaid": 0, "expired_unanswered": 1, "refunded": 1}
+    assert res == {
+        "expired_unpaid": 0,
+        "expired_unanswered": 1,
+        "refunded": 1,
+        "consultations_delivered": 0,
+        "auto_released": 0,
+        "overdue_flagged": 0,
+    }
     b = row(db, bid)
     assert b.status == BookingStatus.expired and b.closed_reason == "provider_no_response"
     o = order_of(db, bid)
@@ -407,8 +414,11 @@ def test_an_unanswered_booking_expires_after_48_hours_and_is_refunded(client, db
 def test_an_accepted_booking_never_expires(client, db, w, ps):
     bid, _ = paid(w, ps)
     client.post(f"{P}/bookings/{bid}/accept", headers=hdr(w.expert))
+    soon = timers.tick(db, row(db, bid).starts_at - timedelta(minutes=5))
+    assert soon["expired_unanswered"] == 0 and row(db, bid).status == BookingStatus.confirmed
+    # long after the session, slice D moves it on (delivered, then auto-released): never expired
     assert timers.tick(db, datetime.now(UTC) + timedelta(days=30))["expired_unanswered"] == 0
-    assert row(db, bid).status == BookingStatus.confirmed and ps.refunds == []
+    assert row(db, bid).status == BookingStatus.completed and ps.refunds == []
 
 
 def test_a_consultation_whose_slot_starts_unanswered_expires_and_is_refunded(client, db, w, ps):
