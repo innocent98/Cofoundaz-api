@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Use a month like 2026-10.",
+    "field_errors": [
+      {
+        "field": "points.0.period",
+        "message": "Use a month like 2026-10."
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "data": {
+    "hubs": [
+      {
+        "hub": "finance",
+        "label": "Finance",
+        "locked": false,
+        "metrics": [
+          {
+            "key": "finance.revenue",
+            "label": "Revenue",
+            "unit": "money",
+            "hub": "finance",
+            "kind": "flow",
+            "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+            "source_note": "Finance ledger",
+            "good": "up",
+            "group_by": [],
+            "entered_by_you": false
+          },
+          {
+            "key": "finance.expenses",
+            "label": "Expenses",
+            "unit": "money",
+            "hub": "finance",
+            "kind": "flow",
+            "definition": "All money out over the period.",
+            "source_note": "Finance ledger",
+            "good": "down",
+            "group_by": [],
+            "entered_by_you": false
+          },
+          {
+            "key": "finance.net_burn",
+            "label": "Net burn",
+            "unit": "money",
+            "hub": "finance",
+            "kind": "flow",
+            "definition": "Expenses minus revenue over the period, never below zero.",
+            "source_note": "Finance ledger",
+            "good": "down",
+            "group_by": [],
+            "entered_by_you": false
+          },
+          {
+            "key": "finance.cash_balance",
+            "label": "Cash balance",
+            "unit": "money",
+            "hub": "finance",
+            "kind": "point",
+            "definition": "All money in minus all money out, up to the end of the period.",
+            "source_note": "Finance ledger",
+            "good": "up",
+            "group_by": [],
+            "entered_by_you": false
+          },
+          {
+            "key": "finance.runway_months",
+            "label": "Runway",
+            "unit": "months",
+            "hub": "finance",
+            "kind": "point",
+            "definition": "Cash on hand divided by the trailing three-month monthly burn.",
+            "source_note": "Finance runway",
+            "good": "up",
+            "group_by": [],
+            "entered_by_you": false
+          }
+        ]
+      },
+      {
+        "hub": "sales",
+        "label": "Sales",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "marketing",
+        "label": "Marketing",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "validation",
+        "label": "Validation",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "health",
+        "label": "Health Score",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "execution",
+        "label": "Mission & Roadmap",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "funding",
+        "label": "Funding",
+        "locked": true,
+        "metrics": []
+      },
+      {
+        "hub": "custom",
+        "label": "Your own metrics",
+        "locked": true,
+        "metrics": []
+      }
+    ],
+    "currency": "NGN"
+  },
+  "meta": null
+}

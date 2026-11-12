@@ -1,0 +1,32 @@
+{
+  "data": {
+    "metrics": [
+      {
+        "id": "3df51858-eb27-4195-95e1-99a60cd5a061",
+        "key": "custom.tm_metric",
+        "label": "TM metric",
+        "unit": "count",
+        "currency": null,
+        "points": []
+      },
+      {
+        "id": "69e4fe6a-a4ff-485f-8212-78d23a70e1f3",
+        "key": "custom.active_users",
+        "label": "Active users",
+        "unit": "count",
+        "currency": null,
+        "points": [
+          {
+            "period": "2026-09-01",
+            "value": 120
+          },
+          {
+            "period": "2026-10-01",
+            "value": 180
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}

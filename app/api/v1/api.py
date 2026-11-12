@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     admin_marketplace_listings,
     admin_marketplace_orders,
     ai,
+    analytics,
     assessments,
     billing,
     business,
@@ -79,6 +80,7 @@ api_router.include_router(funding_data_room.router, prefix="/funding", tags=["fu
 api_router.include_router(
     funding_data_room_public.router, prefix="/funding", tags=["funding-data-room-public"]
 )
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

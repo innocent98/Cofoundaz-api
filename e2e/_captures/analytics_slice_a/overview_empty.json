@@ -1,0 +1,237 @@
+{
+  "data": {
+    "period": {
+      "from": "2026-11-06",
+      "to": "2026-11-12"
+    },
+    "compare_period": {
+      "from": "2026-10-30",
+      "to": "2026-11-05"
+    },
+    "currency": "NGN",
+    "cards": [
+      {
+        "key": "finance.revenue",
+        "label": "Revenue",
+        "unit": "money",
+        "hub": "finance",
+        "kind": "flow",
+        "good": "up",
+        "source_note": "Finance ledger",
+        "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+        "currency": "NGN",
+        "status": "no_data",
+        "value": null,
+        "period": {
+          "from": "2026-11-06",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T19:11:42.004794+00:00",
+        "hub_path": "/finance",
+        "compare": {
+          "period": {
+            "from": "2026-10-30",
+            "to": "2026-11-05"
+          },
+          "value": null,
+          "delta": null,
+          "delta_pct": null
+        },
+        "series": []
+      },
+      {
+        "key": "finance.net_burn",
+        "label": "Net burn",
+        "unit": "money",
+        "hub": "finance",
+        "kind": "flow",
+        "good": "down",
+        "source_note": "Finance ledger",
+        "definition": "Expenses minus revenue over the period, never below zero.",
+        "currency": "NGN",
+        "status": "no_data",
+        "value": null,
+        "period": {
+          "from": "2026-11-06",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T19:11:42.010453+00:00",
+        "hub_path": "/finance",
+        "compare": {
+          "period": {
+            "from": "2026-10-30",
+            "to": "2026-11-05"
+          },
+          "value": null,
+          "delta": null,
+          "delta_pct": null
+        },
+        "series": []
+      },
+      {
+        "key": "finance.runway_months",
+        "label": "Runway",
+        "unit": "months",
+        "hub": "finance",
+        "kind": "point",
+        "good": "up",
+        "source_note": "Finance runway",
+        "definition": "Cash on hand divided by the trailing three-month monthly burn.",
+        "currency": null,
+        "status": "no_data",
+        "value": null,
+        "period": {
+          "from": "2026-11-06",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T19:11:42.016509+00:00",
+        "hub_path": "/finance",
+        "compare": {
+          "period": {
+            "from": "2026-10-30",
+            "to": "2026-11-05"
+          },
+          "value": null,
+          "delta": null,
+          "delta_pct": null
+        },
+        "series": []
+      },
+      {
+        "key": "sales.pipeline_value",
+        "label": "Open pipeline",
+        "unit": "money",
+        "hub": "sales",
+        "kind": "point",
+        "good": "up",
+        "source_note": "Sales pipeline",
+        "definition": "Value of deals still in an open stage.",
+        "currency": "NGN",
+        "status": "no_data",
+        "value": null,
+        "period": {
+          "from": "2026-11-06",
+          "to": "2026-11-12"
+        },
+        "as_of": "2026-11-12T19:11:42.020520+00:00",
+        "hub_path": "/sales",
+        "compare": {
+          "period": {
+            "from": "2026-10-30",
+            "to": "2026-11-05"
+          },
+          "value": null,
+          "delta": null,
+          "delta_pct": null
+        },
+        "series": []
+      }
+    ],
+    "chart": {
+      "series": [
+        {
+          "key": "finance.revenue",
+          "label": "Revenue",
+          "unit": "money",
+          "hub": "finance",
+          "kind": "flow",
+          "good": "up",
+          "source_note": "Finance ledger",
+          "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+          "currency": "NGN",
+          "status": "no_data",
+          "value": null,
+          "period": {
+            "from": "2026-11-06",
+            "to": "2026-11-12"
+          },
+          "as_of": "2026-11-12T19:11:42.004794+00:00",
+          "hub_path": "/finance",
+          "compare": {
+            "period": {
+              "from": "2026-10-30",
+              "to": "2026-11-05"
+            },
+            "value": null,
+            "delta": null,
+            "delta_pct": null
+          },
+          "series": []
+        },
+        {
+          "key": "finance.expenses",
+          "label": "Expenses",
+          "unit": "money",
+          "hub": "finance",
+          "kind": "flow",
+          "good": "down",
+          "source_note": "Finance ledger",
+          "definition": "All money out over the period.",
+          "currency": "NGN",
+          "status": "no_data",
+          "value": null,
+          "period": {
+            "from": "2026-11-06",
+            "to": "2026-11-12"
+          },
+          "as_of": "2026-11-12T19:11:42.025603+00:00",
+          "hub_path": "/finance",
+          "compare": {
+            "period": {
+              "from": "2026-10-30",
+              "to": "2026-11-05"
+            },
+            "value": null,
+            "delta": null,
+            "delta_pct": null
+          },
+          "series": []
+        }
+      ]
+    },
+    "insights": [],
+    "hubs": [
+      {
+        "hub": "finance",
+        "label": "Finance",
+        "path": "/finance"
+      },
+      {
+        "hub": "sales",
+        "label": "Sales",
+        "path": "/sales"
+      },
+      {
+        "hub": "marketing",
+        "label": "Marketing",
+        "path": "/marketing"
+      },
+      {
+        "hub": "validation",
+        "label": "Validation",
+        "path": "/validation"
+      },
+      {
+        "hub": "health",
+        "label": "Health Score",
+        "path": "/health-score"
+      },
+      {
+        "hub": "execution",
+        "label": "Mission & Roadmap",
+        "path": "/roadmap"
+      },
+      {
+        "hub": "funding",
+        "label": "Funding",
+        "path": "/funding"
+      },
+      {
+        "hub": "custom",
+        "label": "Your own metrics",
+        "path": "/analytics-reports"
+      }
+    ]
+  },
+  "meta": null
+}

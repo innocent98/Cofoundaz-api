@@ -4024,3 +4024,19 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
 - [ ] FE passes FE-1..FE-4 (founder directory/bookings, reviews/purchases/tools, provider portal, Admin queues + Super Admin console), lead every-control re-walk, unhide the sidebar entry last
 - [ ] _Deferred (slice A):_ licence-expiry and yearly re-vet reminder job · counsel's expert terms (replace `draft-2026-11`) · re-apply path for a rejected expert · swap the Documents no-op scanner for a real one before public credential uploads
 
+
+
+## Module 22 — Analytics & Reports (design accepted 2026-11-12; slice A built)
+
+Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
+`cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
+
+- [x] **Slice A: catalog + Overview + custom metrics** (`feature/analytics-slice-a`, migration `0105_analytics_custom_metrics`, chained on 0101; SOP `docs/sop/2026-11-12-analytics-slice-a.md`, FE guide `docs/fe-integration-guide-analytics.md`)
+  - [x] Metric catalog in code (19 platform metrics), per-metric hub authorisation (founder/team all, accountant finance only, others 403)
+  - [x] Resolvers over Finance, Sales, Marketing, Validation, Health, Mission, Roadmap, Funding; periods, comparison, series; 5-minute cache (no_data never cached)
+  - [x] `GET /analytics/overview|by-hub|metrics-catalog`, `POST /analytics/metrics/resolve`, custom metrics CRUD (D-ANA-2 b)
+  - [x] Nightly point-metric snapshot into `kpi_snapshots`; rule-based Working/Watch notes
+  - [x] 30 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus D-ANA-4 review 2026-11-12: no critical/high/medium, lows fixed (custom-key oracle, date bounds, rate limit, no_data cache, TM captures)
+  - [ ] Plan gate exercised with `PLAN_ENFORCEMENT` on · nightly snapshot seen live · workspace timezone
+- [ ] Slice B: reports (definitions, templates, shares, runs, preview) · [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
+- [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

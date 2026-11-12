@@ -1,0 +1,42 @@
+{
+  "data": {
+    "metrics": [
+      {
+        "key": "custom.active_users",
+        "label": "Active users",
+        "unit": "count",
+        "hub": "custom",
+        "kind": "point",
+        "good": "up",
+        "source_note": "Entered by you",
+        "definition": "Entered by you. The latest monthly value on or before the end of the period.",
+        "currency": null,
+        "status": "ok",
+        "value": 180,
+        "period": {
+          "from": "2026-10-01",
+          "to": "2026-10-31"
+        },
+        "as_of": "2026-11-12T19:11:42.759152+00:00",
+        "hub_path": "/analytics-reports",
+        "compare": {
+          "period": {
+            "from": "2026-08-31",
+            "to": "2026-09-30"
+          },
+          "value": 120,
+          "delta": 60,
+          "delta_pct": 50.0
+        },
+        "series": [
+          {
+            "from": "2026-10-01",
+            "to": "2026-10-31",
+            "value": 180
+          }
+        ]
+      }
+    ]
+  },
+  "meta": null
+}
