@@ -1,0 +1,31 @@
+{
+  "data": {
+    "ip_assets": [
+      {
+        "id": "58665117-f1a3-4f92-bf76-92ee0aa2a132",
+        "type": "domain",
+        "name": "kolo.africa",
+        "jurisdiction": "Global",
+        "status": "registered",
+        "derived_status": "expired",
+        "renewal_on": "2026-10-14",
+        "created_by": "c8375f96-b0ef-45b4-be70-e395c21e2916",
+        "created_at": "2026-11-13T10:07:36.727760+00:00",
+        "updated_at": "2026-11-13T10:07:36.727760+00:00"
+      },
+      {
+        "id": "22cb15a5-0b82-454d-b386-771a54190c68",
+        "type": "trademark",
+        "name": "Kolo (wordmark)",
+        "jurisdiction": "Nigeria",
+        "status": "registered",
+        "derived_status": "registered",
+        "renewal_on": "2026-11-23",
+        "created_by": "c8375f96-b0ef-45b4-be70-e395c21e2916",
+        "created_at": "2026-11-13T10:07:36.576229+00:00",
+        "updated_at": "2026-11-13T10:07:36.576229+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

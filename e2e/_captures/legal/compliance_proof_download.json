@@ -1,0 +1,11 @@
+{
+  "status_code": 200,
+  "headers": {
+    "content-type": "image/png",
+    "content-disposition": "attachment; filename=\"proof-of-filing.png\"",
+    "x-content-type-options": "nosniff",
+    "cache-control": "private, no-store",
+    "content-security-policy": "sandbox; default-src 'none'"
+  },
+  "body": "<21 raw bytes: the uploaded file, byte for byte>"
+}

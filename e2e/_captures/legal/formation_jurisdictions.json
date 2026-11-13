@@ -1,0 +1,15 @@
+{
+  "data": {
+    "jurisdictions": [
+      {
+        "code": "NG",
+        "name": "Nigeria"
+      },
+      {
+        "code": "US-DE",
+        "name": "Delaware, USA"
+      }
+    ]
+  },
+  "meta": null
+}
