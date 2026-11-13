@@ -62,6 +62,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "marketing.campaign.completed": MARKETING_ROLES,
     "funding.round.committed_changed": FUNDING_ROLES,  # D-FUND-L6: F + TM, never all members
     "funding.term_sheet.added": TERM_SHEET_ROLES,  # D-FUND-5: offers are founder only
+    "funding.grant.matched": FUNDING_ROLES,  # D-FUND-7: new grant suggestions, F + TM
     "funding.dataroom.viewed": FUNDING_ROLES,  # D-FUND-L6: one per share per day, F + TM
     "sales.deal.won": SALES_ROLES,
     "sales.deal.stalled": SALES_ROLES,

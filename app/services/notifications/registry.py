@@ -445,6 +445,16 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "See who viewed",
     ),
+    # D-FUND-7: the weekly match run found grants this workspace has not seen before.
+    "funding.grant.matched": NotifSpec(
+        _audience("funding.grant.matched", minus_actor=False),
+        lambda p: (
+            f"{p.get('count') or 'New'} new grant "
+            f"{'match' if p.get('count') == 1 else 'matches'} for you"
+            + (f", starting with {p['top']}" if p.get("top") else "")
+        ),
+        lambda _p: "See grants",
+    ),
     # D-FUND-5/6: a term sheet was confirmed. Founders only (minus the one who did it); the body
     # carries the not-advice disclaimer.
     "funding.term_sheet.added": NotifSpec(

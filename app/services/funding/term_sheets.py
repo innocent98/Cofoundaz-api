@@ -40,6 +40,7 @@ EXTRACT_JOB = "ai.funding.term_sheet_extract"  # "ai." so the daily token budget
 WORDING_JOB = "ai.funding.term_sheet_wording"
 ADDED_EVENT = "funding.term_sheet.added"
 MAX_SHEETS = 200
+MAX_FAILED = 50  # failed extractions kept per workspace; the founder deletes them to retry more
 MAX_PDF_BYTES = 15 * 1024 * 1024
 
 
@@ -60,7 +61,10 @@ def proposed_currency_mismatch(db: Session, sheet: TermSheet) -> dict[str, str] 
     """The currency the document states, when it differs from the round's. None when it states
     none, or the same one (an unstated currency is not a mismatch we can know about)."""
     doc = (sheet.proposed or {}).get("currency")
-    round_currency = currency(db, sheet.startup_id)
+    rnd = rounds_svc.latest_round(db, sheet.startup_id)
+    if rnd is None:  # no round yet: there is no currency to disagree with
+        return None
+    round_currency = rnd.currency
     if doc and doc != round_currency:
         return {"document": doc, "round": round_currency}
     return None
@@ -207,6 +211,7 @@ def reconcile(db: Session, sheet: TermSheet) -> bool:
     job = db.get(Job, sheet.job_id) if sheet.job_id else None
     if job is not None and job.status in (JobStatus.queued, JobStatus.running):
         return False
+    before = snapshot(sheet)
     changed = cast(
         CursorResult,
         db.execute(
@@ -216,6 +221,8 @@ def reconcile(db: Session, sheet: TermSheet) -> bool:
         ),
     ).rowcount
     db.refresh(sheet)
+    if changed:
+        audit_system(db, sheet, before)
     return bool(changed)
 
 
@@ -276,6 +283,13 @@ def _check_limit(db: Session, startup_id: uuid.UUID) -> None:
     )
     if live.count() >= MAX_SHEETS:
         raise _validation("label", f"You can keep at most {MAX_SHEETS} term sheets.")
+    failed = db.query(TermSheet.id).filter(
+        TermSheet.startup_id == startup_id, TermSheet.status == "failed"
+    )
+    if failed.count() >= MAX_FAILED:
+        raise _validation(
+            "file_id", "Too many failed extractions. Delete some of them, then try again."
+        )
 
 
 def _announce(db: Session, sheet: TermSheet, actor_id: uuid.UUID) -> None:

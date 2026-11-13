@@ -124,7 +124,7 @@ services:
     # upsert by slug, so every deploy converges the catalog to what shipped in the image. A
     # content file that fails validation exits non-zero and blocks the deploy, like a bad
     # migration would.
-    command: ["sh", "-c", "alembic upgrade head && python -m app.services.learning.content"]
+    command: ["sh", "-c", "alembic upgrade head && python -m app.services.learning.content && python -m app.services.funding.grants_catalogue"]
     env_file:
       # Defaults to `.env` - what CD writes to $DEPLOY_PATH on the VPS, and the
       # only value ever used in a real deploy.
