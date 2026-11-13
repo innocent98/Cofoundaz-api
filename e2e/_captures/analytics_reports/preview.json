@@ -4,10 +4,10 @@
       "from": "2026-10-15",
       "to": "2026-11-13"
     },
-    "as_of": "2026-11-13T16:29:24.304791+00:00",
+    "as_of": "2026-11-13T18:07:01.308671+00:00",
     "results": [
       {
-        "block_id": "ce4258d4",
+        "block_id": "b8506724",
         "type": "metric",
         "hub": "finance",
         "viz": "line",
@@ -28,7 +28,7 @@
             "from": "2026-10-15",
             "to": "2026-11-13"
           },
-          "as_of": "2026-11-13T16:29:24.291697+00:00",
+          "as_of": "2026-11-13T18:07:01.291593+00:00",
           "hub_path": "/finance",
           "compare": {
             "period": {
@@ -69,7 +69,7 @@
         }
       },
       {
-        "block_id": "e3c7da24",
+        "block_id": "6040e8cc",
         "type": "metric",
         "hub": "marketing",
         "viz": "number",
@@ -90,7 +90,7 @@
             "from": "2026-10-15",
             "to": "2026-11-13"
           },
-          "as_of": "2026-11-13T16:29:24.303790+00:00",
+          "as_of": "2026-11-13T18:07:01.307005+00:00",
           "hub_path": "/marketing",
           "compare": {
             "period": {
@@ -105,7 +105,7 @@
         }
       },
       {
-        "block_id": "8b2df972",
+        "block_id": "742c1d15",
         "type": "text",
         "title": "Note",
         "text": "Clicks are paid plus organic."

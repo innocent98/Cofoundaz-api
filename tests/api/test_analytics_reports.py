@@ -152,7 +152,7 @@ def test_tenancy_and_visibility_404(client, db, team):
         resp = client.get(f"{BASE}/reports/{rep['id']}", headers=hdr[role])
         assert resp.status_code == 404
         resp = client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[role])
-        assert resp.status_code == 404
+        assert resp.status_code == (404 if role == R.team_member else 403)
         resp = client.get(f"{BASE}/reports", headers=hdr[role])
         assert resp.json()["data"]["total"] == 0
     # another workspace's founder gets the same 404
@@ -277,14 +277,15 @@ def test_share_scope_and_locked_blocks(client, db, team):
         "needs_label": "Finance",
     }
     assert view["can_edit"] is False
-    mrun = _run(client, db, me, rep["id"])
-    assert "777000" not in str(mrun) and "finance.revenue" not in str(mrun)
+    assert "finance.revenue" not in str(view)
     old = client.get(f"{BASE}/reports/{rep['id']}/runs/{founder_run['id']}", headers=me).json()[
         "data"
     ]
     assert "777000" not in str(old) and old["snapshot"]["results"][0]["locked"] is True
     # accountant: finance only
-    ac = _run(client, db, hdr[R.accountant], rep["id"])
+    ac = client.get(
+        f"{BASE}/reports/{rep['id']}/runs/{founder_run['id']}", headers=hdr[R.accountant]
+    ).json()["data"]
     res = ac["snapshot"]["results"]
     assert res[0]["result"]["value"] == 777_000
     assert res[1]["locked"] and res[2]["locked"]
@@ -366,11 +367,16 @@ def test_run_fails_when_requester_lost_access(client, db, team):
         headers=fo,
         json={"user_ids": [str(users[R.accountant].id)]},
     )
-    r = client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[R.accountant]).json()["data"]
+    client.put(
+        f"{BASE}/reports/{rep['id']}/shares",
+        headers=fo,
+        json={"user_ids": [str(users[R.team_member].id)]},
+    )
+    r = client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[R.team_member]).json()["data"]
     from app.db.models.enums import MembershipStatus
     from app.db.models.membership import Membership
 
-    db.query(Membership).filter(Membership.user_id == users[R.accountant].id).update(
+    db.query(Membership).filter(Membership.user_id == users[R.team_member].id).update(
         {Membership.status: MembershipStatus.removed}
     )
     db.commit()
@@ -381,3 +387,39 @@ def test_run_fails_when_requester_lost_access(client, db, team):
 
 def test_run_job_handler_is_registered():
     assert runner.JOB_HANDLERS["analytics.report.run"] is _h.handle_report_run
+
+
+def test_readers_cannot_start_runs(client, team):
+    _s, hdr, users = team
+    fo = hdr[R.founder]
+    rep = _make(client, fo)
+    ids = [str(users[r].id) for r in (R.mentor, R.accountant, R.business_consultant)]
+    client.put(f"{BASE}/reports/{rep['id']}/shares", headers=fo, json={"user_ids": ids})
+    for role in (R.mentor, R.accountant, R.business_consultant, R.investor, R.legal_advisor):
+        resp = client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[role])
+        assert resp.status_code == 403, role
+
+
+def test_concurrent_share_insert_does_not_500(client, db, team, monkeypatch):
+    """A second save that already inserted the same member between our read and our insert."""
+    from sqlalchemy.dialects.postgresql import insert as real_insert
+
+    from app.db.models.analytics import AnalyticsReportShare
+    from app.services.analytics import reports as rep_svc
+
+    _s, hdr, users = team
+    fo = hdr[R.founder]
+    rep = _make(client, fo)
+    mentor = users[R.mentor].id
+
+    def racing_insert(model):
+        db.add(AnalyticsReportShare(report_id=rep["id"], user_id=mentor, created_by=mentor))
+        db.flush()
+        return real_insert(model)
+
+    monkeypatch.setattr(rep_svc, "pg_insert", racing_insert)
+    resp = client.put(
+        f"{BASE}/reports/{rep['id']}/shares", headers=fo, json={"user_ids": [str(mentor)]}
+    )
+    assert resp.status_code == 200, resp.text
+    assert [x["user_id"] for x in resp.json()["data"]["shares"]] == [str(mentor)]

@@ -1,7 +1,7 @@
 {
   "data": {
-    "id": "fb31c0ad-6763-4a73-8f5c-ef97c1f7d790",
-    "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "fbdac20e-95be-4cd2-b8cc-8d533633d435",
+    "report_id": "76b1b6a2-7c37-4a9a-a381-7d58752556f1",
     "status": "ready",
     "triggered_by": "manual",
     "period": {
@@ -10,12 +10,12 @@
     },
     "tz": "UTC",
     "run_by": {
-      "id": "0709d0b8-b23d-4f28-a5e8-e14d311cf488",
-      "name": "Member"
+      "id": "571b6256-98a7-4449-82e7-afc1f161ed56",
+      "name": "Ada F"
     },
-    "as_of": "2026-11-13T16:29:26.556425+00:00",
+    "as_of": "2026-11-13T18:07:03.151535+00:00",
     "error": null,
-    "created_at": "2026-11-13T16:29:26.539196+00:00",
+    "created_at": "2026-11-13T18:07:01.422167+00:00",
     "snapshot": {
       "report": {
         "name": "Board pack Q4",
@@ -27,7 +27,7 @@
         },
         "blocks": [
           {
-            "id": "64c3aafd",
+            "id": "4091c454",
             "hub": "finance",
             "viz": "line",
             "type": "metric",
@@ -37,14 +37,14 @@
             "compare": null
           },
           {
-            "id": "a73f8eca",
+            "id": "c2a778fa",
             "type": "metric",
             "locked": true,
             "needs": "marketing",
             "needs_label": "Marketing"
           },
           {
-            "id": "a1ae7466",
+            "id": "27c44ff0",
             "text": "Clicks are paid plus organic.",
             "type": "text",
             "title": "Note"
@@ -64,7 +64,7 @@
             "good": "up",
             "kind": "flow",
             "unit": "money",
-            "as_of": "2026-11-13T16:29:24.291697+00:00",
+            "as_of": "2026-11-13T18:07:01.291593+00:00",
             "label": "Revenue",
             "value": 500000,
             "period": {
@@ -113,10 +113,10 @@
             "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
             "source_note": "Finance ledger"
           },
-          "block_id": "64c3aafd"
+          "block_id": "4091c454"
         },
         {
-          "id": "a73f8eca",
+          "id": "c2a778fa",
           "type": "metric",
           "locked": true,
           "needs": "marketing",
@@ -126,7 +126,7 @@
           "text": "Clicks are paid plus organic.",
           "type": "text",
           "title": "Note",
-          "block_id": "a1ae7466"
+          "block_id": "27c44ff0"
         }
       ]
     }

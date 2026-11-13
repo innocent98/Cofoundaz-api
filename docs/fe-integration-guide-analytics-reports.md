@@ -19,7 +19,7 @@ text note) with a default date range. A **run** is a frozen copy of every number
 |---|---|---|---|---|---|
 | Founder | all reports | yes | any report | yes | yes |
 | Team member | own + shared with them | yes | own only | no (403) | yes |
-| Accountant, mentor, business consultant | only reports shared with them | 403 | 403 | 403 | yes (read-only copy under their own access) |
+| Accountant, mentor, business consultant | only reports shared with them | 403 | 403 | 403 | no (403): they read runs the Founder or a team member made |
 | Investor, legal advisor | 403 | 403 | 403 | 403 | 403 |
 
 A report you cannot see is a **404** (same as another workspace's), never a 403. A visible report you may not change is a **403**.
@@ -1068,7 +1068,7 @@ The founder's run above was fetched again after the ledger changed (live test as
 }
 ```
 
-`e2e/_captures/analytics_reports/accountant_run.json`
+`e2e/_captures/analytics_reports/accountant_run.json` (the accountant reading the founder's run)
 
 ```json
 {
@@ -1205,6 +1205,20 @@ The founder's run above was fetched again after the ledger changed (live test as
     }
   },
   "meta": null
+}
+```
+
+### POST /reports/{id}/run as a reader (accountant, mentor, business consultant)
+
+Readers cannot start runs. `run_mentor_403.json`:
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
 }
 ```
 
@@ -1486,7 +1500,7 @@ Kinds `analytics.report.shared` (to the person shared with) and `analytics.repor
 | Behaviour | Verified |
 |---|---|
 | Templates, preview, create, list, get, patch, 409, duplicate, delete | live (this run) |
-| Run start, poll, frozen snapshot, mentor and accountant redaction | live |
+| Run start, poll, frozen snapshot (founder), mentor and accountant redaction when reading it, reader run 403 | live |
 | Shares put/get/422/403, removal gives 404 | live |
 | Notifications `shared` and `generated` | live (`notifications_mentor.json`, mentor); generated seen in unit tests |
 | Team member editing only own reports; cross-workspace 404 | unit tests (`tests/api/test_analytics_reports.py`), not in the live capture |

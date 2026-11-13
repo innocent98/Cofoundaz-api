@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Query, Session
 
 from app.core.errors import AppError
@@ -544,7 +545,13 @@ def set_shares(
         if uid not in wanted:
             db.delete(s)
     added = [u for u in wanted if u not in current]
-    for u in added:
-        db.add(AnalyticsReportShare(report_id=r.id, user_id=u, created_by=m.user_id))
+    if added:
+        # ON CONFLICT DO NOTHING: two concurrent saves can both see the member as new; the loser
+        # must not hit uq_analytics_report_share (a 500).
+        db.execute(
+            pg_insert(AnalyticsReportShare)
+            .values([{"report_id": r.id, "user_id": u, "created_by": m.user_id} for u in added])
+            .on_conflict_do_nothing(constraint="uq_analytics_report_share")
+        )
     db.flush()
     return added

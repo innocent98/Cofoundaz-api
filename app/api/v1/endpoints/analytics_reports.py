@@ -225,7 +225,7 @@ def duplicate_report(
 )
 def run_report(
     report_id: uuid.UUID,
-    membership: Membership = Depends(_access),  # noqa: B008
+    membership: Membership = Depends(_writer),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
     row = rep.get_visible(db, membership, report_id)

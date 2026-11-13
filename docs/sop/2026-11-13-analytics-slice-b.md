@@ -29,3 +29,6 @@ The worker must import `app.worker.handlers.analytics` (done in `app/worker/__ma
 
 ## Follow-ups
 Restore of a soft-deleted report; Preferences row for the new kinds (in-app only today); Analytics grant for team members (no grant system); purge of runs older than 90 days (slice C); product calls for Adebayo listed in the PR.
+
+
+**Review fixes (Opus, 2026-11-13):** starting a run is founder/team member only (readers read existing runs, redacted; they cannot burn the run rate limit); share inserts use ON CONFLICT DO NOTHING so two concurrent saves cannot 500 on `uq_analytics_report_share`.

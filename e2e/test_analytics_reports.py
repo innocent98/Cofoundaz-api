@@ -226,8 +226,9 @@ def test_analytics_reports_journey(base_url, make_verified_user, mailbox, unique
         assert r.json()["data"]["blocks"][0]["locked"] is True
         r = c.get(f"{B}/reports", headers=me)
         capture("analytics_reports", "list_mentor", r)
-        m_run = _run(c, me, rid, capture, "mentor")
-        assert "500000" not in str(m_run)
+        r = c.post(f"{B}/reports/{rid}/run", headers=me)
+        capture("analytics_reports", "run_mentor_403", r)
+        assert r.status_code == 403
         old = c.get(f"{B}/reports/{rid}/runs/{first['id']}", headers=me)
         capture("analytics_reports", "founder_run_as_mentor", old)
         assert "500000" not in old.text
@@ -239,9 +240,14 @@ def test_analytics_reports_journey(base_url, make_verified_user, mailbox, unique
         assert r.status_code == 403
 
         # 8. The accountant reads it: finance open, the rest locked.
-        a_run = _run(c, ac, rid, capture, "accountant")
+        a_run = c.get(f"{B}/reports/{rid}/runs/{first['id']}", headers=ac).json()["data"]
+        capture(
+            "analytics_reports",
+            "accountant_run",
+            c.get(f"{B}/reports/{rid}/runs/{first['id']}", headers=ac),
+        )
         res = a_run["snapshot"]["results"]
-        assert res[0]["result"]["value"] == 501_000 or res[0]["result"]["value"] == 500_000
+        assert res[0]["result"]["value"] == 500_000
         assert res[1]["locked"] is True
 
         # 9. Notifications (the mentor was told about the share).
