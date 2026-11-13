@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "211ef6b0-b3dc-4645-a181-99eddaec8315",
+    "title": "Annual return",
+    "authority": "CAC",
+    "due_on": "2026-11-08",
+    "status": "open",
+    "derived_status": "overdue",
+    "done_at": null,
+    "proof_url": null,
+    "recurrence": "none",
+    "previous_item_id": null,
+    "created_by": "c8375f96-b0ef-45b4-be70-e395c21e2916",
+    "created_at": "2026-11-13T10:07:37.882494+00:00",
+    "updated_at": "2026-11-13T10:07:37.882494+00:00"
+  },
+  "meta": null
+}

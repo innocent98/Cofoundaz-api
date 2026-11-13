@@ -1,7 +1,7 @@
 """Marketplace slice D: deliveries, threads, messages, booking documents
 
 Revision ID: 0104_marketplace_fulfilment
-Revises: 0105_analytics_custom_metrics
+Revises: 0106_legal
 Create Date: 2026-11-12
 
 Marketplace slice D (fulfilment and messaging). Adds `marketplace_deliveries` (one row per hand-over
@@ -20,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0104_marketplace_fulfilment"
-down_revision = "0105_analytics_custom_metrics"
+down_revision = "0106_legal"
 branch_labels = None
 depends_on = None
 

@@ -33,6 +33,24 @@ def _active_member_ids(
     return [i for i in ids if i != exclude] if exclude else ids
 
 
+def _due_phrase(payload: dict) -> str:
+    """ "due today" / "due tomorrow" / "due in N days" / "overdue", from the computed days_out.
+
+    Never derived from the threshold name: windows mean a `due14` claim can fire for something
+    three days away (spec D22).
+    """
+    days = payload.get("days_out")
+    if days is None:
+        return "due soon"
+    if days < 0:
+        return "overdue"
+    if days == 0:
+        return "due today"
+    if days == 1:
+        return "due tomorrow"
+    return f"due in {days} days"
+
+
 def _actor(payload: dict) -> uuid.UUID | None:
     for key in ("actor_id", "shared_by", "created_by", "user_id", "shared_by_id", "applied_by"):
         if payload.get(key):
@@ -684,6 +702,21 @@ SPECS: dict[str, NotifSpec] = {
         # No message text: a notification can be emailed, and message text never goes in email.
         lambda p: f"{p.get('provider_name') or 'Your expert'} sent you a message",
         lambda _p: "Open conversation",
+    ),
+    "legal.compliance.due_soon": NotifSpec(
+        _audience("legal.compliance.due_soon", minus_actor=False),
+        lambda p: f"Compliance filing {_due_phrase(p)}: {p.get('title', 'a filing')}",
+        lambda _p: "",
+    ),
+    "legal.compliance.overdue": NotifSpec(
+        _audience("legal.compliance.overdue", minus_actor=False),
+        lambda p: f"Compliance filing overdue: {p.get('title', 'a filing')}",
+        lambda _p: "",
+    ),
+    "legal.ip.renewal_due_soon": NotifSpec(
+        _audience("legal.ip.renewal_due_soon", minus_actor=False),
+        lambda p: f"IP renewal {_due_phrase(p)}: {p.get('name', 'an asset')}",
+        lambda _p: "",
     ),
     "sales.deal.stalled": NotifSpec(
         _deal_stalled_recipients,

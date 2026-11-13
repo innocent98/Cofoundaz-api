@@ -18,6 +18,8 @@ ALL = frozenset(MembershipRole)
 CORE = frozenset({MembershipRole.founder, MembershipRole.team_member})
 FOUNDER = frozenset({MembershipRole.founder})
 FINANCE = frozenset({*CORE, MembershipRole.accountant})
+# Legal hub readers: founder, team member, legal advisor (the mentor is outside).
+LEGAL_ROLES = frozenset({*CORE, MembershipRole.legal_advisor})
 
 READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     # Dashboard briefing + Mission (D-MIS-8): founder + team member only
@@ -30,6 +32,10 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "finance.runway.updated": FINANCE,
     "finance.invoice.overdue": FINANCE,
     "finance.invoice.paid": FINANCE,
+    # Legal hub: founder, team member, legal advisor
+    "legal.compliance.due_soon": LEGAL_ROLES,
+    "legal.compliance.overdue": LEGAL_ROLES,
+    "legal.ip.renewal_due_soon": LEGAL_ROLES,
     # Marketing hub: founder + team member
     "marketing.post.published": CORE,
     "marketing.campaign.launched": CORE,
