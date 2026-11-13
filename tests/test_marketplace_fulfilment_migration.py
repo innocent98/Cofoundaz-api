@@ -34,11 +34,10 @@ def _alembic(url: str, *args: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_migration_chain_has_one_head_and_it_is_0104():
+def test_migration_chain_has_one_head_and_0104_sits_on_0106():
     heads = _alembic(str(settings.DATABASE_URL), "heads")
     assert heads.returncode == 0, heads.stderr
     assert heads.stdout.count("(head)") == 1
-    assert "0104_marketplace_fulfilment" in heads.stdout
     history = _alembic(str(settings.DATABASE_URL), "history")
     assert "0106_legal -> 0104_marketplace_fulfilment" in history.stdout
 
