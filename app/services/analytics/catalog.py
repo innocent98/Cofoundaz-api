@@ -259,3 +259,78 @@ def can_see(role: MembershipRole, hub: str) -> bool:
 
 def visible_hubs(role: MembershipRole) -> list[str]:
     return [h for h in HUB_ORDER if can_see(role, h)]
+
+
+# ---- reports (slice B) ----
+# Roles that may open the Reports surface: the three Overview roles, plus the mentor and business
+# consultant who only ever READ reports the Founder shared with them.
+SHARE_READER_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.mentor, MembershipRole.business_consultant}
+)
+REPORT_ROLES: frozenset[MembershipRole] = ANALYTICS_ROLES | SHARE_READER_ROLES
+# Reports are written by founder and team member; the founder alone shares.
+REPORT_WRITE_ROLES = _FT
+# Hubs a mentor or business consultant may see inside a shared report: the non-financial ones
+# (spec section 3). Finance and Funding numbers, and the founder's own custom metrics, never.
+SHARE_READER_HUBS = frozenset({"sales", "marketing", "validation", "health", "execution"})
+# Roles a report can be shared with (the owner and the founder already have access).
+SHARE_TARGET_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.team_member, MembershipRole.accountant} | SHARE_READER_ROLES
+)
+
+
+def report_can_see(role: MembershipRole, hub: str) -> bool:
+    """Per-metric authorisation for report blocks, runs and previews. The Overview roles use the
+    same rule as the live catalog; mentor and business consultant get the non-financial hubs."""
+    if role in ANALYTICS_ROLES:
+        return can_see(role, hub)
+    return role in SHARE_READER_ROLES and hub in SHARE_READER_HUBS
+
+
+# The three template chips (not AI). Blocks a viewer cannot see are left out for that viewer.
+TEMPLATES: tuple[dict[str, object], ...] = (
+    {
+        "key": "monthly_investor",
+        "name": "Monthly investor snapshot",
+        "description": "Revenue, burn, runway, cash and pipeline for the month, with the change on the month before.",
+        "range": "30d",
+        "compare": "previous",
+        "metrics": (
+            ("finance.revenue", "line"),
+            ("finance.net_burn", "number"),
+            ("finance.runway_months", "number"),
+            ("finance.cash_balance", "number"),
+            ("sales.pipeline_value", "number"),
+        ),
+    },
+    {
+        "key": "weekly_operating_review",
+        "name": "Weekly operating review",
+        "description": "What the team shipped and sold this week.",
+        "range": "7d",
+        "compare": "previous",
+        "metrics": (
+            ("execution.tasks_done", "number"),
+            ("execution.milestones_done_pct", "number"),
+            ("sales.deals_won", "number"),
+            ("marketing.clicks", "line"),
+            ("health.score", "number"),
+        ),
+    },
+    {
+        "key": "growth_funnel",
+        "name": "Growth funnel",
+        "description": "From impressions to closed deals over the quarter.",
+        "range": "90d",
+        "compare": "previous",
+        "metrics": (
+            ("marketing.impressions", "line"),
+            ("marketing.clicks", "number"),
+            ("marketing.conversions", "number"),
+            ("marketing.ctr", "number"),
+            ("sales.pipeline_value", "number"),
+            ("sales.deals_won", "number"),
+            ("sales.win_rate", "number"),
+        ),
+    },
+)

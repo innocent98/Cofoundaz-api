@@ -9,6 +9,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -283,13 +284,14 @@ def resolve(
     p: per.Period,
     compare_mode: str = "none",
     with_series: bool = False,
+    visible: Callable[[MembershipRole, str], bool] = cat.can_see,
 ) -> dict[str, Any]:
     metrics = all_metrics(db, startup.id)
     entry = metrics.get(key)
     if entry is None:
         return {"key": key, "status": "unknown", "message": "Metric no longer available."}
     m, c = entry
-    if not cat.can_see(role, m.hub):  # authorise BEFORE the cache or the source is touched
+    if not visible(role, m.hub):  # authorise BEFORE the cache or the source is touched
         if m.custom:
             # A custom key is the workspace's own naming: never confirm it exists (or leak its
             # label) to a role that cannot read custom metrics. Same shape as a missing key.
