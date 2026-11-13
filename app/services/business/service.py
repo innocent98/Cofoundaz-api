@@ -197,8 +197,13 @@ def restore_version(
     )
 
 
+NAMELESS_MEMBER = "A team member"
+
+
 def display_name(user: User) -> str:
-    return (user.profile.full_name if user.profile else None) or user.email
+    """The profile name, else a neutral label: never the e-mail address (every role can read
+    `updated_by` / `edited_by`, and addresses are for founder and team member only)."""
+    return (user.profile.full_name if user.profile else None) or NAMELESS_MEMBER
 
 
 def person(user: User | None) -> dict | None:
