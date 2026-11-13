@@ -28,7 +28,9 @@ def _drain() -> None:
 
 
 def _signup(c: httpx.Client, mailbox, email: str, password: str) -> dict:
-    c.post("/api/v1/auth/signup", json={"email": email, "password": password})
+    c.post(
+        "/api/v1/auth/signup", json={"email": email, "password": password, "accepted_terms": True}
+    )
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},
