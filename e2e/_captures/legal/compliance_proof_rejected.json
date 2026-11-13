@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Proof must be a PNG, JPEG, or PDF.",
+    "field_errors": [
+      {
+        "field": "proof",
+        "message": "Proof must be a PNG, JPEG, or PDF."
+      }
+    ]
+  }
+}

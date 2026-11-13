@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     jobs,
     journal,
     learning,
+    legal,
     marketing,
     marketplace,
     marketplace_bookings,
@@ -137,3 +138,4 @@ api_router.include_router(marketplace_bookings.router, prefix="/marketplace", ta
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
 )
+api_router.include_router(legal.router, prefix="/legal", tags=["legal"])
