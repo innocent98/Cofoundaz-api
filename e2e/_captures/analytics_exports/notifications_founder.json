@@ -1,0 +1,173 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "b82784c8-01f1-4246-8253-df1af745d902",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Data tables",
+        "body": "Download",
+        "data": {
+          "format": "csv",
+          "artifact": "data_tables",
+          "user_ids": [
+            "09061ddd-1de2-42a9-b61d-3b074b80a7cf"
+          ],
+          "export_id": "77b1051c-b52b-4ac5-bcf3-e714de7d0861",
+          "report_id": null,
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd",
+          "export_name": "Data tables"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-13T20:28:36.912831+00:00"
+      },
+      {
+        "id": "88d2898e-9254-460b-ae59-36a03c742762",
+        "type": "analytics.report.generated",
+        "title": "Your report is ready: Board pack",
+        "body": "Open",
+        "data": {
+          "run_id": "f9f64d55-0459-482a-9b4d-e9668e1dd120",
+          "user_ids": [
+            "09061ddd-1de2-42a9-b61d-3b074b80a7cf"
+          ],
+          "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd",
+          "report_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-13T20:28:36.740008+00:00"
+      },
+      {
+        "id": "78fe98ff-ba04-4e63-9abe-2bd6e96479ac",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Board pack",
+        "body": "Download",
+        "data": {
+          "format": "xlsx",
+          "artifact": "report",
+          "user_ids": [
+            "09061ddd-1de2-42a9-b61d-3b074b80a7cf"
+          ],
+          "export_id": "8b882b87-cfbf-42e5-8696-7edeb9ae6c19",
+          "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd",
+          "export_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-13T20:28:36.660977+00:00"
+      },
+      {
+        "id": "7b554a97-389e-4b3b-b165-b91e06b28170",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Board pack",
+        "body": "Download",
+        "data": {
+          "format": "pdf",
+          "artifact": "report",
+          "user_ids": [
+            "09061ddd-1de2-42a9-b61d-3b074b80a7cf"
+          ],
+          "export_id": "3d735a2c-c0b4-4e11-9ded-593f451909ec",
+          "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd",
+          "export_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-13T20:28:36.540137+00:00"
+      },
+      {
+        "id": "10e9883e-38b4-4640-9ffb-1c7042ed3686",
+        "type": "notification.onboarding_complete",
+        "title": "Your workspace is ready",
+        "body": "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+        "data": {
+          "user_id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-13T20:28:34.929422+00:00"
+      },
+      {
+        "id": "e88e3e5c-0523-4d29-a474-7b668940725b",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "investor",
+          "user_id": "a200693b-789b-4c2b-9ac9-c11872895f3d",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-13T20:28:34.892442+00:00"
+      },
+      {
+        "id": "588f41a9-322e-4ce0-a601-09504acbaeb4",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "d5e9e892-034c-4d2d-97f8-395b02930180",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-13T20:28:34.261600+00:00"
+      },
+      {
+        "id": "903cef28-067e-4346-89b7-4d0ecbcbc5c8",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "accountant",
+          "user_id": "c8493aa1-8ce9-4941-b675-2e16ad406166",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-13T20:28:33.673007+00:00"
+      },
+      {
+        "id": "955dc296-7037-4a0f-945e-f3d06088e313",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "9c5f94b4-3b95-46c3-b762-91b3ce63a192",
+          "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-13T20:28:33.048280+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

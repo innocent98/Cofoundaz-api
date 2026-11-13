@@ -4118,7 +4118,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
 
 
 
-## Module 22 — Analytics & Reports (design accepted 2026-11-12; slices A and B built)
+## Module 22 — Analytics & Reports (design accepted 2026-11-12; wave 1 built: slices A, B, C)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
 `cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
@@ -4137,5 +4137,13 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md
   - [x] Events/notifications `analytics.report.generated`, `analytics.report.shared`
   - [x] 15 API tests + migration round trip + live e2e journey + live-captured FE guide
   - [ ] Restore of a soft-deleted report · Preferences row for the two notification kinds · Analytics grant for team members (no grant system yet)
-- [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
+- [x] **Slice C: exports** (`feature/analytics-exports`, migration `0109_analytics_exports`, chained on 0108; PR open 2026-11-13, not merged; SOP `docs/sop/2026-11-13-analytics-slice-c.md`, FE guide `docs/fe-integration-guide-analytics-exports.md`)
+  - [x] `analytics_exports` (30-day expiry, `hubs` in the file, private `file_key`, download count)
+  - [x] Report export PDF / XLSX from a frozen run (new run, or `run_id` of a finished run for the accountant); data tables XLSX / CSV over catalog metrics
+  - [x] `analytics.export.render` job (runs the pending run once under a row lock, renders under the requester's role, fails closed); renderer with formula guard and PDF escaping
+  - [x] `GET /exports`, `GET /exports/{id}`, authorised + audited `GET /exports/{id}/download` (410 expired, 409 pending/failed, 403 on a role change, 404 not yours)
+  - [x] Daily `scheduled.analytics.purge` (files at 30 days, runs at 90 days); event + notification `analytics.export.created` to the requester
+  - [x] 12 API tests + renderer tests + migration round trip + live e2e journey + live-captured FE guide
+  - [ ] Opus security review (lead) · Cloudinary download checked on staging · notification `module` mapping + Preferences row
+- [ ] D: schedules (deferred, wave 2) · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
 - [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

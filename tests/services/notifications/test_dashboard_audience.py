@@ -111,6 +111,7 @@ DIRECT = {
     # covered by tests/api/test_analytics_reports.py
     "analytics.report.generated",
     "analytics.report.shared",
+    "analytics.export.created",  # the requester; tests/api/test_analytics_exports.py
 }
 
 

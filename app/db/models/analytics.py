@@ -142,3 +142,52 @@ class AnalyticsReportRun(UUIDMixin, TimestampMixin, Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_analytics_report_runs_startup", "startup_id", "created_at"),)
+
+
+class AnalyticsExport(UUIDMixin, TimestampMixin, Base):
+    """One exported file (slice C): a report or a data-tables run rendered as PDF, XLSX or CSV.
+
+    Rendered once from a frozen run (never re-queried) by the `analytics.export.render` job, under
+    the requester's role at render time. The file lives in private storage under `file_key`; it is
+    served only through the authorised download route, never by URL. `hubs` lists the hubs whose
+    numbers are in the file, so a download is refused to anyone who could not see one of them.
+    Files expire 30 days after creation; the daily purge deletes the file and sets `purged_at`."""
+
+    __tablename__ = "analytics_exports"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("startups.id", ondelete="CASCADE"), nullable=False
+    )
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("analytics_report_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    report_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("analytics_reports.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    artifact_type: Mapped[str] = mapped_column(String(20), nullable=False)  # report | data_tables
+    format: Mapped[str] = mapped_column(String(10), nullable=False)  # pdf | xlsx | csv
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    status: Mapped[str] = mapped_column(String(10), nullable=False)  # pending | ready | failed
+    file_key: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    filename: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    hubs: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    options_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    download_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+    __table_args__ = (
+        Index("ix_analytics_exports_startup_created", "startup_id", "created_at"),
+        Index("ix_analytics_exports_expires", "expires_at"),
+    )

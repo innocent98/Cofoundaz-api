@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "One or more metrics are not available to you.",
+    "field_errors": [
+      {
+        "field": "metrics",
+        "message": "One or more metrics are not available to you."
+      }
+    ]
+  }
+}

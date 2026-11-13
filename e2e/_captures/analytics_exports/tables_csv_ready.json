@@ -1,0 +1,32 @@
+{
+  "data": {
+    "id": "77b1051c-b52b-4ac5-bcf3-e714de7d0861",
+    "name": "Data tables",
+    "artifact_type": "data_tables",
+    "format": "csv",
+    "status": "ready",
+    "report_id": null,
+    "run_id": "22d115e7-f8f0-475f-ab3b-de5172fee508",
+    "period": {
+      "to": "2026-11-13",
+      "from": "2026-10-15"
+    },
+    "metrics": [
+      "finance.revenue",
+      "marketing.clicks"
+    ],
+    "filename": "Data tables 2026-10-15 to 2026-11-13.csv",
+    "size_bytes": 513,
+    "download_count": 0,
+    "download_path": "/api/v1/analytics/exports/77b1051c-b52b-4ac5-bcf3-e714de7d0861/download",
+    "error": null,
+    "created_by": {
+      "id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+      "name": "Ada F"
+    },
+    "created_at": "2026-11-13T20:28:36.889921+00:00",
+    "ready_at": "2026-11-13T20:28:36.927714+00:00",
+    "expires_at": "2026-12-13T20:28:36.897744+00:00"
+  },
+  "meta": null
+}
