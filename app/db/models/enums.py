@@ -774,6 +774,8 @@ class ListingStatus(enum.StrEnum):
 class AvailabilityKind(enum.StrEnum):
     blocked = "blocked"
     extra = "extra"
+
+
 class IpAssetType(enum.StrEnum):
     trademark = "trademark"
     patent = "patent"
