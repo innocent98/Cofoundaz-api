@@ -47,3 +47,5 @@ Endpoints (all under `/api/v1/funding/term-sheets`): `GET /`, `POST /`, `POST /e
 - Rules are the PRD's starting set; adding one is a row in `term_rules.py` plus its tests.
 
 **Opus review fixes (2026-11-12):** document currency detection and the acknowledgement (medium); wording job writes under the row lock (medium); coercion after dropping the cap; storage read before the lock; case-insensitive fence strip; system audit rows and no row for a no-op PATCH; swapped-figure rewording discarded; failed sheets outside the cap.
+
+**Update 2026-11-13 (slice E, #235 lows):** failed extractions are capped at 50 per workspace (422 until deleted); extracted quotes are unescaped for `&lt;` and `&gt;` only; with no round yet a document in another currency is no mismatch (`round_currency` null); reconciling a dead extraction writes a system audit row. See `docs/sop/2026-11-13-funding-grants.md`.

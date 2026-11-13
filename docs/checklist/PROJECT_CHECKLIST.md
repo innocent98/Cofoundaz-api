@@ -4052,7 +4052,17 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] Round currency also locked by term sheet amounts; slice C lows folded in (carry the previous round's currency; duplicated solver line)
   - [x] Unit + API tests, live e2e journey (canned model), live-captured FE guide
   - [ ] "Ask a Legal Advisor to review" is a FE link to Documents e-review · a real model's extraction accuracy not yet exercised
-- [ ] Slice E: grants (curated catalogue, match job, applications)
+- [x] **Slice E: grants** (`feature/funding-grants`, migration `0107_funding_grants` chained on 0104_marketplace_fulfilment (re-chained 2026-11-13); SOP `docs/sop/2026-11-13-funding-grants.md`, FE guide `docs/fe-integration-guide-funding-grants.md`) — F + TM, PR open 2026-11-13, module stays hidden
+      Opus review fixes 2026-11-13: weekly match + notification behind `FUNDING_GRANT_MATCHING_ENABLED` (default off), no workspace lock across the model call, draft write re-checks under row lock, failed-extraction cap only on extract
+  - [x] Catalogue loader from the approved CSV (15 rows, `verified_on` and `source_url` kept), idempotent sync, run in the deploy migrate step
+  - [x] Plain country/sector/stage prefilter, model scores the best ten with a one line reason, plain fallback when the model fails or the allowance is spent
+  - [x] Weekly match job per ISO week + on-demand refresh (deduplicated), `funding.grant.matched` notification
+  - [x] Dismiss / not relevant / restore persist across runs
+  - [x] Start application (starter questions), tracker with statuses, expired and stale flags, grants added by hand
+  - [x] Draft with AI per question (overwrite guard, never clobbers typed text, dead-job reconcile)
+  - [x] Four #235 lows folded in (failed-extraction cap, quote unescape, no-round currency skip, reconcile audit row)
+  - [x] 32 API tests + catalogue + migration tests, live e2e journey (canned model), live-captured FE guide
+  - [ ] A real model's scoring and drafting quality not yet exercised · automatic re-verification of catalogue rows
 - [ ] Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
 - [ ] FE pass (six pages real, unhide the sidebar with Investor Readiness), lead re-walk of every control
 - [ ] _Deferred:_ Finance ledger 32-bit amount cap (a ₦90M raise cannot be one entry) · Health Score signals from Funding · investor updates (Module 22.3) · exit/waterfall modelling

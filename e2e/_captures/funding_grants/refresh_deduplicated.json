@@ -1,0 +1,10 @@
+{
+  "data": {
+    "deduplicated": true,
+    "refresh": {
+      "status": "queued",
+      "last_run_at": null
+    }
+  },
+  "meta": null
+}

@@ -1,0 +1,57 @@
+{
+  "data": {
+    "id": "7ad36588-dc7b-4556-931c-8bea9b9943b5",
+    "grant_id": null,
+    "name": "State innovation fund",
+    "funder": "Lagos State",
+    "status": "planning",
+    "deadline": "2026-12-04",
+    "expired": false,
+    "amount": {
+      "minor": 500000000,
+      "currency": "NGN"
+    },
+    "notes": null,
+    "submitted_at": null,
+    "created_at": "2026-11-13T14:22:20.191018+00:00",
+    "source_url": null,
+    "catalogue_stale": null,
+    "catalogue_deadline_text": null,
+    "answers": [
+      {
+        "id": "1ffb38d7-5288-4a6f-ac50-5b053815b685",
+        "position": 0,
+        "question": "What problem are you solving, and for whom?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "eae2c850-45b5-4aca-8d7b-fdadfda9efa6",
+        "position": 1,
+        "question": "What traction do you have so far?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "27c87269-2d56-4405-b40b-0658f030a1b3",
+        "position": 2,
+        "question": "How would you use the funding?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "a121abc4-66d7-4fbd-ab18-ae8126f7c3cc",
+        "position": 3,
+        "question": "Who is on the team, and why are you the right people?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      }
+    ],
+    "grant": null
+  },
+  "meta": null
+}

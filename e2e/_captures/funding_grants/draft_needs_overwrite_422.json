@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "This answer already has text. Confirm to replace it.",
+    "field_errors": [
+      {
+        "field": "answer",
+        "message": "This answer already has text. Confirm to replace it."
+      }
+    ]
+  }
+}

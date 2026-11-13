@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "You are already applying to this grant. Remove the application first.",
+    "field_errors": [
+      {
+        "field": "state",
+        "message": "You are already applying to this grant. Remove the application first."
+      }
+    ]
+  }
+}

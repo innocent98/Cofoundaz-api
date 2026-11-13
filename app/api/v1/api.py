@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     funding_cap_table,
     funding_data_room,
     funding_data_room_public,
+    funding_grants,
     funding_term_sheets,
     health,
     health_score,
@@ -78,6 +79,7 @@ api_router.include_router(health_score.router, prefix="/health-score", tags=["he
 api_router.include_router(readiness.router, prefix="/readiness", tags=["readiness"])
 api_router.include_router(funding.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_term_sheets.router, prefix="/funding", tags=["funding"])
+api_router.include_router(funding_grants.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_cap_table.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_data_room.router, prefix="/funding", tags=["funding"])
 api_router.include_router(

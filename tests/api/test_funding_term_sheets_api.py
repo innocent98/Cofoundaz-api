@@ -624,6 +624,7 @@ def _with_currency(monkeypatch, code):
 def test_a_document_in_another_currency_is_flagged_and_needs_an_acknowledgement(
     client, db, team, founder, monkeypatch
 ):
+    client.put(f"{BASE}/round", json={"currency": "NGN"}, headers=founder)
     _with_currency(monkeypatch, "USD")
     sid = _extract(client, db, team, founder)
     d = client.get(f"{TS}/{sid}", headers=founder).json()["data"]
@@ -803,3 +804,57 @@ def test_failed_sheets_do_not_count_toward_the_cap(client, db, team, founder, mo
     full = client.post(TS, json={"label": "Three", "terms": {}}, headers=founder)
     assert full.status_code == 422  # two live sheets: now full
     assert db.query(TermSheet).count() == 3
+
+
+# ---------------------------------------------------------------- #235 lows
+def test_no_round_means_no_currency_mismatch(client, db, team, founder, monkeypatch):
+    _with_currency(monkeypatch, "USD")
+    sid = _extract(client, db, team, founder)  # the workspace has no round yet
+    d = client.get(f"{TS}/{sid}", headers=founder).json()["data"]
+    assert d["proposed"]["currency"] == "USD"
+    assert d["currency_mismatch"] is False and d["round_currency"] is None
+    ok = client.post(f"{TS}/{sid}/confirm", json={"terms": d["proposed"]["terms"]}, headers=founder)
+    assert ok.status_code == 200 and ok.json()["data"]["status"] == "confirmed"
+
+
+def test_failed_extractions_are_capped(client, db, team, founder, monkeypatch):
+    monkeypatch.setattr(svc, "MAX_FAILED", 1)
+    _extract(client, db, team, founder, text=["x"], name="one.pdf")  # fails: no text
+    f = uploaded(db, team, text=["y"], name="two.pdf")
+    r = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    assert r.status_code == 422
+    assert "failed extractions" in r.json()["error"]["message"]
+    gone = db.query(TermSheet).filter_by(status="failed").one()
+    deleted = client.delete(f"{TS}/{gone.id}", headers=founder)
+    assert deleted.status_code == 200
+    retry = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    assert retry.status_code == 202
+
+
+def test_the_failed_cap_never_blocks_typed_creation(client, db, team, founder, monkeypatch):
+    monkeypatch.setattr(svc, "MAX_FAILED", 1)
+    _extract(client, db, team, founder, text=["x"], name="one.pdf")  # fails: no text
+    assert db.query(TermSheet).filter_by(status="failed").count() == 1
+    typed(client, founder)  # 201: the cap is for extractions only
+    f = uploaded(db, team, text=["y"], name="two.pdf")
+    assert (
+        client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).status_code
+        == 422
+    )
+
+
+def test_reconciling_a_dead_extraction_leaves_a_system_audit_row(client, db, team, founder):
+    f = uploaded(db, team)
+    sid = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).json()["data"][
+        "term_sheet"
+    ]["id"]
+    db.query(Job).delete()  # the worker died and the job is gone
+    db.commit()
+    got = client.get(f"{TS}/{sid}", headers=founder).json()["data"]
+    assert got["status"] == "failed" and got["error"] == "job_failed"
+    log = client.get(f"{TS}/audit", headers=founder).json()["data"]["items"]
+    system = [x for x in log if x["actor_id"] is None and x["after"]["status"] == "failed"]
+    assert len(system) == 1 and system[0]["before"]["status"] == "extracting"
+    client.get(f"{TS}/{sid}", headers=founder)  # a second read adds nothing
+    again = client.get(f"{TS}/audit", headers=founder).json()["data"]["total"]
+    assert again == len(log)

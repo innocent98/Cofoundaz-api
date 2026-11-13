@@ -171,7 +171,7 @@ def clean_extraction(raw: dict[str, Any]) -> dict[str, Any]:
     for key, quote in (raw_quotes if isinstance(raw_quotes, dict) else {}).items():
         term_key = quote_keys.get(str(key), str(key))
         if term_key in terms and isinstance(quote, str) and quote.strip():
-            quotes[term_key] = quote.strip()[:MAX_QUOTE]
+            quotes[term_key] = quote.replace("&lt;", "<").replace("&gt;", ">").strip()[:MAX_QUOTE]
     return {"terms": terms, "quotes": quotes, "currency": _currency(raw.get("currency"))}
 
 

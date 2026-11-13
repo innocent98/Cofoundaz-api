@@ -177,6 +177,7 @@ poetry run alembic upgrade head >/dev/null
 # (the deploy `migrate` step runs the same command); the learning journey reads it back over HTTP.
 echo "==> [sanity] load Academy content into ${E2E_DB}"
 poetry run python -m app.services.learning.content
+poetry run python -m app.services.funding.grants_catalogue
 
 echo "==> [sanity] app imports"
 poetry run python -c "import app.main" >/dev/null

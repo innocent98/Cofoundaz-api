@@ -56,6 +56,7 @@ READ_ROLES: dict[str, frozenset[MembershipRole]] = {
     "readiness.improved": FOUNDER,
     "readiness.qa.scored": FOUNDER,
     "funding.round.committed_changed": CORE,
+    "funding.grant.matched": CORE,
     "funding.dataroom.viewed": CORE,
     "funding.term_sheet.added": FOUNDER,  # D-FUND-5: offers are founder only
     # Marketplace (design §7): the workspace's founders only
