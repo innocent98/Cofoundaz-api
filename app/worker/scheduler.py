@@ -715,7 +715,9 @@ def _due_compliance(db: Session, now: datetime) -> list[Due]:
         out.append(
             Due(
                 SCHED_COMPLIANCE,
-                str(item.id),
+                # The due date is part of the scope: a moved date is a new obligation and re-arms
+                # its reminders instead of staying silenced by the old claims.
+                f"{item.id}:{item.due_on.isoformat()}",
                 primary,
                 SCHED_COMPLIANCE,
                 item.startup_id,
@@ -766,7 +768,8 @@ def _due_ip_renewals(db: Session, now: datetime) -> list[Due]:
         out.append(
             Due(
                 SCHED_IP_RENEWAL,
-                str(asset.id),
+                # Same for renewals: each cycle (a new `renewal_on`) gets its own claims.
+                f"{asset.id}:{renewal.isoformat()}",
                 primary,
                 SCHED_IP_RENEWAL,
                 asset.startup_id,

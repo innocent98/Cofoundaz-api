@@ -68,7 +68,7 @@ def test_exactly_fourteen_days_out_yields_due14_only(db):
     _u, s = _ws(db)
     row = _item(db, s, days_out=14)
     due = scheduler._due_compliance(db, NOW)
-    assert _keys(due) == [(str(row.id), "due14")]
+    assert _keys(due) == [(f"{row.id}:{row.due_on}", "due14")]
     assert due[0].task_key == SCHED_COMPLIANCE
     assert due[0].also_claim == ()
 
@@ -78,7 +78,7 @@ def test_five_days_out_collapses_to_one_notification(db):
     row = _item(db, s, days_out=5)
     due = scheduler._due_compliance(db, NOW)
     # Both windows qualify, but only the most urgent is enqueued (spec D21).
-    assert _keys(due) == [(str(row.id), "due7")]
+    assert _keys(due) == [(f"{row.id}:{row.due_on}", "due7")]
     # The looser one is still CLAIMED, so it cannot fire a day later.
     assert due[0].also_claim == ("due14",)
 
@@ -87,7 +87,7 @@ def test_already_overdue_when_created_collapses_to_one_overdue(db):
     _u, s = _ws(db)
     row = _item(db, s, days_out=-3)
     due = scheduler._due_compliance(db, NOW)
-    assert _keys(due) == [(str(row.id), "overdue")]
+    assert _keys(due) == [(f"{row.id}:{row.due_on}", "overdue")]
     assert set(due[0].also_claim) == {"due1", "due7", "due14"}
 
 
@@ -96,7 +96,7 @@ def test_due_today_is_not_overdue(db):
     row = _item(db, s, days_out=0)
     due = scheduler._due_compliance(db, NOW)
     # Today has not passed, so the most urgent qualifying window is due1, not overdue.
-    assert _keys(due) == [(str(row.id), "due1")]
+    assert _keys(due) == [(f"{row.id}:{row.due_on}", "due1")]
 
 
 def test_a_done_item_is_never_due(db):
@@ -145,7 +145,7 @@ def test_an_ip_renewal_inside_the_window_is_due(db):
     _u, s = _ws(db)
     row = _asset(db, s, days_out=7)
     due = scheduler._due_ip_renewals(db, NOW)
-    assert _keys(due) == [(str(row.id), "due7")]
+    assert _keys(due) == [(f"{row.id}:{row.renewal_on}", "due7")]
     assert due[0].task_key == SCHED_IP_RENEWAL
     assert due[0].also_claim == ("due14",)
 
@@ -176,7 +176,7 @@ def test_a_renewal_due_today_still_fires(db):
     _u, s = _ws(db)
     row = _asset(db, s, days_out=0)
     due = scheduler._due_ip_renewals(db, NOW)
-    assert _keys(due) == [(str(row.id), "due1")]
+    assert _keys(due) == [(f"{row.id}:{row.renewal_on}", "due1")]
 
 
 def test_scheduler_tick_includes_both_legal_sources(db):
@@ -207,7 +207,10 @@ def test_recurring_occurrences_get_their_own_claims(db):
     second = _item(db, s, days_out=6, recurrence=Recurrence.monthly)
     # Each row is its own scope_key, so one occurrence firing never silences the next.
     due = scheduler._due_compliance(db, NOW)
-    assert {d.scope_key for d in due} == {str(first.id), str(second.id)}
+    assert {d.scope_key for d in due} == {
+        f"{first.id}:{first.due_on}",
+        f"{second.id}:{second.due_on}",
+    }
     scheduler_tick(db, now=NOW)
     assert len(_legal_jobs(db, SCHED_COMPLIANCE)) == 2
 
@@ -220,3 +223,60 @@ def test_today_comes_from_utc_not_the_scheduler_timezone(db):
     assert len(scheduler._due_compliance(db, NOW)) == 1
     assert scheduler._due_compliance(db, NOW)[0].period_key == "due14"
     assert date(2026, 7, 15) == NOW.astimezone(UTC).date()
+
+
+# --- re-arming when a date moves ---------------------------------------------------------------
+
+
+def test_moving_a_renewal_a_year_forward_fires_the_reminders_again(db):
+    _u, s = _ws(db)
+    asset = _asset(db, s, days_out=10)
+    scheduler_tick(db, now=NOW)
+    assert len(_legal_jobs(db, SCHED_IP_RENEWAL)) == 1
+
+    # The registration was renewed: the next cycle's date is a year out, and its own windows apply.
+    asset.renewal_on = asset.renewal_on + timedelta(days=365)
+    db.flush()
+    year_later = NOW + timedelta(days=365)
+    scheduler_tick(db, now=year_later)
+    jobs = _legal_jobs(db, SCHED_IP_RENEWAL)
+    assert len(jobs) == 2
+    assert {j.payload["renewal_on"] for j in jobs} == {
+        (TODAY + timedelta(days=10)).isoformat(),
+        (TODAY + timedelta(days=375)).isoformat(),
+    }
+
+
+def test_an_unchanged_renewal_date_never_duplicates(db):
+    _u, s = _ws(db)
+    _asset(db, s, days_out=10)
+    scheduler_tick(db, now=NOW)
+    scheduler_tick(db, now=NOW)
+    scheduler_tick(db, now=NOW + timedelta(hours=6))
+    assert len(_legal_jobs(db, SCHED_IP_RENEWAL)) == 1
+
+
+def test_moving_a_compliance_due_date_re_arms_it(db):
+    _u, s = _ws(db)
+    row = _item(db, s, days_out=5)
+    scheduler_tick(db, now=NOW)
+    assert len(_legal_jobs(db, SCHED_COMPLIANCE)) == 1
+
+    # Pushed out by 30 days, then back inside a window: the old claims must not silence it.
+    row.due_on = row.due_on + timedelta(days=30)
+    db.flush()
+    scheduler_tick(db, now=NOW + timedelta(days=30))
+    jobs = _legal_jobs(db, SCHED_COMPLIANCE)
+    assert len(jobs) == 2
+    assert {j.payload["due_on"] for j in jobs} == {
+        (TODAY + timedelta(days=5)).isoformat(),
+        (TODAY + timedelta(days=35)).isoformat(),
+    }
+
+
+def test_an_unchanged_compliance_date_never_duplicates(db):
+    _u, s = _ws(db)
+    _item(db, s, days_out=5)
+    scheduler_tick(db, now=NOW)
+    scheduler_tick(db, now=NOW)
+    assert len(_legal_jobs(db, SCHED_COMPLIANCE)) == 1
