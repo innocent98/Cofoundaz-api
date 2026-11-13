@@ -1,0 +1,135 @@
+{
+  "data": {
+    "id": "fb31c0ad-6763-4a73-8f5c-ef97c1f7d790",
+    "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "status": "ready",
+    "triggered_by": "manual",
+    "period": {
+      "from": "2026-10-15",
+      "to": "2026-11-13"
+    },
+    "tz": "UTC",
+    "run_by": {
+      "id": "0709d0b8-b23d-4f28-a5e8-e14d311cf488",
+      "name": "Member"
+    },
+    "as_of": "2026-11-13T16:29:26.556425+00:00",
+    "error": null,
+    "created_at": "2026-11-13T16:29:26.539196+00:00",
+    "snapshot": {
+      "report": {
+        "name": "Board pack Q4",
+        "range": {
+          "to": "2026-11-13",
+          "from": "2026-10-15",
+          "range": "custom",
+          "compare": "previous"
+        },
+        "blocks": [
+          {
+            "id": "64c3aafd",
+            "hub": "finance",
+            "viz": "line",
+            "type": "metric",
+            "range": null,
+            "title": null,
+            "metric": "finance.revenue",
+            "compare": null
+          },
+          {
+            "id": "a73f8eca",
+            "type": "metric",
+            "locked": true,
+            "needs": "marketing",
+            "needs_label": "Marketing"
+          },
+          {
+            "id": "a1ae7466",
+            "text": "Clicks are paid plus organic.",
+            "type": "text",
+            "title": "Note"
+          }
+        ],
+        "description": "For the board"
+      },
+      "results": [
+        {
+          "hub": "finance",
+          "viz": "line",
+          "type": "metric",
+          "title": null,
+          "result": {
+            "hub": "finance",
+            "key": "finance.revenue",
+            "good": "up",
+            "kind": "flow",
+            "unit": "money",
+            "as_of": "2026-11-13T16:29:24.291697+00:00",
+            "label": "Revenue",
+            "value": 500000,
+            "period": {
+              "to": "2026-11-13",
+              "from": "2026-10-15"
+            },
+            "series": [
+              {
+                "to": "2026-10-21",
+                "from": "2026-10-15",
+                "value": 0
+              },
+              {
+                "to": "2026-10-28",
+                "from": "2026-10-22",
+                "value": 0
+              },
+              {
+                "to": "2026-11-04",
+                "from": "2026-10-29",
+                "value": 0
+              },
+              {
+                "to": "2026-11-11",
+                "from": "2026-11-05",
+                "value": 500000
+              },
+              {
+                "to": "2026-11-13",
+                "from": "2026-11-12",
+                "value": 0
+              }
+            ],
+            "status": "ok",
+            "compare": {
+              "delta": 500000,
+              "value": 0,
+              "period": {
+                "to": "2026-10-14",
+                "from": "2026-09-15"
+              },
+              "delta_pct": null
+            },
+            "currency": "NGN",
+            "hub_path": "/finance",
+            "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+            "source_note": "Finance ledger"
+          },
+          "block_id": "64c3aafd"
+        },
+        {
+          "id": "a73f8eca",
+          "type": "metric",
+          "locked": true,
+          "needs": "marketing",
+          "needs_label": "Marketing"
+        },
+        {
+          "text": "Clicks are paid plus organic.",
+          "type": "text",
+          "title": "Note",
+          "block_id": "a1ae7466"
+        }
+      ]
+    }
+  },
+  "meta": null
+}

@@ -1,0 +1,25 @@
+{
+  "data": {
+    "runs": [
+      {
+        "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
+        "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+        "status": "ready",
+        "triggered_by": "manual",
+        "period": {
+          "from": "2026-10-15",
+          "to": "2026-11-13"
+        },
+        "tz": "UTC",
+        "run_by": {
+          "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+          "name": "Ada F"
+        },
+        "as_of": "2026-11-13T16:29:26.309754+00:00",
+        "error": null,
+        "created_at": "2026-11-13T16:29:24.392255+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

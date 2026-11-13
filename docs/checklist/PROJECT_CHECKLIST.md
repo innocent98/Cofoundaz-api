@@ -4095,7 +4095,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
 
 
 
-## Module 22 — Analytics & Reports (design accepted 2026-11-12; slice A built)
+## Module 22 — Analytics & Reports (design accepted 2026-11-12; slices A and B built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
 `cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
@@ -4107,5 +4107,12 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md
   - [x] Nightly point-metric snapshot into `kpi_snapshots`; rule-based Working/Watch notes
   - [x] 30 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus D-ANA-4 review 2026-11-12: no critical/high/medium, lows fixed (custom-key oracle, date bounds, rate limit, no_data cache, TM captures)
   - [ ] Plan gate exercised with `PLAN_ENFORCEMENT` on · nightly snapshot seen live · workspace timezone
-- [ ] Slice B: reports (definitions, templates, shares, runs, preview) · [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
+- [x] **Slice B: reports + runs + shares** (`feature/analytics-slice-b`, migration `0108_analytics_reports`, chained on 0106; PR open 2026-11-13, not merged; SOP `docs/sop/2026-11-13-analytics-slice-b.md`, FE guide `docs/fe-integration-guide-analytics-reports.md`)
+  - [x] `analytics_reports` (blocks, optimistic-lock `version`, soft delete), `analytics_report_shares`, `analytics_report_runs` (frozen snapshots)
+  - [x] 3 template chips; CRUD, duplicate, stateless preview, run job (`analytics.report.run`), runs list/read, founder-only shares
+  - [x] Per-metric authorisation on preview, run, share and every read (locked blocks redacted at read time, fail closed); tenancy 404s; 409 on stale save
+  - [x] Events/notifications `analytics.report.generated`, `analytics.report.shared`
+  - [x] 15 API tests + migration round trip + live e2e journey + live-captured FE guide
+  - [ ] Restore of a soft-deleted report · Preferences row for the two notification kinds · Analytics grant for team members (no grant system yet)
+- [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
 - [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

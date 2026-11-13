@@ -1,0 +1,116 @@
+{
+  "data": {
+    "period": {
+      "from": "2026-10-15",
+      "to": "2026-11-13"
+    },
+    "as_of": "2026-11-13T16:29:24.304791+00:00",
+    "results": [
+      {
+        "block_id": "ce4258d4",
+        "type": "metric",
+        "hub": "finance",
+        "viz": "line",
+        "title": null,
+        "result": {
+          "key": "finance.revenue",
+          "label": "Revenue",
+          "unit": "money",
+          "hub": "finance",
+          "kind": "flow",
+          "good": "up",
+          "source_note": "Finance ledger",
+          "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
+          "currency": "NGN",
+          "status": "ok",
+          "value": 500000,
+          "period": {
+            "from": "2026-10-15",
+            "to": "2026-11-13"
+          },
+          "as_of": "2026-11-13T16:29:24.291697+00:00",
+          "hub_path": "/finance",
+          "compare": {
+            "period": {
+              "from": "2026-09-15",
+              "to": "2026-10-14"
+            },
+            "value": 0,
+            "delta": 500000,
+            "delta_pct": null
+          },
+          "series": [
+            {
+              "from": "2026-10-15",
+              "to": "2026-10-21",
+              "value": 0
+            },
+            {
+              "from": "2026-10-22",
+              "to": "2026-10-28",
+              "value": 0
+            },
+            {
+              "from": "2026-10-29",
+              "to": "2026-11-04",
+              "value": 0
+            },
+            {
+              "from": "2026-11-05",
+              "to": "2026-11-11",
+              "value": 500000
+            },
+            {
+              "from": "2026-11-12",
+              "to": "2026-11-13",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "block_id": "e3c7da24",
+        "type": "metric",
+        "hub": "marketing",
+        "viz": "number",
+        "title": null,
+        "result": {
+          "key": "marketing.clicks",
+          "label": "Clicks",
+          "unit": "count",
+          "hub": "marketing",
+          "kind": "flow",
+          "good": "up",
+          "source_note": "Marketing metrics",
+          "definition": "Recorded clicks across channels.",
+          "currency": null,
+          "status": "ok",
+          "value": 50,
+          "period": {
+            "from": "2026-10-15",
+            "to": "2026-11-13"
+          },
+          "as_of": "2026-11-13T16:29:24.303790+00:00",
+          "hub_path": "/marketing",
+          "compare": {
+            "period": {
+              "from": "2026-09-15",
+              "to": "2026-10-14"
+            },
+            "value": null,
+            "delta": null,
+            "delta_pct": null
+          },
+          "series": []
+        }
+      },
+      {
+        "block_id": "8b2df972",
+        "type": "text",
+        "title": "Note",
+        "text": "Clicks are paid plus organic."
+      }
+    ]
+  },
+  "meta": null
+}

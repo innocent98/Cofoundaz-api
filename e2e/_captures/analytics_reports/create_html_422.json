@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Plain text only. Remove the HTML tags.",
+    "field_errors": [
+      {
+        "field": "name",
+        "message": "Plain text only. Remove the HTML tags."
+      }
+    ]
+  }
+}
