@@ -678,9 +678,11 @@ def test_delivery_files_reach_the_founder_side_and_nobody_else(client, db, w, ps
 
 def test_a_founder_can_remove_an_unsent_upload_but_not_a_sent_one(client, db, w, ps):
     spare, sent = founder_file(w, "brief"), founder_file(w, "brief")
-    assert client.delete(f"{M}/files/{spare}", headers=w.h()).status_code == 200
+    removed = client.delete(f"{M}/files/{spare}", headers=w.h())
+    assert removed.status_code == 200
     assert download(client, M, spare, w.h()).status_code == 404
-    assert client.delete(f"{M}/files/{spare}", headers=w.h(w.mate)).status_code == 403
+    by_mate = client.delete(f"{M}/files/{spare}", headers=w.h(w.mate))
+    assert by_mate.status_code == 403
     w.book(file_ids=[sent])
     r = client.delete(f"{M}/files/{sent}", headers=w.h())
     assert r.status_code == 409 and r.json()["error"]["code"] == "FILE_IN_USE"
@@ -765,11 +767,10 @@ def test_a_shared_document_stops_working_when_it_expires_is_removed_or_trashed(c
     )
     again = attach(w, bid, doc)  # attaching again renews it
     assert again.status_code == 201 and client.get(url, headers=hdr(w.expert)).status_code == 200
-    assert (
-        client.delete(f"{M}/bookings/{bid}/documents/{doc.id}", headers=w.h(w.mate)).status_code
-        == 403
-    )
-    assert client.delete(f"{M}/bookings/{bid}/documents/{doc.id}", headers=w.h()).status_code == 200
+    revoked_by_mate = client.delete(f"{M}/bookings/{bid}/documents/{doc.id}", headers=w.h(w.mate))
+    assert revoked_by_mate.status_code == 403
+    revoked = client.delete(f"{M}/bookings/{bid}/documents/{doc.id}", headers=w.h())
+    assert revoked.status_code == 200
     assert client.get(url, headers=hdr(w.expert)).status_code == 404
     attach(w, bid, doc)
     doc.trashed_at = datetime.now(UTC)
