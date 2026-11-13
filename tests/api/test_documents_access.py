@@ -213,9 +213,15 @@ def test_matrix_covers_every_documents_route():
         "{folder_id}": "{folder}",
         "{grant_id}": "{grant}",
     }
+    # Marketplace "attach from Documents" links live under a booking, not in the Documents module:
+    # their access (founder writes, team member reads, the booking's expert reads one document)
+    # is covered in tests/api/test_marketplace_fulfilment.py.
+    elsewhere = ("/api/v1/marketplace/", "/api/v1/provider/")
     live = set()
     for path, ops in app.openapi()["paths"].items():
         if ("/documents" not in path and "/document-templates" not in path) or path in public:
+            continue
+        if path.startswith(elsewhere):
             continue
         for old, new in path_names.items():
             path = path.replace(old, new)

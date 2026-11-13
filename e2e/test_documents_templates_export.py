@@ -80,7 +80,9 @@ def test_documents_templates_export_journey(
         assert inv.status_code == 200, inv.text
         invite_token = mailbox.latest_token_for(m_email, subject_contains="invited")
         pw = "Member-" + m_email.split("@")[0][-8:] + "-9"
-        c.post("/api/v1/auth/signup", json={"email": m_email, "password": pw})
+        c.post(
+            "/api/v1/auth/signup", json={"email": m_email, "password": pw, "accepted_terms": True}
+        )
         c.post(
             "/api/v1/auth/verify",
             json={"token": mailbox.latest_token_for(m_email, subject_contains="Verify")},

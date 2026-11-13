@@ -675,6 +675,8 @@ def submit(
 
 def delete_own_file(db: Session, user: User, row: MarketplaceProvider, file_id: uuid.UUID) -> None:
     f = get_owned(db, user.id, file_id)
+    if f.booking_id is not None or f.thread_id is not None:
+        raise err("FILE_IN_USE", "That file was sent to a client, so it can't be removed.", 409)
     if f.purpose == MarketplaceFilePurpose.credential and row.status not in CREDENTIALS_DELETABLE:
         raise err(
             "CREDENTIALS_LOCKED",

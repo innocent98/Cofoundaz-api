@@ -1,0 +1,14 @@
+{
+  "data": {
+    "documents": [
+      {
+        "document_id": "95a3ef9f-dee0-411f-ad1b-43397076a0d9",
+        "title": "Business Plan",
+        "kind": "business_plan",
+        "expires_at": "2026-12-12T19:35:32.629422+00:00",
+        "status": "active"
+      }
+    ]
+  },
+  "meta": null
+}

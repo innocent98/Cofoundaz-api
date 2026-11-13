@@ -53,7 +53,9 @@ def _signup_verify_login(c: httpx.Client, mailbox, email: str, password: str) ->
     """Sign up + verify + log in a specific (email, password) -- used for the
     invited business_consultant, who must sign up with the email the invite
     was sent to (same helper as e2e/test_roadmap.py)."""
-    c.post("/api/v1/auth/signup", json={"email": email, "password": password})
+    c.post(
+        "/api/v1/auth/signup", json={"email": email, "password": password, "accepted_terms": True}
+    )
     token = mailbox.latest_token_for(email, subject_contains="Verify")
     c.post("/api/v1/auth/verify", json={"token": token})
     access = c.post("/api/v1/auth/login", json={"email": email, "password": password}).json()[

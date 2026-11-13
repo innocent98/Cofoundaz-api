@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Only a client can upload a brief.",
+    "field_errors": []
+  }
+}

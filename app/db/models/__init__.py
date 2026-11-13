@@ -103,13 +103,17 @@ from app.db.models.marketplace import (  # noqa: E402, F401
     MarketplaceAvailabilityException,
     MarketplaceAvailabilityRule,
     MarketplaceBooking,
+    MarketplaceBookingDocument,
     MarketplaceConsent,
+    MarketplaceDelivery,
     MarketplaceFile,
     MarketplaceLedgerEntry,
     MarketplaceListing,
+    MarketplaceMessage,
     MarketplaceOrder,
     MarketplaceProvider,
     MarketplaceProviderPortfolio,
+    MarketplaceThread,
     MarketplaceWebhookEvent,
 )
 from app.db.models.membership import Membership  # noqa: F401

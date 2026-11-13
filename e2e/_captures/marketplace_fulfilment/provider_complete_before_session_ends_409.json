@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "SESSION_NOT_ENDED",
+    "message": "You can mark this consultation complete once the session ends.",
+    "field_errors": []
+  }
+}

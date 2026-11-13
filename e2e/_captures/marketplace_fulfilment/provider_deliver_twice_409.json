@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_STATE",
+    "message": "Can't deliver a booking that is 'delivered'.",
+    "field_errors": []
+  }
+}

@@ -300,6 +300,7 @@ def delete_meeting_snapshot(db: Session, ev: CalendarEvent, user: User) -> None:
                 "end_time": ev.end_time.isoformat() if ev.end_time else None,
                 "timezone": ev.timezone,
                 "location": ev.location,
+                "source_ref": ev.source_ref,
                 "emails": emails,
             },
             "organizer_id": str(user.id),

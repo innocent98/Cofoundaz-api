@@ -21,7 +21,9 @@ def _auth(token: str) -> dict:
 
 
 def _signup_verify_login(c, mailbox, email, password):
-    c.post("/api/v1/auth/signup", json={"email": email, "password": password})
+    c.post(
+        "/api/v1/auth/signup", json={"email": email, "password": password, "accepted_terms": True}
+    )
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},
