@@ -67,7 +67,10 @@ def test_full_onboarding_journey(base_url, make_verified_user, mailbox, unique_e
     # explicitly with teammate_email rather than a random one.
     with httpx.Client(base_url=base_url, timeout=10.0) as mate:
         pw = "Mate-" + teammate_email.split("@")[0] + "-9"
-        mate.post("/api/v1/auth/signup", json={"email": teammate_email, "password": pw})
+        mate.post(
+            "/api/v1/auth/signup",
+            json={"email": teammate_email, "password": pw, "accepted_terms": True},
+        )
         vtok = mailbox.latest_token_for(teammate_email, subject_contains="Verify")
         mate.post("/api/v1/auth/verify", json={"token": vtok})
         maccess = mate.post(

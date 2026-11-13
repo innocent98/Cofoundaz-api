@@ -1,0 +1,117 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "5733efc2-4666-4b53-9edf-8de92ebac378",
+        "type": "marketplace.delivery.submitted",
+        "title": "Ngozi Eze delivered your order",
+        "body": "Review delivery",
+        "data": {
+          "type": "package",
+          "round": 1,
+          "title": "Shareholder agreement drafting",
+          "booking_id": "4aeef8f7-c785-4acb-ac70-027360090b72",
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e",
+          "delivery_id": "2d70c48b-7e3e-4737-8d99-2ef4aa27d52a",
+          "provider_id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+          "provider_name": "Ngozi Eze",
+          "auto_release_at": "2026-11-19T19:35:32.777452+00:00"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "marketplace",
+        "created_at": "2026-11-12T19:35:32.769389+00:00"
+      },
+      {
+        "id": "633dcc21-8027-4518-b88b-a205447e9386",
+        "type": "marketplace.booking.confirmed",
+        "title": "Booking confirmed: Shareholder agreement drafting with Ngozi Eze",
+        "body": "View booking",
+        "data": {
+          "date": null,
+          "type": "package",
+          "title": "Shareholder agreement drafting",
+          "starts_at": null,
+          "booking_id": "4aeef8f7-c785-4acb-ac70-027360090b72",
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e",
+          "provider_id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+          "provider_name": "Ngozi Eze"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "marketplace",
+        "created_at": "2026-11-12T19:35:32.528370+00:00"
+      },
+      {
+        "id": "014b8e87-39ea-443e-b68f-bc59921d2c32",
+        "type": "marketplace.message.new",
+        "title": "Ngozi Eze sent you a message",
+        "body": "Open conversation",
+        "data": {
+          "service": null,
+          "thread_id": "5c8d4d70-38e6-4b0b-a749-dc4beede847b",
+          "booking_id": null,
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e",
+          "provider_id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+          "provider_name": "Ngozi Eze"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "marketplace",
+        "created_at": "2026-11-12T19:35:31.999074+00:00"
+      },
+      {
+        "id": "7483febe-8fce-45a5-a1db-e499a4949f49",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "3f3cb9d2-30d8-4a89-a00f-d6e6c68513fe",
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-12T19:35:31.663337+00:00"
+      },
+      {
+        "id": "a0035677-5195-4369-adcd-0ae229d16631",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "1ce0222e-11ef-43d2-9e0b-2401f879f68e",
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-12T19:35:30.931650+00:00"
+      },
+      {
+        "id": "19adc49b-71f3-47d5-8a63-b2d23119adb0",
+        "type": "notification.onboarding_complete",
+        "title": "Your workspace is ready",
+        "body": "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+        "data": {
+          "user_id": "bebab862-19ae-4ccc-ad40-725f9769451e",
+          "startup_id": "10ab376b-c078-4a7f-8f55-31a3a9105e5e"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-12T19:35:29.648202+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

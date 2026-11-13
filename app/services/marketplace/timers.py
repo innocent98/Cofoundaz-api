@@ -4,11 +4,16 @@
 2. A paid booking the expert hasn't answered in 48 hours (or whose slot has started): `expired`
    and the card refunded in full.
 3. Refunds that are due (a request made earlier, or a Paystack outage): retried with backoff.
+4. Fulfilment (slice D): a consultation whose slot ended and was never marked complete becomes
+   `delivered`; a delivery nobody answered by its `auto_release_at` is completed
+   (`auto_released`); a package past its due date is flagged overdue once (a notice only, no
+   state change).
 
 Every booking is row-locked with SKIP LOCKED (a request already working on it wins and the timer
 picks it up next minute), and booking is always locked before its order, as everywhere else."""
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 
 from sqlalchemy import and_, or_
@@ -16,13 +21,13 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.core.logger import log
-from app.db.models.enums import BookingStatus, OrderStatus
+from app.db.models.enums import BookingStatus, ListingType, OrderStatus
 from app.db.models.marketplace import MarketplaceBooking, MarketplaceOrder, MarketplaceProvider
 from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.billing import paystack
-from app.services.marketplace import emails, orders, outbox
+from app.services.marketplace import bookings, closing, deliveries, emails, orders, outbox
 from app.services.marketplace.constants import (
     MAX_REFUND_ATTEMPTS,
     TIMER_BATCH,
@@ -164,7 +169,8 @@ def expire_unanswered(db: Session, t: datetime) -> list[uuid.UUID]:
             entity_id=b.id,
             details={"why": b.closed_reason},
         )
-        event_bus.publish(db, "marketplace.booking.expired", {"booking_id": str(b.id)})
+        event_bus.publish(db, "marketplace.booking.expired", bookings.booking_event(db, b))
+        closing.on_closed(db, b, drop_calendar=True)
         booker = db.get(User, b.booked_by)
         provider = db.get(MarketplaceProvider, b.provider_id)
         if booker is not None:
@@ -199,6 +205,133 @@ def due_refund_ids(db: Session, t: datetime) -> list[uuid.UUID]:
     return [r[0] for r in rows]
 
 
+def _lock_skipping(db: Session, booking_id: uuid.UUID) -> MarketplaceBooking | None:
+    return (
+        db.query(MarketplaceBooking)
+        .filter(MarketplaceBooking.id == booking_id)
+        .with_for_update(skip_locked=True)
+        .first()
+    )
+
+
+def _each(db: Session, ids: list[uuid.UUID], step: Callable[[uuid.UUID], bool], what: str) -> int:
+    """Run `step` for each booking in its own transaction: commit, then send what it queued. One
+    bad booking is logged and skipped, never allowed to stop the rest or the tick."""
+    done = 0
+    for booking_id in ids:
+        try:
+            if step(booking_id):
+                db.commit()
+                outbox.flush(db)
+                done += 1
+            else:
+                db.rollback()
+        except Exception as exc:  # noqa: BLE001 - one bad booking must not stop the rest
+            db.rollback()
+            outbox.discard(db)
+            log.warning(f"marketplace timers: {what} for booking {booking_id} failed: {exc}")
+    return done
+
+
+def deliver_ended_consultations(db: Session, t: datetime) -> int:
+    """A confirmed consultation whose slot ended and that the expert never marked complete."""
+    ids = [
+        r[0]
+        for r in db.query(MarketplaceBooking.id)
+        .filter(
+            MarketplaceBooking.status == BookingStatus.confirmed,
+            MarketplaceBooking.type == ListingType.consultation.value,
+            MarketplaceBooking.ends_at <= t,
+        )
+        .order_by(MarketplaceBooking.ends_at)
+        .limit(TIMER_BATCH)
+        .all()
+    ]
+    db.commit()
+
+    def step(booking_id: uuid.UUID) -> bool:
+        b = _lock_skipping(db, booking_id)
+        if b is None or b.status != BookingStatus.confirmed or b.ends_at is None or b.ends_at > t:
+            return False
+        deliveries.mark_consultation_delivered(db, b, t, actor=None)
+        return True
+
+    return _each(db, ids, step, "consultation hand-over")
+
+
+def release_unanswered_deliveries(db: Session, t: datetime) -> int:
+    """A delivery the founder has neither accepted nor questioned by its deadline."""
+    ids = [
+        r[0]
+        for r in db.query(MarketplaceBooking.id)
+        .filter(
+            MarketplaceBooking.status == BookingStatus.delivered,
+            MarketplaceBooking.auto_release_at <= t,
+        )
+        .order_by(MarketplaceBooking.auto_release_at)
+        .limit(TIMER_BATCH)
+        .all()
+    ]
+    db.commit()
+
+    def step(booking_id: uuid.UUID) -> bool:
+        b = _lock_skipping(db, booking_id)
+        return b is not None and deliveries.auto_release(db, b, t)
+
+    return _each(db, ids, step, "auto-release")
+
+
+def flag_overdue_packages(db: Session, t: datetime) -> int:
+    """A package still in progress past its due date: tell the expert and the founder, once.
+    Nothing else changes; the founder's remedy is to message the expert or report a problem."""
+    ids = [
+        r[0]
+        for r in db.query(MarketplaceBooking.id)
+        .filter(
+            MarketplaceBooking.status == BookingStatus.in_progress,
+            MarketplaceBooking.type == ListingType.package.value,
+            MarketplaceBooking.due_at < t,
+            MarketplaceBooking.overdue_notified_at.is_(None),
+        )
+        .order_by(MarketplaceBooking.due_at)
+        .limit(TIMER_BATCH)
+        .all()
+    ]
+    db.commit()
+
+    def step(booking_id: uuid.UUID) -> bool:
+        b = _lock_skipping(db, booking_id)
+        if (
+            b is None
+            or b.status != BookingStatus.in_progress
+            or b.due_at is None
+            or b.due_at >= t
+            or b.overdue_notified_at is not None
+        ):
+            return False
+        b.overdue_notified_at = t
+        write_audit(
+            db,
+            "marketplace.booking.overdue",
+            startup_id=b.startup_id,
+            entity_type="marketplace_booking",
+            entity_id=b.id,
+            details={"due_at": b.due_at.isoformat()},
+        )
+        event_bus.publish(db, "marketplace.booking.overdue", bookings.booking_event(db, b))
+        provider = db.get(MarketplaceProvider, b.provider_id)
+        if provider is not None:
+            outbox.queue(
+                db,
+                emails.delivery_overdue_email(
+                    provider.email, name=provider.display_name, title=b.title_snap
+                ),
+            )
+        return True
+
+    return _each(db, ids, step, "overdue notice")
+
+
 def tick(db: Session, t: datetime) -> dict[str, int]:
     """One pass. Commits as it goes (state first, then each refund on its own) and sends the
     queued emails only after the commit that made them true."""
@@ -206,6 +339,9 @@ def tick(db: Session, t: datetime) -> dict[str, int]:
     unanswered = expire_unanswered(db, t)
     db.commit()
     outbox.flush(db)
+    consultations = deliver_ended_consultations(db, t)
+    released = release_unanswered_deliveries(db, t)
+    overdue = flag_overdue_packages(db, t)
     refunded = 0
     for order_id in due_refund_ids(db, t):
         try:
@@ -215,4 +351,11 @@ def tick(db: Session, t: datetime) -> dict[str, int]:
         except Exception as exc:  # noqa: BLE001 - one bad refund must not stop the rest
             db.rollback()
             log.warning(f"marketplace timers: refund for order {order_id} failed: {exc}")
-    return {"expired_unpaid": unpaid, "expired_unanswered": len(unanswered), "refunded": refunded}
+    return {
+        "expired_unpaid": unpaid,
+        "expired_unanswered": len(unanswered),
+        "refunded": refunded,
+        "consultations_delivered": consultations,
+        "auto_released": released,
+        "overdue_flagged": overdue,
+    }

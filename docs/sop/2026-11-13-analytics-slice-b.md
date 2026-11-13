@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **What shipped** | Saved reports made of blocks over the metric catalog: 3 template chips, CRUD with an optimistic lock, stateless preview, a run job that stores a frozen snapshot, Founder-granted shares, and two notification kinds. Branch `feature/analytics-slice-b`, migration `0108_analytics_reports` (on `0106_legal`). PR to `develop`, not merged. |
+| **What shipped** | Saved reports made of blocks over the metric catalog: 3 template chips, CRUD with an optimistic lock, stateless preview, a run job that stores a frozen snapshot, Founder-granted shares, and two notification kinds. Branch `feature/analytics-slice-b`, migration `0108_analytics_reports` (on `0107_funding_grants`). PR to `develop`, not merged. |
 | **Date** | 2026-11-13 |
 | **Design** | `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` sections 3, 4, 6, 10, 11 |
 

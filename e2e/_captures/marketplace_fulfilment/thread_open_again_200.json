@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "5c8d4d70-38e6-4b0b-a749-dc4beede847b",
+    "booking_id": null,
+    "booking_title": null,
+    "booking_status": null,
+    "read_only": false,
+    "last_message_at": null,
+    "last_message_preview": null,
+    "unread_count": 0,
+    "created_at": "2026-11-12T19:35:31.773422+00:00",
+    "provider": {
+      "id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+      "display_name": "Ngozi Eze"
+    }
+  },
+  "meta": null
+}

@@ -218,3 +218,13 @@ def test_wording_prompt_forbids_verdicts_and_lists_only_the_raised_flags():
     msgs = build_wording_messages(FLAGS)
     assert "Never say a term is good, bad" in msgs[0].content
     assert msgs[1].content.count("- rule ") == 2
+
+
+def test_quotes_are_unescaped_for_angle_brackets_only():
+    got = clean_extraction(
+        {
+            "pre_money": 100,
+            "quotes": {"pre_money": "valuation &lt;= 5m &amp; terms &gt; none"},
+        }
+    )
+    assert got["quotes"]["pre_money_minor"] == "valuation <= 5m &amp; terms > none"

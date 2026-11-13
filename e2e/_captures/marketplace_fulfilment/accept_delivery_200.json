@@ -1,0 +1,119 @@
+{
+  "data": {
+    "replayed": false,
+    "id": "4aeef8f7-c785-4acb-ac70-027360090b72",
+    "status": "completed",
+    "type": "package",
+    "listing_id": "e637810c-538c-4536-a9cd-1a4204bcf815",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "price_minor": 25000000,
+    "currency": "NGN",
+    "brief": "We need a shareholder agreement drafted before we close our seed round next month.",
+    "starts_at": null,
+    "ends_at": null,
+    "timezone": "Africa/Lagos",
+    "slot_hold_expires_at": null,
+    "accept_by": "2026-11-14T19:35:32.371327+00:00",
+    "due_at": "2026-11-19T19:35:32.533623+00:00",
+    "meeting_url": null,
+    "closed_reason": null,
+    "provider": {
+      "id": "5831d367-8f08-490c-8f63-d1e0d1538a82",
+      "display_name": "Ngozi Eze",
+      "avatar_url": null
+    },
+    "order": {
+      "id": "27160c8b-933d-415b-8400-484694506347",
+      "status": "paid",
+      "amount_minor": 25000000,
+      "currency": "NGN",
+      "reference": "mp_60c0c369479d82153a34",
+      "checkout_url": null,
+      "paid_at": "2026-11-12T19:35:32+00:00",
+      "receipt_number": "MPR-2026-1001",
+      "refunded_minor": 0,
+      "refund_pending_minor": 0
+    },
+    "delivered_at": "2026-11-12T19:35:33.119508+00:00",
+    "auto_release_at": null,
+    "revisions_used": 2,
+    "revisions_left": 0,
+    "calendar_event_id": null,
+    "calendar_ics_url": null,
+    "thread_id": "5c8d4d70-38e6-4b0b-a749-dc4beede847b",
+    "brief_files": [
+      {
+        "id": "2e619859-1048-4fc6-a17f-9cf33b940874",
+        "purpose": "brief",
+        "filename": "seed-terms.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 38,
+        "scan_status": "clean",
+        "created_at": "2026-11-12T19:35:32.150697+00:00",
+        "url": "/api/v1/marketplace/files/2e619859-1048-4fc6-a17f-9cf33b940874/content"
+      }
+    ],
+    "created_at": "2026-11-12T19:35:32.261450+00:00",
+    "deliveries": [
+      {
+        "id": "2d70c48b-7e3e-4737-8d99-2ef4aa27d52a",
+        "round": 1,
+        "message": "First draft attached.",
+        "files": [
+          {
+            "id": "43fe6a97-4fe2-4d0b-8b24-bc260a56276c",
+            "purpose": "delivery",
+            "filename": "shareholder-agreement-v1.pdf",
+            "mime": "application/pdf",
+            "size_bytes": 38,
+            "scan_status": "clean",
+            "created_at": "2026-11-12T19:35:32.730104+00:00",
+            "url": "/api/v1/marketplace/files/43fe6a97-4fe2-4d0b-8b24-bc260a56276c/content"
+          }
+        ],
+        "submitted_at": "2026-11-12T19:35:32.777452+00:00",
+        "decision": "changes_requested",
+        "decision_note": "Please soften clause 4 & add a vesting schedule.",
+        "decided_at": "2026-11-12T19:35:32.980760+00:00"
+      },
+      {
+        "id": "d68425dc-15a0-4dcb-8330-48edb89711ea",
+        "round": 2,
+        "message": "Second draft.",
+        "files": [],
+        "submitted_at": "2026-11-12T19:35:33.044848+00:00",
+        "decision": "changes_requested",
+        "decision_note": "Vesting cliff should be twelve months.",
+        "decided_at": "2026-11-12T19:35:33.087192+00:00"
+      },
+      {
+        "id": "17dbbfca-b740-426f-a024-5170b0517f75",
+        "round": 3,
+        "message": "Third draft.",
+        "files": [],
+        "submitted_at": "2026-11-12T19:35:33.119508+00:00",
+        "decision": "accepted",
+        "decision_note": null,
+        "decided_at": "2026-11-12T19:35:33.220344+00:00"
+      }
+    ],
+    "documents": [
+      {
+        "document_id": "95a3ef9f-dee0-411f-ad1b-43397076a0d9",
+        "title": "Business Plan",
+        "kind": "business_plan",
+        "expires_at": "2026-12-12T19:35:32.629422+00:00",
+        "status": "revoked"
+      }
+    ]
+  },
+  "meta": null
+}

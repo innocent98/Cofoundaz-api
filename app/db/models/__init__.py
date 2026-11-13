@@ -62,6 +62,7 @@ from app.db.models.finance_connection import FinanceConnection, ProviderEvent  #
 from app.db.models.finance_runway import FinanceRunwaySettings  # noqa: F401
 from app.db.models.financial_model import FinancialModel  # noqa: F401
 from app.db.models.funding import FundingRound, Investor, InvestorEvent  # noqa: F401
+from app.db.models.grant import Grant, GrantAnswer, GrantApplication, GrantMatch  # noqa: F401
 from app.db.models.health_score import (  # noqa: F401
     HealthRecommendation,
     HealthScore,
@@ -108,13 +109,17 @@ from app.db.models.marketplace import (  # noqa: E402, F401
     MarketplaceAvailabilityException,
     MarketplaceAvailabilityRule,
     MarketplaceBooking,
+    MarketplaceBookingDocument,
     MarketplaceConsent,
+    MarketplaceDelivery,
     MarketplaceFile,
     MarketplaceLedgerEntry,
     MarketplaceListing,
+    MarketplaceMessage,
     MarketplaceOrder,
     MarketplaceProvider,
     MarketplaceProviderPortfolio,
+    MarketplaceThread,
     MarketplaceWebhookEvent,
 )
 from app.db.models.membership import Membership  # noqa: F401

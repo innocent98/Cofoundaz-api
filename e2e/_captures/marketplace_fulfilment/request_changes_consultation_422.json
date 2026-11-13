@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_APPLICABLE",
+    "message": "Consultations have no revision rounds. Use 'Report a problem' if it went wrong.",
+    "field_errors": []
+  }
+}

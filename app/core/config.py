@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     PAYSTACK_TEST_SECRET_KEY: str | None = None
     # Plan gating is built dark: nothing is blocked until this is switched on (D-SET-3 / D-SAL-11).
     PLAN_ENFORCEMENT: bool = False
+    # Funding is hidden from users (2026-11-12). The weekly grant match spends AI budget and
+    # notifies founders with a link to the hidden page, so it stays off until Adebayo unhides it.
+    # A manual refresh through the API still works, but it never notifies.
+    FUNDING_GRANT_MATCHING_ENABLED: bool = False
     BILLING_TRIAL_DAYS: int = 14
     BILLING_GRACE_DAYS: int = 7
     # Mono bank link (Finance integrations). The secret key and webhook secret belong to the

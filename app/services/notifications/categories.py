@@ -20,6 +20,7 @@ CATEGORIES: tuple[str, ...] = (
     "ai_insights",
     "billing",
     "calendar",
+    "marketplace",
     "legal",
 )
 
@@ -38,6 +39,7 @@ CATEGORY_META: dict[str, tuple[str, str]] = {
     "ai_insights": ("AI & insights", "Your daily briefing and KPI alerts."),
     "billing": ("Billing", "Plan changes and usage."),
     "calendar": ("Calendar", "Meeting reminders."),
+    "marketplace": ("Marketplace", "Bookings, deliveries and messages from experts."),
     "legal": ("Legal & compliance", "Filing deadlines and IP renewals."),
 }
 
@@ -89,6 +91,7 @@ PREFIX_CATEGORY: dict[str, str] = {
     "validation.": "validation",
     "learning.": "academy",
     "billing.": "billing",
+    "marketplace.": "marketplace",
 }
 
 # Email defaults (opt-out model, spec D3) for the five original rows; the rows added later start
@@ -178,6 +181,7 @@ _MODULE_BY_PREFIX: dict[str, str] = {
     "billing": "billing",
     "journal": "journal",
     "ai": "ai",
+    "marketplace": "marketplace",
     "legal": "legal",
 }
 

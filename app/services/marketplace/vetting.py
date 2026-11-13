@@ -59,6 +59,13 @@ REJECT_TEMPLATES: dict[str, str] = {
 }
 
 
+_PROVIDER_FILE_PURPOSES = (
+    MarketplaceFilePurpose.credential,
+    MarketplaceFilePurpose.portfolio,
+    MarketplaceFilePurpose.avatar,
+)
+
+
 def not_self(ctx: StaffContext, row: MarketplaceProvider) -> None:
     """Staff who are also experts can't vet, decide on or reinstate themselves."""
     if row.user_id is not None and row.user_id == ctx.user.id:
@@ -405,7 +412,12 @@ def reject(
         details={"template": template},
     )
     row.review_message = message or REJECT_TEMPLATES[template]
-    erased = retire_files(db, row.user_id) if row.user_id else 0  # NDPA: delete on rejection
+    # NDPA: delete the provider's own vetting material on rejection. Brief/message/delivery files
+    # belong to bookings (this user may have sent them as a founder in their own workspace), so
+    # they are never touched here.
+    erased = (
+        sum(retire_files(db, row.user_id, p) for p in _PROVIDER_FILE_PURPOSES) if row.user_id else 0
+    )
     write_audit(
         db,
         "marketplace.provider.files_erased",

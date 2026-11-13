@@ -1,0 +1,46 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "191b5100-eb31-4a0c-8a9a-dfc14e77bdfc",
+        "score": 95,
+        "why": "Fits your clinic startup, aws-activate.",
+        "ai_scored": true,
+        "state": "applying",
+        "matched_at": "2026-11-13T14:22:19.446083+00:00",
+        "grant": {
+          "id": "63183886-e215-4d02-8122-c66f63a8bd80",
+          "slug": "aws-activate",
+          "name": "AWS Activate",
+          "funder": "Amazon Web Services",
+          "kind": "credits (in-kind)",
+          "in_kind": true,
+          "amount_min": null,
+          "amount_max": {
+            "minor": 20000000,
+            "currency": "USD"
+          },
+          "amount_note": "Up to USD 200,000 in AWS Activate credits, with additional credits for AI startups (page).",
+          "deadline_text": "rolling",
+          "status_text": "open",
+          "closed": false,
+          "regions": "not restricted on the page fetched",
+          "sectors": "any",
+          "stages": "startups (see page)",
+          "eligibility": "Apply through the page.",
+          "source_url": "https://aws.amazon.com/startups/",
+          "verified_on": "2026-11-12",
+          "verification": "verified",
+          "stale": false,
+          "notes": "Credits, not cash."
+        }
+      }
+    ],
+    "refresh": {
+      "status": "idle",
+      "last_run_at": "2026-11-13T14:22:19.646556+00:00"
+    },
+    "disclaimer": "Grant details change. Check the funder's own page before you apply: we show when each row was last checked and link to its source."
+  },
+  "meta": null
+}

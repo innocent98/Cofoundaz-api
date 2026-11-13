@@ -16,7 +16,7 @@ from app.api.provider_deps import ProviderContext, require_provider
 from app.core.envelope import success_response
 from app.core.errors import AppError, FileNotClean
 from app.core.rate_limit import limiter
-from app.db.models.enums import MarketplaceFilePurpose, ScanStatus
+from app.db.models.enums import MarketplaceFilePurpose, ProviderStatus, ScanStatus
 from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.marketplace import (
@@ -27,7 +27,6 @@ from app.schemas.marketplace import (
     ProfilePatch,
 )
 from app.services.marketplace import emails, files, providers
-from app.services.marketplace.constants import MAX_AVATAR_BYTES, MAX_FILE_BYTES
 
 router = APIRouter()
 
@@ -124,9 +123,16 @@ async def upload(
     purpose: Annotated[MarketplaceFilePurpose, Form()],
     file: Annotated[UploadFile, File()],
 ) -> dict[str, Any]:
-    if ctx.provider.status not in providers.UPLOADABLE:
+    if purpose == MarketplaceFilePurpose.brief:
+        raise AppError("VALIDATION_ERROR", "Only a client can upload a brief.", 422)
+    if purpose in files.PROVIDER_UPLOADS:
+        # Work for a client and replies are an approved expert's; a suspended or pending
+        # account can't send anything to a workspace.
+        if ctx.provider.status != ProviderStatus.approved:
+            raise AppError("PROVIDER_NOT_APPROVED", "Your expert profile isn't approved yet.", 403)
+    elif ctx.provider.status not in providers.UPLOADABLE:
         providers.check_editable(ctx.provider)
-    limit = MAX_AVATAR_BYTES if purpose == MarketplaceFilePurpose.avatar else MAX_FILE_BYTES
+    limit = files.size_limit(purpose)
     content = b""
     while chunk := await file.read(_CHUNK):
         content += chunk
@@ -148,7 +154,13 @@ async def upload(
 
 @router.get("/files/{file_id}/content")
 def download(file_id: uuid.UUID, ctx: _Provider, db: _Db) -> Response:
-    row = files.get_owned(db, ctx.user.id, file_id)
+    row = files.readable_by_provider(
+        db,
+        ctx.user.id,
+        ctx.provider.id,
+        file_id,
+        approved=ctx.provider.status == ProviderStatus.approved,
+    )
     if row.scan_status != ScanStatus.clean:
         raise FileNotClean()
     return Response(

@@ -81,7 +81,10 @@ def test_notifications_journey(base_url, make_verified_user, mailbox, unique_ema
         # (`_existing_members`) correctly excludes the joiner (B) and
         # notifies existing members (A) -- see module docstring.
         pw_b = "Ev-" + teammate_email.split("-")[-1].split("@")[0] + "-9"
-        b.post("/api/v1/auth/signup", json={"email": teammate_email, "password": pw_b})
+        b.post(
+            "/api/v1/auth/signup",
+            json={"email": teammate_email, "password": pw_b, "accepted_terms": True},
+        )
         vtok = mailbox.latest_token_for(teammate_email, subject_contains="Verify")
         b.post("/api/v1/auth/verify", json={"token": vtok})
         access_b = b.post(

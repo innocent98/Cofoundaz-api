@@ -1,0 +1,11 @@
+{
+  "data": {
+    "items": [],
+    "refresh": {
+      "status": "queued",
+      "last_run_at": null
+    },
+    "disclaimer": "Grant details change. Check the funder's own page before you apply: we show when each row was last checked and link to its source."
+  },
+  "meta": null
+}

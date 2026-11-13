@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "An amount needs a currency.",
+    "field_errors": [
+      {
+        "field": "currency",
+        "message": "An amount needs a currency."
+      }
+    ]
+  }
+}

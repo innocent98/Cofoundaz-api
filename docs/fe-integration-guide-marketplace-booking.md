@@ -9,7 +9,7 @@ Every body below is pasted from a live run against a real server: `e2e/test_mark
 1. **Founder: book and pay.** From a listing: pick a slot (consultation) or confirm the scope (package) → write a brief → accept the Marketplace terms the first time → pay on Paystack's hosted page (or one click on the workspace's saved card) → the booking waits for the expert.
 2. **Expert: accept or decline** within 48 hours (`/provider/bookings`). No answer in 48 hours, or the consultation slot starts first: the booking expires and a full refund is requested to the card.
 3. **Money rules (all kobo, NGN):** the founder pays exactly the listed price. Cofoundaz keeps 15% from the **expert's** side (or their override); the founder never sees an extra fee. Funds are held until delivery and release, which are slices D and E; this slice only takes payment and refunds.
-4. **Not in this slice:** delivery, messages, "request changes", disputes, payouts, reviews. A booking stops at `confirmed` / `in_progress` here.
+4. **Not in this slice:** delivery, messages, "request changes", disputes, payouts, reviews. A booking stops at `confirmed` / `in_progress` here. **Since slice D** it continues to `delivered` and `completed`, and every booking view carries extra keys (`delivered_at`, `auto_release_at`, `revisions_used`, `revisions_left`, `calendar_event_id`, `calendar_ics_url`, `thread_id`, `brief_files`; the detail view adds `deliveries` and `documents`; the expert view the same minus `revisions_left` and the calendar keys). The bodies in this guide were captured before slice D and do not show them: see `docs/fe-integration-guide-marketplace-fulfilment.md`, which also adds optional `file_ids` to `POST /marketplace/bookings`.
 
 ## Booking state machine
 
@@ -1266,7 +1266,8 @@ Provider: a new paid booking request with the 48-hour deadline. Founder: decline
 - **Tell the founder what a refund means**: "Refunded in full. It can take a few working days to reach your card." Use `refund_pending_minor` to show "refund in progress".
 - **The founder pays the listed price**: never display commission, net or fees to founders; the receipt shows the split only as a breakdown inside the price.
 - **A 404 on a booking or order** means it isn't in this workspace.
-- **Timers are server-side** (the hold, the 48-hour acceptance, refund retries run once a minute); the FE only renders the resulting status and `closed_reason`.
+- **Timers are server-side** (the hold, the 48-hour acceptance, refund retries run once a minute; since slice D also session hand-over, delivery auto-release and overdue notices); the FE only renders the resulting status and `closed_reason`.
+- **An accepted consultation no longer stays `confirmed` for ever:** once its session ends it becomes `delivered`, then `completed` (see the fulfilment guide).
 
 ## Verification table
 

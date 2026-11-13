@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "status",
+        "message": "Input should be 'planning', 'drafting', 'submitted', 'awarded', 'rejected' or 'withdrawn'"
+      }
+    ]
+  }
+}

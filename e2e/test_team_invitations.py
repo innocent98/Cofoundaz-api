@@ -75,7 +75,10 @@ def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email
         capture("team_invitations", "invite_preview", preview)
 
         pw = "Mentor-" + mentor_email.split("@")[0][-8:] + "-9"
-        c.post("/api/v1/auth/signup", json={"email": mentor_email, "password": pw})
+        c.post(
+            "/api/v1/auth/signup",
+            json={"email": mentor_email, "password": pw, "accepted_terms": True},
+        )
         vt = mailbox.latest_token_for(mentor_email, subject_contains="Verify")
         c.post("/api/v1/auth/verify", json={"token": vt})
         mentor = _auth(

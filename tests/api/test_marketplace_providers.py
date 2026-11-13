@@ -911,6 +911,34 @@ def test_reject_erases_credentials_and_tells_the_expert(client, db, moderator, m
     assert client.get(f"{P}/status", headers=hdr(user)).json()["data"]["status"] == "rejected"
 
 
+def test_reject_keeps_files_the_expert_sent_as_a_founder(client, db, moderator, mail):
+    from app.db.models.enums import MarketplaceFilePurpose, ScanStatus
+
+    user, pid = in_review(client, db, moderator, mail)
+    key = f"marketplace/test/{uuid.uuid4()}"
+    get_storage().save_private(key, b"%PDF-1.4\nbrief", "application/pdf")
+    brief = MarketplaceFile(
+        owner_user_id=user.id,
+        purpose=MarketplaceFilePurpose.brief,
+        booking_id=uuid.uuid4(),
+        filename="brief.pdf",
+        mime="application/pdf",
+        size_bytes=14,
+        storage_key=key,
+        scan_status=ScanStatus.clean,
+    )
+    db.add(brief)
+    db.flush()
+    r = staff_post(client, moderator, f"/providers/{pid}/reject", template="other")
+    assert r.status_code == 200, r.text
+    db.refresh(brief)
+    assert brief.deleted_at is None and get_storage().read_private(key) is not None
+    creds = db.query(MarketplaceFile).filter_by(
+        owner_user_id=user.id, purpose=MarketplaceFilePurpose.credential
+    )
+    assert creds.count() >= 1 and all(c.deleted_at is not None for c in creds)
+
+
 def test_suspend_and_unsuspend(client, db, moderator, mail):
     user, pid = approved(client, db, moderator, mail)
     mail.sent.clear()

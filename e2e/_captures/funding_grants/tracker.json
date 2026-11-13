@@ -1,0 +1,70 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "07c1096f-2065-4603-b616-7ae18fcfcbe2",
+        "grant_id": null,
+        "name": "Missed call",
+        "funder": "",
+        "status": "planning",
+        "deadline": "2026-11-10",
+        "expired": true,
+        "amount": null,
+        "notes": null,
+        "submitted_at": null,
+        "created_at": "2026-11-13T14:22:20.210580+00:00",
+        "source_url": null,
+        "catalogue_stale": null,
+        "catalogue_deadline_text": null
+      },
+      {
+        "id": "7ad36588-dc7b-4556-931c-8bea9b9943b5",
+        "grant_id": null,
+        "name": "State innovation fund",
+        "funder": "Lagos State",
+        "status": "planning",
+        "deadline": "2026-12-04",
+        "expired": false,
+        "amount": {
+          "minor": 500000000,
+          "currency": "NGN"
+        },
+        "notes": null,
+        "submitted_at": null,
+        "created_at": "2026-11-13T14:22:20.191018+00:00",
+        "source_url": null,
+        "catalogue_stale": null,
+        "catalogue_deadline_text": null
+      },
+      {
+        "id": "347e5951-0622-4973-979b-609deaac17e2",
+        "grant_id": "63183886-e215-4d02-8122-c66f63a8bd80",
+        "name": "AWS Activate",
+        "funder": "Amazon Web Services",
+        "status": "submitted",
+        "deadline": null,
+        "expired": false,
+        "amount": {
+          "minor": 20000000,
+          "currency": "USD"
+        },
+        "notes": null,
+        "submitted_at": "2026-11-13T14:22:20.230729+00:00",
+        "created_at": "2026-11-13T14:22:19.703487+00:00",
+        "source_url": "https://aws.amazon.com/startups/",
+        "catalogue_stale": false,
+        "catalogue_deadline_text": "rolling"
+      }
+    ],
+    "counts": {
+      "planning": 2,
+      "drafting": 0,
+      "submitted": 1,
+      "awarded": 0,
+      "rejected": 0,
+      "withdrawn": 0
+    },
+    "expired": 1
+  },
+  "meta": null
+}

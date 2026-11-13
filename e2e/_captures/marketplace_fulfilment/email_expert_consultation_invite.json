@@ -1,0 +1,10 @@
+{
+  "to": "delivered+e2e-b625b0d525d9@resend.dev",
+  "subject": "Ada Obi invited you: Contract review session with Ngozi Eze \u00b7 15 Nov 2026",
+  "html": "<p>Ada Obi invited you to a meeting.</p><p><strong>Contract review session with Ngozi Eze</strong><br>Sun 15 Nov 2026, 08:00 (Africa/Lagos)</p><p><a href=\"https://meet.example.com/ngozi-eze\">Join the call</a></p><p>Booked on the Cofoundaz Marketplace.</p>",
+  "sent_at": "2026-11-13T16:30:16.951304+00:00",
+  "attachments": [
+    "invite.ics"
+  ],
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Cofoundaz//Calendar//EN\nCALSCALE:GREGORIAN\nMETHOD:REQUEST\nBEGIN:VEVENT\nUID:91a52a3e-9c3b-48bc-b3c0-2adf5d44118d@cofoundaz.com\nSEQUENCE:0\nDTSTAMP:20261113T163016Z\nDTSTART:20261115T070000Z\nDTEND:20261115T080000Z\nSUMMARY:Contract review session with Ngozi Eze\nSTATUS:CONFIRMED\nORGANIZER;CN=Ada Obi:mailto:no-reply@cofoundaz.com\nATTENDEE;CN=Ngozi Eze;RSVP=TRUE:mailto:delivered+e2e-b625b0d525d9@resend.de\n v\nDESCRIPTION:Booked on the Cofoundaz Marketplace.\\nhttps://meet.example.com/\n ngozi-eze\nURL:https://meet.example.com/ngozi-eze\nEND:VEVENT\nEND:VCALENDAR\n"
+}

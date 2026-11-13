@@ -131,7 +131,10 @@ def test_admin_users_journey(
     ws_id = _onboard(vc, victim, "NovaPay")
     pending_email = unique_email("pending")
     pending_pw = f"Ev-{uuid.uuid4().hex[:12]}-9"
-    r = http.post("/api/v1/auth/signup", json={"email": pending_email, "password": pending_pw})
+    r = http.post(
+        "/api/v1/auth/signup",
+        json={"email": pending_email, "password": pending_pw, "accepted_terms": True},
+    )
     assert r.status_code == 201, r.text
     mails_before = mailbox.count_for(pending_email)
 

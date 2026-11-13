@@ -1,7 +1,7 @@
 """Analytics & Reports slice B: reports, shares and frozen runs
 
 Revision ID: 0108_analytics_reports
-Revises: 0106_legal
+Revises: 0107_funding_grants
 Create Date: 2026-11-13
 
 `analytics_reports` (definition + optimistic-lock `version` + soft delete), `analytics_report_shares`
@@ -19,7 +19,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0108_analytics_reports"
-down_revision = "0106_legal"
+down_revision = "0107_funding_grants"
 branch_labels = None
 depends_on = None
 

@@ -144,15 +144,23 @@ def test_password_reset_revokes_existing_sessions(http: httpx.Client, make_verif
 def test_duplicate_email_409(http: httpx.Client, unique_email):
     email, pw = unique_email(), _pw()
     assert (
-        http.post("/api/v1/auth/signup", json={"email": email, "password": pw}).status_code == 201
+        http.post(
+            "/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True}
+        ).status_code
+        == 201
     )
-    dup = http.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    dup = http.post(
+        "/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True}
+    )
     assert dup.status_code == 409
     assert dup.json()["error"]["code"] == "EMAIL_TAKEN"
 
 
 def test_weak_password_422(http: httpx.Client, unique_email):
-    r = http.post("/api/v1/auth/signup", json={"email": unique_email(), "password": "short"})
+    r = http.post(
+        "/api/v1/auth/signup",
+        json={"email": unique_email(), "password": "short", "accepted_terms": True},
+    )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "WEAK_PASSWORD"
 
@@ -173,7 +181,10 @@ def test_resend_is_throttled_within_60s(
     # Fresh pending user (signup sends email #1).
     email, pw = unique_email(), _pw()
     assert (
-        http.post("/api/v1/auth/signup", json={"email": email, "password": pw}).status_code == 201
+        http.post(
+            "/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True}
+        ).status_code
+        == 201
     )
 
     http.post("/api/v1/auth/verify/resend", json={"email": email})
