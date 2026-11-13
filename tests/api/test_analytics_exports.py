@@ -397,6 +397,24 @@ def test_render_fails_when_requester_lost_access(client, db, team):
     assert row.status == "failed" and "no longer" in row.error and row.file_key is None
     run = db.get(AnalyticsReportRun, row.run_id)
     assert run.status == "pending"  # never resolved for someone who lost access
+    db.query(Membership).filter(Membership.user_id == users[R.team_member].id).update(
+        {Membership.status: MembershipStatus.active}
+    )
+    db.commit()
+    dl = client.get(f"{BASE}/exports/{r['id']}/download", headers=hdr[R.team_member])
+    assert dl.status_code == 409 and dl.json()["error"]["code"] == "EXPORT_FAILED"
+
+
+def test_run_not_ready_409(client, db, team):
+    fo = team[1][R.founder]
+    rep = _report(client, fo, [REVENUE])
+    run = client.post(f"{BASE}/reports/{rep['id']}/run", headers=fo).json()["data"]
+    r = client.post(
+        f"{BASE}/reports/{rep['id']}/export",
+        headers=fo,
+        json={"format": "pdf", "run_id": run["run_id"]},
+    )
+    assert r.status_code == 409 and r.json()["error"]["code"] == "RUN_NOT_READY"
 
 
 def test_double_export_shares_one_pending_run(client, db, team):
