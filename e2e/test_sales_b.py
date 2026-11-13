@@ -59,7 +59,7 @@ def _join(c, wh, ws, role, unique_email, mailbox):
     assert r.status_code == 200, r.text
     token = mailbox.latest_token_for(email, subject_contains="invited")
     pw = f"Ev-{uuid.uuid4().hex[:12]}-9"
-    c.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    c.post("/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True})
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},

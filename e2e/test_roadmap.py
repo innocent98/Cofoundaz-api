@@ -49,7 +49,9 @@ def _wh(c: httpx.Client, auth: dict) -> dict:
 
 
 def _signup_verify_login(c: httpx.Client, mailbox, email: str, password: str) -> dict:
-    c.post("/api/v1/auth/signup", json={"email": email, "password": password})
+    c.post(
+        "/api/v1/auth/signup", json={"email": email, "password": password, "accepted_terms": True}
+    )
     token = mailbox.latest_token_for(email, subject_contains="Verify")
     c.post("/api/v1/auth/verify", json={"token": token})
     access = c.post("/api/v1/auth/login", json={"email": email, "password": password}).json()[

@@ -55,7 +55,7 @@ def _join(c: httpx.Client, wh: dict, role: str, unique_email, mailbox) -> dict:
     assert r.status_code == 200, r.text
     token = mailbox.latest_token_for(email, subject_contains="invited")
     pw = "Member-" + email.split("@")[0][-8:] + "-9"
-    c.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    c.post("/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True})
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},

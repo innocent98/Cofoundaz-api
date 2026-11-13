@@ -38,7 +38,7 @@ def _join(c, wh, ws, role, unique_email, mailbox):
     assert r.status_code == 200, r.text
     token = mailbox.latest_token_for(email, subject_contains="invited")
     pw = "Member-" + email.split("@")[0][-8:] + "-9"
-    c.post("/api/v1/auth/signup", json={"email": email, "password": pw})
+    c.post("/api/v1/auth/signup", json={"email": email, "password": pw, "accepted_terms": True})
     c.post(
         "/api/v1/auth/verify",
         json={"token": mailbox.latest_token_for(email, subject_contains="Verify")},
@@ -328,7 +328,9 @@ def test_documents_library_journey(
 
         # The email grantee signs up AFTER the grant: verified email binds on the first call.
         pw = "Grantee-" + invitee.split("@")[0][-8:] + "-9"
-        _resp = c.post("/api/v1/auth/signup", json={"email": invitee, "password": pw})
+        _resp = c.post(
+            "/api/v1/auth/signup", json={"email": invitee, "password": pw, "accepted_terms": True}
+        )
         assert _resp.status_code in (200, 201)
         c.post(
             "/api/v1/auth/verify",

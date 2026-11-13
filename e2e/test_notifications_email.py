@@ -125,7 +125,10 @@ def test_email_delivery_and_preferences(
         # 2. B signs up, verifies, and accepts the invite -- becomes an
         # ACTIVE member of A's workspace.
         pw_b = "Ev-" + teammate_email.split("-")[-1].split("@")[0] + "-9"
-        b.post("/api/v1/auth/signup", json={"email": teammate_email, "password": pw_b})
+        b.post(
+            "/api/v1/auth/signup",
+            json={"email": teammate_email, "password": pw_b, "accepted_terms": True},
+        )
         vtok = mailbox.latest_token_for(teammate_email, subject_contains="Verify")
         b.post("/api/v1/auth/verify", json={"token": vtok})
         access_b = b.post(

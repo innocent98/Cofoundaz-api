@@ -272,7 +272,10 @@ def test_funding_pipeline_journey(base_url, make_verified_user, capture, mailbox
         assert r.status_code == 200, r.text
         token = mailbox.latest_token_for(mentor_email, subject_contains="invited")
         pw = "Mentor-" + mentor_email.split("@")[0][-8:] + "-9"
-        c.post("/api/v1/auth/signup", json={"email": mentor_email, "password": pw})
+        c.post(
+            "/api/v1/auth/signup",
+            json={"email": mentor_email, "password": pw, "accepted_terms": True},
+        )
         vt = mailbox.latest_token_for(mentor_email, subject_contains="Verify")
         c.post("/api/v1/auth/verify", json={"token": vt})
         mentor = _login(c, {"email": mentor_email, "password": pw})
