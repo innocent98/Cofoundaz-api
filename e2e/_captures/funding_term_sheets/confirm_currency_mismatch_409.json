@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CURRENCY_MISMATCH",
+    "message": "This document states amounts in USD, but your round is in NGN. Convert the amounts, or confirm that they are already in NGN.",
+    "field_errors": []
+  }
+}

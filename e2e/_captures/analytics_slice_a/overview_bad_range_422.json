@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick one of: 7d, 30d, 90d, 12m, this_month, last_month, custom.",
+    "field_errors": [
+      {
+        "field": "range",
+        "message": "Pick one of: 7d, 30d, 90d, 12m, this_month, last_month, custom."
+      }
+    ]
+  }
+}

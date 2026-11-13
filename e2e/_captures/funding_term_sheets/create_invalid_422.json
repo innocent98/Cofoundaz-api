@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Please check the highlighted fields.",
+    "field_errors": [
+      {
+        "field": "terms.liq_pref_x100",
+        "message": "Input should be less than or equal to 2000"
+      }
+    ]
+  }
+}

@@ -177,3 +177,90 @@ def listing_feedback_email(
             expiry_note="Your live listing, if any, is unchanged.",
         ),
     )
+
+
+def booking_request_email(
+    to: str, *, name: str | None, title: str, when: str | None, accept_by: str
+) -> EmailMessage:
+    slot = f" for {escape(when)}" if when else ""
+    return EmailMessage(
+        to=to,
+        subject=f"New booking request: {title}"[:120].replace("\n", " "),
+        html=_render(
+            title="You have a new booking request",
+            intro=(
+                f"{_greet(name)} a founder booked <strong>{escape(title)}</strong>{slot} and has "
+                f"paid. Please accept or decline by {escape(accept_by)}, or the booking expires "
+                "and they are refunded in full."
+            ),
+            cta_label="Open your bookings",
+            action_url=f"{_portal()}/bookings",
+            expiry_note="You have 48 hours to respond.",
+        ),
+    )
+
+
+def payment_problem_email(to: str, *, title: str, kind: str) -> EmailMessage:
+    """To the founder when a checkout can't be settled automatically. `payment_review`: Paystack
+    took a different amount than the price. `unverified`: we couldn't confirm the payment before
+    the hold ran out. Either way: don't pay again, and money is never lost."""
+    name = escape(title)
+    if kind == "payment_review":
+        subject = "We're checking your payment"
+        intro = (
+            f"We received a payment for <strong>{name}</strong> that doesn't match the price, so "
+            "we haven't confirmed the booking and the time has been released. Our team is "
+            "looking at it and will sort it out with you. You don't need to pay again."
+        )
+    else:
+        subject = "We couldn't confirm your payment"
+        intro = (
+            f"We couldn't confirm your payment for <strong>{name}</strong> before the hold ran "
+            "out. If you were charged, we'll either confirm the booking or refund you "
+            "automatically. You don't need to pay again."
+        )
+    return EmailMessage(
+        to=to,
+        subject=subject,
+        html=_render(
+            title=subject,
+            intro=intro,
+            cta_label="View your bookings",
+            action_url=f"{_base_url()}/marketplace/bookings",
+            expiry_note="If you have questions, reply to this email.",
+        ),
+    )
+
+
+def booking_closed_email(to: str, *, provider: str | None, title: str, reason: str) -> EmailMessage:
+    """To the founder when a PAID booking closes. The refund is requested, not yet in their hands,
+    and says so: it goes back to the card they paid with and can take a few working days."""
+    who = escape(provider or "The expert")
+    name = escape(title)
+    tail = (
+        " We've requested a full refund to the card you paid with. It can take a few working "
+        "days to reach you."
+    )
+    if reason == "founder_cancelled":
+        intro = f"You cancelled <strong>{name}</strong>.{tail}"
+        subject = "Your booking was cancelled"
+    elif reason in ("slot_no_longer_available", "booking_closed"):
+        intro = (
+            f"Your payment for <strong>{name}</strong> reached us after that time was taken or "
+            f"the booking had closed, so it can't go ahead.{tail}"
+        )
+        subject = "Your booking could not go ahead"
+    else:
+        intro = f"{who} could not take on <strong>{name}</strong>.{tail}"
+        subject = "Your booking could not go ahead"
+    return EmailMessage(
+        to=to,
+        subject=subject,
+        html=_render(
+            title=subject,
+            intro=intro,
+            cta_label="Browse experts",
+            action_url=f"{_base_url()}/marketplace",
+            expiry_note="You'll see the refund on the booking as soon as it is confirmed.",
+        ),
+    )

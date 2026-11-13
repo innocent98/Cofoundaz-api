@@ -3940,7 +3940,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
 
 ---
 
-## Module 14 — Funding Hub (design accepted 2026-11-05; slices A, B and C built)
+## Module 14 — Funding Hub (design accepted 2026-11-05; slices A, B, C and D built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gaps and D-FUND-1..8 (all accepted):
 `cofoundaz/docs/checklist/funding-prd-gaps.md`. Order: A, B, C, D, E, F, then FE pass, every-control re-walk, unhide with Investor Readiness.
@@ -3973,7 +3973,16 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] Scenarios (snapshots), audit trail with before/after, workspace row lock on every write, round currency locked once amounts exist
   - [x] 147 API tests, live e2e journey, live-captured FE guide
   - [ ] Data room snapshot of the cap table (needs a decision: Documents is open to team members) · "apply this round" to the ledger · SAFE row from a Committed investor (L3 second half)
-- [ ] Slice D: term sheets (deterministic flags, AI extraction + confirm)
+- [x] **Slice D: term sheets** (`feature/funding-term-sheets`, migration `0102_funding_term_sheets`, chained on 0103; SOP `docs/sop/2026-11-07-funding-term-sheets.md`, FE guide `docs/fe-integration-guide-funding-term-sheets.md`) — founder only, PR open 2026-11-07
+  - [x] `term_sheets` (typed or extracted; proposals are not the sheet until confirmed), `term_sheet_audit`
+  - [x] Founder only (D-FUND-5): every other role 403; Scale module gate
+  - [x] Deterministic rules table (D-FUND-6): 7 rules, strict thresholds, unstated terms never flag, fixed wording is never a verdict
+  - [x] PDF extraction job (proposes values + source quotes), confirm step, dedupe by file hash, dead-job reconcile, daily AI allowance
+  - [x] Optional AI wording job that cannot move a number; fixed text always present
+  - [x] Comparison of 2 to 6 confirmed sheets (best and worst per term, derived ownership), audit trail, `funding.term_sheet.added` (founders minus actor)
+  - [x] Round currency also locked by term sheet amounts; slice C lows folded in (carry the previous round's currency; duplicated solver line)
+  - [x] Unit + API tests, live e2e journey (canned model), live-captured FE guide
+  - [ ] "Ask a Legal Advisor to review" is a FE link to Documents e-review · a real model's extraction accuracy not yet exercised
 - [ ] Slice E: grants (curated catalogue, match job, applications)
 - [ ] Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
 - [ ] FE pass (six pages real, unhide the sidebar with Investor Readiness), lead re-walk of every control
@@ -3999,10 +4008,35 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Founder `/marketplace/providers|listings|slots` for founder + team member: approved + active only, allow-list payloads, filters, sort, paging
   - [x] `content_reports` item types `listing` / `provider` / `review`; remove unlists a listing
   - [x] Unit + API tests, migration round trip, live e2e journey, live-captured FE guide
-- [ ] Slice C: booking and checkout (bookings, orders, append-only ledger, Paystack `mp_` references, webhook dispatcher, slot holds, timers, receipts, `MARKETPLACE_PAYMENTS_ENABLED`, ToS consent) — Opus review per task
+- [x] **Slice C: booking and checkout** (`feature/marketplace-booking`, migration `0101_marketplace_booking` on `0102_funding_term_sheets` (re-chained after #235 merged), SOP `docs/sop/2026-11-06-marketplace-booking.md`, FE guide `docs/fe-integration-guide-marketplace-booking.md`; PR open, not merged; **production charging stays off** until counsel and Paystack confirm in writing, D-MP-3/9)
+  - [x] `marketplace_bookings` (snapshots), `marketplace_orders` (CHECK-enforced split and refund bounds), append-only `marketplace_ledger_entries` (trigger), `marketplace_webhook_events`, `marketplace_consents`
+  - [x] Booking with idempotency key, 15-minute slot hold, double-booking protection (expert row lock + slot check + unique index), ToS consent, own-booking guard, saved card
+  - [x] Paystack `mp_` references; signed webhook dispatcher that re-verifies every payment with Paystack; idempotent apply; late-payment revive or auto-refund
+  - [x] Expert accept / decline (48 h), timers (hold, unanswered, refund retry), refunds keyed by Paystack id with lost-answer reconcile, `refund.failed` / `refund.processed`
+  - [x] JSON receipts (not a tax invoice), orders list, `MARKETPLACE_PAYMENTS_ENABLED` switch
+  - [x] Two Opus reviews of the money path, all findings fixed; unit + API + migration + live e2e; live-captured FE guide
+  - [x] Slice B lows: getattr-in-assert hoisted, stale `review` flag dropped
+  - [x] Final Opus review (1 high, 2 medium, 4 low) fixed 2026-11-06: payment mismatch flagged + staff attention queue, retryable webhook (409 / non-2xx), verify-before-expire, signed refund settle, saved-card status handling, second live-charging gate, replay re-check after locks, audit `startup_id`, honest refund email copy; awaiting Lead 24's check of the fix diff and the 0099 re-chain
+  - [x] Round three (Opus fix-check, 2026-11-07): N3 verify failures after a charge → `PAYMENT_UNCONFIRMED`; N1 mismatch closes the checkout (`payment_review`); N2/N4/N6 bounded, per-hold, failure-isolated `expire_unpaid`; L5 consent `ON CONFLICT`; N5 webhook dedupe on both refund ids; SOP contradiction fixed. N2's real Paystack status code is unconfirmed
 - [ ] Slice D: fulfilment and messaging (threads, briefs and Documents grants, deliveries, Calendar event + ICS, auto-release timers, notifications)
 - [ ] Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task
 - [ ] Slice F: reviews, matches, tools and purchases
 - [ ] FE passes FE-1..FE-4 (founder directory/bookings, reviews/purchases/tools, provider portal, Admin queues + Super Admin console), lead every-control re-walk, unhide the sidebar entry last
 - [ ] _Deferred (slice A):_ licence-expiry and yearly re-vet reminder job · counsel's expert terms (replace `draft-2026-11`) · re-apply path for a rejected expert · swap the Documents no-op scanner for a real one before public credential uploads
 
+
+
+## Module 22 — Analytics & Reports (design accepted 2026-11-12; slice A built)
+
+Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
+`cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
+
+- [x] **Slice A: catalog + Overview + custom metrics** (`feature/analytics-slice-a`, migration `0105_analytics_custom_metrics`, chained on 0101; SOP `docs/sop/2026-11-12-analytics-slice-a.md`, FE guide `docs/fe-integration-guide-analytics.md`)
+  - [x] Metric catalog in code (19 platform metrics), per-metric hub authorisation (founder/team all, accountant finance only, others 403)
+  - [x] Resolvers over Finance, Sales, Marketing, Validation, Health, Mission, Roadmap, Funding; periods, comparison, series; 5-minute cache (no_data never cached)
+  - [x] `GET /analytics/overview|by-hub|metrics-catalog`, `POST /analytics/metrics/resolve`, custom metrics CRUD (D-ANA-2 b)
+  - [x] Nightly point-metric snapshot into `kpi_snapshots`; rule-based Working/Watch notes
+  - [x] 30 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus D-ANA-4 review 2026-11-12: no critical/high/medium, lows fixed (custom-key oracle, date bounds, rate limit, no_data cache, TM captures)
+  - [ ] Plan gate exercised with `PLAN_ENFORCEMENT` on · nightly snapshot seen live · workspace timezone
+- [ ] Slice B: reports (definitions, templates, shares, runs, preview) · [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
+- [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

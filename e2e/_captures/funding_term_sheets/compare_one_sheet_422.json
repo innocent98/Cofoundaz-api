@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick between 2 and 6 term sheets.",
+    "field_errors": [
+      {
+        "field": "ids",
+        "message": "Pick between 2 and 6 term sheets."
+      }
+    ]
+  }
+}

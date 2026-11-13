@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "INVALID_STATE",
+    "message": "Can't accept a booking that is 'confirmed'.",
+    "field_errors": []
+  }
+}

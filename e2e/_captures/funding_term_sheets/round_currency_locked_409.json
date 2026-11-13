@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "CAP_TABLE_HAS_AMOUNTS",
+    "message": "Your cap table or term sheets already have amounts in NGN. Clear them before changing the currency.",
+    "field_errors": []
+  }
+}

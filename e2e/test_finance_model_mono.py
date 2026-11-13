@@ -257,7 +257,7 @@ def test_finance_model_and_mono_journey(
         ps = c.post(
             f"{API}/finance/integrations/paystack/connect",
             headers=wh,
-            json={"secret_key": f"sk_test_{uuid.uuid4().hex}"},
+            json={"secret_key": f"sk_test_{uuid.uuid4().hex.replace('b', 'c')}"},
         )
         assert ps.status_code == 200, ps.text
         # ...and its charges must be in the ledger for a payout to be explained.

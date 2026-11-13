@@ -4,7 +4,9 @@ from app.api.v1.endpoints import (
     admin,
     admin_marketplace,
     admin_marketplace_listings,
+    admin_marketplace_orders,
     ai,
+    analytics,
     assessments,
     billing,
     business,
@@ -18,6 +20,7 @@ from app.api.v1.endpoints import (
     funding_cap_table,
     funding_data_room,
     funding_data_room_public,
+    funding_term_sheets,
     health,
     health_score,
     invitations,
@@ -27,11 +30,13 @@ from app.api.v1.endpoints import (
     legal,
     marketing,
     marketplace,
+    marketplace_bookings,
     mission,
     notifications,
     payment_webhooks,
     platform_status,
     provider,
+    provider_bookings,
     provider_listings,
     readiness,
     reports,
@@ -70,11 +75,13 @@ api_router.include_router(assessments.router, prefix="/assessments", tags=["asse
 api_router.include_router(health_score.router, prefix="/health-score", tags=["health-score"])
 api_router.include_router(readiness.router, prefix="/readiness", tags=["readiness"])
 api_router.include_router(funding.router, prefix="/funding", tags=["funding"])
+api_router.include_router(funding_term_sheets.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_cap_table.router, prefix="/funding", tags=["funding"])
 api_router.include_router(funding_data_room.router, prefix="/funding", tags=["funding"])
 api_router.include_router(
     funding_data_room_public.router, prefix="/funding", tags=["funding-data-room-public"]
 )
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
@@ -117,9 +124,17 @@ api_router.include_router(
     tags=["admin-marketplace"],
     include_in_schema=False,
 )
+api_router.include_router(
+    admin_marketplace_orders.router,
+    prefix="/admin/marketplace",
+    tags=["admin-marketplace"],
+    include_in_schema=False,
+)
 api_router.include_router(provider.router, prefix="/provider", tags=["provider"])
 api_router.include_router(provider_listings.router, prefix="/provider", tags=["provider"])
+api_router.include_router(provider_bookings.router, prefix="/provider", tags=["provider"])
 api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
+api_router.include_router(marketplace_bookings.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
 )

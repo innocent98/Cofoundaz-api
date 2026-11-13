@@ -705,3 +705,13 @@ def test_slow_converging_safe_is_solved_and_overpowered_safe_is_explained(client
     bad = client.post(f"{CT}/model", json=body, headers=founder)
     assert bad.status_code == 422 and bad.json()["error"]["code"] == "CONVERSION_DID_NOT_SETTLE"
     assert "own all of the company" in bad.json()["error"]["message"]
+
+
+def test_a_next_round_without_a_currency_carries_the_previous_one_over(client, founder, table):
+    client.put(f"{BASE}/round", json={"currency": "USD"}, headers=founder)
+    angel = holder(client, founder, "Angel", "investor")
+    entry(client, founder, angel["id"], security="safe", shares=None, amount_minor=1_000_000)
+    client.put(f"{BASE}/round", json={"status": "closed"}, headers=founder)
+    r = client.put(f"{BASE}/round", json={"name": "Series A"}, headers=founder)
+    assert r.status_code == 200 and r.json()["data"]["currency"] == "USD"
+    assert client.get(CT, headers=founder).json()["data"]["currency"] == "USD"

@@ -2,7 +2,15 @@ import uuid
 from datetime import date, time
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from app.schemas.staff import Reason, TotpCode
 
@@ -225,3 +233,14 @@ class ListingRejectRequest(_Strict):
 
 class ListingChangesRequest(_Strict):
     message: Message
+
+
+# ---------------------------------------------------------------- slice C: booking and checkout
+
+
+class BookingCreate(_Strict):
+    listing_id: uuid.UUID
+    starts_at: AwareDatetime | None = None  # consultations only; must carry a UTC offset
+    brief: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=4000)]
+    accept_terms: bool = False
+    pay_with: Literal["card", "saved_card"] = "card"

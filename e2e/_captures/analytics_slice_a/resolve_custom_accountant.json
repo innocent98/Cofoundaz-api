@@ -1,0 +1,12 @@
+{
+  "data": {
+    "metrics": [
+      {
+        "key": "custom.active_users",
+        "status": "unknown",
+        "message": "Metric no longer available."
+      }
+    ]
+  },
+  "meta": null
+}

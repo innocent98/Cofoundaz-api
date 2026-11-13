@@ -70,6 +70,7 @@ FUNDING_ROLES: frozenset[MembershipRole] = frozenset(
 # D-FUND-5: equity is the most sensitive data in the product, so the cap table (and term sheets) are
 # founder only. Team members get 403, as does every other role.
 CAP_TABLE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
+TERM_SHEET_ROLES: frozenset[MembershipRole] = CAP_TABLE_ROLES  # D-FUND-5: offers are founder only
 SALES_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
@@ -799,3 +800,47 @@ class Recurrence(enum.StrEnum):
     monthly = "monthly"
     quarterly = "quarterly"
     annually = "annually"
+
+
+# Marketplace (slice C): only a founder books and pays (D-MP-L1); founder and team member read.
+MARKETPLACE_WRITE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
+
+
+class BookingStatus(enum.StrEnum):
+    """Design §5 state machine. Slice C moves a booking through `pending_payment`,
+    `awaiting_provider`, `confirmed` / `in_progress` and the closed states `declined`, `expired`,
+    `cancelled`; delivery, disputes and completion arrive in slices D and E."""
+
+    pending_payment = "pending_payment"
+    awaiting_provider = "awaiting_provider"
+    confirmed = "confirmed"
+    in_progress = "in_progress"
+    delivered = "delivered"
+    disputed = "disputed"
+    completed = "completed"
+    refunded = "refunded"
+    partially_refunded = "partially_refunded"
+    cancelled = "cancelled"
+    declined = "declined"
+    expired = "expired"
+
+
+class OrderStatus(enum.StrEnum):
+    pending = "pending"
+    paid = "paid"
+    held = "held"
+    released = "released"
+    refunded = "refunded"
+    partially_refunded = "partially_refunded"
+    failed = "failed"
+
+
+class LedgerKind(enum.StrEnum):
+    charge = "charge"
+    release = "release"
+    commission = "commission"
+    refund = "refund"
+    payout = "payout"
+    payout_reversal = "payout_reversal"
+    chargeback = "chargeback"
+    adjustment = "adjustment"

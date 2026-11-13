@@ -1,0 +1,28 @@
+{
+  "data": {
+    "orders": [
+      {
+        "id": "7fc543cd-a258-42a8-9411-7ba2e80c207f",
+        "status": "paid",
+        "amount_minor": 1000000,
+        "currency": "NGN",
+        "reference": "mp_73a2d9dce9a635530038",
+        "checkout_url": null,
+        "paid_at": "2026-11-06T21:29:11+00:00",
+        "receipt_number": "MPR-2026-1001",
+        "refunded_minor": 0,
+        "refund_pending_minor": 0,
+        "booking_id": "da1e156d-cfb8-482e-8d23-4fd870307cbb",
+        "title": "Contract review session",
+        "provider_id": "e2501910-33e3-4964-9454-9d1032ead0c1"
+      }
+    ],
+    "pagination": {
+      "total": 1,
+      "limit": 25,
+      "offset": 0,
+      "has_more": false
+    }
+  },
+  "meta": null
+}
