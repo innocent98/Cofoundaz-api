@@ -89,8 +89,8 @@ def test_members_list_has_join_and_last_active(client, db):
     assert mentor_row["last_active_at"] is None
     as_founder = client.get(f"{T}/members", headers=headers(u[F], s)).json()["data"]
     assert next(r for r in as_founder if r["user_id"] == str(u[M].id))["last_active_at"]
-    as_mentor = client.get(f"{T}/members", headers=headers(u[M], s)).json()["data"]
-    assert all(r["last_active_at"] is None for r in as_mentor)
+    as_member = client.get(f"{T}/members", headers=headers(u[TM], s)).json()["data"]
+    assert all(r["last_active_at"] is None for r in as_member)
 
 
 # ---------------------------------------------------------------- change role
@@ -247,7 +247,8 @@ def test_removed_member_can_be_invited_back(client, db, mail):
     db.expire_all()
     m = db.query(Membership).filter_by(user_id=u[TM].id, startup_id=s.id).one()
     assert m.status == MembershipStatus.active and m.role == MembershipRole.mentor
-    assert client.get(f"{T}/members", headers=headers(u[TM], s)).status_code == 200
+    # Back in as a mentor: workspace reads work again (the member list itself is founder + TM only).
+    assert client.get(f"{T}/comments/threads", headers=headers(u[TM], s)).status_code == 200
 
 
 # ---------------------------------------------------------------- invitations
@@ -525,3 +526,19 @@ def test_demoting_a_founder_revokes_the_invitations_they_sent(client, db, mail):
         db.query(Invitation).filter_by(email="y@example.com").one().status
         == InvitationStatus.revoked
     )
+
+
+@pytest.mark.parametrize("role", list(MembershipRole))
+def test_members_list_is_founder_and_team_member_only(client, db, role):
+    """GET /team/members carries every member's e-mail: only founder and team member may read it."""
+    s, u = team(db)
+    db.commit()
+    r = client.get(f"{T}/members", headers=headers(u[role], s))
+    if role in (F, TM):
+        assert r.status_code == 200, r.text
+        assert {m["role"] for m in r.json()["data"]} == {x.value for x in MembershipRole}
+    else:
+        assert r.status_code == 403, r.text
+        body = r.json()
+        assert body["error"]["code"] == "FORBIDDEN"
+        assert "@" not in r.text.replace(u[role].email, "")

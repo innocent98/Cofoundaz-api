@@ -62,6 +62,10 @@ def test_team_manage_journey(base_url, make_verified_user, mailbox, unique_email
         members = {m["email"]: m for m in r.json()["data"]}
         assert members[b["email"]]["role"] == "mentor"
         capture(g, "members", r)
+        # Directory carries every e-mail: a mentor gets 403 (founder + team member only).
+        denied = c.get(f"{t}/members", headers=bh)
+        assert denied.status_code == 403, denied.text
+        capture(g, "members_mentor_403", denied)
         b_id = members[b["email"]]["user_id"]
 
         # Meeting attendee e-mails: the invited mentor sees names, never addresses.

@@ -13,7 +13,7 @@ errors are `{"error": {"code", "message", "field_errors": []}}`.
 
 | Route | Founder | Everyone else |
 |---|---|---|
-| `GET /members` | yes | yes (read-only; used by pickers) |
+| `GET /members` | yes | team member: yes (read-only; pickers). Mentor, business consultant, accountant, investor, legal advisor: 403 `FORBIDDEN` (the list carries every member's e-mail) |
 | `PATCH /members/{user_id}` (role), `DELETE /members/{user_id}` (remove) | yes | 403 `FORBIDDEN` |
 | `POST /leave` | yes (not the last founder) | yes |
 | `GET /invitations`, `POST /invitations`, `POST /invitations/{id}/resend`, `DELETE /invitations/{id}` | yes | 403 |
@@ -26,6 +26,21 @@ errors are `{"error": {"code", "message", "field_errors": []}}`.
 
 Active members only, A to Z by name. **`name` can be `null`** (someone who signed up and never set a name): show the email instead. `joined_at`
 is when they joined this workspace; `last_active_at` is their most recent sign-in (any workspace) and is **only returned to founders** (`null` for every other role and for someone who never signed in): show "never" for null only on a founder's screen, and hide the column for other roles. The row with your own `user_id` is "you".
+**Other roles get 403 (Adebayo, 2026-11-12).** The list carries every member's e-mail, so only founder and team member may read it. A mentor, business consultant,
+accountant, investor or legal advisor gets (verbatim from `e2e/_captures/team_manage/members_mentor_403.json`, live run):
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to do that.",
+    "field_errors": []
+  }
+}
+```
+
+Do not call `GET /members` for those roles (pickers and @-mention lists must degrade to "no suggestions"), and treat a 403 here as empty, not as an error toast.
+
 Pending invitations are a separate list (section 3): render them as "invite pending" rows after the members.
 
 ```json
