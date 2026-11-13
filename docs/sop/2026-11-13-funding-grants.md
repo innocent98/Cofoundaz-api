@@ -1,6 +1,6 @@
 # Funding Hub: grants (slice E)
 
-**What shipped:** the API behind the Funding Hub **Grants** page (PRD 14.6): a human-verified catalogue of grants, credits and programmes; a weekly match job (plain filter, then the model scores the best ten); dismiss and "not relevant" that persist; **Start application** with starter questions; **Draft with AI** per question; an application tracker with statuses and deadlines; and grants added by hand. Founder and team member, API only. FE guide `docs/fe-integration-guide-funding-grants.md`. Branch `feature/funding-grants`. Migration **`0107_funding_grants`** (parent `0105_analytics_custom_metrics`; 0104 Marketplace D and 0106 Legal are reserved, so the lead re-chains at merge time). The module stays **hidden** in the sidebar (decision 2026-11-12).
+**What shipped:** the API behind the Funding Hub **Grants** page (PRD 14.6): a human-verified catalogue of grants, credits and programmes; a weekly match job (plain filter, then the model scores the best ten); dismiss and "not relevant" that persist; **Start application** with starter questions; **Draft with AI** per question; an application tracker with statuses and deadlines; and grants added by hand. Founder and team member, API only. FE guide `docs/fe-integration-guide-funding-grants.md`. Branch `feature/funding-grants`. Migration **`0107_funding_grants`** (parent `0106_legal`; 0104 Marketplace D is reserved, so the lead re-chains if it lands first). The module stays **hidden** in the sidebar (decision 2026-11-12).
 
 **Why:** the mock had a fixed list of grants and no way to track an application (PRD 14.6). Design and calls: `docs/superpowers/specs/2026-11-05-funding-hub-design.md`; D-FUND-7 (match job, catalogue is curated by people, the model never invents a grant). The catalogue was drafted and checked by hand in PR #237 (`docs/funding/grants-catalogue-draft.csv`, approved by Adebayo 2026-11-13).
 
@@ -35,7 +35,7 @@
 
 **Verification:** lint, format and mypy clean; touched test files green locally (grants API 32, catalogue 5, migration 5, term sheets 133 incl. the four lows, notification audience map); migration upgrade, downgrade, upgrade round trip on a scratch database; live e2e journey against a running server (canned model) whose responses are the captures behind the FE guide. The full suite runs on CI.
 
-**Operate / roll back:** the deploy `migrate` step loads the catalogue after `alembic upgrade head`. To change the catalogue edit the CSV and deploy. Roll back with `alembic downgrade 0105_analytics_custom_metrics` (drops the four tables); the catalogue file can stay. Matching needs a worker running; with no model configured the plain scores are used.
+**Operate / roll back:** the deploy `migrate` step loads the catalogue after `alembic upgrade head`. To change the catalogue edit the CSV and deploy. Roll back with `alembic downgrade 0106_legal` (drops the four tables); the catalogue file can stay. Matching needs a worker running; with no model configured the plain scores are used.
 
 **Follow-ups**
 

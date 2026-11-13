@@ -1,15 +1,15 @@
 """Funding Hub slice E: grants catalogue, matches, applications
 
 Revision ID: 0107_funding_grants
-Revises: 0105_analytics_custom_metrics
+Revises: 0106_legal
 Create Date: 2026-11-13
 
 Adds `grants` (shared catalogue, imported from content/funding), `grant_matches` (weekly
 suggestions per workspace), `grant_applications` (the tracker) and `grant_application_answers`
 (per question drafts). Downgrade drops all four.
 
-CHAIN NOTE: chained on 0105; 0104 (Marketplace D) and 0106 (Legal) are reserved, so the lead
-re-chains this one at merge time.
+CHAIN NOTE: chained on 0106_legal; 0104 (Marketplace D) is reserved, so the lead re-chains this one
+if it lands first.
 """
 
 import sqlalchemy as sa
@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision = "0107_funding_grants"
-down_revision = "0105_analytics_custom_metrics"
+down_revision = "0106_legal"
 branch_labels = None
 depends_on = None
 
