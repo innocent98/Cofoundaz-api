@@ -122,6 +122,7 @@ CRITICAL_TYPES: frozenset[str] = frozenset(
         "finance.invoice.overdue",
         "document.signature.requested",
         "sales.sending.paused",
+        "legal.compliance.overdue",
     }
 )
 
@@ -146,6 +147,9 @@ FILTER_TYPES: dict[str, frozenset[str]] = {
             "roadmap.milestone.overdue",
             "finance.invoice.overdue",
             "assessment.quarterly.due",
+            "legal.compliance.due_soon",
+            "legal.compliance.overdue",
+            "legal.ip.renewal_due_soon",
         }
     ),
 }

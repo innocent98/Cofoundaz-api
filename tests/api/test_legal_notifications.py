@@ -159,3 +159,26 @@ def test_legal_email_can_be_switched_on_explicitly(client, db):
     assert r.status_code == 200, r.text
     assert r.json()["data"]["categories"]["legal"] is True
     assert datetime.now(UTC).year >= 2026
+
+
+# --- D-LEG-6: the overdue filing is critical, all three sit in the Deadlines chip ---------------
+
+
+def test_compliance_overdue_is_a_locked_on_critical_type():
+    from app.services.notifications.categories import CRITICAL_TYPES, is_critical
+
+    assert "legal.compliance.overdue" in CRITICAL_TYPES
+    assert is_critical("legal.compliance.overdue")
+    # A due-soon nudge and a renewal reminder stay switchable.
+    assert "legal.compliance.due_soon" not in CRITICAL_TYPES
+    assert "legal.ip.renewal_due_soon" not in CRITICAL_TYPES
+
+
+def test_every_legal_event_is_in_the_deadlines_inbox_filter():
+    from app.services.notifications.categories import FILTER_TYPES
+
+    assert {
+        "legal.compliance.due_soon",
+        "legal.compliance.overdue",
+        "legal.ip.renewal_due_soon",
+    } <= FILTER_TYPES["deadlines"]
