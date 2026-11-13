@@ -1582,6 +1582,15 @@ workspace has one founder, so nobody else is notified (unit-tested with a second
 
 ## 10. Currency
 
+> **Update 2026-11-13 (slice E, #235 lows):** while the workspace has **no round yet**, there is no round
+> currency to compare with, so a document in another currency is **not** a mismatch:
+> `currency_mismatch` is `false` and `round_currency` is `null` (the list's `currency` still shows the
+> NGN default). Create the round first if the founder must be warned. Verified by a unit test
+> (`test_no_round_means_no_currency_mismatch`); the captures below pre-date the change and were taken
+> with a round present. Also: more than 50 failed extractions in a workspace returns 422 "Too many failed
+> extractions. Delete some of them, then try again." until some are deleted.
+
+
 capture `round_currency_locked_409`
 ```json
 {

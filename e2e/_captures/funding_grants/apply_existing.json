@@ -1,0 +1,82 @@
+{
+  "data": {
+    "id": "347e5951-0622-4973-979b-609deaac17e2",
+    "grant_id": "63183886-e215-4d02-8122-c66f63a8bd80",
+    "name": "AWS Activate",
+    "funder": "Amazon Web Services",
+    "status": "planning",
+    "deadline": null,
+    "expired": false,
+    "amount": {
+      "minor": 20000000,
+      "currency": "USD"
+    },
+    "notes": null,
+    "submitted_at": null,
+    "created_at": "2026-11-13T14:22:19.703487+00:00",
+    "source_url": "https://aws.amazon.com/startups/",
+    "catalogue_stale": false,
+    "catalogue_deadline_text": "rolling",
+    "answers": [
+      {
+        "id": "ebacb1f2-c3f7-4c19-8951-18236ad3b7b7",
+        "position": 0,
+        "question": "What problem are you solving, and for whom?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "f16bf9bf-998c-4e38-884f-6e2fdd81c6b1",
+        "position": 1,
+        "question": "What traction do you have so far?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "da2ab245-faa4-4f1f-8271-681a76b77cc7",
+        "position": 2,
+        "question": "How would you use the funding?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      },
+      {
+        "id": "8629d923-8838-40b7-80ad-d93a0ab6d59a",
+        "position": 3,
+        "question": "Who is on the team, and why are you the right people?",
+        "answer": "",
+        "ai_drafted": false,
+        "draft_status": null
+      }
+    ],
+    "grant": {
+      "id": "63183886-e215-4d02-8122-c66f63a8bd80",
+      "slug": "aws-activate",
+      "name": "AWS Activate",
+      "funder": "Amazon Web Services",
+      "kind": "credits (in-kind)",
+      "in_kind": true,
+      "amount_min": null,
+      "amount_max": {
+        "minor": 20000000,
+        "currency": "USD"
+      },
+      "amount_note": "Up to USD 200,000 in AWS Activate credits, with additional credits for AI startups (page).",
+      "deadline_text": "rolling",
+      "status_text": "open",
+      "closed": false,
+      "regions": "not restricted on the page fetched",
+      "sectors": "any",
+      "stages": "startups (see page)",
+      "eligibility": "Apply through the page.",
+      "source_url": "https://aws.amazon.com/startups/",
+      "verified_on": "2026-11-12",
+      "verification": "verified",
+      "stale": false,
+      "notes": "Credits, not cash."
+    }
+  },
+  "meta": null
+}
