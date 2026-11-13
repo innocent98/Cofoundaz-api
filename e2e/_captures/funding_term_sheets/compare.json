@@ -2,15 +2,15 @@
   "data": {
     "columns": [
       {
-        "id": "36aafb75-d143-4a40-ae95-44f56669e374",
+        "id": "e0f8a6af-cf6d-4640-9313-2b5a147083ca",
         "label": "Alpha Ventures",
-        "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
+        "investor_id": "68d26ba1-c666-459e-9598-2ed5e8820341",
         "investor_name": "Tolu Bello",
         "stage": "seed",
         "flag_count": 0
       },
       {
-        "id": "231715be-e4fd-4e0d-9905-7c960b52fb41",
+        "id": "336a8b06-4356-4761-bf29-af764aefa4fa",
         "label": "Beta Capital",
         "investor_id": null,
         "investor_name": null,
@@ -18,9 +18,9 @@
         "flag_count": 7
       },
       {
-        "id": "52618e87-d4c9-481f-a35b-8698674d4962",
+        "id": "a0dd31ae-4e75-4153-91de-3b26fe292081",
         "label": "Gamma Partners",
-        "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
+        "investor_id": "68d26ba1-c666-459e-9598-2ed5e8820341",
         "investor_name": "Tolu Bello",
         "stage": "seed",
         "flag_count": 4
@@ -33,16 +33,16 @@
         "unit": "money",
         "better": "higher",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 40000000000,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 50000000000,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 40000000000
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 40000000000,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 50000000000,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 40000000000
         },
         "best": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41"
+          "336a8b06-4356-4761-bf29-af764aefa4fa"
         ],
         "worst": [
-          "36aafb75-d143-4a40-ae95-44f56669e374",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "a0dd31ae-4e75-4153-91de-3b26fe292081",
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ]
       },
       {
@@ -51,9 +51,9 @@
         "unit": "money",
         "better": null,
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 10000000000,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 10000000000,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 10000000000
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 10000000000,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 10000000000,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 10000000000
         },
         "best": [],
         "worst": []
@@ -64,9 +64,9 @@
         "unit": "money",
         "better": null,
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 50000000000,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 60000000000,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 50000000000
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 50000000000,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 60000000000,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 50000000000
         },
         "best": [],
         "worst": []
@@ -77,16 +77,16 @@
         "unit": "bps",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 2000,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 1667,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 2000
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 2000,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 1667,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 2000
         },
         "best": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41"
+          "336a8b06-4356-4761-bf29-af764aefa4fa"
         ],
         "worst": [
-          "36aafb75-d143-4a40-ae95-44f56669e374",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "a0dd31ae-4e75-4153-91de-3b26fe292081",
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ]
       },
       {
@@ -95,15 +95,15 @@
         "unit": "bps",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 1000,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 1800,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 1250
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 1000,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 1800,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 1250
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41"
+          "336a8b06-4356-4761-bf29-af764aefa4fa"
         ]
       },
       {
@@ -112,16 +112,16 @@
         "unit": "multiple_x100",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 100,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 200,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 200
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 100,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 200,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 200
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "336a8b06-4356-4761-bf29-af764aefa4fa",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081"
         ]
       },
       {
@@ -130,16 +130,16 @@
         "unit": "bool",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": false,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": true,
-          "52618e87-d4c9-481f-a35b-8698674d4962": true
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": false,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": true,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": true
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "336a8b06-4356-4761-bf29-af764aefa4fa",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081"
         ]
       },
       {
@@ -148,9 +148,9 @@
         "unit": "multiple_x100",
         "better": null,
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": null,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 300,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 300
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": null,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 300,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 300
         },
         "best": [],
         "worst": []
@@ -161,16 +161,16 @@
         "unit": "count",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 1,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 2,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 1
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 1,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 2,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 1
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "a0dd31ae-4e75-4153-91de-3b26fe292081",
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41"
+          "336a8b06-4356-4761-bf29-af764aefa4fa"
         ]
       },
       {
@@ -179,9 +179,9 @@
         "unit": "count",
         "better": "higher",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 2,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": null,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 2
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 2,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": null,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 2
         },
         "best": [],
         "worst": []
@@ -192,16 +192,16 @@
         "unit": "enum",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": "standard",
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": "super",
-          "52618e87-d4c9-481f-a35b-8698674d4962": "super"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": "standard",
+          "336a8b06-4356-4761-bf29-af764aefa4fa": "super",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": "super"
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "336a8b06-4356-4761-bf29-af764aefa4fa",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081"
         ]
       },
       {
@@ -210,15 +210,15 @@
         "unit": "days",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": 30,
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": 60,
-          "52618e87-d4c9-481f-a35b-8698674d4962": 45
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": 30,
+          "336a8b06-4356-4761-bf29-af764aefa4fa": 60,
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": 45
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41"
+          "336a8b06-4356-4761-bf29-af764aefa4fa"
         ]
       },
       {
@@ -227,22 +227,22 @@
         "unit": "enum",
         "better": "lower",
         "values": {
-          "36aafb75-d143-4a40-ae95-44f56669e374": "broad_based",
-          "231715be-e4fd-4e0d-9905-7c960b52fb41": "full_ratchet",
-          "52618e87-d4c9-481f-a35b-8698674d4962": "full_ratchet"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca": "broad_based",
+          "336a8b06-4356-4761-bf29-af764aefa4fa": "full_ratchet",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081": "full_ratchet"
         },
         "best": [
-          "36aafb75-d143-4a40-ae95-44f56669e374"
+          "e0f8a6af-cf6d-4640-9313-2b5a147083ca"
         ],
         "worst": [
-          "231715be-e4fd-4e0d-9905-7c960b52fb41",
-          "52618e87-d4c9-481f-a35b-8698674d4962"
+          "336a8b06-4356-4761-bf29-af764aefa4fa",
+          "a0dd31ae-4e75-4153-91de-3b26fe292081"
         ]
       }
     ],
     "flags": {
-      "36aafb75-d143-4a40-ae95-44f56669e374": [],
-      "231715be-e4fd-4e0d-9905-7c960b52fb41": [
+      "e0f8a6af-cf6d-4640-9313-2b5a147083ca": [],
+      "336a8b06-4356-4761-bf29-af764aefa4fa": [
         {
           "rule": "liq_pref_above_1x",
           "term": "liq_pref_x100",
@@ -307,7 +307,7 @@
           "threshold": "broad-based weighted average"
         }
       ],
-      "52618e87-d4c9-481f-a35b-8698674d4962": [
+      "a0dd31ae-4e75-4153-91de-3b26fe292081": [
         {
           "rule": "liq_pref_above_1x",
           "term": "liq_pref_x100",

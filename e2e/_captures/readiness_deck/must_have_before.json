@@ -234,6 +234,16 @@
             "score": 0.0,
             "value": 0.0,
             "target": 10
+          },
+          {
+            "key": "financials.use_of_funds",
+            "href": "/investor-readiness/narrative",
+            "note": "You have not said what the money is for. Add a use of funds breakdown to your narrative or deck and run a narrative check.",
+            "unit": "step",
+            "label": "Use of funds defined",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 1
           }
         ]
       },
@@ -262,6 +272,26 @@
             "score": 0.0,
             "value": 0.0,
             "target": 7
+          },
+          {
+            "key": "story.mock_qa",
+            "href": "/investor-readiness/qa",
+            "note": "You have not rehearsed an investor Q&A yet. Run a mock session.",
+            "unit": "/5",
+            "label": "Defended the pitch (mock Q&A rating, out of 5)",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 3.5
+          },
+          {
+            "key": "story.narrative",
+            "href": "/investor-readiness/narrative",
+            "note": "You have not checked your narrative against your numbers yet. Run a narrative check.",
+            "unit": "step",
+            "label": "Narrative consistent with the numbers",
+            "score": 0.0,
+            "value": 0.0,
+            "target": 2
           },
           {
             "key": "story.investor_plan",
@@ -312,7 +342,7 @@
     "gaps": [
       {
         "href": "/finance/model",
-        "lift": 13,
+        "lift": 10,
         "note": "You have no financial model. Investors expect one.",
         "dimension": "financials",
         "signal_key": "financials.model"
@@ -326,7 +356,7 @@
       },
       {
         "href": "/finance",
-        "lift": 7,
+        "lift": 5,
         "note": "0 of 10 transactions logged this month. Keep the books current.",
         "dimension": "financials",
         "signal_key": "financials.books"
@@ -346,7 +376,7 @@
         "signal_key": "traction.customers"
       }
     ],
-    "computed_at": "2026-11-05T14:17:12.503312+00:00",
+    "computed_at": "2026-11-13T14:41:52.559985+00:00",
     "config_version": 1
   },
   "meta": null

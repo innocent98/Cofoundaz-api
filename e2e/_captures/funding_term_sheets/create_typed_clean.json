@@ -1,10 +1,10 @@
 {
   "data": {
-    "id": "36aafb75-d143-4a40-ae95-44f56669e374",
+    "id": "e0f8a6af-cf6d-4640-9313-2b5a147083ca",
     "label": "Alpha Ventures",
     "status": "confirmed",
     "error": null,
-    "investor_id": "02848807-a8db-46af-9fb5-14043c5da9ee",
+    "investor_id": "68d26ba1-c666-459e-9598-2ed5e8820341",
     "investor_name": "Tolu Bello",
     "source_file_id": null,
     "source_filename": null,
@@ -25,8 +25,8 @@
     },
     "flags": [],
     "flag_count": 0,
-    "confirmed_at": "2026-11-12T12:00:34.433941+00:00",
-    "created_at": "2026-11-12T12:00:34.421312+00:00",
+    "confirmed_at": "2026-11-13T14:41:50.148722+00:00",
+    "created_at": "2026-11-13T14:41:50.138089+00:00",
     "proposed": null,
     "currency_mismatch": false,
     "document_currency": null,

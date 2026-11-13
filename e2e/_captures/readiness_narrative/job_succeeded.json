@@ -1,12 +1,12 @@
 {
   "data": {
-    "id": "5a604001-2d6d-4ff1-9111-a247f7e49554",
+    "id": "d33bd386-c439-4c36-ba36-e09548d917a2",
     "type": "ai.readiness.narrative_check",
     "status": "succeeded",
     "result": {
       "claims": 5,
       "status": "ready",
-      "check_id": "0f516d0b-ff18-4a27-982e-ccd298e2e6a8",
+      "check_id": "9ef3d1b0-ffce-467e-adbf-401e935a6a97",
       "dropped_claims": 3
     },
     "error": null

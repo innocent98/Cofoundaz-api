@@ -1,12 +1,12 @@
 {
   "data": {
-    "id": "61c42f9d-82d8-43cd-9de0-ad452e2cf6b0",
+    "id": "1fe911a9-936d-4a44-b25d-a440228ba7a6",
     "type": "ai.readiness.deck_review",
     "status": "succeeded",
     "result": {
       "reason": "no_text",
       "status": "failed",
-      "review_id": "d4ebcc5c-cbf3-4f5c-b7a5-a856f8564ff4"
+      "review_id": "88e64176-2afa-4dcb-96bd-fcc8d595c702"
     },
     "error": null
   },

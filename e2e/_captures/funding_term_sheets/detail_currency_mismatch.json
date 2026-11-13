@@ -1,20 +1,20 @@
 {
   "data": {
-    "id": "1065568d-c7cd-4144-8d43-aa29b381cd14",
+    "id": "475e5e54-4433-4853-8fa8-6d19c3a439e3",
     "label": "delta-term-sheet.pdf",
     "status": "needs_confirmation",
     "error": null,
     "investor_id": null,
     "investor_name": null,
-    "source_file_id": "b08ee9ac-b83d-448b-85a3-d1a729c84b6a",
+    "source_file_id": "5bba8f6f-c631-420f-8ccd-6de1c3df879a",
     "source_filename": "delta-term-sheet.pdf",
-    "job_id": "337a3d70-eb2f-4a17-ae67-24b2371b8580",
+    "job_id": "fe31e12b-57cf-4932-a5fe-a6457fd6ad3d",
     "extracted_by_ai": true,
     "terms": {},
     "flags": [],
     "flag_count": 0,
     "confirmed_at": null,
-    "created_at": "2026-11-12T12:00:35.731362+00:00",
+    "created_at": "2026-11-13T14:41:50.776805+00:00",
     "proposed": {
       "terms": {
         "stage": "seed",

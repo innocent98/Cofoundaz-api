@@ -1,6 +1,6 @@
 {
   "data": {
-    "id": "52d82d23-6e3d-4aef-a690-418c476ebe50",
+    "id": "57a8e10f-2b00-4609-93b5-27ccc4e34542",
     "version": 1,
     "status": "ready",
     "error": null,
@@ -19,9 +19,9 @@
       "narrative": 7,
       "data_clarity": 5
     },
-    "job_id": "3d3ee0de-e1ff-4bd9-8fa3-76e769d2ac49",
-    "created_at": "2026-11-05T14:17:12.665161+00:00",
-    "reviewed_at": "2026-11-05T14:17:13.427427+00:00",
+    "job_id": "1ccd034a-6be3-4ddd-868a-8374cd3765cc",
+    "created_at": "2026-11-13T14:41:52.652459+00:00",
+    "reviewed_at": "2026-11-13T14:41:53.468199+00:00",
     "top_fixes": [
       "Slide 4: cite the source for the market size.",
       "Slide 5: show cumulative revenue, not monthly.",
@@ -36,7 +36,7 @@
         "title": "Title",
         "words": 8,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMS5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.sSmyxnL5e2ZQfARJV54HFDToxiz1LUJhlXsuy0DObq8"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvMS5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.Ix49bdcz13UkC257qPkGEBDrZjyWc1sP_hP_XfoGvuM"
       },
       {
         "n": 2,
@@ -44,7 +44,7 @@
         "title": "Problem",
         "words": 13,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMi5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.l8jTHKo8GMXwrtq4DW111mzHZLqLFwHvaO70wKhij0I"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvMi5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.cS9EU8dI8E0li1u4AQiOW2T_TNM2tjTSsh4ieZ62_WU"
       },
       {
         "n": 3,
@@ -52,7 +52,7 @@
         "title": "Solution",
         "words": 9,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvMy5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.bRNTBMkqLqWsCaLA_xp9JFTLwATlDf7GACmUZ9OaJBE"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvMy5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.6S84JdosgAm5qPz83NEvGGqcYWmnwsQB2YYewqUcan0"
       },
       {
         "n": 4,
@@ -60,7 +60,7 @@
         "title": "Market",
         "words": 13,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNC5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.wWJfLdbAvxJC-GqnYdPgdjyGdxsXGH5i2_8oA1S2f7A"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvNC5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.7t59Ywb-QMXjOgH5hl1mSTjI7RdVex-mwVCQMCBnkwI"
       },
       {
         "n": 5,
@@ -68,7 +68,7 @@
         "title": "Traction",
         "words": 12,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNS5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.WnopJi1yNfRdKo9fiTIZBxwzqFBJoKdeVDH_V9G0Yaw"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvNS5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.sfSpUPUdwz6Wz6aaCZfpjU9lyEJzSV19XsYN0H1wmeY"
       },
       {
         "n": 6,
@@ -76,7 +76,7 @@
         "title": "Business model",
         "words": 8,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNi5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.62yXGmXM0iCmgGuc6RMWrkapu2dSv_OjpGO4Pzze_SA"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvNi5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.lMjhw3DZXCbjhX6zjIAEuzIkOODPJas6KRX8DzC0Jqw"
       },
       {
         "n": 7,
@@ -84,7 +84,7 @@
         "title": "Team",
         "words": 6,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvNy5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.0RXMt5iK-Cn0MsbytK-GuNVBJd5sZFOkff2ESLaTwZU"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvNy5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.STodvnGoLmMAnjZuc7ZkbLXQO9mDHKj2syMC3Q_Sff0"
       },
       {
         "n": 8,
@@ -92,7 +92,7 @@
         "title": "The ask",
         "words": 12,
         "images": 1,
-        "thumbnail_url": "http://localhost:8000/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzhjNDA2ZDQ1LTliYzItNGI4MC04NGQwLWQ0MTIzZDAxMjA2MC81MmQ4MmQyMy02ZTNkLTRhZWYtYTY5MC00MThjNDc2ZWJlNTAvOC5wbmciLCJzIjoiOGM0MDZkNDUtOWJjMi00YjgwLTg0ZDAtZDQxMjNkMDEyMDYwIiwiZSI6MTc5Mzg4OTEzM30.iuvDFwtrBJwq9kK7vGXWddDoyB5cypjCfrzhC9E9HxY"
+        "thumbnail_url": "http://127.0.0.1:8012/api/v1/readiness/deck-thumbnails?token=eyJrIjoicmVhZGluZXNzLzJhZTJkZDQxLTg5OTItNDQxNC05NzcwLWNjNTVhZmIzZDYzYy81N2E4ZTEwZi0yYjAwLTQ2MDktOTNiNS0yN2NjYzRlMzQ1NDIvOC5wbmciLCJzIjoiMmFlMmRkNDEtODk5Mi00NDE0LTk3NzAtY2M1NWFmYjNkNjNjIiwiZSI6MTc5NDU4MTgxM30.mJyPByxxUzgt1VKbSBE3DChCc0EWzntJ4n7enk-QRIM"
       }
     ],
     "thumbnail_ttl_seconds": 900
