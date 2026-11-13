@@ -302,6 +302,14 @@ def _resolve_user(
     if other is not None:
         # Already tied to a different Google account: never silently swap or double-link.
         return _reject(db, ERR_MISMATCH, ip=ip, user=user)
+    if user.terms_accepted_at is None:
+        # A row with no consent record (older account, or sign-up before the gate) is linked or
+        # taken over only with the checkbox, so Google can't be a way around consent.
+        if accepted_terms:
+            user.terms_accepted_at = _now()
+            user.terms_version = settings.TERMS_VERSION
+        elif settings.SIGNUP_REQUIRE_TERMS:
+            return _reject(db, ERR_TERMS, ip=ip, user=user)
     if user.email_verified_at is None:
         _take_over_unverified(db, user)
     db.add(

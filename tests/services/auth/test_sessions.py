@@ -90,6 +90,31 @@ def test_grace_token_of_a_pair_the_other_tab_already_holds_still_works(db):
     assert len(_live_heads(db, u.id)) == 1 and t3
 
 
+def test_a_token_two_rotations_back_gets_no_grace_even_inside_the_window(db):
+    """Only the head's immediate predecessor is honoured: replaying an older token, even one
+    rotated seconds ago, is reuse and revokes the family."""
+    u = create_user(db)
+    _, t0 = issue_token_pair(db, u)
+    _, t1, _ = rotate_refresh(db, t0)
+    _age_rotation(db, t0, 6)
+    rotate_refresh(db, t1)  # t1 -> t2: t0 is now two rotations back
+    with pytest.raises(AppError):
+        rotate_refresh(db, t0)  # still inside 20 s of its rotation
+    assert _live_heads(db, u.id) == []
+
+
+def test_a_second_replay_of_the_same_old_token_is_reuse(db):
+    """A grace use rotates the head, so the old token is no longer the predecessor: a thief and
+    the owner cannot bounce on one old token."""
+    u = create_user(db)
+    _, t0 = issue_token_pair(db, u)
+    rotate_refresh(db, t0)
+    rotate_refresh(db, t0)  # grace use
+    with pytest.raises(AppError):
+        rotate_refresh(db, t0)
+    assert _live_heads(db, u.id) == []
+
+
 def test_grace_edge_just_inside_and_just_outside(db):
     u = create_user(db)
     _, t0 = issue_token_pair(db, u)

@@ -103,11 +103,13 @@ def test_concurrent_double_submit_of_a_fresh_token_is_tolerated(race):
     assert len([r for r in rows if r.rotated_at is None]) == 1
 
 
-def test_concurrent_replays_inside_grace_both_succeed_with_one_live_head(race):
+def test_concurrent_replays_of_one_old_token_inside_grace_allow_only_one(race):
+    """A grace use makes the old token a non-predecessor, so of two simultaneous replays the
+    second is reuse: exactly one wins, and the family is then revoked."""
     results, rows = race(settings.REFRESH_GRACE_SECONDS - 5)
-    assert len(results) == 2 and all(ok for ok, _ in results), results
-    assert all(r.revoked_at is None for r in rows)
-    assert len([r for r in rows if r.rotated_at is None]) == 1
+    assert len(results) == 2, results
+    assert sorted(ok for ok, _ in results) == [False, True], results
+    assert all(r.revoked_at is not None for r in rows)
 
 
 def test_concurrent_replays_after_grace_are_reuse_and_revoke_the_family(race):

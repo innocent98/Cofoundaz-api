@@ -7,6 +7,7 @@
 | 1 | Refresh-token grace window | The immediately-previous refresh token still works for `REFRESH_GRACE_SECONDS` (20) after rotation; replay after that is reuse and revokes the family as before. |
 | 2 | Consent for Google-created accounts | `POST /auth/oauth/google/start` takes `accepted_terms`; a new account without it is refused before any row exists; with it `terms_accepted_at` / `terms_version` are stored. |
 | 3 | Dashboard role leaks | `kpis.tasks_done_this_week` + `kpis.tasks_trend` (mission gate) and `calibration.assessment_complete` (assessment gate) are `null` for other roles; `assessment.*` activity rows (feed + live stream) follow the assessment read gate. |
+| 5 | Review fixes (Opus, lead 27) | Health Score markers filtered by role; grace limited to the immediate predecessor; DB clock; bounded lock retry; consent on Google link/takeover. See "Review fixes" below. |
 | 4 | "Teammate joined" marker | `MARKER_LABELS` keyed on `member.joined`, the action invitations really write (it had `workspace.member.joined`, which only the event bus carries). |
 
 ## Why
@@ -28,6 +29,15 @@
 **3. Leaks** (`app/services/dashboard/service.py`, `app/platform/activity.py`, `app/db/models/enums.py`). New single-sourced `ASSESSMENT_ROLES` (founder + team member, also used by the assessment routes' `_READ_ROLES`). `get_summary` returns `null` for the gated fields (keys stay, mirroring the legacy null scalars). `assessment` moved from `_OPEN_NAMESPACES` to `_RESTRICTED_NAMESPACES`, so every `assessment.*` row fails closed to `ASSESSMENT_ROLES` in both the SQL filter and `activity_visible` (stream).
 
 **4. Marker.** One key renamed (`app/services/health_score/service.py` `MARKER_LABELS`). Changing the stored action instead would have broken the activity-feed contract (`member.joined`) and existing rows; renaming the key makes past joins show up too.
+
+## Review fixes (Opus review of #247, lead 27)
+
+- **M1:** `GET /health-score/history/markers` leaked `Assessment completed` and `Agreement signed` to every role. `get_history_markers` now takes the caller's role and applies `activity_visibility_filter(role)`. Test: `tests/api/test_health_markers_role_gate.py` (all 7 roles).
+- **M2 (accepted, docs only):** completion is implied by the open Health Score, by design (#153): `health.status` (`pending_assessment` vs `ok`) and the "Kickoff assessment" signals on `/health-score/dimensions` still tell every role an assessment exists. `calibration.assessment_complete` stays nulled.
+- **L3:** grace is allowed only if no other token of the family was rotated after the presented one (checked under the head's row lock, no migration). A token two rotations back, or the same old token a second time after a grace use, is reuse. Consequence, by design: two *simultaneous* replays of one old token let one win and then revoke the family (the loser looks like reuse); a never-used token raced by two tabs still lets both through (claim + immediate predecessor).
+- **L4:** the head-lock retry is 10 attempts, not 3.
+- **L5:** rotation stamps and the window comparison use the database clock (`clock_timestamp()`), not the app host's.
+- **L6:** linking or taking over an existing row with no `terms_accepted_at` records consent when the state carries `terms=true`, else is refused with `terms_not_accepted` when `SIGNUP_REQUIRE_TERMS` is on. Tests in `test_google_signin.py`.
 
 ## What's involved
 
@@ -54,5 +64,5 @@
 
 - **FE:** send `accepted_terms: true` on the sign-up Google button and handle `terms_not_accepted`; treat `null` task KPIs / `assessment_complete` as "not available", not zero; stop assuming a second-tab refresh signs the user out.
 - Google accounts created before this change still have no consent record (no backfill; they were never shown the checkbox).
-- The Health Score history marker "Assessment completed" is still returned to every role (the Health Score is open to all roles by #153); revisit only if the assessment gate should hide it too.
-- The 3-attempt head-lock retry in `_rotate_in_grace` is a bound, not a proof; the concurrency tests cover two callers, not N.
+- Not done on purpose (M2): the open Health Score still implies assessment completion to every role.
+- The head-lock retry (10) in `_rotate_in_grace` is a bound, not a proof; the concurrency tests cover two callers, not N.

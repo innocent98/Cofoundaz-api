@@ -479,3 +479,27 @@ def test_terms_gate_off_creates_account_without_a_record(client, db, monkeypatch
     _signin(client, email="legacy@example.com")
     user = db.query(User).filter(User.email == "legacy@example.com").one()
     assert user.terms_accepted_at is None and user.terms_version is None
+
+
+def test_linking_google_to_an_account_without_consent_needs_the_checkbox(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    user = create_user(db, email="old@example.com", email_verified_at=datetime.now(UTC))
+    user.terms_accepted_at = None
+    db.commit()
+    q = _signin(client, email="old@example.com", sub="g-old")
+    assert q == {"error": "terms_not_accepted"}
+    db.expire_all()
+    assert db.query(OAuthAccount).filter_by(provider_account_id="g-old").first() is None
+    q = _signin(client, email="old@example.com", sub="g-old", accepted_terms=True)
+    assert set(q) == {"ticket"}
+    db.expire_all()
+    u = db.query(User).filter(User.email == "old@example.com").one()
+    assert u.terms_accepted_at is not None and u.terms_version == settings.TERMS_VERSION
+
+
+def test_linking_an_account_that_already_consented_needs_no_checkbox(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    user = create_user(db, email="done@example.com", email_verified_at=datetime.now(UTC))
+    user.terms_accepted_at = datetime.now(UTC)
+    db.commit()
+    assert set(_signin(client, email="done@example.com", sub="g-done")) == {"ticket"}

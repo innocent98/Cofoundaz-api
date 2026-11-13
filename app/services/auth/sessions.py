@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
 from fastapi import Request, Response
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import Unauthorized
@@ -15,6 +16,12 @@ from app.db.models.enums import UserStatus
 from app.db.models.user import User
 from app.platform.state import lock_session_issue
 from app.services.auth.csrf import is_cookie_mode
+
+
+def _db_now(db: Session) -> datetime:
+    """The database clock (wall time, advances inside a transaction): rotation stamps and the grace
+    comparison use one clock, so skew between app hosts can't stretch or shrink the window."""
+    return cast(datetime, db.execute(select(func.clock_timestamp())).scalar_one())
 
 
 def hash_token(raw: str) -> str:
@@ -65,7 +72,7 @@ def rotate_refresh(
     if session is None:
         raise Unauthorized()
 
-    now = datetime.now(UTC)
+    now = _db_now(db)
     # Atomic claim: consume this exact row only if it's still live. A plain
     # read-then-write here is a TOCTOU race -- two concurrent callers can both read
     # `rotated_at IS NULL` before either writes, and both would pass. Conditioning the
@@ -143,8 +150,8 @@ def _rotate_in_grace(
         raise Unauthorized()
     head = None
     # A row lock that waits on a concurrent rotation returns nothing once the row is rotated;
-    # the next statement then sees the child that rotation committed.
-    for _ in range(3):
+    # the next statement then sees the child that rotation committed. Bounded, but generous.
+    for _ in range(10):
         head = (
             db.query(AuthSession)
             .filter(
@@ -160,6 +167,21 @@ def _rotate_in_grace(
         if head is not None:
             break
     if head is None:
+        return None
+    # Only the head's immediate predecessor gets grace: if any other token of the family was
+    # rotated after this one, this token is older than that and a replay of it is reuse. Checked
+    # under the head's lock, so concurrent graces can't both pass. This also stops a thief and
+    # the owner bouncing (each grace use rotates the head and would open a fresh window).
+    newer = (
+        db.query(AuthSession.id)
+        .filter(
+            AuthSession.family_id == session.family_id,
+            AuthSession.id != session.id,
+            AuthSession.rotated_at > session.rotated_at,
+        )
+        .first()
+    )
+    if newer is not None:
         return None
     head.rotated_at = now
     db.flush()

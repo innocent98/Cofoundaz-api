@@ -79,8 +79,9 @@ with a **new, different** pair (it is *not* the pair the first call returned: th
 any refresh: `{"data": {"access_token": "<access-token>", "refresh_token": "<refresh-token>", "expires_in": 900}, "meta": null}`.
 Rules the FE can rely on: always store and use the **newest** pair you receive; the window is measured from the moment *that token* was
 rotated, so a token never works for more than 20 s after being superseded; once the window has passed, the next section applies.
-A tab holding a superseded-but-recent token (the other tab's) is accepted and simply moves the family forward. The server keeps
-exactly one live token per sign-in.
+Only the **immediately-previous** token gets grace: a token two rotations back, or the same old token replayed a second time after a
+grace use, is reuse (`401`, sign-in revoked) even inside the 20 s. A tab holding the other tab's just-superseded token is the
+immediate predecessor and is accepted, moving the family forward. The server keeps exactly one live token per sign-in.
 
 ### Refresh-token reuse kills the sign-in [`refresh_reuse_401`], [`refresh_newest_after_reuse_401`], [`grace_refresh_replay_after_window_401`]
 Presenting an already-rotated refresh token **after the grace window** is treated as theft: the whole sign-in (every token in its family) is revoked and the
@@ -327,7 +328,7 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 | Atomic attempt reservation (a parallel burst gets exactly the limit); known addresses exempt from the email-wide ceiling; IPv6 /64 keys; mail caps per (email, IP) and overall; counters that lost their expiry repair themselves; backup code spent once; bcrypt on unknown emails | unit tests only (the burst test uses 16 threads against Redis) |
 | Refresh-token reuse (after the grace window) revokes the family and the revocation survives the failed request | live (`refresh_reuse_401`, `refresh_newest_after_reuse_401`, `grace_refresh_replay_after_window_401`, `grace_refresh_newest_after_reuse_401`) and unit-tested including the rollback |
 | Previous refresh token accepted inside the grace window (lost response, second tab), new pair returned, family intact | live (`grace_refresh_replay_in_window_200`, `grace_refresh_other_tab_200`; the e2e server runs with `REFRESH_GRACE_SECONDS=5`, production default is 20) |
-| Two concurrent refreshes with the same token both succeed and leave one live token; concurrent replays past the window both fail and revoke | unit only (`tests/services/auth/test_sessions_concurrency.py`, real committing connections) |
+| Two simultaneous refreshes with a never-used token both succeed and leave one live token; two simultaneous replays of one old token let one win and revoke the family; replays past the window both fail and revoke; a token two rotations back gets no grace | unit only (`tests/services/auth/test_sessions.py`, `test_sessions_concurrency.py`, real committing connections) |
 | Decoy body token cannot rotate the cookie or force a logout | live (`refresh_cookie_decoy_body_401`, `logout_cookie_decoy_body_200`) |
 | Pending invitee can still write; decline invitation (200, again 400, wrong account 403); state after decline; member writes 409 | live |
 | Cookie-mode login, silent refresh, rotation, logout revokes | live |

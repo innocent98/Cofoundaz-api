@@ -91,7 +91,9 @@ def get_history_markers(
 ) -> dict[str, Any]:
     """PRD 06.3 annotated event markers for the trend chart (same `range` as /history)."""
     _check_range(range)
-    return success_response(hs_service.get_history_markers(db, _startup(db, membership), range))
+    return success_response(
+        hs_service.get_history_markers(db, _startup(db, membership), range, membership.role)
+    )
 
 
 def _check_range(range_key: str) -> None:
