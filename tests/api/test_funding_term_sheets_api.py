@@ -825,11 +825,10 @@ def test_failed_extractions_are_capped(client, db, team, founder, monkeypatch):
     assert r.status_code == 422
     assert "failed extractions" in r.json()["error"]["message"]
     gone = db.query(TermSheet).filter_by(status="failed").one()
-    assert client.delete(f"{TS}/{gone.id}", headers=founder).status_code == 200
-    assert (
-        client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).status_code
-        == 202
-    )
+    deleted = client.delete(f"{TS}/{gone.id}", headers=founder)
+    assert deleted.status_code == 200
+    retry = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder)
+    assert retry.status_code == 202
 
 
 def test_the_failed_cap_never_blocks_typed_creation(client, db, team, founder, monkeypatch):

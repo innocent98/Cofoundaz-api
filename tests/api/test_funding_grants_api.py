@@ -130,7 +130,8 @@ def test_another_workspaces_ids_are_404(client, db, team, founder):
     app_id = client.post(f"{G}/{first['grant']['id']}/apply", headers=founder).json()["data"]["id"]
     assert client.get(f"{APPS}/{app_id}", headers=oh).status_code == 404
     assert client.patch(f"{APPS}/{app_id}", json={"notes": "x"}, headers=oh).status_code == 404
-    assert client.delete(f"{APPS}/{app_id}", headers=oh).status_code == 404
+    gone = client.delete(f"{APPS}/{app_id}", headers=oh)
+    assert gone.status_code == 404
     assert client.get(APPS, headers=oh).json()["data"]["items"] == []
 
 
@@ -395,7 +396,8 @@ def test_start_application_seeds_questions_and_marks_the_match(client, db, found
 def test_deleting_an_application_brings_the_suggestion_back(client, db, founder):
     _match(client, db, founder)
     app_id = _apply(client, db, founder).json()["data"]["id"]
-    assert client.delete(f"{APPS}/{app_id}", headers=founder).json()["data"] == {"deleted": True}
+    deleted = client.delete(f"{APPS}/{app_id}", headers=founder)
+    assert deleted.json()["data"] == {"deleted": True}
     m = db.query(GrantMatch).filter_by(grant_id=_slug(db, "google-cloud-startups").id).one()
     db.refresh(m)
     assert m.state == "suggested"
@@ -496,9 +498,8 @@ def test_answers_crud_and_cap(client, db, founder, monkeypatch):
     assert r.json()["data"]["answer"] == "Mine." and r.json()["data"]["ai_drafted"] is False
     new = client.post(f"{APPS}/{app_id}/answers", json={"question": "Why now?"}, headers=founder)
     assert new.status_code == 201 and new.json()["data"]["position"] == len(svc.DEFAULT_QUESTIONS)
-    assert client.delete(
-        f"{APPS}/{app_id}/answers/{new.json()['data']['id']}", headers=founder
-    ).json()["data"] == {"deleted": True}
+    removed = client.delete(f"{APPS}/{app_id}/answers/{new.json()['data']['id']}", headers=founder)
+    assert removed.json()["data"] == {"deleted": True}
     monkeypatch.setattr(svc, "MAX_ANSWERS", len(svc.DEFAULT_QUESTIONS))
     assert (
         client.post(
@@ -579,13 +580,9 @@ def test_a_model_failure_marks_the_draft_failed_and_the_button_comes_back(
     client.post(f"{APPS}/{app_id}/answers/{a['id']}/draft", json={}, headers=founder)
     _drain(db)
     assert _first_answer(client, founder, app_id)["draft_status"] == "failed"
-    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: GrantLLM())
-    assert (
-        client.post(
-            f"{APPS}/{app_id}/answers/{a['id']}/draft", json={}, headers=founder
-        ).status_code
-        == 202
-    )
+    monkeypatch.setattr(llm_budget, "get_llm_client", GrantLLM)
+    retry = client.post(f"{APPS}/{app_id}/answers/{a['id']}/draft", json={}, headers=founder)
+    assert retry.status_code == 202
 
 
 def test_a_dead_draft_job_is_reconciled_on_read(client, db, founder):
