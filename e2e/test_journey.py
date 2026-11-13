@@ -83,9 +83,20 @@ def test_refresh_rotation_and_reuse_revokes_family(http: httpx.Client, make_veri
     assert rot.status_code == 200, rot.text
     assert rot.json()["data"]["refresh_token"] != r0
 
+    # r0 -> r1 -> r2: r0 is now two rotations back, so it gets no grace window
+    # (the immediate predecessor of the head does; see test_refresh_grace_window).
+    r1 = rot.json()["data"]["refresh_token"]
+    http.cookies.clear()
+    rot2 = http.post("/api/v1/auth/refresh", json={"refresh_token": r1})
+    assert rot2.status_code == 200, rot2.text
+    r2 = rot2.json()["data"]["refresh_token"]
+
     http.cookies.clear()
     reuse = http.post("/api/v1/auth/refresh", json={"refresh_token": r0})
     assert reuse.status_code == 401, "reused (rotated) refresh token must be rejected"
+    http.cookies.clear()
+    head = http.post("/api/v1/auth/refresh", json={"refresh_token": r2})
+    assert head.status_code == 401, "reuse must revoke the whole family, live head included"
 
 
 def test_cookie_only_refresh(http: httpx.Client, make_verified_user):
