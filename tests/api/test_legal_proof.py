@@ -125,18 +125,15 @@ def test_proof_url_is_null_without_a_proof(client, db):
 def test_replacing_a_proof_deletes_the_old_file(client, db, tmp_path):
     _u, s, h = _member(db)
     cid = _make(client, h)
-    assert _upload(client, h, cid, body=PNG + b"first").status_code == 200
+    resp = _upload(client, h, cid, body=PNG + b"first")
+    assert resp.status_code == 200, resp.text
     row = db.query(ComplianceItem).filter_by(startup_id=s.id).one()
     db.refresh(row)
     old_key = row.proof_key
     assert old_key and (Path(tmp_path) / old_key).is_file()
 
-    assert (
-        _upload(
-            client, h, cid, name="p.pdf", ct="application/pdf", body=PDF + b"second"
-        ).status_code
-        == 200
-    )
+    resp = _upload(client, h, cid, name="p.pdf", ct="application/pdf", body=PDF + b"second")
+    assert resp.status_code == 200, resp.text
     db.refresh(row)
     assert row.proof_key != old_key
     # The new asset is saved BEFORE the old key is dropped, so a failed upload never orphans
@@ -149,9 +146,11 @@ def test_replacing_a_proof_deletes_the_old_file(client, db, tmp_path):
 def test_deleting_the_item_removes_its_proof_file(client, db, tmp_path):
     _u, _s, h = _member(db)
     cid = _make(client, h)
-    assert _upload(client, h, cid).status_code == 200
+    resp = _upload(client, h, cid)
+    assert resp.status_code == 200, resp.text
     assert len(_files(tmp_path)) == 1
-    assert client.delete(f"{BASE}/compliance-items/{cid}", headers=h).status_code == 200
+    resp = client.delete(f"{BASE}/compliance-items/{cid}", headers=h)
+    assert resp.status_code == 200, resp.text
     # Mirrors delete_expense: the stored asset goes with its row rather than being orphaned.
     assert _files(tmp_path) == []
 
@@ -172,7 +171,8 @@ def test_a_legal_advisor_cannot_upload_a_proof(client, db, tmp_path):
     cid = _make(client, fh)
     _u, _s, h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
     # Read-only on every surface, the upload included (spec D1).
-    assert _upload(client, h, cid).status_code == 403
+    resp = _upload(client, h, cid)
+    assert resp.status_code == 403, resp.text
     assert _files(tmp_path) == []
 
 
@@ -181,7 +181,8 @@ def test_forbidden_roles_cannot_upload_a_proof(client, db, role, tmp_path):
     _f, startup, fh = _member(db)
     cid = _make(client, fh)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert _upload(client, h, cid).status_code == 403
+    resp = _upload(client, h, cid)
+    assert resp.status_code == 403, resp.text
     assert _files(tmp_path) == []
 
 
@@ -189,7 +190,8 @@ def test_uploading_to_another_workspaces_item_is_404(client, db, tmp_path):
     _u1, _s1, h1 = _member(db)
     cid = _make(client, h1)
     _u2, _s2, h2 = _member(db)
-    assert _upload(client, h2, cid).status_code == 404
+    resp = _upload(client, h2, cid)
+    assert resp.status_code == 404, resp.text
     assert _files(tmp_path) == []
 
 

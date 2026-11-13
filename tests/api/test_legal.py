@@ -74,12 +74,14 @@ def test_checklist_for_an_unsupported_jurisdiction_is_404(client, db):
     _u, _s, h = _member(db)
     # Kenya and Ghana are not supported in Slice 1 (spec D6), and a missing catalog entry is a
     # 404 rather than a 422 — it names a resource, and 404 keeps the catalog non-enumerable (D3).
-    assert client.get(f"{BASE}/formation/checklist?jurisdiction=KE", headers=h).status_code == 404
+    resp = client.get(f"{BASE}/formation/checklist?jurisdiction=KE", headers=h)
+    assert resp.status_code == 404, resp.text
 
 
 def test_checklist_requires_the_jurisdiction_param(client, db):
     _u, _s, h = _member(db)
-    assert client.get(f"{BASE}/formation/checklist", headers=h).status_code == 422
+    resp = client.get(f"{BASE}/formation/checklist", headers=h)
+    assert resp.status_code == 422, resp.text
 
 
 # --- formation: ticking ------------------------------------------------------------------------
@@ -110,10 +112,8 @@ def test_tick_and_untick_a_step(client, db):
 def test_a_duplicate_tick_is_a_no_op(client, db):
     _u, _s, h = _member(db)
     body = {"jurisdiction": "NG", "completed": True}
-    assert (
-        client.patch(f"{BASE}/formation/steps/reserve_name", json=body, headers=h).status_code
-        == 200
-    )
+    resp = client.patch(f"{BASE}/formation/steps/reserve_name", json=body, headers=h)
+    assert resp.status_code == 200, resp.text
     again = client.patch(f"{BASE}/formation/steps/reserve_name", json=body, headers=h)
     assert again.status_code == 200, again.text
     ticked = [s for s in again.json()["data"]["steps"] if s["completed"]]
@@ -194,7 +194,8 @@ def test_ip_asset_crud_roundtrip(client, db):
     deleted = client.delete(f"{BASE}/ip-assets/{aid}", headers=h)
     assert deleted.status_code == 200
     assert deleted.json()["data"] == {"deleted": True}
-    assert client.get(f"{BASE}/ip-assets/{aid}", headers=h).status_code == 404
+    resp = client.get(f"{BASE}/ip-assets/{aid}", headers=h)
+    assert resp.status_code == 404, resp.text
 
 
 def test_a_past_renewal_reads_as_expired(client, db):
@@ -251,11 +252,12 @@ def test_ip_cross_tenant_ids_are_404(client, db):
     _u, _s, h = _member(db)
     _other_u, _other_s, other_h = _member(db)
     theirs = client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=other_h).json()["data"]["id"]
-    assert client.get(f"{BASE}/ip-assets/{theirs}", headers=h).status_code == 404
-    assert (
-        client.patch(f"{BASE}/ip-assets/{theirs}", json={"name": "X"}, headers=h).status_code == 404
-    )
-    assert client.delete(f"{BASE}/ip-assets/{theirs}", headers=h).status_code == 404
+    resp = client.get(f"{BASE}/ip-assets/{theirs}", headers=h)
+    assert resp.status_code == 404, resp.text
+    resp = client.patch(f"{BASE}/ip-assets/{theirs}", json={"name": "X"}, headers=h)
+    assert resp.status_code == 404, resp.text
+    resp = client.delete(f"{BASE}/ip-assets/{theirs}", headers=h)
+    assert resp.status_code == 404, resp.text
 
 
 def test_a_legal_advisor_reads_but_cannot_write_ip(client, db):
@@ -265,8 +267,10 @@ def test_a_legal_advisor_reads_but_cannot_write_ip(client, db):
     db.flush()
     _u, _s, advisor_h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
 
-    assert client.get(f"{BASE}/ip-assets", headers=advisor_h).status_code == 200
-    assert client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=advisor_h).status_code == 403
+    resp = client.get(f"{BASE}/ip-assets", headers=advisor_h)
+    assert resp.status_code == 200, resp.text
+    resp = client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=advisor_h)
+    assert resp.status_code == 403, resp.text
 
 
 @pytest.mark.parametrize("role", FORBIDDEN_ROLES)
@@ -274,8 +278,10 @@ def test_forbidden_roles_cannot_touch_ip(client, db, role):
     owner = create_user(db, email_verified_at=datetime.now(UTC))
     startup = create_startup(db, owner=owner, stage=StartupStage.validation)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert client.get(f"{BASE}/ip-assets", headers=h).status_code == 403
-    assert client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=h).status_code == 403
+    resp = client.get(f"{BASE}/ip-assets", headers=h)
+    assert resp.status_code == 403, resp.text
+    resp = client.post(f"{BASE}/ip-assets", json=_ip_body(), headers=h)
+    assert resp.status_code == 403, resp.text
 
 
 # --- compliance items --------------------------------------------------------------------------
@@ -321,7 +327,8 @@ def test_compliance_crud_roundtrip(client, db):
     deleted = client.delete(f"{BASE}/compliance-items/{cid}", headers=h)
     assert deleted.status_code == 200
     assert deleted.json()["data"] == {"deleted": True}
-    assert client.get(f"{BASE}/compliance-items/{cid}", headers=h).status_code == 404
+    resp = client.get(f"{BASE}/compliance-items/{cid}", headers=h)
+    assert resp.status_code == 404, resp.text
 
 
 def test_the_four_derived_badges(client, db):
@@ -433,25 +440,22 @@ def test_compliance_cross_tenant_ids_are_404(client, db):
     theirs = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=other_h).json()[
         "data"
     ]["id"]
-    assert client.get(f"{BASE}/compliance-items/{theirs}", headers=h).status_code == 404
-    assert (
-        client.patch(
-            f"{BASE}/compliance-items/{theirs}", json={"title": "X"}, headers=h
-        ).status_code
-        == 404
-    )
-    assert client.delete(f"{BASE}/compliance-items/{theirs}", headers=h).status_code == 404
+    resp = client.get(f"{BASE}/compliance-items/{theirs}", headers=h)
+    assert resp.status_code == 404, resp.text
+    resp = client.patch(f"{BASE}/compliance-items/{theirs}", json={"title": "X"}, headers=h)
+    assert resp.status_code == 404, resp.text
+    resp = client.delete(f"{BASE}/compliance-items/{theirs}", headers=h)
+    assert resp.status_code == 404, resp.text
 
 
 def test_a_legal_advisor_reads_but_cannot_write_compliance(client, db):
     owner = create_user(db, email_verified_at=datetime.now(UTC))
     startup = create_startup(db, owner=owner, stage=StartupStage.validation)
     _u, _s, advisor_h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
-    assert client.get(f"{BASE}/compliance-items", headers=advisor_h).status_code == 200
-    assert (
-        client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=advisor_h).status_code
-        == 403
-    )
+    resp = client.get(f"{BASE}/compliance-items", headers=advisor_h)
+    assert resp.status_code == 200, resp.text
+    resp = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=advisor_h)
+    assert resp.status_code == 403, resp.text
 
 
 @pytest.mark.parametrize("role", FORBIDDEN_ROLES)
@@ -459,8 +463,10 @@ def test_forbidden_roles_cannot_touch_compliance(client, db, role):
     owner = create_user(db, email_verified_at=datetime.now(UTC))
     startup = create_startup(db, owner=owner, stage=StartupStage.validation)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert client.get(f"{BASE}/compliance-items", headers=h).status_code == 403
-    assert client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=h).status_code == 403
+    resp = client.get(f"{BASE}/compliance-items", headers=h)
+    assert resp.status_code == 403, resp.text
+    resp = client.post(f"{BASE}/compliance-items", json=_comp_body(), headers=h)
+    assert resp.status_code == 403, resp.text
 
 
 # --- RBAC -------------------------------------------------------------------------------------
@@ -471,8 +477,10 @@ def test_every_reader_role_can_read_formation(client, db, role):
     owner = create_user(db, email_verified_at=datetime.now(UTC))
     startup = create_startup(db, owner=owner, stage=StartupStage.validation)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert client.get(f"{BASE}/formation/jurisdictions", headers=h).status_code == 200
-    assert client.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=h).status_code == 200
+    resp = client.get(f"{BASE}/formation/jurisdictions", headers=h)
+    assert resp.status_code == 200, resp.text
+    resp = client.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=h)
+    assert resp.status_code == 200, resp.text
 
 
 def test_a_legal_advisor_cannot_tick_a_step(client, db):
@@ -493,8 +501,10 @@ def test_forbidden_roles_cannot_touch_formation(client, db, role):
     owner = create_user(db, email_verified_at=datetime.now(UTC))
     startup = create_startup(db, owner=owner, stage=StartupStage.validation)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert client.get(f"{BASE}/formation/jurisdictions", headers=h).status_code == 403
-    assert client.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=h).status_code == 403
+    resp = client.get(f"{BASE}/formation/jurisdictions", headers=h)
+    assert resp.status_code == 403, resp.text
+    resp = client.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=h)
+    assert resp.status_code == 403, resp.text
     r = client.patch(
         f"{BASE}/formation/steps/reserve_name",
         json={"jurisdiction": "NG", "completed": True},
