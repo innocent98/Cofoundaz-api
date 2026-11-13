@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError, CanvasVersionConflict, NotFound
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.business import (
     BusinessCanvas,
     BusinessCanvasVersion,
@@ -195,9 +196,6 @@ def restore_version(
     return save_canvas(
         db, canvas, dict(snap.blocks), expected_version, user_id=user_id, source="restore"
     )
-
-
-NAMELESS_MEMBER = "A team member"
 
 
 def display_name(user: User) -> str:
