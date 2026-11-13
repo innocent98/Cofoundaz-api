@@ -263,8 +263,9 @@ def test_a_second_refresh_while_one_is_queued_is_deduplicated(client, db, founde
 
 
 def test_a_run_notifies_founders_and_team_members_only_when_something_is_new(
-    client, db, team, founder
+    client, db, team, founder, monkeypatch
 ):
+    monkeypatch.setattr(settings, "FUNDING_GRANT_MATCHING_ENABLED", True)
     s, _heads, users = team
     _match(client, db, founder)
     got = db.query(Notification).filter_by(type="funding.grant.matched").all()
@@ -287,9 +288,10 @@ def test_a_suggestion_that_no_longer_ranks_is_removed_not_kept(client, db, team,
     assert gone.slug not in now
 
 
-def test_the_weekly_schedule_enqueues_one_run_per_workspace_per_week(db, team):
+def test_the_weekly_schedule_enqueues_one_run_per_workspace_per_week(db, team, monkeypatch):
     from app.worker.scheduler import scheduler_tick
 
+    monkeypatch.setattr(settings, "FUNDING_GRANT_MATCHING_ENABLED", True)
     s = team[0]
     now = datetime(2026, 11, 16, 9, 0, tzinfo=UTC)
     scheduler_tick(db, now=now)
@@ -298,6 +300,53 @@ def test_the_weekly_schedule_enqueues_one_run_per_workspace_per_week(db, team):
     assert db.query(Job).filter_by(type=svc.MATCH_JOB, startup_id=s.id).count() == 1
     scheduler_tick(db, now=now + timedelta(days=7))
     assert db.query(Job).filter_by(type=svc.MATCH_JOB, startup_id=s.id).count() == 2
+
+
+def test_the_weekly_match_is_off_by_default_so_a_hidden_module_spends_and_sends_nothing(
+    client, db, team, founder, llm
+):
+    from app.worker.scheduler import scheduler_tick
+
+    assert settings.FUNDING_GRANT_MATCHING_ENABLED is False
+    scheduler_tick(db, now=datetime(2026, 11, 16, 9, 0, tzinfo=UTC))
+    assert db.query(Job).filter_by(type=svc.MATCH_JOB).count() == 0
+    # a weekly job that was queued before the switch went off is skipped by the handler
+    s = team[0]
+    job = svc.job_dispatcher.enqueue(
+        db, svc.MATCH_JOB, {"startup_id": str(s.id), "scheduled": True}, s.id
+    )
+    db.commit()
+    _drain(db)
+    db.refresh(job)
+    assert job.result == {"status": "disabled"}
+    assert llm.calls == [] and db.query(GrantMatch).count() == 0
+
+
+def test_a_manual_refresh_still_works_with_the_switch_off_but_never_notifies(
+    client, db, team, founder
+):
+    assert len(_match(client, db, founder)["items"]) > 0
+    assert db.query(Notification).filter_by(type="funding.grant.matched").count() == 0
+
+
+def test_the_workspace_lock_is_not_held_across_the_model_call(
+    client, db, team, founder, monkeypatch
+):
+    order: list[str] = []
+    real_lock = svc.lock_workspace
+    monkeypatch.setattr(
+        svc, "lock_workspace", lambda *a, **k: (order.append("lock"), real_lock(*a, **k))[1]
+    )
+
+    def match(messages):
+        order.append("model")
+        return {"matches": []}
+
+    llm = GrantLLM(match=match)
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: llm)
+    _match(client, db, founder)
+    # queueing locks (before the job exists); the run itself locks only after the model call
+    assert order == ["lock", "model", "lock"]
 
 
 def test_a_run_for_a_workspace_without_the_plan_does_nothing(client, db, team, monkeypatch):
@@ -494,6 +543,30 @@ def test_text_typed_while_the_draft_runs_is_never_overwritten(client, db, founde
     _drain(db)
     got = _first_answer(client, founder, app_id)
     assert got["answer"] == "Typed first." and got["draft_status"] is None
+
+
+def _type_during_the_call(monkeypatch, db, text):
+    """Simulate the founder's PATCH committing while the model call is in flight."""
+    from sqlalchemy import update
+
+    def during(self, messages, *, schema, max_tokens):
+        db.execute(update(GrantAnswer).values(answer=text, draft_status=None, ai_drafted=False))
+        return {"answer": "Model text."}
+
+    monkeypatch.setattr(GrantLLM, "complete_json", during)
+
+
+def test_a_patch_committed_during_the_model_call_is_not_overwritten(
+    client, db, founder, monkeypatch
+):
+    app_id = _apply(client, db, founder).json()["data"]["id"]
+    a = _first_answer(client, founder, app_id)
+    client.post(f"{APPS}/{app_id}/answers/{a['id']}/draft", json={}, headers=founder)
+    _type_during_the_call(monkeypatch, db, "Typed during the call.")
+    _drain(db)
+    got = _first_answer(client, founder, app_id)
+    assert got["answer"] == "Typed during the call." and got["ai_drafted"] is False
+    assert got["draft_status"] is None
 
 
 def test_a_model_failure_marks_the_draft_failed_and_the_button_comes_back(

@@ -156,10 +156,14 @@ def _due_qa_retention(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
 
 def _due_grant_matches(db: Session, now: datetime) -> list[Due]:
     """Weekly grant matching (D-FUND-7): once per ISO week for each workspace whose plan has the
-    Funding module. The job re-checks the plan, so a downgrade between tick and run is safe."""
+    Funding module. The job re-checks the plan, so a downgrade between tick and run is safe.
+    Off unless `FUNDING_GRANT_MATCHING_ENABLED`: Funding is hidden, so no AI spend or
+    notification may come out of it by default."""
     from app.services.billing.gate import has_feature
     from app.services.funding.grants import MATCH_JOB
 
+    if not settings.FUNDING_GRANT_MATCHING_ENABLED:
+        return []
     year, week, _ = _local(now).isocalendar()
     return [
         Due(
@@ -168,7 +172,7 @@ def _due_grant_matches(db: Session, now: datetime) -> list[Due]:
             f"{year}-W{week:02d}",
             MATCH_JOB,
             sid,
-            {"startup_id": str(sid)},
+            {"startup_id": str(sid), "scheduled": True},
         )
         for sid in _active_startup_ids(db)
         if has_feature(db, sid, "funding")

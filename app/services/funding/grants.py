@@ -16,8 +16,10 @@ from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.errors import AiBudgetExhausted, NotFound
 from app.core.logger import log
 from app.db.models.enums import JobStatus
@@ -233,7 +235,6 @@ def run_match(db: Session, startup: Startup, *, last_attempt: bool = True) -> di
     then the plain scores stand. Returns counts for the job result."""
     from app.platform.llm_budget import metered_complete_json
 
-    lock_workspace(db, startup.id)
     pool = candidates(db, startup)[:TOP_N]
     scored: dict[str, tuple[int, str]] = {}
     if pool and not over_budget(db, startup.id):
@@ -251,6 +252,10 @@ def run_match(db: Session, startup: Startup, *, last_attempt: bool = True) -> di
             if not last_attempt:
                 raise
             log.exception("grant match for {} fell back to plain scores", startup.id)
+    # The model call can take a minute, so the workspace lock is taken only now, around the
+    # writes: holding it across the call would block every insert that references the startup.
+    # `existing` is read after the lock, so a run that waited sees the other run's rows.
+    lock_workspace(db, startup.id)
     now = datetime.now(UTC)
     existing = {
         m.grant_id: m
@@ -294,7 +299,7 @@ def run_match(db: Session, startup: Startup, *, last_attempt: bool = True) -> di
         if gid not in keep:
             db.delete(row)
     db.flush()
-    if new:
+    if new and settings.FUNDING_GRANT_MATCHING_ENABLED:  # hidden module: no notification
         event_bus.publish(
             db,
             MATCHED_EVENT,
@@ -761,6 +766,8 @@ def run_draft(db: Session, job: Job, *, last_attempt: bool) -> None:
         job.result = {"status": "superseded"}  # a newer draft, or the founder edited meanwhile
         return
     grant = db.get(Grant, app.grant_id) if app.grant_id else None
+    failed = False
+    raw: dict[str, Any] | None = None
     try:
         raw = metered_complete_json(
             db,
@@ -773,6 +780,18 @@ def run_draft(db: Session, job: Job, *, last_attempt: bool) -> None:
         if not last_attempt:
             raise
         log.exception("grant draft {} failed", row.id)
+        failed = True
+    # The call can take a minute and the founder may have typed or re-queued meanwhile: lock
+    # the row and look again before writing anything.
+    try:
+        db.refresh(row, with_for_update=True)
+    except InvalidRequestError:  # the answer was deleted while the model ran
+        job.result = {"status": "gone"}
+        return
+    if row.draft_status != "queued" or row.job_id != job.id:
+        job.result = {"status": "superseded"}
+        return
+    if failed:
         row.draft_status = "failed"
         job.result = {"status": "failed", "reason": "generation_failed"}
         db.flush()
@@ -798,6 +817,9 @@ def run_draft(db: Session, job: Job, *, last_attempt: bool) -> None:
 def run_match_job(db: Session, job: Job, *, last_attempt: bool) -> None:
     from app.services.billing.gate import has_feature
 
+    if job.payload.get("scheduled") and not settings.FUNDING_GRANT_MATCHING_ENABLED:
+        job.result = {"status": "disabled"}  # a weekly job queued before the switch was turned off
+        return
     try:
         startup = db.get(Startup, uuid.UUID(str(job.payload.get("startup_id"))))
     except ValueError:

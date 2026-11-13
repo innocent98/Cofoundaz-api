@@ -707,6 +707,11 @@ a fact: highlight them.
 "N new grant matches for you, starting with <name>", opens `/funding/grants`. Not exercised live here
 (checked in the unit tests); the live run emitted the event, visible in the server log.
 
+**Off by default (2026-11-13 fix):** the module is hidden, so the weekly run and this notification are
+behind the server setting `FUNDING_GRANT_MATCHING_ENABLED` (default `false`). While it is off, no weekly run is
+scheduled and no `funding.grant.matched` notification is sent, even for a manual refresh. `POST
+/grants/matches/refresh` itself is unchanged (same 202 body and same matches); no response shape changed.
+
 ## 9. Traps and UX the FE must surface
 
 1. **List vs detail**: tracker items have no `answers` or `grant`; detail has both.
@@ -733,6 +738,7 @@ a fact: highlight them.
 | Country filter (US excluded from Africa-only grants), plain fallback when the model fails or the allowance is spent, hostile model output clamped | unit tests |
 | Weekly schedule (one run per workspace per ISO week), plan check inside the job | unit tests |
 | Notification to founders and team members only, none when nothing is new | unit tests |
+| Weekly run and notification are off unless `FUNDING_GRANT_MATCHING_ENABLED`; manual refresh never notifies while off | unit tests |
 | Draft never overwrites text typed meanwhile, dead job reconcile, 429 on spent allowance | unit tests |
 | 402 `PLAN_REQUIRED` gate | unit tests (not live: e2e runs with enforcement off) |
 | A real model's scoring and drafting quality | **not exercised** |

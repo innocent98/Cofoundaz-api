@@ -832,6 +832,18 @@ def test_failed_extractions_are_capped(client, db, team, founder, monkeypatch):
     )
 
 
+def test_the_failed_cap_never_blocks_typed_creation(client, db, team, founder, monkeypatch):
+    monkeypatch.setattr(svc, "MAX_FAILED", 1)
+    _extract(client, db, team, founder, text=["x"], name="one.pdf")  # fails: no text
+    assert db.query(TermSheet).filter_by(status="failed").count() == 1
+    typed(client, founder)  # 201: the cap is for extractions only
+    f = uploaded(db, team, text=["y"], name="two.pdf")
+    assert (
+        client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).status_code
+        == 422
+    )
+
+
 def test_reconciling_a_dead_extraction_leaves_a_system_audit_row(client, db, team, founder):
     f = uploaded(db, team)
     sid = client.post(f"{TS}/extract", json={"file_id": str(f.id)}, headers=founder).json()["data"][

@@ -283,6 +283,10 @@ def _check_limit(db: Session, startup_id: uuid.UUID) -> None:
     )
     if live.count() >= MAX_SHEETS:
         raise _validation("label", f"You can keep at most {MAX_SHEETS} term sheets.")
+
+
+def _check_failed_cap(db: Session, startup_id: uuid.UUID) -> None:
+    """Only extractions can fail, so only they are capped; typed creation never is."""
     failed = db.query(TermSheet.id).filter(
         TermSheet.startup_id == startup_id, TermSheet.status == "failed"
     )
@@ -386,6 +390,7 @@ def create_extraction(
         if not reconcile(db, existing):  # still alive (or done): it is the answer
             return existing, False
     _check_limit(db, startup_id)
+    _check_failed_cap(db, startup_id)
     if over_budget(db, startup_id):
         raise AiBudgetExhausted()
     sheet = TermSheet(
