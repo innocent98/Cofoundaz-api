@@ -265,3 +265,36 @@ def test_accepting_invitation_writes_activity(client, db):
     assert len(rows) == 1
     assert rows[0].actor_user_id == invitee.id
     assert rows[0].entity_type == "membership"
+
+
+def test_accepting_an_invitation_adds_the_teammate_joined_health_marker(client, db):
+    """The Health Score history marker reads the activity log by action, so the label key must be
+    the action invitations really write (`member.joined`)."""
+    owner = create_user(db, email="owner2@x.com", email_verified_at=datetime.now(UTC))
+    s = create_startup(db, owner=owner, name="Cofoundaz")
+    create_membership(db, owner, s, role=MembershipRole.founder)
+    invitee = create_user(db, email="invitee2@x.com", email_verified_at=datetime.now(UTC))
+    create_invitation(
+        db,
+        s,
+        email="invitee2@x.com",
+        role=MembershipRole.mentor,
+        inviter=owner,
+        token_hash=hash_token("markertok"),
+    )
+    db.commit()
+
+    auth = {"Authorization": f"Bearer {create_access_token(str(invitee.id))}"}
+    assert client.post(
+        "/api/v1/invitations/accept", json={"token": "markertok"}, headers=auth
+    ).is_success
+
+    owner_h = {
+        "Authorization": f"Bearer {create_access_token(str(owner.id))}",
+        "X-Workspace-Id": str(s.id),
+    }
+    r = client.get("/api/v1/health-score/history/markers?range=30d", headers=owner_h)
+    assert r.status_code == 200, r.text
+    markers = r.json()["data"]
+    assert [m["label"] for m in markers] == ["Teammate joined"]
+    assert markers[0]["action"] == "member.joined"

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.db.models.activity import ActivityLog
-from app.db.models.enums import MembershipRole
+from app.db.models.enums import ASSESSMENT_ROLES, MembershipRole
 from app.platform import activity as policy
 from tests.factories import create_activity, create_startup, create_user
 
@@ -62,6 +62,14 @@ def test_every_written_action_is_classified():
     classified = policy._OPEN_NAMESPACES | set(policy._RESTRICTED_NAMESPACES)
     unclassified = {a for a in actions if a.split(".", 1)[0] not in classified}
     assert unclassified == set(), "classify these in app/platform/activity.py"
+
+
+@pytest.mark.parametrize("role", list(MembershipRole))
+def test_assessment_activity_follows_the_assessment_read_gate(role):
+    """D-ASM-1: `assessment.completed` is assessment data, so the same roles as the Assessment
+    routes. Any other `assessment.*` row fails the same way (no open namespace)."""
+    for action in ("assessment.completed", "assessment.quarterly.due"):
+        assert policy.activity_visible(role, action, "assessment") == (role in ASSESSMENT_ROLES)
 
 
 @pytest.mark.parametrize("role", list(MembershipRole))

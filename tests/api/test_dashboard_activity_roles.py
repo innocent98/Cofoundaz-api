@@ -1,15 +1,20 @@
 """D-MIS-8 follow-up: the Dashboard activity feed is filtered by the caller's role.
 
 Mission rows are founder + team member only, finance rows FINANCE_ROLES, marketing rows
-MARKETING_ROLES; health score, roadmap, business, document, assessment and member rows stay
-open to every role (#153). Filtering happens in SQL so the cursor pages stay full."""
+MARKETING_ROLES, assessment rows ASSESSMENT_ROLES; health score, roadmap, business and member
+rows stay open to every role (#153). Filtering happens in SQL so the cursor pages stay full."""
 
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from app.core.security import create_access_token
-from app.db.models.enums import FINANCE_ROLES, MARKETING_ROLES, MembershipRole
+from app.db.models.enums import (
+    ASSESSMENT_ROLES,
+    FINANCE_ROLES,
+    MARKETING_ROLES,
+    MembershipRole,
+)
 from tests.factories import create_activity, create_membership, create_startup, create_user
 
 MISSION_TITLE = "Call the seed lead investor"
@@ -74,7 +79,8 @@ def test_mentor_feed_hides_mission_task_titles(client, db):
     assert MISSION_TITLE not in str(data)
     actions = {i["action"] for i in data["items"]}
     assert not any(a.startswith("mission.") for a in actions)
-    assert {"roadmap.milestone.completed", "member.joined", "assessment.completed"} <= actions
+    assert {"roadmap.milestone.completed", "member.joined"} <= actions
+    assert "assessment.completed" not in actions  # D-ASM-1: the assessment read gate
 
 
 @pytest.mark.parametrize("role", list(MembershipRole))
@@ -87,6 +93,7 @@ def test_finance_and_marketing_rows_follow_module_roles(client, db, role):
     actions = {i["action"] for i in _actions(client, _headers(viewer, s))["items"]}
     assert ("finance.transaction.created" in actions) is (role in FINANCE_ROLES)
     assert ("marketing.campaign.launched" in actions) is (role in MARKETING_ROLES)
+    assert ("assessment.completed" in actions) is (role in ASSESSMENT_ROLES)
 
 
 @pytest.mark.parametrize("role", [MembershipRole.founder, MembershipRole.team_member])

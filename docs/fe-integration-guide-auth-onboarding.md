@@ -49,8 +49,9 @@ POST /api/v1/auth/refresh          headers: X-Auth-Mode: cookie       (no body, 
 → 200   Set-Cookie: cfz_refresh=<refresh-token>; HttpOnly; Max-Age=2592000; Path=/api/v1/auth; SameSite=lax
 {"data": {"access_token": "<access-token>", "refresh_token": null, "expires_in": 900}, "meta": null}
 ```
-The cookie value **rotates on every refresh** (the old one dies). Several tabs must share one in-flight refresh (single-flight, as the
-current client does) or the second tab's reuse revokes the whole sign-in. On page load, call refresh once to get the first access token;
+The cookie value **rotates on every refresh**. The previous value keeps working for a short **grace window** (20 s by default, see the
+next section), so a lost response or a second tab no longer signs the user out; still share one in-flight refresh (single-flight, as the
+current client does) so tabs don't churn tokens. On page load, call refresh once to get the first access token;
 a `401` means "not signed in" [`refresh_after_logout_401`]: `{"error": {"code": "UNAUTHORIZED", "message": "Not authenticated.", "field_errors": []}}`.
 Header-auth client with the body token [`refresh_body_token_200`]: same shape, `"refresh_token": "<refresh-token>"` is a string.
 
@@ -71,11 +72,22 @@ signs out and clears the cookie). The real cookie session survives both (the jou
 Why this works: a plain HTML form cannot add a custom header, and a cross-origin `fetch` that adds one triggers a CORS preflight that
 only allowed origins pass; `SameSite=lax` keeps the cookie off cross-site sub-requests in the first place.
 
-### Refresh-token reuse kills the sign-in [`refresh_reuse_401`], [`refresh_newest_after_reuse_401`]
-Presenting an already-rotated refresh token is treated as theft: the whole sign-in (every token in its family) is revoked and the
+### Grace window: the previous refresh token still works for ~20 s [`grace_refresh_replay_in_window_200`], [`grace_refresh_other_tab_200`]
+If a refresh response is lost (aborted request, browser quit mid-flight) or a second tab refreshes with the token the first tab just
+used, presenting that **immediately-previous** token within `REFRESH_GRACE_SECONDS` (default **20**) of its rotation returns a normal `200`
+with a **new, different** pair (it is *not* the pair the first call returned: the server only stores hashes). Captured body, same shape as
+any refresh: `{"data": {"access_token": "<access-token>", "refresh_token": "<refresh-token>", "expires_in": 900}, "meta": null}`.
+Rules the FE can rely on: always store and use the **newest** pair you receive; the window is measured from the moment *that token* was
+rotated, so a token never works for more than 20 s after being superseded; once the window has passed, the next section applies.
+A tab holding a superseded-but-recent token (the other tab's) is accepted and simply moves the family forward. The server keeps
+exactly one live token per sign-in.
+
+### Refresh-token reuse kills the sign-in [`refresh_reuse_401`], [`refresh_newest_after_reuse_401`], [`grace_refresh_replay_after_window_401`]
+Presenting an already-rotated refresh token **after the grace window** is treated as theft: the whole sign-in (every token in its family) is revoked and the
 revocation is committed. Captured: reuse of the old token `401 UNAUTHORIZED`, then the newest token of the same sign-in also `401`.
-**FE:** any `401` from refresh means "signed out": go to `/login`. Two tabs refreshing at the same instant can trigger this, which is why
-refresh must be single-flight.
+**FE:** any `401` from refresh means "signed out": go to `/login`. Two tabs refreshing at the same instant no longer trigger this (grace
+window), but a token that is older than the window still does, e.g. a tab that slept for minutes holding a superseded token: re-read the
+cookie (cookie mode does this for free) rather than caching the refresh token in memory.
 
 ### Logout [`logout_cookie_mode_200`]
 ```
@@ -313,7 +325,9 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 | MFA ticket: typo keeps it, 5th wrong burns it, burned/used/unknown give `MFA_TICKET_EXPIRED`, `attempts_remaining` | live |
 | MFA per-account cap across tickets (`ACCOUNT_LOCKED` on the challenge), atomic cap and single-use claim under concurrency | unit tests only |
 | Atomic attempt reservation (a parallel burst gets exactly the limit); known addresses exempt from the email-wide ceiling; IPv6 /64 keys; mail caps per (email, IP) and overall; counters that lost their expiry repair themselves; backup code spent once; bcrypt on unknown emails | unit tests only (the burst test uses 16 threads against Redis) |
-| Refresh-token reuse revokes the family and the revocation survives the failed request | live (`refresh_reuse_401`, `refresh_newest_after_reuse_401`) and unit-tested including the rollback |
+| Refresh-token reuse (after the grace window) revokes the family and the revocation survives the failed request | live (`refresh_reuse_401`, `refresh_newest_after_reuse_401`, `grace_refresh_replay_after_window_401`, `grace_refresh_newest_after_reuse_401`) and unit-tested including the rollback |
+| Previous refresh token accepted inside the grace window (lost response, second tab), new pair returned, family intact | live (`grace_refresh_replay_in_window_200`, `grace_refresh_other_tab_200`; the e2e server runs with `REFRESH_GRACE_SECONDS=5`, production default is 20) |
+| Two concurrent refreshes with the same token both succeed and leave one live token; concurrent replays past the window both fail and revoke | unit only (`tests/services/auth/test_sessions_concurrency.py`, real committing connections) |
 | Decoy body token cannot rotate the cookie or force a logout | live (`refresh_cookie_decoy_body_401`, `logout_cookie_decoy_body_200`) |
 | Pending invitee can still write; decline invitation (200, again 400, wrong account 403); state after decline; member writes 409 | live |
 | Cookie-mode login, silent refresh, rotation, logout revokes | live |

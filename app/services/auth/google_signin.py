@@ -67,6 +67,7 @@ ERR_MISMATCH = "google_account_mismatch"
 ERR_INVITE_INVALID = "invite_invalid"
 ERR_INVITE_MISMATCH = "invite_email_mismatch"
 ERR_MAINTENANCE = "maintenance"
+ERR_TERMS = "terms_not_accepted"
 ERR_RATE = "rate_limited"
 ERR_CONFLICT = "try_again"
 
@@ -128,8 +129,16 @@ def invitation_by_token(db: Session, token: str) -> Invitation | None:
     return inv
 
 
-def start(db: Session, *, invite_token: str | None, next_path: str | None) -> tuple[str, str]:
-    """(auth_url, proof cookie value). An unusable invite is refused now, not after the detour."""
+def start(
+    db: Session,
+    *,
+    invite_token: str | None,
+    next_path: str | None,
+    accepted_terms: bool = False,
+) -> tuple[str, str]:
+    """(auth_url, proof cookie value). An unusable invite is refused now, not after the detour.
+    `accepted_terms` is the Terms + Privacy checkbox; it travels in the server-side state because
+    the callback is a GET redirect, and only matters if the callback has to create an account."""
     if not google_oidc.configured():
         raise google_oidc.GoogleSignInNotConfigured()
     if invite_token and invitation_by_token(db, invite_token) is None:
@@ -144,6 +153,7 @@ def start(db: Session, *, invite_token: str | None, next_path: str | None) -> tu
         "nonce": nonce,
         "invite": invite_token,
         "next": safe_next(next_path),
+        "terms": bool(accepted_terms),
     }
     get_redis().setex(f"{_STATE_KEY}{jti}", STATE_TTL_SECONDS, json.dumps(record))
     url = google_oidc.build_auth_url(state=_sign(STATE_TYP, jti), nonce=nonce, challenge=challenge)
@@ -227,7 +237,14 @@ def complete_callback(
             return None, _reject(db, ERR_INVITE_MISMATCH, ip=ip), next_path
 
     try:
-        outcome = _resolve_user(db, sub=sub, email=email, name=claims.get("name"), ip=ip)
+        outcome = _resolve_user(
+            db,
+            sub=sub,
+            email=email,
+            name=claims.get("name"),
+            ip=ip,
+            accepted_terms=bool(record.get("terms")),
+        )
     except IntegrityError:
         db.rollback()  # two first sign-ins raced; the loser tries again and finds the winner
         return None, ERR_CONFLICT, next_path
@@ -245,7 +262,7 @@ def complete_callback(
 
 
 def _resolve_user(
-    db: Session, *, sub: str, email: str, name: Any, ip: str | None
+    db: Session, *, sub: str, email: str, name: Any, ip: str | None, accepted_terms: bool = False
 ) -> tuple[User, bool] | str:
     """The account for this Google identity: linked by `sub`, else by verified email, else new.
     Returns (user, is_new) or an error code."""
@@ -268,7 +285,14 @@ def _resolve_user(
         if maintenance_state(db)["enabled"]:
             # The callback is a GET, which maintenance mode lets through: new sign-ups are writes.
             return _reject(db, ERR_MAINTENANCE, ip=ip)
-        return _create_user(db, sub=sub, email=email, name=name, ip=ip), True
+        if settings.SIGNUP_REQUIRE_TERMS and not accepted_terms:
+            # Same gate as email sign-up, enforced before any row exists: no account is created
+            # without consent, and the FE re-starts with the checkbox ticked.
+            return _reject(db, ERR_TERMS, ip=ip)
+        return (
+            _create_user(db, sub=sub, email=email, name=name, ip=ip, accepted_terms=accepted_terms),
+            True,
+        )
     user = existing
 
     blocked = _blocked(db, user, ip)
@@ -318,12 +342,16 @@ def _take_over_unverified(db: Session, user: User) -> None:
     event_bus.publish(db, "auth.user.verified", {"user_id": str(user.id)})
 
 
-def _create_user(db: Session, *, sub: str, email: str, name: Any, ip: str | None) -> User:
+def _create_user(
+    db: Session, *, sub: str, email: str, name: Any, ip: str | None, accepted_terms: bool = False
+) -> User:
     user = User(
         email=email,
         password_hash=None,
         status=UserStatus.active,
         email_verified_at=_now(),
+        terms_accepted_at=_now() if accepted_terms else None,
+        terms_version=settings.TERMS_VERSION if accepted_terms else None,
     )
     full_name = str(name).strip()[:120] if name else ""
     user.profile = UserProfile(full_name=full_name or None)
@@ -344,7 +372,10 @@ def _create_user(db: Session, *, sub: str, email: str, name: Any, ip: str | None
         "auth.user.registered",
         actor_user_id=user.id,
         ip=ip,
-        details={"method": "google"},
+        details={
+            "method": "google",
+            **({"terms_version": settings.TERMS_VERSION} if accepted_terms else {}),
+        },
     )
     event_bus.publish(db, "auth.user.registered", {"user_id": str(user.id)})
     event_bus.publish(db, "auth.user.verified", {"user_id": str(user.id)})

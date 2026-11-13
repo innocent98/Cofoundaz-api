@@ -109,7 +109,7 @@ mission streak).
   "meta": null
 }
 ```
-Labels: Assessment completed · Business plan generated · Milestone completed · Roadmap re-planned · Teammate joined ·
+Labels: Assessment completed · Business plan generated · Milestone completed · Roadmap re-planned · Teammate joined (fires since 2026-11-13; before that the marker never appeared, see `e2e/_captures/team_invitations/health_markers_teammate_joined.json`) ·
 Agreement signed. Draw them as markers at `at` with the label as a tooltip.
 
 ## 4. Benchmarks (PRD 06.4): real percentiles now

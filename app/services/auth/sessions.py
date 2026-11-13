@@ -84,6 +84,11 @@ def rotate_refresh(
         .update({AuthSession.rotated_at: now}, synchronize_session=False)
     )
     if claimed == 0:
+        # Grace window: the immediately-previous token of a live family, presented within
+        # REFRESH_GRACE_SECONDS of its rotation, is a lost response or a second tab, not theft.
+        grace = _rotate_in_grace(db, session, now, ip=ip, user_agent=user_agent)
+        if grace is not None:
+            return grace
         # Already rotated/revoked/expired by the time we tried to claim it, or a
         # concurrent caller just won the race for this exact token -- either way this is
         # a reuse signal. Revoke every session in the family, including one a concurrent
@@ -102,6 +107,62 @@ def rotate_refresh(
     if user is None or user.deleted_at is not None or user.status == UserStatus.disabled:
         raise Unauthorized()
 
+    access, raw = issue_token_pair(
+        db, user, ip=ip, user_agent=user_agent, family_id=session.family_id
+    )
+    return access, raw, user
+
+
+def _rotate_in_grace(
+    db: Session,
+    session: AuthSession,
+    now: datetime,
+    *,
+    ip: str | None,
+    user_agent: str | None,
+) -> tuple[str, str, User] | None:
+    """Serve a re-presented, just-rotated refresh token with an equivalent new pair, or None when
+    this is real reuse (the caller then revokes the family).
+
+    We store only hashes, so the pair the first rotation returned can't be replayed: the family's
+    live head is rotated and a fresh child issued instead. Two concurrent callers serialise on
+    the head's row lock and both succeed, leaving a single live head. The window is anchored to
+    the old token's own `rotated_at`, so a stolen token stops working REFRESH_GRACE_SECONDS after
+    the owner's rotation; a token only ever re-enters the window by being rotated itself."""
+    # `session` was read before the claim; a concurrent winner has committed `rotated_at` since.
+    db.refresh(session)
+    if (
+        session.rotated_at is None
+        or session.revoked_at is not None
+        or session.expires_at < now
+        or now - session.rotated_at > timedelta(seconds=settings.REFRESH_GRACE_SECONDS)
+    ):
+        return None
+    user = db.query(User).filter(User.id == session.user_id).first()
+    if user is None or user.deleted_at is not None or user.status == UserStatus.disabled:
+        raise Unauthorized()
+    head = None
+    # A row lock that waits on a concurrent rotation returns nothing once the row is rotated;
+    # the next statement then sees the child that rotation committed.
+    for _ in range(3):
+        head = (
+            db.query(AuthSession)
+            .filter(
+                AuthSession.family_id == session.family_id,
+                AuthSession.rotated_at.is_(None),
+                AuthSession.revoked_at.is_(None),
+                AuthSession.expires_at >= now,
+            )
+            .order_by(AuthSession.created_at.desc(), AuthSession.id)
+            .with_for_update()
+            .first()
+        )
+        if head is not None:
+            break
+    if head is None:
+        return None
+    head.rotated_at = now
+    db.flush()
     access, raw = issue_token_pair(
         db, user, ip=ip, user_agent=user_agent, family_id=session.family_id
     )

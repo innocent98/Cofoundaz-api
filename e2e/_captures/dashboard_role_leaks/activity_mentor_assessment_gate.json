@@ -1,0 +1,47 @@
+{
+  "data": {
+    "items": [
+      {
+        "id": "3b65c4bc-4643-40f5-989a-75e39c1b2e40",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "0b4b5011-02a3-490b-b240-277792bb6281",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "78abfaeb-6ca4-431a-8151-398b04d162a9",
+          "name": null
+        },
+        "created_at": "2026-11-13T18:24:47.795312+00:00"
+      },
+      {
+        "id": "60ce7888-0c4a-4a95-8bf7-b93fa53e787b",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "3c9b8e61-7c34-4d28-8d26-1adfc3e3e216",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "d5d63d00-9e44-4c7e-92a0-f28e96f0e099",
+          "name": null
+        },
+        "created_at": "2026-11-13T18:24:47.190083+00:00"
+      },
+      {
+        "id": "0d18fd57-ed6b-4c1c-b8a5-af650db8d274",
+        "action": "member.joined",
+        "entity_type": "membership",
+        "entity_id": "f51ba847-d24f-4bd0-89f2-5f7457f7f016",
+        "summary": "A teammate joined the workspace",
+        "meta": null,
+        "actor": {
+          "id": "3526ec57-757e-4146-a49b-16d9b6dd98fb",
+          "name": null
+        },
+        "created_at": "2026-11-13T18:24:46.446425+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

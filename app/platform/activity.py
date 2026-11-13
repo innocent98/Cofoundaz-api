@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.activity import ActivityLog
 from app.db.models.enums import (
+    ASSESSMENT_ROLES,
     DOCUMENT_ROLES,
     FINANCE_ROLES,
     MARKETING_ROLES,
@@ -20,6 +21,7 @@ from app.db.models.user import UserProfile
 # entity_type, so a mission task can't surface through some other action name.
 _RESTRICTED_NAMESPACES: dict[str, frozenset[MembershipRole]] = {
     "mission": MISSION_ROLES,
+    "assessment": ASSESSMENT_ROLES,
     "document": DOCUMENT_ROLES,
     "finance": FINANCE_ROLES,
     "marketing": MARKETING_ROLES,
@@ -47,10 +49,10 @@ _RESTRICTED_ENTITIES: dict[str, frozenset[MembershipRole]] = {
 }
 # Open to every role: #153 kept health score, roadmap and business data open (documents are
 # F + TM only since D-DOC-1);
-# assessment.completed is already shown to every role as a health-score history marker, and
-# member.joined is workspace membership, which every member can see.
+# member.joined is workspace membership, which every member can see. `assessment.*` is NOT open:
+# it follows the assessment read gate (D-ASM-1); the Health Score history marker is separate.
 _OPEN_NAMESPACES: frozenset[str] = frozenset(
-    {"healthscore", "roadmap", "business", "assessment", "member", "workspace"}
+    {"healthscore", "roadmap", "business", "member", "workspace"}
 )
 # A namespace in neither list fails closed: only the core team sees it until it is classified.
 _UNCLASSIFIED_ROLES: frozenset[MembershipRole] = frozenset(

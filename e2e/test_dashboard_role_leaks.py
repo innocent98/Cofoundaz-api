@@ -143,6 +143,11 @@ def test_dashboard_role_leaks_journey(base_url, make_verified_user, unique_email
         assert mc.json()["data"]["mission"] is None
         assert mc.json()["data"]["mission_status"] == "restricted"
         capture(G, "summary_business_consultant", mc)
+        # The task KPIs follow the mission gate and the calibration flag follows the assessment
+        # gate: other roles get nulls, not the real figure.
+        assert d["kpis"]["tasks_done_this_week"] is None and d["kpis"]["tasks_trend"] is None
+        assert d["calibration"] == {"assessment_complete": None}
+        assert mc.json()["data"]["calibration"] == {"assessment_complete": None}
         gone = c.get("/api/v1/missions/today", headers=mentor)
         assert gone.status_code == 403
         capture(G, "missions_today_mentor_403", gone)
@@ -155,6 +160,20 @@ def test_dashboard_role_leaks_journey(base_url, make_verified_user, unique_email
         ts = c.get(S, headers=team)
         assert ts.json()["data"]["mission_status"] == "ok" and ts.json()["data"]["mission"]["tasks"]
         capture(G, "summary_team_member", ts)
+        assert fd["calibration"] == {"assessment_complete": True}
+        assert ts.json()["data"]["calibration"] == {"assessment_complete": True}
+        assert fd["kpis"]["tasks_done_this_week"] == 0 and fd["kpis"]["tasks_trend"] is not None
+
+        # The `assessment.completed` activity row follows the assessment read gate too.
+        feed = {}
+        for who, h in (("founder", wh), ("team_member", team), ("mentor", mentor)):
+            fr = c.get("/api/v1/dashboard/activity", headers=h)
+            assert fr.status_code == 200, fr.text
+            feed[who] = [i["action"] for i in fr.json()["data"]["items"]]
+            capture(G, f"activity_{who}_assessment_gate", fr)
+        assert "assessment.completed" in feed["founder"]
+        assert "assessment.completed" in feed["team_member"]
+        assert "assessment.completed" not in feed["mentor"]
 
         # The mentor still sees nothing of it after the founder generated it.
         m2 = c.get(S, headers=mentor)
@@ -209,5 +228,11 @@ def test_dashboard_role_leaks_journey(base_url, make_verified_user, unique_email
         assert "mission.completed" in _types(c, team)
         assert "mission.completed" not in _types(c, mentor)
         assert "mission.completed" not in _types(c, consultant)
+        done_f = c.get(S, headers=wh)
+        assert done_f.json()["data"]["kpis"]["tasks_done_this_week"] == len(tasks)
+        done_m = c.get(S, headers=mentor)
+        assert done_m.json()["data"]["kpis"]["tasks_done_this_week"] is None
+        capture(G, "summary_founder_tasks_done", done_f)
+        capture(G, "summary_mentor_tasks_done", done_m)
         capture(G, "notifications_team_member", c.get("/api/v1/notifications", headers=team))
         capture(G, "notifications_mentor", c.get("/api/v1/notifications", headers=mentor))

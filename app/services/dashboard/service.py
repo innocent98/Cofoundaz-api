@@ -11,6 +11,7 @@ from app.core.errors import AppError
 from app.db.models.activity import ActivityLog
 from app.db.models.dashboard import DailyBriefing
 from app.db.models.enums import (
+    ASSESSMENT_ROLES,
     BRIEFING_ROLES,
     MISSION_ROLES,
     BriefingStatus,
@@ -315,9 +316,15 @@ def get_summary(
         "kpis": _section_isolated(
             db,
             lambda: {
-                "tasks_done_this_week": tasks_done_this_week(db, startup),
-                "tasks_trend": trend(
-                    db, startup.id, "tasks_done_week", tasks_done_this_week(db, startup)
+                # Mission-task counts follow the mission read gate (D-MIS-8); other roles get
+                # nulls, which the FE renders as the same placeholder as the legacy scalars.
+                "tasks_done_this_week": (
+                    tasks_done_this_week(db, startup) if role in MISSION_ROLES else None
+                ),
+                "tasks_trend": (
+                    trend(db, startup.id, "tasks_done_week", tasks_done_this_week(db, startup))
+                    if role in MISSION_ROLES
+                    else None
                 ),
                 "metrics": kpi_metrics(db, startup, role),
                 # Legacy scalars, kept null: the pre-`metrics` FE renders these as an honest
@@ -329,7 +336,15 @@ def get_summary(
             },
         ),
         "calibration": _section_isolated(
-            db, lambda: {"assessment_complete": latest_completed_result(db, startup.id) is not None}
+            db,
+            lambda: {
+                # D-ASM-1: whether an assessment exists is assessment data; null when not readable.
+                "assessment_complete": (
+                    latest_completed_result(db, startup.id) is not None
+                    if role in ASSESSMENT_ROLES
+                    else None
+                )
+            },
         ),
         **(
             _briefing_blocks(db, startup, user)

@@ -1,0 +1,11 @@
+{
+  "request": {
+    "json": {
+      "accepted_terms": true
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "<auth_url, expires_in>"
+  }
+}

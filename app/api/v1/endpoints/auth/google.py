@@ -56,7 +56,12 @@ def start(
     """Returns the Google consent URL; the FE navigates the browser to it."""
     if svc.rate_limited(_ip(request)):
         raise AppError("TOO_MANY_ATTEMPTS", "Too many attempts. Try again in a few minutes.", 429)
-    auth_url, proof = svc.start(db, invite_token=payload.invite_token, next_path=payload.next)
+    auth_url, proof = svc.start(
+        db,
+        invite_token=payload.invite_token,
+        next_path=payload.next,
+        accepted_terms=payload.accepted_terms,
+    )
     response.set_cookie(
         PROOF_COOKIE,
         proof,

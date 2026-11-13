@@ -447,13 +447,14 @@ HISTORY_RANGES: dict[str, int | None] = {
     "all": None,
 }
 
-# PRD 06.3 annotated event markers: notable workspace events, from the activity log.
+# PRD 06.3 annotated event markers: notable workspace events, from the activity log. Keys are
+# the `action` strings ActivityLog rows really carry (invitation accept writes `member.joined`).
 MARKER_LABELS = {
     "assessment.completed": "Assessment completed",
     "business.plan.generated": "Business plan generated",
     "roadmap.milestone.completed": "Milestone completed",
     "roadmap.replanned": "Roadmap re-planned",
-    "workspace.member.joined": "Teammate joined",
+    "member.joined": "Teammate joined",
     "document.signature.completed": "Agreement signed",
 }
 
