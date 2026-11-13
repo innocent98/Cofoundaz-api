@@ -81,6 +81,16 @@ notifies before they pass.
 | CI fixes | Em dash removed from `ESTIMATE_DISCLAIMER`; legal events added to `READ_ROLES` in `test_dashboard_audience.py`; CodeQL `py/side-effect-in-assert` sites in `e2e/test_legal.py` now assign before asserting. |
 | Verification | New tests in `tests/api/test_legal_proof.py` (roles, cross-tenant, headers), `tests/worker/test_legal_scheduler.py` (move date re-arms, unchanged date does not duplicate), `tests/api/test_legal_notifications.py`. Live journey re-run on a scratch Postgres; two new captures. Fast local checks only; CI ran the full suite. |
 
+## Disclaimer copy (2026-11-13, `fix/legal-disclaimer-copy`)
+| Change | Detail |
+|---|---|
+| What | `ESTIMATE_DISCLAIMER` (`app/services/legal/catalog.py`) now ends "...involve a licensed professional." The pointer "(you can find one in the Marketplace)" is gone. |
+| Why | Marketplace is a hidden module and stays hidden until Adebayo says otherwise; the disclaimer must not send founders to a page they cannot open. |
+| Captures | `formation_checklist.json` and `formation_step_ticked.json` re-captured from a live run of `e2e/test_legal.py` (they still carried the older em-dash text). Other captures from that run were reverted: only id/timestamp churn. |
+| Guard | `tests/services/legal/test_catalog.py::test_disclaimer_points_at_no_hidden_module`. |
+| FE | The FE renders `disclaimer` from the API, so nothing to change there for Formation/Compliance. The hidden `/legal/review` page had its own copy of the sentence; removed in the FE re-walk PR. |
+| Unhiding Marketplace | If Marketplace is unhidden later, a pointer can come back as a decision, not by default. |
+
 ## Operate / roll back
 No new env vars. Migration `0106_legal` is chained on `0105_analytics_custom_metrics`; develop's numbering is no longer
 sequential (`0105` chains on `0101`, `0102` on `0103`), so **re-chain against `alembic heads`, not against the highest

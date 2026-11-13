@@ -110,7 +110,7 @@ should pick it up without a release.
   "data": {
     "jurisdiction": { "code": "NG", "name": "Nigeria" },
     "estimates": true,
-    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional — you can find one in the Marketplace.",
+    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional.",
     "steps": [
       {
         "key": "reserve_name",
@@ -181,7 +181,7 @@ The response is **the whole checklist again**, so you never need a follow-up GET
   "data": {
     "jurisdiction": { "code": "NG", "name": "Nigeria" },
     "estimates": true,
-    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional — you can find one in the Marketplace.",
+    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional.",
     "steps": [
       {
         "key": "reserve_name",

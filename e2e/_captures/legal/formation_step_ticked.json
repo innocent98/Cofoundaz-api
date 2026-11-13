@@ -5,7 +5,7 @@
       "name": "Nigeria"
     },
     "estimates": true,
-    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional \u2014 you can find one in the Marketplace.",
+    "disclaimer": "These steps, timings and fees are general guidance, not professional legal advice. Figures are estimates and change. For anything non-standard, involve a licensed professional.",
     "steps": [
       {
         "key": "reserve_name",
@@ -15,7 +15,7 @@
         "est_cost_minor": 50000,
         "est_cost_currency": "NGN",
         "completed": true,
-        "completed_at": "2026-11-13T10:07:36.007267+00:00"
+        "completed_at": "2026-11-13T18:33:05.276865+00:00"
       },
       {
         "key": "file_incorporation",
