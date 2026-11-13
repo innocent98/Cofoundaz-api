@@ -59,6 +59,12 @@ def test_the_figures_are_marked_unverified():
     assert CATALOG_VERSION >= 1
 
 
+def test_disclaimer_points_at_no_hidden_module():
+    # Marketplace is hidden until Adebayo unhides it; the disclaimer must not send founders there.
+    assert "Marketplace" not in ESTIMATE_DISCLAIMER
+    assert ESTIMATE_DISCLAIMER.endswith("involve a licensed professional.")
+
+
 def test_steps_for_an_unsupported_jurisdiction_is_none():
     assert steps_for("KE") is None
     assert steps_for("GH") is None
