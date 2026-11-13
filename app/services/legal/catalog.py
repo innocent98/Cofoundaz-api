@@ -26,7 +26,7 @@ CATALOG_REVIEWED_ON: date | None = None
 ESTIMATE_DISCLAIMER = (
     "These steps, timings and fees are general guidance, not professional legal advice. "
     "Figures are estimates and change. For anything non-standard, involve a licensed "
-    "professional — you can find one in the Marketplace."
+    "professional (you can find one in the Marketplace)."
 )
 
 

@@ -347,8 +347,10 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert mentor_read.status_code == 403, mentor_read.text
         capture("legal", "forbidden_role", mentor_read)
 
-        assert c.get(f"{BASE}/ip-assets", headers=mentor).status_code == 403
-        assert c.get(f"{BASE}/formation/jurisdictions", headers=mentor).status_code == 403
+        mentor_ip = c.get(f"{BASE}/ip-assets", headers=mentor)
+        assert mentor_ip.status_code == 403
+        mentor_formation = c.get(f"{BASE}/formation/jurisdictions", headers=mentor)
+        assert mentor_formation.status_code == 403
 
         # 16. Another workspace: a cross-tenant id is a 404, never a 403. A 403 would confirm the
         #     id exists; a 404 says nothing.
@@ -357,5 +359,7 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert cross.status_code == 404, cross.text
         capture("legal", "cross_tenant_404", cross)
 
-        assert c.get(f"{BASE}/ip-assets/{tm_id}", headers=other).status_code == 404
-        assert c.delete(f"{BASE}/compliance-items/{vat_id}", headers=other).status_code == 404
+        cross_ip = c.get(f"{BASE}/ip-assets/{tm_id}", headers=other)
+        assert cross_ip.status_code == 404
+        cross_delete = c.delete(f"{BASE}/compliance-items/{vat_id}", headers=other)
+        assert cross_delete.status_code == 404
