@@ -211,6 +211,18 @@ def proof_content_type(key: str) -> str:
     return _EXT_TO_TYPE.get("." + key.rsplit(".", 1)[-1], "application/octet-stream")
 
 
+def read_proof(db: Session, *, startup_id: uuid.UUID, item_id: uuid.UUID) -> tuple[str, bytes]:
+    """(storage key, bytes) of the item's proof. 404 when the item is not this workspace's, has no
+    proof, or the stored file is gone."""
+    row = get_item(db, startup_id=startup_id, item_id=item_id)
+    if not row.proof_key:
+        raise NotFound()
+    content = get_storage().read_private(row.proof_key)
+    if content is None:
+        raise NotFound()
+    return row.proof_key, content
+
+
 def attach_proof(
     db: Session,
     *,

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
@@ -269,3 +269,32 @@ async def upload_compliance_proof(
     )
     db.commit()
     return success_response(compliance_svc.serialize_item(row, today=_today()))
+
+
+@router.get("/compliance-items/{item_id}/proof")
+def download_compliance_proof(
+    item_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """Stream the private proof file (D-LEG-5): authenticated, never a signed or public link.
+
+    The FE fetches it with the bearer token. No proof, a cross-workspace id and a missing file
+    are all the same 404; the forbidden roles never get past the reader gate (403).
+    """
+    key, content = compliance_svc.read_proof(db, startup_id=membership.startup_id, item_id=item_id)
+    return Response(
+        content=content,
+        media_type=compliance_svc.proof_content_type(key),
+        headers={
+            "Content-Disposition": f'attachment; filename="proof-of-filing{_ext(key)}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+        },
+    )
+
+
+def _ext(key: str) -> str:
+    return "." + key.rsplit(".", 1)[-1] if "." in key else ""

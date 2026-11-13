@@ -201,3 +201,94 @@ def test_the_upload_requires_authentication(client):
         files={"file": ("p.png", io.BytesIO(b"x"), "image/png")},
     )
     assert resp.status_code in (401, 403)
+
+
+# --- GET proof (D-LEG-5): authenticated stream, reader roles ------------------------------------
+
+
+def _get_proof(client, h, item_id):
+    return client.get(f"{BASE}/compliance-items/{item_id}/proof", headers=h)
+
+
+def test_the_proof_streams_back_with_its_type_as_an_attachment(client, db, tmp_path):
+    _u, _s, h = _member(db)
+    cid = _make(client, h)
+    assert (
+        _upload(client, h, cid, name="p.pdf", ct="application/pdf", body=PDF + b"1.4").status_code
+        == 200
+    )
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 200, resp.text
+    assert resp.content == PDF + b"1.4"
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.headers["content-disposition"] == 'attachment; filename="proof-of-filing.pdf"'
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    # The URL the item advertises is this very route.
+    listed = client.get(f"{BASE}/compliance-items/{cid}", headers=h).json()["data"]["proof_url"]
+    assert listed == f"{BASE}/compliance-items/{cid}/proof"
+
+
+def test_a_png_proof_comes_back_as_image_png(client, db, tmp_path):
+    _u, _s, h = _member(db)
+    cid = _make(client, h)
+    _upload(client, h, cid)
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "image/png"
+    assert resp.content == PNG + b"png-bytes"
+
+
+def test_no_proof_is_404(client, db):
+    _u, _s, h = _member(db)
+    cid = _make(client, h)
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 404, resp.text
+
+
+def test_the_stored_file_gone_is_404(client, db, tmp_path):
+    _u, _s, h = _member(db)
+    cid = _make(client, h)
+    _upload(client, h, cid)
+    for p in _files(tmp_path):
+        p.unlink()
+    assert _get_proof(client, h, cid).status_code == 404
+
+
+def test_a_legal_advisor_can_download_the_proof(client, db, tmp_path):
+    _f, startup, fh = _member(db)
+    cid = _make(client, fh)
+    _upload(client, fh, cid)
+    _u, _s, h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 200, resp.text
+    assert resp.content == PNG + b"png-bytes"
+
+
+def test_a_team_member_can_download_the_proof(client, db, tmp_path):
+    _f, startup, fh = _member(db)
+    cid = _make(client, fh)
+    _upload(client, fh, cid)
+    _u, _s, h = _member(db, role=MembershipRole.team_member, startup=startup)
+    assert _get_proof(client, h, cid).status_code == 200
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_download_the_proof(client, db, role, tmp_path):
+    _f, startup, fh = _member(db)
+    cid = _make(client, fh)
+    _upload(client, fh, cid)
+    _u, _s, h = _member(db, role=role, startup=startup)
+    assert _get_proof(client, h, cid).status_code == 403
+
+
+def test_another_workspaces_proof_is_404(client, db, tmp_path):
+    _u1, _s1, h1 = _member(db)
+    cid = _make(client, h1)
+    _upload(client, h1, cid)
+    _u2, _s2, h2 = _member(db)
+    assert _get_proof(client, h2, cid).status_code == 404
+
+
+def test_the_download_requires_authentication(client):
+    resp = client.get(f"{BASE}/compliance-items/00000000-0000-0000-0000-000000000000/proof")
+    assert resp.status_code in (401, 403)
