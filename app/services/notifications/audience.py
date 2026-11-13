@@ -24,20 +24,12 @@ from app.db.models.enums import (
     MembershipRole,
 )
 from app.db.models.notification import Notification
+from app.services.analytics.catalog import REPORT_ROLES
 
 CORE_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
 FOUNDER_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
-REPORT_ROLES: frozenset[MembershipRole] = frozenset(
-    {
-        MembershipRole.founder,
-        MembershipRole.team_member,
-        MembershipRole.accountant,
-        MembershipRole.mentor,
-        MembershipRole.business_consultant,
-    }
-)
 
 AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "billing.payment.failed": FOUNDER_ROLES,

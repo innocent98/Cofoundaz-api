@@ -26,6 +26,8 @@ from tests.factories import create_membership, create_startup, create_user
 CORE = {MembershipRole.founder, MembershipRole.team_member}
 # Recipients are a payload-driven subset of the audience (stalled: owner, else founders).
 NARROWER_THAN_AUDIENCE = {
+    "analytics.report.generated",  # only the member who started the run
+    "analytics.report.shared",  # only the members the report was shared with
     "journal.reminder",  # only the founder named in the payload
     "journal.prompt.daily",
     "sales.deal.stalled",

@@ -198,7 +198,8 @@ def execute(db: Session, job: Job) -> None:
     )
     startup = db.get(Startup, run.startup_id)
     if member is None or startup is None or member.role not in cat.REPORT_ROLES:
-        return _fail(db, run, "You no longer have access to analytics in this workspace.")
+        _fail(db, run, "You no longer have access to analytics in this workspace.")
+        return
     snap = dict(run.snapshot_json or {})
     definition = snap["report"]
     results = build_results(db, startup, member.role, definition["blocks"], definition["range"])

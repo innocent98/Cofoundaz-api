@@ -12,7 +12,7 @@ from app.db.models.finance import Transaction
 from app.db.models.notification import Notification
 from app.services.analytics import service as svc
 from app.worker import runner
-from app.worker.handlers import analytics as _h  # noqa: F401  (registers analytics.report.run)
+from app.worker.handlers import analytics as _h
 from tests.factories import create_membership, create_startup, create_user
 
 BASE = "/api/v1/analytics"
@@ -103,7 +103,8 @@ def test_create_get_list_and_templates(client, team):
     fo = hdr[R.founder]
     rep = _make(client, fo)
     assert rep["version"] == 1 and rep["block_count"] == 2
-    assert client.get(f"{BASE}/reports/{rep['id']}", headers=fo).json()["data"]["id"] == rep["id"]
+    resp = client.get(f"{BASE}/reports/{rep['id']}", headers=fo)
+    assert resp.json()["data"]["id"] == rep["id"]
     lst = client.get(f"{BASE}/reports", headers=fo, params={"q": "board"}).json()["data"]
     assert lst["total"] == 1
     t = client.get(f"{BASE}/reports/templates", headers=fo).json()["data"]["templates"]
@@ -125,7 +126,8 @@ def test_validation_and_html(client, team):
         {"name": "ok", "blocks": [CLICKS] * 31},
         {"name": "ok", "blocks": [{**CLICKS, "id": "a"}, {**CLICKS, "id": "a"}]},
     ):
-        assert client.post(f"{BASE}/reports", headers=fo, json=body).status_code == 422, body
+        resp = client.post(f"{BASE}/reports", headers=fo, json=body)
+        assert resp.status_code == 422, body
 
 
 def test_optimistic_lock_409(client, team):
@@ -137,7 +139,8 @@ def test_optimistic_lock_409(client, team):
         f"{BASE}/reports/{rep['id']}", headers=fo, json={"version": 1, "name": "v3"}
     )
     assert stale.status_code == 409 and stale.json()["error"]["code"] == "VERSION_CONFLICT"
-    assert client.get(f"{BASE}/reports/{rep['id']}", headers=fo).json()["data"]["name"] == "v2"
+    resp = client.get(f"{BASE}/reports/{rep['id']}", headers=fo)
+    assert resp.json()["data"]["name"] == "v2"
 
 
 def test_tenancy_and_visibility_404(client, db, team):
@@ -146,9 +149,12 @@ def test_tenancy_and_visibility_404(client, db, team):
     rep = _make(client, fo)
     # unshared reports do not exist for team member, accountant, mentor, consultant
     for role in (R.team_member, R.accountant, R.mentor, R.business_consultant):
-        assert client.get(f"{BASE}/reports/{rep['id']}", headers=hdr[role]).status_code == 404
-        assert client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[role]).status_code == 404
-        assert client.get(f"{BASE}/reports", headers=hdr[role]).json()["data"]["total"] == 0
+        resp = client.get(f"{BASE}/reports/{rep['id']}", headers=hdr[role])
+        assert resp.status_code == 404
+        resp = client.post(f"{BASE}/reports/{rep['id']}/run", headers=hdr[role])
+        assert resp.status_code == 404
+        resp = client.get(f"{BASE}/reports", headers=hdr[role])
+        assert resp.json()["data"]["total"] == 0
     # another workspace's founder gets the same 404
     other_owner = create_user(db, email_verified_at=datetime.now(UTC))
     s2 = create_startup(db, owner=other_owner)
@@ -169,33 +175,31 @@ def test_team_member_edits_only_own_and_founder_edits_all(client, team):
     _s, hdr, _u = team
     tm, fo = hdr[R.team_member], hdr[R.founder]
     mine = _make(client, tm)
-    assert client.get(f"{BASE}/reports/{mine['id']}", headers=fo).status_code == 200
-    assert (
-        client.patch(
-            f"{BASE}/reports/{mine['id']}", headers=fo, json={"version": 1, "name": "by founder"}
-        ).status_code
-        == 200
+    resp = client.get(f"{BASE}/reports/{mine['id']}", headers=fo)
+    assert resp.status_code == 200
+    resp = client.patch(
+        f"{BASE}/reports/{mine['id']}", headers=fo, json={"version": 1, "name": "by founder"}
     )
+    assert resp.status_code == 200
     theirs = _make(client, fo)
-    assert (
-        client.put(
-            f"{BASE}/reports/{theirs['id']}/shares",
-            headers=fo,
-            json={"user_ids": [str(team[2][R.team_member].id)]},
-        ).status_code
-        == 200
+    resp = client.put(
+        f"{BASE}/reports/{theirs['id']}/shares",
+        headers=fo,
+        json={"user_ids": [str(team[2][R.team_member].id)]},
     )
+    assert resp.status_code == 200
     seen = client.get(f"{BASE}/reports/{theirs['id']}", headers=tm)
     assert seen.status_code == 200 and seen.json()["data"]["can_edit"] is False
-    assert (
-        client.patch(
-            f"{BASE}/reports/{theirs['id']}", headers=tm, json={"version": 1, "name": "no"}
-        ).status_code
-        == 403
+    resp = client.patch(
+        f"{BASE}/reports/{theirs['id']}", headers=tm, json={"version": 1, "name": "no"}
     )
-    assert client.delete(f"{BASE}/reports/{theirs['id']}", headers=tm).status_code == 403
-    assert client.delete(f"{BASE}/reports/{mine['id']}", headers=tm).status_code == 200
-    assert client.get(f"{BASE}/reports/{mine['id']}", headers=fo).status_code == 404
+    assert resp.status_code == 403
+    resp = client.delete(f"{BASE}/reports/{theirs['id']}", headers=tm)
+    assert resp.status_code == 403
+    resp = client.delete(f"{BASE}/reports/{mine['id']}", headers=tm)
+    assert resp.status_code == 200
+    resp = client.get(f"{BASE}/reports/{mine['id']}", headers=fo)
+    assert resp.status_code == 404
 
 
 def test_preview_is_stateless_and_per_metric(client, db, team):
@@ -208,12 +212,8 @@ def test_preview_is_stateless_and_per_metric(client, db, team):
     assert res[0]["result"]["value"] == 777_000
     assert db.query(AnalyticsReportRun).count() == 0
     for role in (R.accountant, R.mentor, R.business_consultant, R.investor):
-        assert (
-            client.post(
-                f"{BASE}/reports/preview", headers=hdr[role], json={"blocks": [REVENUE]}
-            ).status_code
-            == 403
-        )
+        resp = client.post(f"{BASE}/reports/preview", headers=hdr[role], json={"blocks": [REVENUE]})
+        assert resp.status_code == 403
 
 
 def test_run_is_frozen_and_immutable(client, db, team):
@@ -291,27 +291,22 @@ def test_share_scope_and_locked_blocks(client, db, team):
     # read-only: no edit, no delete, no share changes, no preview
     for role in (R.mentor, R.accountant):
         h = hdr[role]
-        assert (
-            client.patch(
-                f"{BASE}/reports/{rep['id']}", headers=h, json={"version": 1, "name": "x"}
-            ).status_code
-            == 403
+        resp = client.patch(
+            f"{BASE}/reports/{rep['id']}", headers=h, json={"version": 1, "name": "x"}
         )
-        assert client.delete(f"{BASE}/reports/{rep['id']}", headers=h).status_code == 403
-        assert client.get(f"{BASE}/reports/{rep['id']}/shares", headers=h).status_code == 403
-        assert (
-            client.put(
-                f"{BASE}/reports/{rep['id']}/shares", headers=h, json={"user_ids": []}
-            ).status_code
-            == 403
-        )
+        assert resp.status_code == 403
+        resp = client.delete(f"{BASE}/reports/{rep['id']}", headers=h)
+        assert resp.status_code == 403
+        resp = client.get(f"{BASE}/reports/{rep['id']}/shares", headers=h)
+        assert resp.status_code == 403
+        resp = client.put(f"{BASE}/reports/{rep['id']}/shares", headers=h, json={"user_ids": []})
+        assert resp.status_code == 403
     # removing a share closes the door (404)
     client.put(f"{BASE}/reports/{rep['id']}/shares", headers=fo, json={"user_ids": [ids[1]]})
-    assert client.get(f"{BASE}/reports/{rep['id']}", headers=me).status_code == 404
-    assert (
-        client.get(f"{BASE}/reports/{rep['id']}/runs/{founder_run['id']}", headers=me).status_code
-        == 404
-    )
+    resp = client.get(f"{BASE}/reports/{rep['id']}", headers=me)
+    assert resp.status_code == 404
+    resp = client.get(f"{BASE}/reports/{rep['id']}/runs/{founder_run['id']}", headers=me)
+    assert resp.status_code == 404
 
 
 def test_share_target_validation(client, db, team):
@@ -342,10 +337,8 @@ def test_duplicate_drops_locked_blocks(client, db, team):
     )
     d = client.post(f"{BASE}/reports/{rep['id']}/duplicate", headers=hdr[R.team_member])
     assert d.status_code == 201 and d.json()["data"]["block_count"] == 2
-    assert (
-        client.post(f"{BASE}/reports/{rep['id']}/duplicate", headers=hdr[R.mentor]).status_code
-        == 403
-    )
+    resp = client.post(f"{BASE}/reports/{rep['id']}/duplicate", headers=hdr[R.mentor])
+    assert resp.status_code == 403
 
 
 def test_notifications_on_share_and_run(client, db, team):
@@ -384,3 +377,7 @@ def test_run_fails_when_requester_lost_access(client, db, team):
     _work(db)
     run = db.get(AnalyticsReportRun, r["run_id"])
     assert run.status == "failed" and "no longer" in run.error
+
+
+def test_run_job_handler_is_registered():
+    assert runner.JOB_HANDLERS["analytics.report.run"] is _h.handle_report_run
