@@ -469,3 +469,49 @@ def test_summary_schema_is_openai_strict_compatible():
 def test_attendee_rows_unique_per_event(db, cal):
     startup, users, _ = cal
     assert db.query(CalendarAttendee).count() == 0
+
+
+@pytest.mark.parametrize("role", list(MembershipRole))
+def test_attendee_emails_are_founder_and_team_member_only(client, db, cal, role):
+    """Every role that can read a meeting sees who is coming by name; only founder and team member
+    get the addresses (internal and external alike)."""
+    startup, users, _ = cal
+    m = _create(
+        client,
+        startup,
+        users[F],
+        attendees=[
+            {"email": str(users[role].email)},
+            {"email": "ext@client.com", "name": "External Guest"},
+        ],
+    )
+    for url in (f"{BASE}/meetings/{m['id']}", f"{BASE}/meetings"):
+        r = client.get(url, headers=h(users[role], startup))
+        assert r.status_code == 200, r.text
+        data = r.json()["data"]
+        rows = [data] if "attendees" in data else data["meetings"]
+        attendees = rows[0]["attendees"]
+        assert len(attendees) == 2
+        emails = [a["email"] for a in attendees]
+        if role in (F, TM):
+            assert set(emails) == {str(users[role].email), "ext@client.com"}
+        else:
+            assert emails == [None, None]
+            assert "ext@client.com" not in r.text
+            assert str(users[role].email) not in r.text
+            assert "External Guest" in r.text
+
+
+def test_redacted_internal_attendee_still_shows_the_profile_name(client, db, cal):
+    from app.db.models.user import UserProfile
+
+    startup, users, _ = cal
+    db.query(UserProfile).filter_by(user_id=users[MENTOR].id).update({"full_name": "Mia Mentor"})
+    db.commit()
+    m = _create(client, startup, users[F], attendees=[{"email": str(users[MENTOR].email)}])
+    r = client.get(f"{BASE}/meetings/{m['id']}", headers=h(users[MENTOR], startup))
+    assert [(a["name"], a["email"]) for a in r.json()["data"]["attendees"]] == [
+        ("Mia Mentor", None)
+    ]
+    r = client.get(f"{BASE}/meetings/{m['id']}", headers=h(users[F], startup))
+    assert [a["email"] for a in r.json()["data"]["attendees"]] == [str(users[MENTOR].email)]

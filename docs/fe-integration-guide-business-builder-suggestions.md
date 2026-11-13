@@ -46,7 +46,7 @@ Every suggestion endpoint below returns this same shape. Field reference:
 | `current` | **the target's state, read LIVE at response time — not a snapshot frozen when the suggestion was created.** See the important caveat in §3: the same suggestion's `current` is different on its create-response vs. its approve-response, because the canvas/record moved in between. `null` for `record_create` (there is no prior state for a record that doesn't exist yet) and for `record_update`/`record_delete` whose target record has since been deleted. |
 | `note` | free-text rationale the suggester typed; `null` if omitted. |
 | `status` | `pending` → `approved` \| `rejected` (terminal). See §6 for the state machine. |
-| `author` | `{id, name, email}` of whoever created the suggestion. `name` is `null` if that user has no profile `full_name` set (true of every e2e test user, which only sets a workspace-level display name, not a profile name — see the live captures). |
+| `author` | `{id, name, email}` of whoever created the suggestion. **`email` is `null` unless the viewer is a founder or team member** (Adebayo, 2026-11-12; so the consultant's own create response has `"email": null`): never show or `mailto:` it for other roles, show the name. See the redacted capture at the end of §4. `name` is `null` if that user has no profile `full_name` set (true of every e2e test user, which only sets a workspace-level display name, not a profile name — see the live captures). |
 | `resolved_by` | `{id, name}` of whoever approved/rejected it, `null` while `pending`. |
 | `resolved_at` | ISO-8601 timestamp, `null` while `pending`. |
 | `created_at` | ISO-8601 timestamp. |
@@ -69,15 +69,23 @@ in practice for every op except `record_delete`). The `target`/`payload` shape d
 **`canvas_update` request/response** — request was `{"op": "canvas_update", "target":
 {"canvas_type": "business_model"}, "payload": {"blocks": {"key_partners": ["Acme Corp"]}}, "note":
 "Add Acme as a key partner"}`. Response (`e2e/_captures/business/suggestions_create_canvas_update.json`,
-status `201`):
+status `201`, viewer: the **business consultant** who created it, so `author.email` is `null`):
 
 ```json
 {
   "data": {
-    "id": "c5f41a1b-203e-45b2-af10-dfc8e8463047",
+    "id": "8691bf1d-5a7a-4bc2-891e-c7c5b2e95781",
     "op": "canvas_update",
-    "target": { "canvas_type": "business_model" },
-    "payload": { "blocks": { "key_partners": ["Acme Corp"] } },
+    "target": {
+      "canvas_type": "business_model"
+    },
+    "payload": {
+      "blocks": {
+        "key_partners": [
+          "Acme Corp"
+        ]
+      }
+    },
     "base_version": 1,
     "current": {
       "blocks": {
@@ -96,13 +104,13 @@ status `201`):
     "note": "Add Acme as a key partner",
     "status": "pending",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": null
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-08T14:03:13.753815+00:00"
+    "created_at": "2026-11-12T21:50:44.466166+00:00"
   },
   "meta": null
 }
@@ -116,22 +124,28 @@ target user"}`. Response (`suggestions_create_record_create.json`, status `201`)
 ```json
 {
   "data": {
-    "id": "0652405a-5983-46f8-8608-8760ceaf249c",
+    "id": "a1d3abf9-35e1-4847-8259-1eb9091154d5",
     "op": "record_create",
-    "target": { "kind": "persona" },
-    "payload": { "data": { "name": "Suggested Persona" } },
+    "target": {
+      "kind": "persona"
+    },
+    "payload": {
+      "data": {
+        "name": "Suggested Persona"
+      }
+    },
     "base_version": null,
     "current": null,
     "note": "Add a persona for our target user",
     "status": "pending",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": null
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-08T14:03:13.857587+00:00"
+    "created_at": "2026-11-12T21:50:44.653089+00:00"
   },
   "meta": null
 }
@@ -147,11 +161,17 @@ Response (`suggestions_create_record_update.json`, status `201`) — **note `cur
 ```json
 {
   "data": {
-    "id": "f69a26c8-4d94-4f8a-a192-409da4475c87",
+    "id": "c8a39f2d-4029-4688-860d-81d85f4d5a8b",
     "op": "record_update",
-    "target": { "kind": "persona", "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998" },
+    "target": {
+      "kind": "persona",
+      "record_id": "d1630564-78ee-4e0a-b342-2025b7adf51c"
+    },
     "payload": {
-      "data": { "name": "Suggested Persona (Updated)", "quote": "I just need this to work." }
+      "data": {
+        "name": "Suggested Persona (Updated)",
+        "quote": "I just need this to work."
+      }
     },
     "base_version": null,
     "current": {
@@ -167,13 +187,13 @@ Response (`suggestions_create_record_update.json`, status `201`) — **note `cur
     "note": "Flesh out the persona quote",
     "status": "pending",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": null
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-08T14:03:13.889225+00:00"
+    "created_at": "2026-11-12T21:50:44.711325+00:00"
   },
   "meta": null
 }
@@ -188,9 +208,12 @@ been deleted yet — only *proposed* for deletion):
 ```json
 {
   "data": {
-    "id": "50316459-2fd0-45fa-9d6f-10609a28c6ab",
+    "id": "cbd63233-a452-45b8-9f42-2f7910dba12e",
     "op": "record_delete",
-    "target": { "kind": "persona", "record_id": "5d5213c5-ccfe-4dc4-a81d-b2f576b7b998" },
+    "target": {
+      "kind": "persona",
+      "record_id": "d1630564-78ee-4e0a-b342-2025b7adf51c"
+    },
     "payload": null,
     "base_version": null,
     "current": {
@@ -206,13 +229,13 @@ been deleted yet — only *proposed* for deletion):
     "note": "This persona turned out to be a duplicate",
     "status": "pending",
     "author": {
-      "id": "d9277642-ed1c-421a-9dd8-d34249270e6f",
+      "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
       "name": null,
-      "email": "consultant-ef3da62188e1@example.com"
+      "email": null
     },
     "resolved_by": null,
     "resolved_at": null,
-    "created_at": "2026-09-08T14:03:13.923118+00:00"
+    "created_at": "2026-11-12T21:50:44.763951+00:00"
   },
   "meta": null
 }
@@ -251,7 +274,7 @@ value → `404 NOT_FOUND` (same "no such view" convention as other list-filter e
 API — not a `422`). Ordered newest-first (`created_at desc`). Response is `{"suggestions": [...]}`
 — each entry is the same shape as §1.
 
-`e2e/_captures/business/suggestions_list_pending.json` (status `200`, `?status=pending`, one
+`e2e/_captures/business/suggestions_list_pending.json` (status `200`, `?status=pending` viewer: the **founder** (a team member sees the same, so `author.email` is present),, one
 suggestion present):
 
 ```json
@@ -312,7 +335,7 @@ the `business_consultant` author trying to approve their own suggestion):
 }
 ```
 
-**Successful `canvas_update` approve** — `suggestions_approve_canvas_update.json` (status `200`):
+**Successful `canvas_update` approve** — `suggestions_approve_canvas_update.json` (status `200`, viewer: the **founder** who approved, so `author.email` is present):
 notice `status` is now `"approved"`, `resolved_by`/`resolved_at` are filled in, and — per §3 —
 `current` now reflects the POST-approval canvas (`key_partners: ["Acme Corp"]`, `version: 2`):
 
@@ -410,7 +433,7 @@ persona is gone after the delete suggestion was approved).
 ## 6. `POST /api/v1/business-builder/suggestions/{id}/reject` — reject
 
 Same role rule as approve (founder/team_member only). Does **not** touch the target — only flips
-`status` to `"rejected"`. `suggestions_reject.json` (status `200`, rejecting the version-conflicted
+`status` to `"rejected"`. `suggestions_reject.json` (status `200`, viewer: the **founder** (a team member sees the same, so `author.email` is present), rejecting the version-conflicted
 suggestion from §5 instead of leaving it stuck pending):
 
 ```json
@@ -681,3 +704,18 @@ unit-tested in-process — and every response body is captured verbatim in the n
 Every row in this guide is ✅ — this journey was written specifically to exercise both 409s and
 the `current`-liveness behavior live, rather than leaving them as source-derived rows the way
 Slice 1/2's guide had to for its unexercised error paths.
+
+## Author e-mail by role (added 2026-11-12)
+
+A business consultant (and any other non-founder, non-team-member role) listing suggestions gets the author without the address. Verbatim from a live run
+(`e2e/_captures/business/suggestions_list_consultant_redacted.json`, `author` of the first row; `name` is `null` because the e2e users have no profile name):
+
+```json
+{
+  "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
+  "name": null,
+  "email": null
+}
+```
+
+The founder's and team member's lists, and their approve / reject responses, still carry `email`.

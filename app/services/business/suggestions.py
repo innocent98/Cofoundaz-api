@@ -142,7 +142,10 @@ def _current(db: Session, s: BusinessSuggestion) -> dict | None:
     return None  # record_create has no prior state
 
 
-def serialize_suggestion(db: Session, s: BusinessSuggestion) -> dict[str, Any]:
+def serialize_suggestion(
+    db: Session, s: BusinessSuggestion, *, include_email: bool = False
+) -> dict[str, Any]:
+    """`include_email` is for founder and team member only: everyone else sees the author's name."""
     author = db.query(User).filter_by(id=s.author_id).first()
     resolver = db.query(User).filter_by(id=s.resolved_by_id).first() if s.resolved_by_id else None
     return {
@@ -157,7 +160,7 @@ def serialize_suggestion(db: Session, s: BusinessSuggestion) -> dict[str, Any]:
         "author": {
             "id": str(s.author_id),
             "name": author.profile.full_name if author and author.profile else None,
-            "email": author.email if author else None,
+            "email": author.email if author and include_email else None,
         },
         "resolved_by": (
             {
