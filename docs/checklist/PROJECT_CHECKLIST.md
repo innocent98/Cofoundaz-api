@@ -2402,7 +2402,7 @@ the number Module 09 carried on its branch before being renumbered to `0041_vali
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
 zero. The test suite builds its own schema from the models, so nothing was lost.
 
-## 🟡 Module 13 — Legal & Compliance, Slice 1 — *built on `feat/legal-compliance` (PR open against `develop`; migration `0106_legal`)*
+## 🟡 Module 13 — Legal & Compliance, Slice 1 — *built on `feat/legal-compliance` (PR open against `develop`; migration `0107_funding_grants`)*
 
 _Three data-backed surfaces under `/api/v1/legal`: **entity formation** (a per-jurisdiction
 checklist whose steps live in code — only progress is stored), the **IP tracker** (trademarks,
@@ -2420,7 +2420,7 @@ team member + **legal advisor** read, founder + team member write. Spec
       surfaces · `legal_entities` deferred · recurrence in scope · IP → compliance link deferred ·
       "today" is the UTC date, shared by the derived statuses and the reminders · two jurisdictions
       with honest content rather than ten with placeholders
-- [x] Four enums + `LEGAL_ROLES` + three models + migration `0106_legal` — `legal_formation_progress`
+- [x] Four enums + `LEGAL_ROLES` + three models + migration `0107_funding_grants` — `legal_formation_progress`
       (unique on `(startup_id, jurisdiction, step_key)`, so a row's existence **is** the tick and
       switching jurisdiction never wipes ticks), `ip_assets`, `compliance_items` (self-referential
       `previous_item_id` with a UNIQUE that makes a second spawn a no-op, `anchor_day` for the
@@ -3408,7 +3408,7 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
-- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 built on `feat/legal-compliance` (migration `0106_legal`, PR open against `develop`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 built on `feat/legal-compliance` (migration `0107_funding_grants`, PR open against `develop`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
   - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
         Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
         · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day
@@ -4097,7 +4097,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Slice B lows: getattr-in-assert hoisted, stale `review` flag dropped
   - [x] Final Opus review (1 high, 2 medium, 4 low) fixed 2026-11-06: payment mismatch flagged + staff attention queue, retryable webhook (409 / non-2xx), verify-before-expire, signed refund settle, saved-card status handling, second live-charging gate, replay re-check after locks, audit `startup_id`, honest refund email copy; awaiting Lead 24's check of the fix diff and the 0099 re-chain
   - [x] Round three (Opus fix-check, 2026-11-07): N3 verify failures after a charge → `PAYMENT_UNCONFIRMED`; N1 mismatch closes the checkout (`payment_review`); N2/N4/N6 bounded, per-hold, failure-isolated `expire_unpaid`; L5 consent `ON CONFLICT`; N5 webhook dedupe on both refund ids; SOP contradiction fixed. N2's real Paystack status code is unconfirmed
-- [x] **Slice D: fulfilment and messaging** (`feature/marketplace-fulfilment`, migration `0104_marketplace_fulfilment` on `0106_legal`, SOP `docs/sop/2026-11-07-marketplace-fulfilment.md`, FE guide `docs/fe-integration-guide-marketplace-fulfilment.md`; PR open, not merged; no money moves in this slice)
+- [x] **Slice D: fulfilment and messaging** (`feature/marketplace-fulfilment`, migration `0104_marketplace_fulfilment` on `0107_funding_grants`, SOP `docs/sop/2026-11-07-marketplace-fulfilment.md`, FE guide `docs/fe-integration-guide-marketplace-fulfilment.md`; PR open, not merged; no money moves in this slice)
   - [x] `marketplace_deliveries`, `marketplace_threads`, `marketplace_messages`, `marketplace_booking_documents` (+ file `thread_id`, booking `overdue_notified_at`, order `attention_resolved_at/by`, timer indexes)
   - [x] Deliver, complete, accept, request changes (revision rounds from the listing snapshot, `REVISION_LIMIT_REACHED`); accept publishes `marketplace.delivery.accepted` for slice E
   - [x] Timers: unmarked session delivered, delivery auto-released (7 days / 48 hours), overdue package notice; `SKIP LOCKED`, per-booking commit
@@ -4116,7 +4116,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
 
 
 
-## Module 22 — Analytics & Reports (design accepted 2026-11-12; slice A built)
+## Module 22 — Analytics & Reports (design accepted 2026-11-12; slices A and B built)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
 `cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
@@ -4128,5 +4128,12 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md
   - [x] Nightly point-metric snapshot into `kpi_snapshots`; rule-based Working/Watch notes
   - [x] 30 API tests, migration round trip, live e2e journey, live-captured FE guide; Opus D-ANA-4 review 2026-11-12: no critical/high/medium, lows fixed (custom-key oracle, date bounds, rate limit, no_data cache, TM captures)
   - [ ] Plan gate exercised with `PLAN_ENFORCEMENT` on · nightly snapshot seen live · workspace timezone
-- [ ] Slice B: reports (definitions, templates, shares, runs, preview) · [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
+- [x] **Slice B: reports + runs + shares** (`feature/analytics-slice-b`, migration `0108_analytics_reports`, chained on 0107; PR open 2026-11-13, not merged; SOP `docs/sop/2026-11-13-analytics-slice-b.md`, FE guide `docs/fe-integration-guide-analytics-reports.md`)
+  - [x] `analytics_reports` (blocks, optimistic-lock `version`, soft delete), `analytics_report_shares`, `analytics_report_runs` (frozen snapshots)
+  - [x] 3 template chips; CRUD, duplicate, stateless preview, run job (`analytics.report.run`), runs list/read, founder-only shares
+  - [x] Per-metric authorisation on preview, run, share and every read (locked blocks redacted at read time, fail closed); tenancy 404s; 409 on stale save
+  - [x] Events/notifications `analytics.report.generated`, `analytics.report.shared`
+  - [x] 15 API tests + migration round trip + live e2e journey + live-captured FE guide
+  - [ ] Restore of a soft-deleted report · Preferences row for the two notification kinds · Analytics grant for team members (no grant system yet)
+- [ ] C: exports (PDF, XLSX, CSV, history, purge) · [ ] D: schedules · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
 - [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last

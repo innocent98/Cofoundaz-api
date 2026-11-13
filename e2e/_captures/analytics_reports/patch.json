@@ -1,0 +1,57 @@
+{
+  "data": {
+    "id": "76b1b6a2-7c37-4a9a-a381-7d58752556f1",
+    "name": "Board pack Q4",
+    "description": "For the board",
+    "owner": {
+      "id": "571b6256-98a7-4449-82e7-afc1f161ed56",
+      "name": "Ada F"
+    },
+    "template_key": null,
+    "default_range": {
+      "to": null,
+      "from": null,
+      "range": "30d",
+      "compare": "previous"
+    },
+    "block_count": 3,
+    "version": 2,
+    "can_edit": true,
+    "can_share": true,
+    "is_owner": true,
+    "shared_with_me": false,
+    "last_run": null,
+    "created_at": "2026-11-13T18:07:01.339366+00:00",
+    "updated_at": "2026-11-13T18:07:01.400083+00:00",
+    "share_count": 0,
+    "blocks": [
+      {
+        "id": "4091c454",
+        "hub": "finance",
+        "viz": "line",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "finance.revenue",
+        "compare": null
+      },
+      {
+        "id": "c2a778fa",
+        "hub": "marketing",
+        "viz": "number",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "marketing.clicks",
+        "compare": null
+      },
+      {
+        "id": "27c44ff0",
+        "text": "Clicks are paid plus organic.",
+        "type": "text",
+        "title": "Note"
+      }
+    ]
+  },
+  "meta": null
+}

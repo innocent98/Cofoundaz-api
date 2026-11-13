@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Pick active members of this workspace who can be given access.",
+    "field_errors": [
+      {
+        "field": "user_ids",
+        "message": "Pick active members of this workspace who can be given access."
+      }
+    ]
+  }
+}

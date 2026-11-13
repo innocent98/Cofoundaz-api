@@ -1,0 +1,81 @@
+{
+  "data": {
+    "id": "e5b1bbcd-65ec-4cde-88d9-3277b79510b4",
+    "name": "Monthly investor snapshot",
+    "description": "Revenue, burn, runway, cash and pipeline for the month, with the change on the month before.",
+    "owner": {
+      "id": "571b6256-98a7-4449-82e7-afc1f161ed56",
+      "name": "Ada F"
+    },
+    "template_key": "monthly_investor",
+    "default_range": {
+      "to": null,
+      "from": null,
+      "range": "30d",
+      "compare": "previous"
+    },
+    "block_count": 5,
+    "version": 1,
+    "can_edit": true,
+    "can_share": true,
+    "is_owner": true,
+    "shared_with_me": false,
+    "last_run": null,
+    "created_at": "2026-11-13T18:07:01.310688+00:00",
+    "updated_at": "2026-11-13T18:07:01.310688+00:00",
+    "share_count": 0,
+    "blocks": [
+      {
+        "id": "6326cc90",
+        "hub": "finance",
+        "viz": "line",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "finance.revenue",
+        "compare": null
+      },
+      {
+        "id": "199d6716",
+        "hub": "finance",
+        "viz": "number",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "finance.net_burn",
+        "compare": null
+      },
+      {
+        "id": "9090b50b",
+        "hub": "finance",
+        "viz": "number",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "finance.runway_months",
+        "compare": null
+      },
+      {
+        "id": "9df3e1e1",
+        "hub": "finance",
+        "viz": "number",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "finance.cash_balance",
+        "compare": null
+      },
+      {
+        "id": "d98fe04d",
+        "hub": "sales",
+        "viz": "number",
+        "type": "metric",
+        "range": null,
+        "title": null,
+        "metric": "sales.pipeline_value",
+        "compare": null
+      }
+    ]
+  },
+  "meta": null
+}

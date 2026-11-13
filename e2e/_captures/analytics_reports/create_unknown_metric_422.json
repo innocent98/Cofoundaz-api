@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "That metric does not exist.",
+    "field_errors": [
+      {
+        "field": "blocks[0].metric",
+        "message": "That metric does not exist."
+      }
+    ]
+  }
+}

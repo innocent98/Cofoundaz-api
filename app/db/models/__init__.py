@@ -7,7 +7,13 @@ from app.db.models.ai_chat import (  # noqa: F401
     AiSuggestion,
 )
 from app.db.models.ai_preference import AiPreference  # noqa: F401
-from app.db.models.analytics import CustomMetric, CustomMetricPoint  # noqa: F401
+from app.db.models.analytics import (  # noqa: F401
+    AnalyticsReport,
+    AnalyticsReportRun,
+    AnalyticsReportShare,
+    CustomMetric,
+    CustomMetricPoint,
+)
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult  # noqa: F401
 from app.db.models.audit import AuditLog  # noqa: F401
 from app.db.models.auth import AuthSession, AuthToken, MfaBackupCode, OAuthAccount  # noqa: F401

@@ -24,6 +24,7 @@ from app.db.models.enums import (
     MembershipRole,
 )
 from app.db.models.notification import Notification
+from app.services.analytics.catalog import REPORT_ROLES
 
 CORE_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
@@ -80,6 +81,9 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "journal.prompt.daily": FOUNDER_ROLES,
     # The titles name the filing, and the four excluded roles are 403 on every legal route,
     # so delivering these to them would leak exactly what the routes withhold (spec D4).
+    # Analytics reports (slice B): the requester of a run, or the member a report was shared with.
+    "analytics.report.generated": REPORT_ROLES,
+    "analytics.report.shared": REPORT_ROLES,
     "legal.compliance.due_soon": LEGAL_ROLES,
     "legal.compliance.overdue": LEGAL_ROLES,
     "legal.ip.renewal_due_soon": LEGAL_ROLES,

@@ -1,0 +1,134 @@
+{
+  "data": {
+    "templates": [
+      {
+        "key": "monthly_investor",
+        "name": "Monthly investor snapshot",
+        "description": "Revenue, burn, runway, cash and pipeline for the month, with the change on the month before.",
+        "default_range": {
+          "range": "30d",
+          "from": null,
+          "to": null,
+          "compare": "previous"
+        },
+        "blocks": [
+          {
+            "type": "metric",
+            "metric": "finance.revenue",
+            "viz": "line"
+          },
+          {
+            "type": "metric",
+            "metric": "finance.net_burn",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "finance.runway_months",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "finance.cash_balance",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "sales.pipeline_value",
+            "viz": "number"
+          }
+        ],
+        "omitted_hubs": []
+      },
+      {
+        "key": "weekly_operating_review",
+        "name": "Weekly operating review",
+        "description": "What the team shipped and sold this week.",
+        "default_range": {
+          "range": "7d",
+          "from": null,
+          "to": null,
+          "compare": "previous"
+        },
+        "blocks": [
+          {
+            "type": "metric",
+            "metric": "execution.tasks_done",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "execution.milestones_done_pct",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "sales.deals_won",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "marketing.clicks",
+            "viz": "line"
+          },
+          {
+            "type": "metric",
+            "metric": "health.score",
+            "viz": "number"
+          }
+        ],
+        "omitted_hubs": []
+      },
+      {
+        "key": "growth_funnel",
+        "name": "Growth funnel",
+        "description": "From impressions to closed deals over the quarter.",
+        "default_range": {
+          "range": "90d",
+          "from": null,
+          "to": null,
+          "compare": "previous"
+        },
+        "blocks": [
+          {
+            "type": "metric",
+            "metric": "marketing.impressions",
+            "viz": "line"
+          },
+          {
+            "type": "metric",
+            "metric": "marketing.clicks",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "marketing.conversions",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "marketing.ctr",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "sales.pipeline_value",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "sales.deals_won",
+            "viz": "number"
+          },
+          {
+            "type": "metric",
+            "metric": "sales.win_rate",
+            "viz": "number"
+          }
+        ],
+        "omitted_hubs": []
+      }
+    ]
+  },
+  "meta": null
+}

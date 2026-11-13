@@ -1,0 +1,31 @@
+{
+  "data": {
+    "shares": [
+      {
+        "user_id": "0f3e0dbb-0990-4c87-86bc-05a4b6446571",
+        "name": "Member",
+        "role": "accountant",
+        "locked_hubs": [
+          "marketing"
+        ]
+      },
+      {
+        "user_id": "81bd572f-fbb1-41c2-929b-d920b9ea5e34",
+        "name": "Member",
+        "role": "mentor",
+        "locked_hubs": [
+          "finance"
+        ]
+      }
+    ],
+    "candidates": [
+      {
+        "user_id": "bb703ff9-01f9-4595-93af-972b736d6fa6",
+        "name": "Member",
+        "role": "team_member",
+        "locked_hubs": []
+      }
+    ]
+  },
+  "meta": null
+}

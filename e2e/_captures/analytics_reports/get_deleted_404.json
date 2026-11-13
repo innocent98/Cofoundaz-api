@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Report not found.",
+    "field_errors": []
+  }
+}

@@ -672,6 +672,16 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "Start course",
     ),
+    "analytics.report.generated": NotifSpec(
+        _payload_users,
+        lambda p: f"Your report is ready: {p.get('report_name', 'a report')}",
+        lambda _p: "Open",
+    ),
+    "analytics.report.shared": NotifSpec(
+        _payload_users,
+        lambda p: f"A report was shared with you: {p.get('report_name', 'a report')}",
+        lambda _p: "Open",
+    ),
     # Marketplace (design §7, PRD strings kept). Payloads carry `title`, `provider_name`, `date`.
     "marketplace.booking.confirmed": NotifSpec(
         _audience("marketplace.booking.confirmed", minus_actor=False),
