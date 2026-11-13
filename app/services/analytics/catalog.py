@@ -278,6 +278,10 @@ SHARE_TARGET_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.team_member, MembershipRole.accountant} | SHARE_READER_ROLES
 )
 
+# Exports (slice C, spec section 3): founder (own + all), team member and accountant (own). Mentor
+# and business consultant read shared reports on screen only; they never get a file.
+EXPORT_ROLES: frozenset[MembershipRole] = ANALYTICS_ROLES
+
 
 def report_can_see(role: MembershipRole, hub: str) -> bool:
     """Per-metric authorisation for report blocks, runs and previews. The Overview roles use the

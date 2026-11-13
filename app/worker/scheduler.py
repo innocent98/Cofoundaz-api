@@ -55,6 +55,7 @@ OUTREACH_BUCKET_SECONDS = 300  # sequence sends and the bounce poll run every 5 
 SCHED_INVOICE_OVERDUE = "scheduled.finance.invoice_overdue"
 SCHED_DOCUMENT_TRASH_PURGE = "scheduled.documents.trash_purge"
 SCHED_QA_RETENTION = "scheduled.readiness.qa_retention"
+SCHED_ANALYTICS_PURGE = "scheduled.analytics.purge"
 SCHED_NOTIF_DIGEST = "scheduled.notifications.digest"
 SCHED_JOURNAL_NUDGE = "scheduled.journal.nudge"
 JOURNAL_REMINDER_HOUR = 20  # local; the evening writing reminder
@@ -527,6 +528,21 @@ def _due_trash_purge(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
     ]
 
 
+def _due_analytics_purge(db: Session, now: datetime) -> list[Due]:  # noqa: ARG001
+    """One sweep per local day for every workspace: export files expire at 30 days (the row stays
+    as "Expired"), report runs at 90 (Analytics slice C)."""
+    return [
+        Due(
+            "analytics.purge",
+            "all",
+            _local(now).date().isoformat(),
+            SCHED_ANALYTICS_PURGE,
+            None,
+            {},
+        )
+    ]
+
+
 def _due_calendar_syncs(db: Session, now: datetime) -> list[Due]:
     """One sync per active Google connection per interval window (CALENDAR_SYNC_INTERVAL_MINUTES)."""
     local = _local(now)
@@ -832,6 +848,7 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_sales_outreach(db, now),
         *_due_trash_purge(db, now),
         *_due_qa_retention(db, now),
+        *_due_analytics_purge(db, now),
         *_due_marketplace_timers(db, now),
         *_due_grant_matches(db, now),
         *_due_notification_digests(db, now),

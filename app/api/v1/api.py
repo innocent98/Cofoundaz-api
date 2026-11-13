@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     admin_marketplace_orders,
     ai,
     analytics,
+    analytics_exports,
     analytics_reports,
     assessments,
     billing,
@@ -88,6 +89,7 @@ api_router.include_router(
 )
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(analytics_reports.router, prefix="/analytics", tags=["analytics-reports"])
+api_router.include_router(analytics_exports.router, prefix="/analytics", tags=["analytics-exports"])
 api_router.include_router(roadmap.router, prefix="/roadmap", tags=["roadmap"])
 api_router.include_router(mission.router, prefix="/missions", tags=["missions"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
