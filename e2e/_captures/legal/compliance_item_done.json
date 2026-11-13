@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": "542abf3c-18fe-4818-90ab-639a76255fe6",
+    "title": "VAT return",
+    "authority": "FIRS",
+    "due_on": "2026-11-16",
+    "status": "done",
+    "derived_status": "done",
+    "done_at": "2026-11-13T10:07:38.704091+00:00",
+    "proof_url": "/api/v1/legal/compliance-items/542abf3c-18fe-4818-90ab-639a76255fe6/proof",
+    "recurrence": "monthly",
+    "previous_item_id": null,
+    "created_by": "c8375f96-b0ef-45b4-be70-e395c21e2916",
+    "created_at": "2026-11-13T10:07:37.543539+00:00",
+    "updated_at": "2026-11-13T10:07:38.684115+00:00"
+  },
+  "meta": null
+}
