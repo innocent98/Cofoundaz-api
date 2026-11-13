@@ -2,6 +2,7 @@
 filter, then the model on the best ten, plain fallback), dismiss and not-relevant that persist,
 the application tracker, AI drafting, stale and expired handling."""
 
+import uuid
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -348,6 +349,65 @@ def test_the_workspace_lock_is_not_held_across_the_model_call(
     _match(client, db, founder)
     # queueing locks (before the job exists); the run itself locks only after the model call
     assert order == ["lock", "model", "lock"]
+
+
+def _run_with_a_change_during_the_call(db, team, monkeypatch, change):
+    """Queue a run and let `change()` happen (committed in the same session) while the model call
+    is in flight, which is when the workspace lock is not held."""
+    s = team[0]
+
+    def match(messages):
+        change()
+        slugs = [
+            line.split("slug=")[1].split(" |")[0]
+            for line in messages[-1].content.splitlines()
+            if line.startswith("- slug=")
+        ]
+        return {"matches": [{"slug": g, "score": 80, "why": "Fits."} for g in slugs]}
+
+    monkeypatch.setattr(llm_budget, "get_llm_client", lambda: GrantLLM(match=match))
+    job = svc.job_dispatcher.enqueue(db, svc.MATCH_JOB, {"startup_id": str(s.id)}, s.id)
+    db.commit()
+    _drain(db)
+    db.refresh(job)
+    return job
+
+
+def test_an_application_started_during_the_model_call_is_not_suggested_again(
+    client, db, team, monkeypatch
+):
+    s, _heads, users = team
+    grant = _slug(db, "google-cloud-startups")
+    founder_id = users[MembershipRole.founder].id
+    job = _run_with_a_change_during_the_call(
+        db, team, monkeypatch, lambda: svc.start_application(db, s.id, founder_id, grant.id)
+    )
+    assert job.result["status"] == "ready"  # no unique-constraint failure, no retry
+    rows = db.query(GrantMatch).filter_by(startup_id=s.id, grant_id=grant.id).all()
+    assert rows == []  # not re-suggested while it is being applied to
+    assert db.query(GrantApplication).filter_by(startup_id=s.id, grant_id=grant.id).count() == 1
+
+
+def test_a_dismissal_made_during_the_model_call_survives_the_run(client, db, team, monkeypatch):
+    s, _heads, users = team
+    founder_id = users[MembershipRole.founder].id
+    founder = team[1][MembershipRole.founder]
+    first = _match(client, db, founder)["items"]
+    target = first[0]["id"]
+
+    job = _run_with_a_change_during_the_call(
+        db,
+        team,
+        monkeypatch,
+        lambda: svc.set_match_state(db, s.id, founder_id, uuid.UUID(target), "dismissed"),
+    )
+    assert job.result["status"] == "ready"
+    row = db.get(GrantMatch, uuid.UUID(target))
+    db.refresh(row)
+    assert row.state == "dismissed"
+    assert target not in [
+        i["id"] for i in client.get(f"{G}/matches", headers=founder).json()["data"]["items"]
+    ]
 
 
 def test_a_run_for_a_workspace_without_the_plan_does_nothing(client, db, team, monkeypatch):

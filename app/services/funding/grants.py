@@ -257,12 +257,24 @@ def run_match(db: Session, startup: Startup, *, last_attempt: bool = True) -> di
     # `existing` is read after the lock, so a run that waited sees the other run's rows.
     lock_workspace(db, startup.id)
     now = datetime.now(UTC)
-    existing = {
+    # Re-read EVERY match state and the application grants under the lock: a founder may have
+    # dismissed a grant or started an application while the model ran, and that grant must
+    # neither be re-suggested (it would hit `uq_grant_match`) nor be touched.
+    rows = {
         m.grant_id: m
-        for m in db.query(GrantMatch).filter(
-            GrantMatch.startup_id == startup.id, GrantMatch.state == "suggested"
-        )
+        for m in db.query(GrantMatch)
+        .filter(GrantMatch.startup_id == startup.id)
+        .populate_existing()
     }
+    existing = {gid: m for gid, m in rows.items() if m.state == "suggested"}
+    ruled_out = {gid for gid, m in rows.items() if m.state != "suggested"} | set(
+        db.scalars(
+            select(GrantApplication.grant_id).where(
+                GrantApplication.startup_id == startup.id, GrantApplication.grant_id.is_not(None)
+            )
+        )
+    )
+    pool = [t for t in pool if t[0].id not in ruled_out]
     keep: set[uuid.UUID] = set()
     new = 0
     ranked = []
