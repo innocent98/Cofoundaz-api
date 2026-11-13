@@ -98,6 +98,10 @@ DIRECT = {
     "calendar.meeting.reminder",
     "calendar.meeting.invited",
     "calendar.meeting.summary_ready",
+    # Analytics reports: payload-named recipients (the run requester, the member shared with);
+    # covered by tests/api/test_analytics_reports.py
+    "analytics.report.generated",
+    "analytics.report.shared",
 }
 
 

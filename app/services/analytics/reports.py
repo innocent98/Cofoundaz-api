@@ -79,7 +79,9 @@ def _as_date(v: Any) -> date | None:
         raise validation("range", "Use a date like 2026-10-31.") from e
 
 
-def normalise_blocks(db: Session, startup_id: uuid.UUID, raw: list[dict[str, Any]]) -> dict[str, Any]:
+def normalise_blocks(
+    db: Session, startup_id: uuid.UUID, raw: list[dict[str, Any]]
+) -> dict[str, Any]:
     if len(raw) > MAX_BLOCKS:
         raise validation("blocks", f"A report can hold at most {MAX_BLOCKS} blocks.")
     metrics = svc.all_metrics(db, startup_id)
@@ -120,6 +122,7 @@ def normalise_blocks(db: Session, startup_id: uuid.UUID, raw: list[dict[str, Any
                 "id": block_id,
                 "type": "metric",
                 "metric": key,
+                "hub": metrics[key][0].hub,  # stored so redaction never depends on the live catalog
                 "viz": viz,
                 "title": title,
                 "range": block_range,
@@ -127,6 +130,15 @@ def normalise_blocks(db: Session, startup_id: uuid.UUID, raw: list[dict[str, Any
             }
         )
     return {"version": BLOCK_VERSION, "blocks": out}
+
+
+def hidden_hub(role: MembershipRole, stored_hub: str | None, live_hub: str | None) -> str | None:
+    """The hub to lock a block behind, or None when the viewer may read it. Fails closed: when the
+    hub is unknown (a custom metric deleted since) only founder and team member keep the block."""
+    hub = stored_hub or live_hub
+    if hub is None:
+        return None if role in cat.REPORT_WRITE_ROLES else "custom"
+    return None if cat.report_can_see(role, hub) else hub
 
 
 def view_blocks(
@@ -139,12 +151,9 @@ def view_blocks(
         if b.get("type") != "metric":
             out.append(b)
             continue
-        entry = metrics.get(b.get("metric"))
-        hub = entry[0].hub if entry else None
-        if hub is not None and not cat.report_can_see(role, hub):
-            out.append(locked_stub(b["id"], hub))
-        else:
-            out.append(b)
+        entry = metrics.get(str(b.get("metric")))
+        locked = hidden_hub(role, b.get("hub"), entry[0].hub if entry else None)
+        out.append(locked_stub(b["id"], locked) if locked else b)
     return out
 
 
@@ -174,7 +183,12 @@ def templates_for(role: MembershipRole, metrics: dict[str, Any]) -> list[dict[st
                 "key": t["key"],
                 "name": t["name"],
                 "description": t["description"],
-                "default_range": {"range": t["range"], "from": None, "to": None, "compare": t["compare"]},
+                "default_range": {
+                    "range": t["range"],
+                    "from": None,
+                    "to": None,
+                    "compare": t["compare"],
+                },
                 "blocks": blocks,
                 "omitted_hubs": sorted(omitted),
             }
@@ -267,9 +281,11 @@ def serialize(
         "id": str(r.id),
         "name": r.name,
         "description": r.description,
-        "owner": {"id": str(r.owner_id), "name": owners.get(r.owner_id, "Member")}
-        if r.owner_id
-        else None,
+        "owner": (
+            {"id": str(r.owner_id), "name": owners.get(r.owner_id, "Member")}
+            if r.owner_id
+            else None
+        ),
         "template_key": r.template_key,
         "default_range": r.default_range_json,
         "block_count": len(blocks),
@@ -309,7 +325,7 @@ def list_reports(
         like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         query = query.filter(AnalyticsReport.name.ilike(like, escape="\\"))
     total = query.count()
-    order = {
+    order: Any = {
         "name": AnalyticsReport.name.asc(),
         "created": AnalyticsReport.created_at.desc(),
     }.get(sort, AnalyticsReport.updated_at.desc())
@@ -406,7 +422,7 @@ def update(
 ) -> AnalyticsReport:
     """Compare-and-swap on `version`: the UPDATE only matches the version the editor loaded, so
     two overlapping saves can never both win (the loser gets a 409, never a silent overwrite)."""
-    values: dict[str, Any] = {}
+    values: dict[Any, Any] = {}
     if "name" in changes:
         values["name"] = clean("name", changes["name"], 120, required=True)
     if "description" in changes:
@@ -489,7 +505,8 @@ def shares_view(db: Session, r: AnalyticsReport) -> dict[str, Any]:
         for s in db.query(AnalyticsReportShare).filter(AnalyticsReportShare.report_id == r.id)
     }
     nm = names(db, {x.user_id for x in members})
-    shares, candidates = [], []
+    shares: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     for x in members:
         if x.role not in cat.SHARE_TARGET_ROLES or x.user_id == r.owner_id:
             continue
@@ -516,7 +533,9 @@ def set_shares(
         if x.role in cat.SHARE_TARGET_ROLES and x.user_id != r.owner_id
     }
     if any(u not in eligible for u in wanted):
-        raise validation("user_ids", "Pick active members of this workspace who can be given access.")
+        raise validation(
+            "user_ids", "Pick active members of this workspace who can be given access."
+        )
     current = {
         s.user_id: s
         for s in db.query(AnalyticsReportShare).filter(AnalyticsReportShare.report_id == r.id)

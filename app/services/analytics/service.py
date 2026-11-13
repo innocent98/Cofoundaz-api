@@ -8,8 +8,8 @@ never be served from it: it is refused before the cache is read.
 import json
 import logging
 import uuid
-from datetime import UTC, datetime
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session

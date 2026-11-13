@@ -65,11 +65,19 @@ def build_results(
     out: list[dict[str, Any]] = []
     for b in blocks:
         if b["type"] == "text":
-            out.append({"block_id": b["id"], "type": "text", "title": b.get("title"), "text": b["text"]})
+            out.append(
+                {"block_id": b["id"], "type": "text", "title": b.get("title"), "text": b["text"]}
+            )
             continue
         p = _period(b["range"]) if b.get("range") else base
         compare = b.get("compare") or rng.get("compare") or "previous"
-        base_row = {"block_id": b["id"], "type": "metric", "viz": b["viz"], "title": b.get("title")}
+        base_row = {
+            "block_id": b["id"],
+            "type": "metric",
+            "hub": b.get("hub"),
+            "viz": b["viz"],
+            "title": b.get("title"),
+        }
         try:
             res = svc.resolve(
                 db,
@@ -83,7 +91,11 @@ def build_results(
             )
         except Exception:  # noqa: BLE001 - one broken source must not sink the report
             log.warning("analytics block %s failed", b["id"], exc_info=True)
-            res = {"key": b["metric"], "status": "error", "message": "Could not compute this metric."}
+            res = {
+                "key": b["metric"],
+                "status": "error",
+                "message": "Could not compute this metric.",
+            }
         if res.get("status") == "unknown":
             res = dict(UNKNOWN)
         out.append({**base_row, "result": res})
@@ -248,7 +260,7 @@ def view_snapshot(
     are replaced on the way out, so what was computed for the Founder cannot reach a mentor."""
     if snap is None:
         return None
-    out = {"report": {**snap["report"]}}
+    out: dict[str, Any] = {"report": {**snap["report"]}}
     out["report"]["blocks"] = rep.view_blocks(snap["report"]["blocks"], role, metrics)
     if "results" in snap:
         results = []
@@ -256,12 +268,9 @@ def view_snapshot(
             if r["type"] != "metric":
                 results.append(r)
                 continue
-            key = r.get("result", {}).get("key")
-            entry = metrics.get(key)
-            if entry is not None and not cat.report_can_see(role, entry[0].hub):
-                results.append(rep.locked_stub(r["block_id"], entry[0].hub))
-            else:
-                results.append(r)
+            entry = metrics.get(str(r.get("result", {}).get("key")))
+            locked = rep.hidden_hub(role, r.get("hub"), entry[0].hub if entry else None)
+            results.append(rep.locked_stub(r["block_id"], locked) if locked else r)
         out["results"] = results
     return out
 
@@ -281,9 +290,9 @@ def serialize_run(
         "triggered_by": run.triggered_by,
         "period": {"from": run.period_from.isoformat(), "to": run.period_to.isoformat()},
         "tz": run.tz,
-        "run_by": {"id": str(run.run_by), "name": names.get(run.run_by, "Member")}
-        if run.run_by
-        else None,
+        "run_by": (
+            {"id": str(run.run_by), "name": names.get(run.run_by, "Member")} if run.run_by else None
+        ),
         "as_of": run.as_of.isoformat() if run.as_of else None,
         "error": run.error,
         "created_at": run.created_at.isoformat(),
@@ -291,4 +300,3 @@ def serialize_run(
     if with_snapshot:
         out["snapshot"] = view_snapshot(run.snapshot_json, role, metrics)
     return out
-

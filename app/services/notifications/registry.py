@@ -642,6 +642,16 @@ SPECS: dict[str, NotifSpec] = {
         ),
         lambda _p: "Start course",
     ),
+    "analytics.report.generated": NotifSpec(
+        _payload_users,
+        lambda p: f"Your report is ready: {p.get('report_name', 'a report')}",
+        lambda _p: "Open",
+    ),
+    "analytics.report.shared": NotifSpec(
+        _payload_users,
+        lambda p: f"A report was shared with you: {p.get('report_name', 'a report')}",
+        lambda _p: "Open",
+    ),
     "legal.compliance.due_soon": NotifSpec(
         _audience("legal.compliance.due_soon", minus_actor=False),
         lambda p: f"Compliance filing {_due_phrase(p)}: {p.get('title', 'a filing')}",

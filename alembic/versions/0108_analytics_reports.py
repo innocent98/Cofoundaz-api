@@ -66,7 +66,9 @@ def upgrade() -> None:
         _ts("updated_at"),
         sa.UniqueConstraint("report_id", "user_id", name="uq_analytics_report_share"),
     )
-    op.create_index("ix_analytics_report_shares_report_id", "analytics_report_shares", ["report_id"])
+    op.create_index(
+        "ix_analytics_report_shares_report_id", "analytics_report_shares", ["report_id"]
+    )
     op.create_index("ix_analytics_report_shares_user_id", "analytics_report_shares", ["user_id"])
     op.create_table(
         "analytics_report_runs",
