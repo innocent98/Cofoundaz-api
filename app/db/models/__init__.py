@@ -87,6 +87,7 @@ from app.db.models.learning import (  # noqa: F401
     LessonPosition,
     LessonProgress,
 )
+from app.db.models.legal import ComplianceItem, IpAsset, LegalFormationProgress  # noqa: F401
 from app.db.models.llm_usage import LlmUsageDaily  # noqa: F401
 from app.db.models.marketing import (  # noqa: F401
     AudienceSegment,

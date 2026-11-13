@@ -2402,6 +2402,75 @@ the number Module 09 carried on its branch before being renumbered to `0041_vali
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
 zero. The test suite builds its own schema from the models, so nothing was lost.
 
+## 🟡 Module 13 — Legal & Compliance, Slice 1 — *built on `feat/legal-compliance` (PR open against `develop`; migration `0106_legal`)*
+
+_Three data-backed surfaces under `/api/v1/legal`: **entity formation** (a per-jurisdiction
+checklist whose steps live in code — only progress is stored), the **IP tracker** (trademarks,
+patents, copyrights, domains, with a derived `expired`), and the **compliance calendar** (filings
+with a derived due status, drift-free recurrence and an optional private proof of filing), plus two
+scheduled reminders. The first module whose **read set is wider than its write set**: founder +
+team member + **legal advisor** read, founder + team member write. Spec
+`docs/superpowers/specs/2026-10-17-module-13-legal-compliance-slice1-design.md` (D1–D24), plan
+`docs/superpowers/plans/2026-10-22-module-13-legal-compliance-slice1.md`, SOP
+`docs/sop/2026-11-13-legal-compliance-slice1.md`, gap list FE repo
+`docs/checklist/legal-prd-gaps.md` (47 rows, D-LEG-1..8)._
+
+**Build (Tasks 1–7):**
+- [x] Six checkpoints settled with the lead (2026-10-15) — legal-advisor read-only on all three
+      surfaces · `legal_entities` deferred · recurrence in scope · IP → compliance link deferred ·
+      "today" is the UTC date, shared by the derived statuses and the reminders · two jurisdictions
+      with honest content rather than ten with placeholders
+- [x] Four enums + `LEGAL_ROLES` + three models + migration `0106_legal` — `legal_formation_progress`
+      (unique on `(startup_id, jurisdiction, step_key)`, so a row's existence **is** the tick and
+      switching jurisdiction never wipes ticks), `ip_assets`, `compliance_items` (self-referential
+      `previous_item_id` with a UNIQUE that makes a second spawn a no-op, `anchor_day` for the
+      recurrence anchor, composite `(startup_id, due_on)`)
+- [x] Formation catalog in code (`catalog.py`, like `health_score/config.py`) + progress service +
+      three routes; money as integer minor units + ISO-4217 code, both `null` meaning "fee unknown"
+      rather than a `0` that reads as "free"
+- [x] IP asset CRUD with `expired` **derived** from `renewal_on` against today — the FE's add drawer
+      cannot create it, so it is never stored
+- [x] Compliance item CRUD with derived `upcoming`/`due_soon`/`overdue`/`done`, and recurrence
+      anchored on the stored day-of-month so a series on the 31st reads 31 Jan → 28 Feb → **31 Mar**
+      rather than drifting backwards
+- [x] Optional proof of filing — **magic-byte sniff that ignores the client's `Content-Type`**,
+      `save_private`, and the row carries the API route rather than a storage address
+- [x] Two scheduled reminders (compliance 14/7/1 + overdue; IP renewal 14/7/1) reusing `_claim` for
+      idempotency, collapsing to the most urgent threshold and burning the looser ones via
+      `also_claim`; notifications scoped through `AUDIENCE`, which drives the read filter as well as
+      fan-out
+- [x] Tests — **211 legal tests** (models 13 · services 101 · API 52 + proof 16 + notifications 9 ·
+      worker 18 · migration 2) · ruff / black / isort / mypy (533 files) / bandit clean · one
+      alembic head
+- [x] Live E2E journey (`e2e/test_legal.py`) — **run and passing**, 20 captures in
+      `e2e/_captures/legal/`. Note `scripts/e2e_run.sh` cannot run on a Windows host (it needs
+      `docker compose` **and** `poetry`, which live on opposite sides of the container wall); boot
+      uvicorn inside `cfz-test` instead — see SOP Verification
+- [x] FE integration guide `docs/fe-integration-guide-legal.md` — every body pasted verbatim from
+      those captures
+- [x] **Review round 1 (2026-11-13)** — migration re-chained `0067` → `0087` → `0104` → `0106_legal`
+      as develop moved five times in a day (its numbering is no longer sequential: `0105` chains on
+      `0101`, `0102` on `0103`, so re-chain against `alembic heads`, never the highest number) · the
+      pushed file had been renamed without its contents being committed, leaving two heads · proof
+      upload hardened after Finance gained `sniff_receipt`/`save_private` *subsequent* to the copy ·
+      merged from `develop` with a merge commit, no force-push
+- [x] **Finish round (2026-11-13)** — D-LEG-5 built: `GET …/compliance-items/{id}/proof` streams the
+      private file (reader roles, 404 for none/cross-tenant, 403 excluded roles) · IP renewal and
+      compliance reminders re-arm when the date moves (`scope_key` carries the date) · D-LEG-6 built:
+      overdue is a critical type, legal events in the Deadlines filter · CI fixes (em dash, audience
+      test, CodeQL asserts) · live journey re-run, two new captures · D-LEG-1..8 are lead defaults
+- [ ] CodeQL assert-with-request pattern — 25 sites in the legal tests. The job is **report-only by
+      design** (`codeql.yml`) and the pattern appears **858 times across 104 test files**, so this is
+      a repo-wide convention question, not a legal one
+- [ ] _Deferred:_ `legal_entities` + the entity summary card (PRD 13.1) · IP renewal → linked
+      compliance item (PRD 13.4) · `owner` and linked docs on a compliance item (PRD 13.5) · proof as
+      a Documents record (`proof_doc_id`) rather than a key on the row · scheduler batch cap +
+      `ScheduledRun` anti-join, deleting stored proof after the commit — see SOP Follow-ups
+- [ ] _Not this slice:_ 13.2 Contract Templates and 13.3 AI Contract Review (slice 3), 13.6 Legal
+      Advisor Requests (slice 2). Their FE pages exist against the mock hook; the gap list itemises
+      them as rows 27–47
+
+
 ## ✅ Deployment & Infrastructure — *on `chore/production-deployment-hardening` (PR #18, open)*
 
 _Production docker/compose hardening, CI/CD pipeline rework, and a real readiness endpoint —
@@ -3339,7 +3408,7 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
-- [ ] **Module 13 — Legal & Compliance** — *🟡 assigned to Victoria 2026-10-14 (#124); checkpoints settled 2026-10-15 (#125); spec in progress* · brief `docs/handoff/module-13-legal-compliance.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 built on `feat/legal-compliance` (migration `0106_legal`, PR open against `develop`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
   - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
         Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
         · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day

@@ -16,6 +16,7 @@ from app.db.models.enums import (
     DOCUMENT_ROLES,
     FINANCE_ROLES,
     FUNDING_ROLES,
+    LEGAL_ROLES,
     MARKETING_ROLES,
     MISSION_ROLES,
     SALES_ROLES,
@@ -69,6 +70,11 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "sales.sending.paused": FOUNDER_ROLES,
     "journal.reminder": FOUNDER_ROLES,  # the journal is founder-only (PRD 21)
     "journal.prompt.daily": FOUNDER_ROLES,
+    # The titles name the filing, and the four excluded roles are 403 on every legal route,
+    # so delivering these to them would leak exactly what the routes withhold (spec D4).
+    "legal.compliance.due_soon": LEGAL_ROLES,
+    "legal.compliance.overdue": LEGAL_ROLES,
+    "legal.ip.renewal_due_soon": LEGAL_ROLES,
 }
 
 # The audience of this type depends on its payload: payload["audience"] == "finance" opens it to

@@ -20,6 +20,7 @@ CATEGORIES: tuple[str, ...] = (
     "ai_insights",
     "billing",
     "calendar",
+    "legal",
 )
 
 # Titles and one-line descriptions for the Preferences grid (the API is the source, the FE renders).
@@ -37,6 +38,7 @@ CATEGORY_META: dict[str, tuple[str, str]] = {
     "ai_insights": ("AI & insights", "Your daily briefing and KPI alerts."),
     "billing": ("Billing", "Plan changes and usage."),
     "calendar": ("Calendar", "Meeting reminders."),
+    "legal": ("Legal & compliance", "Filing deadlines and IP renewals."),
 }
 
 EVENT_CATEGORY: dict[str, str] = {
@@ -69,6 +71,9 @@ EVENT_CATEGORY: dict[str, str] = {
     "assessment.quarterly.due": "health_assessment",
     "calendar.meeting.reminder": "calendar",
     "ai.suggestion.created": "ai_insights",
+    "legal.compliance.due_soon": "legal",
+    "legal.compliance.overdue": "legal",
+    "legal.ip.renewal_due_soon": "legal",
 }
 
 # Types not listed above are classified by their prefix, so a new module's events (Billing, ...)
@@ -100,6 +105,9 @@ CATEGORY_DEFAULTS: dict[str, bool] = {
             "billing",
             "calendar",
         ),
+        # `legal` is deliberately absent: a row added after the original five starts with email
+        # OFF (D-NOT-2) so nobody begins receiving a new kind of email unasked. Spec D20 said ON,
+        # which predates that rule - the house rule wins.
         True,
     ),
 }
@@ -114,6 +122,7 @@ CRITICAL_TYPES: frozenset[str] = frozenset(
         "finance.invoice.overdue",
         "document.signature.requested",
         "sales.sending.paused",
+        "legal.compliance.overdue",
     }
 )
 
@@ -138,6 +147,9 @@ FILTER_TYPES: dict[str, frozenset[str]] = {
             "roadmap.milestone.overdue",
             "finance.invoice.overdue",
             "assessment.quarterly.due",
+            "legal.compliance.due_soon",
+            "legal.compliance.overdue",
+            "legal.ip.renewal_due_soon",
         }
     ),
 }
@@ -166,6 +178,7 @@ _MODULE_BY_PREFIX: dict[str, str] = {
     "billing": "billing",
     "journal": "journal",
     "ai": "ai",
+    "legal": "legal",
 }
 
 

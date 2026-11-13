@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, NamedTuple
 from zoneinfo import ZoneInfo
 
@@ -13,8 +13,10 @@ from app.db.models.calendar import CalendarConnection
 from app.db.models.enums import (
     AssessmentStatus,
     CampaignStatus,
+    ComplianceStatus,
     ContentStatus,
     InvoiceStatus,
+    IpAssetStatus,
     MembershipStatus,
     RoadmapStatus,
     StageKind,
@@ -22,6 +24,7 @@ from app.db.models.enums import (
 from app.db.models.finance_connection import FinanceConnection
 from app.db.models.invoice import Invoice
 from app.db.models.journal import JournalSettings
+from app.db.models.legal import ComplianceItem, IpAsset
 from app.db.models.marketing import Campaign, ContentCalendarEntry, MarketingMetric
 from app.db.models.membership import Membership
 from app.db.models.mission import MissionSettings
@@ -57,6 +60,8 @@ SCHED_JOURNAL_NUDGE = "scheduled.journal.nudge"
 JOURNAL_REMINDER_HOUR = 20  # local; the evening writing reminder
 JOURNAL_PROMPT_HOUR = 9  # local; the daily prompt notification
 SCHED_CALENDAR_REMINDER = "scheduled.calendar.reminder"
+SCHED_COMPLIANCE = "scheduled.legal.compliance.due"
+SCHED_IP_RENEWAL = "scheduled.legal.ip.renewal"
 INVOICE_OVERDUE_BATCH = 500
 DEFAULT_STALL_DAYS = 14
 SALES_STALL_BATCH = 500
@@ -71,6 +76,10 @@ class Due(NamedTuple):
     job_type: str
     startup_id: Any
     payload: dict
+    # Other period keys that qualified in the same tick and must be CLAIMED without being
+    # enqueued, so a looser threshold cannot fire again a day later (spec D21). Empty for every
+    # source that fires one period at a time.
+    also_claim: tuple[str, ...] = ()
 
 
 def _claim(db: Session, task_key: str, scope_key: str, period_key: str) -> bool:
@@ -674,6 +683,130 @@ def _due_sales_outreach(db: Session, now: datetime) -> list[Due]:  # noqa: ARG00
     return due
 
 
+# Most urgent first. A row qualifies for every threshold whose bound it satisfies; only the
+# first match is enqueued and the rest are claimed alongside it (spec D21).
+_COMPLIANCE_THRESHOLDS: tuple[tuple[str, int | None], ...] = (
+    ("overdue", None),  # due_on < today
+    ("due1", 1),
+    ("due7", 7),
+    ("due14", 14),
+)
+# No `overdue` for IP: a passed renewal already reads as derived_status "expired" with a
+# "Renew now" action, so a notification about it would be noise (spec D18).
+_IP_THRESHOLDS: tuple[tuple[str, int], ...] = (("due1", 1), ("due7", 7), ("due14", 14))
+_WIDEST_WINDOW_DAYS = 14
+
+
+def _qualifies(target: date, today: date, days: int | None) -> bool:
+    """`None` days means "already past"; otherwise the window `target <= today + days`."""
+    if days is None:
+        return target < today
+    return target <= today + timedelta(days=days)
+
+
+def _due_compliance(db: Session, now: datetime) -> list[Due]:
+    """Open compliance filings inside a reminder window.
+
+    Windows (`due_on <= today + N`), not exact days: an exact-day match would permanently lose a
+    reminder if the scheduler missed a day, whereas a window plus the once-only `_claim` is
+    self-healing (spec D17).
+
+    "Today" is the UTC date, matching the derived status so the badge and the notification cannot
+    disagree (spec D4) — deliberately not `_local(now)`, which depends on SCHEDULER_TIMEZONE.
+    """
+    today = now.astimezone(UTC).date()
+    rows = (
+        db.query(ComplianceItem)
+        .join(Startup, ComplianceItem.startup_id == Startup.id)
+        .filter(
+            ComplianceItem.status == ComplianceStatus.open,
+            Startup.deleted_at.is_(None),
+            ComplianceItem.due_on <= today + timedelta(days=_WIDEST_WINDOW_DAYS),
+        )
+        .all()
+    )
+    out: list[Due] = []
+    for item in rows:
+        qualifying = [
+            key for key, days in _COMPLIANCE_THRESHOLDS if _qualifies(item.due_on, today, days)
+        ]
+        if not qualifying:
+            continue
+        primary, extras = qualifying[0], tuple(qualifying[1:])
+        out.append(
+            Due(
+                SCHED_COMPLIANCE,
+                # The due date is part of the scope: a moved date is a new obligation and re-arms
+                # its reminders instead of staying silenced by the old claims.
+                f"{item.id}:{item.due_on.isoformat()}",
+                primary,
+                SCHED_COMPLIANCE,
+                item.startup_id,
+                {
+                    "startup_id": str(item.startup_id),
+                    "item_id": str(item.id),
+                    "title": item.title,
+                    "due_on": item.due_on.isoformat(),
+                    "period_key": primary,
+                },
+                extras,
+            )
+        )
+    return out
+
+
+def _due_ip_renewals(db: Session, now: datetime) -> list[Due]:
+    """IP assets whose renewal falls inside a reminder window.
+
+    Bounded BELOW by today as well as above: without the lower bound a long-passed renewal would
+    satisfy every window and fire a `due1` (spec D18). Drafting assets and null renewal dates are
+    skipped — there is no registration to renew.
+    """
+    today = now.astimezone(UTC).date()
+    rows = (
+        db.query(IpAsset)
+        .join(Startup, IpAsset.startup_id == Startup.id)
+        .filter(
+            IpAsset.status != IpAssetStatus.drafting,
+            IpAsset.renewal_on.is_not(None),
+            IpAsset.renewal_on >= today,
+            IpAsset.renewal_on <= today + timedelta(days=_WIDEST_WINDOW_DAYS),
+            Startup.deleted_at.is_(None),
+        )
+        .all()
+    )
+    out: list[Due] = []
+    for asset in rows:
+        # Bound locally: the query already excludes nulls, but the column is typed nullable so
+        # mypy cannot see that.
+        renewal = asset.renewal_on
+        if renewal is None:
+            continue
+        qualifying = [key for key, days in _IP_THRESHOLDS if _qualifies(renewal, today, days)]
+        if not qualifying:
+            continue
+        primary, extras = qualifying[0], tuple(qualifying[1:])
+        out.append(
+            Due(
+                SCHED_IP_RENEWAL,
+                # Same for renewals: each cycle (a new `renewal_on`) gets its own claims.
+                f"{asset.id}:{renewal.isoformat()}",
+                primary,
+                SCHED_IP_RENEWAL,
+                asset.startup_id,
+                {
+                    "startup_id": str(asset.startup_id),
+                    "asset_id": str(asset.id),
+                    "name": asset.name,
+                    "renewal_on": renewal.isoformat(),
+                    "period_key": primary,
+                },
+                extras,
+            )
+        )
+    return out
+
+
 def scheduler_tick(db: Session, *, now: datetime) -> int:
     """Claim + enqueue every due scheduled task. Returns the count enqueued.
 
@@ -701,11 +834,18 @@ def scheduler_tick(db: Session, *, now: datetime) -> int:
         *_due_journal_nudges(db, now),
         *_due_calendar_syncs(db, now),
         *_due_calendar_reminders(db, now),
+        *_due_compliance(db, now),
+        *_due_ip_renewals(db, now),
     ]
     enqueued = 0
     for item in due:
         try:
             if _claim(db, item.task_key, item.scope_key, item.period_key):
+                # Burn the looser thresholds that qualified in the same tick, so none of them
+                # fires again later (spec D21). Only needed when the primary was newly claimed:
+                # if it was already taken, these were claimed on that same earlier pass.
+                for extra in item.also_claim:
+                    _claim(db, item.task_key, item.scope_key, extra)
                 job_dispatcher.enqueue(db, item.job_type, item.payload, item.startup_id)
                 enqueued += 1
         except Exception as exc:  # noqa: BLE001 - one bad item must not stop the rest
