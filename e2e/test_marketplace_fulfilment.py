@@ -141,6 +141,35 @@ def tick(at: datetime) -> dict:
         db.close()
 
 
+def drain_calendar_invites() -> None:
+    """Run the worker's calendar-invite jobs in-process, so the expert's invite email is sent."""
+    from app.db.session import SessionLocal
+    from app.worker import runner
+    from app.worker.handlers import calendar as _calendar  # noqa: F401  (registers the handler)
+
+    db = SessionLocal()
+    try:
+        for _ in range(500):
+            if runner.run_once(db) == 0:
+                break
+    finally:
+        db.close()
+
+
+def expert_invite(expert_email: str) -> dict:
+    """The newest captured "invited you" email to the expert, with its .ics attachment text."""
+    from pathlib import Path
+
+    from e2e.conftest import MAIL_DIR
+
+    for f in sorted(Path(MAIL_DIR).glob("*.json"), reverse=True):
+        data = json.loads(f.read_text())
+        if data["to"].lower() == expert_email.lower() and "invited you" in data["subject"]:
+            att = f.with_name(f.stem + ".attachments") / "invite.ics"
+            return {**data, "ics": att.read_text() if att.exists() else None}
+    raise AssertionError("no invite email for the expert")
+
+
 def test_marketplace_fulfilment_journey(
     http: httpx.Client, base_url, make_verified_user, mailbox, capture, capture_json
 ):
@@ -683,6 +712,12 @@ def test_marketplace_fulfilment_journey(
         "calendar_ics_200",
         {"status": r.status_code, "content_type": r.headers["content-type"], "body": r.text},
     )
+    drain_calendar_invites()
+    invite = expert_invite(expert["email"])
+    seen = (invite["subject"] + invite["html"] + (invite["ics"] or "")).lower()
+    assert invite["ics"] and "mailto:no-reply@" in invite["ics"].lower()
+    assert f_user["email"].lower() not in seen  # the booker's address never reaches the expert
+    capture_json(G, "email_expert_consultation_invite", invite)
     r = men_c.get(f"{M}/bookings/{cbid}/calendar.ics", headers=men)
     assert r.status_code == 403
     capture(G, "calendar_ics_mentor_403", r)

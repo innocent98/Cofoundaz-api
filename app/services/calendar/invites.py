@@ -13,7 +13,9 @@ from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logger import log
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.calendar import CalendarAttendee, CalendarEvent
 from app.db.models.user import User, UserProfile
 from app.platform.email import EmailAttachment, EmailMessage, get_email_sender
@@ -21,13 +23,22 @@ from app.services.calendar.ics import build_ics
 from app.services.calendar.meetings import esc, fmt_when
 
 
-def _organizer(db: Session, user_id: uuid.UUID | None) -> tuple[str, str]:
+def _organizer(
+    db: Session, user_id: uuid.UUID | None, source_ref: str | None = None
+) -> tuple[str, str]:
     user = db.get(User, user_id) if user_id else None
     if user is None:
         return "Cofoundaz", "no-reply@cofoundaz.com"
     profile = db.query(UserProfile).filter_by(user_id=user.id).one_or_none()
-    name = (profile.full_name if profile and profile.full_name else None) or str(user.email)
-    return name, str(user.email)
+    full_name = profile.full_name if profile and profile.full_name else None
+    if source_ref and source_ref.startswith("marketplace:"):
+        # An outside expert is invited: the booker's address must never reach them (member
+        # emails go only to founder + team member), so the organiser is the no-reply sender
+        # and a nameless booker is "A team member", never their email.
+        return full_name or NAMELESS_MEMBER, str(
+            settings.EMAILS_FROM_EMAIL or "no-reply@cofoundaz.com"
+        )
+    return full_name or str(user.email), str(user.email)
 
 
 def _html(intro: str, ev: CalendarEvent | SimpleNamespace, extra: str = "") -> str:
@@ -48,7 +59,7 @@ def send_pending(
     ev = db.get(CalendarEvent, event_id)
     if ev is None:
         return {"sent": 0, "cancelled": 0}
-    name, org_email = _organizer(db, organizer_id or ev.created_by)
+    name, org_email = _organizer(db, organizer_id or ev.created_by, ev.source_ref)
     sender = get_email_sender()
     rows = db.query(CalendarAttendee).filter_by(event_id=ev.id).all()
     seq = max([a.invite_sequence for a in rows] + [-1]) + 1
@@ -128,5 +139,5 @@ def send_cancel_snapshot(db: Session, snap: dict, organizer_id: uuid.UUID | None
         video_url=None,
         description=None,
     )
-    name, org_email = _organizer(db, organizer_id)
+    name, org_email = _organizer(db, organizer_id, snap.get("source_ref"))
     return sum(_cancel(ev, e, name, org_email, 9999) for e in snap["emails"])

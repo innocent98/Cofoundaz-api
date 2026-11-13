@@ -885,6 +885,53 @@ def test_accepting_a_consultation_puts_a_meeting_on_the_founders_calendar(
     assert "Brief" not in ics and "seed investment" not in ics  # the brief never leaves the app
 
 
+def _expert_invite(client, db, w, ps, mail, monkeypatch):
+    bid = accepted(w, ps)
+    ev_id = booking(db, bid).calendar_event_id
+    mail.sent.clear()
+    run_jobs(db, invite_jobs(db, ev_id), monkeypatch, mail)
+    (msg,) = sent_to(mail, w.expert.email)
+    ics = msg.attachments[0].content.decode().replace("\r\n ", "")
+    return msg, ics
+
+
+def test_the_experts_invite_never_carries_the_bookers_email(client, db, w, ps, mail, monkeypatch):
+    msg, ics = _expert_invite(client, db, w, ps, mail, monkeypatch)
+    booker = w.founder.email.lower()
+    assert booker not in (msg.subject + msg.html + ics).lower()
+    assert "ORGANIZER" in ics and "mailto:no-reply@" in ics.lower()
+
+
+def test_a_nameless_booker_is_a_team_member_in_the_experts_invite(
+    client, db, w, ps, mail, monkeypatch
+):
+    from app.core.names import NAMELESS_MEMBER
+
+    w.founder.profile.full_name = None
+    db.flush()
+    msg, ics = _expert_invite(client, db, w, ps, mail, monkeypatch)
+    assert w.founder.email.lower() not in (msg.subject + msg.html + ics).lower()
+    assert msg.subject.startswith(f"{NAMELESS_MEMBER} invited you") and NAMELESS_MEMBER in msg.html
+
+
+def test_the_experts_cancellation_never_carries_the_bookers_email(
+    client, db, w, ps, mail, monkeypatch
+):
+    bid = accepted(w, ps)
+    b = booking(db, bid)
+    event_id = b.calendar_event_id
+    run_jobs(db, invite_jobs(db, event_id), monkeypatch, mail)
+    mail.sent.clear()
+    b.status, b.closed_reason = BookingStatus.cancelled, "cancelled_by_staff"
+    closing.on_closed(db, b, drop_calendar=True)
+    db.flush()
+    cancel_jobs = [j for j in invite_jobs(db, event_id) if "cancel_snapshot" in j.payload]
+    run_jobs(db, cancel_jobs, monkeypatch, mail)
+    (gone,) = sent_to(mail, w.expert.email)
+    ics = gone.attachments[0].content.decode().replace("\r\n ", "")
+    assert w.founder.email.lower() not in (gone.subject + gone.html + ics).lower()
+
+
 def test_add_to_calendar_downloads_an_ics_for_founder_side_readers_only(client, db, w, ps):
     mentor = mk_user(db)
     member(db, w.ws, mentor, MembershipRole.mentor)

@@ -2163,6 +2163,20 @@ When the expert **accepts** a consultation the booking gets a `calendar_event_id
   "body": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Cofoundaz//Calendar//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:0ac10f92-23bd-4aa3-a476-849b115f450d@cofoundaz.com\r\nSEQUENCE:0\r\nDTSTAMP:20261112T193533Z\r\nDTSTART:20261114T070000Z\r\nDTEND:20261114T080000Z\r\nSUMMARY:Contract review session with Ngozi Eze\r\nSTATUS:CONFIRMED\r\nORGANIZER;CN=Ada Obi:mailto:delivered+e2e-45c9f9200280@resend.dev\r\nATTENDEE;CN=Ada Obi;RSVP=TRUE:mailto:delivered+e2e-45c9f9200280@resend.dev\r\nDESCRIPTION:Booked on the Cofoundaz Marketplace.\\nhttps://meet.example.com/\r\n ngozi-eze\r\nURL:https://meet.example.com/ngozi-eze\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
 }
 ```
+What the expert receives (not an FE endpoint, so there is nothing to build; it explains what the founder-side `.ics` above is NOT). The expert's invite is sent by the worker, and its organiser is the Cofoundaz no-reply sender, never the person who booked: the booker's email address must not reach the provider (house rule: member emails go only to founder and team member). The booker is named by their display name only, and a booker with no name shows as "A team member". The founder-side file above keeps the booker as organiser, because it goes to the founder side. Captured live as `email_expert_consultation_invite` (the `ics` field is the invite's attachment, unfolded):
+```json
+{
+  "to": "delivered+e2e-b625b0d525d9@resend.dev",
+  "subject": "Ada Obi invited you: Contract review session with Ngozi Eze \u00b7 15 Nov 2026",
+  "html": "<p>Ada Obi invited you to a meeting.</p><p><strong>Contract review session with Ngozi Eze</strong><br>Sun 15 Nov 2026, 08:00 (Africa/Lagos)</p><p><a href=\"https://meet.example.com/ngozi-eze\">Join the call</a></p><p>Booked on the Cofoundaz Marketplace.</p>",
+  "sent_at": "2026-11-13T16:30:16.951304+00:00",
+  "attachments": [
+    "invite.ics"
+  ],
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Cofoundaz//Calendar//EN\nCALSCALE:GREGORIAN\nMETHOD:REQUEST\nBEGIN:VEVENT\nUID:91a52a3e-9c3b-48bc-b3c0-2adf5d44118d@cofoundaz.com\nSEQUENCE:0\nDTSTAMP:20261113T163016Z\nDTSTART:20261115T070000Z\nDTEND:20261115T080000Z\nSUMMARY:Contract review session with Ngozi Eze\nSTATUS:CONFIRMED\nORGANIZER;CN=Ada Obi:mailto:no-reply@cofoundaz.com\nATTENDEE;CN=Ngozi Eze;RSVP=TRUE:mailto:delivered+e2e-b625b0d525d9@resend.de\n v\nDESCRIPTION:Booked on the Cofoundaz Marketplace.\\nhttps://meet.example.com/\n ngozi-eze\nURL:https://meet.example.com/ngozi-eze\nEND:VEVENT\nEND:VCALENDAR\n"
+}
+```
+
 `calendar_ics_mentor_403`:
 ```json
 {
