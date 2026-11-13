@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Enter your authenticator code to resolve a money flag.",
+    "field_errors": [
+      {
+        "field": "totp_code",
+        "message": "Required for this flag."
+      }
+    ]
+  }
+}

@@ -31,7 +31,7 @@ from app.db.models.user import User
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.services.billing import paystack
-from app.services.marketplace import emails, outbox
+from app.services.marketplace import emails, outbox, threads
 from app.services.marketplace.constants import (
     ACCEPT_WINDOW,
     MAX_REFUND_ATTEMPTS,
@@ -148,6 +148,18 @@ def slot_still_free(db: Session, booking: MarketplaceBooking) -> bool:
     return clash is None
 
 
+_REASON_WORDS = {
+    "payment_mismatch": "payment did not match",
+    "unverified_close": "hold closed without a Paystack answer",
+}
+
+
+def _reopen(order: MarketplaceOrder) -> None:
+    """A new problem on an order staff had marked resolved puts it back in front of them."""
+    order.attention_resolved_at = None
+    order.attention_resolved_by = None
+
+
 def flag_attention(
     db: Session,
     order: MarketplaceOrder,
@@ -156,11 +168,12 @@ def flag_attention(
     amount: object,
 ) -> None:
     """Put an order in front of staff (idempotent: one flag and one audit row per reason)."""
-    if order.attention_reason == reason:
+    if order.attention_reason == reason and order.attention_resolved_at is None:
         return
     order.attention_reason = reason
     order.attention_at = now()
     order.attention_amount_minor = amount if isinstance(amount, int) else None
+    _reopen(order)
     write_audit(
         db,
         f"marketplace.order.{reason}",
@@ -174,10 +187,75 @@ def flag_attention(
             "reference": order.paystack_reference,
         },
     )
+    # The wording depends on the reason: an unverified close has no Paystack amount to quote.
+    if order.attention_amount_minor is not None:
+        detail = f"expected {order.amount_minor}, Paystack reports {order.attention_amount_minor}"
+    else:
+        detail = f"expected {order.amount_minor}, Paystack gave no amount"
     log.error(
-        f"marketplace: {reason} on {order.paystack_reference}: expected {order.amount_minor}, "
-        f"Paystack reports {order.attention_amount_minor}. Needs staff."
+        f"marketplace: {_REASON_WORDS.get(reason, reason)} on {order.paystack_reference}: "
+        f"{detail}. Needs staff."
     )
+
+
+def auto_resolve_attention(db: Session, order: MarketplaceOrder, *, why: str) -> bool:
+    """An `unverified_close` flag exists because money MAY have been captured behind a hold we
+    closed. Once the order is paid and revived, or fully refunded, nobody needs to look. The flag
+    stays on the row as the record; only its resolution is stamped. Other reasons (a mismatching
+    amount, a refund Paystack refuses) always need a person."""
+    if order.attention_reason != "unverified_close" or order.attention_resolved_at is not None:
+        return False
+    order.attention_resolved_at = now()
+    write_audit(
+        db,
+        "marketplace.order.attention_auto_resolved",
+        startup_id=order.startup_id,
+        entity_type="marketplace_order",
+        entity_id=order.id,
+        details={"reason": order.attention_reason, "why": why},
+    )
+    return True
+
+
+MONEY_REASONS = ("payment_mismatch", "refund_failed")
+
+
+def needs_step_up(order: MarketplaceOrder) -> bool:
+    """A flag about money we hold or owe (a wrong amount, a refund Paystack keeps refusing) needs
+    the staff member's fresh authenticator code to dismiss; an unverified close does not."""
+    return order.attention_reason in MONEY_REASONS or order.refund_failed_at is not None
+
+
+def resolve_attention(
+    db: Session,
+    order_id: uuid.UUID,
+    *,
+    staff_user_id: uuid.UUID,
+    reason: str,
+    ip: str | None = None,
+    user_agent: str | None = None,
+) -> MarketplaceOrder:
+    """Staff mark a flagged order as dealt with (they handled it outside the app). Audited with
+    their reason; the queue stops listing it until a new problem is flagged."""
+    order = lock_order(db, order_id)
+    flagged = order.attention_reason is not None or order.refund_failed_at is not None
+    if not flagged or order.attention_resolved_at is not None:
+        raise err("NOT_FLAGGED", "This order has nothing waiting for review.", 409)
+    order.attention_resolved_at = now()
+    order.attention_resolved_by = staff_user_id
+    write_audit(
+        db,
+        "marketplace.order.attention_resolved",
+        actor_user_id=staff_user_id,
+        startup_id=order.startup_id,
+        entity_type="marketplace_order",
+        entity_id=order.id,
+        reason=reason,
+        ip=ip,
+        user_agent=user_agent,
+        details={"attention_reason": order.attention_reason},
+    )
+    return order
 
 
 def close_for_payment_review(db: Session, booking: MarketplaceBooking) -> None:
@@ -283,6 +361,8 @@ def apply_payment(db: Session, reference: str, tx: dict[str, Any]) -> str:
         booking.slot_hold_expires_at = None
         booking.accept_by = t + ACCEPT_WINDOW
         booking.closed_reason = None
+        auto_resolve_attention(db, order, why="paid_and_revived")
+        threads.attach_booking(db, booking)
         write_audit(
             db,
             "marketplace.booking.created",
@@ -380,6 +460,8 @@ def record_refund_sent(
         if order.refunded_minor == order.amount_minor
         else OrderStatus.partially_refunded
     )
+    if order.status == OrderStatus.refunded:
+        auto_resolve_attention(db, order, why="fully_refunded")
     write_audit(
         db,
         "marketplace.order.refunded",
@@ -503,8 +585,9 @@ def _refund_retry(
     order.refund_next_attempt_at = t + timedelta(minutes=REFUND_RETRY_BACKOFF_MIN[step])
     if order.refund_attempts >= MAX_REFUND_ATTEMPTS and order.refund_failed_at is None:
         order.refund_failed_at = t
-        order.attention_reason = order.attention_reason or "refund_failed"
-        order.attention_at = order.attention_at or t
+        if order.attention_reason is None or order.attention_resolved_at is not None:
+            order.attention_reason, order.attention_at = "refund_failed", t
+        _reopen(order)
         write_audit(
             db,
             "marketplace.order.refund_failed",
@@ -584,6 +667,7 @@ def reverse_failed_refund(db: Session, order_id: uuid.UUID, amount_minor: int, r
         return "duplicate"
     order.refunded_minor -= amount_minor
     order.refund_failed_at = now()
+    _reopen(order)
     order.status = OrderStatus.partially_refunded if order.refunded_minor else OrderStatus.paid
     write_audit(
         db,

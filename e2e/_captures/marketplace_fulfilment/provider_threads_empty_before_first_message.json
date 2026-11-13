@@ -1,0 +1,13 @@
+{
+  "data": {
+    "threads": [],
+    "unread_total": 0,
+    "pagination": {
+      "total": 0,
+      "limit": 25,
+      "offset": 0,
+      "has_more": false
+    }
+  },
+  "meta": null
+}

@@ -15,6 +15,7 @@ from app.db.models.notification import Notification
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.ai_preferences import opted_out
+from app.services.marketplace.constants import MESSAGE_COLLAPSE
 from app.services.notifications.audience import AUDIENCE, FOUNDER_ROLES, kpi_roles
 from app.services.notifications.preferences import email_route, in_app_enabled
 from app.services.notifications.service import create_notifications
@@ -227,6 +228,25 @@ def _nobody(_db: Session, _payload: dict) -> list[uuid.UUID]:
     """`document.signature.requested`: the signers are external and get the email; no member
     has anything to sign, so there is nobody to tell in-app."""
     return []
+
+
+def _message_once_per_window(db: Session, payload: dict) -> list[uuid.UUID]:
+    """`marketplace.message.new`: each founder is told once per thread per MESSAGE_COLLAPSE, so a
+    burst of messages is one notification (the unread count on the thread carries the rest)."""
+    since = datetime.now(UTC) - MESSAGE_COLLAPSE
+    recipients = _audience("marketplace.message.new", minus_actor=False)(db, payload)
+    already = {
+        r[0]
+        for r in db.query(Notification.user_id)
+        .filter(
+            Notification.startup_id == payload["startup_id"],
+            Notification.type == "marketplace.message.new",
+            Notification.data["thread_id"].astext == str(payload.get("thread_id")),
+            Notification.created_at >= since,
+        )
+        .all()
+    }
+    return [u for u in recipients if u not in already]
 
 
 def _kpi_audience(db: Session, payload: dict) -> list[uuid.UUID]:
@@ -641,6 +661,47 @@ SPECS: dict[str, NotifSpec] = {
             else "New course recommended for your stage"
         ),
         lambda _p: "Start course",
+    ),
+    # Marketplace (design §7, PRD strings kept). Payloads carry `title`, `provider_name`, `date`.
+    "marketplace.booking.confirmed": NotifSpec(
+        _audience("marketplace.booking.confirmed", minus_actor=False),
+        lambda p: (
+            f"Booking confirmed: {p.get('title', 'your booking')} with "
+            f"{p.get('provider_name') or 'the expert'}"
+            + (f" · {p['date']}" if p.get("date") else "")
+        ),
+        lambda _p: "View booking",
+    ),
+    "marketplace.booking.declined": NotifSpec(
+        _audience("marketplace.booking.declined", minus_actor=False),
+        lambda p: f"{p.get('provider_name') or 'The expert'} could not take this on.",
+        lambda _p: "You were refunded in full.",
+    ),
+    "marketplace.booking.expired": NotifSpec(
+        _audience("marketplace.booking.expired", minus_actor=False),
+        lambda p: f"{p.get('provider_name') or 'The expert'} could not take this on.",
+        lambda _p: "You were refunded in full.",
+    ),
+    "marketplace.booking.overdue": NotifSpec(
+        _audience("marketplace.booking.overdue", minus_actor=False),
+        lambda p: f"{p.get('title', 'Your order')} is past its due date",
+        lambda _p: "Message the expert",
+    ),
+    "marketplace.delivery.submitted": NotifSpec(
+        _audience("marketplace.delivery.submitted", minus_actor=False),
+        lambda p: f"{p.get('provider_name') or 'The expert'} delivered your order",
+        lambda _p: "Review delivery",
+    ),
+    "marketplace.delivery.auto_released": NotifSpec(
+        _audience("marketplace.delivery.auto_released", minus_actor=False),
+        lambda p: f"{p.get('title', 'Your order')} was accepted automatically",
+        lambda _p: "The review period ended with no reply.",
+    ),
+    "marketplace.message.new": NotifSpec(
+        _message_once_per_window,
+        # No message text: a notification can be emailed, and message text never goes in email.
+        lambda p: f"{p.get('provider_name') or 'Your expert'} sent you a message",
+        lambda _p: "Open conversation",
     ),
     "legal.compliance.due_soon": NotifSpec(
         _audience("legal.compliance.due_soon", minus_actor=False),

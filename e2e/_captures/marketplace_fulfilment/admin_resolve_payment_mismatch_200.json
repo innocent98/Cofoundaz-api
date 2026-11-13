@@ -1,0 +1,19 @@
+{
+  "data": {
+    "id": "f71d4c8b-7d01-42d3-a228-e005b1df86bc",
+    "booking_id": "75b1ef46-f7d5-4373-bbbc-cb4864920fa1",
+    "reference": "mp_bd3991ad82d6f64a3217",
+    "status": "paid",
+    "currency": "NGN",
+    "amount_minor": 1000000,
+    "refunded_minor": 0,
+    "refund_due_minor": 0,
+    "attention_reason": "payment_mismatch",
+    "attention_at": "2026-11-12T19:35:35.965023+00:00",
+    "paystack_reported_minor": 1020000,
+    "refund_attempts": 0,
+    "refund_failed_at": null,
+    "resolved_at": "2026-11-12T19:35:36.039106+00:00"
+  },
+  "meta": null
+}

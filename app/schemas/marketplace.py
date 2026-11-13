@@ -111,6 +111,11 @@ class StepUpReasonRequest(_Strict):
     totp_code: TotpCode
 
 
+class ResolveAttentionRequest(_Strict):
+    reason: Reason
+    totp_code: TotpCode | None = None  # required when the flag is about money
+
+
 class RequestChangesRequest(_Strict):
     message: Message
 
@@ -244,3 +249,32 @@ class BookingCreate(_Strict):
     brief: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=4000)]
     accept_terms: bool = False
     pay_with: Literal["card", "saved_card"] = "card"
+    # Uploaded with purpose `brief` through POST /marketplace/files, unattached and yours.
+    file_ids: Annotated[list[uuid.UUID], Field(max_length=5)] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------- slice D: fulfilment, messaging
+
+Body = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
+
+
+class DeliverRequest(_Strict):
+    message: Body
+    file_ids: Annotated[list[uuid.UUID], Field(max_length=10)] = Field(default_factory=list)
+
+
+class RequestChangesBody(_Strict):
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=2000)]
+
+
+class MessageCreate(_Strict):
+    body: Body
+    file_ids: Annotated[list[uuid.UUID], Field(max_length=5)] = Field(default_factory=list)
+
+
+class ThreadOpen(_Strict):
+    provider_id: uuid.UUID
+
+
+class AttachDocument(_Strict):
+    document_id: uuid.UUID

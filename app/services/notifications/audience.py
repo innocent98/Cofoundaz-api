@@ -67,6 +67,14 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "sales.deal.won": SALES_ROLES,
     "sales.deal.stalled": SALES_ROLES,
     "sales.sending.paused": FOUNDER_ROLES,
+    # Marketplace (design §7): the workspace's founders only; never a mentor, advisor or member.
+    "marketplace.booking.confirmed": FOUNDER_ROLES,
+    "marketplace.booking.declined": FOUNDER_ROLES,
+    "marketplace.booking.expired": FOUNDER_ROLES,
+    "marketplace.booking.overdue": FOUNDER_ROLES,
+    "marketplace.delivery.submitted": FOUNDER_ROLES,
+    "marketplace.delivery.auto_released": FOUNDER_ROLES,
+    "marketplace.message.new": FOUNDER_ROLES,
     "journal.reminder": FOUNDER_ROLES,  # the journal is founder-only (PRD 21)
     "journal.prompt.daily": FOUNDER_ROLES,
     # The titles name the filing, and the four excluded roles are 403 on every legal route,

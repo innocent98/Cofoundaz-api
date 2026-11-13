@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Choose 'brief' or 'message' as the purpose.",
+    "field_errors": []
+  }
+}

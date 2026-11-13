@@ -31,6 +31,7 @@ from app.api.v1.endpoints import (
     marketing,
     marketplace,
     marketplace_bookings,
+    marketplace_threads,
     mission,
     notifications,
     payment_webhooks,
@@ -38,6 +39,7 @@ from app.api.v1.endpoints import (
     provider,
     provider_bookings,
     provider_listings,
+    provider_threads,
     readiness,
     reports,
     roadmap,
@@ -133,8 +135,10 @@ api_router.include_router(
 api_router.include_router(provider.router, prefix="/provider", tags=["provider"])
 api_router.include_router(provider_listings.router, prefix="/provider", tags=["provider"])
 api_router.include_router(provider_bookings.router, prefix="/provider", tags=["provider"])
+api_router.include_router(provider_threads.router, prefix="/provider", tags=["provider"])
 api_router.include_router(marketplace.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(marketplace_bookings.router, prefix="/marketplace", tags=["marketplace"])
+api_router.include_router(marketplace_threads.router, prefix="/marketplace", tags=["marketplace"])
 api_router.include_router(
     super_admin.router, prefix="/super-admin", tags=["super-admin"], include_in_schema=False
 )

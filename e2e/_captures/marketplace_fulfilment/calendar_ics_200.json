@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "content_type": "text/calendar; charset=utf-8",
+  "body": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Cofoundaz//Calendar//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:0ac10f92-23bd-4aa3-a476-849b115f450d@cofoundaz.com\r\nSEQUENCE:0\r\nDTSTAMP:20261112T193533Z\r\nDTSTART:20261114T070000Z\r\nDTEND:20261114T080000Z\r\nSUMMARY:Contract review session with Ngozi Eze\r\nSTATUS:CONFIRMED\r\nORGANIZER;CN=Ada Obi:mailto:delivered+e2e-45c9f9200280@resend.dev\r\nATTENDEE;CN=Ada Obi;RSVP=TRUE:mailto:delivered+e2e-45c9f9200280@resend.dev\r\nDESCRIPTION:Booked on the Cofoundaz Marketplace.\\nhttps://meet.example.com/\r\n ngozi-eze\r\nURL:https://meet.example.com/ngozi-eze\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FILE_IN_USE",
+    "message": "That file was sent to a client, so it can't be removed.",
+    "field_errors": []
+  }
+}

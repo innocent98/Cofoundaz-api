@@ -1,0 +1,93 @@
+{
+  "data": {
+    "id": "4aeef8f7-c785-4acb-ac70-027360090b72",
+    "status": "delivered",
+    "type": "package",
+    "title": "Shareholder agreement drafting",
+    "category": "Legal",
+    "deliverables": [
+      "Shareholder agreement (Word)",
+      "One round of edits"
+    ],
+    "duration_min": null,
+    "delivery_days": 7,
+    "revisions_included": 2,
+    "brief": "We need a shareholder agreement drafted before we close our seed round next month.",
+    "client_name": "Ada Obi",
+    "starts_at": null,
+    "ends_at": null,
+    "accept_by": "2026-11-14T19:35:32.371327+00:00",
+    "due_at": "2026-11-19T19:35:32.533623+00:00",
+    "meeting_url": null,
+    "closed_reason": null,
+    "earnings": {
+      "price_minor": 25000000,
+      "commission_bps": 1500,
+      "commission_minor": 3750000,
+      "net_minor": 21250000,
+      "currency": "NGN",
+      "paid": true
+    },
+    "delivered_at": "2026-11-12T19:35:33.044848+00:00",
+    "auto_release_at": "2026-11-19T19:35:33.044848+00:00",
+    "revisions_used": 1,
+    "thread_id": "5c8d4d70-38e6-4b0b-a749-dc4beede847b",
+    "brief_files": [
+      {
+        "id": "2e619859-1048-4fc6-a17f-9cf33b940874",
+        "purpose": "brief",
+        "filename": "seed-terms.pdf",
+        "mime": "application/pdf",
+        "size_bytes": 38,
+        "scan_status": "clean",
+        "created_at": "2026-11-12T19:35:32.150697+00:00",
+        "url": "/api/v1/provider/files/2e619859-1048-4fc6-a17f-9cf33b940874/content"
+      }
+    ],
+    "created_at": "2026-11-12T19:35:32.261450+00:00",
+    "deliveries": [
+      {
+        "id": "2d70c48b-7e3e-4737-8d99-2ef4aa27d52a",
+        "round": 1,
+        "message": "First draft attached.",
+        "files": [
+          {
+            "id": "43fe6a97-4fe2-4d0b-8b24-bc260a56276c",
+            "purpose": "delivery",
+            "filename": "shareholder-agreement-v1.pdf",
+            "mime": "application/pdf",
+            "size_bytes": 38,
+            "scan_status": "clean",
+            "created_at": "2026-11-12T19:35:32.730104+00:00",
+            "url": "/api/v1/provider/files/43fe6a97-4fe2-4d0b-8b24-bc260a56276c/content"
+          }
+        ],
+        "submitted_at": "2026-11-12T19:35:32.777452+00:00",
+        "decision": "changes_requested",
+        "decision_note": "Please soften clause 4 & add a vesting schedule.",
+        "decided_at": "2026-11-12T19:35:32.980760+00:00"
+      },
+      {
+        "id": "d68425dc-15a0-4dcb-8330-48edb89711ea",
+        "round": 2,
+        "message": "Second draft.",
+        "files": [],
+        "submitted_at": "2026-11-12T19:35:33.044848+00:00",
+        "decision": null,
+        "decision_note": null,
+        "decided_at": null
+      }
+    ],
+    "documents": [
+      {
+        "document_id": "95a3ef9f-dee0-411f-ad1b-43397076a0d9",
+        "title": "Business Plan",
+        "kind": "business_plan",
+        "expires_at": "2026-12-12T19:35:32.629422+00:00",
+        "status": "active",
+        "url": "/api/v1/provider/bookings/4aeef8f7-c785-4acb-ac70-027360090b72/documents/95a3ef9f-dee0-411f-ad1b-43397076a0d9"
+      }
+    ]
+  },
+  "meta": null
+}
