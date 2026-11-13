@@ -25,7 +25,8 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.services.analytics import catalog as cat
-from app.services.documents.export import _pdf_text, blocks as text_blocks
+from app.services.documents.export import _pdf_text
+from app.services.documents.export import blocks as text_blocks
 from app.services.finance.xlsx import Cell, build_xlsx
 
 PDF_TYPE = "application/pdf"
@@ -174,7 +175,9 @@ def summary_rows(rows: list[Row]) -> list[list[Cell]]:
         if r.kind == "text":
             continue
         if r.kind == "locked":
-            out.append([r.title, r.needs_label, None, None, None, None, None, None, _status_text(r)])
+            out.append(
+                [r.title, r.needs_label, None, None, None, None, None, None, _status_text(r)]
+            )
             continue
         cmp = r.compare or {}
         p = r.period or {}
@@ -222,7 +225,7 @@ def render_xlsx(view: dict[str, Any], ctx: Context, *, include_metadata: bool = 
     for r in rows:
         if r.kind == "metric" and r.series:
             sheets.append((r.title, _series_rows(r)))
-    notes = [[r.title, r.text] for r in rows if r.kind == "text"]
+    notes: list[list[Cell]] = [[r.title, r.text] for r in rows if r.kind == "text"]
     if notes:
         sheets.append(("Notes", [["Title", "Text"], *notes]))
     if include_metadata:
@@ -277,6 +280,48 @@ _GRID = TableStyle(
 )
 
 
+def _metric_flow(
+    r: Row, heading: ParagraphStyle, big: ParagraphStyle, muted: ParagraphStyle, width: float
+) -> list[Any]:
+    flow: list[Any] = [_p(r.title, heading)]
+    if r.kind == "locked":
+        box = Table([[_p(f"Locked. {r.needs_label} access is needed to see this.", muted)]])
+        box.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.6, colors.lightgrey),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F3F4F6")),
+                ]
+            )
+        )
+        return [*flow, box]
+    flow.append(_p(fmt(r, r.value) if r.status != "unknown" else "-", big))
+    notes = []
+    if r.status and r.status != "ok":
+        notes.append(_status_text(r))
+    cmp = r.compare or {}
+    if cmp.get("delta") is not None:
+        pct = f" ({cmp['delta_pct']}%)" if cmp.get("delta_pct") is not None else ""
+        sign = "+" if cmp["delta"] >= 0 else "-"
+        notes.append(
+            f"{sign}{fmt(r, abs(cmp['delta']))}{pct} vs {fmt(r, cmp.get('value'))} "
+            "the period before"
+        )
+    if r.hub:
+        notes.append(f"Source: {cat.HUB_LABELS.get(r.hub, r.hub)}")
+    if notes:
+        flow.append(_p("  |  ".join(notes), muted))
+    if r.series:
+        data = [["From", "To", "Value"]] + [
+            [str(s.get("from")), str(s.get("to")), _pdf_text(fmt(r, s.get("value")))]
+            for s in r.series
+        ]
+        t = Table(data, colWidths=[width * 0.3, width * 0.3, width * 0.4], hAlign="LEFT")
+        t.setStyle(_GRID)
+        flow += [Spacer(1, 4), t]
+    return flow
+
+
 def render_pdf(view: dict[str, Any], ctx: Context) -> bytes:
     rows = rows_from(view)
     report = view.get("report", {})
@@ -315,43 +360,7 @@ def render_pdf(view: dict[str, Any], ctx: Context) -> bytes:
                 else:
                     flow.append(_p(text, body))
             continue
-        flow.append(_p(r.title, heading))
-        if r.kind == "locked":
-            box = Table([[_p(f"Locked. {r.needs_label} access is needed to see this.", muted)]])
-            box.setStyle(
-                TableStyle(
-                    [
-                        ("BOX", (0, 0), (-1, -1), 0.6, colors.lightgrey),
-                        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F3F4F6")),
-                    ]
-                )
-            )
-            flow.append(box)
-            continue
-        flow.append(_p(fmt(r, r.value) if r.status != "unknown" else "-", big))
-        notes = []
-        if r.status and r.status != "ok":
-            notes.append(_status_text(r))
-        cmp = r.compare or {}
-        if cmp.get("delta") is not None:
-            pct = f" ({cmp['delta_pct']}%)" if cmp.get("delta_pct") is not None else ""
-            sign = "+" if cmp["delta"] >= 0 else "-"
-            notes.append(
-                f"{sign}{fmt(r, abs(cmp['delta']))}{pct} vs {fmt(r, cmp.get('value'))} "
-                "the period before"
-            )
-        if r.hub:
-            notes.append(f"Source: {cat.HUB_LABELS.get(r.hub, r.hub)}")
-        if notes:
-            flow.append(_p("  |  ".join(notes), muted))
-        if r.series:
-            data = [["From", "To", "Value"]] + [
-                [str(s.get("from")), str(s.get("to")), _pdf_text(fmt(r, s.get("value")))]
-                for s in r.series
-            ]
-            t = Table(data, colWidths=[width * 0.3, width * 0.3, width * 0.4], hAlign="LEFT")
-            t.setStyle(_GRID)
-            flow += [Spacer(1, 4), t]
+        flow += _metric_flow(r, heading, big, muted, width)
     if not rows:
         flow.append(_p("This report has no blocks.", body))
     label = f"{ctx.workspace}  |  {ctx.period_from} to {ctx.period_to}  |  as of {ctx.as_of}"

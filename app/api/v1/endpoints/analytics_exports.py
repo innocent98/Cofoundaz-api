@@ -11,6 +11,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
@@ -24,7 +25,6 @@ from app.services.analytics import exports as exp
 from app.services.analytics import render as rnd
 from app.services.analytics import reports as rep
 from app.services.billing.gate import assert_feature
-from sqlalchemy.orm import Session
 
 router = APIRouter()
 _role = require_role(*cat.EXPORT_ROLES)

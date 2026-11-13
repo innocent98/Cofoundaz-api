@@ -363,9 +363,7 @@ def serialize(e: AnalyticsExport, names: dict[uuid.UUID, str]) -> dict[str, Any]
         "filename": e.filename if st == "ready" else None,
         "size_bytes": e.size_bytes if st == "ready" else None,
         "download_count": e.download_count,
-        "download_path": (
-            f"/api/v1/analytics/exports/{e.id}/download" if st == "ready" else None
-        ),
+        "download_path": (f"/api/v1/analytics/exports/{e.id}/download" if st == "ready" else None),
         "error": e.error if st == "failed" else None,
         "created_by": (
             {"id": str(e.created_by), "name": names.get(e.created_by, "Member")}
