@@ -213,10 +213,8 @@ def _get_proof(client, h, item_id):
 def test_the_proof_streams_back_with_its_type_as_an_attachment(client, db, tmp_path):
     _u, _s, h = _member(db)
     cid = _make(client, h)
-    assert (
-        _upload(client, h, cid, name="p.pdf", ct="application/pdf", body=PDF + b"1.4").status_code
-        == 200
-    )
+    up = _upload(client, h, cid, name="p.pdf", ct="application/pdf", body=PDF + b"1.4")
+    assert up.status_code == 200, up.text
     resp = _get_proof(client, h, cid)
     assert resp.status_code == 200, resp.text
     assert resp.content == PDF + b"1.4"
@@ -251,7 +249,8 @@ def test_the_stored_file_gone_is_404(client, db, tmp_path):
     _upload(client, h, cid)
     for p in _files(tmp_path):
         p.unlink()
-    assert _get_proof(client, h, cid).status_code == 404
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 404
 
 
 def test_a_legal_advisor_can_download_the_proof(client, db, tmp_path):
@@ -269,7 +268,8 @@ def test_a_team_member_can_download_the_proof(client, db, tmp_path):
     cid = _make(client, fh)
     _upload(client, fh, cid)
     _u, _s, h = _member(db, role=MembershipRole.team_member, startup=startup)
-    assert _get_proof(client, h, cid).status_code == 200
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 200
 
 
 @pytest.mark.parametrize("role", FORBIDDEN_ROLES)
@@ -278,7 +278,8 @@ def test_forbidden_roles_cannot_download_the_proof(client, db, role, tmp_path):
     cid = _make(client, fh)
     _upload(client, fh, cid)
     _u, _s, h = _member(db, role=role, startup=startup)
-    assert _get_proof(client, h, cid).status_code == 403
+    resp = _get_proof(client, h, cid)
+    assert resp.status_code == 403
 
 
 def test_another_workspaces_proof_is_404(client, db, tmp_path):
@@ -286,7 +287,8 @@ def test_another_workspaces_proof_is_404(client, db, tmp_path):
     cid = _make(client, h1)
     _upload(client, h1, cid)
     _u2, _s2, h2 = _member(db)
-    assert _get_proof(client, h2, cid).status_code == 404
+    resp = _get_proof(client, h2, cid)
+    assert resp.status_code == 404
 
 
 def test_the_download_requires_authentication(client):

@@ -2454,19 +2454,18 @@ team member + **legal advisor** read, founder + team member write. Spec
       pushed file had been renamed without its contents being committed, leaving two heads · proof
       upload hardened after Finance gained `sniff_receipt`/`save_private` *subsequent* to the copy ·
       merged from `develop` with a merge commit, no force-push
-- [ ] **Blocked on the lead (`D-LEG-5`)** — the authenticated proof **download**. `proof_url` names a
-      route that today accepts POST only, so a `GET` is not implemented and the FE guide says so.
-      Finance's four-route signed-link pattern brings ~12 token-security tests; a direct
-      authenticated stream needs role and cross-tenant tests only
+- [x] **Finish round (2026-11-13)** — D-LEG-5 built: `GET …/compliance-items/{id}/proof` streams the
+      private file (reader roles, 404 for none/cross-tenant, 403 excluded roles) · IP renewal and
+      compliance reminders re-arm when the date moves (`scope_key` carries the date) · D-LEG-6 built:
+      overdue is a critical type, legal events in the Deadlines filter · CI fixes (em dash, audience
+      test, CodeQL asserts) · live journey re-run, two new captures · D-LEG-1..8 are lead defaults
 - [ ] CodeQL assert-with-request pattern — 25 sites in the legal tests. The job is **report-only by
       design** (`codeql.yml`) and the pattern appears **858 times across 104 test files**, so this is
       a repo-wide convention question, not a legal one
 - [ ] _Deferred:_ `legal_entities` + the entity summary card (PRD 13.1) · IP renewal → linked
       compliance item (PRD 13.4) · `owner` and linked docs on a compliance item (PRD 13.5) · proof as
-      a Documents record (`proof_doc_id`) rather than a key on the row · `legal.compliance.overdue`
-      into `CRITICAL_TYPES` and the `deadlines` inbox filter (PRD 20.2 names it) · scheduler batch
-      cap + `ScheduledRun` anti-join, clearing claims when a `due_on` moves, deleting stored proof
-      after the commit — see SOP Follow-ups
+      a Documents record (`proof_doc_id`) rather than a key on the row · scheduler batch cap +
+      `ScheduledRun` anti-join, deleting stored proof after the commit — see SOP Follow-ups
 - [ ] _Not this slice:_ 13.2 Contract Templates and 13.3 AI Contract Review (slice 3), 13.6 Legal
       Advisor Requests (slice 2). Their FE pages exist against the mock hook; the gap list itemises
       them as rows 27–47

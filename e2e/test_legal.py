@@ -98,7 +98,7 @@ def _join(c, wh, role, unique_email, mailbox) -> dict:
 
 
 @pytest.mark.critical
-def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capture):
+def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capture, capture_json):
     with httpx.Client(base_url=base_url, timeout=15.0) as c:
         wh = _workspace(c, make_verified_user, name="Cofoundaz Legal")
 
@@ -269,6 +269,10 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         # 11. Proof of filing. The type comes from the file's own leading bytes, never the
         #     declared Content-Type, and the file is stored PRIVATELY -- so the row carries the
         #     authenticated ROUTE, not a storage address.
+        no_proof = c.get(f"{BASE}/compliance-items/{vat_id}/proof", headers=wh)
+        assert no_proof.status_code == 404, no_proof.text
+        capture("legal", "compliance_proof_download_none", no_proof)
+
         proof = c.post(
             f"{BASE}/compliance-items/{vat_id}/proof",
             headers=wh,
@@ -277,6 +281,35 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert proof.status_code == 200, proof.text
         assert proof.json()["data"]["proof_url"] == f"{BASE}/compliance-items/{vat_id}/proof"
         capture("legal", "compliance_proof_attached", proof)
+
+        # 11b. D-LEG-5: ONE authenticated GET streams the private file. No signed link; the FE
+        #      sends the bearer token and saves the blob. A binary body cannot be pasted into a
+        #      JSON capture, so the status, the relevant headers and the byte count are recorded.
+        got = c.get(f"{BASE}/compliance-items/{vat_id}/proof", headers=wh)
+        assert got.status_code == 200, got.status_code
+        assert got.content == PNG + b"receipt-bytes"
+        assert got.headers["content-type"] == "image/png"
+        assert got.headers["content-disposition"] == 'attachment; filename="proof-of-filing.png"'
+        capture_json(
+            "legal",
+            "compliance_proof_download",
+            {
+                "status_code": got.status_code,
+                "headers": {
+                    k: got.headers[k]
+                    for k in (
+                        "content-type",
+                        "content-disposition",
+                        "x-content-type-options",
+                        "cache-control",
+                        "content-security-policy",
+                    )
+                },
+                "body": f"<{len(got.content)} raw bytes: the uploaded file, byte for byte>",
+            },
+        )
+        unauth = c.get(f"{BASE}/compliance-items/{vat_id}/proof")
+        assert unauth.status_code in (401, 403), unauth.text
 
         # 12. A file whose declared type lies about its bytes is refused, and nothing is stored.
         liar = c.post(
@@ -320,8 +353,12 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert la_read.status_code == 200, la_read.text
         capture("legal", "legal_advisor_read", la_read)
 
-        assert c.get(f"{BASE}/ip-assets", headers=la).status_code == 200
-        assert c.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=la).status_code == 200
+        la_proof = c.get(f"{BASE}/compliance-items/{vat_id}/proof", headers=la)
+        assert la_proof.status_code == 200, la_proof.status_code
+        la_ip = c.get(f"{BASE}/ip-assets", headers=la)
+        assert la_ip.status_code == 200
+        la_checklist = c.get(f"{BASE}/formation/checklist?jurisdiction=NG", headers=la)
+        assert la_checklist.status_code == 200
 
         la_write = c.post(
             f"{BASE}/compliance-items",
@@ -331,14 +368,12 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert la_write.status_code == 403, la_write.text
         capture("legal", "legal_advisor_write_forbidden", la_write)
 
-        assert (
-            c.patch(
-                f"{BASE}/formation/steps/{step_key}",
-                headers=la,
-                json={"jurisdiction": "NG", "completed": True},
-            ).status_code
-            == 403
+        la_tick = c.patch(
+            f"{BASE}/formation/steps/{step_key}",
+            headers=la,
+            json={"jurisdiction": "NG", "completed": True},
         )
+        assert la_tick.status_code == 403
 
         # 15. A mentor is outside the reader set, so even the GETs are refused. The titles name
         #     the filing, so delivering them would leak exactly what the routes withhold.
@@ -346,6 +381,8 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         mentor_read = c.get(f"{BASE}/compliance-items", headers=mentor)
         assert mentor_read.status_code == 403, mentor_read.text
         capture("legal", "forbidden_role", mentor_read)
+        mentor_proof = c.get(f"{BASE}/compliance-items/{vat_id}/proof", headers=mentor)
+        assert mentor_proof.status_code == 403, mentor_proof.text
 
         mentor_ip = c.get(f"{BASE}/ip-assets", headers=mentor)
         assert mentor_ip.status_code == 403
@@ -359,6 +396,8 @@ def test_legal_journey(base_url, make_verified_user, unique_email, mailbox, capt
         assert cross.status_code == 404, cross.text
         capture("legal", "cross_tenant_404", cross)
 
+        cross_proof = c.get(f"{BASE}/compliance-items/{vat_id}/proof", headers=other)
+        assert cross_proof.status_code == 404, cross_proof.text
         cross_ip = c.get(f"{BASE}/ip-assets/{tm_id}", headers=other)
         assert cross_ip.status_code == 404
         cross_delete = c.delete(f"{BASE}/compliance-items/{vat_id}", headers=other)

@@ -1,7 +1,7 @@
 # FE Integration Guide — Legal & Compliance (Module 13, Slice 1)
 
 > **Provenance.** Every response body in this guide is pasted verbatim from a live capture
-> (`e2e/test_legal.py` → `e2e/_captures/legal/`, run 2026-11-13 against a real uvicorn server on an
+> (`e2e/test_legal.py` → `e2e/_captures/legal/`, run 2026-11-13 (proof download captured on the re-run the same day) against a real uvicorn server on an
 > isolated `cofoundaz_e2e` database migrated from zero to `0106_legal`). IDs, dates and timestamps
 > in the bodies are **placeholders from that test run**. Behaviour the live run did **not**
 > exercise is labelled inline and listed in the verification table at the end (§8).
@@ -622,16 +622,55 @@ uploading proof does **not** mark the filing done; those are two separate action
 
 The same shape, with `"Proof exceeds the 10 MB limit."`, is returned for an oversized file.
 
-### ⚠️ `proof_url` is not yet fetchable
+### `GET /api/v1/legal/compliance-items/{item_id}/proof` → **200** (the file)
 
-`proof_url` is an **API route**, not a storage address — the file is stored privately and has no
-public URL. But **only `POST` is implemented on that route today.** A `GET` will not return the
-file.
+The download (D-LEG-5). It is **the same URL as `proof_url`**. One authenticated GET, no signed or
+public link: send the Bearer token and `X-Workspace-Id` like every other call. **An `<a href>` or
+`<img src>` cannot send those headers**, so fetch it with the bearer token (`accessTokenForRequest()`
+in the FE client), turn the response into a blob and save or display that.
 
-The authenticated download is `D-LEG-5`, awaiting a decision between two designs (a short-lived
-signed link, as Finance uses, or a direct authenticated stream). **Until it ships: use
-`proof_url !== null` as a "proof attached" indicator only — do not link to it.** This section will
-be updated with the real download shape once the route exists.
+Allowed roles: founder, team_member and **legal_advisor** (the reader set). Everything else is 403.
+
+The body is the raw file, byte for byte; the other fields are what the live run returned
+(`e2e/_captures/legal/compliance_proof_download.json`; a binary body cannot go in a JSON capture,
+so that file records the status, the headers and the length):
+
+```json
+{
+  "status_code": 200,
+  "headers": {
+    "content-type": "image/png",
+    "content-disposition": "attachment; filename=\"proof-of-filing.png\"",
+    "x-content-type-options": "nosniff",
+    "cache-control": "private, no-store",
+    "content-security-policy": "sandbox; default-src 'none'"
+  },
+  "body": "<21 raw bytes: the uploaded file, byte for byte>"
+}
+```
+
+- `content-type` is `image/png`, `image/jpeg` or `application/pdf`, chosen from the file's own
+  bytes at upload time, never from what the client declared.
+- `content-disposition` is always `attachment`; the filename is `proof-of-filing.<ext>`. The
+  original upload name is not kept.
+- **404** (`e2e/_captures/legal/compliance_proof_download_none.json`) when the item has no proof,
+  when the id belongs to another workspace, or when the stored file is gone. The three cases are
+  deliberately indistinguishable:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Not found.",
+    "field_errors": []
+  }
+}
+```
+
+- **403** for mentor, accountant, business_consultant and investor.
+
+**UX:** show a "Download proof" control only when `proof_url !== null`. Hide it from nobody who can
+read the page, but a 404 can still happen if the file was removed; show "Proof not available" then.
 
 ---
 
@@ -695,6 +734,8 @@ no body is pasted, because its shape is identical to a body already shown.
 | `GET /compliance-items` | `compliance_items_list.json` |
 | `POST …/proof` | `compliance_proof_attached.json` |
 | `POST …/proof` 422, lying content type | `compliance_proof_rejected.json` |
+| `GET …/proof` 200 (headers; body is the raw file) | `compliance_proof_download.json` |
+| `GET …/proof` 404, no proof attached | `compliance_proof_download_none.json` |
 | `PATCH …` mark done | `compliance_item_done.json` |
 | Recurrence successor | `compliance_recurrence_spawned.json` *(trimmed above)* |
 | Legal advisor GET 200 | `legal_advisor_read.json` *(evidence only — body identical to the list in §4)* |
@@ -729,5 +770,8 @@ no body is pasted, because its shape is identical to a body already shown.
 | Accountant / consultant / investor 403 | ⚠️ API tests only (`tests/api/test_legal.py`) |
 | Cross-tenant **404** on GET, PATCH, DELETE | ✅ GET and DELETE live · ⚠️ PATCH API tests only |
 | Unauthenticated → 401 | ⚠️ API test accepts **401 or 403**, so the exact code is not pinned; handle both |
-| `GET` on `proof_url` | ❌ **not implemented** — see §6 and `D-LEG-5` |
-| Reminder notifications at 14 / 7 / 1 days and on going overdue | ⚠️ worker tests only (`tests/worker/test_legal_scheduler.py`) |
+| `GET …/proof` streams the file; type, `attachment`, no-store headers | ✅ verified live (headers and bytes; saved-file behaviour in a browser not exercised) |
+| `GET …/proof` 404 with no proof; legal advisor 200; mentor 403; cross-tenant 404 | ✅ verified live |
+| `GET …/proof` other forbidden roles, team member 200, stored file missing 404 | ⚠️ API tests only (`tests/api/test_legal_proof.py`) |
+| Reminder notifications at 14 / 7 / 1 days and on going overdue; re-armed when `due_on` or `renewal_on` moves | ⚠️ worker tests only (`tests/worker/test_legal_scheduler.py`) |
+| `legal.compliance.overdue` is a locked-on critical alert; all three legal events appear under the Deadlines filter | ⚠️ unit tests only (`tests/api/test_legal_notifications.py`) |

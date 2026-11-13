@@ -72,6 +72,15 @@ notifies before they pass.
   the container — passing it as `docker exec -e` lets Git Bash rewrite `/tmp/...` into a Windows path and the mailbox
   silently reads an empty directory.
 
+## Finish round (2026-11-13, lead-finished on the same branch)
+| Change | Detail |
+|---|---|
+| Proof download (D-LEG-5) | `GET /legal/compliance-items/{id}/proof` (`app/api/v1/endpoints/legal.py`, `compliance.read_proof`). Reader roles (founder, team member, legal advisor). Streams the private file with the sniffed content type, `Content-Disposition: attachment`, `nosniff`, `no-store`, a sandbox CSP. 404 for no proof, another workspace, or a missing file; 403 for the excluded roles. `proof_url` is this same route. No signed links: the FE fetches with the bearer token. |
+| Reminders re-arm | `ScheduledRun.scope_key` is now `{id}:{due_on}` (compliance) and `{id}:{renewal_on}` (IP), so a moved date is a new obligation. Before, the key was the row id alone, so an IP reminder fired once per asset forever (a yearly renewal never re-fired). Old claims stay as harmless history. Rejected: deleting claims when a date moves (needs a hook in every write path). |
+| D-LEG-6 | `legal.compliance.overdue` in `CRITICAL_TYPES` (PRD 20.2, locked on; safe because its audience is role-restricted); all three legal events in the `deadlines` filter. |
+| CI fixes | Em dash removed from `ESTIMATE_DISCLAIMER`; legal events added to `READ_ROLES` in `test_dashboard_audience.py`; CodeQL `py/side-effect-in-assert` sites in `e2e/test_legal.py` now assign before asserting. |
+| Verification | New tests in `tests/api/test_legal_proof.py` (roles, cross-tenant, headers), `tests/worker/test_legal_scheduler.py` (move date re-arms, unchanged date does not duplicate), `tests/api/test_legal_notifications.py`. Live journey re-run on a scratch Postgres; two new captures. Fast local checks only; CI ran the full suite. |
+
 ## Operate / roll back
 No new env vars. Migration `0106_legal` is chained on `0105_analytics_custom_metrics`; develop's numbering is no longer
 sequential (`0105` chains on `0101`, `0102` on `0103`), so **re-chain against `alembic heads`, not against the highest
@@ -80,13 +89,9 @@ number**, and re-check immediately before pushing — develop moved five times d
 remove proof files already in storage; those keys are orphaned and must be cleared separately.
 
 ## Follow-ups
-- **`D-LEG-5` blocks code:** the authenticated proof download. `proof_url` currently names a route that only accepts POST,
-  so a `GET` is not yet implemented and the FE guide says so. Finance's four-route signed-link pattern brings ~12
-  token-security tests; a direct authenticated stream needs role and cross-tenant tests only.
-- Scheduler, from the PR review: a batch cap plus a `ScheduledRun` anti-join on `_due_compliance`; clearing claims when a
-  `due_on` moves after a reminder has fired; deleting the stored proof **after** the DB commit rather than before.
-- `legal.compliance.overdue` is absent from `CRITICAL_TYPES`, and the `deadlines` inbox filter excludes the legal events —
-  though PRD 20.2 names "compliance overdue" among the alerts locked ON (D-LEG-6).
+- Scheduler, from the PR review: a batch cap plus a `ScheduledRun` anti-join on `_due_compliance`; deleting the stored
+  proof **after** the DB commit rather than before.
+- D-LEG-1..8 are lead defaults dated 2026-11-13 (Adebayo may overrule); the gap list in the FE repo records them.
 - PRD gaps carried into later slices: `legal_entities` + entity summary card, IP renewal → linked compliance item, `owner`
   and linked docs on a compliance item, and proof as a Documents record (`proof_doc_id`) rather than a key on the row.
 - The FE calls none of this yet: `hooks/useLegalApi.ts` is still a mock. See the gap list for the 47 rows.
