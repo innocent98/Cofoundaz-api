@@ -1,0 +1,12 @@
+{
+  "status_code": 200,
+  "headers": {
+    "content-type": "application/pdf",
+    "content-disposition": "attachment; filename=\"Board pack 2026-10-15 to 2026-11-13.pdf\"; filename*=UTF-8''Board%20pack%202026-10-15%20to%202026-11-13.pdf",
+    "cache-control": "private, no-store",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "sandbox; default-src 'none'"
+  },
+  "size_bytes": 2202,
+  "first_bytes": "%PDF-1.4"
+}

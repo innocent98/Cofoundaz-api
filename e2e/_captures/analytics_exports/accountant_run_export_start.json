@@ -1,0 +1,29 @@
+{
+  "data": {
+    "id": "043c8044-0e3b-4573-b9aa-556cf0e35e3c",
+    "name": "Board pack",
+    "artifact_type": "report",
+    "format": "xlsx",
+    "status": "pending",
+    "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
+    "run_id": "f9f64d55-0459-482a-9b4d-e9668e1dd120",
+    "period": {
+      "to": "2026-11-13",
+      "from": "2026-10-15"
+    },
+    "metrics": null,
+    "filename": null,
+    "size_bytes": null,
+    "download_count": 0,
+    "download_path": null,
+    "error": null,
+    "created_by": {
+      "id": "c8493aa1-8ce9-4941-b675-2e16ad406166",
+      "name": "Member"
+    },
+    "created_at": "2026-11-13T20:28:36.802038+00:00",
+    "ready_at": null,
+    "expires_at": "2026-12-13T20:28:36.812309+00:00"
+  },
+  "meta": null
+}
