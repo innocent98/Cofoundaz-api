@@ -8,6 +8,7 @@ from app.db.models.ai_chat import (  # noqa: F401
 )
 from app.db.models.ai_preference import AiPreference  # noqa: F401
 from app.db.models.analytics import (  # noqa: F401
+    AnalyticsExport,
     AnalyticsReport,
     AnalyticsReportRun,
     AnalyticsReportShare,

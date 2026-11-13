@@ -30,6 +30,8 @@ log = logging.getLogger(__name__)
 RUN_JOB = "analytics.report.run"
 REUSE_PENDING_MINUTES = 10
 RUN_LIST_LIMIT = 20
+# Runs made for an export: the requester hears "your export is ready", not also "report ready".
+SILENT_TRIGGERS = frozenset({"export", "data_tables"})
 UNKNOWN = {"status": "unknown", "message": "Metric no longer available."}
 
 
@@ -125,8 +127,15 @@ def preview(
 
 # ---- runs ----
 def start_run(
-    db: Session, m: Membership, report: AnalyticsReport, triggered_by: str = "manual"
+    db: Session,
+    m: Membership,
+    report: AnalyticsReport,
+    triggered_by: str = "manual",
+    *,
+    enqueue: bool = True,
 ) -> tuple[AnalyticsReportRun, str | None]:
+    """Create (or reuse) a pending run. `enqueue=False` is for the export path: the export job
+    executes the run itself, so no separate run job is queued."""
     svc.check_rate(m.startup_id)
     cutoff = datetime.now(UTC) - timedelta(minutes=REUSE_PENDING_MINUTES)
     existing = (
@@ -169,10 +178,43 @@ def start_run(
     )
     db.add(run)
     db.flush()
+    if not enqueue:
+        return run, None
     job = job_dispatcher.enqueue(
         db, type=RUN_JOB, payload={"run_id": str(run.id)}, startup_id=m.startup_id
     )
     return run, str(job.id)
+
+
+def start_table_run(
+    db: Session, m: Membership, blocks: list[dict[str, Any]], rng: dict[str, Any]
+) -> AnalyticsReportRun:
+    """A report-less run for a data-tables export (slice C): the picked metrics, frozen once under
+    the requester's access. It belongs to no report, so no report route can ever read it."""
+    frozen = freeze_range(rng)
+    p = _period(frozen)
+    run = AnalyticsReportRun(
+        report_id=None,
+        startup_id=m.startup_id,
+        period_from=p.start,
+        period_to=p.end,
+        tz="UTC",
+        status="pending",
+        snapshot_json={
+            "report": {
+                "name": "Data tables",
+                "description": None,
+                "range": frozen,
+                "blocks": blocks,
+            }
+        },
+        access_json={"role": m.role.value},
+        triggered_by="data_tables",
+        run_by=m.user_id,
+    )
+    db.add(run)
+    db.flush()
+    return run
 
 
 def _fail(db: Session, run: AnalyticsReportRun, message: str) -> None:
@@ -184,9 +226,21 @@ def _fail(db: Session, run: AnalyticsReportRun, message: str) -> None:
 
 def execute(db: Session, job: Job) -> None:
     """Worker side. Idempotent: a run that is no longer pending is left exactly as it is."""
-    run = db.get(AnalyticsReportRun, uuid.UUID(str(job.payload["run_id"])))
+    execute_run(db, uuid.UUID(str(job.payload["run_id"])))
+
+
+def execute_run(db: Session, run_id: uuid.UUID) -> AnalyticsReportRun | None:
+    """Resolve a pending run. The row is locked so the run job and an export job that both reach
+    the same pending run compute it once; the second sees it finished and returns it as is."""
+    run = (
+        db.query(AnalyticsReportRun)
+        .filter(AnalyticsReportRun.id == run_id)
+        .with_for_update()
+        .populate_existing()
+        .first()
+    )
     if run is None or run.status != "pending":
-        return
+        return run
     member = (
         db.query(Membership)
         .filter(
@@ -199,7 +253,7 @@ def execute(db: Session, job: Job) -> None:
     startup = db.get(Startup, run.startup_id)
     if member is None or startup is None or member.role not in cat.REPORT_ROLES:
         _fail(db, run, "You no longer have access to analytics in this workspace.")
-        return
+        return run
     snap = dict(run.snapshot_json or {})
     definition = snap["report"]
     results = build_results(db, startup, member.role, definition["blocks"], definition["range"])
@@ -220,6 +274,8 @@ def execute(db: Session, job: Job) -> None:
     run.status = "ready"
     run.as_of = datetime.now(UTC)
     db.flush()
+    if run.triggered_by in SILENT_TRIGGERS:  # the export job notifies "export ready" instead
+        return run
     event_bus.publish(
         db,
         "analytics.report.generated",
@@ -231,6 +287,7 @@ def execute(db: Session, job: Job) -> None:
             "user_ids": [str(run.run_by)],
         },
     )
+    return run
 
 
 def get_run(db: Session, report: AnalyticsReport, run_id: uuid.UUID) -> AnalyticsReportRun:
