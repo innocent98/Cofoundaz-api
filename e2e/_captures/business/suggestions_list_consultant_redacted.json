@@ -1,0 +1,46 @@
+{
+  "data": {
+    "suggestions": [
+      {
+        "id": "8691bf1d-5a7a-4bc2-891e-c7c5b2e95781",
+        "op": "canvas_update",
+        "target": {
+          "canvas_type": "business_model"
+        },
+        "payload": {
+          "blocks": {
+            "key_partners": [
+              "Acme Corp"
+            ]
+          }
+        },
+        "base_version": 1,
+        "current": {
+          "blocks": {
+            "channels": [],
+            "key_partners": [],
+            "key_resources": [],
+            "cost_structure": [],
+            "key_activities": [],
+            "revenue_streams": [],
+            "customer_segments": [],
+            "value_propositions": [],
+            "customer_relationships": []
+          },
+          "version": 1
+        },
+        "note": "Add Acme as a key partner",
+        "status": "pending",
+        "author": {
+          "id": "eab8e741-edb4-4ad4-9194-074ee5e564fe",
+          "name": null,
+          "email": null
+        },
+        "resolved_by": null,
+        "resolved_at": null,
+        "created_at": "2026-11-12T21:50:44.466166+00:00"
+      }
+    ]
+  },
+  "meta": null
+}

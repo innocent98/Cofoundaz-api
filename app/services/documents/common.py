@@ -7,7 +7,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.db.models.user import User, UserProfile
+from app.core.names import NAMELESS_MEMBER
+from app.db.models.user import UserProfile
 
 DOCUMENT_MIME = "application/vnd.cofoundaz.document+json"
 MAX_TAGS = 10
@@ -69,7 +70,7 @@ def normalize_folder(folder: str | None) -> str | None:
 
 
 def display_name(db: Session, user_id: uuid.UUID | None) -> str | None:
-    """The user's profile name, else the local part of their email, else None."""
+    """The user's profile name, else "A team member" (None for no user)."""
     if user_id is None:
         return None
     owner = owner_map(db, {user_id}).get(user_id)
@@ -77,8 +78,8 @@ def display_name(db: Session, user_id: uuid.UUID | None) -> str | None:
 
 
 def owner_map(db: Session, ids: set[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
-    """`{id, name}` for each user id, falling back to the email's local part when the user has no
-    profile name."""
+    """`{id, name}` for each user id; a user with no profile name is "A team member", never any
+    part of their e-mail (these names reach grantees and share recipients of every role)."""
     if not ids:
         return {}
     names = dict(
@@ -87,8 +88,4 @@ def owner_map(db: Session, ids: set[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any
         .tuples()
         .all()
     )
-    emails = dict(db.query(User.id, User.email).filter(User.id.in_(ids)).tuples().all())
-    return {
-        i: {"id": str(i), "name": names.get(i) or (emails.get(i) or "").split("@")[0] or None}
-        for i in ids
-    }
+    return {i: {"id": str(i), "name": names.get(i) or NAMELESS_MEMBER} for i in ids}

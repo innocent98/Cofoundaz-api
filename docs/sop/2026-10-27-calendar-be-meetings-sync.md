@@ -28,7 +28,7 @@ two-way Google sync.
 | **Sync mechanics** | Pull: `syncToken` incremental, 410 → one full resync; a full listing deletes rows Google no longer has. Our own pushed events carry `extendedProperties.private.cofoundazEventId` and are skipped on pull. Push: body hash per `(event, connection)`; edit → `PATCH`, delete → a `calendar.sync.push_delete` job (the link row dies with the event, so the external id travels in the job). Google is always called with `sendUpdates=none` (D-CAL-4). |
 | **Invites** | Cofoundaz emails external attendees `{Founder} invited you: {title} · {date}` with an `.ics` (UTC times, stable UID, SEQUENCE bumped on edits). Internal members get an in-app notification, never mail. Header injection: CR/LF stripped from every ICS property; HTML escaped in mail bodies. |
 | **Reminders** | Rules per workspace (`milestone` 7d+1d, `compliance` 14d+7d+1d, `meeting` 15 min; `deadline` events use the compliance rule; `task` has none). The scheduler scans events and roadmap milestones, claims one `ScheduledRun` per `(item, offset)`, never announces more than 12 h late. Private events remind only their creator and invitees. The existing `roadmap.milestone.due_soon` job (2 days) keeps running. |
-| **Access (D-CAL-6)** | Founder + team member manage. Mentor, accountant, legal advisor, consultant, investor reach only `GET /meetings[/{id}]` for meetings they are invited to (by user id or email), read-only, without the transcript. Everything else is a uniform 404. |
+| **Access (D-CAL-6)** | Founder + team member manage. Mentor, accountant, legal advisor, consultant, investor reach only `GET /meetings[/{id}]` for meetings they are invited to (by user id or email), read-only, without the transcript. Everything else is a uniform 404. The generic `/events` and `/feed` routes are founder + team member only, so "team" visibility never exposes a meeting to other roles; only invitation does. **Attendee e-mails (2026-11-12):** those invited roles get `attendees[].email: null` (internal and external); founder and team member see addresses. |
 | **Visibility** | `team` (default) or `private` (creator + invitees) on every event and meeting, enforced in list, get, patch, delete, feed and reminders. |
 | **Time model (D-CAL-5)** | Per-event IANA `timezone` (default `Africa/Lagos`), naive wall-clock times kept; ICS/Google conversions use the zone. `end_date` adds multi-day events. |
 | **Outlook** | Paths reserved (`/sync/outlook/...` → 501 `FEATURE_NOT_ENABLED`); nothing built (decision 20). |
@@ -69,3 +69,11 @@ test user.
 - Compliance layer data once Legal ships; Microsoft/Outlook sync.
 - A meeting-bot vendor if the paste-notes flow is not enough.
 - Dashboard "Upcoming" and global search still read their own sources (gap B14).
+
+
+## Update 2026-11-12: attendee e-mails are founder + team member only
+
+An invited mentor, consultant, accountant, investor or legal advisor saw every attendee's address on `GET /calendar/meetings[/{id}]` (found by the Opus review of the Team members fix).
+`serialize_meeting` now returns `email: null` unless `manager` (founder or team member); an internal attendee's name falls back to their profile name so the row is not blank.
+Tests: `tests/api/test_calendar_meetings.py` (all nine role params plus the profile-name fallback); live capture `e2e/_captures/team_manage/meeting_attendees_mentor_redacted.json` (in the Team journey).
+Note: the handover claimed `_visible` shows "team" meetings to every member; that helper is used only by the founder/TM `/events` routes, and meetings answer 404 to a non-invited non-manager, so no wider exposure existed.

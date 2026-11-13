@@ -518,3 +518,23 @@ def test_team_comment_routes_cannot_touch_document_comments(client, world):
         assert r.status_code == 404, (method, r.text)
         r = client.request(method, API + path, json=body, headers=h)
         assert r.status_code == 404, (method, r.text)
+
+
+def test_a_nameless_owner_is_never_named_by_their_email(client, db, world):
+    """The sharer the grantee sees are "A team member", not the e-mail's local part."""
+    from app.db.models.user import UserProfile
+
+    _s, users, heads = world
+    owner = users[M.founder]
+    db.query(UserProfile).filter_by(user_id=owner.id).update({"full_name": None})
+    db.commit()
+    doc = new_doc(client, heads[M.founder])
+    assert _grant(client, heads[M.founder], doc, user_id=str(users[M.mentor].id)).status_code == 201
+    local_part = owner.email.split("@")[0]
+    mentor = headers(users[M.mentor])
+    listed = client.get(f"{API}/documents/shared-with-me", headers=mentor)
+    one = client.get(f"{API}/documents/shared-with-me/{doc['id']}", headers=mentor)
+    assert listed.status_code == 200 and one.status_code == 200
+    for r in (listed, one):
+        assert local_part not in r.text and owner.email not in r.text
+    assert listed.json()["data"]["documents"][0]["shared_by"]["name"] == "A team member"
