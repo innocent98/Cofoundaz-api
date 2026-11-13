@@ -22,10 +22,13 @@ The FE needs one new page, `/auth/google/callback`, and must call `start` with `
 ## 2. Endpoints
 
 ### Start. `new_user_start`, `new_user_start_set_cookie`
-`POST /auth/oauth/google/start` (no auth). Body (both optional):
+`POST /auth/oauth/google/start` (no auth). Body (all optional):
 ```json
-{"invite_token": "<raw invite token from the emailed link>", "next": "/dashboard"}
+{"invite_token": "<raw invite token from the emailed link>", "next": "/dashboard", "accepted_terms": true}
 ```
+**`accepted_terms` (new, 2026-11-13):** the Terms + Privacy checkbox, as on email sign-up. It is only consulted if this sign-in would
+**create a new account**; an existing account signs in without it. Send `true` from the sign-up screen's Google button (next to the
+checkbox); omit it on the plain login screen. See `terms_not_accepted` in section 4.
 Response `200`:
 ```json
 {
@@ -131,6 +134,7 @@ The callback never shows a JSON body, only `…/auth/google/callback?error=<code
 | `account_unavailable` | the account was deleted | "This account is unavailable." |
 | `google_account_mismatch` | the Cofoundaz account is already linked to a different Google account | "This account is linked to a different Google account. Use that one, or sign in with your password." |
 | `exchange_failed` | Google or its token failed checks, or Google was unreachable | "We couldn't verify your Google sign-in. Try again." |
+| `terms_not_accepted` (live, strict server only) | a **new** Google account was about to be created but `start` was called without `accepted_terms: true` (`SIGNUP_REQUIRE_TERMS` is on). **No account was created.** | Send the person to the sign-up screen with the Terms checkbox, "Accept the Terms and Privacy Policy to create your account.", and call `start` again with `accepted_terms: true`. Captured: `…/callback?error=terms_not_accepted` |
 | `maintenance` | maintenance mode is on and the Google account has no Cofoundaz account yet | "Cofoundaz is in maintenance. New accounts can't be created right now." (existing users can still sign in) |
 | `rate_limited` | too many attempts from this address | "Too many attempts. Try again in a few minutes." |
 | `try_again` | two sign-ins raced | "Something went wrong. Please try again." |
@@ -139,6 +143,7 @@ The callback never shows a JSON body, only `…/auth/google/callback?error=<code
 
 - **First Google sign-in creates an account without a password** and with the email already verified. After onboarding, offer "set a password" only if you want one (it goes through "forgot password").
 - **Signing in with Google when a password account exists links the two.** No extra step; the password keeps working. If that older account was never email-verified, its password is removed (Google just proved the email is the user's), so a later password login for it fails until a reset. No UI is needed for this.
+- **Consent for new Google accounts (FE change needed).** Today the login page's "Continue with Google" calls `start` without a consent field, so with `SIGNUP_REQUIRE_TERMS=true` a first-time Google user lands on `?error=terms_not_accepted`. Handle it: show the Terms checkbox (on the sign-up page, or as an inline prompt after this error) and re-call `start` with `accepted_terms: true`. When accepted, the account stores `terms_accepted_at` and `terms_version`, the same as email sign-up. Existing Google accounts created before this change have no consent record; they are not asked again (they sign in by `sub`). A password account with no consent record that Google would **link or take over** needs the checkbox too: without `accepted_terms: true` it gets `?error=terms_not_accepted` and nothing is linked; with it, consent is stored on that account (unit-tested only, not captured live).
 - **2FA is not skipped.** A 2FA user still enters the code after Google.
 - **Hide the "Continue with Apple" button** until Apple sign-in is built.
 
@@ -147,6 +152,8 @@ The callback never shows a JSON body, only `…/auth/google/callback?error=<code
 | Behaviour | Verified |
 |---|---|
 | start → callback → exchange for a new account, `/auth/me` after | live (e2e, Google faked) |
+| New account without `accepted_terms` is refused (`?error=terms_not_accepted`), nothing created; with it the account is created; existing user signs in without it | live on the strict server (`e2e/_captures/auth_onboarding_gaps/google_terms_*`; `start` captures are shape-only placeholders because the `auth_url` carries bearer-ish state) and unit-tested (`tests/api/auth/test_google_signin.py`) |
+| `terms_accepted_at` / `terms_version` stored for a consenting Google sign-up | unit only (`test_new_google_account_records_terms_acceptance`); not visible in any response |
 | returning user; link by verified email; password still works | live (e2e) |
 | 2FA account: no session, then MFA challenge succeeds | live (e2e) |
 | ticket reuse; replayed callback; denied consent; unverified email | live (e2e) |

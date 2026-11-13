@@ -62,6 +62,9 @@ class MfaRegenerateRequest(BaseModel):
 class GoogleStartRequest(BaseModel):
     invite_token: str | None = None
     next: str | None = None
+    # The Terms + Privacy checkbox, as on email sign-up. Only consulted if this sign-in would
+    # create a NEW account; an existing account signs in without it.
+    accepted_terms: bool = False
 
 
 class GoogleExchangeRequest(BaseModel):

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import NotFound, RecommendationResolved
 from app.db.models.activity import ActivityLog
 from app.db.models.assessment import Assessment, AssessmentResult
-from app.db.models.enums import AssessmentStatus, Dimension, RecommendationStatus
+from app.db.models.enums import AssessmentStatus, Dimension, MembershipRole, RecommendationStatus
 from app.db.models.health_score import (
     HealthRecommendation,
     HealthScore,
@@ -18,6 +18,7 @@ from app.db.models.health_score import (
 )
 from app.db.models.startup import Startup
 from app.db.models.user import User
+from app.platform.activity import activity_visibility_filter
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
 from app.services.health_score.config import (
@@ -447,13 +448,14 @@ HISTORY_RANGES: dict[str, int | None] = {
     "all": None,
 }
 
-# PRD 06.3 annotated event markers: notable workspace events, from the activity log.
+# PRD 06.3 annotated event markers: notable workspace events, from the activity log. Keys are
+# the `action` strings ActivityLog rows really carry (invitation accept writes `member.joined`).
 MARKER_LABELS = {
     "assessment.completed": "Assessment completed",
     "business.plan.generated": "Business plan generated",
     "roadmap.milestone.completed": "Milestone completed",
     "roadmap.replanned": "Roadmap re-planned",
-    "workspace.member.joined": "Teammate joined",
+    "member.joined": "Teammate joined",
     "document.signature.completed": "Agreement signed",
 }
 
@@ -641,11 +643,17 @@ def get_history(db: Session, startup: Startup, range_key: str) -> list[dict]:
     ]
 
 
-def get_history_markers(db: Session, startup: Startup, range_key: str) -> list[dict]:
-    """Event markers for the trend chart, oldest first (PRD 06.3)."""
+def get_history_markers(
+    db: Session, startup: Startup, range_key: str, role: MembershipRole
+) -> list[dict]:
+    """Event markers for the trend chart, oldest first (PRD 06.3). Rows come from the activity
+    log, so they pass through the same per-role visibility filter as the activity feed (a marker
+    must not reveal an assessment or signature to a role that cannot read them)."""
     days = HISTORY_RANGES[range_key]
     q = db.query(ActivityLog).filter(
-        ActivityLog.startup_id == startup.id, ActivityLog.action.in_(list(MARKER_LABELS))
+        ActivityLog.startup_id == startup.id,
+        ActivityLog.action.in_(list(MARKER_LABELS)),
+        activity_visibility_filter(role),
     )
     if days is not None:
         q = q.filter(ActivityLog.created_at >= datetime.now(UTC) - timedelta(days=days))

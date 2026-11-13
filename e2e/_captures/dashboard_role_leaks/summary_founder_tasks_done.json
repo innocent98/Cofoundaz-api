@@ -1,0 +1,258 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good evening",
+      "first_name": "Ada",
+      "startup_name": "NovaPay"
+    },
+    "health": {
+      "status": "ok",
+      "score": 31,
+      "band": "at_risk",
+      "delta_7d": 0,
+      "computed_at": "2026-11-13T18:24:48.085258+00:00",
+      "config_version": 1,
+      "dimensions": [
+        {
+          "key": "team",
+          "label": "Team",
+          "score": 50,
+          "band": "needs_work",
+          "trend": [
+            50
+          ]
+        },
+        {
+          "key": "legal",
+          "label": "Legal",
+          "score": 0,
+          "band": "at_risk",
+          "trend": [
+            0
+          ]
+        },
+        {
+          "key": "money",
+          "label": "Financial",
+          "score": 43,
+          "band": "needs_work",
+          "trend": [
+            43
+          ]
+        },
+        {
+          "key": "market",
+          "label": "Market",
+          "score": 38,
+          "band": "at_risk",
+          "trend": [
+            38
+          ]
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "score": 25,
+          "band": "at_risk",
+          "trend": [
+            25
+          ]
+        }
+      ],
+      "top_recommendations": [
+        {
+          "id": "25bee383-55c6-4322-98ef-dcad03bd0b84",
+          "dimension": "money",
+          "key": "live.money.transactions_30d",
+          "title": "Track your money in and out",
+          "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+          "estimated_lift": 10,
+          "effort": "low",
+          "status": "pending",
+          "priority": 1,
+          "href": "/finance"
+        },
+        {
+          "id": "ae8ae9b8-7f7b-47df-91fd-48c38af06612",
+          "dimension": "legal",
+          "key": "live.legal.signatures_complete",
+          "title": "Get your key agreements signed",
+          "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+          "estimated_lift": 10,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 2,
+          "href": "/documents/signatures"
+        },
+        {
+          "id": "40604124-64fa-4b11-96cb-2287f0a513e4",
+          "dimension": "product",
+          "key": "live.product.roadmap_progress",
+          "title": "Close out your next roadmap tasks",
+          "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+          "estimated_lift": 5,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 3,
+          "href": "/roadmap"
+        }
+      ],
+      "summary": "You're at risk for validation stage. Team is carrying you; Legal is holding you back."
+    },
+    "mission": {
+      "mission_date": "2026-11-13",
+      "status": "complete",
+      "streak": 1,
+      "tasks": [
+        {
+          "id": "d3898bf4-1798-4d03-bad6-e8a83a2c0e42",
+          "roadmap_task_id": "02db853d-40db-4e7d-85b1-f35ed7c1e2b2",
+          "title": "Run 10 customer interviews",
+          "reason": "[stub-llm] reason",
+          "effort": "medium",
+          "status": "done",
+          "order": 0,
+          "completed_at": "2026-11-13T18:24:51.137960+00:00",
+          "reject_reason": null,
+          "milestone": {
+            "id": "f41149d5-0c15-45c2-a126-fa662f4e528e",
+            "title": "Validate demand",
+            "due_on": "2026-11-27"
+          }
+        },
+        {
+          "id": "044fe458-9a41-466d-b3ea-56a5c6170c92",
+          "roadmap_task_id": "4864985e-a6b5-4b57-80f0-ec34bfdae612",
+          "title": "Synthesize problem hypotheses",
+          "reason": "From your 'Validate demand' milestone.",
+          "effort": "small",
+          "status": "done",
+          "order": 1,
+          "completed_at": "2026-11-13T18:24:51.170005+00:00",
+          "reject_reason": null,
+          "milestone": {
+            "id": "f41149d5-0c15-45c2-a126-fa662f4e528e",
+            "title": "Validate demand",
+            "due_on": "2026-11-27"
+          }
+        },
+        {
+          "id": "8815fd39-16d8-4426-8538-3b7656f1ce94",
+          "roadmap_task_id": "388ce864-c5df-44e7-aaca-dfec9c32ce50",
+          "title": "Draft 3 pricing options",
+          "reason": "From your 'Pricing test' milestone.",
+          "effort": "small",
+          "status": "done",
+          "order": 2,
+          "completed_at": "2026-11-13T18:24:51.197585+00:00",
+          "reject_reason": null,
+          "milestone": {
+            "id": "e0c89bd4-42bf-4128-b083-348ea05a7328",
+            "title": "Pricing test",
+            "due_on": "2026-12-18"
+          }
+        }
+      ],
+      "empty_reason": null
+    },
+    "mission_status": "ok",
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": 3,
+      "tasks_trend": {
+        "delta": null,
+        "series": []
+      },
+      "metrics": {
+        "revenue": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "runway": {
+          "status": "no_data",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "pipeline": {
+          "status": "no_data",
+          "value_minor": null,
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        },
+        "campaign_ctr": {
+          "status": "no_data",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d",
+          "trend": {
+            "delta": null,
+            "series": []
+          }
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": true
+    },
+    "briefing": {
+      "status": "ready",
+      "message": "[stub-llm] briefing",
+      "id": "b1b30dda-f677-4826-b26b-94c9eb668780",
+      "actions": [
+        {
+          "index": 0,
+          "label": "[stub-llm] label",
+          "kind": "task",
+          "href": "/mission",
+          "accepted": false,
+          "mission_task_id": null
+        }
+      ]
+    },
+    "risks": {
+      "status": "ready",
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "severity": "high",
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
+    },
+    "opportunities": {
+      "status": "ready",
+      "message": "[stub-llm] text",
+      "items": [
+        {
+          "index": 0,
+          "text": "[stub-llm] text",
+          "href": "/mission"
+        }
+      ]
+    }
+  },
+  "meta": null
+}

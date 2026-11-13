@@ -1,7 +1,7 @@
 {
   "data": {
     "greeting": {
-      "salutation": "Good afternoon",
+      "salutation": "Good evening",
       "first_name": "Ada",
       "startup_name": "NovaPay"
     },
@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-10-20T15:16:08.442932+00:00",
+      "computed_at": "2026-11-13T18:24:48.085258+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -61,7 +61,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "61f1ea59-a779-4080-a59a-576712442796",
+          "id": "25bee383-55c6-4322-98ef-dcad03bd0b84",
           "dimension": "money",
           "key": "live.money.transactions_30d",
           "title": "Track your money in and out",
@@ -73,7 +73,7 @@
           "href": "/finance"
         },
         {
-          "id": "8781cdff-1489-4edf-83e2-16fc594cf39a",
+          "id": "ae8ae9b8-7f7b-47df-91fd-48c38af06612",
           "dimension": "legal",
           "key": "live.legal.signatures_complete",
           "title": "Get your key agreements signed",
@@ -85,7 +85,7 @@
           "href": "/documents/signatures"
         },
         {
-          "id": "c85b48d0-a6f6-4e86-a4f1-faa29690ba40",
+          "id": "40604124-64fa-4b11-96cb-2287f0a513e4",
           "dimension": "product",
           "key": "live.product.roadmap_progress",
           "title": "Close out your next roadmap tasks",
@@ -100,13 +100,13 @@
       "summary": "You're at risk for validation stage. Team is carrying you; Legal is holding you back."
     },
     "mission": {
-      "mission_date": "2026-10-20",
+      "mission_date": "2026-11-13",
       "status": "pending",
       "streak": 0,
       "tasks": [
         {
-          "id": "3d405cc0-1593-4707-939b-d0628bea8664",
-          "roadmap_task_id": "3613767a-f2d5-49fa-8657-56216f87062c",
+          "id": "d3898bf4-1798-4d03-bad6-e8a83a2c0e42",
+          "roadmap_task_id": "02db853d-40db-4e7d-85b1-f35ed7c1e2b2",
           "title": "Run 10 customer interviews",
           "reason": "[stub-llm] reason",
           "effort": "medium",
@@ -115,14 +115,14 @@
           "completed_at": null,
           "reject_reason": null,
           "milestone": {
-            "id": "f3e5776b-4d2a-40a8-a2a9-e0f73580530f",
+            "id": "f41149d5-0c15-45c2-a126-fa662f4e528e",
             "title": "Validate demand",
-            "due_on": "2026-11-03"
+            "due_on": "2026-11-27"
           }
         },
         {
-          "id": "53c30d16-7a8a-429e-8400-a7a084bf83b5",
-          "roadmap_task_id": "668f2b62-88a3-4977-9463-6dd2c6b99318",
+          "id": "044fe458-9a41-466d-b3ea-56a5c6170c92",
+          "roadmap_task_id": "4864985e-a6b5-4b57-80f0-ec34bfdae612",
           "title": "Synthesize problem hypotheses",
           "reason": "From your 'Validate demand' milestone.",
           "effort": "small",
@@ -131,14 +131,14 @@
           "completed_at": null,
           "reject_reason": null,
           "milestone": {
-            "id": "f3e5776b-4d2a-40a8-a2a9-e0f73580530f",
+            "id": "f41149d5-0c15-45c2-a126-fa662f4e528e",
             "title": "Validate demand",
-            "due_on": "2026-11-03"
+            "due_on": "2026-11-27"
           }
         },
         {
-          "id": "ac6d274e-f4b1-407f-8eeb-da96fc6684f6",
-          "roadmap_task_id": "e7230d25-083a-4721-a607-a78d62b35905",
+          "id": "8815fd39-16d8-4426-8538-3b7656f1ce94",
+          "roadmap_task_id": "388ce864-c5df-44e7-aaca-dfec9c32ce50",
           "title": "Draft 3 pricing options",
           "reason": "From your 'Pricing test' milestone.",
           "effort": "small",
@@ -147,9 +147,9 @@
           "completed_at": null,
           "reject_reason": null,
           "milestone": {
-            "id": "eb4b2733-91fb-48a6-95c2-c9fa4d4f7280",
+            "id": "e0c89bd4-42bf-4128-b083-348ea05a7328",
             "title": "Pricing test",
-            "due_on": "2026-11-24"
+            "due_on": "2026-12-18"
           }
         }
       ],
@@ -187,9 +187,13 @@
           }
         },
         "pipeline": {
-          "status": "not_built",
+          "status": "no_data",
           "value_minor": null,
-          "currency": null
+          "currency": null,
+          "trend": {
+            "delta": null,
+            "series": []
+          }
         },
         "campaign_ctr": {
           "status": "no_data",
@@ -214,7 +218,7 @@
     "briefing": {
       "status": "ready",
       "message": "[stub-llm] briefing",
-      "id": "a8ac6676-7685-4643-bd6a-d74d3c1e2410",
+      "id": "b1b30dda-f677-4826-b26b-94c9eb668780",
       "actions": [
         {
           "index": 0,

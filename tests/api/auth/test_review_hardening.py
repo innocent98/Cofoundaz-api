@@ -31,7 +31,18 @@ def _login(client, email, **kw):
     return client.post(LOGIN, json={"email": email, "password": PASSWORD}, **kw)
 
 
-# 1. refresh-token reuse really revokes the family
+# 1. refresh-token reuse really revokes the family (once the grace window has passed)
+
+
+def _age(db, raw):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.config import settings
+    from app.services.auth.sessions import hash_token
+
+    row = db.query(AuthSession).filter_by(refresh_token_hash=hash_token(raw)).one()
+    row.rotated_at = datetime.now(UTC) - timedelta(seconds=settings.REFRESH_GRACE_SECONDS + 5)
+    db.flush()
 
 
 def test_reuse_revocation_is_committed_not_rolled_back_with_the_error(db):
@@ -39,6 +50,7 @@ def test_reuse_revocation_is_committed_not_rolled_back_with_the_error(db):
     _a, first = issue_token_pair(db, user)
     db.commit()
     _a2, second, _u = rotate_refresh(db, first)  # the thief or the owner rotates once
+    _age(db, first)
     db.commit()
     with pytest.raises(Unauthorized):
         rotate_refresh(db, first)  # the old token is presented again: reuse
@@ -53,6 +65,7 @@ def test_after_a_reuse_the_newest_token_of_the_family_is_dead(client, db):
     r0 = _login(client, "reuse2@x.com").json()["data"]["refresh_token"]
     client.cookies.clear()
     r1 = client.post("/api/v1/auth/refresh", json={"refresh_token": r0}).json()["data"]
+    _age(db, r0)
     resp = client.post("/api/v1/auth/refresh", json={"refresh_token": r0})
     assert resp.status_code == 401
     newest = client.post("/api/v1/auth/refresh", json={"refresh_token": r1["refresh_token"]})

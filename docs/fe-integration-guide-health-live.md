@@ -109,8 +109,8 @@ mission streak).
   "meta": null
 }
 ```
-Labels: Assessment completed · Business plan generated · Milestone completed · Roadmap re-planned · Teammate joined ·
-Agreement signed. Draw them as markers at `at` with the label as a tooltip.
+Labels: Assessment completed · Business plan generated · Milestone completed · Roadmap re-planned · Teammate joined (fires since 2026-11-13; before that the marker never appeared, see `e2e/_captures/team_invitations/health_markers_teammate_joined.json`) ·
+Agreement signed. **Markers are filtered by role like the activity feed (2026-11-13):** `Assessment completed` and `Agreement signed` are returned to founder and team member only; every other role gets just the open ones (milestone, re-plan, business plan, teammate joined). Draw whatever comes back. Completion of the assessment is still implied by the open Health Score itself, by design (#153). Draw them as markers at `at` with the label as a tooltip.
 
 ## 4. Benchmarks (PRD 06.4): real percentiles now
 Below the minimum cohort it's unchanged (e2e and live: `insufficient_data`, because the local cohort is too small):

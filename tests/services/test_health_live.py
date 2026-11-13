@@ -230,7 +230,7 @@ def test_history_markers_and_365_range(db):
     db.add(ActivityLog(startup_id=s.id, action="business.plan.generated", summary="x"))
     db.add(ActivityLog(startup_id=s.id, action="mission.task.added", summary="ignored"))
     db.flush()
-    marks = hs.get_history_markers(db, s, "365d")
+    marks = hs.get_history_markers(db, s, "365d", MembershipRole.founder)
     assert [m["label"] for m in marks] == ["Business plan generated"]
     assert "365d" in hs.HISTORY_RANGES
 

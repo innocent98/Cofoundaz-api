@@ -1,0 +1,10 @@
+{
+  "data": [
+    {
+      "at": "2026-11-13T18:25:00.121065+00:00",
+      "label": "Teammate joined",
+      "action": "member.joined"
+    }
+  ],
+  "meta": null
+}

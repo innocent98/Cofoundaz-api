@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "body": {
+    "data": {
+      "access_token": "<access-token>",
+      "refresh_token": "<refresh-token>",
+      "expires_in": 900,
+      "mfa_required": false,
+      "is_new_user": true,
+      "invite_token": null,
+      "next": null
+    },
+    "meta": null
+  }
+}

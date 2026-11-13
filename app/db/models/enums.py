@@ -86,6 +86,11 @@ MISSION_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
 )
 BRIEFING_ROLES: frozenset[MembershipRole] = MISSION_ROLES
+# D-ASM-1: assessment answers, narrative and completion are founder business data. Single-sourced
+# for the assessment routes, the dashboard calibration block and the activity feed.
+ASSESSMENT_ROLES: frozenset[MembershipRole] = frozenset(
+    {MembershipRole.founder, MembershipRole.team_member}
+)
 # D-DOC-1: until per-person grants land (BE-B), every Documents read and write (documents, files,
 # shares, signature requests, templates) is founder + team member only. Single-sourced for routes,
 # search, activity and notifications so none can drift from the route gate.

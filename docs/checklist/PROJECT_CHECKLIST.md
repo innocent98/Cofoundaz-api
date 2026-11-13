@@ -667,6 +667,8 @@ Source: `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md` (build-order step
 - [x] Gap 25: note only (access tokens outlive sign-out; in the FE guide)
 - [x] D-AUTH-6 backend: `X-Auth-Mode: cookie` session mode, `refresh_token: null` in the body, CSRF guard on refresh and logout, `expires_in`
 - [x] Opus review fixes (2026-11-05): reuse revocation committed, CSRF token-source order, atomic reservation, known-address exemption + /64, mail caps per (email, IP), decline-invitation endpoint, backup-code race, bcrypt on unknown emails
+- [x] Refresh-token grace window (`REFRESH_GRACE_SECONDS`, default 20): the previous token is accepted once rotated, new equivalent pair, reuse after the window still revokes the family — 2026-11-13, `fix/auth-privacy-followups`
+- [x] Google sign-up records consent: `start` takes `accepted_terms`; a new Google account without it is refused (`?error=terms_not_accepted`), nothing created; `terms_accepted_at` + `terms_version` stored — 2026-11-13 (FE: send `accepted_terms` from the sign-up Google button / handle the error)
 - [x] Live e2e journey + captures + SOP + FE guide
 - [ ] FE PR (gaps 2, 5, 8, 9, 10, 12, 13, 15, 16, 18, 20, 23, 24; 17 and 19 after D-AUTH-5 / -7): not started
 - [ ] Re-walk every control on merged develop, all roles, 1440 + 375
@@ -925,9 +927,9 @@ Mission reads are founder + team member only. SOP `docs/sop/2026-10-20-dashboard
 - [x] Row 8: briefing prompt no longer receives the Health Score number and is told not to state it
 - [x] Row 9: Assessment page in search for team members
 - [x] Follow-up: `GET /dashboard/activity` + live `activity.created` filtered by role (mission → core, finance → `FINANCE_ROLES`, marketing → `MARKETING_ROLES`, unclassified fails closed; SQL filter keeps cursor pages full) — PR #155 (branch `fix/dashboard-activity-feed-roles`), SOP `docs/sop/2026-10-20-dashboard-activity-roles.md`, guide section 5
-- [ ] _Open:_ `kpis.tasks_done_this_week` and `calibration.assessment_complete` still go to every role (see SOP follow-ups)
-- [ ] _Open:_ `assessment.completed` activity row is open to every role (matches the Health Score marker); lead decision whether it follows the assessment read gate
-- [ ] _Deferred:_ Health Score "Teammate joined" marker never fires (`MARKER_LABELS` expects `workspace.member.joined`, invitations write `member.joined`)
+- [x] `kpis.tasks_done_this_week`, `kpis.tasks_trend` (mission gate) and `calibration.assessment_complete` (assessment gate) are `null` for other roles — 2026-11-13, branch `fix/auth-privacy-followups`, SOP `docs/sop/2026-11-13-auth-privacy-followups.md`
+- [x] `assessment.*` activity rows follow the assessment read gate (founder + team member), feed and live stream — 2026-11-13 (the Health Score history marker is a separate read and stays open to every role)
+- [x] Health Score "Teammate joined" marker now fires (`MARKER_LABELS` keyed on the real `member.joined` action) — 2026-11-13
 
 ## ✅ Module 02 — Founder Dashboard — *merged to `main` (PR #38) + `develop`*
 
