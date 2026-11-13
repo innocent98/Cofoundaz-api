@@ -424,7 +424,8 @@ def test_business_suggestions_journey(base_url, make_verified_user, mailbox, uni
             "blocks": canvas_get.json()["data"]["blocks"],
             "version": 1,
         }
-        assert suggestion_data["author"]["email"] == consultant_email
+        # The consultant sees their own name only: author e-mails go to founder and team member.
+        assert suggestion_data["author"]["email"] is None
         suggestion_id = suggestion_data["id"]
         capture("business", "suggestions_create_canvas_update", suggestion_create)
 
@@ -445,6 +446,19 @@ def test_business_suggestions_journey(base_url, make_verified_user, mailbox, uni
         pending_ids = [s["id"] for s in list_pending.json()["data"]["suggestions"]]
         assert suggestion_id in pending_ids
         capture("business", "suggestions_list_pending", list_pending)
+        assert (
+            next(x for x in list_pending.json()["data"]["suggestions"] if x["id"] == suggestion_id)[
+                "author"
+            ]["email"]
+            == consultant_email
+        )  # founder sees the address
+        consultant_list = c.get("/api/v1/business-builder/suggestions", headers=consultant_wh)
+        assert consultant_list.status_code == 200, consultant_list.text
+        assert all(
+            x["author"]["email"] is None for x in consultant_list.json()["data"]["suggestions"]
+        )
+        assert consultant_email not in consultant_list.text
+        capture("business", "suggestions_list_consultant_redacted", consultant_list)
 
         # 5. Founder approves -- applies canvas_update through the existing
         # save_canvas() write path, bumping the canvas to v2.

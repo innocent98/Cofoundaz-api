@@ -497,6 +497,33 @@ After the worker ran, `invite_state` is `sent`:
   (matched by user id or email), `GET /meetings/{id}` answers `404` for anything else, and the body has `can_manage: false` and **no
   `transcript` key**. They cannot write (`403`). Show them a read-only meeting drawer, no "+ New".
 
+- **E-mail addresses are for founder and team member only (Adebayo, 2026-11-12).** For every other role, `attendees[].email` is `null`
+  for internal and external attendees alike; the name still shows (an internal member falls back to their profile name, an external
+  to the name the founder typed, else `null`). Show "name or Guest" and never build a `mailto:` from it. Verbatim from a live run
+  (`e2e/_captures/team_manage/meeting_attendees_mentor_redacted.json`, the invited mentor's `GET /meetings/{id}`; the test users have no profile name, so `name` is `null` for the internal one):
+
+```json
+{
+  "attendees": [
+    {
+      "email": null,
+      "name": null,
+      "user_id": "63b38d14-0d61-405a-b1b4-82759df2a713",
+      "internal": true,
+      "invite_state": "internal"
+    },
+    {
+      "email": null,
+      "name": "Guest Investor",
+      "user_id": null,
+      "internal": false,
+      "invite_state": "pending"
+    }
+  ],
+  "can_manage": false
+}
+```
+
 ### Post-meeting summary (the "AI Meeting Assistant")
 
 **There is no bot that joins the call** (decision D-CAL-1). The user pastes notes or a transcript (20 to 60,000 characters); the

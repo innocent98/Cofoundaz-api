@@ -23,7 +23,7 @@ from app.db.models.calendar import (
 from app.db.models.enums import CalendarEventType, MembershipRole, MembershipStatus, RoadmapStatus
 from app.db.models.membership import Membership
 from app.db.models.roadmap import Roadmap, RoadmapMilestone, RoadmapPhase, RoadmapTask
-from app.db.models.user import User
+from app.db.models.user import User, UserProfile
 from app.platform.audit import write_audit
 from app.platform.events import event_bus
 from app.platform.jobs import job_dispatcher
@@ -320,6 +320,16 @@ def _attendees(db: Session, event_id: uuid.UUID) -> list[CalendarAttendee]:
     )
 
 
+def _profile_name(db: Session, user_id: uuid.UUID | None) -> str | None:
+    """An internal attendee's profile name, so a viewer who never sees the address still sees who it is."""
+    if user_id is None:
+        return None
+    name: str | None = (
+        db.query(UserProfile.full_name).filter(UserProfile.user_id == user_id).scalar()
+    )
+    return name
+
+
 def serialize_meeting(
     db: Session, ev: CalendarEvent, meeting: CalendarMeeting, *, manager: bool
 ) -> dict[str, Any]:
@@ -347,8 +357,10 @@ def serialize_meeting(
         "summarised_at": meeting.summarised_at.isoformat() if meeting.summarised_at else None,
         "attendees": [
             {
-                "email": a.email,
-                "name": a.name,
+                # Founder and team member only: an invited mentor, consultant, accountant, investor
+                # or legal advisor sees who is coming by name, never by address (Adebayo, 2026-11-12).
+                "email": a.email if manager else None,
+                "name": a.name or (_profile_name(db, a.user_id) if not manager else None),
                 "user_id": str(a.user_id) if a.user_id else None,
                 "internal": a.user_id is not None,
                 "invite_state": a.invite_state,

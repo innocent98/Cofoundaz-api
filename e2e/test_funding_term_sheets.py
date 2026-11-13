@@ -12,10 +12,23 @@ OTHER founders, and this workspace has one).
 """
 
 import io
+import os
 import uuid
 
 import httpx
 import pytest
+
+# This journey drives the app with an in-process canned LLM (`tests.*_helpers`), which cannot be
+# injected into a DEPLOYED server, and those helpers import app code that builds `Settings()`
+# (needs SECRET_KEY, DATABASE_URL, ...) which the remote gate runner does not have. So under
+# E2E_REMOTE it is SKIPPED, visibly, BEFORE the helper imports: collection never builds
+# Settings, and the staging gate does not claim to have verified this journey. It runs in
+# the local/CI e2e job (scripts/e2e_run.sh), where the server is in-process-compatible.
+if os.environ.get("E2E_REMOTE", "").strip().lower() in {"1", "true", "yes"}:
+    pytest.skip(
+        "needs an in-process canned LLM; not runnable against a deployed server",
+        allow_module_level=True,
+    )
 
 from tests.deck_helpers import deck_pdf
 from tests.term_helpers import SHEET_TEXT, TermLLM
