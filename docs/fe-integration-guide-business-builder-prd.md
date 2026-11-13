@@ -80,7 +80,7 @@ After a save, `PUT /canvases/swot` `{"blocks": {"strengths": ["Founder-market fi
     }
 ```
 - `updated_by` is `null` after an **AI fill** (the worker writes as nobody). Show "Last edited by AI".
-- `updated_by.name` falls back to the member's **email** when they never set a name (see §5 trap).
+- `updated_by.name` is the literal **"A team member"** when that member never set a name (never their e-mail: changed 2026-11-12, addresses are founder + team member only).
 
 ### 3.2 List versions: `GET /canvases/{type}/versions` → **200**, newest first (`versions_list.json`)
 ```json
@@ -223,27 +223,27 @@ Only **founders** are notified (team members and mentors are not; verified live:
 founder's `GET /api/v1/notifications` (`founder_notifications.json`):
 ```json
 {
-  "id": "6f4138b2-e5b2-425c-b7b0-9bed3fc3b130",
+  "id": "c8225090-1966-4994-8a38-f009285d348d",
   "type": "business.suggestion.created",
-  "title": "delivered+business-3c3d1291b103@resend.dev suggested changes to Business Model Canvas",
+  "title": "A team member suggested changes to Business Model Canvas",
   "body": "Review suggestions",
   "data": {
     "op": "canvas_update",
     "artifact": "Business Model Canvas",
-    "created_by": "1d239fcc-220d-4304-9eb0-264af04b9069",
-    "startup_id": "77337255-6f8f-42e9-b210-509e1fd083cc",
-    "author_name": "delivered+business-3c3d1291b103@resend.dev",
-    "suggestion_id": "a5193e7a-92ed-4d15-bc11-0cace9116108"
+    "created_by": "4e2a035f-28c3-4a42-ad0e-66aea3a583ec",
+    "startup_id": "b117e68e-0833-41ec-80f7-03c7f793a31e",
+    "author_name": "A team member",
+    "suggestion_id": "f3a907d5-af26-48d6-86e0-16a3e29b2e0e"
   },
   "read": false,
   "created_at": "2026-10-19T11:08:26.480462+00:00"
 }
 ```
 - `body` is the CTA label (**"Review suggestions"**). Deep-link it to the Overview's suggestions panel.
-- **Trap: name fallback.** This test consultant never set a name, so the title uses their **email**. A consultant with a
+- **Trap: name fallback.** This test consultant never set a name, so the title uses the neutral **"A team member"** (never their e-mail). A consultant with a
   profile name shows as "{Name} suggested changes to {Artifact}".
 - **Trap: two shapes for a person.** The suggestion's `author` is `{id, name, email}` with `name: null` when unset. The new
-  `updated_by` / `edited_by` objects are `{id, name}` where `name` already falls back to the email. Don't reuse one renderer
+  `updated_by` / `edited_by` objects are `{id, name}` where `name` already falls back to "A team member". Don't reuse one renderer
   for both without handling `null`.
 
 ### Plan notification: **changed copy**

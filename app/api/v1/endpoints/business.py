@@ -93,6 +93,11 @@ _editor = require_role(MembershipRole.founder, MembershipRole.team_member)
 _suggester = require_role(MembershipRole.business_consultant)
 
 
+def _sees_emails(membership: Membership) -> bool:
+    """Author e-mail addresses go to founder and team member only (Adebayo, 2026-11-12)."""
+    return membership.role in (MembershipRole.founder, MembershipRole.team_member)
+
+
 def _startup(db: Session, membership: Membership) -> Startup:
     return db.query(Startup).filter(Startup.id == membership.startup_id).one()
 
@@ -318,7 +323,7 @@ def create_suggestion_endpoint(
 ) -> dict[str, Any]:
     s = create_suggestion(db, membership, body.op, body.target, body.payload, body.note)
     db.commit()
-    return success_response(serialize_suggestion(db, s))
+    return success_response(serialize_suggestion(db, s, include_email=_sees_emails(membership)))
 
 
 @router.get("/suggestions")
@@ -333,7 +338,13 @@ def list_suggestions_endpoint(
     except ValueError:
         raise NotFound() from None  # unknown status filter -> 404 (uniform "no such view")
     rows = list_suggestions(db, _startup(db, membership), parsed)
-    return success_response({"suggestions": [serialize_suggestion(db, r) for r in rows]})
+    return success_response(
+        {
+            "suggestions": [
+                serialize_suggestion(db, r, include_email=_sees_emails(membership)) for r in rows
+            ]
+        }
+    )
 
 
 @router.post("/suggestions/{suggestion_id}/approve")
@@ -345,7 +356,7 @@ def approve_suggestion_endpoint(
 ) -> dict[str, Any]:
     s = approve_suggestion(db, membership, suggestion_id)
     db.commit()
-    return success_response(serialize_suggestion(db, s))
+    return success_response(serialize_suggestion(db, s, include_email=_sees_emails(membership)))
 
 
 @router.post("/suggestions/{suggestion_id}/reject")
@@ -357,7 +368,7 @@ def reject_suggestion_endpoint(
 ) -> dict[str, Any]:
     s = reject_suggestion(db, membership, suggestion_id)
     db.commit()
-    return success_response(serialize_suggestion(db, s))
+    return success_response(serialize_suggestion(db, s, include_email=_sees_emails(membership)))
 
 
 @router.get("/positioning-map")

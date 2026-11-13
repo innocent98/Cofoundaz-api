@@ -145,7 +145,7 @@ class AttendeeIn(BaseModel):
 
 
 class AttendeeOut(BaseModel):
-    email: str
+    email: str | None  # null unless the viewer is founder or team member
     name: str | None
     user_id: uuid.UUID | None
     internal: bool
