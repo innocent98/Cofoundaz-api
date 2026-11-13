@@ -85,3 +85,13 @@ def test_value_formatting():
     row = rnd.rows_from({"results": [_metric(123_456)]})[0]
     assert rnd.fmt(row, row.value) == "₦1,234.56"
     assert rnd.cell_value(row, row.value).__str__() == "1234.56"
+
+
+def test_metric_without_hub_is_recorded_as_custom():
+    """Review L1: a custom metric deleted after the run has no hub; it must still be covered by
+    the download re-check, as "custom", not dropped from `hubs`."""
+    m = _metric(5, unit="count")
+    m["hub"] = None
+    m["result"]["hub"] = None
+    rows = rnd.rows_from({"results": [m]})
+    assert rnd.hubs_in(rows) == ["custom"]

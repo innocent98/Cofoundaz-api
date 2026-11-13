@@ -435,3 +435,42 @@ def test_handlers_and_daily_purge_are_wired(db):
     )
     due = sched._due_analytics_purge(db, datetime.now(UTC))
     assert [d.job_type for d in due] == [sched.SCHED_ANALYTICS_PURGE]
+
+
+def test_run_error_marks_export_failed_not_pending(client, db, team, monkeypatch):
+    """Review M1: a source error while resolving the run must end the export as failed (its own
+    savepoint), never leave it pending behind the job's rollback."""
+    from app.services.analytics import runs as runs_mod
+
+    def boom(*_a, **_k):
+        raise RuntimeError("hub service down")
+
+    monkeypatch.setattr(runs_mod, "build_results", boom)
+    fo = team[1][R.founder]
+    rep = _report(client, fo, [REVENUE])
+    r = client.post(f"{BASE}/reports/{rep['id']}/export", headers=fo, json={"format": "pdf"})
+    _work(db)
+    d = client.get(f"{BASE}/exports/{r.json()['data']['id']}", headers=fo).json()["data"]
+    assert d["status"] == "failed" and d["error"] == "The report could not be run. Try again."
+    dl = client.get(f"{BASE}/exports/{d['id']}/download", headers=fo)
+    assert dl.status_code == 409 and dl.json()["error"]["code"] == "EXPORT_FAILED"
+
+
+def test_export_does_not_reuse_a_pending_manual_run(client, db, team):
+    """Review L2: an export never piggybacks on a manual run (which would also notify
+    "report ready"); the requester gets exactly one notice, "export ready"."""
+    s, hdr, users = team
+    fo = hdr[R.founder]
+    rep = _report(client, fo, [REVENUE])
+    manual = client.post(f"{BASE}/reports/{rep['id']}/run", headers=fo).json()["data"]
+    e = client.post(f"{BASE}/reports/{rep['id']}/export", headers=fo, json={"format": "pdf"})
+    assert e.json()["data"]["run_id"] != manual["run_id"]
+    again = client.post(f"{BASE}/reports/{rep['id']}/run", headers=fo).json()["data"]
+    assert again["run_id"] == manual["run_id"]  # manual double click still reuses the manual run
+    _work(db)
+    titles = [
+        n.title
+        for n in db.query(Notification).filter(Notification.user_id == users[R.founder].id).all()
+    ]
+    assert titles.count("Your export is ready: Board pack") == 1
+    assert titles.count("Your report is ready: Board pack") == 1  # from the manual run only

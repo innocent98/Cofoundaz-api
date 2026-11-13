@@ -36,6 +36,7 @@ the run on screen always agree. The PDF header and the XLSX "About" sheet carry
 | Investor, legal advisor | 403 | 403 | 403 |
 
 Someone else's export, or one from another workspace, is a **404** (`Export not found.`), never a 403.
+TM access follows hub roles; per-member grants aren't modelled platform-wide yet.
 
 ## 3. Locked blocks never reach the file (UX consequence)
 
@@ -258,7 +259,9 @@ Not captured live, unit-tested only (`tests/api/test_analytics_exports.py`):
   (40 heavy reads per workspace per minute). Shape from slice A's code, not captured here.
 
 Double-click safety: two report exports by the same person within 10 minutes share **one** pending run
-(`run_id` is the same). Each still gets its own export row (unit-tested).
+(`run_id` is the same). Each still gets its own export row (unit-tested). An export never reuses a pending
+manual run from `POST /reports/{id}/run`, so the requester gets only "Your export is ready", not also
+"Your report is ready".
 
 ### 4.4 `POST /exports/data-tables` — export data tables (202)
 
@@ -418,7 +421,7 @@ CTA "Download": go to `/analytics-reports/exports` and highlight `data.export_id
 |---|---|---|
 | `pending` | job queued or rendering | spinner "Generating…"; poll `GET /exports/{id}` every 2 s, back off to 5 s, stop after 2 min and say "Still working, check Export history" |
 | `ready` | file stored | Download button (uses `download_path`) and "Expires {expires_at}" |
-| `failed` | render failed; `error` holds a plain sentence (for example "You no longer have access to exports in this workspace.") | the `error` text and "Generate again" |
+| `failed` | render failed (including "The report could not be run. Try again." when a hub's data could not be read); `error` holds a plain sentence (for example "You no longer have access to exports in this workspace.") | the `error` text and "Generate again" |
 | `expired` | past `expires_at`, or the file was purged | "Expired. Generate again" (re-export the report, or re-run the data tables) |
 
 `status` is computed on read: a row past `expires_at` says `expired` even before the daily purge has run.

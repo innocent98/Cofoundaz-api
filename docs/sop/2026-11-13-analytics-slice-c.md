@@ -16,6 +16,7 @@ respect per-metric authorisation (D-ANA-4), and to expire at 30 days.
 - **Redaction happens before rendering.** The renderer only receives `runs.view_snapshot(..., requester_role)`, slice B's read-time redaction. `render.rows_from` also fails closed: a locked stub, a `locked` result or an unknown shape becomes a row with no value. So locked blocks reach the file as "Locked: X access needed" and never with a number.
 - **Downloads are re-checked.** Each export records `hubs`, the hubs whose numbers are in the file. Every download re-checks the downloader's current role against them (`report_can_see`), so a role change after the export still cuts access (403).
 - **Roles** (spec section 3, Exports column): founder sees all; team member and accountant see their own; mentor and business consultant get 403 (they read shared reports on screen only); other roles get 403. Someone else's export, or another workspace's, is a 404.
+- **TM access follows hub roles; per-member grants aren't modelled platform-wide yet.** A team member's numbers are gated by `HUB_ROLES`, like every hub route.
 - **The accountant cannot start runs** (slice B's review fix). They export an existing finished run with `run_id`, and the file is redacted to Finance. Without `run_id` they get 403 with an explanation.
 - **Data tables** accept only metrics the requester can see. An invisible metric gets the same 422 message as a non-existent one, so the route cannot be used to probe custom metric names.
 - **File safety.** XLSX uses the house `finance/xlsx.py` writer (text is always inline, never a formula; quote-prefix style). CSV prefixes `= + - @ \t \r` cells with `'` and starts with a UTF-8 BOM. PDF text is escaped for reportlab's markup and reduced to cp1252 (`documents/export._pdf_text`). Filenames are sanitised, and `Content-Disposition` uses an ASCII fallback plus `filename*`.
@@ -48,6 +49,11 @@ Endpoints: `POST /analytics/reports/{id}/export`, `POST /analytics/exports/data-
 
 ## Operate / roll back
 The worker already imports `app.worker.handlers.analytics`; the render and purge handlers register there. The purge is claimed once per local day through `ScheduledRun` (`analytics.purge`/`all`/date). Files live under `analytics/exports/<startup>/<export>.<ext>` in private storage. Roll back with `alembic downgrade 0108_analytics_reports`. That drops `analytics_exports`, and the stored files stay in storage under that prefix (delete them by prefix if needed).
+
+## Review fixes (Opus, 2026-11-13; no High)
+- **M1:** resolving the run inside the render job now has its own savepoint. A source error marks the export `failed` ("The report could not be run. Try again.") instead of leaving it `pending` behind the job's rollback. Test: `test_run_error_marks_export_failed_not_pending` (fails on the old code).
+- **L1:** a metric row with no hub (a custom metric deleted since the run) is recorded as `custom` in `hubs`, so the download re-check covers it (accountant → 403).
+- **L2:** an export reuses only another export's pending run, and a manual run reuses only a manual one, so an export never also sends "report ready". Test: `test_export_does_not_reuse_a_pending_manual_run`.
 
 ## Follow-ups
 - Notification `module` is `"other"` for every Analytics kind (no `analytics` prefix in `notifications/categories.py`), and there is no Preferences row for them yet.

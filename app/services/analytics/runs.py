@@ -145,6 +145,13 @@ def start_run(
             AnalyticsReportRun.run_by == m.user_id,
             AnalyticsReportRun.status == "pending",
             AnalyticsReportRun.created_at >= cutoff,
+            # An export reuses only another export's run (no run job, no "report ready"); a
+            # manual run reuses only a manual one, so neither inherits the other's notification.
+            (
+                AnalyticsReportRun.triggered_by.in_(SILENT_TRIGGERS)
+                if triggered_by in SILENT_TRIGGERS
+                else AnalyticsReportRun.triggered_by.notin_(SILENT_TRIGGERS)
+            ),
         )
         .first()
     )

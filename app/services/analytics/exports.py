@@ -239,7 +239,16 @@ def render(db: Session, export_id: uuid.UUID) -> None:
     if member is None or startup is None or member.role not in cat.EXPORT_ROLES:
         _fail(db, e, _NO_ACCESS)
         return
-    run = runs.execute_run(db, e.run_id) if e.run_id else None
+    try:
+        # Own savepoint: if resolving the run raises (a hub service error), only the run work is
+        # rolled back and the export is still marked failed below, in the job's transaction.
+        # Without it the job's rollback would also undo `_fail` and leave the export pending.
+        with db.begin_nested():
+            run = runs.execute_run(db, e.run_id) if e.run_id else None
+    except Exception:  # noqa: BLE001
+        log.warning("analytics export %s run failed", e.id, exc_info=True)
+        _fail(db, e, "The report could not be run. Try again.")
+        return
     if run is None:
         _fail(db, e, "The run behind this export no longer exists. Generate it again.")
         return

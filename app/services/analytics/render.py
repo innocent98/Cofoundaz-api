@@ -113,7 +113,9 @@ def rows_from(view: dict[str, Any]) -> list[Row]:
             Row(
                 "metric",
                 title,
-                hub=res.get("hub") or r.get("hub"),
+                # No hub (a custom metric deleted since the run): record it as "custom" so the
+                # download re-check still covers it (fails closed, like reports.hidden_hub).
+                hub=res.get("hub") or r.get("hub") or "custom",
                 unit=res.get("unit"),
                 currency=res.get("currency"),
                 status=status,
@@ -128,7 +130,7 @@ def rows_from(view: dict[str, Any]) -> list[Row]:
 
 def hubs_in(rows: Iterable[Row]) -> list[str]:
     """The hubs whose numbers are in the file (a download re-checks every one of them)."""
-    return sorted({r.hub for r in rows if r.kind == "metric" and r.hub})
+    return sorted({r.hub or "custom" for r in rows if r.kind == "metric"})
 
 
 # ---- values ----
