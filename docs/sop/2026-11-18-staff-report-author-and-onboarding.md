@@ -31,9 +31,9 @@
 | `app/services/staff/roster.py` (new) | `staff_role(db, user_id)` and `active_staff_ids()` subquery. Staff = an **unrevoked** `platform_staff` row; deliberately ignores the TOTP check `/admin/me` applies, so a staff member who has not turned on 2FA yet still never becomes a founder |
 | `GET /auth/me` (`app/api/v1/endpoints/auth/me.py`) | new top-level `staff_role`: `"admin"`, `"super_admin"` or `null`. It only ever describes the caller, so it doesn't reveal the hidden console to anyone else |
 | `resolve_or_create_workspace` (`app/services/onboarding/workspace.py`) | refuses with **409 `ONBOARDING_NOT_FOR_STAFF`** instead of creating a draft. Every onboarding route goes through it (`GET`/`PATCH /state`, `POST /complete`, `/invites`, `/logo`) |
-| `dashboard_kpis` (`app/services/staff/workspaces.py`) | total workspaces, new-in-window, activation, paid conversion, MRR and the activations series count only workspaces **not** created by active staff (`_customer()`); the sign-ups series and window counts leave staff users out |
+| `dashboard_kpis` (`app/services/staff/workspaces.py`) | total workspaces, new-in-window, activation, paid conversion, MRR and the activations series leave out **staff ghost drafts** only: owned by current staff **and** never onboarded (`_customer()`). A dual-role staff member's real, onboarded (or paid) workspace still counts, and revoking someone's staff access never rewrites past KPIs for an onboarded workspace (Opus review L1). The sign-ups series and window counts leave staff users out |
 
-Decisions: a staff member who **already owns** a workspace keeps it (no deletion; it stops counting in KPIs). Staff joining someone's workspace through an invitation is unchanged (members never get a draft anyway). Revoked staff count as ordinary users again.
+Decisions: a staff member who **already owns** a workspace keeps it and gets it back from `/onboarding/state` (no deletion; it stops counting in KPIs only while it is an unfinished draft). A staff member who is also a founder (has a membership) follows the normal founder flow on the FE, including finishing their own onboarding. Staff joining someone's workspace through an invitation is unchanged (members never get a draft anyway). Revoked staff count as ordinary users again.
 
 **How (FE, cofoundaz `fix/staff-skip-onboarding`):** `lib/auth/staff.ts` maps `staff_role` to `/admin-portal` (admin) or `/super-admin`; `lib/auth/post-login.ts` routes staff there after password, MFA and Google sign-in (a console deep link in `next` is kept) and on the verify page's Continue; `/onboarding` sends staff away before reading state and treats `ONBOARDING_NOT_FOR_STAFF` as a redirect. Samuel's Admin pages were not touched.
 
@@ -43,6 +43,7 @@ Decisions: a staff member who **already owns** a workspace keeps it (no deletion
 
 ## Verification
 
+- Opus review fixes (lead 27): KPIs exclude only unfinished staff drafts (a staff-owned onboarded paid workspace counts); a staff member who already owns a workspace gets it back (200); revoked staff can start a draft.
 - Unit: nameless author → `"A team member"` on list and detail, the address absent from the body; `staff_role` for admin / super admin / founder / revoked; 409 on all four onboarding routes with no workspace created; a founder still gets a draft; KPIs ignore a staff-owned ghost and staff sign-ups. Plus `tests/api/onboarding/`, `tests/api/auth/`, `test_staff_reports.py`, `test_dashboard_kpis` green on a scratch DB.
 - Live (uvicorn from the worktree on a scratch DB): `e2e/test_admin_reports.py` passes with the new SO1 and SO4 asserts; captures committed.
 - Browser on localhost (FE branch against this API): a staff sign-in lands on the console with no new workspace; a founder still goes through onboarding (see the FE PR).
@@ -57,3 +58,4 @@ No migration, no env change. Roll back by reverting the PR; the FE treats a miss
 - Existing staff ghost workspaces could be soft-deleted by a Super Admin through the danger zone if Adebayo wants them gone (not done: data change).
 - The Admin workspace list (`GET /admin/workspaces`) still lists staff-owned ghosts; filter there too if it confuses support.
 - Samuel's Admin FE, when it returns, should read `staff_role` instead of probing `/admin/me` to decide where to land.
+- When Samuel's console lands, its "2FA not set up" path must **not** send staff to `/dashboard` or `/onboarding`: the `staff_role` landing sends them straight back to the console, so that would loop. Show a "turn on 2FA" screen inside the console instead.

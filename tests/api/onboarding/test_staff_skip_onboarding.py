@@ -77,23 +77,51 @@ def test_a_founder_still_gets_a_draft(client, db):
     assert _owned(db, founder) == 1
 
 
-def test_staff_owned_workspaces_and_staff_signups_are_left_out_of_the_kpis(client, db):
+def test_staff_who_already_own_a_workspace_get_it_back(client, db):
+    # A workspace from before the fix (or a dual-role founder's own) is returned, never a 409.
+    u, h = _staff(db)
+    ws = mk_ws(db, u, name="Mine")
+    db.flush()
+    r = client.get(f"{ONB}/state", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["startup"]["id"] == str(ws.id)
+    assert _owned(db, u) == 1
+
+
+def test_revoked_staff_can_start_a_startup(client, db):
+    u, h = _staff(db)
+    db.query(PlatformStaff).filter_by(user_id=u.id).one().revoked_at = datetime.now(UTC)
+    db.flush()
+    r = client.get(f"{ONB}/state", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["startup"]["id"]
+    assert _owned(db, u) == 1
+
+
+def test_only_staff_ghost_drafts_and_staff_signups_are_left_out_of_the_kpis(client, db):
     viewer = mk_staff(db)
     base = client.get("/api/v1/admin/dashboard/kpis", headers=hdr(viewer)).json()["data"]
-    # A ghost left by a staff sign-in before this fix, and a real founder's workspace.
-    ghost_owner = mk_staff(db)
-    mk_ws(db, ghost_owner, name="Ghost", plan="growth", status="active")
-    mk_ws(db, mk_user(db), name="Real")
     now = datetime.now(UTC)
-    for ws in db.query(Startup).filter(Startup.name.in_(["Ghost", "Real"])):
+    # A ghost draft left by a staff sign-in before this fix: never onboarded, never counts.
+    ghost_owner = mk_staff(db)
+    mk_ws(db, ghost_owner, name="Ghost")
+    # A dual-role staff member's real, onboarded, paid workspace: counts like any customer.
+    dual = mk_staff(db)
+    real_staff = mk_ws(db, dual, name="StaffCo", plan="growth", status="active")
+    # An ordinary founder's onboarded workspace.
+    real = mk_ws(db, mk_user(db), name="Real")
+    for ws in (real_staff, real):
         ws.created_at = now - timedelta(days=1)
         ws.profile.onboarding_completed_at = now - timedelta(hours=1)
     db.flush()
     k = client.get("/api/v1/admin/dashboard/kpis", headers=hdr(viewer)).json()["data"]
-    assert k["total_workspaces"]["value"] == base["total_workspaces"]["value"] + 1
-    assert k["total_workspaces"]["new_in_window"] == base["total_workspaces"]["new_in_window"] + 1
-    assert k["activation_rate"]["activated"] == base["activation_rate"]["activated"] + 1
-    assert k["paid_conversion"]["paying_workspaces"] == base["paid_conversion"]["paying_workspaces"]
+    assert k["total_workspaces"]["value"] == base["total_workspaces"]["value"] + 2
+    assert k["total_workspaces"]["new_in_window"] == base["total_workspaces"]["new_in_window"] + 2
+    assert k["activation_rate"]["activated"] == base["activation_rate"]["activated"] + 2
+    assert (
+        k["paid_conversion"]["paying_workspaces"]
+        == base["paid_conversion"]["paying_workspaces"] + 1
+    )
     signups = sum(d["signups"] for d in k["signups_series"])
-    # A staff member (the ghost's owner) and a founder signed up since `base`: only the founder counts.
+    # Two staff (ghost owner, dual) and one founder signed up since `base`: only the founder counts.
     assert signups == sum(d["signups"] for d in base["signups_series"]) + 1

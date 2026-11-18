@@ -8,8 +8,8 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import ColumnElement, Date, and_, cast, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import ColumnElement, Date, and_, cast, func, or_, select
+from sqlalchemy.orm import Session, aliased
 
 from app.core.errors import AppError
 from app.db.models.billing import BillingPlan, BillingSubscription
@@ -280,9 +280,20 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
 
 
 def _customer() -> ColumnElement[bool]:
-    """A live workspace not owned by staff: staff sign-ins used to leave empty founder drafts
-    behind (SO4), and those must not count as customers in any KPI."""
-    return and_(Startup.deleted_at.is_(None), Startup.created_by.notin_(active_staff_ids()))
+    """A live workspace that is not a staff ghost. Staff sign-ins used to leave empty founder
+    drafts behind (SO4); only those (owned by current staff AND never onboarded) are left out.
+    A staff member's real, onboarded workspace still counts, and so does every workspace once
+    its owner's staff access is revoked."""
+    ghost = aliased(Startup)
+    staff_drafts = (
+        select(ghost.id)
+        .join(StartupProfile, StartupProfile.startup_id == ghost.id)
+        .where(
+            ghost.created_by.in_(active_staff_ids()),
+            StartupProfile.onboarding_completed_at.is_(None),
+        )
+    )
+    return and_(Startup.deleted_at.is_(None), Startup.id.notin_(staff_drafts))
 
 
 def _rate(num: int, den: int) -> float | None:
