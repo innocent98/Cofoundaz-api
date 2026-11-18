@@ -350,6 +350,22 @@ def test_list_truncates_and_detail_shows_only_the_snippet(client, db, world):
     assert resp.status_code == 404
 
 
+def test_a_nameless_author_is_a_team_member_never_their_email(client, db, world):
+    # SO1: an author with no profile name must not be shown to moderators by their address.
+    mod = moderator(db)
+    nameless = mk_user(db)
+    member(db, world.ws, nameless, MembershipRole.team_member)
+    c = mk_comment(db, world.ws, nameless)
+    rc = filed(client, world.owner, world.ws, "comment", c.id)
+    d = client.get(f"{S}/{rc['id']}", headers=hdr(mod)).json()["data"]
+    assert d["author"] == {"id": str(nameless.id), "name": "A team member"}
+    listed = client.get(S, headers=hdr(mod)).json()["data"]["reports"]
+    row = next(x for x in listed if x["id"] == rc["id"])
+    assert row["author"]["name"] == "A team member"
+    blob = client.get(f"{S}/{rc['id']}", headers=hdr(mod)).text
+    assert nameless.email not in blob
+
+
 # ---------------------------------------------------------------- staff: actions
 
 

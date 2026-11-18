@@ -21,6 +21,7 @@ S = "/api/v1/super-admin"
 F = "/api/v1/reports"
 T = "/api/v1/team"
 G = "admin_reports"
+SKIP = "staff_skip_onboarding"  # SO4 captures
 NOTE_TEXT = "Your launch plan is hopeless and so are you."
 
 
@@ -138,8 +139,28 @@ def test_admin_reports_journey(
         c = httpx.Client(base_url=base_url, timeout=15.0)
         return c, _auth(c.post("/api/v1/auth/login", json=user).json()["data"]["access_token"])
 
+    # ---- SO4: staff are not founders -----------------------------------------------------------
+    # /auth/me names the console; every onboarding route refuses to make them a founder draft.
+    for who, hdrs, role in (("admin", mod, "admin"), ("super_admin", sa, "super_admin")):
+        r = http.get("/api/v1/auth/me", headers=hdrs)
+        assert r.status_code == 200 and r.json()["data"]["staff_role"] == role, r.text
+        assert r.json()["data"]["memberships"] == []
+        capture(SKIP, f"me_{who}", r)
+        r = http.get("/api/v1/onboarding/state", headers=hdrs)
+        assert r.status_code == 409, r.text
+        assert r.json()["error"]["code"] == "ONBOARDING_NOT_FOR_STAFF"
+        capture(SKIP, f"onboarding_state_{who}_409", r)
+    r = http.patch("/api/v1/onboarding/state", headers=mod, json={"step": 1, "full_name": "Mo"})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "ONBOARDING_NOT_FOR_STAFF"
+    capture(SKIP, "onboarding_patch_admin_409", r)
+    r = http.get("/api/v1/auth/me", headers=mod)
+    assert r.json()["data"]["memberships"] == []  # still no workspace after all of that
+
     f_user = make_verified_user(http)
     fc, f_auth = login(f_user)
+    r = fc.get("/api/v1/auth/me", headers=f_auth)
+    assert r.json()["data"]["staff_role"] is None
+    capture(SKIP, "me_founder", r)
     ws = _onboard(fc, f_auth, "Report Co")
     f = {**f_auth, "X-Workspace-Id": ws}
     o_user = make_verified_user(http)
@@ -289,6 +310,9 @@ def test_admin_reports_journey(
     d = r.json()["data"]
     assert r.status_code == 200 and d["snippet"] == NOTE_TEXT and d["author"]["name"]
     assert "email" not in d["author"]
+    # SO1: the mentor has no profile name; moderators see the house fallback, never the address.
+    assert d["author"]["name"] == "A team member" and "@" not in d["author"]["name"]
+    assert m_user["email"] not in r.text
     capture(G, "detail_comment", r)
     r = http.get(f"{A}/reports/{ids['a']}", headers=mod)
     assert r.status_code == 200 and r.json()["data"]["author"] is None

@@ -11,6 +11,7 @@ from app.db.models.membership import Membership
 from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User
 from app.platform.events import event_bus
+from app.services.staff.roster import staff_role
 
 
 def joined_workspace(db: Session, user: User, preferred_id: uuid.UUID | None) -> Startup | None:
@@ -150,6 +151,14 @@ def resolve_or_create_workspace(db: Session, user: User) -> Startup:
         raise AppError(
             code="ONBOARDING_NOT_FOR_INVITED",
             message="You joined a workspace as a team member, so there is no startup to set up.",
+            http_status=409,
+        )
+    if staff_role(db, user.id) is not None:
+        # Staff run the console; a founder draft of their own would be a ghost workspace that
+        # inflates the KPIs (SO4). A workspace they already own is left as it is.
+        raise AppError(
+            code="ONBOARDING_NOT_FOR_STAFF",
+            message="Staff accounts don't set up a startup. Use the admin console instead.",
             http_status=409,
         )
 

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ONBOARDING_NOT_FOR_STAFF",
+    "message": "Staff accounts don't set up a startup. Use the admin console instead.",
+    "field_errors": []
+  }
+}
