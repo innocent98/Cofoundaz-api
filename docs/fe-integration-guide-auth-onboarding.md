@@ -283,6 +283,47 @@ Other reasons, unit-tested only: `already_invited`, `already_member`. The `inves
 
 ---
 
+### Platform staff skip the wizard (SO4, 2026-11-18)
+Staff accounts (Admin, Super Admin) are not founders. `GET /auth/me` now carries **`staff_role`** at the top level of `data`:
+`"admin"`, `"super_admin"`, or `null` for everyone else (founders, members, staff whose access was revoked). It is present on
+every `/auth/me` answer (`null`, never absent) [`me_founder`: `"staff_role": null`; `me_super_admin`: `"staff_role": "super_admin"`].
+An Admin's `/auth/me`, captured live (the address is the e2e run's placeholder mailbox) [`me_admin`]:
+```json
+{
+  "data": {
+    "user": {
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev",
+      "status": "active"
+    },
+    "profile": {
+      "full_name": null,
+      "role_title": "",
+      "country": null,
+      "avatar_url": null,
+      "phone": null
+    },
+    "memberships": [],
+    "active_workspace_id": null,
+    "staff_role": "admin"
+  },
+  "meta": null
+}
+```
+Every onboarding route that would create a founder draft answers **409 `ONBOARDING_NOT_FOR_STAFF`** for staff with no workspace of
+their own: `GET` and `PATCH /onboarding/state` [`onboarding_state_admin_409`], [`onboarding_state_super_admin_409`], [`onboarding_patch_admin_409`],
+and (API-tested) `POST /onboarding/complete` and `POST /onboarding/invites`:
+```
+{"error": {"code": "ONBOARDING_NOT_FOR_STAFF", "message": "Staff accounts don't set up a startup. Use the admin console instead.", "field_errors": []}}
+```
+(`PATCH` answers the same body [`onboarding_patch_admin_409`].) This applies even before the staff member turns on 2FA: a staff row is
+enough. A staff member who already owns a workspace (an old ghost from before this fix) keeps it and its state as it was; the console
+KPIs leave staff-owned workspaces and staff sign-ups out either way.
+
+**FE:** after sign-in (password, MFA, Google) and on the verify page's Continue, read `staff_role` before `/onboarding/state`:
+`"admin"` → `/admin-portal`, `"super_admin"` → `/super-admin` (a console deep link in `next` is kept). `/onboarding` sends staff away
+the same way, and treats `ONBOARDING_NOT_FOR_STAFF` like `ONBOARDING_NOT_FOR_INVITED`: route away, never show it as a form error.
+
 ## 7. Emails (gaps 21, 22)
 
 All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/email_*.json`; the invite token in the link is replaced by `<invite-token>`).
@@ -306,6 +347,7 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 7. **Goals are now eight fixed chips;** old free-text goals will be rejected with "Pick goals from the list."
 8. **Sign-up must send `accepted_terms`,** or sign-up fails with `TERMS_NOT_ACCEPTED` (see the deploy-ordering note in section 3).
 9. **Cookie mode:** `X-Auth-Mode: cookie` and `credentials: "include"` on `/auth/*`; access token in memory only; one shared refresh in flight.
+10. **Staff never see the wizard:** route by `staff_role` to the console and treat `ONBOARDING_NOT_FOR_STAFF` as a redirect, not an error.
 
 ---
 
@@ -313,6 +355,8 @@ All captured from the file mail backend (`e2e/_captures/auth_onboarding_gaps/ema
 
 | Behaviour | Verified |
 |---|---|
+| Staff: `/auth/me` `staff_role` (admin, super_admin, null for a founder); `GET`/`PATCH /onboarding/state` 409 `ONBOARDING_NOT_FOR_STAFF`; no workspace created | live (`e2e/_captures/staff_skip_onboarding/`, from `e2e/test_admin_reports.py`) |
+| Staff: `POST /onboarding/complete` and `/onboarding/invites` 409; revoked staff get `null`; KPIs leave out staff-owned workspaces and staff sign-ups | unit tests only (`tests/api/onboarding/test_staff_skip_onboarding.py`) |
 | Lockout per (email, IP); unknown email gets the identical 429; 5th failure trips it; other IP not locked; right password refused while locked | live (`lockout_*`) |
 | `retry_after_seconds` in body and `Retry-After` header; message with minutes | live |
 | Password reset lifts the lock, next login works from the locked IP | live (`reset_while_locked_200`, `login_after_reset_from_locked_ip_200`) |

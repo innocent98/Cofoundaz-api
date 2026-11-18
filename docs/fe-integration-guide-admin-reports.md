@@ -20,7 +20,7 @@ Marketplace **reviews are not reportable yet** (Marketplace isn't built); `item_
 | R2 | Reportable: AI Co-Founder assistant replies (only in your own conversations) and comments (not document comments). |
 | R3 | You cannot report your own comment. One live (open or escalated) report per person per item; you can report again once it is closed. 10 reports per person per hour. |
 | R4 | The snippet (max 2000 chars) is copied when the report is filed and kept even if the item is later edited or deleted. |
-| R5 | Staff see the snippet, reason, note, reporter name and email, the author's **name only** (no email), and the workspace name and plan. Nothing else. No route reads the chat or comment thread (D-ADM-9). |
+| R5 | Staff see the snippet, reason, note, reporter name and email, the author's **name only** (no email; nameless authors read `"A team member"`, SO1), and the workspace name and plan. Nothing else. No route reads the chat or comment thread (D-ADM-9). |
 | R6 | Statuses: `open`, `escalated`, `dismissed`, `removed`, `restored`. Tabs: Open = open, Escalated = escalated, Closed = dismissed + removed + restored. |
 | R7 | A moderator may dismiss, remove or escalate an **open** report. Only a Super Admin may decide an **escalated** one (a moderator gets 403 `SUPER_ADMIN_ONLY`). The same applies to removing an item that has an escalated report on it, and to restoring a removal that closed an escalated report. |
 | R8 | Remove closes **all** live reports on the same item as `removed`. Dismiss closes only that report. |
@@ -403,7 +403,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "51de0fac-ab33-414b-9fea-0b324b613117",
+        "id": "adc4cb90-7061-4e4e-b861-ffcaf44c78df",
         "item_type": "ai_message",
         "reason": "harmful",
         "note": "Wrong figures",
@@ -411,17 +411,66 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "[stub-llm] AI-generated assessment narrative.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
           "name": "Ada Obi",
-          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+          "email": "delivered+e2e-745e2a172631@resend.dev"
         },
         "author": null,
         "workspace": {
-          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "id": "303b8574-4117-4bff-bc5c-df27e13db809",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:31:30.221510+00:00",
+        "created_at": "2026-11-18T14:13:50.189763+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      },
+      {
+        "id": "f591ec52-9078-4da4-b90f-40942b72a449",
+        "item_type": "ai_message",
+        "reason": "inaccurate",
+        "note": "Wrong figures",
+        "status": "open",
+        "snippet": "[stub-llm] AI-generated assessment narrative.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-745e2a172631@resend.dev"
+        },
+        "author": null,
+        "workspace": {
+          "id": "303b8574-4117-4bff-bc5c-df27e13db809",
+          "name": "Report Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-18T14:13:50.172013+00:00",
+        "escalated_at": null,
+        "decided_at": null
+      },
+      {
+        "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
+        "item_type": "comment",
+        "reason": "abusive",
+        "note": "Personal attack",
+        "status": "open",
+        "snippet": "Your launch plan is hopeless and so are you.",
+        "snippet_truncated": false,
+        "reporter": {
+          "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
+          "name": "Ada Obi",
+          "email": "delivered+e2e-745e2a172631@resend.dev"
+        },
+        "author": {
+          "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+          "name": "A team member"
+        },
+        "workspace": {
+          "id": "303b8574-4117-4bff-bc5c-df27e13db809",
+          "name": "Report Co",
+          "plan_key": "starter"
+        },
+        "created_at": "2026-11-18T14:13:50.134975+00:00",
         "escalated_at": null,
         "decided_at": null
       }
@@ -441,7 +490,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+        "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
         "item_type": "comment",
         "reason": "abusive",
         "note": "Personal attack",
@@ -449,20 +498,20 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "Your launch plan is hopeless and so are you.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
           "name": "Ada Obi",
-          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+          "email": "delivered+e2e-745e2a172631@resend.dev"
         },
         "author": {
-          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-          "name": "delivered+e2e-a8874c9c7471@resend.dev"
+          "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+          "name": "A team member"
         },
         "workspace": {
-          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "id": "303b8574-4117-4bff-bc5c-df27e13db809",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:31:30.166167+00:00",
+        "created_at": "2026-11-18T14:13:50.134975+00:00",
         "escalated_at": null,
         "decided_at": null
       }
@@ -519,7 +568,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
   "data": {
     "reports": [
       {
-        "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+        "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
         "item_type": "comment",
         "reason": "abusive",
         "note": "Personal attack",
@@ -527,21 +576,21 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
         "snippet": "Your launch plan is hopeless and so are you.",
         "snippet_truncated": false,
         "reporter": {
-          "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+          "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
           "name": "Ada Obi",
-          "email": "delivered+e2e-bb3da4790da4@resend.dev"
+          "email": "delivered+e2e-745e2a172631@resend.dev"
         },
         "author": {
-          "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-          "name": "delivered+e2e-a8874c9c7471@resend.dev"
+          "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+          "name": "A team member"
         },
         "workspace": {
-          "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+          "id": "303b8574-4117-4bff-bc5c-df27e13db809",
           "name": "Report Co",
           "plan_key": "starter"
         },
-        "created_at": "2026-11-02T14:31:30.166167+00:00",
-        "escalated_at": "2026-11-02T14:31:30.394716+00:00",
+        "created_at": "2026-11-18T14:13:50.134975+00:00",
+        "escalated_at": "2026-11-18T14:13:50.372372+00:00",
         "decided_at": null
       }
     ]
@@ -555,7 +604,7 @@ List rows carry `snippet` cut to 200 chars with `snippet_truncated` telling you 
 
 ### `GET /admin/reports/{id}`
 
-The full report. **Nesting traps:** `author` is an object with only `id` and `name` (never an email) and is `null` for an AI reply (it has no human author); `reporter` has `email` too; `escalation_reason`, `decision_reason`, `escalated_by` and `decided_by` only exist on the detail, not on list rows; `reports_on_item` counts how many people reported the same item (a number only: no other report's text). An unknown id is a 404 `NOT_FOUND`.
+The full report. **Nesting traps:** `author` is an object with only `id` and `name` (never an email; a person with no profile name comes back as `"A team member"`, never their address, SO1 2026-11-18. The same fallback applies to `reporter`, `escalated_by` and `decided_by`, which also carry `email`, so show the email beside the name for those) and is `null` for an AI reply (it has no human author); `reporter` has `email` too; `escalation_reason`, `decision_reason`, `escalated_by` and `decided_by` only exist on the detail, not on list rows; `reports_on_item` counts how many people reported the same item (a number only: no other report's text). An unknown id is a 404 `NOT_FOUND`.
 
 **The Reports tab shows nothing but `snippet`.** There is no link to the chat, thread or document, and no route returns one. Do not build a "view in context" control.
 
@@ -564,7 +613,7 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
 ```json
 {
   "data": {
-    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+    "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -572,20 +621,20 @@ The full report. **Nesting traps:** `author` is an object with only `id` and `na
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": {
-      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-      "name": "delivered+e2e-a8874c9c7471@resend.dev"
+      "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+      "name": "A team member"
     },
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.166167+00:00",
+    "created_at": "2026-11-18T14:13:50.134975+00:00",
     "escalated_at": null,
     "decided_at": null,
     "escalation_reason": null,
@@ -667,7 +716,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "89e488de-2e3a-4761-9e4e-d437094ce4a0",
+    "id": "f591ec52-9078-4da4-b90f-40942b72a449",
     "item_type": "ai_message",
     "reason": "inaccurate",
     "note": "Wrong figures",
@@ -675,26 +724,26 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "[stub-llm] AI-generated assessment narrative.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": null,
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.200966+00:00",
+    "created_at": "2026-11-18T14:13:50.172013+00:00",
     "escalated_at": null,
-    "decided_at": "2026-11-02T14:31:30.351805+00:00",
+    "decided_at": "2026-11-18T14:13:50.324533+00:00",
     "escalation_reason": null,
     "decision_reason": "Figures match the workspace data; not an error",
     "escalated_by": null,
     "decided_by": {
-      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
-      "name": "delivered+e2e-fa1913781717@resend.dev",
-      "email": "delivered+e2e-fa1913781717@resend.dev"
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "name": "A team member",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -717,7 +766,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+    "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -725,28 +774,28 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": {
-      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-      "name": "delivered+e2e-a8874c9c7471@resend.dev"
+      "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+      "name": "A team member"
     },
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.166167+00:00",
-    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
+    "created_at": "2026-11-18T14:13:50.134975+00:00",
+    "escalated_at": "2026-11-18T14:13:50.372372+00:00",
     "decided_at": null,
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": null,
     "escalated_by": {
-      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
-      "name": "delivered+e2e-fa1913781717@resend.dev",
-      "email": "delivered+e2e-fa1913781717@resend.dev"
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "name": "A team member",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev"
     },
     "decided_by": null,
     "reports_on_item": 1
@@ -825,7 +874,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "51de0fac-ab33-414b-9fea-0b324b613117",
+    "id": "adc4cb90-7061-4e4e-b861-ffcaf44c78df",
     "item_type": "ai_message",
     "reason": "harmful",
     "note": "Wrong figures",
@@ -833,26 +882,26 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "[stub-llm] AI-generated assessment narrative.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": null,
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.221510+00:00",
+    "created_at": "2026-11-18T14:13:50.189763+00:00",
     "escalated_at": null,
-    "decided_at": "2026-11-02T14:31:30.490871+00:00",
+    "decided_at": "2026-11-18T14:13:50.482156+00:00",
     "escalation_reason": null,
     "decision_reason": "Harmful financial advice to a founder",
     "escalated_by": null,
     "decided_by": {
-      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
-      "name": "delivered+e2e-fa1913781717@resend.dev",
-      "email": "delivered+e2e-fa1913781717@resend.dev"
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "name": "A team member",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -864,7 +913,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+    "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -872,33 +921,33 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": {
-      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-      "name": "delivered+e2e-a8874c9c7471@resend.dev"
+      "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+      "name": "A team member"
     },
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.166167+00:00",
-    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
-    "decided_at": "2026-11-02T14:31:30.520445+00:00",
+    "created_at": "2026-11-18T14:13:50.134975+00:00",
+    "escalated_at": "2026-11-18T14:13:50.372372+00:00",
+    "decided_at": "2026-11-18T14:13:50.515085+00:00",
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": "Abuse of a named person confirmed",
     "escalated_by": {
-      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
-      "name": "delivered+e2e-fa1913781717@resend.dev",
-      "email": "delivered+e2e-fa1913781717@resend.dev"
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "name": "A team member",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev"
     },
     "decided_by": {
-      "id": "210254f9-f135-4d34-bebd-0117b1651d68",
-      "name": "delivered+e2e-27877180d2aa@resend.dev",
-      "email": "delivered+e2e-27877180d2aa@resend.dev"
+      "id": "9b0c3ccc-c206-462a-be22-2495e04fa2f6",
+      "name": "A team member",
+      "email": "delivered+e2e-e70aef54778c@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -935,7 +984,7 @@ Each action returns the full updated report (same shape as the detail). All need
 ```json
 {
   "data": {
-    "id": "e086ac18-fb11-47b9-be02-24e5a732c6f2",
+    "id": "d61f1817-ad5a-4912-ac91-ef8c3fd10563",
     "item_type": "comment",
     "reason": "abusive",
     "note": "Personal attack",
@@ -943,33 +992,33 @@ Each action returns the full updated report (same shape as the detail). All need
     "snippet": "Your launch plan is hopeless and so are you.",
     "snippet_truncated": false,
     "reporter": {
-      "id": "f0753ee3-b676-41c0-a769-9c562917eb7d",
+      "id": "bf93dcc7-cf6c-416d-b698-df2e552e315b",
       "name": "Ada Obi",
-      "email": "delivered+e2e-bb3da4790da4@resend.dev"
+      "email": "delivered+e2e-745e2a172631@resend.dev"
     },
     "author": {
-      "id": "c35089c7-11f6-4301-a3de-cd65cb0691d7",
-      "name": "delivered+e2e-a8874c9c7471@resend.dev"
+      "id": "2fd846b8-b47f-4ac9-a866-76e2fa39d8fa",
+      "name": "A team member"
     },
     "workspace": {
-      "id": "7557040c-f857-4dfc-a796-bd32953acb81",
+      "id": "303b8574-4117-4bff-bc5c-df27e13db809",
       "name": "Report Co",
       "plan_key": "starter"
     },
-    "created_at": "2026-11-02T14:31:30.166167+00:00",
-    "escalated_at": "2026-11-02T14:31:30.394716+00:00",
-    "decided_at": "2026-11-02T14:32:01.218225+00:00",
+    "created_at": "2026-11-18T14:13:50.134975+00:00",
+    "escalated_at": "2026-11-18T14:13:50.372372+00:00",
+    "decided_at": "2026-11-18T14:14:00.706317+00:00",
     "escalation_reason": "Targeted abuse of a named person; needs a Super Admin call",
     "decision_reason": "Second look: context was a quoted example",
     "escalated_by": {
-      "id": "3f38ef34-9c57-42a9-9b1f-6cdb54c284ee",
-      "name": "delivered+e2e-fa1913781717@resend.dev",
-      "email": "delivered+e2e-fa1913781717@resend.dev"
+      "id": "46ac18a5-ec06-42e9-a151-dc5885357afa",
+      "name": "A team member",
+      "email": "delivered+e2e-eefd51af6eb3@resend.dev"
     },
     "decided_by": {
-      "id": "210254f9-f135-4d34-bebd-0117b1651d68",
-      "name": "delivered+e2e-27877180d2aa@resend.dev",
-      "email": "delivered+e2e-27877180d2aa@resend.dev"
+      "id": "9b0c3ccc-c206-462a-be22-2495e04fa2f6",
+      "name": "A team member",
+      "email": "delivered+e2e-e70aef54778c@resend.dev"
     },
     "reports_on_item": 1
   },
@@ -1029,6 +1078,7 @@ Actions seen live: `report.filed`, `report.dismissed`, `report.escalated`, `repo
 | Moderator guards: founder 404, wrong scope 403 | verified-live |
 | Counts, open list with search, type/reason filter, closed and escalated tabs, cursor paging | verified-live except cursor paging, which is API-tested only |
 | Detail for a comment and an AI reply; staff never see the author's email or the source thread | verified-live |
+| A nameless author shows as `"A team member"` on the list and detail, never their address (SO1; re-captured 2026-11-18: `detail_comment`, the list tabs and the action bodies) | verified-live |
 | Dismiss, escalate, double-escalate 409, dismiss on closed 409, moderator blocked on escalated 403 | verified-live |
 | Remove with a bad code 403, no code 422, good code 200 (AI reply by moderator, comment by Super Admin) | verified-live |
 | Author sees `Removed by moderation` on a comment and an AI reply, cannot edit it, restore brings it back | verified-live |

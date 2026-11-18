@@ -3960,6 +3960,9 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide
 - [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
 - [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view
+- [x] SO1 (2026-11-18, branch `fix/staff-report-author-and-onboarding`): a nameless author reads "A team member", never their email (SOP `docs/sop/2026-11-18-staff-report-author-and-onboarding.md`)
+- [x] SO4 (same branch + FE `fix/staff-skip-onboarding`): `/auth/me` `staff_role`; onboarding 409 `ONBOARDING_NOT_FOR_STAFF` for staff; console KPIs leave out staff-owned workspaces and staff sign-ups; FE routes staff to the console
+- [ ] Follow-up: hide staff-owned ghost workspaces from `GET /admin/workspaces` (or soft-delete them) if Adebayo wants
 
 
 ## CI pipeline speed (2026-11-05)

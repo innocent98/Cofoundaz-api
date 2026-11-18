@@ -1,0 +1,20 @@
+{
+  "data": {
+    "user": {
+      "id": "9b0c3ccc-c206-462a-be22-2495e04fa2f6",
+      "email": "delivered+e2e-e70aef54778c@resend.dev",
+      "status": "active"
+    },
+    "profile": {
+      "full_name": null,
+      "role_title": "",
+      "country": null,
+      "avatar_url": null,
+      "phone": null
+    },
+    "memberships": [],
+    "active_workspace_id": null,
+    "staff_role": "super_admin"
+  },
+  "meta": null
+}
