@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.platform.audit import write_audit
 from app.platform.storage import get_storage
 from app.services.onboarding.workspace import is_untouched_draft
+from app.services.staff.roster import staff_role
 
 router = APIRouter()
 
@@ -149,6 +150,9 @@ def _me_payload(db: Session, user: User) -> dict[str, Any]:
         ),
         "memberships": memberships,
         "active_workspace_id": memberships[0]["startup_id"] if memberships else None,
+        # "admin" / "super_admin" for platform staff, else null: the FE sends staff to the
+        # console instead of founder onboarding (SO4). Only ever describes the caller.
+        "staff_role": role.value if (role := staff_role(db, user.id)) else None,
     }
 
 

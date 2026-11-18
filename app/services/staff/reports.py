@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.api.staff_deps import StaffContext
 from app.core.errors import NotFound
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.billing import BillingSubscription
 from app.db.models.content_report import ContentReport
 from app.db.models.enums import ReportItemType, ReportReason, ReportStatus
@@ -41,8 +42,11 @@ def _people(db: Session, ids: set[uuid.UUID | None]) -> dict[uuid.UUID, dict[str
         .filter(User.id.in_(wanted))
         .all()
     )
+    # A nameless person shows as "A team member", never their address (SO1): the author entry
+    # below keeps only the name, so an e-mail used as a name would leak it to moderators.
     return {
-        uid: {"id": str(uid), "name": name or email, "email": email} for uid, email, name in rows
+        uid: {"id": str(uid), "name": name or NAMELESS_MEMBER, "email": email}
+        for uid, email, name in rows
     }
 
 

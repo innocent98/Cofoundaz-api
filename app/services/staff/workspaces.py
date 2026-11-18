@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import ColumnElement, Date, cast, func, or_
+from sqlalchemy import ColumnElement, Date, and_, cast, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -23,6 +23,7 @@ from app.db.models.startup import Startup, StartupProfile
 from app.db.models.user import User, UserProfile
 from app.services.billing.catalog import TOKENS_PER_CREDIT
 from app.services.staff.like import contains_pattern
+from app.services.staff.roster import active_staff_ids
 from app.services.staff.users import _decode_cursor, _encode_cursor
 
 SEAT_ROLES = (MembershipRole.founder, MembershipRole.team_member)
@@ -278,6 +279,12 @@ def workspace_detail(db: Session, workspace_id: uuid.UUID) -> dict[str, Any]:
 # ---------------------------------------------------------------- dashboard KPIs
 
 
+def _customer() -> ColumnElement[bool]:
+    """A live workspace not owned by staff: staff sign-ins used to leave empty founder drafts
+    behind (SO4), and those must not count as customers in any KPI."""
+    return and_(Startup.deleted_at.is_(None), Startup.created_by.notin_(active_staff_ids()))
+
+
 def _rate(num: int, den: int) -> float | None:
     return round(100 * num / den, 1) if den else None
 
@@ -287,7 +294,7 @@ def _window_counts(db: Session, start: datetime, end: datetime) -> tuple[int, in
     who signed up in the window."""
     created = (
         db.query(func.count(Startup.id))
-        .filter(Startup.deleted_at.is_(None), Startup.created_at >= start, Startup.created_at < end)
+        .filter(_customer(), Startup.created_at >= start, Startup.created_at < end)
         .scalar()
         or 0
     )
@@ -295,7 +302,7 @@ def _window_counts(db: Session, start: datetime, end: datetime) -> tuple[int, in
         db.query(func.count(Startup.id))
         .join(StartupProfile, StartupProfile.startup_id == Startup.id)
         .filter(
-            Startup.deleted_at.is_(None),
+            _customer(),
             Startup.created_at >= start,
             Startup.created_at < end,
             StartupProfile.onboarding_completed_at.isnot(None),
@@ -306,7 +313,12 @@ def _window_counts(db: Session, start: datetime, end: datetime) -> tuple[int, in
     )
     signups = (
         db.query(func.count(User.id))
-        .filter(User.deleted_at.is_(None), User.created_at >= start, User.created_at < end)
+        .filter(
+            User.deleted_at.is_(None),
+            User.id.notin_(active_staff_ids()),
+            User.created_at >= start,
+            User.created_at < end,
+        )
         .scalar()
         or 0
     )
@@ -319,12 +331,12 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
     prev_start = now - timedelta(days=2 * WINDOW_DAYS)
     created, activated, _ = _window_counts(db, cur_start, now)
     p_created, p_activated, _ = _window_counts(db, prev_start, cur_start)
-    total = int(db.query(func.count(Startup.id)).filter(Startup.deleted_at.is_(None)).scalar() or 0)
+    total = int(db.query(func.count(Startup.id)).filter(_customer()).scalar() or 0)
     paying = int(
         db.query(func.count(BillingSubscription.id))
         .join(Startup, Startup.id == BillingSubscription.startup_id)
         .filter(
-            Startup.deleted_at.is_(None),
+            _customer(),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
             BillingSubscription.comped.is_(False),
@@ -343,7 +355,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
         .join(BillingPlan, BillingPlan.key == BillingSubscription.plan_key)
         .join(Startup, Startup.id == BillingSubscription.startup_id)
         .filter(
-            Startup.deleted_at.is_(None),
+            _customer(),
             BillingSubscription.status == "active",
             BillingSubscription.plan_key != "starter",
             BillingSubscription.comped.is_(False),
@@ -359,7 +371,11 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
     day = cast(func.timezone("UTC", User.created_at), Date)
     signups_by_day = dict(
         db.query(day, func.count(User.id))
-        .filter(User.deleted_at.is_(None), User.created_at >= cur_start)
+        .filter(
+            User.deleted_at.is_(None),
+            User.id.notin_(active_staff_ids()),
+            User.created_at >= cur_start,
+        )
         .group_by(day)
         .tuples()
         .all()
@@ -368,7 +384,7 @@ def dashboard_kpis(db: Session, *, now: datetime | None = None) -> dict[str, Any
     activations_by_day = dict(
         db.query(act_day, func.count(StartupProfile.startup_id))
         .join(Startup, Startup.id == StartupProfile.startup_id)
-        .filter(Startup.deleted_at.is_(None), StartupProfile.onboarding_completed_at >= cur_start)
+        .filter(_customer(), StartupProfile.onboarding_completed_at >= cur_start)
         .group_by(act_day)
         .tuples()
         .all()
