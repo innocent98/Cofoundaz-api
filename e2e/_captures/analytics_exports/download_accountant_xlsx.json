@@ -1,0 +1,12 @@
+{
+  "status_code": 200,
+  "headers": {
+    "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "content-disposition": "attachment; filename=\"Board pack 2026-10-15 to 2026-11-13.xlsx\"; filename*=UTF-8''Board%20pack%202026-10-15%20to%202026-11-13.xlsx",
+    "cache-control": "private, no-store",
+    "x-content-type-options": "nosniff",
+    "content-security-policy": "sandbox; default-src 'none'"
+  },
+  "size_bytes": 4087,
+  "first_bytes": "PK\u0003\u0004\u0014\u0000\u0000\u0000"
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Only the founder or a team member can run a report. Export one of its finished runs instead.",
+    "field_errors": []
+  }
+}

@@ -28,6 +28,7 @@ CORE = {MembershipRole.founder, MembershipRole.team_member}
 NARROWER_THAN_AUDIENCE = {
     "analytics.report.generated",  # only the member who started the run
     "analytics.report.shared",  # only the members the report was shared with
+    "analytics.export.created",  # only the member who asked for the export
     "journal.reminder",  # only the founder named in the payload
     "journal.prompt.daily",
     "sales.deal.stalled",

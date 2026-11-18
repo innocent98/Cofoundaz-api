@@ -682,6 +682,12 @@ SPECS: dict[str, NotifSpec] = {
         lambda p: f"A report was shared with you: {p.get('report_name', 'a report')}",
         lambda _p: "Open",
     ),
+    # Slice C: export ready, to the requester only (spec section 6 audience).
+    "analytics.export.created": NotifSpec(
+        _payload_users,
+        lambda p: f"Your export is ready: {p.get('export_name', 'an export')}",
+        lambda _p: "Download",
+    ),
     # Marketplace (design §7, PRD strings kept). Payloads carry `title`, `provider_name`, `date`.
     "marketplace.booking.confirmed": NotifSpec(
         _audience("marketplace.booking.confirmed", minus_actor=False),

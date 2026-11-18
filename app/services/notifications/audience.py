@@ -24,7 +24,7 @@ from app.db.models.enums import (
     MembershipRole,
 )
 from app.db.models.notification import Notification
-from app.services.analytics.catalog import REPORT_ROLES
+from app.services.analytics.catalog import EXPORT_ROLES, REPORT_ROLES
 
 CORE_ROLES: frozenset[MembershipRole] = frozenset(
     {MembershipRole.founder, MembershipRole.team_member}
@@ -84,6 +84,7 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     # Analytics reports (slice B): the requester of a run, or the member a report was shared with.
     "analytics.report.generated": REPORT_ROLES,
     "analytics.report.shared": REPORT_ROLES,
+    "analytics.export.created": EXPORT_ROLES,  # the requester; never a mentor or consultant
     "legal.compliance.due_soon": LEGAL_ROLES,
     "legal.compliance.overdue": LEGAL_ROLES,
     "legal.ip.renewal_due_soon": LEGAL_ROLES,

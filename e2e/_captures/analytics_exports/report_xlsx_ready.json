@@ -1,0 +1,29 @@
+{
+  "data": {
+    "id": "8b882b87-cfbf-42e5-8696-7edeb9ae6c19",
+    "name": "Board pack",
+    "artifact_type": "report",
+    "format": "xlsx",
+    "status": "ready",
+    "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
+    "run_id": "d5819ff0-46db-4dc5-a7f6-4643965928ed",
+    "period": {
+      "to": "2026-11-13",
+      "from": "2026-10-15"
+    },
+    "metrics": null,
+    "filename": "Board pack 2026-10-15 to 2026-11-13.xlsx",
+    "size_bytes": 4094,
+    "download_count": 0,
+    "download_path": "/api/v1/analytics/exports/8b882b87-cfbf-42e5-8696-7edeb9ae6c19/download",
+    "error": null,
+    "created_by": {
+      "id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+      "name": "Ada F"
+    },
+    "created_at": "2026-11-13T20:28:36.641471+00:00",
+    "ready_at": "2026-11-13T20:28:36.673272+00:00",
+    "expires_at": "2026-12-13T20:28:36.648821+00:00"
+  },
+  "meta": null
+}
