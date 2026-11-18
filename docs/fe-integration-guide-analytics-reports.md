@@ -192,13 +192,13 @@ Body `{blocks, default_range?}`. Rate limited per workspace (429 `RATE_LIMITED`)
 {
   "data": {
     "period": {
-      "from": "2026-10-15",
-      "to": "2026-11-13"
+      "from": "2026-10-20",
+      "to": "2026-11-18"
     },
-    "as_of": "2026-11-13T16:29:24.304791+00:00",
+    "as_of": "2026-11-18T15:48:32.008766+00:00",
     "results": [
       {
-        "block_id": "ce4258d4",
+        "block_id": "17a8c651",
         "type": "metric",
         "hub": "finance",
         "viz": "line",
@@ -216,15 +216,15 @@ Body `{blocks, default_range?}`. Rate limited per workspace (429 `RATE_LIMITED`)
           "status": "ok",
           "value": 500000,
           "period": {
-            "from": "2026-10-15",
-            "to": "2026-11-13"
+            "from": "2026-10-20",
+            "to": "2026-11-18"
           },
-          "as_of": "2026-11-13T16:29:24.291697+00:00",
+          "as_of": "2026-11-18T15:48:31.998307+00:00",
           "hub_path": "/finance",
           "compare": {
             "period": {
-              "from": "2026-09-15",
-              "to": "2026-10-14"
+              "from": "2026-09-20",
+              "to": "2026-10-19"
             },
             "value": 0,
             "delta": 500000,
@@ -232,35 +232,35 @@ Body `{blocks, default_range?}`. Rate limited per workspace (429 `RATE_LIMITED`)
           },
           "series": [
             {
-              "from": "2026-10-15",
-              "to": "2026-10-21",
+              "from": "2026-10-20",
+              "to": "2026-10-26",
               "value": 0
             },
             {
-              "from": "2026-10-22",
-              "to": "2026-10-28",
+              "from": "2026-10-27",
+              "to": "2026-11-02",
               "value": 0
             },
             {
-              "from": "2026-10-29",
-              "to": "2026-11-04",
+              "from": "2026-11-03",
+              "to": "2026-11-09",
               "value": 0
             },
             {
-              "from": "2026-11-05",
-              "to": "2026-11-11",
+              "from": "2026-11-10",
+              "to": "2026-11-16",
               "value": 500000
             },
             {
-              "from": "2026-11-12",
-              "to": "2026-11-13",
+              "from": "2026-11-17",
+              "to": "2026-11-18",
               "value": 0
             }
           ]
         }
       },
       {
-        "block_id": "e3c7da24",
+        "block_id": "9be0d2a7",
         "type": "metric",
         "hub": "marketing",
         "viz": "number",
@@ -278,15 +278,15 @@ Body `{blocks, default_range?}`. Rate limited per workspace (429 `RATE_LIMITED`)
           "status": "ok",
           "value": 50,
           "period": {
-            "from": "2026-10-15",
-            "to": "2026-11-13"
+            "from": "2026-10-20",
+            "to": "2026-11-18"
           },
-          "as_of": "2026-11-13T16:29:24.303790+00:00",
+          "as_of": "2026-11-18T15:48:32.008033+00:00",
           "hub_path": "/marketing",
           "compare": {
             "period": {
-              "from": "2026-09-15",
-              "to": "2026-10-14"
+              "from": "2026-09-20",
+              "to": "2026-10-19"
             },
             "value": null,
             "delta": null,
@@ -296,7 +296,7 @@ Body `{blocks, default_range?}`. Rate limited per workspace (429 `RATE_LIMITED`)
         }
       },
       {
-        "block_id": "8b2df972",
+        "block_id": "acbf89d1",
         "type": "text",
         "title": "Note",
         "text": "Clicks are paid plus organic."
@@ -316,11 +316,11 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
 ```json
 {
   "data": {
-    "id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "name": "Board pack",
     "description": "For the board",
     "owner": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
     "template_key": null,
@@ -337,12 +337,12 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
     "is_owner": true,
     "shared_with_me": false,
     "last_run": null,
-    "created_at": "2026-11-13T16:29:24.328305+00:00",
-    "updated_at": "2026-11-13T16:29:24.328305+00:00",
+    "created_at": "2026-11-18T15:48:32.030894+00:00",
+    "updated_at": "2026-11-18T15:48:32.030894+00:00",
     "share_count": 0,
     "blocks": [
       {
-        "id": "64c3aafd",
+        "id": "7e5045c1",
         "hub": "finance",
         "viz": "line",
         "type": "metric",
@@ -352,7 +352,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "a73f8eca",
+        "id": "324e2469",
         "hub": "marketing",
         "viz": "number",
         "type": "metric",
@@ -362,7 +362,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "a1ae7466",
+        "id": "4d367af0",
         "text": "Clicks are paid plus organic.",
         "type": "text",
         "title": "Note"
@@ -378,11 +378,11 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
 ```json
 {
   "data": {
-    "id": "160b3717-d4ba-4630-a4a6-6a15a6def7e5",
+    "id": "e7d1939e-7af0-4742-99f9-044e688ac76a",
     "name": "Monthly investor snapshot",
     "description": "Revenue, burn, runway, cash and pipeline for the month, with the change on the month before.",
     "owner": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
     "template_key": "monthly_investor",
@@ -399,12 +399,12 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
     "is_owner": true,
     "shared_with_me": false,
     "last_run": null,
-    "created_at": "2026-11-13T16:29:24.309498+00:00",
-    "updated_at": "2026-11-13T16:29:24.309498+00:00",
+    "created_at": "2026-11-18T15:48:32.013685+00:00",
+    "updated_at": "2026-11-18T15:48:32.013685+00:00",
     "share_count": 0,
     "blocks": [
       {
-        "id": "94aea1a8",
+        "id": "0617910a",
         "hub": "finance",
         "viz": "line",
         "type": "metric",
@@ -414,7 +414,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "04411d36",
+        "id": "409105fe",
         "hub": "finance",
         "viz": "number",
         "type": "metric",
@@ -424,7 +424,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "f62b0690",
+        "id": "9fb0d164",
         "hub": "finance",
         "viz": "number",
         "type": "metric",
@@ -434,7 +434,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "633202b2",
+        "id": "0d6ebef0",
         "hub": "finance",
         "viz": "number",
         "type": "metric",
@@ -444,7 +444,7 @@ Body `{name, description?, blocks?, default_range?, template_key?}`. Send `templ
         "compare": null
       },
       {
-        "id": "7745fa50",
+        "id": "cc3f5d98",
         "hub": "sales",
         "viz": "number",
         "type": "metric",
@@ -482,11 +482,11 @@ List (no `blocks`, has `block_count`). Founder rows also carry `share_count`.
   "data": {
     "reports": [
       {
-        "id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+        "id": "538af75c-35e3-438c-82af-9f85fd85879a",
         "name": "Board pack Q4",
         "description": "For the board",
         "owner": {
-          "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+          "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
           "name": "Ada F"
         },
         "template_key": null,
@@ -503,14 +503,14 @@ List (no `blocks`, has `block_count`). Founder rows also carry `share_count`.
         "is_owner": false,
         "shared_with_me": true,
         "last_run": {
-          "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
+          "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
           "status": "ready",
-          "as_of": "2026-11-13T16:29:26.309754+00:00",
+          "as_of": "2026-11-18T15:48:32.123736+00:00",
           "error": null,
-          "created_at": "2026-11-13T16:29:24.392255+00:00"
+          "created_at": "2026-11-18T15:48:32.096762+00:00"
         },
-        "created_at": "2026-11-13T16:29:24.328305+00:00",
-        "updated_at": "2026-11-13T16:29:24.368782+00:00"
+        "created_at": "2026-11-18T15:48:32.030894+00:00",
+        "updated_at": "2026-11-18T15:48:32.080172+00:00"
       }
     ],
     "total": 1
@@ -528,11 +528,11 @@ Note the locked first block and `can_edit: false`. `last_run` may belong to some
 ```json
 {
   "data": {
-    "id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "name": "Board pack Q4",
     "description": "For the board",
     "owner": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
     "template_key": null,
@@ -549,24 +549,24 @@ Note the locked first block and `can_edit: false`. `last_run` may belong to some
     "is_owner": false,
     "shared_with_me": true,
     "last_run": {
-      "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
+      "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
       "status": "ready",
-      "as_of": "2026-11-13T16:29:26.309754+00:00",
+      "as_of": "2026-11-18T15:48:32.123736+00:00",
       "error": null,
-      "created_at": "2026-11-13T16:29:24.392255+00:00"
+      "created_at": "2026-11-18T15:48:32.096762+00:00"
     },
-    "created_at": "2026-11-13T16:29:24.328305+00:00",
-    "updated_at": "2026-11-13T16:29:24.368782+00:00",
+    "created_at": "2026-11-18T15:48:32.030894+00:00",
+    "updated_at": "2026-11-18T15:48:32.080172+00:00",
     "blocks": [
       {
-        "id": "64c3aafd",
+        "id": "7e5045c1",
         "type": "metric",
         "locked": true,
         "needs": "finance",
         "needs_label": "Finance"
       },
       {
-        "id": "a73f8eca",
+        "id": "324e2469",
         "hub": "marketing",
         "viz": "number",
         "type": "metric",
@@ -576,7 +576,7 @@ Note the locked first block and `can_edit: false`. `last_run` may belong to some
         "compare": null
       },
       {
-        "id": "a1ae7466",
+        "id": "4d367af0",
         "text": "Clicks are paid plus organic.",
         "type": "text",
         "title": "Note"
@@ -596,11 +596,11 @@ Body must include the `version` you loaded; send only the fields you change (`na
 ```json
 {
   "data": {
-    "id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "name": "Board pack Q4",
     "description": "For the board",
     "owner": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
     "template_key": null,
@@ -617,12 +617,12 @@ Body must include the `version` you loaded; send only the fields you change (`na
     "is_owner": true,
     "shared_with_me": false,
     "last_run": null,
-    "created_at": "2026-11-13T16:29:24.328305+00:00",
-    "updated_at": "2026-11-13T16:29:24.368782+00:00",
+    "created_at": "2026-11-18T15:48:32.030894+00:00",
+    "updated_at": "2026-11-18T15:48:32.080172+00:00",
     "share_count": 0,
     "blocks": [
       {
-        "id": "64c3aafd",
+        "id": "7e5045c1",
         "hub": "finance",
         "viz": "line",
         "type": "metric",
@@ -632,7 +632,7 @@ Body must include the `version` you loaded; send only the fields you change (`na
         "compare": null
       },
       {
-        "id": "a73f8eca",
+        "id": "324e2469",
         "hub": "marketing",
         "viz": "number",
         "type": "metric",
@@ -642,7 +642,7 @@ Body must include the `version` you loaded; send only the fields you change (`na
         "compare": null
       },
       {
-        "id": "a1ae7466",
+        "id": "4d367af0",
         "text": "Clicks are paid plus organic.",
         "type": "text",
         "title": "Note"
@@ -703,11 +703,11 @@ Owner is the caller. Blocks the caller cannot see are dropped; `dropped_blocks` 
 ```json
 {
   "data": {
-    "id": "b299c413-ae78-4fe8-bcab-724563d8a89e",
+    "id": "13f4102d-964f-42c4-a3d3-7074c73af877",
     "name": "Copy of Board pack Q4",
     "description": "For the board",
     "owner": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
     "template_key": null,
@@ -724,12 +724,12 @@ Owner is the caller. Blocks the caller cannot see are dropped; `dropped_blocks` 
     "is_owner": true,
     "shared_with_me": false,
     "last_run": null,
-    "created_at": "2026-11-13T16:29:26.605309+00:00",
-    "updated_at": "2026-11-13T16:29:26.605309+00:00",
+    "created_at": "2026-11-18T15:48:32.341642+00:00",
+    "updated_at": "2026-11-18T15:48:32.341642+00:00",
     "share_count": 0,
     "blocks": [
       {
-        "id": "1880ff0f",
+        "id": "26364653",
         "hub": "finance",
         "viz": "line",
         "type": "metric",
@@ -739,7 +739,7 @@ Owner is the caller. Blocks the caller cannot see are dropped; `dropped_blocks` 
         "compare": null
       },
       {
-        "id": "06b7f6b7",
+        "id": "22d426c9",
         "hub": "marketing",
         "viz": "number",
         "type": "metric",
@@ -749,7 +749,7 @@ Owner is the caller. Blocks the caller cannot see are dropped; `dropped_blocks` 
         "compare": null
       },
       {
-        "id": "cea7c19f",
+        "id": "2060b9b8",
         "text": "Clicks are paid plus organic.",
         "type": "text",
         "title": "Note"
@@ -770,8 +770,8 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
 ```json
 {
   "data": {
-    "run_id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
-    "job_id": "f7a53b35-48ca-44a0-b6b6-a3dda03e08ff",
+    "run_id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
+    "job_id": "7adc97ea-2be0-42e2-8a0f-a2b71b7aaf55",
     "status": "pending"
   },
   "meta": null
@@ -783,34 +783,34 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
 ```json
 {
   "data": {
-    "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
-    "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
+    "report_id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "status": "ready",
     "triggered_by": "manual",
     "period": {
-      "from": "2026-10-15",
-      "to": "2026-11-13"
+      "from": "2026-10-20",
+      "to": "2026-11-18"
     },
     "tz": "UTC",
     "run_by": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
-    "as_of": "2026-11-13T16:29:26.309754+00:00",
+    "as_of": "2026-11-18T15:48:32.123736+00:00",
     "error": null,
-    "created_at": "2026-11-13T16:29:24.392255+00:00",
+    "created_at": "2026-11-18T15:48:32.096762+00:00",
     "snapshot": {
       "report": {
         "name": "Board pack Q4",
         "range": {
-          "to": "2026-11-13",
-          "from": "2026-10-15",
+          "to": "2026-11-18",
+          "from": "2026-10-20",
           "range": "custom",
           "compare": "previous"
         },
         "blocks": [
           {
-            "id": "64c3aafd",
+            "id": "7e5045c1",
             "hub": "finance",
             "viz": "line",
             "type": "metric",
@@ -820,7 +820,7 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "compare": null
           },
           {
-            "id": "a73f8eca",
+            "id": "324e2469",
             "hub": "marketing",
             "viz": "number",
             "type": "metric",
@@ -830,7 +830,7 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "compare": null
           },
           {
-            "id": "a1ae7466",
+            "id": "4d367af0",
             "text": "Clicks are paid plus organic.",
             "type": "text",
             "title": "Note"
@@ -850,37 +850,37 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "good": "up",
             "kind": "flow",
             "unit": "money",
-            "as_of": "2026-11-13T16:29:24.291697+00:00",
+            "as_of": "2026-11-18T15:48:31.998307+00:00",
             "label": "Revenue",
             "value": 500000,
             "period": {
-              "to": "2026-11-13",
-              "from": "2026-10-15"
+              "to": "2026-11-18",
+              "from": "2026-10-20"
             },
             "series": [
               {
-                "to": "2026-10-21",
-                "from": "2026-10-15",
+                "to": "2026-10-26",
+                "from": "2026-10-20",
                 "value": 0
               },
               {
-                "to": "2026-10-28",
-                "from": "2026-10-22",
+                "to": "2026-11-02",
+                "from": "2026-10-27",
                 "value": 0
               },
               {
-                "to": "2026-11-04",
-                "from": "2026-10-29",
+                "to": "2026-11-09",
+                "from": "2026-11-03",
                 "value": 0
               },
               {
-                "to": "2026-11-11",
-                "from": "2026-11-05",
+                "to": "2026-11-16",
+                "from": "2026-11-10",
                 "value": 500000
               },
               {
-                "to": "2026-11-13",
-                "from": "2026-11-12",
+                "to": "2026-11-18",
+                "from": "2026-11-17",
                 "value": 0
               }
             ],
@@ -889,8 +889,8 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
               "delta": 500000,
               "value": 0,
               "period": {
-                "to": "2026-10-14",
-                "from": "2026-09-15"
+                "to": "2026-10-19",
+                "from": "2026-09-20"
               },
               "delta_pct": null
             },
@@ -899,7 +899,7 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
             "source_note": "Finance ledger"
           },
-          "block_id": "64c3aafd"
+          "block_id": "7e5045c1"
         },
         {
           "hub": "marketing",
@@ -912,12 +912,12 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "good": "up",
             "kind": "flow",
             "unit": "count",
-            "as_of": "2026-11-13T16:29:24.303790+00:00",
+            "as_of": "2026-11-18T15:48:32.008033+00:00",
             "label": "Clicks",
             "value": 50,
             "period": {
-              "to": "2026-11-13",
-              "from": "2026-10-15"
+              "to": "2026-11-18",
+              "from": "2026-10-20"
             },
             "series": [],
             "status": "ok",
@@ -925,8 +925,8 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
               "delta": null,
               "value": null,
               "period": {
-                "to": "2026-10-14",
-                "from": "2026-09-15"
+                "to": "2026-10-19",
+                "from": "2026-09-20"
               },
               "delta_pct": null
             },
@@ -935,13 +935,13 @@ A double click returns the same `run_id`. Poll `GET /reports/{id}/runs/{run_id}`
             "definition": "Recorded clicks across channels.",
             "source_note": "Marketing metrics"
           },
-          "block_id": "a73f8eca"
+          "block_id": "324e2469"
         },
         {
           "text": "Clicks are paid plus organic.",
           "type": "text",
           "title": "Note",
-          "block_id": "a1ae7466"
+          "block_id": "4d367af0"
         }
       ]
     }
@@ -959,41 +959,41 @@ The founder's run above was fetched again after the ledger changed (live test as
 ```json
 {
   "data": {
-    "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
-    "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
+    "report_id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "status": "ready",
     "triggered_by": "manual",
     "period": {
-      "from": "2026-10-15",
-      "to": "2026-11-13"
+      "from": "2026-10-20",
+      "to": "2026-11-18"
     },
     "tz": "UTC",
     "run_by": {
-      "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
       "name": "Ada F"
     },
-    "as_of": "2026-11-13T16:29:26.309754+00:00",
+    "as_of": "2026-11-18T15:48:32.123736+00:00",
     "error": null,
-    "created_at": "2026-11-13T16:29:24.392255+00:00",
+    "created_at": "2026-11-18T15:48:32.096762+00:00",
     "snapshot": {
       "report": {
         "name": "Board pack Q4",
         "range": {
-          "to": "2026-11-13",
-          "from": "2026-10-15",
+          "to": "2026-11-18",
+          "from": "2026-10-20",
           "range": "custom",
           "compare": "previous"
         },
         "blocks": [
           {
-            "id": "64c3aafd",
+            "id": "7e5045c1",
             "type": "metric",
             "locked": true,
             "needs": "finance",
             "needs_label": "Finance"
           },
           {
-            "id": "a73f8eca",
+            "id": "324e2469",
             "hub": "marketing",
             "viz": "number",
             "type": "metric",
@@ -1003,7 +1003,7 @@ The founder's run above was fetched again after the ledger changed (live test as
             "compare": null
           },
           {
-            "id": "a1ae7466",
+            "id": "4d367af0",
             "text": "Clicks are paid plus organic.",
             "type": "text",
             "title": "Note"
@@ -1013,7 +1013,7 @@ The founder's run above was fetched again after the ledger changed (live test as
       },
       "results": [
         {
-          "id": "64c3aafd",
+          "id": "7e5045c1",
           "type": "metric",
           "locked": true,
           "needs": "finance",
@@ -1030,12 +1030,12 @@ The founder's run above was fetched again after the ledger changed (live test as
             "good": "up",
             "kind": "flow",
             "unit": "count",
-            "as_of": "2026-11-13T16:29:24.303790+00:00",
+            "as_of": "2026-11-18T15:48:32.008033+00:00",
             "label": "Clicks",
             "value": 50,
             "period": {
-              "to": "2026-11-13",
-              "from": "2026-10-15"
+              "to": "2026-11-18",
+              "from": "2026-10-20"
             },
             "series": [],
             "status": "ok",
@@ -1043,8 +1043,8 @@ The founder's run above was fetched again after the ledger changed (live test as
               "delta": null,
               "value": null,
               "period": {
-                "to": "2026-10-14",
-                "from": "2026-09-15"
+                "to": "2026-10-19",
+                "from": "2026-09-20"
               },
               "delta_pct": null
             },
@@ -1053,13 +1053,13 @@ The founder's run above was fetched again after the ledger changed (live test as
             "definition": "Recorded clicks across channels.",
             "source_note": "Marketing metrics"
           },
-          "block_id": "a73f8eca"
+          "block_id": "324e2469"
         },
         {
           "text": "Clicks are paid plus organic.",
           "type": "text",
           "title": "Note",
-          "block_id": "a1ae7466"
+          "block_id": "4d367af0"
         }
       ]
     }
@@ -1073,34 +1073,34 @@ The founder's run above was fetched again after the ledger changed (live test as
 ```json
 {
   "data": {
-    "id": "fb31c0ad-6763-4a73-8f5c-ef97c1f7d790",
-    "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+    "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
+    "report_id": "538af75c-35e3-438c-82af-9f85fd85879a",
     "status": "ready",
     "triggered_by": "manual",
     "period": {
-      "from": "2026-10-15",
-      "to": "2026-11-13"
+      "from": "2026-10-20",
+      "to": "2026-11-18"
     },
     "tz": "UTC",
     "run_by": {
-      "id": "0709d0b8-b23d-4f28-a5e8-e14d311cf488",
-      "name": "Member"
+      "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
+      "name": "Ada F"
     },
-    "as_of": "2026-11-13T16:29:26.556425+00:00",
+    "as_of": "2026-11-18T15:48:32.123736+00:00",
     "error": null,
-    "created_at": "2026-11-13T16:29:26.539196+00:00",
+    "created_at": "2026-11-18T15:48:32.096762+00:00",
     "snapshot": {
       "report": {
         "name": "Board pack Q4",
         "range": {
-          "to": "2026-11-13",
-          "from": "2026-10-15",
+          "to": "2026-11-18",
+          "from": "2026-10-20",
           "range": "custom",
           "compare": "previous"
         },
         "blocks": [
           {
-            "id": "64c3aafd",
+            "id": "7e5045c1",
             "hub": "finance",
             "viz": "line",
             "type": "metric",
@@ -1110,14 +1110,14 @@ The founder's run above was fetched again after the ledger changed (live test as
             "compare": null
           },
           {
-            "id": "a73f8eca",
+            "id": "324e2469",
             "type": "metric",
             "locked": true,
             "needs": "marketing",
             "needs_label": "Marketing"
           },
           {
-            "id": "a1ae7466",
+            "id": "4d367af0",
             "text": "Clicks are paid plus organic.",
             "type": "text",
             "title": "Note"
@@ -1137,37 +1137,37 @@ The founder's run above was fetched again after the ledger changed (live test as
             "good": "up",
             "kind": "flow",
             "unit": "money",
-            "as_of": "2026-11-13T16:29:24.291697+00:00",
+            "as_of": "2026-11-18T15:48:31.998307+00:00",
             "label": "Revenue",
             "value": 500000,
             "period": {
-              "to": "2026-11-13",
-              "from": "2026-10-15"
+              "to": "2026-11-18",
+              "from": "2026-10-20"
             },
             "series": [
               {
-                "to": "2026-10-21",
-                "from": "2026-10-15",
+                "to": "2026-10-26",
+                "from": "2026-10-20",
                 "value": 0
               },
               {
-                "to": "2026-10-28",
-                "from": "2026-10-22",
+                "to": "2026-11-02",
+                "from": "2026-10-27",
                 "value": 0
               },
               {
-                "to": "2026-11-04",
-                "from": "2026-10-29",
+                "to": "2026-11-09",
+                "from": "2026-11-03",
                 "value": 0
               },
               {
-                "to": "2026-11-11",
-                "from": "2026-11-05",
+                "to": "2026-11-16",
+                "from": "2026-11-10",
                 "value": 500000
               },
               {
-                "to": "2026-11-13",
-                "from": "2026-11-12",
+                "to": "2026-11-18",
+                "from": "2026-11-17",
                 "value": 0
               }
             ],
@@ -1176,8 +1176,8 @@ The founder's run above was fetched again after the ledger changed (live test as
               "delta": 500000,
               "value": 0,
               "period": {
-                "to": "2026-10-14",
-                "from": "2026-09-15"
+                "to": "2026-10-19",
+                "from": "2026-09-20"
               },
               "delta_pct": null
             },
@@ -1186,10 +1186,10 @@ The founder's run above was fetched again after the ledger changed (live test as
             "definition": "Money in from customers over the period. Funding and payout transfers are excluded.",
             "source_note": "Finance ledger"
           },
-          "block_id": "64c3aafd"
+          "block_id": "7e5045c1"
         },
         {
-          "id": "a73f8eca",
+          "id": "324e2469",
           "type": "metric",
           "locked": true,
           "needs": "marketing",
@@ -1199,7 +1199,7 @@ The founder's run above was fetched again after the ledger changed (live test as
           "text": "Clicks are paid plus organic.",
           "type": "text",
           "title": "Note",
-          "block_id": "a1ae7466"
+          "block_id": "4d367af0"
         }
       ]
     }
@@ -1233,22 +1233,22 @@ Last 20, newest first, no snapshot.
   "data": {
     "runs": [
       {
-        "id": "4af80920-1d48-45c0-b9ac-6a1301da8520",
-        "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
+        "id": "79b92b97-b102-4cd3-86e5-d9befc5b7ea5",
+        "report_id": "538af75c-35e3-438c-82af-9f85fd85879a",
         "status": "ready",
         "triggered_by": "manual",
         "period": {
-          "from": "2026-10-15",
-          "to": "2026-11-13"
+          "from": "2026-10-20",
+          "to": "2026-11-18"
         },
         "tz": "UTC",
         "run_by": {
-          "id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+          "id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
           "name": "Ada F"
         },
-        "as_of": "2026-11-13T16:29:26.309754+00:00",
+        "as_of": "2026-11-18T15:48:32.123736+00:00",
         "error": null,
-        "created_at": "2026-11-13T16:29:24.392255+00:00"
+        "created_at": "2026-11-18T15:48:32.096762+00:00"
       }
     ]
   },
@@ -1268,22 +1268,22 @@ GET returns `shares` and `candidates` (eligible active members). PUT replaces th
     "shares": [],
     "candidates": [
       {
-        "user_id": "262d0e5e-3f79-497e-a46c-63fd87504614",
-        "name": "Member",
+        "user_id": "e9213bbb-c874-4b80-ba26-21d3579f7dc4",
+        "name": "A team member",
         "role": "team_member",
         "locked_hubs": []
       },
       {
-        "user_id": "0709d0b8-b23d-4f28-a5e8-e14d311cf488",
-        "name": "Member",
+        "user_id": "f27f53c9-8af1-4312-b4ee-3e773bfb2512",
+        "name": "A team member",
         "role": "accountant",
         "locked_hubs": [
           "marketing"
         ]
       },
       {
-        "user_id": "3b487d58-8b98-4c49-88fc-d79169536085",
-        "name": "Member",
+        "user_id": "ebd668ba-23d4-4f3e-bd28-e99681edb38d",
+        "name": "A team member",
         "role": "mentor",
         "locked_hubs": [
           "finance"
@@ -1302,16 +1302,16 @@ GET returns `shares` and `candidates` (eligible active members). PUT replaces th
   "data": {
     "shares": [
       {
-        "user_id": "0709d0b8-b23d-4f28-a5e8-e14d311cf488",
-        "name": "Member",
+        "user_id": "f27f53c9-8af1-4312-b4ee-3e773bfb2512",
+        "name": "A team member",
         "role": "accountant",
         "locked_hubs": [
           "marketing"
         ]
       },
       {
-        "user_id": "3b487d58-8b98-4c49-88fc-d79169536085",
-        "name": "Member",
+        "user_id": "ebd668ba-23d4-4f3e-bd28-e99681edb38d",
+        "name": "A team member",
         "role": "mentor",
         "locked_hubs": [
           "finance"
@@ -1320,8 +1320,8 @@ GET returns `shares` and `candidates` (eligible active members). PUT replaces th
     ],
     "candidates": [
       {
-        "user_id": "262d0e5e-3f79-497e-a46c-63fd87504614",
-        "name": "Member",
+        "user_id": "e9213bbb-c874-4b80-ba26-21d3579f7dc4",
+        "name": "A team member",
         "role": "team_member",
         "locked_hubs": []
       }
@@ -1371,41 +1371,41 @@ Kinds `analytics.report.shared` (to the person shared with) and `analytics.repor
   "data": {
     "notifications": [
       {
-        "id": "f0b88cca-39eb-4f1a-a01c-adeede349f53",
+        "id": "ed211e81-488b-4ed2-ba42-87513a1eca2a",
         "type": "analytics.report.shared",
         "title": "A report was shared with you: Board pack Q4",
         "body": "Open",
         "data": {
-          "actor_id": "08ce6af3-2a2f-4d46-8551-61491778a7ac",
+          "actor_id": "b21b88d4-5835-4c0f-af52-3a323cbe7e58",
           "user_ids": [
-            "3b487d58-8b98-4c49-88fc-d79169536085",
-            "0709d0b8-b23d-4f28-a5e8-e14d311cf488"
+            "ebd668ba-23d4-4f3e-bd28-e99681edb38d",
+            "f27f53c9-8af1-4312-b4ee-3e773bfb2512"
           ],
-          "report_id": "1cdb9c97-21d5-4c24-b4e1-297935df8fe4",
-          "startup_id": "3155ebb1-cef2-4e6c-97dc-8a28bb00fc4f",
+          "report_id": "538af75c-35e3-438c-82af-9f85fd85879a",
+          "startup_id": "d5b776ef-05b6-4101-877f-f3dc225a3957",
           "report_name": "Board pack Q4"
         },
         "read": false,
         "archived": false,
         "priority": "normal",
         "module": "other",
-        "created_at": "2026-11-13T16:29:26.417072+00:00"
+        "created_at": "2026-11-18T15:48:32.214834+00:00"
       },
       {
-        "id": "2c47558a-4d8b-4013-9149-39cc0260de2f",
+        "id": "707f387d-6b69-4257-b13a-1a3bc78dfd2d",
         "type": "workspace.member.joined",
         "title": "A new member joined your workspace",
         "body": "",
         "data": {
           "role": "investor",
-          "user_id": "994eafa4-6b41-4379-81cb-bbecabb7dd3d",
-          "startup_id": "3155ebb1-cef2-4e6c-97dc-8a28bb00fc4f"
+          "user_id": "9f43b59c-f719-44b9-9fec-a5ff3aa3bc69",
+          "startup_id": "d5b776ef-05b6-4101-877f-f3dc225a3957"
         },
         "read": false,
         "archived": false,
         "priority": "normal",
         "module": "team",
-        "created_at": "2026-11-13T16:29:24.110218+00:00"
+        "created_at": "2026-11-18T15:48:31.719810+00:00"
       }
     ],
     "next_cursor": null
@@ -1500,6 +1500,7 @@ Kinds `analytics.report.shared` (to the person shared with) and `analytics.repor
 | Behaviour | Verified |
 |---|---|
 | Templates, preview, create, list, get, patch, 409, duplicate, delete | live (this run) |
+| A member with no profile name is "A team member" in `owner`, `run_by` and share `candidates` (was "Member" before 2026-11-18; bodies re-captured) | live (this run) + unit (`test_a_member_with_no_profile_name_is_a_team_member_never_member`) |
 | Run start, poll, frozen snapshot (founder), mentor and accountant redaction when reading it, reader run 403 | live |
 | Shares put/get/422/403, removal gives 404 | live |
 | Notifications `shared` and `generated` | live (`notifications_mentor.json`, mentor); generated seen in unit tests |

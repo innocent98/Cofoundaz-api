@@ -12,7 +12,6 @@ Access rules, in one place:
 import io
 import re
 import secrets
-import unicodedata
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -27,6 +26,7 @@ from reportlab.pdfgen import canvas
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core import pdf_fonts
 from app.core.config import settings
 from app.core.errors import AppError, NotFound
 from app.db.models.learning import AcademyCourse, Certificate, CertificateFile
@@ -107,23 +107,10 @@ def issue_certificate(
 
 
 def _printable(name: str) -> str:
-    """Make a name safe for the PDF's built-in font: keep what it can draw, fold the rest.
-
-    Helvetica covers Western European letters. Letters outside that (for example the dotted
-    Yoruba vowels) are decomposed and stripped of the mark so the name stays readable instead of
-    printing a blank box.
-    """
-    out: list[str] = []
-    for char in name[:_MAX_PRINTED_CHARS]:
-        try:
-            char.encode("cp1252")
-            out.append(char)
-        except UnicodeEncodeError:
-            base = "".join(
-                c for c in unicodedata.normalize("NFKD", char) if not unicodedata.combining(c)
-            )
-            out.append(base if base.isascii() else "")
-    return " ".join("".join(out).split()) or _FALLBACK_HOLDER
+    """Make a name safe for the certificate font: keep what DejaVu can draw (including the dotted Yoruba
+    vowels and "₦"), fold the rest to its base letter, and collapse whitespace."""
+    out = pdf_fonts.printable(name[:_MAX_PRINTED_CHARS], pdf_fonts.SANS_BOLD, fallback="")
+    return " ".join(out.split()) or _FALLBACK_HOLDER
 
 
 def _fit(
@@ -141,6 +128,7 @@ def _fit(
 
 def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> bytes:
     """One landscape A4 page: issuer, holder, course, completion date, credential ID and a QR."""
+    pdf_fonts.register()
     width, height = landscape(A4)
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(width, height), invariant=1)
@@ -155,40 +143,40 @@ def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> b
 
     centre = width / 2
     c.setFillColor(_BRAND)
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont(pdf_fonts.SANS_BOLD, 14)
     c.drawCentredString(centre, height - 90, ISSUER.upper())
     c.setFillColor(_INK)
-    c.setFont("Helvetica-Bold", 30)
+    c.setFont(pdf_fonts.SANS_BOLD, 30)
     c.drawCentredString(centre, height - 140, "Certificate of Completion")
 
     c.setFillColor(_MUTED)
-    c.setFont("Helvetica", 13)
+    c.setFont(pdf_fonts.SANS, 13)
     c.drawCentredString(centre, height - 190, "This certifies that")
 
     name = _printable(holder)
-    name, size = _fit(c, name, "Helvetica-Bold", 36, width - 140)
+    name, size = _fit(c, name, pdf_fonts.SANS_BOLD, 36, width - 140)
     c.setFillColor(_INK)
-    c.setFont("Helvetica-Bold", size)
+    c.setFont(pdf_fonts.SANS_BOLD, size)
     c.drawCentredString(centre, height - 240, name)
 
     c.setFillColor(_MUTED)
-    c.setFont("Helvetica", 13)
+    c.setFont(pdf_fonts.SANS, 13)
     c.drawCentredString(centre, height - 280, "has completed the Cofoundaz Academy course")
 
     title = _printable(course)
-    title, size = _fit(c, title, "Helvetica-Bold", 24, width - 140)
+    title, size = _fit(c, title, pdf_fonts.SANS_BOLD, 24, width - 140)
     c.setFillColor(_BRAND)
-    c.setFont("Helvetica-Bold", size)
+    c.setFont(pdf_fonts.SANS_BOLD, size)
     c.drawCentredString(centre, height - 318, title)
 
     c.setFillColor(_MUTED)
-    c.setFont("Helvetica", 12)
+    c.setFont(pdf_fonts.SANS, 12)
     c.drawCentredString(centre, height - 352, f"Completed on {issued_at:%d %B %Y}")
 
     c.setFillColor(_INK)
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont(pdf_fonts.SANS_BOLD, 12)
     c.drawString(70, 98, f"Credential ID  {code}")
-    c.setFont("Helvetica", 10)
+    c.setFont(pdf_fonts.SANS, 10)
     c.setFillColor(_MUTED)
     c.drawString(70, 80, f"Issued by {ISSUER}")
     c.drawString(70, 64, f"Verify this certificate at {verify_url(code)}")
@@ -199,7 +187,7 @@ def render_pdf(*, holder: str, course: str, issued_at: datetime, code: str) -> b
     drawing = Drawing(side, side, transform=[side / (x1 - x0), 0, 0, side / (y1 - y0), 0, 0])
     drawing.add(qr)
     renderPDF.draw(drawing, c, width - 70 - side, 52)
-    c.setFont("Helvetica", 8)
+    c.setFont(pdf_fonts.SANS, 8)
     c.drawCentredString(width - 70 - side / 2, 42, "Scan to verify")
 
     c.showPage()

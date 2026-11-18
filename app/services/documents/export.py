@@ -7,7 +7,6 @@ it was made from. Re-exporting an unchanged document returns the file already ma
 
 import io
 import re
-import unicodedata
 import uuid
 from html import escape
 
@@ -21,6 +20,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy.orm import Session
 
+from app.core import pdf_fonts
 from app.core.errors import AppError
 from app.db.models.document import Document, DocumentFile
 from app.db.models.enums import ScanStatus
@@ -40,9 +40,9 @@ MAX_LINES = 2000  # renderers are super-linear in line count; bounds the time th
 _FILENAME_UNSAFE = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
 _BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
 
-# Type 1 Helvetica is WinAnsi (cp1252) only. Common typographic characters are mapped to their
-# plain forms and anything else is reduced to its base letter (an accent is dropped), never
-# printed as a black box. DOCX keeps the original text.
+# PDFs use the bundled DejaVu fonts (`app/core/pdf_fonts.py`), so "₦" and the dotted Yoruba vowels print
+# as written. Typographic quotes are still mapped to plain ones; a character outside the font is reduced
+# to its base letter (or "?"), never printed as an empty box. DOCX keeps the original text.
 _PDF_MAP = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "‑": "-", " ": " "})
 
 
@@ -61,15 +61,7 @@ def _clean(text: str) -> str:
 
 
 def _pdf_text(text: str) -> str:
-    out = []
-    for ch in _clean(text).translate(_PDF_MAP):
-        try:
-            ch.encode("cp1252")
-            out.append(ch)
-        except UnicodeEncodeError:
-            base = unicodedata.normalize("NFKD", ch).encode("ascii", "ignore").decode()
-            out.append(base or "?")
-    return "".join(out)
+    return pdf_fonts.printable(_clean(text).translate(_PDF_MAP))
 
 
 def blocks(body: str) -> list[tuple[str, str]]:
@@ -102,7 +94,7 @@ def _safe_filename(title: str, ext: str) -> str:
 
 def _footer(canvas: Canvas, *, label: str, disclaimer: str | None) -> None:
     canvas.saveState()
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont(pdf_fonts.SANS, 8)
     canvas.setFillColor(colors.grey)
     canvas.drawString(20 * mm, 12 * mm, _pdf_text(label)[:110])
     canvas.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Page {canvas.getPageNumber()}")
@@ -112,15 +104,16 @@ def _footer(canvas: Canvas, *, label: str, disclaimer: str | None) -> None:
 
 
 def render_pdf(doc: Document, disclaimer: str | None) -> bytes:
+    pdf_fonts.register()
     buf = io.BytesIO()
     styles = getSampleStyleSheet()
-    title = ParagraphStyle("t", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=20)
+    title = ParagraphStyle("t", parent=styles["Title"], fontName=pdf_fonts.SANS_BOLD, fontSize=20)
     heading = ParagraphStyle(
-        "h", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=13, spaceBefore=12
+        "h", parent=styles["Heading2"], fontName=pdf_fonts.SANS_BOLD, fontSize=13, spaceBefore=12
     )
-    body = ParagraphStyle("b", parent=styles["BodyText"], fontName="Helvetica", leading=14)
+    body = ParagraphStyle("b", parent=styles["BodyText"], fontName=pdf_fonts.SANS, leading=14)
     item = ParagraphStyle("li", parent=body, leftIndent=14, bulletIndent=4)
-    note = ParagraphStyle("n", parent=body, fontName="Helvetica-Oblique", fontSize=9, leading=12)
+    note = ParagraphStyle("n", parent=body, fontName=pdf_fonts.SANS_OBLIQUE, fontSize=9, leading=12)
     label = f"{doc.title or 'Untitled'}  |  version {doc.version}  |  Cofoundaz"
     tpl = SimpleDocTemplate(
         buf,

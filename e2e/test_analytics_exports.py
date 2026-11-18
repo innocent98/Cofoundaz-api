@@ -11,11 +11,13 @@ by back-dating `expires_at`; the purge then runs in-process). Every body is capt
 """
 
 import io
+import re
 import uuid
 import zipfile
 from datetime import UTC, datetime, timedelta
 
 import httpx
+from pypdf import PdfReader
 
 B = "/api/v1/analytics"
 G = "analytics_exports"
@@ -197,7 +199,10 @@ def test_analytics_exports_journey(  # noqa: PLR0915 - one journey, read top to 
         pdf = _ready(c, fo, pdf_id, capture, "report_pdf_ready")
         r = c.get(pdf["download_path"], headers=fo)
         assert r.status_code == 200 and r.content.startswith(b"%PDF")
-        capture_json(G, "download_pdf", _file_meta(r))
+        # The naira sign prints (re-walk D1, 2026-11-18): under the built-in Helvetica it was "?5,000.00".
+        pdf_text = " ".join(p.extract_text() for p in PdfReader(io.BytesIO(r.content)).pages)
+        assert "₦5,000.00" in pdf_text and not re.search(r"\?\d", pdf_text), pdf_text[:300]
+        capture_json(G, "download_pdf", _file_meta(r, pdf_text))
 
         # 3. The same report as XLSX (a second run, frozen again).
         r = c.post(f"{B}/reports/{rid}/export", headers=fo, json={"format": "xlsx"})

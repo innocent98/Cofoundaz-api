@@ -423,3 +423,18 @@ def test_concurrent_share_insert_does_not_500(client, db, team, monkeypatch):
     )
     assert resp.status_code == 200, resp.text
     assert [x["user_id"] for x in resp.json()["data"]["shares"]] == [str(mentor)]
+
+
+def test_a_member_with_no_profile_name_is_a_team_member_never_member(client, db, team):
+    """Re-walk D4 (2026-11-18): the SO1 house wording, never "Member" and never the e-mail address."""
+    _s, hdr, users = team
+    rep = _make(client, hdr[R.team_member])
+    assert rep["owner"]["name"] == "A team member"
+    run = _run(client, db, hdr[R.team_member], rep["id"])
+    assert run["run_by"]["name"] == "A team member"
+    shares = client.get(
+        f"{BASE}/reports/{_make(client, hdr[R.founder])['id']}/shares", headers=hdr[R.founder]
+    )
+    names = {c["name"] for c in shares.json()["data"]["candidates"]}
+    assert names == {"A team member"}
+    assert not any(users[r].email in shares.text for r in users)

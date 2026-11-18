@@ -121,7 +121,8 @@ def test_the_pdf_is_a_one_page_document_carrying_the_certificate(db):
 
 
 def test_names_the_font_cannot_draw_are_folded_not_dropped_to_boxes():
-    assert certs._printable("Adébáyọ̀ Ọlá") == "Adébáyo Olá"
+    # DejaVu draws the Yoruba dotted vowels and tone marks, so the name prints as written (2026-11-18).
+    assert certs._printable("Adébáyọ̀ Ọlá") == "Adébáyọ̀ Ọlá"
     assert certs._printable("Chukwuemeka") == "Chukwuemeka"
     assert certs._printable("   ") == "Cofoundaz member"
     assert certs._printable("中文") == "Cofoundaz member"  # nothing drawable left

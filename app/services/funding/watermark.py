@@ -10,6 +10,7 @@ from pypdf import PdfReader, PdfWriter, Transformation
 from reportlab.lib import colors
 from reportlab.pdfgen.canvas import Canvas
 
+from app.core import pdf_fonts
 from app.core.errors import AppError
 from app.services.documents.esign_pdf import _PDF_ERRORS, MAX_PAGES
 
@@ -23,23 +24,24 @@ def unstampable() -> AppError:
 
 
 def _label(email: str, at: datetime) -> str:
-    safe = email.encode("latin-1", "replace").decode("latin-1")
+    safe = pdf_fonts.printable(email, pdf_fonts.SANS_BOLD)
     return f"{safe}  |  {at.astimezone(UTC).strftime('%Y-%m-%d %H:%M UTC')}  |  Confidential"
 
 
 def _overlay(width: float, height: float, label: str) -> bytes:
+    pdf_fonts.register()
     buf = io.BytesIO()
     c = Canvas(buf, pagesize=(width, height))
     c.saveState()
     c.setFillColor(colors.Color(0.45, 0.45, 0.45, alpha=0.22))
-    c.setFont("Helvetica-Bold", max(14, min(width, height) / 22))
+    c.setFont(pdf_fonts.SANS_BOLD, max(14, min(width, height) / 22))
     c.translate(width / 2, height / 2)
     c.rotate(35)
     for dy in (-height / 4, 0, height / 4):
         c.drawCentredString(0, dy, label)
     c.restoreState()
     c.setFillColor(colors.Color(0.3, 0.3, 0.3, alpha=0.7))
-    c.setFont("Helvetica", 7)
+    c.setFont(pdf_fonts.SANS, 7)
     c.drawString(24, 14, label)
     c.save()
     return buf.getvalue()

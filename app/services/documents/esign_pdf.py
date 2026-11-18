@@ -20,6 +20,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core import pdf_fonts
 from app.core.errors import AppError
 from app.services.documents.export import _pdf_text
 
@@ -104,7 +105,7 @@ def _p(text: str | None, style: ParagraphStyle) -> Paragraph:
 
 def _footer(canvas: Canvas, _doc: object) -> None:
     canvas.saveState()
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont(pdf_fonts.SANS, 8)
     canvas.setFillColor(colors.grey)
     canvas.drawString(20 * mm, 12 * mm, "Cofoundaz signature certificate")
     canvas.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Certificate page {canvas.getPageNumber()}")
@@ -112,18 +113,19 @@ def _footer(canvas: Canvas, _doc: object) -> None:
 
 
 def render_certificate(cert: Certificate) -> bytes:
+    pdf_fonts.register()
     buf = io.BytesIO()
     base = getSampleStyleSheet()
-    h1 = ParagraphStyle("h1", parent=base["Title"], fontName="Helvetica-Bold", fontSize=18)
+    h1 = ParagraphStyle("h1", parent=base["Title"], fontName=pdf_fonts.SANS_BOLD, fontSize=18)
     h2 = ParagraphStyle(
-        "h2", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=12, spaceBefore=10
+        "h2", parent=base["Heading2"], fontName=pdf_fonts.SANS_BOLD, fontSize=12, spaceBefore=10
     )
     body = ParagraphStyle(
-        "b", parent=base["BodyText"], fontName="Helvetica", fontSize=9, leading=12
+        "b", parent=base["BodyText"], fontName=pdf_fonts.SANS, fontSize=9, leading=12
     )
     mono = ParagraphStyle("m", parent=body, fontName="Courier", fontSize=8, leading=10)
-    sig = ParagraphStyle("s", parent=body, fontName="Times-Italic", fontSize=20, leading=24)
-    note = ParagraphStyle("n", parent=body, fontName="Helvetica-Oblique", fontSize=8, leading=11)
+    sig = ParagraphStyle("s", parent=body, fontName=pdf_fonts.SERIF_ITALIC, fontSize=20, leading=24)
+    note = ParagraphStyle("n", parent=body, fontName=pdf_fonts.SANS_OBLIQUE, fontSize=8, leading=11)
     width = A4[0] - 40 * mm
 
     flow: list = [_p("Signatures", h1)]
@@ -162,7 +164,7 @@ def render_certificate(cert: Certificate) -> bytes:
     meta_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (0, -1), pdf_fonts.SANS_BOLD),
                 ("FONTSIZE", (0, 0), (0, -1), 9),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
@@ -190,7 +192,7 @@ def render_certificate(cert: Certificate) -> bytes:
         t.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (0, -1), pdf_fonts.SANS_BOLD),
                     ("FONTSIZE", (0, 0), (0, -1), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),

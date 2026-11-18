@@ -21,6 +21,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Query, Session
 
 from app.core.errors import AppError
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.analytics import AnalyticsReport, AnalyticsReportRun, AnalyticsReportShare
 from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
@@ -234,7 +235,7 @@ def names(db: Session, ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
     if not ids:
         return {}
     rows = db.query(UserProfile.user_id, UserProfile.full_name).filter(UserProfile.user_id.in_(ids))
-    return {uid: (n or "Member") for uid, n in rows}
+    return {uid: (n or NAMELESS_MEMBER) for uid, n in rows}
 
 
 # ---- serialisation ----
@@ -283,7 +284,7 @@ def serialize(
         "name": r.name,
         "description": r.description,
         "owner": (
-            {"id": str(r.owner_id), "name": owners.get(r.owner_id, "Member")}
+            {"id": str(r.owner_id), "name": owners.get(r.owner_id, NAMELESS_MEMBER)}
             if r.owner_id
             else None
         ),
@@ -513,7 +514,7 @@ def shares_view(db: Session, r: AnalyticsReport) -> dict[str, Any]:
             continue
         row = {
             "user_id": str(x.user_id),
-            "name": nm.get(x.user_id, "Member"),
+            "name": nm.get(x.user_id, NAMELESS_MEMBER),
             "role": x.role.value,
             "locked_hubs": locked_hubs_for(x.role, r, metrics),
         }

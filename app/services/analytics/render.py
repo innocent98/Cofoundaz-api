@@ -24,6 +24,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core import pdf_fonts
 from app.services.analytics import catalog as cat
 from app.services.documents.export import _pdf_text
 from app.services.documents.export import blocks as text_blocks
@@ -264,7 +265,7 @@ def _p(text: str, style: ParagraphStyle) -> Paragraph:
 
 def _footer(canvas: Canvas, label: str) -> None:
     canvas.saveState()
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont(pdf_fonts.SANS, 8)
     canvas.setFillColor(colors.grey)
     canvas.drawString(20 * mm, 12 * mm, _pdf_text(label)[:120])
     canvas.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Page {canvas.getPageNumber()}")
@@ -273,7 +274,8 @@ def _footer(canvas: Canvas, label: str) -> None:
 
 _GRID = TableStyle(
     [
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, -1), pdf_fonts.SANS),
+        ("FONTNAME", (0, 0), (-1, 0), pdf_fonts.SANS_BOLD),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("LINEBELOW", (0, 0), (-1, 0), 0.6, colors.grey),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
@@ -325,16 +327,17 @@ def _metric_flow(
 
 
 def render_pdf(view: dict[str, Any], ctx: Context) -> bytes:
+    pdf_fonts.register()
     rows = rows_from(view)
     report = view.get("report", {})
     name = str(report.get("name") or "Report")
     styles = getSampleStyleSheet()
-    title = ParagraphStyle("t", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=20)
+    title = ParagraphStyle("t", parent=styles["Title"], fontName=pdf_fonts.SANS_BOLD, fontSize=20)
     heading = ParagraphStyle(
-        "h", parent=styles["Heading3"], fontName="Helvetica-Bold", fontSize=12, spaceBefore=10
+        "h", parent=styles["Heading3"], fontName=pdf_fonts.SANS_BOLD, fontSize=12, spaceBefore=10
     )
-    body = ParagraphStyle("b", parent=styles["BodyText"], fontName="Helvetica", leading=14)
-    big = ParagraphStyle("v", parent=body, fontName="Helvetica-Bold", fontSize=16, leading=20)
+    body = ParagraphStyle("b", parent=styles["BodyText"], fontName=pdf_fonts.SANS, leading=14)
+    big = ParagraphStyle("v", parent=body, fontName=pdf_fonts.SANS_BOLD, fontSize=16, leading=20)
     muted = ParagraphStyle("m", parent=body, fontSize=9, leading=12, textColor=colors.grey)
     item = ParagraphStyle("li", parent=body, leftIndent=14, bulletIndent=4)
     width = A4[0] - 40 * mm
