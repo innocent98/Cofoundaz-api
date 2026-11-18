@@ -16,7 +16,41 @@
 > now-retired model; leave them as written. Only entries from here on should describe the
 > `develop → main` path.
 
-_PDF fonts + Analytics names (2026-11-18): branch `fix/analytics-pdf-naira` — the analytics re-walk's D1 and D4. Every ReportLab PDF (analytics, document export, e-sign certificate, academy certificate, billing receipt, data-room watermark) now uses bundled DejaVu fonts (`app/core/pdf_fonts.py`, `app/assets/fonts/` + licence), so "₦7,777.00" no longer prints "?7,777.00" and Yoruba names keep their marks. Analytics names a nameless member "A team member", never "Member". Tests: `tests/core/test_pdf_fonts.py` + API tests; the e2e exports journey asserts `₦5,000.00`; both analytics guides re-captured. Follow-up: `finance/invoice_pdf.py` is still Latin-1 (amounts are "NGN …"; non-Latin client names print "?"). SOP `docs/sop/2026-11-18-pdf-unicode-fonts.md`. PR open, not merged._
+## Snapshot 2026-11-18 (reconciled by lead 27; supersedes every older tally below)
+
+> Reconciled against `origin/develop` @ `c8d5bd69` (merged PRs through #252), `docs/sop/`, and the FE repo's
+> `docs/HANDOFF-master.md` §0a and `docs/checklist/buildout-status.md`. Rule kept: `[x]` only for merged and
+> verified work; Adebayo's 2026-11-13 deferrals are marked **Deferred** (not open, not done); anything that could
+> not be confirmed from git or an SOP stays `[ ]` with "(unverified)". Per-change italic notes and older
+> section text that say "PR open / pending" were written at build time: every PR named in the table below is merged.
+
+**PRD modules: 26. ✅ 19 done · ✅ 4 done for the agreed scope (rest Deferred) · 🟡 3 in progress · ⬜ 0 not started** (was 15 complete · 1 open · 10 not started on 2026-10-17).
+**Checklist items: 905 done · 286 open** (was 883 · 271). 8 Deferred-by-Adebayo lines and 8 Backlog lines are collected at the end of the file.
+
+| Module | State | Merged PRs / notes |
+|---|---|---|
+| 01 Auth + Onboarding | ✅ | #1-#3, Google #213, PRD gaps #227, follow-ups #247 (FE step 2 / re-walk tracked in the FE repo) |
+| 02 Dashboard · 04 Mission · 05 Roadmap · 06 Health · 07 Assessment · 08 Business Builder | ✅ | PRD-completion passes 2026-10-17..20 (#129-#152), role leaks #153 |
+| 03 AI Co-Founder | ✅ | seam + 6 consumers (#72-#95); MVP chat/agents/actions #226, #228, #233; extras Deferred; real model unverified |
+| 09 Validation · 10 Marketing | ✅ | #103, #100-#106 + re-walk fixes |
+| 11 Sales Hub | ✅ | A #165, B #172, C #166; extras Deferred |
+| 12 Finance | ✅ | slices 1-5, then (a)-(e) #167 #170 #171 #176 #184, D9/D10 #186, funding-not-revenue #182 |
+| 17 Academy · 18 Documents · 19 Calendar · 20 Notifications · 21 Journal | ✅ | #59, #185-#193, #119/#194/#204, #58-#74/#199, #37/#198 |
+| 23 Team | ✅ | invitations, then light page #200; `/team/members` F + TM only #240 #241 |
+| 24 Settings + Billing | ✅ | #195, #196, #201, #203; `PLAN_ENFORCEMENT` stays off; live webhook/resume/refund not proven (staging checks 2026-10-31) |
+| 14 Funding | ✅ A-E, F + directory + B2 **Deferred** | #218 #222 #229 #235 #242; paused, hidden |
+| 15 Investor Readiness | ✅ A-D | #216 #219 #221 #236; hidden until Adebayo says |
+| 16 Marketplace | ✅ A-D, E-F **Deferred** | #220 #224 #234 #239; paused, hidden; charging off in production |
+| 22 Analytics | ✅ A-C, D-G **Deferred** | #238 #246 #249; FE #268, shown #271, re-walk 420/420 |
+| 13 Legal & Compliance | 🟡 | slice 1 #214 (0106) + #248; slice 2 Advisor Requests with Victoria (D-LEG-9..15 accepted 2026-11-18); slice 3 Backlog |
+| 25 Admin · 26 Super Admin | 🟡 | API done: #205-#209, #211, #212, #251; FE with Samuel, his 4 PRs reverted in FE #267 pending fixes |
+| Production API launch | ⬜ planned | not started; date is Adebayo's (Backlog) |
+
+**Migration head:** `0109_analytics_exports`. Numbering is no longer sequential (e.g. `0105` chains on `0101`): re-chain against `alembic heads`, never the highest number.
+
+---
+
+_PDF fonts + Analytics names (2026-11-18): branch `fix/analytics-pdf-naira` — the analytics re-walk's D1 and D4. Every ReportLab PDF (analytics, document export, e-sign certificate, academy certificate, billing receipt, data-room watermark) now uses bundled DejaVu fonts (`app/core/pdf_fonts.py`, `app/assets/fonts/` + licence), so "₦7,777.00" no longer prints "?7,777.00" and Yoruba names keep their marks. Analytics names a nameless member "A team member", never "Member". Tests: `tests/core/test_pdf_fonts.py` + API tests; the e2e exports journey asserts `₦5,000.00`; both analytics guides re-captured. Follow-up: `finance/invoice_pdf.py` is still Latin-1 (amounts are "NGN …"; non-Latin client names print "?"). SOP `docs/sop/2026-11-18-pdf-unicode-fonts.md`. Merged: #252 (`c8d5bd69`, 2026-11-18)._
 
 _Auth & Onboarding PRD gaps, API (2026-11-05): branch `feature/auth-onboarding-gaps`, migration `0096_auth_onboarding_gaps` (chained on 0092 for now; the lead re-chains after 0093 to 0095). Gaps 1, 2, 3, 4, 6, 7, 8, 11, 12, 14, 21, 22 and the note for 25 of `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md`, plus the backend half of D-AUTH-6 (cookie session mode with a CSRF guard). Live e2e `e2e/test_auth_onboarding_gaps.py`, 55 captures in `e2e/_captures/auth_onboarding_gaps/`; SOP `docs/sop/2026-11-05-auth-onboarding-gaps.md`; FE guide `docs/fe-integration-guide-auth-onboarding.md`. PR open, not merged; proxy-IP handling not verified on staging._
 
@@ -564,10 +598,10 @@ one slice left" to **fully complete — 10 modules now FULLY complete on `develo
 
 ---
 
-## Snapshot
+## Snapshot (historical, as of 2026-09-19; superseded by _Snapshot 2026-11-18_ at the top)
 
-> ⚠️ The tally prose below predates 2026-10-12 and undercounts (it still lists 09 and 19 as not
-> started). The **current tally is in the _Last reconciled_ note at the top**: 15 complete · 1 open · 10 not started.
+> ⚠️ Everything in this section predates 2026-10-12 and is kept only as history. The current tally is the
+> **Snapshot 2026-11-18** block at the top of this file.
 
 **PRD module tally: 26 total** — **13 modules FULLY complete** (10 on `develop`: 01 Auth+Onboarding · 02 Dashboard · 04 Today's Mission · 05 Roadmap, all 3 slices · 06 Health Score · 07 Assessment · 17 Learning Academy (PR #59) · 18 Documents & Templates, all 4 slices · **20 Notifications, all 4 slices** · 21 Founder Journal; plus **08 Business Builder, all 4 slices — §08.11 AI Business Plan Generator now built on `feat/ai-business-plan-generator`, merged (PR #79)**; plus **10 Marketing Hub — all 5 slices, COMPLETE 2026-09-29 (Slice 1 Content Calendar + Channels + Overview CRUD spine, PR #100; Slice 2 Campaigns + Audience Segments, PR #101; Slice 3a AI copy generation + plan-week, PR #102; Slice 3b AI channel-plan recommender + fit notes, PR #104; Slice 4 SEO Tools, PR #105; Slice 5 Performance Analytics — metrics store + ingestion + analytics aggregation + Overview fills, migration `0038_marketing_metrics`, `feat/module-10-marketing-slice5`, PR pending) — see the Module 10 section below**; plus **03 AI Co-Founder — all 7 slices, 6 AI consumers + the LLM seam; PRs #72/#77/#81/#83/#87/#90/#92 — marked COMPLETE 2026-09-21 by owner decision (assessment narrative, canvas/records `ai_fill`, mission reason + health recommendations, dashboard briefing, roadmap rationale, onboarding panel); of the 3 infra items named since Slice 1, 2 shipped 2026-09-21, merged (PR #95) (per-workspace LLM token budget, workspace-level `GET /ai/status` enrichment-status endpoint) and the third (non-OpenAI/Anthropic `LLMClient` provider implementation) is dropped won't-do (OpenAI-only, 2026-09-21) — Module 03 has no remaining open follow-ups; see the Module 03 section below**) + the Foundation/Tenancy spine + the Resend email backend. **1 open** (12 Finance Hub — **Slices 1–3, 4a, 4b and 5 done — 6 of 6 in-scope slices BUILT; only the deferred Integrations/external-connectors work remains** (Slice 5 Financial Model on `feat/module-12-finance-slice5`, migration `0045_finance_model`, PR pending); earlier: Slices 1–3, 4a and 4b done (Cash Flow on `feat/module-12-finance-slice1`; Runway & Scenarios on `feat/module-12-finance-slice2`; Invoices on `feat/module-12-finance-slice3`; Expenses on `feat/module-12-finance-slice4a`, PR #111; Budgets on `feat/module-12-finance-slice4b`, PR pending); Integrations (external connectors) deferred; Module 10 was the previous open module and completed with Slice 5). **12 not started** (09 · 11 · 13–16 · 19 · 22–26) — of these, 09 Validation Hub is with the junior (handoff + issue #62), **in review as PR #103** (changes requested: rebase onto develop + migration renumber + 2 bug fixes).
 
@@ -649,7 +683,7 @@ test counts are freshly re-counted this pass (2026-09-19), not carried over._
       (`ai.onboarding.panel`, 2026-09-21 — templated instant value + AI-upgrade-second, one-shot on
       signals-complete — see that module's own section) · real notification delivery (Module 20)
 
-## 🚧 Module 01 — Auth & Onboarding PRD gaps (API) — *PR open, not merged (2026-11-05)*
+## ✅ Module 01 — Auth & Onboarding PRD gaps (API) — *merged: #227 (`4d7526e0`, 2026-11-06, migration 0096), follow-ups #247 (`4f96a2a2`, 2026-11-13); Google sign-in #213 (`08b34faa`, 2026-11-02)*
 
 Source: `cofoundaz/docs/checklist/auth-onboarding-prd-gaps.md` (build-order step 1). SOP `docs/sop/2026-11-05-auth-onboarding-gaps.md`; FE guide `docs/fe-integration-guide-auth-onboarding.md`.
 
@@ -856,7 +890,9 @@ Slice (b), branch `claude/feat-marketing-prd-b` (stacked on (a); PR #157):
 - SOP `docs/sop/2026-10-20-marketing-prd-b.md` · guide `docs/fe-integration-guide-marketing-prd.md` §7-14
 
 ## 🟡 Module 11 — Sales Hub (2026-10-21; spec `wt-sales-design/docs/superpowers/specs/2026-10-21-sales-design.md`, plan `docs/superpowers/plans/2026-10-21-sales-crm-core.md`; decisions D-SAL-1..10)
-Slice A (BE, CRM core), branch `feature/sales-crm-core` — **built, awaiting review and merge** (PR to `develop` pending):
+**Status 2026-11-18: slices A (#165), B (#172) and C (#166) are merged; hand re-walk on develop done 2026-10-24 (FE repo `buildout-status.md`). Items below still marked "PR merged"/"awaiting" were written at build time. Extras deferred 2026-11-13: see _Deferred follow-ups_.**
+
+Slice A (BE, CRM core), branch `feature/sales-crm-core` — merged (#165):
 - [x] Migration `0063_sales_crm_core` (8 tables), enums, `SALES_ROLES` = founder + team member (D-SAL-2)
 - [x] Settings (`stall_days` 3-90, default 14) and editable pipeline stages: lazy seed, max 10, one won + one lost, soft delete only when empty (D-SAL-4)
 - [x] Accounts + contacts CRUD (http/https websites only, owners must be active members)
@@ -868,19 +904,19 @@ Slice A (BE, CRM core), branch `feature/sales-crm-core` — **built, awaiting re
 - [x] Permission sweep over the route table (mentor etc. 403); mentor 403 verified live
 - [x] Live e2e `e2e/test_sales_a.py` (66 captures in `e2e/_captures/sales_a/`)
 - [x] SOP `docs/sop/2026-10-21-sales-crm-core.md` · FE guide `docs/fe-integration-guide-sales-crm.md`
-- [ ] Opus review of the permission sweep and the stall scheduler; PR merged to `develop`
+- [x] Opus review of the permission sweep and the stall scheduler; PR merged to `develop` (#165)
 Planned:
 - [ ] **FE-A**: Pipeline board, deal drawer, stage editor, Leads (+ CSV import), Accounts (+ account page, contact drawer, timeline)
 - [x] **Slice B (BE)**, branch `feature/sales-sequences` (2026-10-22), **built, awaiting review and merge**: sequences (1 to 10 steps, merge tags validated at save), enrollments (skip reasons, manual Mark replied / Stop, stop-on-stage-change, lead convert follows), real sending from a **cPanel mailbox over SMTP** (D-SAL-1, not Resend), IMAP bounce poller (idempotent by UIDVALIDITY+UID ledger), signed public unsubscribe + List-Unsubscribe headers, workspace suppression list enforced at send time, at-most-once sends (reservation row + `SKIP LOCKED` + lease), exact caps (hourly 30 global, 100/workspace/day, 1/recipient/day via advisory lock + ledger count), bounce-rate auto-pause + founder notification + resume, "Write with AI" step drafts, deal follow-up draft + one-time send; "not configured" state (no 500); migration `0068_sales_sequences` (**re-chain onto Finance `0067` before merge**); live e2e `e2e/test_sales_b.py`; SOP `docs/sop/2026-10-22-sales-sequences.md` · FE guide `docs/fe-integration-guide-sales-sequences.md`
   - [ ] **Not verified live:** delivery through the real cPanel mailbox and reading real bounce mail over IMAP (needs the `SALES_OUTREACH_*` env on staging: one test send, one send to a dead address)
   - [ ] Opus review of unsubscribe signing, locking and caps; PR merged to `develop`
-  - [ ] Complaint-based auto-pause / ARF reports (no complaint feed on a plain mailbox)
-  - [ ] Send windows (business hours / weekdays): not in the spec, not enforced; decide if wanted
+  - [ ] **Deferred 2026-11-13:** Complaint-based auto-pause / ARF reports (no complaint feed on a plain mailbox)
+  - [ ] **Deferred 2026-11-13:** Send windows (business hours / weekdays): not in the spec, not enforced
 - [x] **Slice C (BE)**, branch `feature/sales-coach-analytics` (2026-10-21), **built, awaiting review and merge**: role-play coach (co-founder chat protocol: 202 + `generating` + poll, 409 while replying), end-session scorecard job (discovery / objection handling / next-step close, each /10 + feedback), call prep job (one in flight per deal, regenerate), `GET /sales/analytics` (funnel by stage position, avg cycle days, win/loss reasons, activity leaderboard, 12-month closed-won revenue); migration `0064_sales_coach` (3 tables; rechain if Finance's `0064` merges first); live e2e `e2e/test_sales_c.py` (36 captures, stub LLM); SOP `docs/sop/2026-10-21-sales-coach-analytics.md` · FE guide `docs/fe-integration-guide-sales-coach-analytics.md`
   - [ ] Real-model walk (buyer realism, scorecard calibration, latency): stub only so far
 - [ ] **FE-BC**: Sequences, Coach, Analytics, unsubscribe page
-- [ ] Health Score sales signal (D-SAL-10, follow-up; needs per-stage targets)
-- [ ] CSV import honours the mapped `source` column (today every imported lead is `csv`)
+- [ ] **Deferred 2026-11-13:** Health Score sales signal (D-SAL-10, follow-up; needs per-stage targets)
+- [ ] **Deferred 2026-11-13:** CSV import honours the mapped `source` column (today every imported lead is `csv`)
 
 ## ✅ Module 05 — Roadmap: PRD completion (2026-10-18, branch `feat/roadmap-prd`)
 - [x] `POST /roadmap/milestones/{id}/breakdown` AI job (append 3-5 tasks, 409 while running, result in the job)
@@ -2310,11 +2346,12 @@ plan `docs/superpowers/plans/2026-09-20-validation-hub.md`, SOP
       de-duplication · a join table for assumption links · notifications (Module 20) subscribing to
       the validation events — see SOP Follow-ups
 
-## 🟡 Module 23 — Team — *started 2026-10-17: invitations only*
+## ✅ Module 23 — Team — *invitations 2026-10-17; light page merged: #200 (`a8832a15`, 2026-10-29); `GET /team/members` founder + team member only: #240 (2026-11-12); lead re-walk 2026-11-12 partial (FE fixes tracked in the FE repo)*
 - [x] `POST /team/invitations` (founder, any time, 1 to 20 rows, PRD roles; 10/min per user + 50/workspace/day) and a real
       `/invite/{token}` link in the invitation email (previously token-only). Branch `feat/workspace-invites`; SOP
       `docs/sop/2026-10-17-team-invitations.md`; guide `docs/fe-integration-guide-team-invitations.md`.
-- [ ] Members list / role change / remove / resend-revoke invite, grants matrix, team tasks, comments, directory (PRD 23.1 to 23.5)
+- [x] Members list / role change / remove / leave / resend-revoke invite / audit (#200, light page, PRD overridden 2026-10-29)
+- [ ] _Not built (PRD 23.1-23.5 beyond the light page):_ grants matrix, team tasks, directory (unverified whether Adebayo wants them; not in the deferral list)
 
 ## ✅ Module 19 — Calendar — *MERGED to `develop` (PR #119, `6a5ab90`, 2026-10-12; migration `0046_calendar`)*
 
@@ -2406,7 +2443,7 @@ the number Module 09 carried on its branch before being renumbered to `0041_vali
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
 zero. The test suite builds its own schema from the models, so nothing was lost.
 
-## 🟡 Module 13 — Legal & Compliance, Slice 1 — *built on `feat/legal-compliance` (PR open against `develop`; migration `0107_funding_grants`)*
+## 🟡 Module 13 — Legal & Compliance — *slice 1 MERGED: #214 (`3386fc06`, 2026-11-13, migration `0106_legal`), disclaimer fix #248; slice 2 (Advisor Requests) in progress with Victoria; slice 3 not started*
 
 _Three data-backed surfaces under `/api/v1/legal`: **entity formation** (a per-jurisdiction
 checklist whose steps live in code — only progress is stored), the **IP tracker** (trademarks,
@@ -2463,15 +2500,16 @@ team member + **legal advisor** read, founder + team member write. Spec
       compliance reminders re-arm when the date moves (`scope_key` carries the date) · D-LEG-6 built:
       overdue is a critical type, legal events in the Deadlines filter · CI fixes (em dash, audience
       test, CodeQL asserts) · live journey re-run, two new captures · D-LEG-1..8 are lead defaults
-- [ ] CodeQL assert-with-request pattern — 25 sites in the legal tests. The job is **report-only by
+- [ ] **Deferred 2026-11-13 (tech-debt sweep):** CodeQL assert-with-request pattern — 25 sites in the legal tests. The job is **report-only by
       design** (`codeql.yml`) and the pattern appears **858 times across 104 test files**, so this is
       a repo-wide convention question, not a legal one
 - [ ] _Deferred:_ `legal_entities` + the entity summary card (PRD 13.1) · IP renewal → linked
       compliance item (PRD 13.4) · `owner` and linked docs on a compliance item (PRD 13.5) · proof as
       a Documents record (`proof_doc_id`) rather than a key on the row · scheduler batch cap +
       `ScheduledRun` anti-join, deleting stored proof after the commit — see SOP Follow-ups
-- [ ] _Not this slice:_ 13.2 Contract Templates and 13.3 AI Contract Review (slice 3), 13.6 Legal
-      Advisor Requests (slice 2). Their FE pages exist against the mock hook; the gap list itemises
+- [ ] _In progress:_ slice 2, 13.6 Legal Advisor Requests (Victoria; D-LEG-9..15 accepted 2026-11-18).
+- [ ] _Backlog:_ 13.2 Contract Templates and 13.3 AI Contract Review (slice 3).
+- [ ] _Not this slice (kept for the record):_ 13.2 / 13.3 / 13.6 Their FE pages exist against the mock hook; the gap list itemises
       them as rows 27–47
 
 
@@ -3399,7 +3437,7 @@ fan-out are unit-verified only (no live capture).
       `docs/sop/2026-09-29-marketing-slice{4,5}.md`, FE guides
       `docs/fe-integration-guide-marketing-{calendar,campaigns,copy,channel-ai,seo,analytics}.md`.
 - [x] **Module 09 — Validation Hub** — *🟢 shipped, merged to `develop` (PR #103, migration `0041_validation`); see its own section above* · brief `docs/handoff/module-09-validation-hub.md`
-- [ ] **Module 12 — Finance Hub** — *🟡 in-scope build COMPLETE (Slices 1–5 built, 2026-09-30; Slice 4b, 5 detail in its own section above); only the deferred Integrations/external-connectors slice remains* (earlier note, Slices 1–3 and 4a): Slice 1 transactions
+- [x] **Module 12 — Finance Hub** — *✅ COMPLETE: Slices 1–5 (2026-09-30) plus the later slices (a) payments core #167, (b) invoice automation #170, (c) ledger correctness #171, (d) model + Mono #176, (e) #184, D9/D10 #186; the once-deferred Integrations slice is shipped as (a)/(d) (Paystack, Flutterwave, Mono sandbox)* (earlier note, Slices 1–3 and 4a): Slice 1 transactions
       ledger + CRUD/categorize + cash-flow summary (migration `0039_finance_transactions`,
       `feat/module-12-finance-slice1`); Slice 2 Runway & Scenarios — persisted assumptions, 3-scenario
       projection, `finance.runway.low` alert, informational `money.runway_live` signal (migration
@@ -3412,7 +3450,7 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
-- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 built on `feat/legal-compliance` (migration `0107_funding_grants`, PR open against `develop`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 merged (#214, migration `0106_legal`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
   - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
         Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
         · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day
@@ -3861,7 +3899,7 @@ Gap list and D-SET questions: `cofoundaz/docs/checklist/settings-prd-gaps.md`.
 - [ ] Deferred: "What I remember" / Forget / Clear all (needs a memory store)
 
 
-## 🟢 Admin + Super Admin portals (Modules 25, 26): slice A built (2026-10-31, branch `feature/admin-staff-access`, migration `0083_platform_staff`, PR pending)
+## ✅ Admin + Super Admin portals (Modules 25, 26): API slices A-E, Tickets and Reports MERGED (#205, #206, #207, #208, #209, #211, #212; migrations 0083-0088); staff fixes SO1/SO4 #251. **FE in progress (Samuel); his four PRs were reverted in FE #267 pending fixes**
 
 Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-ADM-1..13). Slice A blocks every other admin slice. SOP `docs/sop/2026-10-31-admin-staff-access.md`, FE guide `docs/fe-integration-guide-admin-staff.md`.
 
@@ -3875,15 +3913,16 @@ Spec `cofoundaz/docs/superpowers/specs/2026-10-31-admin-portals-design.md` (D-AD
 - [x] `/super-admin/audit` explorer (actor, action, workspace, date filters, cursor) + audited CSV export
 - [x] `get_current_user` rejects tokens with a `typ` claim (calendar OAuth state could be used as a bearer token)
 - [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
-- [ ] CI green on the PR, merged by Adebayo
+- [x] CI green on the PR, merged (#205, 2026-10-31)
 
-### Slices still ahead
-- [ ] B: Users, Workspaces (read-only), Dashboard KPIs
-- [x] C: Billing overrides (refund, credit, extend trial, comp): built 2026-10-31, see below
-- [x] D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, PR pending; see Admin slice D below)
-- [ ] E: Maintenance mode + global sign-out with a second approver
-- [ ] FE for both consoles (after the API slices)
-- [ ] Next: tickets, content CMS, reported issues; after Marketplace: expert vetting
+### Slices (all API slices merged)
+- [x] B: Users, Workspaces (read-only), Dashboard KPIs (#206)
+- [x] C: Billing overrides (refund, credit, extend trial, comp): #207
+- [x] D: Feature flags: #208
+- [x] E: Maintenance mode + global sign-out with a second approver: #209
+- [x] Tickets #211, Reported issues #212; expert vetting shipped with Marketplace slice A (#220)
+- [ ] FE for both consoles: Samuel; reverted in FE #267 pending a fix list (API side done)
+- [ ] Content CMS (not built; unverified whether still wanted)
 
 ### Admin slice D: Feature flags (2026-10-31, branch `feature/admin-feature-flags`, migration 0084, PR pending)
 
@@ -3893,7 +3932,7 @@ SOP `docs/sop/2026-10-31-admin-feature-flags.md`, FE guide `docs/fe-integration-
 - [x] Super Admin list, create, update, impact preview; step-up, reason, audit row on each write
 - [x] `GET /flags`: the app's on-only map for the current workspace
 - [x] Unit tests (26), live e2e journey safe for the shared e2e database, Opus review (no High; Mediums fixed)
-- [ ] CI green on the PR, merged by Adebayo
+- [x] CI green on the PR, merged (#208, 2026-10-31)
 - [ ] Follow-ups: check-before-step-up ordering, flag archive/delete, plan/stage targeting (P7b), wiring features to flags
 
 ### Deferred follow-ups (slice A)
@@ -3912,7 +3951,7 @@ Built to the accepted calls P1 to P13 (Adebayo, "Accept all defaults"). SOP `doc
 - [x] `PATCH /super-admin/staff/{id}` (P9) and `last_login_at` on staff rows (S14)
 - [x] Suspension also holds at MFA challenge, refresh and password reset; `POST /auth/verify` no longer lifts it
 - [x] Unit tests, live e2e journey, Opus review (no High or Medium; Lows fixed)
-- [ ] CI green on the PR, merged by Adebayo
+- [x] CI green on the PR, merged (#206, 2026-10-31)
 - [ ] Follow-ups: daily platform snapshots for paid conversion and MRR deltas
 
 ### Admin slice C: Billing overrides (2026-10-31, branch `feature/admin-billing-overrides`, migration `0085_billing_overrides`, on develop after #206 merged, PR draft)
@@ -3925,7 +3964,7 @@ Decisions from Adebayo ("use defaults"): credit = AI credits, comp = paid plan f
 - [x] Comp (lapses by itself; founder cancel/resume/change blocked; MRR excludes it)
 - [x] Step-up + reason + audit row + `request_id` idempotency + locks on every override
 - [x] Unit tests, live e2e journey, live-captured FE guide, SOP, Opus review fixes
-- [ ] CI green, #206 merged first, then re-chain 0084 on develop's head and merge develop in
+- [x] CI green, merged (#207, 2026-11-02)
 - [ ] FE console page (junior dev) and founder-app handling of `comped` / `refunded_minor`
 - [ ] Follow-ups: cancel a pending refund, four-eyes on mark-done, Paystack refund call, "end comp" route, credit clawback on add-on refund, comp expiry notice
 
@@ -3937,7 +3976,7 @@ SOP `docs/sop/2026-10-31-admin-danger-zone.md`, FE guide `docs/fe-integration-gu
 - [x] Switching it off: any one Super Admin alone (never needs a second person)
 - [x] Global sign-out: revokes all sessions, kills existing access tokens (`iat` cutoff), staff sign back in; open streams close
 - [x] Unit tests, live e2e (leaves maintenance off even on failure), three Opus reviews with fixes
-- [ ] CI green on the PR, merged by Adebayo
+- [x] CI green on the PR, merged (#209, 2026-11-02)
 - [ ] Follow-ups: smoke-page signups during maintenance (product call), DB-clock cutoff if the API scales out
 
 
@@ -3948,7 +3987,7 @@ SOP `docs/sop/2026-11-02-admin-tickets.md`, FE guide `docs/fe-integration-guide-
 - [x] Founder: open, list, read, reply (reopens within 14 days), rate limits, email on staff reply and resolve
 - [x] Staff: queue tabs + filters + search (P13), SLA states, assign, priority, internal notes, canned CRUD, escalate (reason), resolve, reopen; audit row per action
 - [x] Dashboard `needs_attention` count (A9) at `/admin/dashboard/attention`
-- [x] 45 API tests incl. IDOR and guard matrix; live e2e + captured FE guide; Opus review fixed
+- [x] 45 API tests incl. IDOR and guard matrix; live e2e + captured FE guide; Opus review fixed; merged #211 (2026-11-02)
 - [ ] FE: Settings > Help entry and Support tab (brief `docs/fe-handoff/admin-support-tickets.md`, FE dev)
 - [ ] Deferred: attachments, AI triage, email-in, assignee notification, de-escalate, SLA on resolution
 
@@ -3959,15 +3998,15 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 - [x] Founder: report an AI reply or a comment (reason, note), one live report per item, rate limit, `GET /reports/mine`
 - [x] Staff (`moderation` scope + Super Admin): queue tabs Open / Escalated / Closed, filters, search, detail with the snippet only; dismiss, escalate (reason), remove and restore (step-up); only a Super Admin decides escalations; audit row per action
 - [x] Authors see "Removed by moderation" in comments, the threads index and AI chats; removed comments can't be edited
-- [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide
+- [x] 33 API tests incl. IDOR and no-source-thread checks; live e2e + captured FE guide; merged #212 (2026-11-02)
 - [ ] FE: Report action on AI replies and comments, and the Admin Reports tab (brief `docs/fe-handoff/admin-reported-issues.md`, FE dev)
 - [ ] Deferred: Marketplace reviews, author/reporter notifications, withdraw own report, Sales Coach and Marketing AI output reports, repeat-offender view
-- [x] SO1 (2026-11-18, branch `fix/staff-report-author-and-onboarding`): a nameless author reads "A team member", never their email (SOP `docs/sop/2026-11-18-staff-report-author-and-onboarding.md`)
+- [x] SO1 (2026-11-18, merged #251 `3f3e8f12`, branch `fix/staff-report-author-and-onboarding`): a nameless author reads "A team member", never their email (SOP `docs/sop/2026-11-18-staff-report-author-and-onboarding.md`)
 - [x] SO4 (same branch + FE `fix/staff-skip-onboarding`): `/auth/me` `staff_role`; onboarding 409 `ONBOARDING_NOT_FOR_STAFF` for staff; console KPIs leave out staff-owned workspaces and staff sign-ups; FE routes staff to the console
 - [ ] Follow-up: hide staff-owned ghost workspaces from `GET /admin/workspaces` (or soft-delete them) if Adebayo wants
 
 
-## CI pipeline speed (2026-11-05)
+## CI pipeline speed (2026-11-05, merged #215)
 - [x] Measure before-timings (last green develop pushes + a full PR run) — in the SOP/PR body
 - [x] Path filter + always-reporting `CI gate`; docs-only PR skips the heavy jobs
 - [x] Unit suite in 4 `pytest-split` shards, coverage combined, 95% gate on the combined number
@@ -3977,7 +4016,7 @@ SOP `docs/sop/2026-11-02-admin-reports.md`, FE guide `docs/fe-integration-guide-
 
 ---
 
-## Module 15 — Investor Readiness (design accepted 2026-11-05; slices A, B, C, D built)
+## ✅ Module 15 — Investor Readiness (design accepted 2026-11-05; API slices A, B, C, D MERGED: A #216, B #219, D #221, C #236 `f7073893`; sidebar visibility is Adebayo's call, stays hidden per 2026-11-12)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.md`; gaps and D-IR-1..7 (all accepted):
 `cofoundaz/docs/checklist/investor-readiness-prd-gaps.md`. Order: A, then B and D in parallel, then C, then FE, re-walk, unhide.
@@ -4011,12 +4050,13 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-investor-readiness-design.m
   - [x] Roles per D-IR-4 (all 7 roles tested); Opus review, 10 findings fixed; migration round trip
   - [x] Live e2e journey, extraction **on the real model** (1,329 tokens per check), live-captured FE guide
   - [ ] _Follow-up:_ slice B and D JSON schemas are not OpenAI strict-mode valid (found by this slice's real run)
-- [ ] FE pass (all five pages real, then unhide the sidebar entry), lead re-walk
+- [ ] FE pass built on `feature/investor-readiness-fe` per the FE buildout table (merge and lead re-walk: see FE repo checklist; unverified here); **unhide only on Adebayo's word**
+- [ ] Real-model re-runs (deck review, mock Q&A, narrative check) after the OpenAI top-up
 - [ ] _Deferred:_ Academy "Learn how" link per gap · revenue growth and non-NGN revenue signals · founder agreement linked to a signature
 
 ---
 
-## Module 14 — Funding Hub (design accepted 2026-11-05; slices A, B, C and D built)
+## 🟡 Module 14 — Funding Hub (design accepted 2026-11-05; slices A-E MERGED: A #218, B #222, C #229, D #235, E #242 `2915cfc7` (0107); **paused**, stays hidden; F, fund directory and B2 deferred 2026-11-13)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gaps and D-FUND-1..8 (all accepted):
 `cofoundaz/docs/checklist/funding-prd-gaps.md`. Order: A, B, C, D, E, F, then FE pass, every-control re-walk, unhide with Investor Readiness.
@@ -4030,7 +4070,7 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] `POST .../record-funding`: founder-confirmed Finance `Funding` inflow, once only; offer on commit, never automatic (L3)
   - [x] `funding.round.committed_changed` notification (F + TM minus actor); `funding` Scale module gate behind `PLAN_ENFORCEMENT`
   - [x] Roles F + TM (D-FUND-5), a test per role; unit + API + migration tests; live e2e journey; live-captured FE guide
-  - [ ] Investor directory (D-FUND-1 b, after Adebayo approves the list): "Find investors"
+  - [ ] **Deferred 2026-11-13:** Investor directory (D-FUND-1 b): "Find investors"
 - [x] **Slice B: data room** (`feature/funding-data-room`, migration `0095_funding_data_room`, chained on 0093; SOP `docs/sop/2026-11-05-funding-data-room.md`, FE guide `docs/fe-integration-guide-funding-data-room.md`) — security-critical, PR open 2026-11-05
   - [x] `data_room_folders`, `data_room_items` (reference a Documents file or rich Document), `data_room_shares` (token hash only), `data_room_challenges` (keyed-hash codes), `data_room_views` (access log)
   - [x] Founder routes: `GET /data-room`, `POST /data-room/setup`, folder + item CRUD, shares CRUD + revoke, `GET /data-room/access-log`; F + TM only (D-FUND-5)
@@ -4070,12 +4110,13 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-funding-hub-design.md`; gap
   - [x] Four #235 lows folded in (failed-extraction cap, quote unescape, no-round currency skip, reconcile audit row)
   - [x] 32 API tests + catalogue + migration tests, live e2e journey (canned model), live-captured FE guide
   - [ ] A real model's scoring and drafting quality not yet exercised · automatic re-verification of catalogue rows
-- [ ] Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
-- [ ] FE pass (six pages real, unhide the sidebar with Investor Readiness), lead re-walk of every control
+- [ ] **Deferred 2026-11-13:** Slice F: Copilot meeting-prep, analytics, readiness banner, calendar link
+- [ ] **Deferred 2026-11-13:** investor directory ("Find investors", D-FUND-1 b) and B2 investor accounts
+- [ ] FE pass (six pages real; Samuel's brief FE #246) and lead re-walk of every control: not done; module stays hidden
 - [ ] _Deferred:_ Finance ledger 32-bit amount cap (a ₦90M raise cannot be one entry) · Health Score signals from Funding · investor updates (Module 22.3) · exit/waterfall modelling
 
 
-## Module 16 — Marketplace (design accepted 2026-11-05; slice A built)
+## 🟡 Module 16 — Marketplace (design accepted 2026-11-05; slices A-D MERGED: A #220, B #224, C #234 `e59e1d6f`, D #239; **paused after D**; E and F deferred 2026-11-13)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-MP-1..9 all accepted. Order: A → B → C → D → E; F after D. **Production card charging stays off until counsel and Paystack confirm in writing (D-MP-3, D-MP-9).** The sidebar entry stays hidden until the whole page ships.
 
@@ -4116,14 +4157,14 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-05-marketplace-design.md`; D-M
   - [x] Opus review findings (paid-only threads and expert reads, read paths that wrote, auto-release arithmetic, step-up, `auto_released` replay, no text in notifications, rate limits, indexes) fixed in `8e6d59b5`
   - [x] Unit + API + migration tests; live e2e with captures (clock moved by SQL for the timer steps, labelled in the guide); live-captured FE guide
   - [ ] _Open question (Adebayo):_ keep the founder's in-app "overdue package" notice?
-- [ ] Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task
-- [ ] Slice F: reviews, matches, tools and purchases
+- [ ] **Deferred 2026-11-13:** Slice E: settlement and disputes (payout accounts, Transfers, refunds with amount, disputes, chargeback offset, reconciliation) — Opus review per task; needs counsel + Paystack
+- [ ] **Deferred 2026-11-13:** Slice F: reviews, matches, tools and purchases
 - [ ] FE passes FE-1..FE-4 (founder directory/bookings, reviews/purchases/tools, provider portal, Admin queues + Super Admin console), lead every-control re-walk, unhide the sidebar entry last
 - [ ] _Deferred (slice A):_ licence-expiry and yearly re-vet reminder job · counsel's expert terms (replace `draft-2026-11`) · re-apply path for a rejected expert · swap the Documents no-op scanner for a real one before public credential uploads
 
 
 
-## Module 22 — Analytics & Reports (design accepted 2026-11-12; wave 1 built: slices A, B, C)
+## ✅ Module 22 — Analytics & Reports, wave 1 (design accepted 2026-11-12; slices A #238 (0105), B #246 (0108), C #249 (0109) MERGED; FE wave 1 #268, shown in the sidebar #271, lead re-walk 420/420 on 2026-11-18; D-G deferred 2026-11-13)
 
 Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md` (FE PR #248); gaps and D-ANA-1..9 (all accepted 2026-11-12, lead defaults L1-L12):
 `cofoundaz/docs/checklist/analytics-reports-prd-gaps.md`. Waves: 1 = A, B, C; 2 = D, E; 3 = F; G closes; then FE passes and an every-control re-walk.
@@ -4150,5 +4191,61 @@ Design: `cofoundaz/docs/superpowers/specs/2026-11-12-analytics-reports-design.md
   - [x] Daily `scheduled.analytics.purge` (files at 30 days, runs at 90 days); event + notification `analytics.export.created` to the requester
   - [x] 12 API tests + renderer tests + migration round trip + live e2e journey + live-captured FE guide
   - [ ] Opus security review (lead) · Cloudinary download checked on staging · notification `module` mapping + Preferences row
-- [ ] D: schedules (deferred, wave 2) · [ ] E: investor updates (+ `investors.email`) · [ ] F: board decks · [ ] G: benchmarks, AI wording, plan gate, glue
-- [ ] FE pass, every-control re-walk (F, TM, accountant, mentor/consultant shared reports, denied roles; 1440 + 375), unhide the sidebar entry last
+- [ ] **Deferred 2026-11-13:** D schedules
+- [ ] **Deferred 2026-11-13:** E investor updates (+ `investors.email`)
+- [ ] **Deferred 2026-11-13:** F board decks
+- [ ] **Deferred 2026-11-13:** G benchmarks, AI wording, plan gate, glue, unhide
+- [x] Wave 1 FE pass, every-control re-walk on merged develop (FE #268, #271; 420/420, 6 roles, 1440 + 375; 2026-11-18)
+
+
+---
+
+## ✅ Module 03 — AI Co-Founder MVP (chat, agents, actions) — *merged 2026-11-06*
+
+Design decisions D-AI-1..6 accepted 2026-11-05 (MVP slice, polling + Cancel, aggregate suggestions, archive + Delete forever, memory deferred, unbuilt tabs hidden). Gap list `cofoundaz/docs/checklist/ai-cofounder-prd-gaps.md`.
+
+- [x] Slice 1: conversation management, archive, search, bulk archive, "Delete forever" — #226 (`c6ed4d37`, migration 0097); SOP `docs/sop/2026-11-05-ai-cofounder-conversations.md`
+- [x] Slice 2: orchestrator + Strategist, Finance Advisor, Legal Assistant, Mentor; disclaimers, sources, Cancel — #228 (`c431cda4`, 0098); SOP `docs/sop/2026-11-05-ai-cofounder-orchestrator.md`
+- [x] Slice 3: confirm-first actions with Undo, feedback, regenerate, aggregated Suggested actions, `GET /ai/agents` — #233 (`5dcda40d`, 0100); SOP `docs/sop/2026-11-06-ai-cofounder-slice3.md`
+- [x] Live-verified with the stub / scripted model; FE walked 2026-11-12 (FE repo `ai-cofounder-rewalk.md`)
+- [ ] Real-model run (router accuracy, action proposals, token cost): not verified; waits for the OpenAI top-up
+- [ ] **Deferred 2026-11-13:** memory ("What I remember"), attachments, slash commands
+
+---
+
+## ⏸ Deferred by Adebayo, 2026-11-13 (not open, not done; revisit only on his word)
+
+Source: FE `docs/HANDOFF-master.md` §0a and `docs/checklist/buildout-status.md`. These are decisions to pause, not gaps. Detail sits on the module sections above.
+
+- [ ] **Deferred** Analytics D (schedules), E (investor updates), F (board decks), G (benchmarks, AI wording, plan gate, unhide)
+- [ ] **Deferred** Funding F (Copilot prep, analytics, readiness banner, calendar link), fund directory, B2 investor accounts
+- [ ] **Deferred** Marketplace E (settlement and disputes) and F (reviews, matches, tools); Marketplace is paused after D
+- [ ] **Deferred** Sales extras: complaint auto-pause, send windows, Health sales signal, CSV `source` column
+- [ ] **Deferred** AI Co-Founder extras: memory, attachments, slash commands
+- [ ] **Deferred** Platform: per-workspace timezones, malware scanner for uploads, Outlook calendar sync, push notifications
+- [ ] **Deferred** Tech-debt sweep: ~858 CodeQL assert sites, slowapi Redis storage, Trivy CVEs
+- [ ] **Hidden by decision (2026-11-12):** Marketplace, Investor Readiness, Funding and Analytics investor updates stay out of the sidebar even when complete; unhide only on Adebayo's word (Analytics wave 1 is shown since 2026-11-18)
+
+---
+
+## ⬜ Backlog (identified, not started; not on Adebayo's deferral list)
+
+- [ ] **Production API launch and the develop → main release**: planned, not started; on hold, date is Adebayo's (plan in FE `docs/HANDOFF-master.md`, lead-23 block)
+- [ ] Legal slice 3: Contract Templates (13.2) + AI Contract Review (13.3) — after slice 2
+- [ ] Admin + Super Admin FE fixes (Samuel; four PRs reverted in FE #267, fix list in FE repo) and every-control re-walk
+- [ ] Real-model re-runs after the OpenAI top-up: AI Co-Founder chat, Investor Readiness deck review, mock Q&A, narrative check
+- [ ] Hide staff-owned ghost workspaces from `GET /admin/workspaces` (if Adebayo wants it; SOP `2026-11-18-staff-report-author-and-onboarding.md`)
+- [ ] `finance/invoice_pdf.py` is still Latin-1: non-Latin client names print "?" (SOP `2026-11-18-pdf-unicode-fonts.md`)
+- [ ] Enable Dependency graph and `ENABLE_CODE_SCANNING=true` (Adebayo; CI SOP)
+- [ ] Confirm proxy IP handling on staging (`FORWARDED_ALLOW_IPS`, nginx `X-Forwarded-For`) for the per-IP lockout
+
+---
+
+## Recently merged, cross-cutting (2026-11-12 to 2026-11-18)
+
+- [x] Member e-mails only for founder + team member: `/team/members` #240; suggestions and calendar attendees #241 (SOP `2026-11-12-member-email-leaks.md`)
+- [x] Auth/privacy follow-ups #247 (`4f96a2a2`, 2026-11-13): refresh grace window, Google consent record, dashboard + health-marker role gates, "Teammate joined" marker
+- [x] Staging live E2E collection fixes #244, #245 (2026-11-13)
+- [x] Staff fixes SO1 / SO4 #251 (2026-11-18); PDF fonts bundled for the naira sign #252 (2026-11-18)
+- [x] Dependency CVEs: mako #225, dnspython 2.9.0 #197 and 2.9.2 #250 (CVE-2026-128089, 2026-11-18)
+- [x] Funding grants catalogue draft for review #237 (docs; not seeded until approved, then loaded by #242)
