@@ -1,7 +1,7 @@
 {
   "data": {
     "greeting": {
-      "salutation": "Good afternoon",
+      "salutation": "Good evening",
       "first_name": "",
       "startup_name": "NovaPay"
     },
@@ -10,7 +10,7 @@
       "score": 31,
       "band": "at_risk",
       "delta_7d": 0,
-      "computed_at": "2026-10-20T15:16:08.442932+00:00",
+      "computed_at": "2026-11-13T18:24:48.085258+00:00",
       "config_version": 1,
       "dimensions": [
         {
@@ -61,7 +61,7 @@
       ],
       "top_recommendations": [
         {
-          "id": "61f1ea59-a779-4080-a59a-576712442796",
+          "id": "25bee383-55c6-4322-98ef-dcad03bd0b84",
           "dimension": "money",
           "key": "live.money.transactions_30d",
           "title": "Track your money in and out",
@@ -73,7 +73,7 @@
           "href": "/finance"
         },
         {
-          "id": "8781cdff-1489-4edf-83e2-16fc594cf39a",
+          "id": "ae8ae9b8-7f7b-47df-91fd-48c38af06612",
           "dimension": "legal",
           "key": "live.legal.signatures_complete",
           "title": "Get your key agreements signed",
@@ -85,7 +85,7 @@
           "href": "/documents/signatures"
         },
         {
-          "id": "c85b48d0-a6f6-4e86-a4f1-faa29690ba40",
+          "id": "40604124-64fa-4b11-96cb-2287f0a513e4",
           "dimension": "product",
           "key": "live.product.roadmap_progress",
           "title": "Close out your next roadmap tasks",
@@ -103,11 +103,8 @@
     "mission_status": "restricted",
     "upcoming": [],
     "kpis": {
-      "tasks_done_this_week": 0,
-      "tasks_trend": {
-        "delta": null,
-        "series": []
-      },
+      "tasks_done_this_week": null,
+      "tasks_trend": null,
       "metrics": {
         "revenue": {
           "status": "restricted",
@@ -124,7 +121,7 @@
           "currency": null
         },
         "pipeline": {
-          "status": "not_built",
+          "status": "restricted",
           "value_minor": null,
           "currency": null
         },
@@ -142,7 +139,7 @@
       "campaign_performance": null
     },
     "calibration": {
-      "assessment_complete": true
+      "assessment_complete": null
     },
     "briefing": {
       "status": "restricted",

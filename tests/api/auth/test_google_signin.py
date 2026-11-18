@@ -432,3 +432,74 @@ def test_exchange_in_cookie_mode_keeps_the_refresh_token_out_of_the_body(client,
     assert d["refresh_token"] is None and d["access_token"]
     assert d["expires_in"] == settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     assert settings.REFRESH_COOKIE_NAME in r.cookies
+
+
+# ---- consent: a Google-created account records Terms acceptance like email sign-up ----
+
+
+def test_new_google_account_records_terms_acceptance(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    q = _signin(client, email="consent@example.com", accepted_terms=True)
+    assert set(q) == {"ticket"}
+    user = db.query(User).filter(User.email == "consent@example.com").one()
+    assert user.terms_accepted_at is not None
+    assert user.terms_version == settings.TERMS_VERSION
+    reg = [a for a in _audit(db, "auth.user.registered") if a.actor_user_id == user.id]
+    assert reg and reg[0].details == {
+        "method": "google",
+        "terms_version": settings.TERMS_VERSION,
+    }
+
+
+def test_new_google_account_without_consent_is_refused_and_creates_nothing(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    q = _signin(client, email="noconsent@example.com")  # accepted_terms omitted
+    assert q == {"error": "terms_not_accepted"}
+    assert db.query(User).filter(User.email == "noconsent@example.com").first() is None
+    assert db.query(OAuthAccount).filter_by(provider_account_id="g-sub-1").first() is None
+    rej = _audit(db, "auth.google.rejected")
+    assert rej and rej[-1].details == {"reason": "terms_not_accepted"}
+    # the FE then re-starts with the box ticked, and that works
+    q2 = _signin(client, email="noconsent@example.com", accepted_terms=True)
+    assert set(q2) == {"ticket"}
+    assert db.query(User).filter(User.email == "noconsent@example.com").one().terms_accepted_at
+
+
+def test_existing_google_user_signs_in_without_the_checkbox(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", False)
+    _signin(client, email="returning@example.com", sub="g-ret")  # creates it (gate off)
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    q = _signin(client, email="returning@example.com", sub="g-ret")  # now only signing in
+    assert set(q) == {"ticket"}
+    assert _exchange(client, q["ticket"]).json()["data"]["is_new_user"] is False
+
+
+def test_terms_gate_off_creates_account_without_a_record(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", False)
+    _signin(client, email="legacy@example.com")
+    user = db.query(User).filter(User.email == "legacy@example.com").one()
+    assert user.terms_accepted_at is None and user.terms_version is None
+
+
+def test_linking_google_to_an_account_without_consent_needs_the_checkbox(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    user = create_user(db, email="old@example.com", email_verified_at=datetime.now(UTC))
+    user.terms_accepted_at = None
+    db.commit()
+    q = _signin(client, email="old@example.com", sub="g-old")
+    assert q == {"error": "terms_not_accepted"}
+    db.expire_all()
+    assert db.query(OAuthAccount).filter_by(provider_account_id="g-old").first() is None
+    q = _signin(client, email="old@example.com", sub="g-old", accepted_terms=True)
+    assert set(q) == {"ticket"}
+    db.expire_all()
+    u = db.query(User).filter(User.email == "old@example.com").one()
+    assert u.terms_accepted_at is not None and u.terms_version == settings.TERMS_VERSION
+
+
+def test_linking_an_account_that_already_consented_needs_no_checkbox(client, db, monkeypatch):
+    monkeypatch.setattr(settings, "SIGNUP_REQUIRE_TERMS", True)
+    user = create_user(db, email="done@example.com", email_verified_at=datetime.now(UTC))
+    user.terms_accepted_at = datetime.now(UTC)
+    db.commit()
+    assert set(_signin(client, email="done@example.com", sub="g-done")) == {"ticket"}

@@ -18,6 +18,7 @@ how a production proxy would present a real client address.
 import json
 import os
 import re
+import time
 import uuid
 from pathlib import Path
 
@@ -96,6 +97,11 @@ def call(client, method, path, *, name=None, json_body=None, headers=None):
             },
         )
     return r
+
+
+def _clean_loc(location: str) -> str:
+    """A redirect target with its one-time ticket replaced by a placeholder."""
+    return re.sub(r"(ticket=)[^&\s]+", r"\1<ticket-placeholder>", location)
 
 
 def _bearer(access):
@@ -323,6 +329,132 @@ def test_mfa_ticket_survives_a_typo_then_burns_after_five(http, make_verified_us
     assert unknown.json()["error"]["code"] == "MFA_TICKET_EXPIRED"
 
 
+# --- refresh-token grace window -------------------------------------------------------------
+def test_refresh_grace_window(http, make_verified_user, ip):
+    """The previous refresh token still works for REFRESH_GRACE_SECONDS after it was rotated
+    (a response lost in transit, a second tab), then replay is reuse and kills the sign-in."""
+    grace = int(os.environ.get("REFRESH_GRACE_SECONDS", "20"))
+    u = make_verified_user(http)
+    r = call(http, "POST", LOGIN, name="grace_login_200", json_body=u, headers=ip)
+    t0 = r.json()["data"]["refresh_token"]
+    first = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="grace_refresh_first_200",
+        json_body={"refresh_token": t0},
+        headers=ip,
+    )
+    assert first.status_code == 200
+    t1 = first.json()["data"]["refresh_token"]
+    # t0 again, straight away: the first response "never arrived". A working pair, no sign-out.
+    replay = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="grace_refresh_replay_in_window_200",
+        json_body={"refresh_token": t0},
+        headers=ip,
+    )
+    assert replay.status_code == 200, replay.text
+    t2 = replay.json()["data"]["refresh_token"]
+    assert t2 not in (t0, t1) and replay.json()["data"]["access_token"]
+    # the other tab's t1 is itself just-rotated, so it is still honoured in the window
+    other = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="grace_refresh_other_tab_200",
+        json_body={"refresh_token": t1},
+        headers=ip,
+    )
+    assert other.status_code == 200
+    t3 = other.json()["data"]["refresh_token"]
+
+    time.sleep(grace + 1.5)
+    late = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="grace_refresh_replay_after_window_401",
+        json_body={"refresh_token": t0},
+        headers=ip,
+    )
+    assert late.status_code == 401
+    # reuse past the window revoked the whole family: the newest token is dead too
+    dead = call(
+        http,
+        "POST",
+        "/api/v1/auth/refresh",
+        name="grace_refresh_newest_after_reuse_401",
+        json_body={"refresh_token": t3},
+        headers=ip,
+    )
+    assert dead.status_code == 401
+
+
+@strict
+def test_google_sign_up_needs_the_terms_checkbox(http, unique_email, ip):
+    from urllib.parse import parse_qs, urlparse
+
+    from app.services.auth.google_stub import stub_authorize
+
+    google = "/api/v1/auth/oauth/google"
+
+    def land(url, sub, email, name):
+        path = url.replace(str(http.base_url).rstrip("/"), "")
+        r = http.get(path, follow_redirects=False)
+        assert r.status_code == 302, r.text
+        loc = urlparse(r.headers["location"])
+        _write(name, {"status": 302, "location": _clean_loc(r.headers["location"])})
+        return {k: v[0] for k, v in {**parse_qs(loc.query), **parse_qs(loc.fragment)}.items()}
+
+    def start(body, name):
+        r = http.post(f"{google}/start", json=body, headers=ip)
+        assert r.status_code == 200, r.text
+        # the auth_url carries state / nonce / challenge (bearer-ish), so only its shape is kept
+        _write(
+            name,
+            {
+                "request": {"json": body},
+                "response": {"status": 200, "body": "<auth_url, expires_in>"},
+            },
+        )
+        return r.json()["data"]["auth_url"]
+
+    email, sub = unique_email("gterms"), f"g-{uuid.uuid4().hex[:10]}"
+    # 1. A new Google account without the checkbox is refused before any account exists.
+    url = start({}, "google_terms_missing_start")
+    q = land(
+        stub_authorize(url, sub=sub, email=email, email_verified=True),
+        sub,
+        email,
+        "google_terms_missing_callback_redirect",
+    )
+    assert q == {"error": "terms_not_accepted"}
+    # 2. The FE re-starts with the box ticked: the account is created and consent recorded.
+    url = start({"accepted_terms": True}, "google_terms_accepted_start")
+    q = land(
+        stub_authorize(url, sub=sub, email=email, email_verified=True),
+        sub,
+        email,
+        "google_terms_accepted_callback_redirect",
+    )
+    assert set(q) == {"ticket"}
+    ex = http.post(f"{google}/exchange", json={"ticket": q["ticket"]}, headers=ip)
+    assert ex.status_code == 200 and ex.json()["data"]["is_new_user"] is True
+    _write("google_terms_accepted_exchange", {"status": ex.status_code, "body": _clean(ex.json())})
+    # 3. An existing Google user signs in without the checkbox.
+    url = start({}, "google_terms_returning_start")
+    q = land(
+        stub_authorize(url, sub=sub, email=email, email_verified=True),
+        sub,
+        email,
+        "google_terms_returning_callback_redirect",
+    )
+    assert set(q) == {"ticket"}
+
+
 # --- D-AUTH-6: cookie mode + CSRF ---------------------------------------------------------------
 def test_cookie_mode_login_refresh_and_csrf_guard(http, make_verified_user, ip):
     u = make_verified_user(http)
@@ -416,6 +548,9 @@ def test_reusing_a_rotated_refresh_token_kills_the_whole_sign_in(http, make_veri
     rot = http.post("/api/v1/auth/refresh", json={"refresh_token": r0}, headers=ip)
     r1 = rot.json()["data"]["refresh_token"]
     http.cookies.clear()
+    # a replay inside the grace window is tolerated (see test_refresh_grace_window); reuse is a
+    # replay after it
+    time.sleep(int(os.environ.get("REFRESH_GRACE_SECONDS", "20")) + 1.5)
     reuse = call(
         http,
         "POST",

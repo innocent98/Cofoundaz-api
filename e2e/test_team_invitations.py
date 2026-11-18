@@ -90,6 +90,13 @@ def test_team_invite_journey(base_url, make_verified_user, mailbox, unique_email
         assert acc.status_code == 200, acc.text
         capture("team_invitations", "invite_accepted", acc)
 
+        # The Health Score trend gets a "Teammate joined" marker for the accepted invite.
+        wh = {**auth, "X-Workspace-Id": ws}
+        marks = c.get("/api/v1/health-score/history/markers", headers=wh, params={"range": "30d"})
+        assert marks.status_code == 200, marks.text
+        assert [m["label"] for m in marks.json()["data"]] == ["Teammate joined"]
+        capture("team_invitations", "health_markers_teammate_joined", marks)
+
         mh = {**mentor, "X-Workspace-Id": ws}
         forbidden = c.post(
             "/api/v1/team/invitations",

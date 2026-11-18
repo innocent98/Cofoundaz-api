@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     # Auth / sessions
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    # A just-rotated refresh token is still honoured this long (lost response, second tab).
+    REFRESH_GRACE_SECONDS: int = 20
     REFRESH_COOKIE_NAME: str = "cfz_refresh"
     REFRESH_COOKIE_SECURE: bool = True
     REFRESH_COOKIE_SAMESITE: str = "lax"

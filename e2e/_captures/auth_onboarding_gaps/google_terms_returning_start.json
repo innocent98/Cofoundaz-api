@@ -1,0 +1,9 @@
+{
+  "request": {
+    "json": {}
+  },
+  "response": {
+    "status": 200,
+    "body": "<auth_url, expires_in>"
+  }
+}

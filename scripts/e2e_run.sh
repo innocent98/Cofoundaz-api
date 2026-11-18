@@ -55,6 +55,9 @@ export AUTH_FORGOT_PER_IP_HOURLY="100000" AUTH_FORGOT_PER_EMAIL_HOURLY="100000"
 export AUTH_RESEND_PER_IP_HOURLY="100000" AUTH_RESEND_PER_EMAIL_HOURLY="100000"
 export AUTH_FORGOT_PER_EMAIL_IP_HOURLY="100000" AUTH_RESEND_PER_EMAIL_IP_HOURLY="100000"
 export SIGNUP_REQUIRE_TERMS="false"
+# A short grace window so the refresh journey can wait it out (the production default is 20 s). Both the
+# server and the pytest process read it: the journey sleeps window + 1.5 s before replaying.
+export REFRESH_GRACE_SECONDS="5"
 
 # Self-contained MFA: generate an ephemeral Fernet key so the run never depends on
 # a populated .env. (Note: a real deployment MUST set a persistent MFA_ENCRYPTION_KEY.)

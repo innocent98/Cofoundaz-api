@@ -1,0 +1,162 @@
+{
+  "data": {
+    "greeting": {
+      "salutation": "Good evening",
+      "first_name": "",
+      "startup_name": "NovaPay"
+    },
+    "health": {
+      "status": "ok",
+      "score": 31,
+      "band": "at_risk",
+      "delta_7d": 0,
+      "computed_at": "2026-11-13T18:24:48.085258+00:00",
+      "config_version": 1,
+      "dimensions": [
+        {
+          "key": "team",
+          "label": "Team",
+          "score": 50,
+          "band": "needs_work",
+          "trend": [
+            50
+          ]
+        },
+        {
+          "key": "legal",
+          "label": "Legal",
+          "score": 0,
+          "band": "at_risk",
+          "trend": [
+            0
+          ]
+        },
+        {
+          "key": "money",
+          "label": "Financial",
+          "score": 43,
+          "band": "needs_work",
+          "trend": [
+            43
+          ]
+        },
+        {
+          "key": "market",
+          "label": "Market",
+          "score": 38,
+          "band": "at_risk",
+          "trend": [
+            38
+          ]
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "score": 25,
+          "band": "at_risk",
+          "trend": [
+            25
+          ]
+        }
+      ],
+      "top_recommendations": [
+        {
+          "id": "25bee383-55c6-4322-98ef-dcad03bd0b84",
+          "dimension": "money",
+          "key": "live.money.transactions_30d",
+          "title": "Track your money in and out",
+          "body": "Record this month's income and expenses so your runway and burn are based on real numbers.",
+          "estimated_lift": 10,
+          "effort": "low",
+          "status": "pending",
+          "priority": 1,
+          "href": "/finance"
+        },
+        {
+          "id": "ae8ae9b8-7f7b-47df-91fd-48c38af06612",
+          "dimension": "legal",
+          "key": "live.legal.signatures_complete",
+          "title": "Get your key agreements signed",
+          "body": "Send your founders' agreement or first customer contract for e-signature and get it fully signed.",
+          "estimated_lift": 10,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 2,
+          "href": "/documents/signatures"
+        },
+        {
+          "id": "40604124-64fa-4b11-96cb-2287f0a513e4",
+          "dimension": "product",
+          "key": "live.product.roadmap_progress",
+          "title": "Close out your next roadmap tasks",
+          "body": "Finish the open tasks on your nearest milestone. Shipped work is the clearest product signal.",
+          "estimated_lift": 5,
+          "effort": "medium",
+          "status": "pending",
+          "priority": 3,
+          "href": "/roadmap"
+        }
+      ],
+      "summary": "You're at risk for validation stage. Team is carrying you; Legal is holding you back."
+    },
+    "mission": null,
+    "mission_status": "restricted",
+    "upcoming": [],
+    "kpis": {
+      "tasks_done_this_week": null,
+      "tasks_trend": null,
+      "metrics": {
+        "revenue": {
+          "status": "restricted",
+          "value_minor": null,
+          "currency": null,
+          "basis": "trailing_3mo_avg"
+        },
+        "runway": {
+          "status": "restricted",
+          "months": null,
+          "is_low": false,
+          "monthly_burn_minor": null,
+          "cash_on_hand_minor": null,
+          "currency": null
+        },
+        "pipeline": {
+          "status": "restricted",
+          "value_minor": null,
+          "currency": null
+        },
+        "campaign_ctr": {
+          "status": "restricted",
+          "ctr_percent": null,
+          "impressions": null,
+          "clicks": null,
+          "range": "30d"
+        }
+      },
+      "revenue": null,
+      "runway": null,
+      "pipeline_value": null,
+      "campaign_performance": null
+    },
+    "calibration": {
+      "assessment_complete": null
+    },
+    "briefing": {
+      "status": "restricted",
+      "message": null,
+      "id": null,
+      "actions": []
+    },
+    "risks": {
+      "status": "restricted",
+      "message": null,
+      "items": []
+    },
+    "opportunities": {
+      "status": "restricted",
+      "message": null,
+      "items": []
+    }
+  },
+  "meta": null
+}

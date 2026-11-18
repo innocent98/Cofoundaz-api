@@ -1,7 +1,8 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.core.config import settings
 from app.core.security import get_password_hash
+from app.db.models.auth import AuthSession
 from app.db.models.enums import UserStatus
 from tests.factories import create_user
 
@@ -27,11 +28,45 @@ def test_refresh_rotates(client, db):
     assert data["access_token"] and data["refresh_token"] != refresh
 
 
+def _age(db, raw, seconds):
+    from app.services.auth.sessions import hash_token
+
+    row = db.query(AuthSession).filter_by(refresh_token_hash=hash_token(raw)).one()
+    row.rotated_at = datetime.now(UTC) - timedelta(seconds=seconds)
+    db.flush()
+
+
 def test_refresh_reuse_is_401(client, db):
     refresh = _login(client, db, email="s2@x.com")
     client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})  # rotate once
+    _age(db, refresh, settings.REFRESH_GRACE_SECONDS + 5)  # the grace window is over
     r = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})  # reuse
     assert r.status_code == 401
+
+
+def test_refresh_replay_inside_grace_returns_a_fresh_working_pair(client, db):
+    refresh = _login(client, db, email="s2g@x.com")
+    first = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    again = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})  # lost response
+    assert first.status_code == 200 and again.status_code == 200, again.text
+    d = again.json()["data"]
+    assert d["access_token"] and d["refresh_token"] not in (
+        refresh,
+        first.json()["data"]["refresh_token"],
+    )
+    ok = client.post("/api/v1/auth/refresh", json={"refresh_token": d["refresh_token"]})
+    assert ok.status_code == 200
+
+
+def test_replay_after_grace_signs_the_whole_family_out(client, db):
+    refresh = _login(client, db, email="s2h@x.com")
+    r1 = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).json()["data"]
+    _age(db, refresh, settings.REFRESH_GRACE_SECONDS + 5)
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": refresh}).status_code == 401
+    assert (
+        client.post("/api/v1/auth/refresh", json={"refresh_token": r1["refresh_token"]}).status_code
+        == 401
+    )
 
 
 def test_logout_clears(client, db):

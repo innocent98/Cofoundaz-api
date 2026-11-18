@@ -89,7 +89,7 @@ def test_google_sign_in_journey(base_url, make_verified_user, unique_email, mail
         # 1. First Google sign-in creates the account, email already verified.
         email = unique_email()
         sub = f"g-{uuid.uuid4().hex[:10]}"
-        q = _signin(c, name="new_user", sub=sub, email=email)
+        q = _signin(c, name="new_user", sub=sub, email=email, accepted_terms=True)
         assert set(q) == {"ticket"}
         r = c.post(f"{BASE}/exchange", json={"ticket": q["ticket"]})
         assert r.status_code == 200, r.text

@@ -8,7 +8,7 @@ from app.api.deps import get_verified_user
 from app.core.envelope import Meta, success_response
 from app.core.errors import AppError, NotFound
 from app.db.models.assessment import Assessment, AssessmentAnswer, AssessmentResult
-from app.db.models.enums import AssessmentStatus, MembershipRole
+from app.db.models.enums import ASSESSMENT_ROLES, AssessmentStatus, MembershipRole
 from app.db.models.membership import Membership
 from app.db.models.startup import Startup
 from app.db.models.user import User
@@ -33,7 +33,7 @@ router = APIRouter()
 
 # D-ASM-1: assessment answers + narrative are founder business data. Reads are for founders and
 # team members only; mentors, investors, consultants etc. get the standard 403.
-_READ_ROLES = (MembershipRole.founder, MembershipRole.team_member)
+_READ_ROLES = tuple(sorted(ASSESSMENT_ROLES, key=lambda r: r.value))
 
 
 class AssessmentListMeta(Meta):
