@@ -77,7 +77,8 @@ Query: `artifact_type` = `report` | `data_tables` (optional), `limit` 1-100 (def
 ```
 
 The founder's list after the journey (`list_founder.json`) has 5 rows. Two are the team member's and the
-accountant's (each shows `created_by.name` "Member" because those test users never set a name). The team
+accountant's (each shows `created_by.name` "A team member" because those test users never set a name; the API never
+falls back to an e-mail address). The team
 member's own list (`list_team_member.json`, `?artifact_type=data_tables`) has only their one export.
 Each row has the same shape as 4.2.
 
@@ -87,30 +88,30 @@ Each row has the same shape as 4.2.
 ```json
 {
   "data": {
-    "id": "3d735a2c-c0b4-4e11-9ded-593f451909ec",
+    "id": "8f16fc35-7adf-4d3a-9fb5-ab3db1504d89",
     "name": "Board pack",
     "artifact_type": "report",
     "format": "pdf",
     "status": "ready",
-    "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
-    "run_id": "41927536-2aca-4687-97d1-35e66bd0463c",
+    "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+    "run_id": "6e7f7159-5f8b-4cf9-ae74-54702285cfc6",
     "period": {
-      "to": "2026-11-13",
-      "from": "2026-10-15"
+      "to": "2026-11-18",
+      "from": "2026-10-20"
     },
     "metrics": null,
-    "filename": "Board pack 2026-10-15 to 2026-11-13.pdf",
-    "size_bytes": 2202,
+    "filename": "Board pack 2026-10-20 to 2026-11-18.pdf",
+    "size_bytes": 44142,
     "download_count": 0,
-    "download_path": "/api/v1/analytics/exports/3d735a2c-c0b4-4e11-9ded-593f451909ec/download",
+    "download_path": "/api/v1/analytics/exports/8f16fc35-7adf-4d3a-9fb5-ab3db1504d89/download",
     "error": null,
     "created_by": {
-      "id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+      "id": "e7c73611-9bdf-41c7-8816-c59ae4eeef6e",
       "name": "Ada F"
     },
-    "created_at": "2026-11-13T20:28:35.131924+00:00",
-    "ready_at": "2026-11-13T20:28:36.593708+00:00",
-    "expires_at": "2026-12-13T20:28:35.141301+00:00"
+    "created_at": "2026-11-18T15:48:27.110722+00:00",
+    "ready_at": "2026-11-18T15:48:28.345437+00:00",
+    "expires_at": "2026-12-18T15:48:27.116359+00:00"
   },
   "meta": null
 }
@@ -119,12 +120,38 @@ Each row has the same shape as 4.2.
 A data-tables export (`tables_csv_ready.json`) differs only in `artifact_type: "data_tables"`,
 `report_id: null`, `name: "Data tables"`, and `metrics` (the keys asked for, de-duplicated, in order):
 ```json
+{
+  "data": {
+    "id": "1f2406a8-899b-4128-9be7-fe128db5a1e6",
+    "name": "Data tables",
+    "artifact_type": "data_tables",
+    "format": "csv",
+    "status": "ready",
+    "report_id": null,
+    "run_id": "aa3a4caf-80d8-45ea-93c9-f7eb6815cadb",
+    "period": {
+      "to": "2026-11-18",
+      "from": "2026-10-20"
+    },
     "metrics": [
       "finance.revenue",
       "marketing.clicks"
     ],
-    "filename": "Data tables 2026-10-15 to 2026-11-13.csv",
+    "filename": "Data tables 2026-10-20 to 2026-11-18.csv",
     "size_bytes": 513,
+    "download_count": 0,
+    "download_path": "/api/v1/analytics/exports/1f2406a8-899b-4128-9be7-fe128db5a1e6/download",
+    "error": null,
+    "created_by": {
+      "id": "e7c73611-9bdf-41c7-8816-c59ae4eeef6e",
+      "name": "Ada F"
+    },
+    "created_at": "2026-11-18T15:48:28.596331+00:00",
+    "ready_at": "2026-11-18T15:48:28.623923+00:00",
+    "expires_at": "2026-12-18T15:48:28.601519+00:00"
+  },
+  "meta": null
+}
 ```
 
 An export that has expired (`get_expired.json`). `filename`, `size_bytes` and `download_path` go **null**, and
@@ -132,16 +159,16 @@ the other fields stay:
 ```json
 {
   "data": {
-    "id": "3d735a2c-c0b4-4e11-9ded-593f451909ec",
+    "id": "8f16fc35-7adf-4d3a-9fb5-ab3db1504d89",
     "name": "Board pack",
     "artifact_type": "report",
     "format": "pdf",
     "status": "expired",
-    "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
-    "run_id": "41927536-2aca-4687-97d1-35e66bd0463c",
+    "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+    "run_id": "6e7f7159-5f8b-4cf9-ae74-54702285cfc6",
     "period": {
-      "to": "2026-11-13",
-      "from": "2026-10-15"
+      "to": "2026-11-18",
+      "from": "2026-10-20"
     },
     "metrics": null,
     "filename": null,
@@ -150,12 +177,12 @@ the other fields stay:
     "download_path": null,
     "error": null,
     "created_by": {
-      "id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+      "id": "e7c73611-9bdf-41c7-8816-c59ae4eeef6e",
       "name": "Ada F"
     },
-    "created_at": "2026-11-13T20:28:35.131924+00:00",
-    "ready_at": "2026-11-13T20:28:36.593708+00:00",
-    "expires_at": "2026-11-13T20:27:37.112999+00:00"
+    "created_at": "2026-11-18T15:48:27.110722+00:00",
+    "ready_at": "2026-11-18T15:48:28.345437+00:00",
+    "expires_at": "2026-11-18T15:47:28.766454+00:00"
   },
   "meta": null
 }
@@ -182,16 +209,16 @@ frozen run is made (founder and team member only). With `run_id` the existing ru
 ```json
 {
   "data": {
-    "id": "3d735a2c-c0b4-4e11-9ded-593f451909ec",
+    "id": "8f16fc35-7adf-4d3a-9fb5-ab3db1504d89",
     "name": "Board pack",
     "artifact_type": "report",
     "format": "pdf",
     "status": "pending",
-    "report_id": "4c077691-ad9b-4d89-8650-6458b0792c87",
-    "run_id": "41927536-2aca-4687-97d1-35e66bd0463c",
+    "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+    "run_id": "6e7f7159-5f8b-4cf9-ae74-54702285cfc6",
     "period": {
-      "to": "2026-11-13",
-      "from": "2026-10-15"
+      "to": "2026-11-18",
+      "from": "2026-10-20"
     },
     "metrics": null,
     "filename": null,
@@ -200,12 +227,12 @@ frozen run is made (founder and team member only). With `run_id` the existing ru
     "download_path": null,
     "error": null,
     "created_by": {
-      "id": "09061ddd-1de2-42a9-b61d-3b074b80a7cf",
+      "id": "e7c73611-9bdf-41c7-8816-c59ae4eeef6e",
       "name": "Ada F"
     },
-    "created_at": "2026-11-13T20:28:35.131924+00:00",
+    "created_at": "2026-11-18T15:48:27.110722+00:00",
     "ready_at": null,
-    "expires_at": "2026-12-13T20:28:35.141301+00:00"
+    "expires_at": "2026-12-18T15:48:27.116359+00:00"
   },
   "meta": null
 }
@@ -317,19 +344,54 @@ the viewer can open, so the 422 should never show in normal use.
 filename from `Content-Disposition`. A plain `<a href>` will not work, because the route needs the bearer
 token. There is no public or signed URL for these files.
 
-`download_pdf.json` (what the response looked like; the capture records the headers and the size, not the bytes):
+`download_pdf.json` (what the response looked like; the capture records the headers, the size and the PDF's text as
+pypdf extracts it, not the bytes). Money prints with the naira sign ("₦5,000.00"); before 2026-11-18 the PDF's
+built-in font had no "₦" glyph and printed "?5,000.00":
 ```json
 {
   "status_code": 200,
   "headers": {
     "content-type": "application/pdf",
-    "content-disposition": "attachment; filename=\"Board pack 2026-10-15 to 2026-11-13.pdf\"; filename*=UTF-8''Board%20pack%202026-10-15%20to%202026-11-13.pdf",
+    "content-disposition": "attachment; filename=\"Board pack 2026-10-20 to 2026-11-18.pdf\"; filename*=UTF-8''Board%20pack%202026-10-20%20to%202026-11-18.pdf",
     "cache-control": "private, no-store",
     "x-content-type-options": "nosniff",
     "content-security-policy": "sandbox; default-src 'none'"
   },
-  "size_bytes": 2202,
-  "first_bytes": "%PDF-1.4"
+  "size_bytes": 44142,
+  "first_bytes": "%PDF-1.4",
+  "text": [
+    "NovaPay  |  2026-10-20 to 2026-11-18  |  as of 2026-11-18 15:48 UTC",
+    "Page 1",
+    " Board pack",
+    "For the board",
+    "NovaPay | 2026-10-20 to 2026-11-18 | numbers as of 2026-11-18 15:48 UTC | generated by Ada F",
+    "Revenue",
+    "\u20a65,000.00",
+    "+\u20a65,000.00 vs \u20a60.00 the period before | Source: Finance",
+    " From",
+    "To",
+    "Value",
+    "2026-10-20",
+    "2026-10-26",
+    "\u20a60.00",
+    "2026-10-27",
+    "2026-11-02",
+    "\u20a60.00",
+    "2026-11-03",
+    "2026-11-09",
+    "\u20a60.00",
+    "2026-11-10",
+    "2026-11-16",
+    "\u20a65,000.00",
+    "2026-11-17",
+    "2026-11-18",
+    "\u20a60.00",
+    "Clicks",
+    "4,321",
+    "Source: Marketing",
+    "Note",
+    "Clicks are paid plus organic."
+  ]
 }
 ```
 XLSX: `content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (`download_xlsx.json`).
@@ -387,29 +449,180 @@ format, artifact, size, IP) and increments `download_count`.
 ## 5. Notification (to the requester only)
 
 When the file is ready, the requester (and nobody else) gets one notification. A report export does **not**
-also send "Your report is ready". From `notifications_founder.json` (one item of the list):
+also send "Your report is ready". From `notifications_founder.json` (the founder's list):
 ```json
 {
-  "id": "b82784c8-01f1-4246-8253-df1af745d902",
-  "type": "analytics.export.created",
-  "title": "Your export is ready: Data tables",
-  "body": "Download",
   "data": {
-    "format": "csv",
-    "artifact": "data_tables",
-    "user_ids": [
-      "09061ddd-1de2-42a9-b61d-3b074b80a7cf"
+    "notifications": [
+      {
+        "id": "1ce7568f-779a-4914-b951-347d8dc3596f",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Data tables",
+        "body": "Download",
+        "data": {
+          "format": "csv",
+          "artifact": "data_tables",
+          "user_ids": [
+            "e7c73611-9bdf-41c7-8816-c59ae4eeef6e"
+          ],
+          "export_id": "1f2406a8-899b-4128-9be7-fe128db5a1e6",
+          "report_id": null,
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866",
+          "export_name": "Data tables"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-18T15:48:28.610831+00:00"
+      },
+      {
+        "id": "7feb52ff-66ca-454b-83e6-755718a1e53c",
+        "type": "analytics.report.generated",
+        "title": "Your report is ready: Board pack",
+        "body": "Open",
+        "data": {
+          "run_id": "44b26513-d313-49e2-81f1-a0a4ef92032f",
+          "user_ids": [
+            "e7c73611-9bdf-41c7-8816-c59ae4eeef6e"
+          ],
+          "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866",
+          "report_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-18T15:48:28.474736+00:00"
+      },
+      {
+        "id": "89fb26fd-e50f-4d88-b2b4-d2d20592201f",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Board pack",
+        "body": "Download",
+        "data": {
+          "format": "xlsx",
+          "artifact": "report",
+          "user_ids": [
+            "e7c73611-9bdf-41c7-8816-c59ae4eeef6e"
+          ],
+          "export_id": "b7a50fc5-fd5b-494c-b5a5-9529a4ab480e",
+          "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866",
+          "export_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-18T15:48:28.401640+00:00"
+      },
+      {
+        "id": "ab68096a-14aa-452a-b61f-6dda518fe715",
+        "type": "analytics.export.created",
+        "title": "Your export is ready: Board pack",
+        "body": "Download",
+        "data": {
+          "format": "pdf",
+          "artifact": "report",
+          "user_ids": [
+            "e7c73611-9bdf-41c7-8816-c59ae4eeef6e"
+          ],
+          "export_id": "8f16fc35-7adf-4d3a-9fb5-ab3db1504d89",
+          "report_id": "e670ef4e-81af-4629-85c1-b8f61e2809c7",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866",
+          "export_name": "Board pack"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-18T15:48:28.272859+00:00"
+      },
+      {
+        "id": "881e9a0c-70aa-423d-9e64-b704ae691073",
+        "type": "notification.onboarding_complete",
+        "title": "Your workspace is ready",
+        "body": "Your roadmap and Health Score are being set up. Take the Kickoff Assessment to sharpen them.",
+        "data": {
+          "user_id": "e7c73611-9bdf-41c7-8816-c59ae4eeef6e",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "other",
+        "created_at": "2026-11-18T15:48:26.993249+00:00"
+      },
+      {
+        "id": "71a190e1-b53f-4e7f-a4d3-b4959067fef6",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "investor",
+          "user_id": "1352922c-5ebb-4778-86d1-18d667f958ca",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-18T15:48:26.966507+00:00"
+      },
+      {
+        "id": "4dfff326-302a-4802-9e03-aa0842554b18",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "0082cc83-c1c8-4715-94bb-bfa11381ecf8",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-18T15:48:26.412859+00:00"
+      },
+      {
+        "id": "762bf96a-4827-49e8-b210-732370bca312",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "accountant",
+          "user_id": "8ca34e76-34c2-47fa-980b-e43fab9a1667",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-18T15:48:25.865033+00:00"
+      },
+      {
+        "id": "236fc126-2a0a-4f31-8cc2-a054dd0a6e5a",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "team_member",
+          "user_id": "54851bda-811e-4d94-9aa4-ae33ce2d0d62",
+          "startup_id": "73daed92-e0f7-4327-b295-3fb2a60d8866"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-18T15:48:25.263837+00:00"
+      }
     ],
-    "export_id": "77b1051c-b52b-4ac5-bcf3-e714de7d0861",
-    "report_id": null,
-    "startup_id": "aa0dbd5c-a578-4be0-87b0-2cbac7fa2ddd",
-    "export_name": "Data tables"
+    "next_cursor": null
   },
-  "read": false,
-  "archived": false,
-  "priority": "normal",
-  "module": "other",
-  "created_at": "2026-11-13T20:28:36.912831+00:00"
+  "meta": null
 }
 ```
 CTA "Download": go to `/analytics-reports/exports` and highlight `data.export_id` (or download it directly).
@@ -443,6 +656,8 @@ In the live run, rendering took about 1.5 s (`created_at` → `ready_at`).
 | Behaviour | How verified |
 |---|---|
 | Report export PDF / XLSX: 202 pending → ready → download (headers, `%PDF`) | **live** (e2e captures) |
+| PDF money prints "₦" (bundled DejaVu font), never "?": `₦5,000.00` asserted on the extracted text | **live** (e2e `download_pdf`, re-captured 2026-11-18) + unit (`tests/core/test_pdf_fonts.py`) |
+| A member with no profile name is "A team member" (`created_by`, `owner`, `run_by`, share candidates, PDF "generated by") | **live** (re-captured 2026-11-18) + unit |
 | Download 409 while pending | **live** |
 | Accountant: 403 without `run_id`; export of founder run redacted (no marketing number, lock row present) | **live** + unit |
 | Mentor 403 on export; investor 403 on history | **live**; full role × route matrix in unit tests |

@@ -25,6 +25,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Query, Session
 
 from app.core.errors import AppError, Forbidden
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.analytics import AnalyticsExport, AnalyticsReport, AnalyticsReportRun
 from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.membership import Membership
@@ -263,7 +264,7 @@ def render(db: Session, export_id: uuid.UUID) -> None:
             period_from=run.period_from.isoformat(),
             period_to=run.period_to.isoformat(),
             as_of=(run.as_of or run.created_at).strftime("%Y-%m-%d %H:%M UTC"),
-            generated_by=rep.names(db, {member.user_id}).get(member.user_id, "Member"),
+            generated_by=rep.names(db, {member.user_id}).get(member.user_id, NAMELESS_MEMBER),
         )
         include_meta = bool(e.options_json.get("include_metadata", e.format != "csv"))
         if e.format == "pdf":
@@ -375,7 +376,7 @@ def serialize(e: AnalyticsExport, names: dict[uuid.UUID, str]) -> dict[str, Any]
         "download_path": (f"/api/v1/analytics/exports/{e.id}/download" if st == "ready" else None),
         "error": e.error if st == "failed" else None,
         "created_by": (
-            {"id": str(e.created_by), "name": names.get(e.created_by, "Member")}
+            {"id": str(e.created_by), "name": names.get(e.created_by, NAMELESS_MEMBER)}
             if e.created_by
             else None
         ),

@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.names import NAMELESS_MEMBER
 from app.db.models.analytics import AnalyticsReport, AnalyticsReportRun
 from app.db.models.enums import MembershipRole, MembershipStatus
 from app.db.models.job import Job
@@ -356,7 +357,9 @@ def serialize_run(
         "period": {"from": run.period_from.isoformat(), "to": run.period_to.isoformat()},
         "tz": run.tz,
         "run_by": (
-            {"id": str(run.run_by), "name": names.get(run.run_by, "Member")} if run.run_by else None
+            {"id": str(run.run_by), "name": names.get(run.run_by, NAMELESS_MEMBER)}
+            if run.run_by
+            else None
         ),
         "as_of": run.as_of.isoformat() if run.as_of else None,
         "error": run.error,

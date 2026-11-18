@@ -44,10 +44,11 @@ def test_filename_is_safe_and_never_empty():
     assert len(export._safe_filename("x" * 400, ".pdf")) == 255
 
 
-def test_pdf_text_maps_quotes_and_drops_unsupported_accents_without_black_boxes():
+def test_pdf_text_keeps_naira_and_yoruba_and_folds_only_what_the_font_lacks():
     assert export._pdf_text("“Hi” ’s") == '"Hi" \'s'
-    assert export._pdf_text("Olá ọlá") == "Olá olá".replace("olá", "olá")
-    assert export._pdf_text("你") == "?"  # no base letter at all
+    # The bundled DejaVu font draws both (re-walk D1, 2026-11-18): nothing is folded any more.
+    assert export._pdf_text("Olá ọlá ₦5,000") == "Olá ọlá ₦5,000"
+    assert export._pdf_text("你") == "?"  # outside the font, no base letter at all
     assert export._pdf_text("a\x00b") == "ab"
 
 
