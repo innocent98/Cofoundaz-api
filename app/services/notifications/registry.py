@@ -220,6 +220,29 @@ def _document_grant_created(db: Session, payload: dict) -> list[uuid.UUID]:
     ]
 
 
+def _legal_advisor_request_created(db: Session, payload: dict) -> list[uuid.UUID]:
+    """Only the named advisor (row 47), and only while they still hold an ACTIVE
+    `legal_advisor` membership here: a removed or re-roled advisor is told nothing.
+
+    Deliberately not `_audience`: the founder who asked does not need telling, and the other
+    legal readers have no part in someone else's review request.
+    """
+    advisor_id = payload.get("advisor_user_id")
+    if not advisor_id:
+        return []
+    return [
+        row[0]
+        for row in db.query(Membership.user_id)
+        .filter(
+            Membership.startup_id == payload["startup_id"],
+            Membership.user_id == advisor_id,
+            Membership.role == MembershipRole.legal_advisor,
+            Membership.status == MembershipStatus.active,
+        )
+        .all()
+    ]
+
+
 def _document_signed(db: Session, payload: dict) -> list[uuid.UUID]:
     return _document_owner_recipients(db, payload, minus_actor=False)
 
@@ -743,6 +766,16 @@ SPECS: dict[str, NotifSpec] = {
         _audience("legal.ip.renewal_due_soon", minus_actor=False),
         lambda p: f"IP renewal {_due_phrase(p)}: {p.get('name', 'an asset')}",
         lambda _p: "",
+    ),
+    # Row 47. The advisor may be emailed about a request naming them (D-LEG-15), so the copy
+    # carries names only: no member's address appears in the title or the body.
+    "legal.advisor_request.created": NotifSpec(
+        _legal_advisor_request_created,
+        lambda p: (
+            f"{p.get('founder_name') or 'A founder'} requested your review of "
+            f"{p.get('document_title') or 'a document'}"
+        ),
+        lambda _p: "Open request",
     ),
     "sales.deal.stalled": NotifSpec(
         _deal_stalled_recipients,

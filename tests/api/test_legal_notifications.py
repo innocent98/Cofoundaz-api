@@ -182,3 +182,126 @@ def test_every_legal_event_is_in_the_deadlines_inbox_filter():
         "legal.compliance.overdue",
         "legal.ip.renewal_due_soon",
     } <= FILTER_TYPES["deadlines"]
+
+
+# --- slice 2: the advisor request notification (row 47) ---------------------------------------
+
+REQUEST_PAYLOAD = {
+    "request_id": "11111111-1111-1111-1111-111111111111",
+    "founder_name": "Ada Founder",
+    "document_title": "Supplier Agreement",
+}
+
+
+def _publish_request(db, startup, advisor_user_id):
+    event_bus.publish(
+        db,
+        "legal.advisor_request.created",
+        {
+            "startup_id": str(startup.id),
+            "advisor_user_id": str(advisor_user_id),
+            **REQUEST_PAYLOAD,
+        },
+    )
+    db.flush()
+    return db.query(Notification).filter_by(type="legal.advisor_request.created").all()
+
+
+def test_an_advisor_request_reaches_only_the_named_advisor(db):
+    registry.register()
+    founder, startup, others = _workspace_with_every_role(db)
+    advisor = others[MembershipRole.legal_advisor]
+
+    notes = _publish_request(db, startup, advisor.id)
+
+    # Unlike the slice-1 reminders, this one is addressed to ONE person: the founder who asked
+    # does not need telling, and the other legal readers have no part in it (row 47).
+    assert {n.user_id for n in notes} == {advisor.id}
+    assert founder.id not in {n.user_id for n in notes}
+    assert others[MembershipRole.team_member].id not in {n.user_id for n in notes}
+
+
+def test_a_second_advisor_is_not_told_about_someone_elses_request(db):
+    registry.register()
+    _founder, startup, others = _workspace_with_every_role(db)
+    named = others[MembershipRole.legal_advisor]
+    other_advisor, _s, _h = _member(db, role=MembershipRole.legal_advisor, startup=startup)
+    db.flush()
+
+    notes = _publish_request(db, startup, named.id)
+
+    assert {n.user_id for n in notes} == {named.id}
+    assert other_advisor.id not in {n.user_id for n in notes}
+
+
+def test_a_removed_advisor_is_told_nothing(db):
+    from app.db.models.enums import MembershipStatus
+    from app.db.models.membership import Membership
+
+    registry.register()
+    _founder, startup, others = _workspace_with_every_role(db)
+    advisor = others[MembershipRole.legal_advisor]
+    row = db.query(Membership).filter_by(user_id=advisor.id, startup_id=startup.id).one()
+    row.status = MembershipStatus.removed
+    db.flush()
+
+    # The payload names them, but the payload was written when the event fired and is read when
+    # it is processed. Trusting it would email a stranger about a legal document.
+    assert _publish_request(db, startup, advisor.id) == []
+
+
+def test_a_user_who_is_not_an_advisor_is_told_nothing(db):
+    registry.register()
+    _founder, startup, others = _workspace_with_every_role(db)
+
+    # A team member's id in `advisor_user_id` is not a shortcut into the notification: the role
+    # is re-checked, not taken from the payload.
+    assert _publish_request(db, startup, others[MembershipRole.team_member].id) == []
+
+
+def test_a_payload_with_no_advisor_tells_nobody(db):
+    registry.register()
+    _founder, startup, _others = _workspace_with_every_role(db)
+    event_bus.publish(
+        db,
+        "legal.advisor_request.created",
+        {"startup_id": str(startup.id), **REQUEST_PAYLOAD},
+    )
+    db.flush()
+    assert db.query(Notification).filter_by(type="legal.advisor_request.created").all() == []
+
+
+def test_the_request_title_names_the_founder_and_the_document(db):
+    registry.register()
+    _founder, startup, others = _workspace_with_every_role(db)
+    notes = _publish_request(db, startup, others[MembershipRole.legal_advisor].id)
+    assert notes[0].title == "Ada Founder requested your review of Supplier Agreement"
+
+
+def test_the_request_copy_carries_no_email_address(db):
+    registry.register()
+    _founder, startup, others = _workspace_with_every_role(db)
+    notes = _publish_request(db, startup, others[MembershipRole.legal_advisor].id)
+
+    # D-LEG-15: the advisor may be emailed about their own request, but nothing they receive may
+    # show another member's address. Names only, which is why the payload carries `founder_name`
+    # rather than an id the renderer would have to resolve.
+    assert "@" not in notes[0].title
+    assert "@" not in (notes[0].body or "")
+
+
+def test_a_mentor_cannot_see_an_advisor_request_notification(db):
+    from app.services.notifications.audience import audience_visible
+
+    event = "legal.advisor_request.created"
+    assert audience_visible(MembershipRole.founder, event, {}) is True
+    assert audience_visible(MembershipRole.team_member, event, {}) is True
+    assert audience_visible(MembershipRole.legal_advisor, event, {}) is True
+    assert audience_visible(MembershipRole.mentor, event, {}) is False
+    assert audience_visible(MembershipRole.investor, event, {}) is False
+
+
+def test_the_advisor_request_event_emails_under_the_legal_category():
+    from app.services.notifications.categories import category_for
+
+    assert category_for("legal.advisor_request.created") == "legal"
