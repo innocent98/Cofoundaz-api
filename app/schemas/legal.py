@@ -1,4 +1,5 @@
 import datetime as dt
+import uuid
 from typing import Annotated
 
 from pydantic import BaseModel, StringConstraints, model_validator
@@ -84,4 +85,32 @@ class ComplianceUpdate(BaseModel):
         for field in ("title", "due_on", "recurrence", "status"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} may not be null")
+        return self
+
+
+# A note to the advisor is prose, not a title, so it gets its own bound. Trimmed like the rest,
+# so a whitespace-only note is rejected rather than stored as blank.
+AdvisorNote = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+]
+
+
+class AdvisorRequestCreate(BaseModel):
+    """`POST /legal/advisor-requests` (gap row 43): a document from the library plus a note.
+
+    Exactly one of `document_id` / `file_id`, mirroring `ck_advisor_requests_target` and the data
+    room's own item shape (D-LEG-16). Checked here so the caller gets a 422 field error instead
+    of a database CHECK violation surfacing as a 500.
+    """
+
+    subject: Name
+    advisor_user_id: uuid.UUID
+    document_id: uuid.UUID | None = None
+    file_id: uuid.UUID | None = None
+    note: AdvisorNote | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_target(self) -> "AdvisorRequestCreate":
+        if (self.document_id is None) == (self.file_id is None):
+            raise ValueError("Send exactly one of document_id or file_id")
         return self

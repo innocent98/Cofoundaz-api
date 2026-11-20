@@ -9,6 +9,7 @@ from app.api.deps import get_verified_user
 from app.core.envelope import success_response
 from app.db.models.enums import (
     LEGAL_ROLES,
+    AdvisorRequestStatus,
     ComplianceStatus,
     IpAssetStatus,
     IpAssetType,
@@ -18,13 +19,16 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.platform.events import event_bus
 from app.schemas.legal import (
+    AdvisorRequestCreate,
     ComplianceCreate,
     ComplianceUpdate,
     FormationStepPatch,
     IpAssetCreate,
     IpAssetUpdate,
 )
+from app.services.legal import advisor_requests as advisor_svc
 from app.services.legal import compliance as compliance_svc
 from app.services.legal import formation as formation_svc
 from app.services.legal import ip as ip_svc
@@ -298,3 +302,57 @@ def download_compliance_proof(
 
 def _ext(key: str) -> str:
     return "." + key.rsplit(".", 1)[-1] if "." in key else ""
+
+
+# --- advisor requests (slice 2) ----------------------------------------------------------------
+
+
+@router.post("/advisor-requests", response_model=dict[str, Any])
+def create_advisor_request(
+    payload: AdvisorRequestCreate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Ask a legal advisor to review one document (gap rows 41 to 43).
+
+    Founder + team member, the same set that may grant an outsider access to a document
+    (`DOCUMENT_ROLES`), because a request is a share plus a note (D-LEG-9). A foreign or trashed
+    attachment is a 404; a file that has not passed the scan is a 409; an advisor who is not a
+    live `legal_advisor` here is a 422.
+    """
+    row = advisor_svc.create_request(
+        db, startup_id=membership.startup_id, actor_id=user.id, data=payload
+    )
+    # Published before the commit, like every other event in this codebase: the notification and
+    # the row land in the same transaction, so a rolled-back request never announces itself.
+    event_bus.publish(db, advisor_svc.EVENT_CREATED, advisor_svc.created_payload(db, row))
+    db.commit()
+    return success_response(advisor_svc.serialize_request(db, row))
+
+
+@router.get("/advisor-requests", response_model=dict[str, Any])
+def list_advisor_requests(
+    status: AdvisorRequestStatus | None = None,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The workspace's requests, newest first. `status` filters the stored value.
+
+    Read by the legal reader set, so an advisor reaches this too; the advisor's own scoped list
+    and its narrower shape are separate (gap row 45).
+    """
+    rows = advisor_svc.list_requests(db, startup_id=membership.startup_id, status=status)
+    return success_response({"advisor_requests": advisor_svc.serialize_requests(db, rows)})
+
+
+@router.get("/advisor-requests/{request_id}", response_model=dict[str, Any])
+def get_advisor_request(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = advisor_svc.get_request(db, startup_id=membership.startup_id, request_id=request_id)
+    return success_response(advisor_svc.serialize_request(db, row))
