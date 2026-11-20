@@ -173,6 +173,35 @@ def serialize_request(db: Session, row: AdvisorRequest) -> dict[str, Any]:
     return serialize_requests(db, [row])[0]
 
 
+def serialize_for_advisor(db: Session, rows: list[AdvisorRequest]) -> list[dict[str, Any]]:
+    """What the advisor sees: the same request, deliberately narrower.
+
+    No USER ids, mirroring `documents._external_comment` ("the author's name, but no internal
+    user ids"). Resource ids stay: the advisor needs the attachment's and the reviewed draft's
+    ids to fetch them. `advisor` is dropped entirely, because it is always the viewer and would
+    only hand them their own id back. `created_by` becomes `requested_by` with the founder's
+    NAME, since the advisor must know who asked, and `owner_map`'s own contract guarantees that
+    is never any part of an address (D-LEG-15).
+    """
+    full = serialize_requests(db, rows)
+    return [
+        {
+            **{k: v for k, v in r.items() if k not in ("advisor", "created_by")},
+            "requested_by": {"name": r["created_by"]["name"]} if r["created_by"] else None,
+        }
+        for r in full
+    ]
+
+
+def serialize_one_for_advisor(db: Session, row: AdvisorRequest) -> dict[str, Any]:
+    return serialize_for_advisor(db, [row])[0]
+
+
+def is_advisor(role: MembershipRole) -> bool:
+    """One place decides which shape a caller gets, so the route cannot drift from the query."""
+    return role == MembershipRole.legal_advisor
+
+
 def create_request(
     db: Session, *, startup_id: uuid.UUID, actor_id: uuid.UUID, data: AdvisorRequestCreate
 ) -> AdvisorRequest:
@@ -194,18 +223,42 @@ def create_request(
 
 
 def list_requests(
-    db: Session, *, startup_id: uuid.UUID, status: AdvisorRequestStatus | None = None
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    viewer_id: uuid.UUID,
+    viewer_role: MembershipRole,
+    status: AdvisorRequestStatus | None = None,
 ) -> list[AdvisorRequest]:
-    """Newest first: a review request is a piece of correspondence, not a dated obligation."""
+    """Newest first: a review request is correspondence, not a dated obligation.
+
+    SCOPED BY ROLE, which is the whole point. A founder or team member sees the workspace's
+    requests; a legal advisor sees only the ones naming them (D-LEG-11, gap row 45). The scoping
+    lives here rather than in a separate advisor route, so there is no second path that could be
+    left unscoped by mistake.
+    """
     q = db.query(AdvisorRequest).filter_by(startup_id=startup_id)
+    if viewer_role == MembershipRole.legal_advisor:
+        q = q.filter(AdvisorRequest.advisor_user_id == viewer_id)
     if status is not None:
         q = q.filter(AdvisorRequest.status == status)
     return q.order_by(AdvisorRequest.created_at.desc()).all()
 
 
-def get_request(db: Session, *, startup_id: uuid.UUID, request_id: uuid.UUID) -> AdvisorRequest:
+def get_request(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    request_id: uuid.UUID,
+    viewer_id: uuid.UUID,
+    viewer_role: MembershipRole,
+) -> AdvisorRequest:
+    """One request, or 404. An advisor who is not the named one gets the SAME 404 as a foreign
+    id: a 403 would confirm that someone else's request exists."""
     row = db.query(AdvisorRequest).filter_by(id=request_id, startup_id=startup_id).first()
     if row is None:
+        raise NotFound()
+    if viewer_role == MembershipRole.legal_advisor and row.advisor_user_id != viewer_id:
         raise NotFound()
     return row
 

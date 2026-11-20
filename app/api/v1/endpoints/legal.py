@@ -338,13 +338,26 @@ def list_advisor_requests(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    """The workspace's requests, newest first. `status` filters the stored value.
+    """Requests, newest first, SCOPED TO THE CALLER. `status` filters the stored value.
 
-    Read by the legal reader set, so an advisor reaches this too; the advisor's own scoped list
-    and its narrower shape are separate (gap row 45).
+    A founder or team member sees the workspace's requests in full. A legal advisor sees only
+    the ones naming them, through the narrower shape that carries no user ids (gap row 45,
+    D-LEG-11/D-LEG-15). One route, two shapes: a separate advisor route would leave this one
+    able to expose everything to an advisor if anyone forgot to scope it.
     """
-    rows = advisor_svc.list_requests(db, startup_id=membership.startup_id, status=status)
-    return success_response({"advisor_requests": advisor_svc.serialize_requests(db, rows)})
+    rows = advisor_svc.list_requests(
+        db,
+        startup_id=membership.startup_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+        status=status,
+    )
+    serialize = (
+        advisor_svc.serialize_for_advisor
+        if advisor_svc.is_advisor(membership.role)
+        else advisor_svc.serialize_requests
+    )
+    return success_response({"advisor_requests": serialize(db, rows)})
 
 
 @router.get("/advisor-requests/{request_id}", response_model=dict[str, Any])
@@ -354,5 +367,13 @@ def get_advisor_request(
     user: User = Depends(get_verified_user),  # noqa: B008
     db: Session = Depends(get_db),  # noqa: B008
 ) -> dict[str, Any]:
-    row = advisor_svc.get_request(db, startup_id=membership.startup_id, request_id=request_id)
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    if advisor_svc.is_advisor(membership.role):
+        return success_response(advisor_svc.serialize_one_for_advisor(db, row))
     return success_response(advisor_svc.serialize_request(db, row))

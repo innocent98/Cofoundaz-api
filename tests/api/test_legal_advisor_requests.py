@@ -252,10 +252,86 @@ def test_a_legal_advisor_cannot_create_a_request(client, db):
     assert resp.status_code == 403, resp.text
 
 
-def test_a_legal_advisor_can_read_the_list(client, db):
+def test_an_advisor_sees_their_own_requests_and_not_another_advisors(client, db):
     w = _workspace(db)
-    resp = client.get(REQUESTS, headers=w["ah"])
-    assert resp.status_code == 200, resp.text
+    second, _s, second_h = _member(db, role=MembershipRole.legal_advisor, startup=w["startup"])
+
+    mine = client.post(
+        REQUESTS,
+        json=_body(w, document_id=str(_doc(db, w["startup"], title="For advisor one").id)),
+        headers=w["fh"],
+    )
+    assert mine.status_code == 200, mine.text
+    theirs_body = _body(w, document_id=str(_doc(db, w["startup"], title="For advisor two").id))
+    theirs_body["advisor_user_id"] = str(second.id)
+    theirs = client.post(REQUESTS, json=theirs_body, headers=w["fh"])
+    assert theirs.status_code == 200, theirs.text
+
+    # The founder sees both.
+    all_of_them = client.get(REQUESTS, headers=w["fh"])
+    assert all_of_them.status_code == 200, all_of_them.text
+    assert len(all_of_them.json()["data"]["advisor_requests"]) == 2
+
+    # Each advisor sees only the one naming them (gap row 45, D-LEG-11).
+    first_view = client.get(REQUESTS, headers=w["ah"])
+    assert first_view.status_code == 200, first_view.text
+    titles = [r["attachment"]["title"] for r in first_view.json()["data"]["advisor_requests"]]
+    assert titles == ["For advisor one"]
+
+    second_view = client.get(REQUESTS, headers=second_h)
+    assert second_view.status_code == 200, second_view.text
+    titles2 = [r["attachment"]["title"] for r in second_view.json()["data"]["advisor_requests"]]
+    assert titles2 == ["For advisor two"]
+
+
+def test_an_advisor_gets_404_on_another_advisors_request(client, db):
+    w = _workspace(db)
+    second, _s, second_h = _member(db, role=MembershipRole.legal_advisor, startup=w["startup"])
+    made = client.post(
+        REQUESTS, json=_body(w, document_id=str(_doc(db, w["startup"]).id)), headers=w["fh"]
+    )
+    assert made.status_code == 200, made.text
+    rid = made.json()["data"]["id"]
+
+    # The named advisor can open it.
+    ok = client.get(f"{REQUESTS}/{rid}", headers=w["ah"])
+    assert ok.status_code == 200, ok.text
+
+    # The other advisor gets the SAME 404 as a foreign id: a 403 would confirm it exists.
+    nope = client.get(f"{REQUESTS}/{rid}", headers=second_h)
+    assert nope.status_code == 404, nope.text
+
+
+def test_the_advisors_shape_carries_no_user_ids(client, db):
+    w = _workspace(db)
+    made = client.post(
+        REQUESTS, json=_body(w, document_id=str(_doc(db, w["startup"]).id)), headers=w["fh"]
+    )
+    assert made.status_code == 200, made.text
+
+    advisor_view = client.get(REQUESTS, headers=w["ah"])
+    assert advisor_view.status_code == 200, advisor_view.text
+    row = advisor_view.json()["data"]["advisor_requests"][0]
+
+    # No USER ids: `advisor` is dropped (it is always the viewer) and `created_by` becomes a
+    # name-only `requested_by`, mirroring documents._external_comment.
+    assert "advisor" not in row
+    assert "created_by" not in row
+    assert row["requested_by"] == {"name": row["requested_by"]["name"]}
+    assert set(row["requested_by"]) == {"name"}
+    # Neither the founder's nor the advisor's id appears anywhere in the body.
+    assert str(w["founder"].id) not in advisor_view.text
+    assert str(w["advisor"].id) not in advisor_view.text
+
+    # Resource ids DO stay: the advisor needs them to fetch the document.
+    assert row["attachment"]["id"]
+
+    # And the founder's own view still carries the fuller shape.
+    founder_view = client.get(REQUESTS, headers=w["fh"])
+    assert founder_view.status_code == 200, founder_view.text
+    assert founder_view.json()["data"]["advisor_requests"][0]["advisor"]["id"] == str(
+        w["advisor"].id
+    )
 
 
 @pytest.mark.parametrize("role", FORBIDDEN_ROLES)
