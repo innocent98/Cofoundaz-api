@@ -2,6 +2,7 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -18,7 +19,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDMixin
-from app.db.models.enums import ComplianceStatus, IpAssetStatus, IpAssetType, Recurrence
+from app.db.models.enums import (
+    AdvisorRequestStatus,
+    ComplianceStatus,
+    IpAssetStatus,
+    IpAssetType,
+    Recurrence,
+)
 
 
 def _enum(enum_cls: type, length: int) -> Enum:
@@ -160,3 +167,84 @@ class ComplianceItem(UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (Index("ix_compliance_items_startup_id_due_on", "startup_id", "due_on"),)
+
+
+class AdvisorRequest(UUIDMixin, TimestampMixin, Base):
+    """A founder asking a legal advisor to review one document (PRD 13.6, gap rows 41 to 47).
+
+    The attachment is a rich `Document` OR an uploaded `DocumentFile`, never both, which is how
+    `document_shares` already solves the same problem (D-LEG-16). CASCADE on both: a request to
+    review a deleted document means nothing, and SET NULL would leave the CHECK with two empty
+    columns. Documents soft-deletes, so a hard delete is rare.
+
+    Access to the content is NOT a grant and NOT a share. It is this row, read through
+    `GET /legal/advisor-requests/{id}/document`, which answers the named advisor (while their
+    `legal_advisor` membership is live) and the workspace's writers, and 404s for anyone else, a
+    foreign workspace, or a cancelled request (D-LEG-16, lead conditions 2026-11-19).
+    """
+
+    __tablename__ = "advisor_requests"
+
+    startup_id: Mapped[uuid.UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("startups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    file_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("document_files.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # SET NULL, like `support_tickets.assigned_to`: the request survives the account, and the
+    # notification's recipient function already tells nobody when there is no advisor.
+    advisor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    subject: Mapped[str] = mapped_column(String(200), nullable=False)
+    # The note to the advisor (row 43). Optional: the subject plus the document may be enough.
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[AdvisorRequestStatus] = mapped_column(
+        _enum(AdvisorRequestStatus, 12),
+        nullable=False,
+        default=AdvisorRequestStatus.requested,
+        server_default=AdvisorRequestStatus.requested.value,
+    )
+    # The reviewed draft (row 45). One column covers both attachment kinds: since an advisor can
+    # author no `DocumentVersion` (ShareAccess has no edit level and every document write route
+    # is founder + team member), a returned draft is always a new file. A second upload moves
+    # this pointer; earlier drafts stay in the Documents library, so nothing is lost.
+    returned_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("document_files.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        # Named `target`, not `ck_advisor_requests_target`: the metadata naming convention is
+        # `ck_%(table_name)s_%(constraint_name)s`, so this comes out as
+        # `ck_advisor_requests_target`. `document_shares` declares its full name here and so
+        # carries a doubled one in its metadata, which its migration had to work around.
+        CheckConstraint(
+            "(document_id IS NOT NULL) <> (file_id IS NOT NULL)",
+            name="target",
+        ),
+    )

@@ -809,6 +809,19 @@ class Recurrence(enum.StrEnum):
     annually = "annually"
 
 
+class AdvisorRequestStatus(enum.StrEnum):
+    """PRD 13.6's three statuses plus `cancelled` (D-LEG-14; there is deliberately no reopen).
+
+    `in_review` is set by the advisor's FIRST COMMENT (D-LEG-17), never by merely opening the
+    request: a stray click must not tell the founder their lawyer is working on it.
+    """
+
+    requested = "requested"
+    in_review = "in_review"
+    returned = "returned"
+    cancelled = "cancelled"
+
+
 # Marketplace (slice C): only a founder books and pays (D-MP-L1); founder and team member read.
 MARKETPLACE_WRITE_ROLES: frozenset[MembershipRole] = frozenset({MembershipRole.founder})
 
