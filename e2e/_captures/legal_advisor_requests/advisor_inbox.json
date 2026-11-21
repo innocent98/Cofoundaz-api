@@ -1,0 +1,76 @@
+{
+  "data": {
+    "notifications": [
+      {
+        "id": "26acf789-e0ed-48cc-a3ae-858ed00b7b14",
+        "type": "legal.advisor_request.created",
+        "title": "Ada Founder requested your review of supplier-agreement.pdf",
+        "body": "Open request",
+        "data": {
+          "request_id": "10d82a0f-7626-44b1-a662-27db8a7980f2",
+          "startup_id": "2ffdff79-b9d6-4a19-879b-733e4c6893af",
+          "founder_name": "Ada Founder",
+          "document_title": "supplier-agreement.pdf",
+          "advisor_user_id": "ef3988fe-b66a-47e0-a05b-c028bf003590"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "legal",
+        "created_at": "2026-11-21T23:04:31.104538+00:00"
+      },
+      {
+        "id": "53ea6eaa-8697-4be6-9b9c-89817958d85f",
+        "type": "legal.advisor_request.created",
+        "title": "Ada Founder requested your review of supplier-agreement.pdf",
+        "body": "Open request",
+        "data": {
+          "request_id": "f7b3e12e-0983-4d58-b5a9-f267027eaa1c",
+          "startup_id": "2ffdff79-b9d6-4a19-879b-733e4c6893af",
+          "founder_name": "Ada Founder",
+          "document_title": "supplier-agreement.pdf",
+          "advisor_user_id": "ef3988fe-b66a-47e0-a05b-c028bf003590"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "legal",
+        "created_at": "2026-11-21T23:04:28.250334+00:00"
+      },
+      {
+        "id": "9800654a-9beb-4d54-b572-5451e8659e67",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "mentor",
+          "user_id": "1bb51581-2fca-40dc-8731-f139c7cca1ca",
+          "startup_id": "2ffdff79-b9d6-4a19-879b-733e4c6893af"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-21T23:04:21.940165+00:00"
+      },
+      {
+        "id": "9e264ae2-ec84-4c2e-84f1-2736753aab90",
+        "type": "workspace.member.joined",
+        "title": "A new member joined your workspace",
+        "body": "",
+        "data": {
+          "role": "legal_advisor",
+          "user_id": "8a106b45-e8df-4031-a958-5c65e764f2fd",
+          "startup_id": "2ffdff79-b9d6-4a19-879b-733e4c6893af"
+        },
+        "read": false,
+        "archived": false,
+        "priority": "normal",
+        "module": "team",
+        "created_at": "2026-11-21T23:04:19.091919+00:00"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": null
+}

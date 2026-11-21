@@ -1,0 +1,37 @@
+{
+  "data": [
+    {
+      "user_id": "3f5c2f74-e9b1-4938-8ab5-da65bf8a4536",
+      "name": "Ada Founder",
+      "email": "delivered+e2e-0dacb0849714@resend.dev",
+      "role": "founder",
+      "joined_at": "2026-11-21T23:03:55.875648+00:00",
+      "last_active_at": "2026-11-21T23:03:49.254874+00:00"
+    },
+    {
+      "user_id": "8a106b45-e8df-4031-a958-5c65e764f2fd",
+      "name": null,
+      "email": "delivered+legal_advisor-13cefd42c3f0@resend.dev",
+      "role": "legal_advisor",
+      "joined_at": "2026-11-21T23:04:19.106902+00:00",
+      "last_active_at": "2026-11-21T23:04:18.330928+00:00"
+    },
+    {
+      "user_id": "ef3988fe-b66a-47e0-a05b-c028bf003590",
+      "name": null,
+      "email": "delivered+legal_advisor-ac631bc52774@resend.dev",
+      "role": "legal_advisor",
+      "joined_at": "2026-11-21T23:04:09.814732+00:00",
+      "last_active_at": "2026-11-21T23:04:08.819114+00:00"
+    },
+    {
+      "user_id": "1bb51581-2fca-40dc-8731-f139c7cca1ca",
+      "name": null,
+      "email": "delivered+mentor-f356fc165aa1@resend.dev",
+      "role": "mentor",
+      "joined_at": "2026-11-21T23:04:21.972907+00:00",
+      "last_active_at": "2026-11-21T23:04:21.193154+00:00"
+    }
+  ],
+  "meta": null
+}

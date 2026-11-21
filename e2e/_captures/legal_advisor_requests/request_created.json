@@ -1,0 +1,27 @@
+{
+  "data": {
+    "id": "f7b3e12e-0983-4d58-b5a9-f267027eaa1c",
+    "subject": "Please check clause 7 before we sign",
+    "note": "The non-compete looks far too wide to me.",
+    "status": "requested",
+    "attachment": {
+      "kind": "file",
+      "id": "51ddfce9-af37-4521-ad1c-cb30690a24b8",
+      "title": "supplier-agreement.pdf"
+    },
+    "advisor": {
+      "id": "ef3988fe-b66a-47e0-a05b-c028bf003590",
+      "name": "A team member"
+    },
+    "returned_file": null,
+    "returned_at": null,
+    "cancelled_at": null,
+    "created_by": {
+      "id": "3f5c2f74-e9b1-4938-8ab5-da65bf8a4536",
+      "name": "Ada Founder"
+    },
+    "created_at": "2026-11-21T23:04:28.250334+00:00",
+    "updated_at": "2026-11-21T23:04:28.250334+00:00"
+  },
+  "meta": null
+}

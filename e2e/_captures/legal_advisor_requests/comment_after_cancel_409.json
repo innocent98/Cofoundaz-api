@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "REQUEST_CANCELLED",
+    "message": "This request was cancelled, so it can't take new comments.",
+    "field_errors": []
+  }
+}
