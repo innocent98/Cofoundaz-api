@@ -2,7 +2,7 @@ import datetime as dt
 import uuid
 from typing import Annotated
 
-from pydantic import BaseModel, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.db.models.enums import (
     ComplianceStatus,
@@ -114,3 +114,13 @@ class AdvisorRequestCreate(BaseModel):
         if (self.document_id is None) == (self.file_id is None):
             raise ValueError("Send exactly one of document_id or file_id")
         return self
+
+
+class AdvisorRequestCommentCreate(BaseModel):
+    r"""`POST /legal/advisor-requests/{id}/comments` (gap row 45).
+
+    Same bound and the same `\S` guard as `DocumentCommentCreate`, so a thread on a request
+    behaves like a thread on a document and a whitespace-only comment is refused.
+    """
+
+    body: str = Field(min_length=1, max_length=5000, pattern=r"\S")

@@ -508,3 +508,398 @@ def test_a_missing_stored_object_is_404_not_a_500(client, db, _local_storage):
     rid = _make(client, w, file_id=str(file.id))
     resp = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
     assert resp.status_code == 404, resp.text
+
+
+# --- the comment thread + the in_review transition (task 5, D-LEG-13 / D-LEG-17) ---------------
+
+
+def _comments(client, rid, headers):
+    return client.get(f"{REQUESTS}/{rid}/comments", headers=headers)
+
+
+def _say(client, rid, headers, body="Clause 7 is unenforceable as drafted."):
+    return client.post(f"{REQUESTS}/{rid}/comments", json={"body": body}, headers=headers)
+
+
+def test_the_thread_is_one_per_request_and_oldest_first(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+
+    first = _say(client, rid, w["fh"], "Please look at clause 7.")
+    assert first.status_code == 200, first.text
+    second = _say(client, rid, w["ah"], "Clause 7 is unenforceable as drafted.")
+    assert second.status_code == 200, second.text
+
+    # Same trap as the request list: now() is the TRANSACTION timestamp, so both comments were
+    # stamped identically and the `id` tiebreaker is a random UUID. Each comment is its own
+    # transaction in production, so give them real, distinct times instead of trusting insertion
+    # order, which is what this test is supposed to be checking.
+    from app.db.models.comment import Comment
+
+    asked = db.query(Comment).filter_by(entity_id=rid, body="Please look at clause 7.").one()
+    asked.created_at = datetime.now(UTC) - timedelta(hours=2)
+    db.flush()
+
+    listed = _comments(client, rid, w["fh"])
+    assert listed.status_code == 200, listed.text
+    bodies = [c["body"] for c in listed.json()["data"]["comments"]]
+    assert bodies == ["Please look at clause 7.", "Clause 7 is unenforceable as drafted."]
+    # On the shared comments table, keyed to this request (D-LEG-13): no new table.
+    assert listed.json()["data"]["comments"][0]["entity_type"] == "advisor_request"
+    assert listed.json()["data"]["comments"][0]["entity_id"] == rid
+
+
+def test_the_advisors_first_comment_moves_it_to_in_review(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+
+    before = client.get(f"{REQUESTS}/{rid}", headers=w["fh"])
+    assert before.status_code == 200, before.text
+    assert before.json()["data"]["status"] == "requested"
+
+    said = _say(client, rid, w["ah"])
+    assert said.status_code == 200, said.text
+
+    after = client.get(f"{REQUESTS}/{rid}", headers=w["fh"])
+    assert after.status_code == 200, after.text
+    assert after.json()["data"]["status"] == "in_review"
+
+
+def test_the_founders_own_comment_does_not_move_the_status(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    said = _say(client, rid, w["fh"], "Bumping this.")
+    assert said.status_code == 200, said.text
+    got = client.get(f"{REQUESTS}/{rid}", headers=w["fh"])
+    assert got.status_code == 200, got.text
+    # Only the advisor engaging means anything: a founder talking to themselves does not.
+    assert got.json()["data"]["status"] == "requested"
+
+
+def test_a_returned_request_is_not_dragged_back_to_in_review(client, db):
+    from app.db.models.enums import AdvisorRequestStatus
+    from app.db.models.legal import AdvisorRequest
+
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    row = db.query(AdvisorRequest).filter_by(id=rid).one()
+    row.status = AdvisorRequestStatus.returned
+    db.flush()
+
+    said = _say(client, rid, w["ah"], "One more thought.")
+    assert said.status_code == 200, said.text
+    got = client.get(f"{REQUESTS}/{rid}", headers=w["fh"])
+    assert got.status_code == 200, got.text
+    # The transition is `requested -> in_review` only; it never walks backwards.
+    assert got.json()["data"]["status"] == "returned"
+
+
+def test_the_advisors_copy_of_the_thread_has_no_user_ids(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    said = _say(client, rid, w["fh"], "Please look at clause 7.")
+    assert said.status_code == 200, said.text
+
+    advisor_view = _comments(client, rid, w["ah"])
+    assert advisor_view.status_code == 200, advisor_view.text
+    c = advisor_view.json()["data"]["comments"][0]
+    # Copies documents._external_comment: the author's name, no id, no mention list.
+    assert set(c["author"]) == {"name"}
+    assert "mention_user_ids" not in c
+    assert str(w["founder"].id) not in advisor_view.text
+
+    founder_view = _comments(client, rid, w["fh"])
+    assert founder_view.status_code == 200, founder_view.text
+    assert founder_view.json()["data"]["comments"][0]["author"]["id"] == str(w["founder"].id)
+
+
+def test_another_advisor_cannot_read_or_post_on_the_thread(client, db):
+    w = _workspace(db)
+    _second, _s, second_h = _member(db, role=MembershipRole.legal_advisor, startup=w["startup"])
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+
+    read = _comments(client, rid, second_h)
+    assert read.status_code == 404, read.text
+    post = _say(client, rid, second_h)
+    assert post.status_code == 404, post.text
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_touch_the_thread(client, db, role):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    _u, _s, h = _member(db, role=role, startup=w["startup"])
+    read = _comments(client, rid, h)
+    assert read.status_code == 403, read.text
+    post = _say(client, rid, h)
+    assert post.status_code == 403, post.text
+
+
+def test_a_cancelled_request_refuses_new_comments(client, db):
+    from app.db.models.enums import AdvisorRequestStatus
+    from app.db.models.legal import AdvisorRequest
+
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    row = db.query(AdvisorRequest).filter_by(id=rid).one()
+    row.status = AdvisorRequestStatus.cancelled
+    db.flush()
+
+    post = _say(client, rid, w["ah"])
+    assert post.status_code == 409, post.text
+    assert post.json()["error"]["code"] == "REQUEST_CANCELLED"
+    # Reading the thread still works: the history of a cancelled request is not hidden.
+    read = _comments(client, rid, w["fh"])
+    assert read.status_code == 200, read.text
+
+
+def test_a_whitespace_only_comment_is_refused(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    post = _say(client, rid, w["fh"], "   ")
+    assert post.status_code == 422, post.text
+
+
+# --- the reviewed draft (task 6, gap row 45) ---------------------------------------------------
+
+PDF_BYTES = b"%PDF-1.4 marked up by counsel"
+
+
+def _docx_bytes() -> bytes:
+    """A real minimal .docx. The sniffer opens the upload as a ZIP and requires a readable
+    central directory, `[Content_Types].xml` and a `word/` entry, so fake PK magic bytes are
+    correctly refused and would not exercise the OOXML path at all."""
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", "<Types/>")
+        zf.writestr("word/document.xml", "<document/>")
+    return buf.getvalue()
+
+
+def _send_draft(client, rid, headers, *, name="reviewed.pdf", ct="application/pdf", body=PDF_BYTES):
+    import io
+
+    return client.post(
+        f"{REQUESTS}/{rid}/reviewed-draft",
+        files={"file": (name, io.BytesIO(body), ct)},
+        headers=headers,
+    )
+
+
+def test_the_advisor_returns_a_draft_and_the_request_is_returned(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+
+    resp = _send_draft(client, rid, w["ah"])
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["status"] == "returned"
+    assert data["returned_file"]["filename"] == "reviewed.pdf"
+    assert data["returned_at"] is not None
+
+
+def test_the_returned_draft_is_an_ordinary_private_library_file(client, db, _local_storage):
+    from app.db.models.document import DocumentFile
+    from app.db.models.enums import ScanStatus as S
+
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = _send_draft(client, rid, w["ah"])
+    assert resp.status_code == 200, resp.text
+
+    row = (
+        db.query(DocumentFile).filter_by(startup_id=w["startup"].id, filename="reviewed.pdf").one()
+    )
+    # Through Documents' own upload: private from the first byte and scanned (condition 2).
+    assert row.is_private is True
+    assert row.url is None
+    assert row.scan_status == S.clean
+    assert row.uploaded_by_id == w["advisor"].id
+
+
+def test_a_founder_cannot_return_a_draft(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    # A writer can see the request, but returning work is the advisor's action, not theirs.
+    resp = _send_draft(client, rid, w["fh"])
+    assert resp.status_code == 403, resp.text
+
+
+def test_another_advisor_gets_404_not_403(client, db, _local_storage):
+    w = _workspace(db)
+    _second, _s, second_h = _member(db, role=MembershipRole.legal_advisor, startup=w["startup"])
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = _send_draft(client, rid, second_h)
+    assert resp.status_code == 404, resp.text
+
+
+def test_a_docx_draft_is_accepted(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = _send_draft(
+        client,
+        rid,
+        w["ah"],
+        name="reviewed.docx",
+        ct="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        body=_docx_bytes(),
+    )
+    # The whole reason for using Documents' path: a lawyer marks up a Word file, and Slice 1's
+    # proof sniff (PNG/JPEG/PDF only) would have refused it.
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["returned_file"]["filename"] == "reviewed.docx"
+
+
+def test_a_draft_whose_bytes_contradict_its_type_is_422(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = _send_draft(client, rid, w["ah"], name="reviewed.pdf", body=b"<html>nope</html>")
+    assert resp.status_code == 422, resp.text
+
+
+def test_an_oversized_draft_is_422(client, db, _local_storage, monkeypatch):
+    from app.services.legal import advisor_requests as svc
+
+    monkeypatch.setattr(svc, "MAX_DRAFT_BYTES", 8)
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = _send_draft(client, rid, w["ah"], body=PDF_BYTES)
+    assert resp.status_code == 422, resp.text
+
+
+def test_a_second_draft_moves_the_pointer_and_keeps_the_first(client, db, _local_storage):
+    from app.db.models.document import DocumentFile
+
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    first = _send_draft(client, rid, w["ah"], name="draft-one.pdf")
+    assert first.status_code == 200, first.text
+    second = _send_draft(client, rid, w["ah"], name="draft-two.pdf")
+    assert second.status_code == 200, second.text
+
+    assert second.json()["data"]["returned_file"]["filename"] == "draft-two.pdf"
+    # Nothing the advisor sent is destroyed: the earlier draft stays an ordinary library file.
+    kept = db.query(DocumentFile).filter_by(startup_id=w["startup"].id, filename="draft-one.pdf")
+    assert kept.count() == 1
+
+
+def test_a_cancelled_request_refuses_a_draft(client, db, _local_storage):
+    from app.db.models.enums import AdvisorRequestStatus
+    from app.db.models.legal import AdvisorRequest
+
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    row = db.query(AdvisorRequest).filter_by(id=rid).one()
+    row.status = AdvisorRequestStatus.cancelled
+    db.flush()
+
+    resp = _send_draft(client, rid, w["ah"])
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "REQUEST_CANCELLED"
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_return_a_draft(client, db, role, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    _u, _s, h = _member(db, role=role, startup=w["startup"])
+    resp = _send_draft(client, rid, h)
+    assert resp.status_code == 403, resp.text
+
+
+# --- cancel (task 7, D-LEG-14) -----------------------------------------------------------------
+
+
+def _cancel(client, rid, headers):
+    return client.post(f"{REQUESTS}/{rid}/cancel", headers=headers)
+
+
+def test_a_founder_cancels_an_open_request(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    resp = _cancel(client, rid, w["fh"])
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["status"] == "cancelled"
+    assert resp.json()["data"]["cancelled_at"] is not None
+
+
+def test_an_in_review_request_can_still_be_cancelled(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    said = _say(client, rid, w["ah"])  # the advisor's first comment -> in_review
+    assert said.status_code == 200, said.text
+    resp = _cancel(client, rid, w["fh"])
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["status"] == "cancelled"
+
+
+def test_cancelling_twice_is_409(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    first = _cancel(client, rid, w["fh"])
+    assert first.status_code == 200, first.text
+    again = _cancel(client, rid, w["fh"])
+    # Not idempotent on purpose: the founder should know it was already closed, and there is no
+    # reopen to undo it with (D-LEG-14).
+    assert again.status_code == 409, again.text
+    assert again.json()["error"]["code"] == "REQUEST_CANCELLED"
+
+
+def test_a_completed_review_cannot_be_cancelled(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    returned = _send_draft(client, rid, w["ah"])
+    assert returned.status_code == 200, returned.text
+    resp = _cancel(client, rid, w["fh"])
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "REQUEST_COMPLETE"
+
+
+def test_an_advisor_cannot_cancel(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    # An advisor answers requests; withdrawing one is the founder's decision.
+    resp = _cancel(client, rid, w["ah"])
+    assert resp.status_code == 403, resp.text
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_cancel(client, db, role):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    _u, _s, h = _member(db, role=role, startup=w["startup"])
+    resp = _cancel(client, rid, h)
+    assert resp.status_code == 403, resp.text
+
+
+def test_another_workspace_cannot_cancel(client, db):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    _ou, _os, other_h = _member(db)
+    resp = _cancel(client, rid, other_h)
+    assert resp.status_code == 404, resp.text
+
+
+def test_cancelling_ends_the_advisors_access_end_to_end(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+
+    before = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert before.status_code == 200, before.text
+
+    cancelled = _cancel(client, rid, w["fh"])
+    assert cancelled.status_code == 200, cancelled.text
+
+    # The request IS the access rule, so there is no grant row to revoke: the document stops
+    # being served, a new comment is refused, and the thread stays readable as history.
+    after = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert after.status_code == 404, after.text
+    said = _say(client, rid, w["ah"])
+    assert said.status_code == 409, said.text
+    thread = _comments(client, rid, w["ah"])
+    assert thread.status_code == 200, thread.text
+    draft = _send_draft(client, rid, w["ah"])
+    assert draft.status_code == 409, draft.text
