@@ -2443,7 +2443,7 @@ the number Module 09 carried on its branch before being renumbered to `0041_vali
 so Alembic refused to run and the database was also missing all six Finance tables. Rebuilt from
 zero. The test suite builds its own schema from the models, so nothing was lost.
 
-## 🟡 Module 13 — Legal & Compliance — *slice 1 MERGED: #214 (`3386fc06`, 2026-11-13, migration `0106_legal`), disclaimer fix #248; slice 2 (Advisor Requests) in progress with Victoria; slice 3 not started*
+## 🟡 Module 13 — Legal & Compliance — *slice 1 MERGED: #214 (`3386fc06`, 2026-11-13, migration `0106_legal`), disclaimer fix #248; slice 2 (Advisor Requests) BUILT on `feature/legal-advisor-requests` (migration `0110_legal_advisor_requests`, PR pending); slice 3 not started*
 
 _Three data-backed surfaces under `/api/v1/legal`: **entity formation** (a per-jurisdiction
 checklist whose steps live in code — only progress is stored), the **IP tracker** (trademarks,
@@ -2507,7 +2507,45 @@ team member + **legal advisor** read, founder + team member write. Spec
       compliance item (PRD 13.4) · `owner` and linked docs on a compliance item (PRD 13.5) · proof as
       a Documents record (`proof_doc_id`) rather than a key on the row · scheduler batch cap +
       `ScheduledRun` anti-join, deleting stored proof after the commit — see SOP Follow-ups
-- [ ] _In progress:_ slice 2, 13.6 Legal Advisor Requests (Victoria; D-LEG-9..15 accepted 2026-11-18).
+**Slice 2 — 13.6 Legal Advisor Requests (gap rows 41 to 47), built 2026-11-22:**
+- [x] Product calls first, as asked: `D-LEG-9..15` (accepted 2026-11-18) and `D-LEG-16..18`
+      (accepted 2026-11-19 with two conditions), all in FE repo `docs/checklist/legal-prd-gaps.md`.
+      `D-LEG-16` came out of reading Documents before writing code: `DocumentGrant` and
+      `DocumentVersion` exist only for rich documents, so neither covers the uploaded PDF a
+      founder actually wants reviewed
+- [x] One table + status enum + migration `0110_legal_advisor_requests` — nullable `document_id` /
+      `file_id` with `ck_advisor_requests_target` enforcing exactly one, mirroring
+      `ck_document_shares_target`; `returned_file_id` for the draft that comes back
+- [x] Founder side: create (validating the attachment, the scan and the advisor's live membership
+      **before** the insert), list with a `status` filter, read
+- [x] **Reads scoped by role in one place** — writers see the workspace's requests, an advisor sees
+      only the ones naming them, and another advisor gets the same **404** as a foreign id. Caught
+      as over-exposure in review of my own task 2 commit, where `_legal_reader` let any advisor
+      read every request in full shape
+- [x] The attachment read: **the request is the permission**, so no grant row and no share token,
+      and cancelling ends access with nothing to revoke. A rich document is rendered to PDF the
+      way the data room renders one, carrying the not-legal-advice footer
+- [x] Comment thread on the shared `comments` table (`entity_type="advisor_request"`), no new
+      table; the advisor's **first comment** moves the request to `in_review` (D-LEG-17)
+- [x] Reviewed draft through **Documents' own upload** (15 MB cap, its allowlist, magic-byte sniff,
+      virus scan) per the lead's condition 2, which is why a lawyer can return a `.docx` where
+      slice 1's proof sniff took PNG / JPEG / PDF only. **It is a new file, never a
+      `DocumentVersion`** — an advisor can author no version, which supersedes part of `D-LEG-12`
+- [x] Cancel, terminal: 409 on a repeat and 409 on a completed review, no reopen (D-LEG-14)
+- [x] Notification to the named advisor (row 47), delivery narrowed by a recipient function and
+      listed in `DIRECT` rather than `READ_ROLES` — the coverage test caught that
+- [x] Row 39's API half needs **no new endpoint**: 13.3 calls `POST /advisor-requests` with the
+      contract's id, and finds advisors from `GET /team/members`. Documented as §8 of the FE guide
+- [x] Tests — **74 API** + 7 model + 9 notification · ruff / black / isort / mypy (558 files) clean
+      · `alembic check` reports no new upgrade operations
+- [x] Live E2E `e2e/test_legal_advisor_requests.py` — **passed on the first run**, 15 captures in
+      `e2e/_captures/legal_advisor_requests/`
+- [x] FE guide `docs/fe-integration-guide-legal-advisor-requests.md` (bodies verified against the
+      captures) · SOP `docs/sop/2026-11-22-legal-advisor-requests.md`
+- [ ] _Follow-ups:_ `MAX_DRAFT_BYTES` duplicates Documents' private 15 MB cap · `author.name` can
+      be null while `requested_by.name` cannot (two different name helpers) · repeated requests to
+      one advisor do not collapse into a single notification — see SOP Follow-ups
+
 - [ ] _Backlog:_ 13.2 Contract Templates and 13.3 AI Contract Review (slice 3).
 - [ ] _Not this slice (kept for the record):_ 13.2 / 13.3 / 13.6 Their FE pages exist against the mock hook; the gap list itemises
       them as rows 27–47
@@ -3450,7 +3488,7 @@ fan-out are unit-verified only (no live capture).
       above. SOPs `docs/sop/2026-09-29-finance-slice{1,2,3}.md` + `docs/sop/2026-09-30-finance-slice4a.md`,
       FE guides `docs/fe-integration-guide-finance-{cashflow,runway,invoices,expenses}.md`.
 - [x] **Module 19 — Calendar** — *✅ merged 2026-10-12 (PR #119); see its own section above* · brief `docs/handoff/module-19-calendar.md`
-- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 merged (#214, migration `0106_legal`, 211 tests, live e2e + 20 captures); see its own section above. Slices 2 (advisor requests) and 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
+- [ ] **Module 13 — Legal & Compliance** — *🟡 Slice 1 merged (#214, migration `0106_legal`, 211 tests, live e2e + 20 captures); Slice 2 (Advisor Requests) built on `feature/legal-advisor-requests` (migration `0110_legal_advisor_requests`, 90 tests, live e2e + 15 captures, PR pending); see its own section above. Slice 3 (templates + AI review) not started* · brief `docs/handoff/module-13-legal-compliance.md` · gap list FE repo `docs/checklist/legal-prd-gaps.md`
   - [ ] Slice 1 — Entity Formation checklist (code-defined catalog + per-startup progress) · IP Tracker CRUD ·
         Compliance Calendar CRUD (derived status, optional proof upload) · 14/7/1-day + overdue reminders on the scheduler
         · **settled (#125):** legal_advisor read-only · `legal_entities` deferred · **recurrence IN** (anchor-day
