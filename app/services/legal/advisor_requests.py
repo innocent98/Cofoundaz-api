@@ -27,8 +27,11 @@ from app.db.models.enums import (
 )
 from app.db.models.legal import AdvisorRequest
 from app.db.models.membership import Membership
+from app.platform.storage import get_storage
 from app.schemas.legal import AdvisorRequestCreate
 from app.services.documents.common import owner_map
+from app.services.documents.export import render_pdf
+from app.services.documents.template_defs import disclaimer_for
 from app.services.legal.errors import _validation
 
 EVENT_CREATED = "legal.advisor_request.created"
@@ -278,3 +281,66 @@ def created_payload(db: Session, row: AdvisorRequest) -> dict[str, Any]:
         "founder_name": founder["name"] if founder else None,
         "document_title": attachment["title"] if attachment else None,
     }
+
+
+def read_attachment(
+    db: Session,
+    *,
+    startup_id: uuid.UUID,
+    request_id: uuid.UUID,
+    viewer_id: uuid.UUID,
+    viewer_role: MembershipRole,
+) -> tuple[bytes, str, str]:
+    """`(content, content_type, filename)` of the request's attachment, or 404 (D-LEG-16).
+
+    The request IS the access rule, which is why there is no grant and no share to check. The
+    lead's conditions: the named advisor and the workspace's writers may read; anyone else, a
+    foreign workspace and a **cancelled** request are all 404. A live `legal_advisor` membership
+    is already guaranteed upstream, because `require_workspace` resolves only active memberships.
+
+    An uploaded file is streamed as itself. A rich document has no bytes, so it is rendered to
+    PDF exactly as the data room renders one, which also carries the not-legal-advice footer
+    through `disclaimer_for`.
+
+    A file that has stopped being `clean` is a 404 here rather than the 409 used on create
+    (D-LEG-18): on create the founder picked the wrong file and can fix it, while on read the
+    honest answer is simply that it is not available.
+    """
+    row = get_request(
+        db,
+        startup_id=startup_id,
+        request_id=request_id,
+        viewer_id=viewer_id,
+        viewer_role=viewer_role,
+    )
+    if row.status == AdvisorRequestStatus.cancelled:
+        raise NotFound()
+    if row.file_id is not None:
+        file = (
+            db.query(DocumentFile)
+            .filter(
+                DocumentFile.id == row.file_id,
+                DocumentFile.startup_id == startup_id,
+                DocumentFile.trashed_at.is_(None),
+            )
+            .first()
+        )
+        if file is None or file.scan_status != ScanStatus.clean:
+            raise NotFound()
+        raw = get_storage().read_private(file.storage_key)
+        if raw is None:
+            raise NotFound()
+        return raw, file.content_type, file.filename
+    doc = (
+        db.query(Document)
+        .filter(
+            Document.id == row.document_id,
+            Document.startup_id == startup_id,
+            Document.trashed_at.is_(None),
+        )
+        .first()
+    )
+    if doc is None:
+        raise NotFound()
+    pdf = render_pdf(doc, disclaimer_for(doc.template_key, doc.kind))
+    return pdf, "application/pdf", f"{doc.title or 'document'}.pdf"

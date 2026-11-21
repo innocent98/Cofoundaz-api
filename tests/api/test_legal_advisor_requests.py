@@ -383,3 +383,128 @@ def test_creating_a_request_notifies_only_the_named_advisor(client, db):
     assert {n.user_id for n in notes} == {w["advisor"].id}
     assert notes[0].title.endswith("requested your review of Supplier Agreement")
     assert "@" not in notes[0].title
+
+
+# --- the attached-document read (task 4, D-LEG-16) ---------------------------------------------
+
+
+@pytest.fixture()
+def _local_storage(tmp_path, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "local")
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_DIR", str(tmp_path))
+
+
+def _stored_file(db, startup, *, body=b"%PDF-1.4 contract bytes"):
+    from app.platform.storage import get_storage
+
+    row = _file(db, startup)
+    get_storage().save_private(row.storage_key, body, row.content_type)
+    return row
+
+
+def _make(client, w, **kw):
+    resp = client.post(REQUESTS, json=_body(w, **kw), headers=w["fh"])
+    assert resp.status_code == 200, resp.text
+    return resp.json()["data"]["id"]
+
+
+def test_the_named_advisor_can_read_an_attached_file(client, db, _local_storage):
+    w = _workspace(db)
+    file = _stored_file(db, w["startup"])
+    rid = _make(client, w, file_id=str(file.id))
+
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert resp.status_code == 200, resp.text
+    assert resp.content == b"%PDF-1.4 contract bytes"
+    assert resp.headers["content-type"].startswith("application/pdf")
+    assert resp.headers["x-content-type-options"] == "nosniff"
+    assert resp.headers["cache-control"] == "private, no-store"
+    assert "supplier-agreement.pdf" in resp.headers["content-disposition"]
+
+
+def test_a_writer_can_read_it_too(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    for headers in (w["fh"], w["mh"]):
+        resp = client.get(f"{REQUESTS}/{rid}/document", headers=headers)
+        assert resp.status_code == 200, resp.text
+
+
+def test_a_rich_document_comes_back_as_a_pdf(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, document_id=str(_doc(db, w["startup"]).id))
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    # A rich document has no bytes, so it is rendered exactly as the data room renders one.
+    assert resp.status_code == 200, resp.text
+    assert resp.content.startswith(b"%PDF")
+    assert resp.headers["content-type"].startswith("application/pdf")
+
+
+def test_another_advisor_cannot_read_the_document(client, db, _local_storage):
+    w = _workspace(db)
+    _second, _s, second_h = _member(db, role=MembershipRole.legal_advisor, startup=w["startup"])
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=second_h)
+    assert resp.status_code == 404, resp.text
+
+
+def test_another_workspace_cannot_read_the_document(client, db, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    _ou, _os, other_h = _member(db)
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=other_h)
+    assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.parametrize("role", FORBIDDEN_ROLES)
+def test_forbidden_roles_cannot_read_the_document(client, db, role, _local_storage):
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    _u, _s, h = _member(db, role=role, startup=w["startup"])
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=h)
+    assert resp.status_code == 403, resp.text
+
+
+def test_a_cancelled_request_stops_serving_the_document(client, db, _local_storage):
+    from app.db.models.enums import AdvisorRequestStatus
+    from app.db.models.legal import AdvisorRequest
+
+    w = _workspace(db)
+    rid = _make(client, w, file_id=str(_stored_file(db, w["startup"]).id))
+    before = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert before.status_code == 200, before.text
+
+    row = db.query(AdvisorRequest).filter_by(id=rid).one()
+    row.status = AdvisorRequestStatus.cancelled
+    db.flush()
+
+    # The lead's condition: access ends with the request, and there is no grant row to revoke.
+    after = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert after.status_code == 404, after.text
+
+
+def test_a_file_that_stops_being_clean_stops_serving(client, db, _local_storage):
+    from app.db.models.document import DocumentFile
+
+    w = _workspace(db)
+    file = _stored_file(db, w["startup"])
+    rid = _make(client, w, file_id=str(file.id))
+
+    row = db.query(DocumentFile).filter_by(id=file.id).one()
+    row.scan_status = ScanStatus.blocked
+    db.flush()
+
+    # Re-checked on every call (D-LEG-18), because a file can be blocked after the request went
+    # out, exactly as signatures.py already handles.
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert resp.status_code == 404, resp.text
+
+
+def test_a_missing_stored_object_is_404_not_a_500(client, db, _local_storage):
+    w = _workspace(db)
+    file = _file(db, w["startup"])  # row exists, nothing written to storage
+    rid = _make(client, w, file_id=str(file.id))
+    resp = client.get(f"{REQUESTS}/{rid}/document", headers=w["ah"])
+    assert resp.status_code == 404, resp.text

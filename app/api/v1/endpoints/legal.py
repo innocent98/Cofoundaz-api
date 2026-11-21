@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.orm import Session
@@ -377,3 +378,42 @@ def get_advisor_request(
     if advisor_svc.is_advisor(membership.role):
         return success_response(advisor_svc.serialize_one_for_advisor(db, row))
     return success_response(advisor_svc.serialize_request(db, row))
+
+
+@router.get("/advisor-requests/{request_id}/document")
+def download_advisor_request_document(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """Stream the attached document or file to the people this request concerns (D-LEG-16).
+
+    No signed link and no share token: the request itself is the grant, so cancelling it ends
+    access with nothing to revoke. The named advisor and the workspace's writers may read; every
+    other case, including a cancelled request, is a 404 rather than a 403, because a 403 would
+    confirm that someone else's request exists.
+    """
+    content, content_type, filename = advisor_svc.read_attachment(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    # Mirrors documents._file_response: quotes and newlines stripped so a crafted filename
+    # cannot inject a header, an ASCII fallback, and the UTF-8 form for everyone else.
+    safe = filename.replace('"', "").replace("\r", "").replace("\n", "")
+    ascii_name = safe.encode("ascii", "ignore").decode().strip() or "document"
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(safe)}"
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+        },
+    )
