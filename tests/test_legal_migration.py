@@ -2,6 +2,9 @@ import subprocess
 
 REVISION = "0106_legal"
 PREVIOUS = "0105_analytics_custom_metrics"
+# Slice 2. Its own revision, chained on whatever the head was at push time; the round trip
+# below already covers it, because it downgrades past both and comes back up.
+REVISION_SLICE2 = "0110_legal_advisor_requests"
 
 
 def _alembic(*args: str) -> subprocess.CompletedProcess:
@@ -20,6 +23,7 @@ def test_migration_chain_single_head_includes_legal():
     history = _alembic("history")
     assert history.returncode == 0, history.stderr
     assert REVISION in history.stdout
+    assert REVISION_SLICE2 in history.stdout
 
 
 def test_upgrade_then_downgrade_round_trips():

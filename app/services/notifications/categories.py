@@ -76,6 +76,7 @@ EVENT_CATEGORY: dict[str, str] = {
     "legal.compliance.due_soon": "legal",
     "legal.compliance.overdue": "legal",
     "legal.ip.renewal_due_soon": "legal",
+    "legal.advisor_request.created": "legal",
 }
 
 # Types not listed above are classified by their prefix, so a new module's events (Billing, ...)

@@ -1,0 +1,25 @@
+{
+  "data": {
+    "id": "51ddfce9-af37-4521-ad1c-cb30690a24b8",
+    "filename": "supplier-agreement.pdf",
+    "content_type": "application/pdf",
+    "mime": "application/pdf",
+    "type": "file",
+    "origin": "upload",
+    "source_document_id": null,
+    "source_version": null,
+    "size_bytes": 42,
+    "folder": null,
+    "tags": [],
+    "owner": {
+      "id": "3f5c2f74-e9b1-4938-8ab5-da65bf8a4536",
+      "name": "Ada Founder"
+    },
+    "share_count": 0,
+    "scan_status": "clean",
+    "uploaded_at": "2026-11-21T23:04:23.151573+00:00",
+    "trashed_at": null,
+    "purges_at": null
+  },
+  "meta": null
+}

@@ -88,6 +88,10 @@ AUDIENCE: dict[str, frozenset[MembershipRole]] = {
     "legal.compliance.due_soon": LEGAL_ROLES,
     "legal.compliance.overdue": LEGAL_ROLES,
     "legal.ip.renewal_due_soon": LEGAL_ROLES,
+    # Row 47: the one PRD notification addressed to a legal advisor. LEGAL_ROLES here is the
+    # READ gate, so a mentor never sees the row; delivery is narrowed to the one named advisor
+    # by the recipient function in registry.py.
+    "legal.advisor_request.created": LEGAL_ROLES,
 }
 
 # The audience of this type depends on its payload: payload["audience"] == "finance" opens it to

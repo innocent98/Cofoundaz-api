@@ -1,14 +1,17 @@
 import uuid
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_verified_user
 from app.core.envelope import success_response
+from app.core.errors import AppError, Forbidden
 from app.db.models.enums import (
     LEGAL_ROLES,
+    AdvisorRequestStatus,
     ComplianceStatus,
     IpAssetStatus,
     IpAssetType,
@@ -18,13 +21,18 @@ from app.db.models.membership import Membership
 from app.db.models.user import User
 from app.db.session import get_db
 from app.db.tenancy import require_role
+from app.platform.events import event_bus
 from app.schemas.legal import (
+    AdvisorRequestCommentCreate,
+    AdvisorRequestCreate,
     ComplianceCreate,
     ComplianceUpdate,
     FormationStepPatch,
     IpAssetCreate,
     IpAssetUpdate,
 )
+from app.services.documents.sniff import declared_type, sniff_content_type
+from app.services.legal import advisor_requests as advisor_svc
 from app.services.legal import compliance as compliance_svc
 from app.services.legal import formation as formation_svc
 from app.services.legal import ip as ip_svc
@@ -298,3 +306,261 @@ def download_compliance_proof(
 
 def _ext(key: str) -> str:
     return "." + key.rsplit(".", 1)[-1] if "." in key else ""
+
+
+# --- advisor requests (slice 2) ----------------------------------------------------------------
+
+
+@router.post("/advisor-requests", response_model=dict[str, Any])
+def create_advisor_request(
+    payload: AdvisorRequestCreate,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Ask a legal advisor to review one document (gap rows 41 to 43).
+
+    Founder + team member, the same set that may grant an outsider access to a document
+    (`DOCUMENT_ROLES`), because a request is a share plus a note (D-LEG-9). A foreign or trashed
+    attachment is a 404; a file that has not passed the scan is a 409; an advisor who is not a
+    live `legal_advisor` here is a 422.
+    """
+    row = advisor_svc.create_request(
+        db, startup_id=membership.startup_id, actor_id=user.id, data=payload
+    )
+    # Published before the commit, like every other event in this codebase: the notification and
+    # the row land in the same transaction, so a rolled-back request never announces itself.
+    event_bus.publish(db, advisor_svc.EVENT_CREATED, advisor_svc.created_payload(db, row))
+    db.commit()
+    return success_response(advisor_svc.serialize_request(db, row))
+
+
+@router.get("/advisor-requests", response_model=dict[str, Any])
+def list_advisor_requests(
+    status: AdvisorRequestStatus | None = None,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Requests, newest first, SCOPED TO THE CALLER. `status` filters the stored value.
+
+    A founder or team member sees the workspace's requests in full. A legal advisor sees only
+    the ones naming them, through the narrower shape that carries no user ids (gap row 45,
+    D-LEG-11/D-LEG-15). One route, two shapes: a separate advisor route would leave this one
+    able to expose everything to an advisor if anyone forgot to scope it.
+    """
+    rows = advisor_svc.list_requests(
+        db,
+        startup_id=membership.startup_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+        status=status,
+    )
+    serialize = (
+        advisor_svc.serialize_for_advisor
+        if advisor_svc.is_advisor(membership.role)
+        else advisor_svc.serialize_requests
+    )
+    return success_response({"advisor_requests": serialize(db, rows)})
+
+
+@router.get("/advisor-requests/{request_id}", response_model=dict[str, Any])
+def get_advisor_request(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    if advisor_svc.is_advisor(membership.role):
+        return success_response(advisor_svc.serialize_one_for_advisor(db, row))
+    return success_response(advisor_svc.serialize_request(db, row))
+
+
+@router.get("/advisor-requests/{request_id}/document")
+def download_advisor_request_document(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> Response:
+    """Stream the attached document or file to the people this request concerns (D-LEG-16).
+
+    No signed link and no share token: the request itself is the grant, so cancelling it ends
+    access with nothing to revoke. The named advisor and the workspace's writers may read; every
+    other case, including a cancelled request, is a 404 rather than a 403, because a 403 would
+    confirm that someone else's request exists.
+    """
+    content, content_type, filename = advisor_svc.read_attachment(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    # Mirrors documents._file_response: quotes and newlines stripped so a crafted filename
+    # cannot inject a header, an ASCII fallback, and the UTF-8 form for everyone else.
+    safe = filename.replace('"', "").replace("\r", "").replace("\n", "")
+    ascii_name = safe.encode("ascii", "ignore").decode().strip() or "document"
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(safe)}"
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+        },
+    )
+
+
+@router.get("/advisor-requests/{request_id}/comments", response_model=dict[str, Any])
+def list_advisor_request_comments(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The request's thread, oldest first (gap row 45).
+
+    Scoped by the same role rule as the request itself, so an advisor reading someone else's
+    thread gets a 404. The advisor's copy carries names without user ids.
+    """
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    comments = advisor_svc.list_comments(
+        db, row=row, viewer_id=user.id, viewer_role=membership.role
+    )
+    return success_response({"comments": comments})
+
+
+@router.post("/advisor-requests/{request_id}/comments", response_model=dict[str, Any])
+def create_advisor_request_comment(
+    request_id: uuid.UUID,
+    payload: AdvisorRequestCommentCreate,
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Add to the thread. The advisor's FIRST comment also moves the request to `in_review`
+    (D-LEG-17): it needs no new control, and it records that they engaged rather than looked.
+
+    Readers post here, not just writers, because the advisor commenting IS the feature. A
+    cancelled request refuses new comments with a 409.
+    """
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    out = advisor_svc.add_comment(
+        db,
+        row=row,
+        author_id=user.id,
+        viewer_role=membership.role,
+        body=payload.body,
+    )
+    db.commit()
+    return success_response(out)
+
+
+@router.post("/advisor-requests/{request_id}/reviewed-draft", response_model=dict[str, Any])
+async def upload_reviewed_draft(
+    request_id: uuid.UUID,
+    file: UploadFile = File(...),  # noqa: B008
+    membership: Membership = Depends(_legal_reader),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """The advisor returns their marked-up draft, which moves the request to `returned`.
+
+    Only the named advisor: a writer can see the request but returning work is not their action,
+    so they get a 403 while another advisor gets the usual 404. The upload goes through
+    Documents' own path (its 15 MB cap, its type allowlist, a magic-byte sniff and the virus
+    scan), per the lead's condition 2, which is why a lawyer can return a `.docx` even though
+    Slice 1's proof upload only ever took PNG, JPEG and PDF.
+
+    Reads one byte past the cap, so an oversized file is refused without buffering all of it.
+    """
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    if not advisor_svc.is_advisor(membership.role):
+        raise Forbidden()
+    filename = file.filename or "reviewed-draft"
+    declared = declared_type(file.content_type, filename)
+    if declared is None:
+        raise _draft_type_error()
+    content = await file.read(advisor_svc.MAX_DRAFT_BYTES + 1)
+    if len(content) > advisor_svc.MAX_DRAFT_BYTES:
+        raise AppError("VALIDATION_ERROR", "File must be 15 MB or smaller.", 422)
+    # The header is a claim; the bytes decide, exactly as Documents refuses a mismatch.
+    content_type = sniff_content_type(content, declared)
+    if content_type is None:
+        raise AppError(
+            "VALIDATION_ERROR",
+            "That file's contents don't match its type, or the file is empty.",
+            422,
+        )
+    updated = advisor_svc.return_reviewed_draft(
+        db,
+        row=row,
+        actor_id=user.id,
+        filename=filename,
+        content_type=content_type,
+        content=content,
+    )
+    db.commit()
+    return success_response(advisor_svc.serialize_one_for_advisor(db, updated))
+
+
+def _draft_type_error() -> AppError:
+    return AppError(
+        "VALIDATION_ERROR",
+        "That file type isn't allowed. Upload a PDF, Office doc, image, text, Markdown, or CSV.",
+        422,
+    )
+
+
+@router.post("/advisor-requests/{request_id}/cancel", response_model=dict[str, Any])
+def cancel_advisor_request(
+    request_id: uuid.UUID,
+    membership: Membership = Depends(_legal_writer),  # noqa: B008
+    user: User = Depends(get_verified_user),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+) -> dict[str, Any]:
+    """Cancel a request that is still open (D-LEG-14). There is no reopen: raise a new one.
+
+    Writers only. An advisor answers requests and does not withdraw them, so they get a 403 here
+    even though they can read the request itself. Cancelling ends their access to the attachment
+    with no grant row to revoke, because the request is the access rule.
+    """
+    row = advisor_svc.get_request(
+        db,
+        startup_id=membership.startup_id,
+        request_id=request_id,
+        viewer_id=user.id,
+        viewer_role=membership.role,
+    )
+    updated = advisor_svc.cancel_request(db, row=row)
+    db.commit()
+    return success_response(advisor_svc.serialize_request(db, updated))

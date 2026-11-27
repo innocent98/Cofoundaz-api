@@ -112,6 +112,9 @@ DIRECT = {
     "analytics.report.generated",
     "analytics.report.shared",
     "analytics.export.created",  # the requester; tests/api/test_analytics_exports.py
+    # Legal (row 47): the one named advisor, re-checked against a live legal_advisor membership;
+    # see tests/api/test_legal_notifications.py
+    "legal.advisor_request.created",
 }
 
 

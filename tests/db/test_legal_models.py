@@ -201,3 +201,112 @@ def test_author_columns_are_nullable_so_a_departing_user_keeps_the_records():
     assert LegalFormationProgress.__table__.columns["completed_by"].nullable is True
     assert IpAsset.__table__.columns["created_by"].nullable is True
     assert ComplianceItem.__table__.columns["created_by"].nullable is True
+
+
+# --- advisor requests (slice 2) ----------------------------------------------------------------
+
+
+def _doc(db, startup):
+    from app.db.models.document import Document
+
+    row = Document(startup_id=startup.id, title="Supplier Agreement")
+    db.add(row)
+    db.flush()
+    return row
+
+
+def _file(db, startup):
+    from app.db.models.document import DocumentFile
+
+    row = DocumentFile(
+        startup_id=startup.id,
+        filename="supplier-agreement.pdf",
+        content_type="application/pdf",
+        size_bytes=1234,
+        storage_key=f"documents/{startup.id}/deadbeef.pdf",
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def _request(db, startup, **kw):
+    from app.db.models.legal import AdvisorRequest
+
+    kw.setdefault("subject", "Please check clause 7")
+    row = AdvisorRequest(startup_id=startup.id, **kw)
+    db.add(row)
+    db.flush()
+    return row
+
+
+def test_advisor_request_defaults(db):
+    from app.db.models.enums import AdvisorRequestStatus
+
+    _u, s = _ctx(db)
+    row = _request(db, s, document_id=_doc(db, s).id)
+    assert row.status == AdvisorRequestStatus.requested
+    # Nothing has happened yet: no draft back, no return, not cancelled.
+    assert row.returned_file_id is None
+    assert row.returned_at is None and row.cancelled_at is None
+    assert row.note is None
+
+
+def test_advisor_request_accepts_a_file_instead_of_a_document(db):
+    _u, s = _ctx(db)
+    row = _request(db, s, file_id=_file(db, s).id)
+    assert row.document_id is None and row.file_id is not None
+
+
+def test_advisor_request_rejects_both_targets(db):
+    # ck_advisor_requests_target: a request is of a rich document OR an uploaded file, never
+    # both, exactly as ck_document_shares_target constrains a share (D-LEG-16).
+    _u, s = _ctx(db)
+    with pytest.raises(IntegrityError):
+        _request(db, s, document_id=_doc(db, s).id, file_id=_file(db, s).id)
+
+
+def test_advisor_request_rejects_neither_target(db):
+    # ... and never neither: a review request with nothing to review is not a thing.
+    _u, s = _ctx(db)
+    with pytest.raises(IntegrityError):
+        _request(db, s)
+
+
+def test_deleting_the_attached_document_removes_the_request(db):
+    from app.db.models.legal import AdvisorRequest
+
+    _u, s = _ctx(db)
+    doc = _doc(db, s)
+    _request(db, s, document_id=doc.id)
+    # CASCADE: a request to review a deleted document means nothing, and SET NULL would leave
+    # the check constraint with two empty columns. Raw SQL, because the DB owns this rule.
+    db.execute(text("DELETE FROM documents WHERE id = :i"), {"i": str(doc.id)})
+    db.flush()
+    assert db.query(AdvisorRequest).filter_by(startup_id=s.id).count() == 0
+
+
+def test_deleting_the_reviewed_draft_leaves_the_request_readable(db):
+    from app.db.models.legal import AdvisorRequest
+
+    _u, s = _ctx(db)
+    draft = _file(db, s)
+    row = _request(db, s, document_id=_doc(db, s).id, returned_file_id=draft.id)
+    # SET NULL, not CASCADE: removing a reviewed draft from the library must not destroy the
+    # record that a review was asked for and returned.
+    db.execute(text("DELETE FROM document_files WHERE id = :i"), {"i": str(draft.id)})
+    db.flush()
+    db.refresh(row)
+    assert db.query(AdvisorRequest).filter_by(id=row.id).count() == 1
+    assert row.returned_file_id is None
+
+
+def test_the_advisor_and_the_creator_survive_a_deleted_account(db):
+    from app.db.models.legal import AdvisorRequest
+
+    # Asserted on the schema rather than by deleting a user: nothing in this repo deletes users,
+    # and the request must outlive the account either way (matches support_tickets.assigned_to).
+    for column in ("advisor_user_id", "created_by"):
+        fks = list(AdvisorRequest.__table__.c[column].foreign_keys)
+        assert len(fks) == 1
+        assert fks[0].ondelete == "SET NULL", column
