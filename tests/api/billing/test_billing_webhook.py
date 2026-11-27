@@ -129,12 +129,15 @@ def test_renewal_extends_the_period_once(client, db):
     _active(client, db, h)
     sub = db.query(BillingSubscription).filter_by(startup_id=startup.id).one()
     end = sub.current_period_end
+    # Paid an hour before the current period ends, as a real renewal is. Relative to the period,
+    # never a fixed date: a fixed `paid_at` stops being "after activation" once the clock passes it.
+    paid = (end - timedelta(hours=1)).replace(second=0, microsecond=0)
     renewal = {
         "status": "success",
         "reference": "ren-1",
         "amount": 2_400_000,
         "currency": "NGN",
-        "paid_at": "2026-11-27T10:00:00.000Z",
+        "paid_at": paid.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         "customer": {"customer_code": sub.paystack_customer_code},
         "plan": {"plan_code": "PLN_x"},
     }
@@ -142,7 +145,7 @@ def test_renewal_extends_the_period_once(client, db):
     assert r.json()["data"]["outcome"] == "renewed"
     db.refresh(sub)
     assert sub.current_period_start.isoformat().startswith(
-        "2026-11-27T10:00"
+        paid.strftime("%Y-%m-%dT%H:%M")
     )  # anchored on the payment
     assert sub.current_period_end > end
     assert db.query(BillingInvoice).filter_by(startup_id=startup.id).count() == 2
